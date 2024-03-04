@@ -63,6 +63,9 @@ include_directories(${CMAKE_BINARY_DIR})
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 
+# Aos core lib
+include(AosCoreLib)
+
 if(WITH_TEST)
     include(FetchContent)
 
