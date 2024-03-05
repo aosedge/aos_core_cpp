@@ -11,6 +11,8 @@
 #include <iomanip>
 #include <iostream>
 
+#include <systemd/sd-journal.h>
+
 #include "logger.hpp"
 
 /***********************************************************************************************************************
@@ -31,6 +33,14 @@ aos::Error Logger::Init()
     case Backend::eStdIO:
         SetColored(true);
         aos::Log::SetCallback(Logger::StdIOCallback);
+
+        break;
+
+    case Backend::eJournald:
+        SetColored(false);
+        aos::Log::SetCallback(Logger::JournaldCallback);
+
+        break;
     }
 
     return aos::ErrorEnum::eNone;
@@ -46,6 +56,18 @@ void Logger::StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos
 
     std::cout << GetCurrentTime() << " " << GetLogLevel(level) << " " << GetModule(module) << " " << message.CStr()
               << std::endl;
+}
+
+void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message)
+{
+    std::stringstream ss;
+
+    ss << GetModule(module) << " " << message.CStr();
+
+    auto ret = sd_journal_print(GetSyslogPriority(level), ss.str().c_str());
+    if (ret != 0) {
+        std::cerr << "Can't write to journal: " << ret;
+    }
 }
 
 std::string Logger::GetCurrentTime()
@@ -109,4 +131,24 @@ std::string Logger::GetModule(aos::LogModule module)
     ss << ")" << (sColored ? cColorNone : "");
 
     return ss.str();
+}
+
+int Logger::GetSyslogPriority(aos::LogLevel level)
+{
+    switch (static_cast<aos::LogLevelEnum>(level)) {
+    case aos::LogLevelEnum::eDebug:
+        return LOG_DEBUG;
+
+    case aos::LogLevelEnum::eInfo:
+        return LOG_INFO;
+
+    case aos::LogLevelEnum::eWarning:
+        return LOG_WARNING;
+
+    case aos::LogLevelEnum::eError:
+        return LOG_ERR;
+
+    default:
+        return LOG_NOTICE;
+    }
 }

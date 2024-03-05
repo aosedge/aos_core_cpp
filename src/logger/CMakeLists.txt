@@ -27,4 +27,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Labraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon)
+target_link_libraries(${TARGET} PUBLIC aoscommon ${JOURNALD_LIBRARIES})

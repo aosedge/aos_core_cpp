@@ -69,6 +69,11 @@ include(AosCoreLib)
 # Poco lib
 find_package(Poco REQUIRED Util)
 
+# Systemd lib
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SYSTEMD systemd REQUIRED)
+pkg_check_modules(JOURNALD libsystemd REQUIRED)
+
 if(WITH_TEST)
     include(FetchContent)
 

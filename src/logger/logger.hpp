@@ -68,6 +68,7 @@ public:
      */
     enum class Backend {
         eStdIO,
+        eJournald,
     };
 
     /**
@@ -76,6 +77,13 @@ public:
      * @return aos::Error.
      */
     aos::Error Init();
+
+    /**
+     * Sets logger backend.
+     *
+     * @param backend logger backend.
+     */
+    void SetBackend(Backend backend) { sBackend = backend; }
 
 private:
     static constexpr auto cColorTime    = "\033[90m";
@@ -87,11 +95,14 @@ private:
     static constexpr auto cColorModule  = "\033[34m";
     static constexpr auto cColorNone    = "\033[0m";
 
-    static void        StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message);
+    static void StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message);
+    static void JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message);
+
     static std::string GetCurrentTime();
     static std::string GetLogLevel(aos::LogLevel level);
     static std::string GetModule(aos::LogModule module);
     static void        SetColored(bool colored) { sColored = colored; }
+    static int         GetSyslogPriority(aos::LogLevel level);
 
     static std::mutex sMutex;
     static bool       sColored;
