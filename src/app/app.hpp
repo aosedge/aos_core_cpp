@@ -24,6 +24,8 @@ protected:
     void defineOptions(Poco::Util::OptionSet& options);
 
 private:
+    static constexpr auto cSDNotifyReady = "READY=1";
+
     void HandleHelp(const std::string& name, const std::string& value);
     void HandleVersion(const std::string& name, const std::string& value);
     void HandleProvisioning(const std::string& name, const std::string& value);

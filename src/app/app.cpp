@@ -9,6 +9,7 @@
 
 #include <Poco/Util/HelpFormatter.h>
 #include <aos/common/version.hpp>
+#include <systemd/sd-daemon.h>
 
 #include "app.hpp"
 #include "log.hpp"
@@ -25,6 +26,13 @@ void App::initialize(Application& self)
     Application::initialize(self);
 
     LOG_INF() << "Initialize IAM: version = " << AOS_CORE_IAM_VERSION;
+
+    // Initialize Aos modules
+
+    auto ret = sd_notify(0, cSDNotifyReady);
+    if (ret != 0) {
+        throw Poco::Exception("can't notify systemd", ret);
+    }
 }
 
 void App::uninitialize()
