@@ -66,6 +66,9 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 # Aos core lib
 include(AosCoreLib)
 
+# Poco lib
+find_package(Poco REQUIRED Util)
+
 if(WITH_TEST)
     include(FetchContent)
 
