@@ -20,8 +20,9 @@
  **********************************************************************************************************************/
 
 std::mutex      Logger::sMutex;
-bool            Logger::sColored = true;
-Logger::Backend Logger::sBackend = Logger::Backend::eStdIO;
+bool            Logger::sColored  = true;
+Logger::Backend Logger::sBackend  = Logger::Backend::eStdIO;
+aos::LogLevel   Logger::sLogLevel = aos::LogLevelEnum::eInfo;
 
 /***********************************************************************************************************************
  * Public
@@ -29,6 +30,8 @@ Logger::Backend Logger::sBackend = Logger::Backend::eStdIO;
 
 aos::Error Logger::Init()
 {
+    std::lock_guard lock(sMutex);
+
     switch (sBackend) {
     case Backend::eStdIO:
         SetColored(true);
@@ -54,12 +57,20 @@ void Logger::StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos
 {
     std::lock_guard lock(sMutex);
 
+    if (level.GetValue() < sLogLevel.GetValue()) {
+        return;
+    }
+
     std::cout << GetCurrentTime() << " " << GetLogLevel(level) << " " << GetModule(module) << " " << message.CStr()
               << std::endl;
 }
 
 void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message)
 {
+    if (level.GetValue() < sLogLevel.GetValue()) {
+        return;
+    }
+
     std::stringstream ss;
 
     ss << GetModule(module) << " " << message.CStr();

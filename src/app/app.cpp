@@ -63,6 +63,7 @@ void App::defineOptions(Poco::Util::OptionSet& options)
     options.addOption(Poco::Util::Option("journal", "j", "redirects logs to systemd journal")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleJournal)));
     options.addOption(Poco::Util::Option("loglevel", "l", "sets current log level")
+                          .argument("level")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleLogLevel)));
 }
 
@@ -119,5 +120,13 @@ void App::HandleJournal(const std::string& name, const std::string& value)
 void App::HandleLogLevel(const std::string& name, const std::string& value)
 {
     (void)name;
-    (void)value;
+
+    aos::LogLevel level;
+
+    auto err = level.FromString(aos::String(value.c_str()));
+    if (!err.IsNone()) {
+        throw Poco::Exception("unsupported log level", value);
+    }
+
+    mLogger.SetLogLevel(level);
 }

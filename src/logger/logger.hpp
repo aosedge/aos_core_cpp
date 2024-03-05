@@ -83,7 +83,24 @@ public:
      *
      * @param backend logger backend.
      */
-    void SetBackend(Backend backend) { sBackend = backend; }
+    void SetBackend(Backend backend)
+    {
+        std::lock_guard lock(sMutex);
+
+        sBackend = backend;
+    }
+
+    /**
+     * Sets current log level.
+     *
+     * @param level log level.
+     */
+    void SetLogLevel(aos::LogLevel level)
+    {
+        std::lock_guard lock(sMutex);
+
+        sLogLevel = level;
+    }
 
 private:
     static constexpr auto cColorTime    = "\033[90m";
@@ -104,9 +121,10 @@ private:
     static void        SetColored(bool colored) { sColored = colored; }
     static int         GetSyslogPriority(aos::LogLevel level);
 
-    static std::mutex sMutex;
-    static bool       sColored;
-    static Backend    sBackend;
+    static std::mutex    sMutex;
+    static bool          sColored;
+    static Backend       sBackend;
+    static aos::LogLevel sLogLevel;
 };
 
 #endif
