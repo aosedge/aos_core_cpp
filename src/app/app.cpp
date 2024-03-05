@@ -11,11 +11,31 @@
 #include <aos/common/version.hpp>
 
 #include "app.hpp"
+#include "log.hpp"
 #include "version.hpp"
 
 /***********************************************************************************************************************
  * Protected
  **********************************************************************************************************************/
+
+void App::initialize(Application& self)
+{
+    mLogger.Init();
+
+    Application::initialize(self);
+
+    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_IAM_VERSION;
+}
+
+void App::uninitialize()
+{
+    Application::uninitialize();
+}
+
+void App::reinitialize(Application& self)
+{
+    Application::reinitialize(self);
+}
 
 int App::main(const ArgVec& args)
 {
