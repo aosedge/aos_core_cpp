@@ -5,8 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <csignal>
+#include <execinfo.h>
 #include <iostream>
 
+#include <Poco/SignalHandler.h>
 #include <Poco/Util/HelpFormatter.h>
 #include <aos/common/version.hpp>
 #include <systemd/sd-daemon.h>
@@ -17,11 +20,43 @@
 #include "version.hpp"
 
 /***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
+
+static void SegmentationHandler(int sig)
+{
+    static constexpr auto cBacktraceSize = 32;
+
+    void*  array[cBacktraceSize];
+    size_t size;
+
+    LOG_ERR() << "Segmentation fault";
+
+    size = backtrace(array, cBacktraceSize);
+
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+
+    raise(sig);
+}
+
+static void RegisterSegfaultSignal()
+{
+    struct sigaction act { };
+
+    act.sa_handler = SegmentationHandler;
+    act.sa_flags   = SA_RESETHAND;
+
+    sigaction(SIGSEGV, &act, nullptr);
+}
+
+/***********************************************************************************************************************
  * Protected
  **********************************************************************************************************************/
 
 void App::initialize(Application& self)
 {
+    RegisterSegfaultSignal();
+
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
 
