@@ -13,6 +13,7 @@
 
 #include "app.hpp"
 #include "log.hpp"
+#include "utils/exception.hpp"
 #include "version.hpp"
 
 /***********************************************************************************************************************
@@ -21,7 +22,8 @@
 
 void App::initialize(Application& self)
 {
-    mLogger.Init();
+    auto err = mLogger.Init();
+    AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
 
     Application::initialize(self);
 
@@ -30,9 +32,7 @@ void App::initialize(Application& self)
     // Initialize Aos modules
 
     auto ret = sd_notify(0, cSDNotifyReady);
-    if (ret != 0) {
-        throw Poco::Exception("can't notify systemd", ret);
-    }
+    AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
 }
 
 void App::uninitialize()
