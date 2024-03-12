@@ -13,7 +13,7 @@ ExternalProject_Add(
     aoscore
     PREFIX ${aoscore_build_dir}
     GIT_REPOSITORY https://github.com/aoscloud/aos_core_lib_cpp.git
-    GIT_TAG main
+    GIT_TAG develop
     GIT_PROGRESS TRUE
     GIT_SHALLOW TRUE
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${aoscore_build_dir}
@@ -23,6 +23,7 @@ ExternalProject_Add(
 file(MAKE_DIRECTORY ${aoscore_build_dir}/include)
 
 add_library(aoscommon STATIC IMPORTED GLOBAL)
+add_dependencies(aoscommon aoscore)
 set_target_properties(aoscommon PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${aoscore_build_dir}/include)
 set_target_properties(aoscommon PROPERTIES IMPORTED_LOCATION ${aoscore_build_dir}/lib/libaoscommoncpp.a)
 
