@@ -19,6 +19,7 @@ class LogModuleType {
 public:
     enum class Enum {
         eApp,
+        eDatabase,
         eNumModules,
     };
 
@@ -26,6 +27,7 @@ public:
     {
         static const char* const sLogModuleTypeStrings[] = {
             "app",
+            "database",
         };
 
         return aos::Array<const char* const>(sLogModuleTypeStrings, aos::ArraySize(sLogModuleTypeStrings));
