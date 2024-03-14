@@ -16,7 +16,8 @@ ExternalProject_Add(
     GIT_TAG develop
     GIT_PROGRESS TRUE
     GIT_SHALLOW TRUE
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${aoscore_build_dir}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${aoscore_build_dir}
+               -DWITH_TEST=${WITH_TEST}
     UPDATE_COMMAND ""
 )
 
