@@ -67,7 +67,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 include(AosCoreLib)
 
 # Poco lib
-find_package(Poco REQUIRED Util DataSQLite)
+find_package(Poco REQUIRED Util DataSQLite JSON)
 
 # Systemd lib
 find_package(PkgConfig REQUIRED)

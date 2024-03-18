@@ -20,6 +20,7 @@ public:
     enum class Enum {
         eApp,
         eDatabase,
+        eConfig,
         eNumModules,
     };
 
@@ -28,6 +29,7 @@ public:
         static const char* const sLogModuleTypeStrings[] = {
             "app",
             "database",
+            "config",
         };
 
         return aos::Array<const char* const>(sLogModuleTypeStrings, aos::ArraySize(sLogModuleTypeStrings));
