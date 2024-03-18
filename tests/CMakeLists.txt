@@ -21,7 +21,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES utils/exception_test.cpp utils/time_test.cpp database/database_test.cpp)
+set(SOURCES utils/exception_test.cpp utils/time_test.cpp database/database_test.cpp config/config_test.cpp)
 
 # ######################################################################################################################
 # Target
@@ -40,6 +40,7 @@ target_link_libraries(
     logger
     utils
     database
+    config
     aoscommon
     Poco::Util
     GTest::gmock_main
