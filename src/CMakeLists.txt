@@ -26,6 +26,7 @@ add_subdirectory(config)
 add_subdirectory(database)
 add_subdirectory(logger)
 add_subdirectory(utils)
+add_subdirectory(visidentifier)
 
 # ######################################################################################################################
 # Sources
