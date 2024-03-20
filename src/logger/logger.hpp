@@ -22,17 +22,13 @@ public:
         eConfig,
         eDatabase,
         eVISIdentifier,
+        eIAM,
         eNumModules,
     };
 
     static const aos::Array<const char* const> GetStrings()
     {
-        static const char* const sLogModuleTypeStrings[] = {
-            "app",
-            "config",
-            "database",
-            "visidentifier",
-        };
+        static const char* const sLogModuleTypeStrings[] = {"app", "config", "database", "visidentifier", "iam"};
 
         return aos::Array<const char* const>(sLogModuleTypeStrings, aos::ArraySize(sLogModuleTypeStrings));
     };
