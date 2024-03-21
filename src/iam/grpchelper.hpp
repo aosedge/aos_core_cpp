@@ -8,6 +8,7 @@
 #ifndef GRPCHELPER_HPP_
 #define GRPCHELPER_HPP_
 
+#include <grpcpp/security/credentials.h>
 #include <grpcpp/security/server_credentials.h>
 
 #include <aos/common/crypto.hpp>
@@ -19,5 +20,8 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSCredentials(const aos::iam::cert
 
 std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
+
+std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
+    aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
 
 #endif

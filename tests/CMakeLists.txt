@@ -25,6 +25,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 set(SOURCES
     config/config_test.cpp
     database/database_test.cpp
+    iam_client/iamclient_test.cpp
     utils/exception_test.cpp
     utils/json_test.cpp
     utils/time_test.cpp
@@ -57,6 +58,8 @@ target_link_libraries(
     aoscommon
     config
     database
+    iamclient
+    aoscoreapi-gen-objects
     utils
     Poco::Crypto
     Poco::Net

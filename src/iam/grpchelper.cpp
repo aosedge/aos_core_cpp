@@ -102,7 +102,7 @@ static std::string ConvertCertificateToPEM(
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
-    const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoader& certLoader,
+    const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
@@ -124,7 +124,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSCertificates(
-    const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoader& certLoader,
+    const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
@@ -177,4 +177,22 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const iam::certhandle
     options.set_identity_cert_name("identity");
 
     return grpc::experimental::TlsServerCredentials(options);
+}
+
+std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
+    aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider)
+{
+    auto certificates = GetTLSCertificates(certInfo, certLoader, cryptoProvider);
+
+    grpc::experimental::TlsChannelCredentialsOptions options;
+    options.set_certificate_provider(certificates);
+    options.set_verify_server_certs(true);
+
+    options.set_check_call_host(false);
+    options.watch_root_certs();
+    options.set_root_cert_name("root");
+    options.watch_identity_key_cert_pairs();
+    options.set_identity_cert_name("identity");
+
+    return grpc::experimental::TlsCredentials(options);
 }

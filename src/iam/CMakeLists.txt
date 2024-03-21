@@ -30,6 +30,10 @@ find_package(gRPC REQUIRED)
 set(PROTO_DST_DIR "${CMAKE_CURRENT_BINARY_DIR}/gen")
 set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v4")
 
+if(WITH_TEST)
+    list(APPEND PROTO_PLUGIN_OPT "generate_mock_code=true")
+endif()
+
 add_library(aoscoreapi-gen-objects OBJECT "${PROTO_SRC_DIR}/iamanager.proto")
 
 target_link_libraries(aoscoreapi-gen-objects PUBLIC protobuf::libprotobuf gRPC::grpc++)
@@ -49,6 +53,8 @@ protobuf_generate(
     .grpc.pb.cc
     PLUGIN
     "protoc-gen-grpc=\$<TARGET_FILE:gRPC::grpc_cpp_plugin>"
+    PLUGIN_OPTIONS
+    ${PROTO_PLUGIN_OPT}
     IMPORT_DIRS
     ${PROTO_SRC_DIR}
     PROTOC_OUT_DIR
@@ -70,3 +76,4 @@ target_link_libraries(iam_common PUBLIC logger aoscommon aosiam aoscoreapi-gen-o
 include_directories(.)
 
 add_subdirectory(server)
+add_subdirectory(client)
