@@ -17,6 +17,9 @@ set(TARGET aos_iamanager_test)
 
 include(create-certs.cmake)
 include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(include)
+
+add_subdirectory(iam)
 
 # ######################################################################################################################
 # Sources
@@ -43,7 +46,6 @@ set(SOURCES
 # ######################################################################################################################
 
 add_executable(${TARGET} ${SOURCES})
-target_include_directories(${TARGET} PRIVATE include)
 
 gtest_discover_tests(${TARGET})
 

@@ -109,7 +109,7 @@ void IAMServer::Init(const Config& config, certhandler::CertHandlerItf* certHand
     }
 
     CreatePublicServer(config.mIAMPublicServerURL, publicOpt);
-    CreateProtectedServer(config.mIAMPublicServerURL, protectedOpt, provisioningMode);
+    CreateProtectedServer(config.mIAMProtectedServerURL, protectedOpt, provisioningMode);
 }
 
 void IAMServer::Close()

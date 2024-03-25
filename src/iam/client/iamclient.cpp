@@ -77,7 +77,8 @@ aos::Error RemoteIAMClient::GetCertTypes(
     SetClientContext(ctx, nodeID);
 
     if (const auto status = stub->GetCertTypes(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "GetCertTypes failed. error_message = " << status.error_message().c_str();
+        LOG_DBG() << "GetCertTypes failed. error_code:" << status.error_code()
+                  << "error_message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }

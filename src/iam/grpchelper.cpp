@@ -85,13 +85,8 @@ static std::string CreatePKCS11URL(const String& keyURL)
 static std::string ConvertCertificateToPEM(
     const crypto::x509::Certificate& certificate, crypto::x509::ProviderItf& cryptoProvider)
 {
-    std::string result;
-
-    result.resize(crypto::cCertPEMLen);
-
-    String view = result.c_str();
-
-    view.Resize(crypto::cCertPEMLen);
+    std::string result(crypto::cCertPEMLen, '0');
+    String      view = result.c_str();
 
     auto err = cryptoProvider.X509CertToPEM(certificate, view);
     AOS_ERROR_CHECK_AND_THROW("Certificate convertion problem", err);
@@ -182,7 +177,7 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const iam::certhandle
 std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetTLSCertificates(certInfo, certLoader, cryptoProvider);
+    auto certificates = GetMTLSCertificates(certInfo, certLoader, cryptoProvider);
 
     grpc::experimental::TlsChannelCredentialsOptions options;
     options.set_certificate_provider(certificates);
