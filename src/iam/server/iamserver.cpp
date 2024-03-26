@@ -340,7 +340,7 @@ grpc::Status IAMServer::GetCertTypes(
 
     if (nodeId == mNodeID || nodeId.empty()) {
         err = mCertHandler->GetCertTypes(certTypes);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->GetCertTypes(mNodeID.c_str(), certTypes);
     } else {
         LOG_DBG() << "unknown node ID";
@@ -374,7 +374,7 @@ grpc::Status IAMServer::SetOwner(
 
     if (nodeId == mNodeID || nodeId.empty()) {
         err = mCertHandler->SetOwner(certType, password);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->SetOwner(mNodeID.c_str(), certType, password);
     } else {
         LOG_DBG() << "unknown node ID";
@@ -405,7 +405,7 @@ grpc::Status IAMServer::Clear(
 
     if (nodeId == mNodeID || nodeId.empty()) {
         err = mCertHandler->Clear(certType);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->Clear(mNodeID.c_str(), certType);
     } else {
         LOG_DBG() << "unknown node ID";
@@ -454,7 +454,7 @@ grpc::Status IAMServer::EncryptDisk(
         std::string output;
 
         err = ExecProcess(mDiskEncryptCmdArgs[0], args, output);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->EncryptDisk(nodeId.c_str(), password);
     } else {
         LOG_DBG() << "unknown node ID";
@@ -550,7 +550,7 @@ grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager:
 
     if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->CreateKey(certType, subject, password, csr);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->CreateKey(nodeID.c_str(), certType, subject, password, csr);
     } else {
         LOG_DBG() << "unknown node ID";
@@ -587,7 +587,7 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
 
     if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->ApplyCertificate(certType, pemCert, certInfo);
-    } else if (!mRemoteHandler) {
+    } else if (mRemoteHandler) {
         err = mRemoteHandler->ApplyCertificate(nodeID.c_str(), certType, pemCert, certInfo);
     } else {
         LOG_DBG() << "unknown node ID";
