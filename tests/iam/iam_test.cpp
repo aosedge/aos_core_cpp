@@ -17,6 +17,7 @@
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 
+#include "iam/grpchelper.hpp"
 #include "mocks/identhandlermock.hpp"
 #include "mocks/permissionhandlermock.hpp"
 #include "mocks/remoteiamhandlermock.hpp"
@@ -47,8 +48,26 @@ protected:
     void RegisterPKCS11Module(const String& name, crypto::KeyType keyType = crypto::KeyTypeEnum::eRSA);
     void ApplyCertificate(const String& certType, uint64_t serial, CertInfo& certInfo);
 
+    template <typename T>
+    std::unique_ptr<typename T::Stub> CreateCustomStub(const CertInfo& certInfo, const std::string& url)
+    {
+        auto tlsChannelCreds = GetTlsChannelCredentials(certInfo, mCertLoader, mCryptoProvider);
+        if (tlsChannelCreds == nullptr) {
+            return nullptr;
+        }
+
+        grpc::ChannelArguments channelArgs;
+        channelArgs.SetSslTargetNameOverride("Aos Core");
+        auto channel = grpc::CreateCustomChannel(url, tlsChannelCreds, channelArgs);
+        if (channel == nullptr) {
+            return nullptr;
+        }
+
+        return T::NewStub(channel);
+    }
+
     Config GetServerConfig();
-    Config GetClientConfig();
+    Config GetClientConfig(bool usePublicPort = false);
     // Service providers
     crypto::MbedTLSCryptoProvider mCryptoProvider;
     test::SoftHSMEnv              mSOFTHSMEnv;
@@ -109,7 +128,7 @@ Config IAMTest::GetServerConfig()
     return config;
 }
 
-Config IAMTest::GetClientConfig()
+Config IAMTest::GetClientConfig(bool usePublicPort)
 {
     Config config;
 
@@ -119,7 +138,8 @@ Config IAMTest::GetClientConfig()
     config.mNodeID                    = "iam-node-id";
     config.mNodeType                  = "iam-node-type";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
-    config.mRemoteIAMs = {RemoteIAM {"node0", "127.0.0.1:8089", std::chrono::seconds(10)}};
+    config.mRemoteIAMs
+        = {RemoteIAM {"node0", usePublicPort ? "127.0.0.1:8088" : "127.0.0.1:8089", std::chrono::seconds(100)}};
 
     return config;
 }
@@ -224,4 +244,519 @@ TEST_F(IAMTest, CreateKey)
     StaticString<crypto::cCSRPEMLen> csr;
     auto                             err = client.CreateKey("node0", "server", "Aos Cloud", cPIN, csr);
     ASSERT_TRUE(err.IsNone());
+}
+
+/***********************************************************************************************************************
+ * IAMPublicService tests
+ **********************************************************************************************************************/
+
+TEST_F(IAMTest, GetAPIVersion)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, false);
+    LOG_INF() << "Server initialized";
+
+    auto clientStub
+        = CreateCustomStub<iamanager::v4::IAMPublicService>(clientInfo, serverConfig.mIAMProtectedServerURL);
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext       context;
+    google::protobuf::Empty   request;
+    iamanager::v4::APIVersion response;
+
+    const auto status = clientStub->GetAPIVersion(&context, request, &response);
+    ASSERT_TRUE(status.ok()) << "Failed to get API version: " << status.error_message() << " (" << status.error_code()
+                             << ")";
+    ASSERT_EQ(response.version(), 4);
+}
+
+TEST_F(IAMTest, GetNodeInfo)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, false);
+    LOG_INF() << "Server initialized";
+
+    auto clientStub
+        = CreateCustomStub<iamanager::v4::IAMPublicService>(clientInfo, serverConfig.mIAMProtectedServerURL);
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext     context;
+    google::protobuf::Empty request;
+    iamanager::v4::NodeInfo response;
+
+    const auto status = clientStub->GetNodeInfo(&context, request, &response);
+    ASSERT_TRUE(status.ok()) << "Failed to get API version: " << status.error_message() << " (" << status.error_code()
+                             << ")";
+    ASSERT_EQ(response.node_id(), serverConfig.mNodeID);
+    ASSERT_EQ(response.node_type(), serverConfig.mNodeType);
+}
+
+TEST_F(IAMTest, GetCertSucceeds)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, false);
+    LOG_INF() << "Server initialized";
+
+    auto clientStub
+        = CreateCustomStub<iamanager::v4::IAMPublicService>(clientInfo, serverConfig.mIAMProtectedServerURL);
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext           context;
+    iamanager::v4::GetCertRequest request;
+    request.set_type("server");
+
+    iamanager::v4::GetCertResponse response;
+
+    const auto status = clientStub->GetCert(&context, request, &response);
+    ASSERT_TRUE(status.ok()) << "Failed to get API version: " << status.error_message() << " (" << status.error_code()
+                             << ")";
+    ASSERT_EQ(response.type(), request.type());
+    ASSERT_FALSE(response.cert_url().empty());
+    ASSERT_FALSE(response.key_url().empty());
+}
+
+TEST_F(IAMTest, GetCertFailsOnUnknownCertType)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, false);
+    LOG_INF() << "Server initialized";
+
+    auto clientStub
+        = CreateCustomStub<iamanager::v4::IAMPublicService>(clientInfo, serverConfig.mIAMProtectedServerURL);
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext            context;
+    iamanager::v4::GetCertRequest  request;
+    iamanager::v4::GetCertResponse response;
+
+    const auto status = clientStub->GetCert(&context, request, &response);
+    ASSERT_FALSE(status.ok());
+}
+
+/***********************************************************************************************************************
+ * IAMProvisioningService tests
+ **********************************************************************************************************************/
+
+TEST_F(IAMTest, GetCertTypesSucceeds)
+{
+    CertInfo                                                                    clientInfo, serverInfo;
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> registeredCertTypes;
+
+    ASSERT_TRUE(registeredCertTypes.PushBack("client").IsNone());
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    ASSERT_TRUE(registeredCertTypes.PushBack("server").IsNone());
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(GetServerConfig(), mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader,
+        mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.GetCertTypes("node0", receivedCertTypes);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_EQ(receivedCertTypes, registeredCertTypes);
+
+    receivedCertTypes.Clear();
+
+    err = client.GetCertTypes("node1", receivedCertTypes);
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    ASSERT_TRUE(receivedCertTypes.IsEmpty());
+}
+
+TEST_F(IAMTest, GetCertTypesFailOnUnknownNodeId)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    serverConfig.mNodeID = "node10";
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.GetCertTypes("node0", receivedCertTypes);
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    ASSERT_TRUE(receivedCertTypes.IsEmpty());
+}
+
+TEST_F(IAMTest, SetOwnerSucceeds)
+{
+    CertInfo clientInfo, serverInfo;
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(GetServerConfig(), mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader,
+        mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.SetOwner("node0", "client", cPIN);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SetOwner("node0", "client", "wrong-pin");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, SetOwnerFailOnUnknownNodeId)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mNodeID = "node10";
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.SetOwner("node0", "client", cPIN);
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, ClearSucceeds)
+{
+    CertInfo clientInfo, serverInfo;
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(GetServerConfig(), mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader,
+        mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.Clear("node0", "client");
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Clear("node0", "client");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, ClearFailOnInvalidNodeId)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mNodeID = "unknown-id";
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.Clear("node0", "client");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, EncryptDiskFailsOnEmptyCmdArgs)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+    RegisterPKCS11Module("diskencryption");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.EncryptDisk("node0", "client");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, EncryptDiskCmdSucceeds)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mDiskEncryptionCmdArgs = {"true"};
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+    RegisterPKCS11Module("diskencryption");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.EncryptDisk("node0", "client");
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(IAMTest, EncryptDiskCmdFails)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mDiskEncryptionCmdArgs = {"false"};
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+    RegisterPKCS11Module("diskencryption");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.EncryptDisk("node0", "client");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, EncryptDiskFailOnUnknownNodeId)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mNodeID = "unknown-id";
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+    RegisterPKCS11Module("diskencryption");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
+
+    auto err = client.EncryptDisk("node0", "client");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+}
+
+TEST_F(IAMTest, FinishProvisioningSucceedsOnEmptyCmdArgs)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    // make sure that disk encryption command args are empty
+    serverConfig.mFinishProvisioningCmdArgs.clear();
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    ApplyCertificate("client", 0x3333444, clientInfo);
+    ApplyCertificate("server", 0x3333333, serverInfo);
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    auto err = client.FinishProvisioning("node0");
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(IAMTest, FinishProvisioningCmdSucceeds)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mFinishProvisioningCmdArgs = {"true"};
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    auto err = client.FinishProvisioning("node0");
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(IAMTest, FinishProvisioningCmdFails)
+{
+    CertInfo clientInfo, serverInfo;
+    auto     serverConfig = GetServerConfig();
+
+    serverConfig.mFinishProvisioningCmdArgs = {"false"};
+
+    RegisterPKCS11Module("client");
+    ASSERT_TRUE(mCertHandler->SetOwner("client", cPIN).IsNone());
+
+    RegisterPKCS11Module("server");
+
+    IAMServer server;
+    server.Init(
+        serverConfig, mCertHandler.get(), &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
+    LOG_INF() << "Server initialized";
+
+    ::iam::RemoteIAMClient client;
+    ASSERT_TRUE(client.Init(GetClientConfig(), *mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
+
+    auto err = client.FinishProvisioning("node0");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
