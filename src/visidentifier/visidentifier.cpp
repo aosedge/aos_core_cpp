@@ -60,19 +60,15 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-aos::Error VISIdentifier::Init(
-    const Config& config, std::shared_ptr<aos::iam::identhandler::SubjectsObserverItf> subjectsObserverPtr)
+aos::Error VISIdentifier::Init(const Config& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver)
 {
-    if (subjectsObserverPtr == nullptr) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
-    }
     std::lock_guard lock(mMutex);
 
     if (auto err = InitWSClient(config); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    mSubjectsObserverPtr = std::move(subjectsObserverPtr);
+    mSubjectsObserver = &subjectsObserver;
 
     mHandleConnectionThread = std::thread(&VISIdentifier::HandleConnection, this);
 
@@ -324,7 +320,7 @@ aos::Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 
         if (mSubjects != newSubjects) {
             mSubjects = std::move(newSubjects);
-            mSubjectsObserverPtr->SubjectsChanged(mSubjects);
+            mSubjectsObserver->SubjectsChanged(mSubjects);
         }
     } catch (const Poco::Exception& e) {
         LOG_ERR() << e.message().c_str();

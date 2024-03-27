@@ -15,11 +15,9 @@
 /**
  * Subjects observer mock.
  */
-class VisSubjectsObserverMock : public aos::iam::identhandler::SubjectsObserverItf {
+class VISSubjectsObserverMock : public aos::iam::identhandler::SubjectsObserverItf {
 public:
     MOCK_METHOD(aos::Error, SubjectsChanged, (const aos::Array<aos::StaticString<aos::cSubjectIDLen>>&), (override));
 };
-
-using VisSubjectsObserverMockPtr = std::shared_ptr<VisSubjectsObserverMock>;
 
 #endif

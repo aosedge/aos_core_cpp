@@ -147,9 +147,9 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
     Config config;
     config.mIdentifier.mParams = cConfig.ToJSON();
 
-    auto observerPtr = std::make_shared<VisSubjectsObserverMock>();
+    VISSubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observerPtr);
+    auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     const std::string expectedSystemId {"test-system-id"};
@@ -167,9 +167,9 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
     Config config;
     config.mIdentifier.mParams = cConfig.ToJSON();
 
-    auto observerPtr = std::make_shared<VisSubjectsObserverMock>();
+    VISSubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observerPtr);
+    auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     const std::string expectedUnitModel {"test-unit-model"};
@@ -187,9 +187,9 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
     Config config;
     config.mIdentifier.mParams = cConfig.ToJSON();
 
-    auto observerPtr = std::make_shared<VisSubjectsObserverMock>();
+    VISSubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observerPtr);
+    auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     const std::vector<std::string> testSubjects {"1", "2", "3"};

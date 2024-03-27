@@ -66,11 +66,10 @@ public:
      * Initializes vis identifier.
      *
      * @param config config object.
-     * @param subjectsObserverPtr subject observer pointer.
+     * @param subjectsObserver subject observer.
      * @return Error.
      */
-    aos::Error Init(
-        const Config& config, std::shared_ptr<aos::iam::identhandler::SubjectsObserverItf> subjectsObserverPtr);
+    aos::Error Init(const Config& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver);
 
     /**
      * Returns System ID.
@@ -122,7 +121,7 @@ private:
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
     std::shared_ptr<WSClientItf>                                                    mWsClientPtr;
-    std::shared_ptr<aos::iam::identhandler::SubjectsObserverItf>                    mSubjectsObserverPtr;
+    aos::iam::identhandler::SubjectsObserverItf*                                    mSubjectsObserver;
     VISSubscriptions                                                                mSubscriptions;
     aos::StaticString<aos::cSystemIDLen>                                            mSystemId;
     aos::StaticString<aos::cUnitModelLen>                                           mUnitModel;

@@ -41,11 +41,11 @@ protected:
     const std::string cTestSubscriptionId {"1234-4321"};
     const VISConfig   cVISConfig {"vis-service", "ca-path", UtilsTime::Duration(1)};
 
-    WSClientEvent              mWSClientEvent;
-    VisSubjectsObserverMockPtr mVisSubjectsObserverMockPtr {std::make_shared<StrictMock<VisSubjectsObserverMock>>()};
-    WSClientMockPtr            mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
-    TestVISIdentifier          mVisIdentifier;
-    Config                     mConfig;
+    WSClientEvent           mWSClientEvent;
+    VISSubjectsObserverMock mVISSubjectsObserverMock;
+    WSClientMockPtr         mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
+    TestVISIdentifier       mVisIdentifier;
+    Config                  mConfig;
 
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()
@@ -111,7 +111,7 @@ protected:
         EXPECT_CALL(mVisIdentifier, InitWSClient).WillOnce(Return(aos::ErrorEnum::eNone));
         EXPECT_CALL(*mWSClientItfMockPtr, WaitForEvent).WillOnce(Invoke([this]() { return mWSClientEvent.Wait(); }));
 
-        const auto err = mVisIdentifier.Init(mConfig, mVisSubjectsObserverMockPtr);
+        const auto err = mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock);
         ASSERT_TRUE(err.IsNone()) << err.Message();
 
         mVisIdentifier.WaitUntilConnected();
@@ -142,18 +142,8 @@ TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
 
-    const auto err = identifier.Init(Config {}, mVisSubjectsObserverMockPtr);
+    const auto err = identifier.Init(Config {}, mVISSubjectsObserverMock);
     ASSERT_FALSE(err.IsNone()) << err.Message();
-}
-
-TEST_F(VisidentifierTest, InitSubjectsObserverNotAccessible)
-{
-    mVisSubjectsObserverMockPtr.reset();
-
-    EXPECT_CALL(mVisIdentifier, InitWSClient).Times(0);
-
-    const auto err = mVisIdentifier.Init(mConfig, mVisSubjectsObserverMockPtr);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eInvalidArgument)) << err.Message();
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
@@ -162,7 +152,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 
     aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, 3> subjects;
 
-    EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged)
+    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
         .Times(1)
         .WillOnce(Invoke([&subjects](const auto& newSubjects) {
             subjects = newSubjects;
@@ -177,9 +167,9 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 
     EXPECT_EQ(subjects.Size(), 3);
 
-    // Observer is notified only if subsription json contains new value
+    // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
-        EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged).Times(0);
+        EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
         mVisIdentifier.HandleSubscription(kSubscriptionNofiticationJson);
     }
 }
@@ -190,7 +180,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
 
     aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, 3> subjects;
 
-    EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged)
+    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
         .Times(1)
         .WillOnce(Invoke([&subjects](const auto& newSubjects) {
             subjects = newSubjects;
@@ -198,17 +188,17 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
             return aos::ErrorEnum::eNone;
         }));
 
-    const std::string kSubscriptionNofiticationJson
+    const std::string kSubscriptionNotificationJson
         = R"({"action":"subscription","subscriptionId":"1234-4321","value":{"Attribute.Aos.Subjects": [11,12,13]}, "timestamp": 0})";
 
-    mVisIdentifier.HandleSubscription(kSubscriptionNofiticationJson);
+    mVisIdentifier.HandleSubscription(kSubscriptionNotificationJson);
 
     EXPECT_EQ(subjects.Size(), 3);
 
-    // Observer is notified only if subsription json contains new value
+    // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
-        EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged).Times(0);
-        mVisIdentifier.HandleSubscription(kSubscriptionNofiticationJson);
+        EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+        mVisIdentifier.HandleSubscription(kSubscriptionNotificationJson);
     }
 }
 
@@ -216,7 +206,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedUnknownSubscriptionId)
 {
     ExpectInitSucceeded();
 
-    EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
     mVisIdentifier.HandleSubscription(
         R"({"action":"subscription","subscriptionId":"unknown-subscriptionId","value":[11,12,13], "timestamp": 0})");
@@ -226,7 +216,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedInvalidPayload)
 {
     ExpectInitSucceeded();
 
-    EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
     ASSERT_NO_THROW(mVisIdentifier.HandleSubscription(R"({cActionTagName})"));
 }
@@ -235,7 +225,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationValueExceedsMaxLimit)
 {
     ExpectInitSucceeded();
 
-    EXPECT_CALL(*mVisSubjectsObserverMockPtr, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
     Poco::JSON::Object notification;
 
@@ -276,7 +266,7 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
             return {str.cbegin(), str.cend()};
         }));
 
-    const auto err = mVisIdentifier.Init(mConfig, mVisSubjectsObserverMockPtr);
+    const auto err = mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     mVisIdentifier.WaitUntilConnected();
