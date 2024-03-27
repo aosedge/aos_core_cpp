@@ -11,6 +11,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <thread>
 
 #include <Poco/Event.h>
 #include <Poco/Net/HTTPMessage.h>

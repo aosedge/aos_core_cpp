@@ -161,7 +161,7 @@ void PocoWSClient::AsyncSendMessage(const ByteArray& message)
     try {
         using namespace std::chrono;
 
-        mWebSocket->setSendTimeout(duration_cast<microseconds>(mConfig.GetWebSocketTimeout()));
+        mWebSocket->setSendTimeout(duration_cast<microseconds>(mConfig.GetWebSocketTimeout()).count());
 
         const int len = mWebSocket->sendFrame(&message.front(), message.size(), Poco::Net::WebSocket::FRAME_TEXT);
 

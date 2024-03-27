@@ -112,7 +112,7 @@ static Identifier ParseIdentifier(const CaseInsensitiveObjectWrapper& object)
 
 static RemoteIAM ParseRemoteIAM(const CaseInsensitiveObjectWrapper& object)
 {
-    UtilsTime::Duration duration;
+    UtilsTime::Duration duration {};
     auto                requestTimeoutString = object.GetValue<std::string>("RequestTimeout");
 
     if (!requestTimeoutString.empty()) {

@@ -1,5 +1,4 @@
-#
-# Copyright (C) 2024 Renesas Electronics Corporation.
+# # Copyright (C) 2024 Renesas Electronics Corporation.
 # Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -26,40 +25,53 @@ FetchContent_MakeAvailable(aoscoreapi)
 # ######################################################################################################################
 
 find_package(gRPC REQUIRED)
+find_package(Protobuf REQUIRED)
 
 set(PROTO_DST_DIR "${CMAKE_CURRENT_BINARY_DIR}/gen")
 set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v4")
 
-if(WITH_TEST)
-    list(APPEND PROTO_PLUGIN_OPT "generate_mock_code=true")
-endif()
+message(STATUS "proto source dir: ${PROTO_SRC_DIR}")
 
-add_library(aoscoreapi-gen-objects OBJECT "${PROTO_SRC_DIR}/iamanager.proto")
-
-target_link_libraries(aoscoreapi-gen-objects PUBLIC protobuf::libprotobuf gRPC::grpc++)
-
-target_include_directories(aoscoreapi-gen-objects PUBLIC "${PROTO_DST_DIR}")
 file(MAKE_DIRECTORY ${PROTO_DST_DIR})
 
-protobuf_generate(TARGET aoscoreapi-gen-objects IMPORT_DIRS ${PROTO_SRC_DIR} PROTOC_OUT_DIR "${PROTO_DST_DIR}")
+if(CMAKE_CROSSCOMPILING)
+    find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
+else()
+    set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
+endif()
 
-protobuf_generate(
-    TARGET
-    aoscoreapi-gen-objects
-    LANGUAGE
-    grpc
-    GENERATE_EXTENSIONS
-    .grpc.pb.h
-    .grpc.pb.cc
-    PLUGIN
-    "protoc-gen-grpc=\$<TARGET_FILE:gRPC::grpc_cpp_plugin>"
-    PLUGIN_OPTIONS
-    ${PROTO_PLUGIN_OPT}
-    IMPORT_DIRS
-    ${PROTO_SRC_DIR}
-    PROTOC_OUT_DIR
-    "${PROTO_DST_DIR}"
+message(STATUS "gRPC plugin: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
+
+set(PROTO_FILES "${PROTO_SRC_DIR}/iamanager.proto")
+
+add_custom_command(
+    OUTPUT "${PROTO_DST_DIR}/iamanager.pb.cc" "${PROTO_DST_DIR}/iamanager.pb.h"
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --cpp_out "${PROTO_DST_DIR}"
+         -I ${PROTO_SRC_DIR}
+         ${PROTO_FILES}
+    DEPENDS ${PROTO_FILES}
 )
+
+add_custom_command(
+  OUTPUT "${PROTO_DST_DIR}/iamanager.grpc.pb.cc"
+         "${PROTO_DST_DIR}/iamanager.grpc.pb.h"
+         "${PROTO_DST_DIR}/iamanager_mock.grpc.pb.h"
+  COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+  ARGS --grpc_out=generate_mock_code=true:"${PROTO_DST_DIR}"
+       --plugin=protoc-gen-grpc=${_GRPC_CPP_PLUGIN_EXECUTABLE}
+       -I ${PROTO_SRC_DIR}
+       ${PROTO_FILES}
+  DEPENDS ${PROTO_FILES} "${PROTO_DST_DIR}/iamanager.pb.cc" "${PROTO_DST_DIR}/iamanager.pb.h"
+)
+
+add_library(aoscoreapi-gen-objects OBJECT
+    "${PROTO_DST_DIR}/iamanager.pb.cc"
+    "${PROTO_DST_DIR}/iamanager.grpc.pb.cc"
+)
+
+target_link_libraries(aoscoreapi-gen-objects PUBLIC protobuf::libprotobuf gRPC::grpc++)
+target_include_directories(aoscoreapi-gen-objects PUBLIC "${PROTO_DST_DIR}")
 
 # ######################################################################################################################
 # IAM Common part
