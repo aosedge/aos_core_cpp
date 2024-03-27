@@ -51,7 +51,7 @@ public:
      * @param cryptoProvider crypto provider.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
-    void Init(const Config& config, aos::iam::certhandler::CertHandlerItf* certHandler,
+    void Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
         aos::iam::identhandler::IdentHandlerItf* identHandler, aos::iam::permhandler::PermHandlerItf* permHandler,
         RemoteIAMHandlerItf* remoteHandler, aos::cryptoutils::CertLoader& certLoader,
         aos::crypto::x509::ProviderItf& cryptoProvider, bool provisioningMode);
