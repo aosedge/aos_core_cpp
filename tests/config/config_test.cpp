@@ -175,3 +175,23 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "Value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "Value2");
 }
+
+TEST_F(ConfigTest, ParsePKCS11ModuleParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("library", "/usr/lib/pkcs11.so");
+    params->set("slotIndex", 2);
+    params->set("tokenLabel", "token");
+    params->set("userPINPath", "/var/aos/pin");
+    params->set("modulePathInURL", true);
+
+    auto [pkcs11Params, error] = ParsePKCS11ModuleParams(params);
+    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(pkcs11Params.mUserPINPath, "/var/aos/pin");
+    EXPECT_EQ(pkcs11Params.mModulePathInURL, true);
+    EXPECT_EQ(pkcs11Params.mLibrary, "/usr/lib/pkcs11.so");
+    EXPECT_EQ(pkcs11Params.mSlotIndex.value(), 2);
+    EXPECT_EQ(pkcs11Params.mTokenLabel, "token");
+    EXPECT_EQ(pkcs11Params.mSlotID, std::nullopt);
+}

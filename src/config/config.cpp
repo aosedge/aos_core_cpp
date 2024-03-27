@@ -58,6 +58,16 @@ public:
         return defaultValue;
     }
 
+    template <typename T>
+    std::optional<T> GetOptionalValue(const std::string& key) const
+    {
+        if (Has(key)) {
+            return Get(key).convert<T>();
+        }
+
+        return std::nullopt;
+    }
+
     Poco::JSON::Array::Ptr getArray(const std::string& key) const { return Get(key).extract<Poco::JSON::Array::Ptr>(); }
 
     operator Poco::JSON::Object::Ptr() const { return mObject; }
@@ -196,4 +206,27 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
     }
 
     return config;
+}
+
+aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params)
+{
+    PKCS11ModuleParams moduleParams;
+
+    try {
+        CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+        moduleParams.mLibrary         = object.GetValue<std::string>("library");
+        moduleParams.mSlotID          = object.GetOptionalValue<uint32_t>("slotID");
+        moduleParams.mSlotIndex       = object.GetOptionalValue<int>("slotIndex");
+        moduleParams.mTokenLabel      = object.GetValue<std::string>("tokenLabel");
+        moduleParams.mUserPINPath     = object.GetValue<std::string>("userPinPath");
+        moduleParams.mModulePathInURL = object.GetValue<bool>("modulePathInUrl");
+
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Error parsing PKCS11 module params: " << e.what();
+
+        return {PKCS11ModuleParams {}, aos::ErrorEnum::eInvalidArgument};
+    }
+
+    return moduleParams;
 }

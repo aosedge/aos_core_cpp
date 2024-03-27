@@ -8,6 +8,7 @@
 #ifndef CONFIG_HPP_
 #define CONFIG_HPP_
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,7 +24,7 @@
  **********************************************************************************************************************/
 
 /*
- * Identifier identifier plugin parameters.
+ * Identifier plugin parameters.
  */
 struct Identifier {
     std::string        mPlugin;
@@ -31,7 +32,7 @@ struct Identifier {
 };
 
 /*
- * RemoteIAM remote IAM parameters.
+ * Remote IAM parameters.
  */
 struct RemoteIAM {
     std::string         mNodeID;
@@ -40,7 +41,19 @@ struct RemoteIAM {
 };
 
 /*
- * ModuleConfig module configuration.
+ * PKCS11 module parameters.
+ */
+struct PKCS11ModuleParams {
+    std::string             mLibrary;
+    std::optional<uint32_t> mSlotID;
+    std::optional<int>      mSlotIndex;
+    std::string             mTokenLabel;
+    std::string             mUserPINPath;
+    bool                    mModulePathInURL;
+};
+
+/*
+ * Module configuration.
  */
 struct ModuleConfig {
     std::string              mID;
@@ -84,5 +97,13 @@ struct Config {
  * @return config instance.
  */
 aos::RetWithError<Config> ParseConfig(const std::string& filename);
+
+/*
+ * Parses identifier plugin parameters.
+ *
+ * @param var Poco::Dynamic::Var instance.
+ * @return Identifier instance.
+ */
+aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params);
 
 #endif
