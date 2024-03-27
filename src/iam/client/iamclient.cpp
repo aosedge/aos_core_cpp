@@ -9,13 +9,11 @@
 #include "grpchelper.hpp"
 #include "iam/log.hpp"
 
-namespace iam {
-
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-aos::Error RemoteIAMClient::Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
+aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
     aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider, bool provisioningMode)
 {
 
@@ -47,7 +45,7 @@ aos::Error RemoteIAMClient::Init(const Config& config, aos::iam::certhandler::Ce
     return aos::ErrorEnum::eNone;
 }
 
-aos::Array<aos::StaticString<aos::cNodeIDLen>> RemoteIAMClient::GetRemoteNodes()
+aos::Array<aos::StaticString<aos::cNodeIDLen>> IAMClient::GetRemoteNodes()
 {
     aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, cMaxNodes> result;
 
@@ -60,7 +58,7 @@ aos::Array<aos::StaticString<aos::cNodeIDLen>> RemoteIAMClient::GetRemoteNodes()
     return result;
 }
 
-aos::Error RemoteIAMClient::GetCertTypes(
+aos::Error IAMClient::GetCertTypes(
     const aos::String& nodeID, aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>& certTypes)
 {
     auto stub = CreateIAMProvisioningServiceStub(nodeID);
@@ -92,8 +90,7 @@ aos::Error RemoteIAMClient::GetCertTypes(
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::SetOwner(
-    const aos::String& nodeID, const aos::String& certType, const aos::String& password)
+aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& certType, const aos::String& password)
 {
     auto stub = CreateIAMProvisioningServiceStub(nodeID);
     if (!stub) {
@@ -119,7 +116,7 @@ aos::Error RemoteIAMClient::SetOwner(
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::Clear(const aos::String& nodeID, const aos::String& certType)
+aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certType)
 {
     auto stub = CreateIAMProvisioningServiceStub(nodeID);
     if (!stub) {
@@ -144,7 +141,7 @@ aos::Error RemoteIAMClient::Clear(const aos::String& nodeID, const aos::String& 
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::CreateKey(const aos::String& nodeID, const aos::String& certType,
+aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& certType,
     const aos::String& subjectCommonName, const aos::String& password, aos::String& pemCSR)
 {
     auto stub = CreateIAMCertificateServiceStub(nodeID);
@@ -174,7 +171,7 @@ aos::Error RemoteIAMClient::CreateKey(const aos::String& nodeID, const aos::Stri
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::ApplyCertificate(const aos::String& nodeID, const aos::String& certType,
+aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::String& certType,
     const aos::String& pemCert, aos::iam::certhandler::CertInfo& info)
 {
     auto stub = CreateIAMCertificateServiceStub(nodeID);
@@ -209,7 +206,7 @@ aos::Error RemoteIAMClient::ApplyCertificate(const aos::String& nodeID, const ao
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& password)
+aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& password)
 {
     auto stub = CreateIAMProvisioningServiceStub(nodeID);
     if (!stub) {
@@ -234,7 +231,7 @@ aos::Error RemoteIAMClient::EncryptDisk(const aos::String& nodeID, const aos::St
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error RemoteIAMClient::FinishProvisioning(const aos::String& nodeID)
+aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
 {
     auto stub = CreateIAMProvisioningServiceStub(nodeID);
     if (!stub) {
@@ -259,7 +256,7 @@ aos::Error RemoteIAMClient::FinishProvisioning(const aos::String& nodeID)
  * Protected
  **********************************************************************************************************************/
 
-CertificateServiceStubPtr RemoteIAMClient::CreateIAMCertificateServiceStub(const aos::String& nodeId)
+CertificateServiceStubPtr IAMClient::CreateIAMCertificateServiceStub(const aos::String& nodeId)
 {
     std::lock_guard lock(mMutex);
 
@@ -280,7 +277,7 @@ CertificateServiceStubPtr RemoteIAMClient::CreateIAMCertificateServiceStub(const
     return nullptr;
 }
 
-ProvisioningServiceStubPtr RemoteIAMClient::CreateIAMProvisioningServiceStub(const aos::String& nodeId)
+ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const aos::String& nodeId)
 {
     std::lock_guard lock(mMutex);
 
@@ -305,7 +302,7 @@ ProvisioningServiceStubPtr RemoteIAMClient::CreateIAMProvisioningServiceStub(con
  * Private
  **********************************************************************************************************************/
 
-void RemoteIAMClient::SetClientContext(grpc::ClientContext& context, const aos::String& nodeId)
+void IAMClient::SetClientContext(grpc::ClientContext& context, const aos::String& nodeId)
 {
     std::lock_guard lock(mMutex);
 
@@ -313,5 +310,3 @@ void RemoteIAMClient::SetClientContext(grpc::ClientContext& context, const aos::
         context.set_deadline(std::chrono::system_clock::now() + it->second.mRemoteIAMConfig.mRequestTimeout);
     }
 }
-
-} // namespace iam

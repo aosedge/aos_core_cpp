@@ -26,8 +26,6 @@
 #include "config/config.hpp"
 #include "iam/remoteiamhandler.hpp"
 
-namespace iam {
-
 using ProvisioningService        = iamanager::v4::IAMProvisioningService;
 using ProvisioningServiceStubPtr = std::unique_ptr<ProvisioningService::StubInterface>;
 using CertificateService         = iamanager::v4::IAMCertificateService;
@@ -38,7 +36,7 @@ struct ConnectionDetails {
     std::shared_ptr<grpc::Channel> mChannel;
 };
 
-class RemoteIAMClient : public RemoteIAMHandlerItf {
+class IAMClient : public RemoteIAMHandlerItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -145,7 +143,5 @@ private:
 
     void SetClientContext(grpc::ClientContext& context, const aos::String& nodeId);
 };
-
-} // namespace iam
 
 #endif

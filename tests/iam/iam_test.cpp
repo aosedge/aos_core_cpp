@@ -212,7 +212,7 @@ TEST_F(IAMTest, DISABLED_GetVersion)
         mCryptoProvider, false);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, false).IsNone());
 
     StaticArray<aos::StaticString<certhandler::cCertTypeLen>, 10> certTypes;
@@ -237,7 +237,7 @@ TEST_F(IAMTest, CreateKey)
         GetServerConfig(), mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, false);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, false).IsNone());
 
     StaticString<crypto::cCSRPEMLen> csr;
@@ -404,7 +404,7 @@ TEST_F(IAMTest, GetCertTypesSucceeds)
         GetServerConfig(), mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -439,7 +439,7 @@ TEST_F(IAMTest, GetCertTypesFailOnUnknownNodeId)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -466,7 +466,7 @@ TEST_F(IAMTest, SetOwnerSucceeds)
         GetServerConfig(), mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -497,7 +497,7 @@ TEST_F(IAMTest, SetOwnerFailOnUnknownNodeId)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -523,7 +523,7 @@ TEST_F(IAMTest, ClearSucceeds)
         GetServerConfig(), mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -554,7 +554,7 @@ TEST_F(IAMTest, ClearFailOnInvalidNodeId)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -581,7 +581,7 @@ TEST_F(IAMTest, EncryptDiskFailsOnEmptyCmdArgs)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -610,7 +610,7 @@ TEST_F(IAMTest, EncryptDiskCmdSucceeds)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -639,7 +639,7 @@ TEST_F(IAMTest, EncryptDiskCmdFails)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -668,7 +668,7 @@ TEST_F(IAMTest, EncryptDiskFailOnUnknownNodeId)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> receivedCertTypes;
@@ -697,7 +697,7 @@ TEST_F(IAMTest, FinishProvisioningSucceedsOnEmptyCmdArgs)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     auto err = client.FinishProvisioning("node0");
@@ -720,7 +720,7 @@ TEST_F(IAMTest, FinishProvisioningCmdSucceeds)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     auto err = client.FinishProvisioning("node0");
@@ -743,7 +743,7 @@ TEST_F(IAMTest, FinishProvisioningCmdFails)
     server.Init(serverConfig, mCertHandler, &mIdentHandler, &mPermHandler, nullptr, mCertLoader, mCryptoProvider, true);
     LOG_INF() << "Server initialized";
 
-    ::iam::RemoteIAMClient client;
+    IAMClient client;
     ASSERT_TRUE(client.Init(GetClientConfig(), mCertHandler, mCertLoader, mCryptoProvider, true).IsNone());
 
     auto err = client.FinishProvisioning("node0");
