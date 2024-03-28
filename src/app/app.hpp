@@ -10,7 +10,15 @@
 
 #include <Poco/Util/ServerApplication.h>
 
+#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <aos/iam/permhandler.hpp>
+
+#include "database/database.hpp"
+#include "iam/client/iamclient.hpp"
+#include "iam/server/iamserver.hpp"
 #include "logger/logger.hpp"
+#include "visidentifier/visidentifier.hpp"
 
 /**
  * Aos IAM application.
@@ -24,18 +32,37 @@ protected:
     void defineOptions(Poco::Util::OptionSet& options);
 
 private:
-    static constexpr auto cSDNotifyReady = "READY=1";
+    static constexpr auto cSDNotifyReady     = "READY=1";
+    static constexpr auto cDBFileName        = "iamanager.db";
+    static constexpr auto cDefaultConfigFile = "aos_iamanager.cfg";
+    static constexpr auto cPKCS11CertModule  = "pkcs11module";
 
     void HandleHelp(const std::string& name, const std::string& value);
     void HandleVersion(const std::string& name, const std::string& value);
     void HandleProvisioning(const std::string& name, const std::string& value);
     void HandleJournal(const std::string& name, const std::string& value);
     void HandleLogLevel(const std::string& name, const std::string& value);
+    void HandleConfigFile(const std::string& name, const std::string& value);
 
-    Logger mLogger;
+    aos::Error InitCertModules(const Config& config);
 
-    bool mStopProcessing = false;
-    bool mProvisioning   = false;
+    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
+    aos::cryptoutils::CertLoader       mCertLoader;
+    aos::iam::certhandler::CertHandler mCertHandler;
+    aos::pkcs11::PKCS11Manager         mPKCS11Manager;
+    std::vector<
+        std::pair<std::unique_ptr<aos::iam::certhandler::HSMItf>, std::unique_ptr<aos::iam::certhandler::CertModule>>>
+                                                             mCertModules;
+    Database                                                 mDatabase;
+    IAMServer                                                mIAMServer;
+    Logger                                                   mLogger;
+    std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
+    std::unique_ptr<IAMClient>                               mIAMClient;
+    std::unique_ptr<aos::iam::identhandler::IdentHandlerItf> mIdentifier;
+
+    bool        mStopProcessing = false;
+    bool        mProvisioning   = false;
+    std::string mConfigFile;
 };
 
 #endif

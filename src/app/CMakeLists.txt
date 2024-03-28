@@ -27,4 +27,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Labraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon Poco::Util)
+target_link_libraries(${TARGET} PUBLIC config database iamclient iamserver visidentifier)

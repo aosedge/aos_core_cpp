@@ -45,7 +45,7 @@ add_executable(${TARGET} ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC app iamserver database logger)
+target_link_libraries(${TARGET} app mbedtls)
 
 # ######################################################################################################################
 # Install
