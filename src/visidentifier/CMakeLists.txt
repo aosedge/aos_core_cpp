@@ -11,7 +11,7 @@ set(TARGET visidentifier)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES pocowsclient.cpp visconfig.cpp visidentifier.cpp vismessage.cpp wsclientevent.cpp wspendingrequests.cpp)
+set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp wsclientevent.cpp wspendingrequests.cpp)
 
 # ######################################################################################################################
 # Includes

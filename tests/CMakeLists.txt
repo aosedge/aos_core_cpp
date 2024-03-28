@@ -33,7 +33,6 @@ set(SOURCES
     utils/json_test.cpp
     utils/time_test.cpp
     visidentifier/pocowsclient_test.cpp
-    visidentifier/visconfig_test.cpp
     visidentifier/visidentifier_test.cpp
     visidentifier/vismessage_test.cpp
     visidentifier/visserver.cpp

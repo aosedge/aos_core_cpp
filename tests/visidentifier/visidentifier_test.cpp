@@ -38,8 +38,8 @@ public:
 
 class VisidentifierTest : public testing::Test {
 protected:
-    const std::string cTestSubscriptionId {"1234-4321"};
-    const VISConfig   cVISConfig {"vis-service", "ca-path", UtilsTime::Duration(1)};
+    const std::string               cTestSubscriptionId {"1234-4321"};
+    const VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
     WSClientEvent           mWSClientEvent;
     VISSubjectsObserverMock mVISSubjectsObserverMock;
@@ -59,7 +59,13 @@ protected:
 
     void SetUp() override
     {
-        mConfig.mIdentifier.mParams = cVISConfig.ToJSON();
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+
+        object->set("VISServer", cVISConfig.mVISServer);
+        object->set("caCertFile", cVISConfig.mCaCertFile);
+        object->set("webSocketTimeout", cVISConfig.mWebSocketTimeout);
+
+        mConfig.mIdentifier.mParams = object;
 
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
     }

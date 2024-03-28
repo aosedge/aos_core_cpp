@@ -20,7 +20,7 @@
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/WebSocket.h>
 
-#include "visidentifier/visconfig.hpp"
+#include "config/config.hpp"
 #include "visidentifier/wsclient.hpp"
 #include "wsclientevent.hpp"
 #include "wspendingrequests.hpp"
@@ -36,7 +36,7 @@ public:
      * @param config VIS config.
      * @param handler handler functor.
      */
-    PocoWSClient(const VISConfig& config, MessageHandlerFunc handler);
+    PocoWSClient(const VISIdentifierModuleParams& config, MessageHandlerFunc handler);
 
     /**
      * Connects to Web Socket server.
@@ -89,12 +89,15 @@ public:
     ~PocoWSClient() override;
 
 private:
-    void HandleResponse(const std::string& frame);
-    void ReceiveFrames();
-    void StartReceiveFramesThread();
-    void StopReceiveFramesThread();
+    static constexpr std::chrono::seconds cDefaultTimeout = std::chrono::seconds(120);
 
-    VISConfig                                      mConfig;
+    void                 HandleResponse(const std::string& frame);
+    void                 ReceiveFrames();
+    void                 StartReceiveFramesThread();
+    void                 StopReceiveFramesThread();
+    std::chrono::seconds GetWebSocketTimeout();
+
+    VISIdentifierModuleParams                      mConfig;
     std::recursive_mutex                           mMutex;
     std::thread                                    mReceivedFramesThread;
     std::unique_ptr<Poco::Net::HTTPSClientSession> mClientSession;

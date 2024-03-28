@@ -187,15 +187,24 @@ VISIdentifier::~VISIdentifier()
 
 aos::Error VISIdentifier::InitWSClient(const Config& config)
 {
-    VISConfig visConfig;
+    try {
+        VISIdentifierModuleParams visParams;
+        aos::Error                err;
 
-    auto err = visConfig.Init(config.mIdentifier.mParams);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+        aos::Tie(visParams, err) = ParseVISIdentifierModuleParams(config.mIdentifier.mParams);
+        if (!err.IsNone()) {
+            LOG_ERR() << "Failed to parse VIS identifier module params: error = " << err.Message();
+
+            return AOS_ERROR_WRAP(err);
+        }
+
+        mWsClientPtr = std::make_shared<PocoWSClient>(
+            visParams, std::bind(&VISIdentifier::HandleSubscription, this, std::placeholders::_1));
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to create WS client: error = " << e.what();
+
+        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
-
-    mWsClientPtr = std::make_shared<PocoWSClient>(
-        visConfig, std::bind(&VISIdentifier::HandleSubscription, this, std::placeholders::_1));
 
     return aos::ErrorEnum::eNone;
 }

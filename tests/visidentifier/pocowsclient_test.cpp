@@ -27,13 +27,27 @@ static const std::string cServerCertPath("certificates/ca.pem");
 static const std::string cServerKeyPath("certificates/ca.key");
 static const std::string cClientCertPath {"certificates/client.cer"};
 
+static Config CreateConfigWithVisParams(const VISIdentifierModuleParams& config)
+{
+    Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+
+    object->set("VISServer", config.mVISServer);
+    object->set("caCertFile", config.mCaCertFile);
+    object->set("webSocketTimeout", config.mWebSocketTimeout);
+
+    Config cfg;
+    cfg.mIdentifier.mParams = object;
+
+    return cfg;
+}
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
 
 class PocoWSClientTests : public Test {
 protected:
-    static const VISConfig cConfig;
+    static const VISIdentifierModuleParams cConfig;
 
     void SetUp() override
     {
@@ -66,7 +80,7 @@ protected:
     std::shared_ptr<PocoWSClient> mWsClientPtr;
 };
 
-const VISConfig PocoWSClientTests::cConfig {cWebSockerURI, cClientCertPath, std::chrono::seconds(5)};
+const VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSockerURI, cClientCertPath, 5};
 
 /***********************************************************************************************************************
  * Tests
@@ -144,8 +158,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 {
     VISIdentifier visIdentifier;
 
-    Config config;
-    config.mIdentifier.mParams = cConfig.ToJSON();
+    Config config = CreateConfigWithVisParams(cConfig);
 
     VISSubjectsObserverMock observer;
 
@@ -164,8 +177,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 {
     VISIdentifier visIdentifier;
 
-    Config config;
-    config.mIdentifier.mParams = cConfig.ToJSON();
+    Config config = CreateConfigWithVisParams(cConfig);
 
     VISSubjectsObserverMock observer;
 
@@ -184,8 +196,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 {
     VISIdentifier visIdentifier;
 
-    Config config;
-    config.mIdentifier.mParams = cConfig.ToJSON();
+    Config config = CreateConfigWithVisParams(cConfig);
 
     VISSubjectsObserverMock observer;
 
