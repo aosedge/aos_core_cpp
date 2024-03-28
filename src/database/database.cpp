@@ -17,6 +17,11 @@ using namespace Poco::Data::Keywords;
  * Public
  **********************************************************************************************************************/
 
+Database::Database()
+{
+    Poco::Data::SQLite::Connector::registerConnector();
+}
+
 aos::Error Database::Init(const std::string& dbPath)
 {
     if (mSession && mSession->isConnected()) {
@@ -29,7 +34,6 @@ aos::Error Database::Init(const std::string& dbPath)
             std::filesystem::create_directories(dirPath);
         }
 
-        Poco::Data::SQLite::Connector::registerConnector();
         mSession = std::optional<Poco::Data::Session>(Poco::Data::Session("SQLite", dbPath));
         CreateTables();
     } catch (const std::exception& e) {

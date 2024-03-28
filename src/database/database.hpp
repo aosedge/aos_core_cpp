@@ -19,6 +19,11 @@
 class Database : public aos::iam::certhandler::StorageItf {
 public:
     /**
+     * Creates database instance.
+     */
+    Database();
+
+    /**
      * Initializes certificate info storage.
      *
      * @param dbPath path to the database file.
