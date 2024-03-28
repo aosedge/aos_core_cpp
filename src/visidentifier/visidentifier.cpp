@@ -26,7 +26,7 @@ void VISSubscriptions::RegisterSubscription(const std::string& subscriptionId, H
 {
     std::lock_guard lock(mMutex);
 
-    LOG_DBG() << "Registred subscription id = " << subscriptionId.c_str();
+    LOG_DBG() << "Registred subscription: id = " << subscriptionId.c_str();
 
     mSubscriptionMap[subscriptionId] = std::move(subscriptionHandler);
 }
@@ -38,7 +38,7 @@ aos::Error VISSubscriptions::ProcessSubscription(const std::string& subscription
     const auto it = mSubscriptionMap.find(subscriptionId);
 
     if (it == mSubscriptionMap.cend()) {
-        LOG_ERR() << "Unexpected subscription id: = " << subscriptionId.c_str();
+        LOG_ERR() << "Subscription id not found: id = " << subscriptionId.c_str();
 
         return aos::ErrorEnum::eNotFound;
     }
@@ -97,8 +97,8 @@ aos::RetWithError<aos::StaticString<aos::cSystemIDLen>> VISIdentifier::GetSystem
             }
 
             mSystemId = systemId.c_str();
-        } catch (const Poco::Exception& e) {
-            LOG_ERR() << e.what();
+        } catch (const std::exception& e) {
+            LOG_ERR() << "Failed to get system ID: error = " << e.what();
 
             return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
         }
@@ -129,8 +129,8 @@ aos::RetWithError<aos::StaticString<aos::cUnitModelLen>> VISIdentifier::GetUnitM
             }
 
             mUnitModel = unitModel.c_str();
-        } catch (const Poco::Exception& e) {
-            LOG_ERR() << e.what();
+        } catch (const std::exception& e) {
+            LOG_ERR() << "Failed to get unit model: error = " << e.what();
 
             return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
         }
@@ -161,7 +161,7 @@ aos::Error VISIdentifier::GetSubjects(aos::Array<aos::StaticString<aos::cSubject
                 }
             }
         } catch (const Poco::Exception& e) {
-            LOG_ERR() << e.what();
+            LOG_ERR() << "Failed to get subjects: error = " << e.message().c_str();
 
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
@@ -224,11 +224,12 @@ void VISIdentifier::HandleSubscription(const std::string& message)
 
         const auto err = mSubscriptions.ProcessSubscription(subscriptionId, notification.GetJSON());
         if (!err.IsNone()) {
-            LOG_ERR() << "Failed to process subscription: err = " << err.Message()
-                      << ", message = " << notification.ToString().c_str();
+            LOG_ERR() << "Failed to process subscription: err = " << err.Message();
+
+            return;
         }
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << e.message().c_str();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to handle subscription: error = " << e.what();
     }
 }
 
@@ -256,10 +257,10 @@ void VISIdentifier::Close()
 
         mWSClientIsConnected.reset();
 
-        LOG_INF() << "VISIdentifier has been stopped.";
+        LOG_INF() << "VISIdentifier has been closed";
 
-    } catch (const AosException& e) {
-        LOG_ERR() << e.what();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to close VISIdentifier: error = " << e.what();
     }
 }
 
@@ -291,14 +292,14 @@ void VISIdentifier::HandleConnection()
             mWsClientPtr->Disconnect();
 
         } catch (const WSException& e) {
-            LOG_ERR() << "WSException has been caught: message = " << e.message().c_str();
+            LOG_ERR() << "WSException has been caught: message = " << e.what();
 
             mWSClientIsConnected.reset();
             mWsClientPtr->Disconnect();
         } catch (const Poco::Exception& e) {
-            LOG_ERR() << "Poco::Exception has been caught: message = " << e.message().c_str();
+            LOG_ERR() << "Poco exception caught: message = " << e.message().c_str();
         } catch (...) {
-            LOG_ERR() << "Unknown exception caught.";
+            LOG_ERR() << "Unknown exception caught";
         }
     } while (!mStopHandleSubjectsChangedThread.tryWait(cWSClientReconnectMilliseconds));
 }
@@ -322,8 +323,8 @@ aos::Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
             mSubjects = std::move(newSubjects);
             mSubjectsObserver->SubjectsChanged(mSubjects);
         }
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << e.message().c_str();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to handle subjects subscription: error = " << e.what();
 
         return aos::ErrorEnum::eFailed;
     }
@@ -350,8 +351,8 @@ void VISIdentifier::SendUnsubscribeAllRequest()
 
         mWsClientPtr->AsyncSendMessage(request.ToByteArray());
 
-    } catch (const AosException& e) {
-        LOG_ERR() << e.what();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to send unsubscribe all request: error = " << e.what();
     }
 }
 

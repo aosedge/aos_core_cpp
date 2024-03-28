@@ -64,9 +64,9 @@ void PocoWSClient::Connect()
 
         StartReceiveFramesThread();
 
-        LOG_INF() << "PocoWSClient::Connect succeeded. URI: " << uri.toString().c_str();
+        LOG_INF() << "Connected to VIS. URI = " << uri.toString().c_str();
     } catch (const std::exception& e) {
-        LOG_ERR() << "PocoWSClient::Connect failed. URI: " << uri.toString().c_str() << " with error: " << e.what();
+        LOG_ERR() << "Failed to connect to VIS: error = " << e.what() << ", URI = " << uri.toString().c_str();
 
         throw WSException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed));
     }
@@ -83,7 +83,7 @@ void PocoWSClient::Close()
             mWebSocket->shutdown();
         }
     } catch (const std::exception& e) {
-        LOG_ERR() << AosException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)).what();
+        LOG_WRN() << "Failed to close Web Socket client: error = " << e.what();
     }
 
     mIsConnected = false;
@@ -104,7 +104,7 @@ void PocoWSClient::Disconnect()
         mWebSocket->shutdown();
         mWebSocket->close();
     } catch (const std::exception& e) {
-        LOG_ERR() << AosException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)).what();
+        LOG_WRN() << "Failed to disconnect Web Socket client: error = " << e.what();
     }
 
     mIsConnected = false;
@@ -132,11 +132,11 @@ PocoWSClient::ByteArray PocoWSClient::SendRequest(const std::string& requestId, 
 
     AsyncSendMessage(message);
 
-    LOG_DBG() << "Waiting server response: requestId = " << requestId.c_str();
+    LOG_DBG() << "Sent message: requestId = " << requestId.c_str();
 
     std::string response;
     if (!requestParams->TryWaitForResponse(response, mConfig.GetWebSocketTimeout())) {
-        LOG_ERR() << "SendRequest timed out: requestId = " << requestId.c_str();
+        LOG_ERR() << "Timeout waiting for server response: requestId = " << requestId.c_str();
 
         throw WSException("", AOS_ERROR_WRAP(aos::ErrorEnum::eTimeout));
     }
@@ -212,14 +212,14 @@ void PocoWSClient::HandleResponse(const std::string& frame)
         if (!mPendingRequests.SetResponse(requestId, frame)) {
             mHandleSubscription(frame);
         }
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << AosException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)).what();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to handle response: error = " << e.what();
     }
 }
 
 void PocoWSClient::ReceiveFrames()
 {
-    LOG_DBG() << "PocoWSClient::ReceiveFrames has been started.";
+    LOG_DBG() << "Start receiving frames.";
 
     try {
         int                flags;
@@ -247,12 +247,14 @@ void PocoWSClient::ReceiveFrames()
 
         } while (flags != 0 || n != 0);
     } catch (const Poco::Exception& e) {
-        LOG_DBG() << AosException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eRuntime)).what();
+        LOG_DBG() << "ReceiveFrames stopped: error = " << e.what();
 
         mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, e.what());
 
         return;
     }
+
+    LOG_DBG() << "ReceiveFrames stopped.";
 
     mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, "ReceiveFrames stopped");
 }
