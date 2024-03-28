@@ -58,6 +58,8 @@ void PocoWSClient::Connect()
         // HTTPSClientSession is not copyable or movable.
         mClientSession = std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
         mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mHttpRequest, mHttpResponse));
+        mWebSocket->setKeepAlive(true);
+        mWebSocket->setReceiveTimeout(0);
 
         mIsConnected = true;
         mWSClientErrorEvent.Reset();
@@ -65,8 +67,8 @@ void PocoWSClient::Connect()
         StartReceiveFramesThread();
 
         LOG_INF() << "Connected to VIS. URI = " << uri.toString().c_str();
-    } catch (const std::exception& e) {
-        LOG_ERR() << "Failed to connect to VIS: error = " << e.what() << ", URI = " << uri.toString().c_str();
+    } catch (const Poco::Exception& e) {
+        LOG_ERR() << "Failed to connect to VIS: URI = " << uri.toString().c_str() << ", error = " << e.what();
 
         throw WSException(e.what(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed));
     }
@@ -94,11 +96,11 @@ void PocoWSClient::Disconnect()
 {
     std::lock_guard lock(mMutex);
 
-    LOG_INF() << "Disconnect Web Socket client";
-
     if (!mIsConnected) {
         return;
     }
+
+    LOG_INF() << "Disconnect Web Socket client";
 
     try {
         mWebSocket->shutdown();

@@ -224,14 +224,15 @@ void VISIdentifier::HandleSubscription(const std::string& message)
     try {
         const VISMessage notification(message);
         if (!notification.Is(VISActionEnum::eSubscriptionNotification)) {
-            LOG_WRN() << "Unexpected message received: message = " << notification.ToString().c_str();
+            LOG_WRN() << "Unexpected message received: action = "
+                      << notification.GetValueOr<std::string>(VISMessage::cActionTagName, "nill").c_str();
 
             return;
         }
 
         const auto subscriptionId = notification.GetValueOr(VISMessage::cSubscriptionIdTagName, std::string());
         if (subscriptionId.empty()) {
-            LOG_WRN() << "Subscription id must not be empty: message = " << notification.ToString().c_str();
+            LOG_WRN() << "Subscription id must not be empty";
 
             return;
         }
@@ -306,15 +307,13 @@ void VISIdentifier::HandleConnection()
             mWsClientPtr->Disconnect();
 
         } catch (const WSException& e) {
-            LOG_ERR() << "WSException has been caught: message = " << e.what();
-
             mWSClientIsConnected.reset();
             mWsClientPtr->Disconnect();
-        } catch (const Poco::Exception& e) {
-            LOG_ERR() << "Poco exception caught: message = " << e.message().c_str();
         } catch (...) {
-            LOG_ERR() << "Unknown exception caught";
         }
+
+        LOG_WRN() << "Reconnecting to VIS in " << cWSClientReconnectMilliseconds << " ms";
+
     } while (!mStopHandleSubjectsChangedThread.tryWait(cWSClientReconnectMilliseconds));
 }
 
