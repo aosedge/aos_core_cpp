@@ -32,8 +32,6 @@ set(SOURCES
     utils/exception_test.cpp
     utils/json_test.cpp
     utils/time_test.cpp
-    utils/exception_test.cpp
-    utils/json_test.cpp
     visidentifier/pocowsclient_test.cpp
     visidentifier/visconfig_test.cpp
     visidentifier/visidentifier_test.cpp
@@ -55,14 +53,14 @@ gtest_discover_tests(${TARGET})
 
 target_link_libraries(
     ${TARGET}
-    logger
-    visidentifier
-    aoscommon
     config
     database
     iamclient
-    aoscoreapi-gen-objects
+    logger
     utils
+    visidentifier
+    aoscoreapi-gen-objects
+    aoscommon
     Poco::Crypto
     Poco::Net
     Poco::NetSSL
