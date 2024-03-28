@@ -56,9 +56,15 @@ static void RegisterSegfaultSignal()
 
 static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::certhandler::ModuleConfig& aosConfig)
 {
-    auto err = aosConfig.mKeyType.FromString(config.mAlgorithm.c_str());
-    if (!err.IsNone()) {
-        return err;
+    if (config.mAlgorithm == "ecc") {
+        aosConfig.mKeyType = aos::crypto::KeyTypeEnum::eECDSA;
+    } else if (config.mAlgorithm == "rsa") {
+        aosConfig.mKeyType = aos::crypto::KeyTypeEnum::eRSA;
+    } else {
+        auto err = aosConfig.mKeyType.FromString(config.mAlgorithm.c_str());
+        if (!err.IsNone()) {
+            return err;
+        }
     }
 
     aosConfig.mMaxCertificates = config.mMaxItems;
@@ -67,7 +73,7 @@ static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         aos::iam::certhandler::ExtendedKeyUsage keyUsage;
 
-        err = keyUsage.FromString(keyUsageStr.c_str());
+        auto err = keyUsage.FromString(keyUsageStr.c_str());
         if (!err.IsNone()) {
             return err;
         }
@@ -79,7 +85,7 @@ static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::
     }
 
     for (auto const& nameStr : config.mAlternativeNames) {
-        err = aosConfig.mAlternativeNames.EmplaceBack(nameStr.c_str());
+        auto err = aosConfig.mAlternativeNames.EmplaceBack(nameStr.c_str());
         if (!err.IsNone()) {
             return err;
         }
@@ -290,6 +296,8 @@ void App::HandleConfigFile(const std::string& name, const std::string& value)
 
 aos::Error App::InitCertModules(const Config& config)
 {
+    LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
+
     for (const auto& moduleConfig : config.mCertModules) {
         if (moduleConfig.mPlugin != cPKCS11CertModule) {
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
@@ -309,14 +317,14 @@ aos::Error App::InitCertModules(const Config& config)
 
         auto err = ConvertCertModuleConfig(moduleConfig, aosConfig);
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(pkcs11Params.mError);
+            return AOS_ERROR_WRAP(err);
         }
 
         aos::iam::certhandler::PKCS11ModuleConfig aosParams {};
 
         err = ConvertPKCS11ModuleParams(pkcs11Params.mValue, aosParams);
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(pkcs11Params.mError);
+            return AOS_ERROR_WRAP(err);
         }
 
         auto pkcs11Module = std::make_unique<aos::iam::certhandler::PKCS11Module>();
@@ -324,17 +332,19 @@ aos::Error App::InitCertModules(const Config& config)
 
         err = pkcs11Module->Init(moduleConfig.mID.c_str(), aosParams, mPKCS11Manager, mCryptoProvider);
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(pkcs11Params.mError);
+            return AOS_ERROR_WRAP(err);
         }
 
         err = certModule->Init(moduleConfig.mID.c_str(), aosConfig, mCryptoProvider, *pkcs11Module, mDatabase);
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(pkcs11Params.mError);
+            return AOS_ERROR_WRAP(err);
         }
+
+        LOG_DBG() << "Register cert module: " << certModule->GetCertType();
 
         err = mCertHandler.RegisterModule(*certModule);
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(pkcs11Params.mError);
+            return AOS_ERROR_WRAP(err);
         }
 
         mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
