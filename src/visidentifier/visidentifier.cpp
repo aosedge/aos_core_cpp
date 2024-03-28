@@ -223,10 +223,15 @@ void VISIdentifier::HandleSubscription(const std::string& message)
 {
     try {
         const VISMessage notification(message);
-        const auto       subscriptionId = notification.GetValue<std::string>(VISMessage::cSubscriptionIdTagName);
+        if (!notification.Is(VISActionEnum::eSubscriptionNotification)) {
+            LOG_WRN() << "Unexpected message received: message = " << notification.ToString().c_str();
 
-        if (!notification.Is(VISActionEnum::eSubscriptionNotification) || subscriptionId.empty()) {
-            LOG_ERR() << "Unexpected message received: message = " << notification.ToString().c_str();
+            return;
+        }
+
+        const auto subscriptionId = notification.GetValueOr(VISMessage::cSubscriptionIdTagName, std::string());
+        if (subscriptionId.empty()) {
+            LOG_WRN() << "Subscription id must not be empty: message = " << notification.ToString().c_str();
 
             return;
         }

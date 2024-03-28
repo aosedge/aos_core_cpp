@@ -127,11 +127,29 @@ public:
      * Gets Vehicle Information Service message value by key.
      *
      * @param key VIS message key.
-     * @return
+     * @return T
      */
     template <class T>
     T GetValue(const std::string& key) const
     {
+        return mJsonObject.getValue<T>(key);
+    }
+
+    /**
+     * Gets Vehicle Information Service message value by key.
+     * If key is not found, returns default value.
+     *
+     * @param key VIS message key.
+     * @param defaultValue default value.
+     * @return T
+     */
+    template <class T>
+    T GetValueOr(const std::string& key, const T& defaultValue) const
+    {
+        if (!mJsonObject.has(key)) {
+            return defaultValue;
+        }
+
         return mJsonObject.getValue<T>(key);
     }
 
