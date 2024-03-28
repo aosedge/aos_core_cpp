@@ -114,6 +114,10 @@ static aos::Error ConvertPKCS11ModuleParams(
 
 void App::initialize(Application& self)
 {
+    if (mStopProcessing) {
+        return;
+    }
+
     RegisterSegfaultSignal();
 
     auto err = mLogger.Init();
@@ -209,6 +213,7 @@ void App::defineOptions(Poco::Util::OptionSet& options)
                           .argument("level")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleLogLevel)));
     options.addOption(Poco::Util::Option("config", "c", "path to config file")
+                          .argument("config")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleConfigFile)));
 }
 
