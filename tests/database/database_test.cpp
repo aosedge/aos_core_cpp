@@ -25,7 +25,7 @@ protected:
     }
 
 protected:
-    std::string mFileName = "test.db";
+    std::string mFileName = "database/test/test.db";
     Database    mDB;
 };
 

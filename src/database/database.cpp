@@ -4,6 +4,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <filesystem>
 
 #include <Poco/Data/SQLite/Connector.h>
 
@@ -23,10 +24,15 @@ aos::Error Database::Init(const std::string& dbPath)
     }
 
     try {
+        auto dirPath = std::filesystem::path(dbPath).parent_path();
+        if (!std::filesystem::exists(dirPath)) {
+            std::filesystem::create_directories(dirPath);
+        }
+
         Poco::Data::SQLite::Connector::registerConnector();
         mSession = std::optional<Poco::Data::Session>(Poco::Data::Session("SQLite", dbPath));
         CreateTables();
-    } catch (const Poco::Exception& e) {
+    } catch (const std::exception& e) {
         LOG_ERR() << "Failed to initialize database: " << e.what();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
