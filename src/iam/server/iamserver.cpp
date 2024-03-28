@@ -138,11 +138,15 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
 
 IAMServer::~IAMServer()
 {
-    mPublicServer->Shutdown();
-    mProtectedServer->Shutdown();
+    if (mPublicServer) {
+        mPublicServer->Shutdown();
+        mPublicServer->Wait();
+    }
 
-    mPublicServer->Wait();
-    mProtectedServer->Wait();
+    if (mProtectedServer) {
+        mProtectedServer->Shutdown();
+        mProtectedServer->Wait();
+    }
 }
 
 /***********************************************************************************************************************
