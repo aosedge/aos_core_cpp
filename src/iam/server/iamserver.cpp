@@ -107,24 +107,31 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
     mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
     mDiskEncryptCmdArgs        = config.mDiskEncryptionCmdArgs;
 
-    std::shared_ptr<grpc::ServerCredentials> publicOpt, protectedOpt;
-    if (!provisioningMode) {
-        certhandler::CertInfo certInfo;
+    try {
+        std::shared_ptr<grpc::ServerCredentials> publicOpt, protectedOpt;
 
-        auto err = mCertHandler->GetCertificate(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+        if (!provisioningMode) {
+            certhandler::CertInfo certInfo;
+
+            auto err = mCertHandler->GetCertificate(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
+            if (!err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            publicOpt    = GetTLSCredentials(certInfo, certLoader, cryptoProvider);
+            protectedOpt = GetMTLSCredentials(certInfo, certLoader, cryptoProvider);
+        } else {
+            publicOpt    = grpc::InsecureServerCredentials();
+            protectedOpt = grpc::InsecureServerCredentials();
         }
 
-        publicOpt    = GetTLSCredentials(certInfo, certLoader, cryptoProvider);
-        protectedOpt = GetMTLSCredentials(certInfo, certLoader, cryptoProvider);
-    } else {
-        publicOpt    = grpc::InsecureServerCredentials();
-        protectedOpt = grpc::InsecureServerCredentials();
-    }
+        CreatePublicServer(config.mIAMPublicServerURL, publicOpt);
+        CreateProtectedServer(config.mIAMProtectedServerURL, protectedOpt, provisioningMode);
+    } catch (const std::exception& e) {
+        LOG_ERR() << e.what();
 
-    CreatePublicServer(config.mIAMPublicServerURL, publicOpt);
-    CreateProtectedServer(config.mIAMProtectedServerURL, protectedOpt, provisioningMode);
+        return ErrorEnum::eFailed;
+    }
 
     return aos::ErrorEnum::eNone;
 }
