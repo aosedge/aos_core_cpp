@@ -195,3 +195,18 @@ TEST_F(ConfigTest, ParsePKCS11ModuleParams)
     EXPECT_EQ(pkcs11Params.mTokenLabel, "token");
     EXPECT_EQ(pkcs11Params.mSlotID, std::nullopt);
 }
+
+TEST_F(ConfigTest, ParseVISIdentifierModuleParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("visServer", "localhost:8089");
+    params->set("caCertFile", "/etc/ssl/certs/rootCA.crt");
+    params->set("webSocketTimeout", 100);
+
+    auto [visParams, error] = ParseVISIdentifierModuleParams(params);
+    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(visParams.mVISServer, "localhost:8089");
+    EXPECT_EQ(visParams.mCaCertFile, "/etc/ssl/certs/rootCA.crt");
+    EXPECT_EQ(visParams.mWebSocketTimeout, 100);
+}

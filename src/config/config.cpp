@@ -230,3 +230,23 @@ aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var
 
     return moduleParams;
 }
+
+aos::RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params)
+{
+    VISIdentifierModuleParams moduleParams;
+
+    try {
+        CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+        moduleParams.mVISServer        = object.GetValue<std::string>("visServer");
+        moduleParams.mCaCertFile       = object.GetValue<std::string>("caCertFile");
+        moduleParams.mWebSocketTimeout = object.GetValue<int>("webSocketTimeout");
+
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Error parsing VIS identifier module params: " << e.what();
+
+        return {VISIdentifierModuleParams {}, aos::ErrorEnum::eInvalidArgument};
+    }
+
+    return moduleParams;
+}

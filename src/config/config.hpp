@@ -53,6 +53,15 @@ struct PKCS11ModuleParams {
 };
 
 /*
+ * VIS Identifier module parameters.
+ */
+struct VISIdentifierModuleParams {
+    std::string mVISServer;
+    std::string mCaCertFile;
+    int         mWebSocketTimeout;
+};
+
+/*
  * Module configuration.
  */
 struct ModuleConfig {
@@ -105,5 +114,13 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename);
  * @return Identifier instance.
  */
 aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params);
+
+/*
+ * Parses VIS identifier plugin parameters.
+ *
+ * @param var Poco::Dynamic::Var instance.
+ * @return VISIdentifierModuleParams instance.
+ */
+aos::RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params);
 
 #endif
