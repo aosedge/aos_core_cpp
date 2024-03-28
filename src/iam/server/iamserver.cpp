@@ -80,7 +80,7 @@ void ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src, iamanager::v4
  * Public
  **********************************************************************************************************************/
 
-void IAMServer::Init(const Config& config, certhandler::CertHandlerItf& certHandler,
+aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& certHandler,
     identhandler::IdentHandlerItf* identHandler, permhandler::PermHandlerItf* permHandler,
     RemoteIAMHandlerItf* remoteHandler, cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     bool provisioningMode)
@@ -99,7 +99,9 @@ void IAMServer::Init(const Config& config, certhandler::CertHandlerItf& certHand
         certhandler::CertInfo certInfo;
 
         auto err = mCertHandler->GetCertificate(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
-        AOS_ERROR_CHECK_AND_THROW("Get certificates error", err);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         publicOpt    = GetTLSCredentials(certInfo, certLoader, cryptoProvider);
         protectedOpt = GetMTLSCredentials(certInfo, certLoader, cryptoProvider);
@@ -110,9 +112,11 @@ void IAMServer::Init(const Config& config, certhandler::CertHandlerItf& certHand
 
     CreatePublicServer(config.mIAMPublicServerURL, publicOpt);
     CreateProtectedServer(config.mIAMProtectedServerURL, protectedOpt, provisioningMode);
+
+    return aos::ErrorEnum::eNone;
 }
 
-void IAMServer::Close()
+IAMServer::~IAMServer()
 {
     mPublicServer->Shutdown();
     mProtectedServer->Shutdown();
