@@ -45,7 +45,7 @@ add_executable(${TARGET} ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} app mbedtls)
+target_link_libraries(${TARGET} mbedtls aoscommon app)
 
 # ######################################################################################################################
 # Install

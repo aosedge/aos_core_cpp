@@ -203,17 +203,17 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 
     options.addOption(Poco::Util::Option("help", "h", "displays help information")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleHelp)));
-    options.addOption(Poco::Util::Option("version", "v", "displays version information")
+    options.addOption(Poco::Util::Option("version", "", "displays version information")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleVersion)));
     options.addOption(Poco::Util::Option("provisioning", "p", "enables provisioning mode")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleProvisioning)));
     options.addOption(Poco::Util::Option("journal", "j", "redirects logs to systemd journal")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleJournal)));
-    options.addOption(Poco::Util::Option("loglevel", "l", "sets current log level")
-                          .argument("level")
+    options.addOption(Poco::Util::Option("verbose", "v", "sets current log level")
+                          .argument("${level}")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleLogLevel)));
     options.addOption(Poco::Util::Option("config", "c", "path to config file")
-                          .argument("config")
+                          .argument("${file}")
                           .callback(Poco::Util::OptionCallback<App>(this, &App::HandleConfigFile)));
 }
 
@@ -328,6 +328,11 @@ aos::Error App::InitCertModules(const Config& config)
         }
 
         err = certModule->Init(moduleConfig.mID.c_str(), aosConfig, mCryptoProvider, *pkcs11Module, mDatabase);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(pkcs11Params.mError);
+        }
+
+        err = mCertHandler.RegisterModule(*certModule);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(pkcs11Params.mError);
         }
