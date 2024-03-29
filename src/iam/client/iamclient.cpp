@@ -29,7 +29,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
-        mCredetials = GetTlsChannelCredentials(certInfo, certLoader, cryptoProvider);
+        mCredetials = GetTlsChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
     }
 
     for (const auto& iamCfg : config.mRemoteIAMs) {
@@ -264,11 +264,8 @@ CertificateServiceStubPtr IAMClient::CreateIAMCertificateServiceStub(const aos::
         auto& remoteIM = it->second;
 
         if (!remoteIM.mChannel) {
-            grpc::ChannelArguments channelArgs;
-
-            channelArgs.SetSslTargetNameOverride("Aos Core");
-
-            remoteIM.mChannel = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, channelArgs);
+            remoteIM.mChannel
+                = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, grpc::ChannelArguments());
         }
 
         return CertificateService::NewStub(remoteIM.mChannel);
@@ -285,11 +282,8 @@ ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const aos
         auto& remoteIM = it->second;
 
         if (!remoteIM.mChannel) {
-            grpc::ChannelArguments channelArgs;
-
-            channelArgs.SetSslTargetNameOverride("Aos Core");
-
-            remoteIM.mChannel = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, channelArgs);
+            remoteIM.mChannel
+                = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, grpc::ChannelArguments());
         }
 
         return ProvisioningService::NewStub(remoteIM.mChannel);

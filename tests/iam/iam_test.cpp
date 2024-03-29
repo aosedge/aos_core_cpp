@@ -50,16 +50,14 @@ protected:
     std::unique_ptr<typename T::Stub> CreateCustomStub(
         const CertInfo& certInfo, const std::string& url, const bool insecure = false)
     {
-        auto tlsChannelCreds = insecure ? grpc::InsecureChannelCredentials()
-                                        : GetTlsChannelCredentials(certInfo, mCertLoader, mCryptoProvider);
+        auto tlsChannelCreds = insecure
+            ? grpc::InsecureChannelCredentials()
+            : GetTlsChannelCredentials(certInfo, GetClientConfig().mCACert.c_str(), mCertLoader, mCryptoProvider);
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }
 
-        grpc::ChannelArguments channelArgs;
-        channelArgs.SetSslTargetNameOverride("Aos Core");
-
-        auto channel = grpc::CreateCustomChannel(url, tlsChannelCreds, channelArgs);
+        auto channel = grpc::CreateCustomChannel(url, tlsChannelCreds, grpc::ChannelArguments());
         if (channel == nullptr) {
             return nullptr;
         }
@@ -89,7 +87,8 @@ private:
     // CertHandler function
     certhandler::ModuleConfig GetCertModuleConfig(crypto::KeyType keyType);
     PKCS11ModuleConfig        GetPKCS11ModuleConfig();
-    void                      ApplyCertificate(const String& certType, uint64_t serial, CertInfo& certInfo);
+    void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+        const String& intermCertPath, uint64_t serial, CertInfo& certInfo);
 
     Config GetServerConfig();
     Config GetClientConfig();
@@ -116,8 +115,10 @@ void IAMTest::SetUp()
 
     RegisterPKCS11Module("server");
 
-    ApplyCertificate("client", 0x3333444, mClientInfo);
-    ApplyCertificate("server", 0x3333333, mServerInfo);
+    ApplyCertificate("client", "client", CERTIFICATES_DIR "/client_int.key", CERTIFICATES_DIR "/client_int.cer",
+        0x3333444, mClientInfo);
+    ApplyCertificate("server", "localhost", CERTIFICATES_DIR "/server_int.key", CERTIFICATES_DIR "/server_int.cer",
+        0x3333333, mServerInfo);
 
     mServerConfig = GetServerConfig();
     mClientConfig = GetClientConfig();
@@ -144,6 +145,7 @@ Config IAMTest::GetServerConfig()
     Config config;
 
     config.mCertStorage               = "server";
+    config.mCACert                    = CERTIFICATES_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mNodeID                    = "node0";
@@ -157,13 +159,14 @@ Config IAMTest::GetClientConfig()
 {
     Config config;
 
-    config.mCertStorage               = "server";
+    config.mCertStorage               = "client";
+    config.mCACert                    = CERTIFICATES_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mNodeID                    = "iam-node-id";
     config.mNodeType                  = "iam-node-type";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
-    config.mRemoteIAMs = {RemoteIAM {"node0", "127.0.0.1:8089", std::chrono::seconds(100)}};
+    config.mRemoteIAMs = {RemoteIAM {"node0", "localhost:8089", std::chrono::seconds(100)}};
 
     return config;
 }
@@ -190,24 +193,31 @@ PKCS11ModuleConfig IAMTest::GetPKCS11ModuleConfig()
     return config;
 }
 
-void IAMTest::ApplyCertificate(const String& certType, uint64_t serial, CertInfo& certInfo)
+void IAMTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+    const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
 {
     StaticString<crypto::cCSRPEMLen> csr;
-    ASSERT_TRUE(mCertHandler.CreateKey(certType, "Aos Core", cPIN, csr).IsNone());
+    ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
 
     // create certificate from CSR, CA priv key, CA cert
-    StaticString<crypto::cPrivKeyPEMLen> caKey;
-    ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.key", caKey).IsNone());
+    StaticString<crypto::cPrivKeyPEMLen> intermKey;
+    ASSERT_TRUE(FS::ReadFileToString(intermKeyPath, intermKey).IsNone());
 
-    StaticString<crypto::cCertPEMLen> caCert;
-    ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.pem", caCert).IsNone());
+    StaticString<crypto::cCertPEMLen> intermCert;
+    ASSERT_TRUE(FS::ReadFileToString(intermCertPath, intermCert).IsNone());
 
     auto                              serialArr = Array<uint8_t>(reinterpret_cast<uint8_t*>(&serial), sizeof(serial));
     StaticString<crypto::cCertPEMLen> clientCertChain;
 
-    ASSERT_TRUE(mCryptoProvider.CreateClientCert(csr, caKey, caCert, serialArr, clientCertChain).IsNone());
+    ASSERT_TRUE(mCryptoProvider.CreateClientCert(csr, intermKey, intermCert, serialArr, clientCertChain).IsNone());
 
-    // add CA cert to the chain
+    // add intermediate cert to the chain
+    clientCertChain.Append(intermCert);
+
+    // add CA certificate to the chain
+    StaticString<crypto::cCertPEMLen> caCert;
+
+    ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.cer", caCert).IsNone());
     clientCertChain.Append(caCert);
 
     // apply client certificate
@@ -289,7 +299,7 @@ TEST_F(IAMTest, ApplyCertSucceeds)
     ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.key", caKey).IsNone());
 
     StaticString<crypto::cCertPEMLen> caCert;
-    ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.pem", caCert).IsNone());
+    ASSERT_TRUE(FS::ReadFileToString(CERTIFICATES_DIR "/ca.cer", caCert).IsNone());
 
     const uint64_t serial    = 0x3333555;
     auto           serialArr = Array<uint8_t>(reinterpret_cast<const uint8_t*>(&serial), sizeof(serial));

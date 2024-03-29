@@ -5,7 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fstream>
+#include <streambuf>
+
 #include "grpchelper.hpp"
+#include "log.hpp"
 
 #include <utils/exception.hpp>
 
@@ -96,22 +100,32 @@ static std::string ConvertCertificateToPEM(
     return result;
 }
 
+static std::string ConvertCertificatesToPEM(
+    const Array<crypto::x509::Certificate>& chain, crypto::x509::ProviderItf& cryptoProvider)
+{
+    std::string resultChain;
+
+    for (const auto& cert : chain) {
+        resultChain += ConvertCertificateToPEM(cert, cryptoProvider);
+    }
+
+    return resultChain;
+}
+
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
-    const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoaderItf& certLoader,
+    const iam::certhandler::CertInfo& certInfo, const String& rootCertPath, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
-
     AOS_ERROR_CHECK_AND_THROW("Load certificate by URL failed", err);
 
-    if (certificates->Size() != 2) {
-        throw std::runtime_error("Not expected number of certificates in the chain");
-    }
+    std::ifstream file {rootCertPath.CStr()};
+    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-    auto rootCert = ConvertCertificateToPEM((*certificates)[1], cryptoProvider);
+    auto chain = Array<crypto::x509::Certificate>(certificates->begin(), certificates->Size());
 
     auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificateToPEM((*certificates)[0], cryptoProvider)};
+        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(chain, cryptoProvider)};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -131,7 +145,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
     }
 
     auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificateToPEM((*certificates)[0], cryptoProvider)};
+        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(*certificates, cryptoProvider)};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -143,9 +157,9 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
  **********************************************************************************************************************/
 
 std::shared_ptr<grpc::ServerCredentials> GetMTLSCredentials(const iam::certhandler::CertInfo& certInfo,
-    cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+    const String& rootCertPath, cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetMTLSCertificates(certInfo, certLoader, cryptoProvider);
+    auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
 
     grpc::experimental::TlsServerCredentialsOptions options {certificates};
 
@@ -175,9 +189,10 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const iam::certhandle
 }
 
 std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider)
+    const String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
+    aos::crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetMTLSCertificates(certInfo, certLoader, cryptoProvider);
+    auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
 
     grpc::experimental::TlsChannelCredentialsOptions options;
     options.set_certificate_provider(certificates);

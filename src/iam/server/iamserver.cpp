@@ -122,7 +122,7 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
             }
 
             publicOpt    = GetTLSCredentials(certInfo, certLoader, cryptoProvider);
-            protectedOpt = GetMTLSCredentials(certInfo, certLoader, cryptoProvider);
+            protectedOpt = GetMTLSCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
             publicOpt    = grpc::InsecureServerCredentials();
             protectedOpt = grpc::InsecureServerCredentials();

@@ -16,12 +16,14 @@
 #include <aos/iam/certhandler.hpp>
 
 std::shared_ptr<grpc::ServerCredentials> GetMTLSCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
+    const aos::String& rootCertPath, aos::cryptoutils::CertLoader& certLoader,
+    aos::crypto::x509::ProviderItf& cryptoProvider);
 
 std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
 
 std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
+    const aos::String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
+    aos::crypto::x509::ProviderItf& cryptoProvider);
 
 #endif
