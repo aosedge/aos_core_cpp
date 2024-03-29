@@ -7,7 +7,6 @@
 
 #include <iostream>
 
-#include <Poco/Format.h>
 #include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPServerParams.h>
@@ -17,6 +16,8 @@
 #include <Poco/Net/WebSocket.h>
 #include <Poco/URI.h>
 
+#include <aos/common/tools/log.hpp>
+
 #include "logger/logger.hpp"
 #include "visidentifier/vismessage.hpp"
 #include "visserver.hpp"
@@ -25,16 +26,10 @@
  * Static
  **********************************************************************************************************************/
 
-#define LOG_DBG() LOG_MODULE_DBG(AosLogModule(LogModuleEnum::eNumModules))
-#define LOG_INF() LOG_MODULE_INF(AosLogModule(LogModuleEnum::eNumModules))
-#define LOG_WRN() LOG_MODULE_WRN(AosLogModule(LogModuleEnum::eNumModules))
-#define LOG_ERR() LOG_MODULE_ERR(AosLogModule(LogModuleEnum::eNumModules))
-
-static const std::string cLogPrefix = "[Test VIS Service]";
-
-/***********************************************************************************************************************
- * VISParams
- **********************************************************************************************************************/
+#define LOG_DBG() LOG_MODULE_DBG(aos::LogModuleEnum::eDefault)
+#define LOG_INF() LOG_MODULE_INF(aos::LogModuleEnum::eDefault)
+#define LOG_WRN() LOG_MODULE_WRN(aos::LogModuleEnum::eDefault)
+#define LOG_ERR() LOG_MODULE_ERR(aos::LogModuleEnum::eDefault)
 
 /***********************************************************************************************************************
  * Public
@@ -85,7 +80,7 @@ void WebSocketRequestHandler::handleRequest(
     try {
         Poco::Net::WebSocket ws(request, response);
 
-        LOG_INF() << Poco::format("%s Web Socket has been connection established.", cLogPrefix).c_str();
+        LOG_INF() << "VIS connection established: clientAddress = " << request.clientAddress().toString().c_str();
 
         int                flags;
         int                n;
@@ -105,19 +100,19 @@ void WebSocketRequestHandler::handleRequest(
 
             buffer.resize(0);
 
-            LOG_DBG() << Poco::format(
-                "%s Frame received (val=%s, length=%d, flags=0x%x).", cLogPrefix, frameStr, n, unsigned(flags))
-                             .c_str();
+            LOG_DBG() << "VIS frame received: length = " << n << ", flags = " << flags
+                      << ", data = " << frameStr.c_str();
 
             const auto responseFrame = handleFrame(frameStr);
 
             ws.sendFrame(responseFrame.c_str(), responseFrame.length(), flags);
         } while (n > 0 && (flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) != Poco::Net::WebSocket::FRAME_OP_CLOSE);
 
-        LOG_DBG() << Poco::format("%s Web Socket has been closed.", cLogPrefix).c_str();
+        LOG_INF() << "VIS connection closed: clientAddress = " << request.clientAddress().toString().c_str();
 
     } catch (const Poco::Net::WebSocketException& exc) {
-        LOG_ERR() << Poco::format("%s Caught exception: message = %s.", cLogPrefix, exc.what()).c_str();
+        LOG_ERR() << "VIS connection failed: clientAddress = " << request.clientAddress().toString().c_str()
+                  << ", error = " << exc.what() << ", code: " << exc.code();
 
         switch (exc.code()) {
         case Poco::Net::WebSocket::WS_ERR_HANDSHAKE_UNSUPPORTED_VERSION:
@@ -180,14 +175,18 @@ std::string WebSocketRequestHandler::handleUnsubscribeAllRequest(const VISMessag
 
 std::string WebSocketRequestHandler::handleFrame(const std::string& frame)
 {
-    const VISMessage request(frame);
+    try {
+        const VISMessage request(frame);
 
-    if (request.Is(VISActionEnum::eGet)) {
-        return handleGetRequest(frame);
-    } else if (request.Is(VISActionEnum::eSubscribe)) {
-        return handleSubscribeRequest(frame);
-    } else if (request.Is(VISActionEnum::eUnsubscribeAll)) {
-        return handleUnsubscribeAllRequest(frame);
+        if (request.Is(VISActionEnum::eGet)) {
+            return handleGetRequest(frame);
+        } else if (request.Is(VISActionEnum::eSubscribe)) {
+            return handleSubscribeRequest(frame);
+        } else if (request.Is(VISActionEnum::eUnsubscribeAll)) {
+            return handleUnsubscribeAllRequest(frame);
+        }
+    } catch (...) {
+        LOG_WRN() << "VIS frame is not supported VIS Message: frame = " << frame.c_str();
     }
 
     return frame;
@@ -273,6 +272,6 @@ void VISWebSocketServer::RunServiceThreadF(
 
         srv.stop();
     } catch (const Poco::Exception& e) {
-        LOG_ERR() << Poco::format("%s RunServiceThreadF caught exception: message = %s.", cLogPrefix, e.what()).c_str();
+        LOG_ERR() << "VIS Web Socket service failed: error = " << e.what();
     }
 }
