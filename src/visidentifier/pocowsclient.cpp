@@ -197,7 +197,11 @@ void PocoWSClient::HandleResponse(const std::string& frame)
         const auto object = objectVar.extract<Poco::JSON::Object::Ptr>();
 
         if (object.isNull()) {
-            return;
+            throw AosException("can't extract json object");
+        }
+
+        if (!object->has(VISMessage::cActionTagName)) {
+            throw AosException("action tag is missing");
         }
 
         if (const auto action = object->get(VISMessage::cActionTagName); action == "subscription") {
@@ -208,18 +212,18 @@ void PocoWSClient::HandleResponse(const std::string& frame)
 
         const auto requestId = object->get(VISMessage::cRequestIdTagName).convert<std::string>();
         if (requestId.empty()) {
-            throw AosException("invalid requestId tag received");
+            throw AosException("requestId tag is empty");
         }
 
         if (!mPendingRequests.SetResponse(requestId, frame)) {
             mHandleSubscription(frame);
         }
-    } catch (const std::exception& e) {
-        LOG_ERR() << "Failed to handle response: error = " << e.what();
+    } catch (const AosException& e) {
+        LOG_ERR() << "Failed to handle VIS response: error = " << e.message().c_str();
     }
 }
 
-void PocoWSClient::ReceiveFrames()
+void PocoWSClient::ReceiveFrames() noexcept
 {
     LOG_DBG() << "Start receiving frames.";
 
@@ -230,7 +234,7 @@ void PocoWSClient::ReceiveFrames()
 
         do {
             n = mWebSocket->receiveFrame(buffer, flags);
-            LOG_DBG() << "received frame: bytes = " << n << ", flags = " << flags;
+            LOG_DBG() << "received frame from VIS: bytes = " << n << ", flags = " << flags;
 
             if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                 mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, "got Close frame from server");
@@ -248,12 +252,14 @@ void PocoWSClient::ReceiveFrames()
             }
 
         } while (flags != 0 || n != 0);
-    } catch (const Poco::Exception& e) {
+    } catch (const std::exception& e) {
         LOG_DBG() << "ReceiveFrames stopped: error = " << e.what();
 
         mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, e.what());
 
         return;
+    } catch (...) {
+        LOG_WRN() << "ReceiveFrames stopped: error =  unknown";
     }
 
     LOG_DBG() << "ReceiveFrames stopped.";

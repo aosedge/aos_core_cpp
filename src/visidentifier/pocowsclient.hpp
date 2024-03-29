@@ -92,7 +92,7 @@ private:
     static constexpr std::chrono::seconds cDefaultTimeout = std::chrono::seconds(120);
 
     void                 HandleResponse(const std::string& frame);
-    void                 ReceiveFrames();
+    void                 ReceiveFrames() noexcept;
     void                 StartReceiveFramesThread();
     void                 StopReceiveFramesThread();
     std::chrono::seconds GetWebSocketTimeout();
