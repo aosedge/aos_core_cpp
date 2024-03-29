@@ -43,9 +43,12 @@ const Array<uint8_t> ConvertByteArrayToAOS(const std::string& arr)
     return {reinterpret_cast<const uint8_t*>(arr.c_str()), arr.length()};
 }
 
-std::string ConvertByteArrayToProto(const Array<uint8_t>& arr)
+RetWithError<std::string> ConvertSerialToProto(const StaticArray<uint8_t, crypto::cSerialNumSize>& src)
 {
-    return std::string(reinterpret_cast<const char*>(arr.Get()), arr.Size());
+    StaticString<crypto::cSerialNumStrLen> result;
+    auto                                   err = result.ByteArrayToHex(src);
+
+    return {result.Get(), err};
 }
 
 template <size_t Size>
@@ -626,13 +629,22 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
     if (!err.IsNone()) {
         LOG_ERR() << "Apply cert request failed: err=" << err;
 
-        return grpc::Status(grpc::StatusCode::INTERNAL, "Apply cert request failed");
+        return grpc::Status(grpc::StatusCode::INTERNAL, "apply cert request failed");
+    }
+
+    std::string serial;
+
+    Tie(serial, err) = ConvertSerialToProto(certInfo.mSerial);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Serial conversion problem: err=" << err;
+
+        return grpc::Status(grpc::StatusCode::INTERNAL, "serial conversion problem");
     }
 
     response->set_node_id(nodeID);
     response->set_type(certType.CStr());
     response->set_cert_url(certInfo.mCertURL.CStr());
-    response->set_serial(ConvertByteArrayToProto(certInfo.mSerial));
+    response->set_serial(serial);
 
     return grpc::Status::OK;
 }
