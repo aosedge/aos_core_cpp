@@ -189,7 +189,7 @@ std::string WebSocketRequestHandler::handleFrame(const std::string& frame)
         LOG_WRN() << "VIS frame is not supported VIS Message: frame = " << frame.c_str();
     }
 
-    return frame;
+    return R"({"error":{"number":400, "reason":"bad_request", "message":"Bad request."}})";
 }
 
 /***********************************************************************************************************************
