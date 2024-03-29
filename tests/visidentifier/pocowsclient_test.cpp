@@ -22,7 +22,7 @@ using namespace testing;
  * Static
  **********************************************************************************************************************/
 
-static const std::string cWebSockerURI("wss://localhost:4566");
+static const std::string cWebSocketURI("wss://localhost:4566");
 static const std::string cServerCertPath("certificates/ca.pem");
 static const std::string cServerKeyPath("certificates/ca.key");
 static const std::string cClientCertPath {"certificates/client.cer"};
@@ -65,7 +65,7 @@ protected:
 
         Poco::Net::initializeSSL();
 
-        VISWebSocketServer::Instance().Start(cServerKeyPath, cServerCertPath, cWebSockerURI);
+        VISWebSocketServer::Instance().Start(cServerKeyPath, cServerCertPath, cWebSocketURI);
 
         ASSERT_TRUE(VISWebSocketServer::Instance().TryWaitServiceStart());
     }
@@ -80,7 +80,7 @@ protected:
     std::shared_ptr<PocoWSClient> mWsClientPtr;
 };
 
-const VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSockerURI, cClientCertPath, 5};
+const VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5};
 
 /***********************************************************************************************************************
  * Tests

@@ -26,7 +26,7 @@ void VISSubscriptions::RegisterSubscription(const std::string& subscriptionId, H
 {
     std::lock_guard lock(mMutex);
 
-    LOG_DBG() << "Registred subscription: id = " << subscriptionId.c_str();
+    LOG_DBG() << "Registered subscription: id = " << subscriptionId.c_str();
 
     mSubscriptionMap[subscriptionId] = std::move(subscriptionHandler);
 }

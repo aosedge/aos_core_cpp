@@ -230,7 +230,7 @@ void PocoWSClient::ReceiveFrames()
 
         do {
             n = mWebSocket->receiveFrame(buffer, flags);
-            LOG_DBG() << "recived frame: bytes = " << n << ", flags = " << flags;
+            LOG_DBG() << "received frame: bytes = " << n << ", flags = " << flags;
 
             if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                 mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, "got Close frame from server");

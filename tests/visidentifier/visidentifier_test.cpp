@@ -166,17 +166,17 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
             return aos::ErrorEnum::eNone;
         }));
 
-    const std::string kSubscriptionNofiticationJson
+    const std::string cSubscriptionNotificationJson
         = R"({"action":"subscription","subscriptionId":"1234-4321","value":[11,12,13], "timestamp": 0})";
 
-    mVisIdentifier.HandleSubscription(kSubscriptionNofiticationJson);
+    mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
 
     EXPECT_EQ(subjects.Size(), 3);
 
     // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
         EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
-        mVisIdentifier.HandleSubscription(kSubscriptionNofiticationJson);
+        mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
 }
 
@@ -194,17 +194,17 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
             return aos::ErrorEnum::eNone;
         }));
 
-    const std::string kSubscriptionNotificationJson
+    const std::string cSubscriptionNotificationJson
         = R"({"action":"subscription","subscriptionId":"1234-4321","value":{"Attribute.Aos.Subjects": [11,12,13]}, "timestamp": 0})";
 
-    mVisIdentifier.HandleSubscription(kSubscriptionNotificationJson);
+    mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
 
     EXPECT_EQ(subjects.Size(), 3);
 
     // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
         EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
-        mVisIdentifier.HandleSubscription(kSubscriptionNotificationJson);
+        mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
 }
 
@@ -278,7 +278,7 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
     mVisIdentifier.WaitUntilConnected();
 }
 
-TEST_F(VisidentifierTest, GetSystemIDSucceds)
+TEST_F(VisidentifierTest, GetSystemIDSucceeds)
 {
     ExpectInitSucceeded();
 
@@ -310,7 +310,7 @@ TEST_F(VisidentifierTest, GetSystemIDSucceds)
     EXPECT_STREQ(systemId.CStr(), cExpectedSystemId.c_str());
 }
 
-TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceds)
+TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
 {
     ExpectInitSucceeded();
 

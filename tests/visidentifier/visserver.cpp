@@ -117,7 +117,7 @@ void WebSocketRequestHandler::handleRequest(
         LOG_DBG() << Poco::format("%s Web Socket has been closed.", cLogPrefix).c_str();
 
     } catch (const Poco::Net::WebSocketException& exc) {
-        LOG_ERR() << Poco::format("%s Caught exception: messag = %s.", cLogPrefix, exc.what()).c_str();
+        LOG_ERR() << Poco::format("%s Caught exception: message = %s.", cLogPrefix, exc.what()).c_str();
 
         switch (exc.code()) {
         case Poco::Net::WebSocket::WS_ERR_HANDSHAKE_UNSUPPORTED_VERSION:
@@ -273,6 +273,6 @@ void VISWebSocketServer::RunServiceThreadF(
 
         srv.stop();
     } catch (const Poco::Exception& e) {
-        LOG_ERR() << Poco::format("%s RunServiceThreadF caught exception: messag = %s.", cLogPrefix, e.what()).c_str();
+        LOG_ERR() << Poco::format("%s RunServiceThreadF caught exception: message = %s.", cLogPrefix, e.what()).c_str();
     }
 }
