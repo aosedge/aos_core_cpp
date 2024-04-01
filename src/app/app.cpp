@@ -177,7 +177,9 @@ void App::initialize(Application& self)
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
-    AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
+    if (ret < 0) {
+        AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
+    }
 }
 
 void App::uninitialize()
