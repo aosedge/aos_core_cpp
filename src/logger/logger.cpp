@@ -75,7 +75,7 @@ void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const 
 
     ss << GetModule(module) << " " << message.CStr();
 
-    auto ret = sd_journal_print(GetSyslogPriority(level), ss.str().c_str());
+    auto ret = sd_journal_print(GetSyslogPriority(level), "%s", ss.str().c_str());
     if (ret != 0) {
         std::cerr << "Can't write to journal: " << ret;
     }
