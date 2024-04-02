@@ -19,23 +19,6 @@ using namespace aos;
  * Statics
  **********************************************************************************************************************/
 
-static StaticString<uuid::cUUIDLen * 3> PercentEncodeID(const uuid::UUID& id)
-{
-    StaticString<uuid::cUUIDLen * 3> result;
-
-    for (const auto& val : id) {
-        aos::Pair<char, char> chunk = String::ByteToHex(val);
-
-        result.PushBack('%');
-        result.PushBack(chunk.mFirst);
-        result.PushBack(chunk.mSecond);
-    }
-
-    *result.end() = 0;
-
-    return result;
-}
-
 // The PKCS #11 URI Scheme: https://www.rfc-editor.org/rfc/rfc7512.html
 static std::string CreateRFC7512URL(
     const String& token, const String& label, const Array<uint8_t>& id, const String& userPin)
@@ -49,24 +32,25 @@ static std::string CreateRFC7512URL(
         paramList += std::string(name) + "=" + param;
     };
 
-    std::string opaque, query;
+    std::string                     opaque, query;
+    StaticString<pkcs11::cIDStrLen> idStr;
 
     // create opaque part of url
     addParam("token", token.CStr(), true, opaque);
 
     (void)label; // label is not required, id should be enough to identify the object
 
-    if (!id.IsEmpty()) {
-        auto uuid = PercentEncodeID(id);
-        addParam("id", uuid.CStr(), true, opaque);
-    }
+    auto err = cryptoutils::EncodePKCS11ID(id, idStr);
+    AOS_ERROR_CHECK_AND_THROW("PKCS11ID encoding problem", err);
+
+    addParam("id", idStr.CStr(), true, opaque);
 
     addParam("pin-value", userPin.CStr(), false, query);
 
     // combine opaque & query parts of url
     StaticString<cURLLen> url;
 
-    auto err = url.Format("pkcs11:%s?%s", opaque.c_str(), query.c_str());
+    err = url.Format("pkcs11:%s?%s", opaque.c_str(), query.c_str());
     AOS_ERROR_CHECK_AND_THROW("RFC7512 URL format problem", err);
 
     return url.CStr();
@@ -74,11 +58,11 @@ static std::string CreateRFC7512URL(
 
 static std::string CreatePKCS11URL(const String& keyURL)
 {
-    StaticString<cFilePathLen>       library;
-    StaticString<pkcs11::cLabelLen>  token;
-    StaticString<pkcs11::cLabelLen>  label;
-    StaticString<pkcs11::cPINLength> userPIN;
-    uuid::UUID                       id;
+    StaticString<cFilePathLen>      library;
+    StaticString<pkcs11::cLabelLen> token;
+    StaticString<pkcs11::cLabelLen> label;
+    StaticString<pkcs11::cPINLen>   userPIN;
+    uuid::UUID                      id;
 
     auto err = cryptoutils::ParsePKCS11URL(keyURL, library, token, label, id, userPIN);
     AOS_ERROR_CHECK_AND_THROW("URL parsing problem", err);
