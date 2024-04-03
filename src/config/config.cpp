@@ -21,7 +21,7 @@
 
 class CaseInsensitiveObjectWrapper {
 public:
-    CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
+    explicit CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
         : mObject(object)
     {
         for (const auto& pair : *object) {
@@ -68,11 +68,11 @@ public:
         return std::nullopt;
     }
 
-    Poco::JSON::Array::Ptr getArray(const std::string& key) const { return Get(key).extract<Poco::JSON::Array::Ptr>(); }
+    Poco::JSON::Array::Ptr GetArray(const std::string& key) const { return Get(key).extract<Poco::JSON::Array::Ptr>(); }
 
     operator Poco::JSON::Object::Ptr() const { return mObject; }
 
-    CaseInsensitiveObjectWrapper getObject(const std::string& key) const
+    CaseInsensitiveObjectWrapper GetObject(const std::string& key) const
     {
         Poco::Dynamic::Var value = Get(key);
 
@@ -106,7 +106,7 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
         return result;
     }
 
-    Poco::JSON::Array::Ptr array = object.getArray(key);
+    Poco::JSON::Array::Ptr array = object.GetArray(key);
 
     for (const auto& value : *array) {
         result.push_back(parserFunc(value));
@@ -197,7 +197,7 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
             return ParseRemoteIAM(CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
         });
 
-        config.mIdentifier = ParseIdentifier(object.getObject("Identifier"));
+        config.mIdentifier = ParseIdentifier(object.GetObject("Identifier"));
 
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing config: " << e.what();
