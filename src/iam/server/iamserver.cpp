@@ -277,8 +277,6 @@ grpc::Status IAMServer::GetSubjects(
     return grpc::Status::OK;
 }
 
-// Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) = 0;
-
 grpc::Status IAMServer::SubscribeSubjectsChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
     grpc::ServerWriter<iamanager::v4::Subjects>* writer)
 {
@@ -484,6 +482,9 @@ grpc::Status IAMServer::EncryptDisk(
         std::string output;
 
         err = ExecProcess(mDiskEncryptCmdArgs[0], args, output);
+        if (!err.IsNone()) {
+            LOG_ERR() << "Exec error: message = " << output.c_str() << ", err = " << AOS_ERROR_WRAP(err);
+        }
     } else if (mRemoteHandler) {
         err = mRemoteHandler->EncryptDisk(nodeID.c_str(), password);
     } else {
