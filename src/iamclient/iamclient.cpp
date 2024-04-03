@@ -24,7 +24,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
 
         auto err = certHandler.GetCertificate(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
         if (!err.IsNone()) {
-            LOG_ERR() << "Get certificates failed, error = " << err.Message();
+            LOG_ERR() << "Get certificates failed: " << err.Message();
 
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
@@ -190,10 +190,11 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
 
     info.mCertURL = response.cert_url().c_str();
 
-    for (auto ch : response.serial()) {
-        if (auto err = info.mSerial.PushBack(ch); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    auto err = aos::String(response.serial().c_str()).HexToByteArray(info.mSerial);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to convert serial: " << err.Message();
+
+        return AOS_ERROR_WRAP(err);
     }
 
     return aos::ErrorEnum::eNone;

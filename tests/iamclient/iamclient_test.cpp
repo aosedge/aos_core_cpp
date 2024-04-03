@@ -7,6 +7,8 @@
 
 #include <gmock/gmock.h>
 
+#include <test/utils/log.hpp>
+
 #include "iamanager_mock.grpc.pb.h"
 #include "iamclient/iamclient.hpp"
 #include "mocks/certhandlermock.hpp"
@@ -32,6 +34,8 @@ protected:
 
     void SetUp() override
     {
+        aos::InitLogs();
+
         mIAMProvisioningServiceStub = std::make_unique<iamanager::v4::MockIAMProvisioningServiceStub>();
         mIAMCertificateServiceStub  = std::make_unique<iamanager::v4::MockIAMCertificateServiceStub>();
 
@@ -346,15 +350,16 @@ TEST_F(IAMClientTest, CreateStubFailsOnApplyCertificate)
 
 TEST_F(IAMClientTest, SucceedsOnApplyCertificate)
 {
-    constexpr std::string_view cExpectedSerial {"test-serial"};
+    constexpr std::string_view cExpectedSerialStr {"abcDEF0123456789"};
+    const uint8_t              cExpectedSerialByteArray[] = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89};
 
     aos::iam::certhandler::CertInfo resultInfo;
 
     EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert)
         .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, pemCert = cPemCert, certUrl = cCertUrl,
-                             expectedSerial = cExpectedSerial](grpc::ClientContext* context,
-                             const iamanager::v4::ApplyCertRequest&                 request,
-                             iamanager::v4::ApplyCertResponse*                      response) -> grpc::Status {
+                             expectedSerial = cExpectedSerialStr](grpc::ClientContext* context,
+                             const iamanager::v4::ApplyCertRequest&                    request,
+                             iamanager::v4::ApplyCertResponse*                         response) -> grpc::Status {
             (void)context;
             (void)request;
             (void)response;
@@ -375,10 +380,7 @@ TEST_F(IAMClientTest, SucceedsOnApplyCertificate)
     const auto err = mIAMClientMock.ApplyCertificate(cNodeId, cCertType, cPemCert, resultInfo);
     ASSERT_TRUE(err.IsNone()) << err.Message();
     ASSERT_STREQ(resultInfo.mCertURL.CStr(), cCertUrl);
-    ASSERT_EQ(resultInfo.mSerial.Size(), cExpectedSerial.size());
-
-    const std::string resultInfoSerial(resultInfo.mSerial.begin(), resultInfo.mSerial.end());
-    ASSERT_EQ(resultInfoSerial, cExpectedSerial);
+    ASSERT_EQ(resultInfo.mSerial, aos::Array<uint8_t>(cExpectedSerialByteArray, sizeof(cExpectedSerialByteArray)));
 }
 
 TEST_F(IAMClientTest, RPCFailedOnApplyCertificate)
@@ -412,7 +414,7 @@ TEST_F(IAMClientTest, NoMemoryOnApplyCertificate)
             EXPECT_EQ(request.cert(), pemCert);
 
             response->set_cert_url(certUrl);
-            response->set_serial(std::string(aos::crypto::cSerialNumSize + 1, 'c'));
+            response->set_serial(std::string(aos::crypto::cSerialNumStrLen + 1, 'c'));
 
             return grpc::Status::OK;
         }));
