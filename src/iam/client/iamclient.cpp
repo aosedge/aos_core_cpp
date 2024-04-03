@@ -36,7 +36,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
         mRemoteIMs[iamCfg.mNodeID.c_str()] = {iamCfg, nullptr};
     }
 
-    if (mRemoteIMs.size() > cMaxNodes) {
+    if (mRemoteIMs.size() > aos::cMaxNumNodes) {
         mRemoteIMs.clear();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eNoMemory);
@@ -45,9 +45,9 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
     return aos::ErrorEnum::eNone;
 }
 
-aos::Array<aos::StaticString<aos::cNodeIDLen>> IAMClient::GetRemoteNodes()
+aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> IAMClient::GetRemoteNodes()
 {
-    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, cMaxNodes> result;
+    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> result;
 
     std::lock_guard lock(mMutex);
 

@@ -55,9 +55,9 @@ public:
     /**
      * Returns remote node identifiers.
      *
-     * @result aos::Array<aos::StaticString<aos::cNodeIDLen>>
+     * @result aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes>
      */
-    aos::Array<aos::StaticString<aos::cNodeIDLen>> GetRemoteNodes() override;
+    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> GetRemoteNodes() override;
 
     /**
      * Returns IAM cert types.
@@ -135,9 +135,8 @@ protected:
     virtual ProvisioningServiceStubPtr CreateIAMProvisioningServiceStub(const std::string& nodeId);
 
 private:
-    static constexpr size_t cMaxNodes {2}; // TODO: use const from lib
-    static constexpr auto   cDefaultRequestTimeout = std::chrono::minutes(1);
-    static constexpr auto   cDefaultEncryptTimeout = std::chrono::minutes(5);
+    static constexpr auto cDefaultRequestTimeout = std::chrono::minutes(1);
+    static constexpr auto cDefaultEncryptTimeout = std::chrono::minutes(5);
 
     std::mutex                                mMutex;
     std::map<std::string, ConnectionDetails>  mRemoteIMs;

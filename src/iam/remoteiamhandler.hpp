@@ -22,9 +22,9 @@ public:
     /**
      * Returns remote node identifiers.
      *
-     * @result std::vector<std::string>
+     * @result aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes>.
      */
-    virtual aos::Array<aos::StaticString<aos::cNodeIDLen>> GetRemoteNodes() = 0;
+    virtual aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> GetRemoteNodes() = 0;
 
     /**
      * Returns IAM cert types.
