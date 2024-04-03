@@ -167,7 +167,7 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         return {Config {}, aos::ErrorEnum::eNotFound};
     }
 
-    Config config;
+    Config config {};
 
     try {
         Poco::JSON::Parser           parser;
@@ -197,8 +197,9 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
             return ParseRemoteIAM(CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
         });
 
-        config.mIdentifier = ParseIdentifier(object.GetObject("Identifier"));
-
+        if (object.Has("Identifier")) {
+            config.mIdentifier = ParseIdentifier(object.GetObject("Identifier"));
+        }
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing config: " << e.what();
 
