@@ -73,7 +73,7 @@ aos::Error IAMClient::GetCertTypes(
     auto                     ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->GetCertTypes(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Get cert types failed: code = " << status.error_code()
+        LOG_ERR() << "Get cert types failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -104,7 +104,7 @@ aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& cer
     auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->SetOwner(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Get owner failed: code = " << status.error_code()
+        LOG_ERR() << "Get owner failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -128,7 +128,7 @@ aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certTy
     auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->Clear(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Clear failed: code = " << status.error_code() << ", message = " << status.error_message().c_str();
+        LOG_ERR() << "Clear failed: code = " << status.error_code() << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -154,7 +154,7 @@ aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& ce
     auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->CreateKey(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Create key failed: code = " << status.error_code()
+        LOG_ERR() << "Create key failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -182,7 +182,7 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
     auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->ApplyCert(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Apply certificate failed: code = " << status.error_code()
+        LOG_ERR() << "Apply certificate failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -214,7 +214,7 @@ aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& 
     auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultEncryptTimeout);
 
     if (const auto status = stub->EncryptDisk(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Disk encryption failed: code = " << status.error_code()
+        LOG_ERR() << "Disk encryption failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -234,7 +234,7 @@ aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
     auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->FinishProvisioning(ctx.get(), request, &response); !status.ok()) {
-        LOG_DBG() << "Finish provisioning failed: code = " << status.error_code()
+        LOG_ERR() << "Finish provisioning failed: code = " << status.error_code()
                   << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
