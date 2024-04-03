@@ -46,7 +46,8 @@ const Array<uint8_t> ConvertByteArrayToAOS(const std::string& arr)
 RetWithError<std::string> ConvertSerialToProto(const StaticArray<uint8_t, crypto::cSerialNumSize>& src)
 {
     StaticString<crypto::cSerialNumStrLen> result;
-    auto                                   err = result.ByteArrayToHex(src);
+
+    auto err = result.ByteArrayToHex(src);
 
     return {result.Get(), err};
 }
@@ -131,7 +132,7 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
         CreatePublicServer(config.mIAMPublicServerURL, publicOpt);
         CreateProtectedServer(config.mIAMProtectedServerURL, protectedOpt, provisioningMode);
     } catch (const std::exception& e) {
-        LOG_ERR() << e.what();
+        LOG_ERR() << "Init error: " << e.what();
 
         return ErrorEnum::eFailed;
     }
@@ -199,7 +200,7 @@ grpc::Status IAMServer::GetCert(grpc::ServerContext* context, const iamanager::v
 
     auto err = String(request->serial().c_str()).HexToByteArray(serial);
     if (!err.IsNone()) {
-        LOG_ERR() << "Serial conversion failed: " << err;
+        LOG_ERR() << "Serial conversion failed: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Serial conversion failed");
     }
@@ -208,7 +209,7 @@ grpc::Status IAMServer::GetCert(grpc::ServerContext* context, const iamanager::v
 
     err = mCertHandler->GetCertificate(request->type().c_str(), issuer, serial, certInfo);
     if (!err.IsNone()) {
-        LOG_ERR() << "Get certificate error: " << err;
+        LOG_ERR() << "Get certificate error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Get certificate error");
     }
@@ -263,7 +264,6 @@ grpc::Status IAMServer::GetSubjects(
     aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, cMaxSubjectsCount> subjects;
 
     auto err = mIdentHandler->GetSubjects(subjects);
-
     if (!err.IsNone()) {
         LOG_DBG() << "Get subjects error: " << err;
 
@@ -380,7 +380,7 @@ grpc::Status IAMServer::GetCertTypes(
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Get certificate types error: " << err;
+        LOG_ERR() << "Get certificate types error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Get certificate types error");
     }
@@ -414,7 +414,7 @@ grpc::Status IAMServer::SetOwner(
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Set owner error: " << err;
+        LOG_ERR() << "Set owner error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Set owner error");
     }
@@ -445,7 +445,7 @@ grpc::Status IAMServer::Clear(
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Clear error: " << err;
+        LOG_ERR() << "Clear error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Clear error");
     }
@@ -493,7 +493,7 @@ grpc::Status IAMServer::EncryptDisk(
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Encrypt disk error: " << err;
+        LOG_ERR() << "Encrypt disk error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Encrypt disk error");
     }
@@ -515,7 +515,6 @@ grpc::Status IAMServer::FinishProvisioning(
     if (mRemoteHandler) {
         for (const auto& node : mRemoteHandler->GetRemoteNodes()) {
             auto nodeErr = mRemoteHandler->FinishProvisioning(node);
-
             if (!nodeErr.IsNone() && err.IsNone()) {
                 err = nodeErr;
             }
@@ -525,17 +524,17 @@ grpc::Status IAMServer::FinishProvisioning(
     if (!mFinishProvisioningCmdArgs.empty()) {
         std::string                    output;
         const std::vector<std::string> args {mFinishProvisioningCmdArgs.begin() + 1, mFinishProvisioningCmdArgs.end()};
-        auto                           execErr = ExecProcess(mFinishProvisioningCmdArgs[0], args, output);
 
+        auto execErr = ExecProcess(mFinishProvisioningCmdArgs[0], args, output);
         if (!execErr.IsNone() && err.IsNone()) {
             err = execErr;
 
-            LOG_ERR() << "message: " << output.c_str() << ", err: " << err;
+            LOG_ERR() << "Exec error: message = " << output.c_str() << ", err = " << AOS_ERROR_WRAP(err);
         }
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Finish provisioning error: " << err;
+        LOG_ERR() << "Finish provisioning error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Finish provisioning error");
     }
@@ -567,10 +566,11 @@ grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager:
     }
 
     Error err = ErrorEnum::eNone;
+
     if (subject.IsEmpty() && mIdentHandler) {
         Tie(subject, err) = mIdentHandler->GetSystemID();
         if (!err.IsNone()) {
-            LOG_ERR() << "GetSystemID returned error=" << err;
+            LOG_ERR() << "Getting system ID error: " << AOS_ERROR_WRAP(err);
 
             return grpc::Status(grpc::StatusCode::INTERNAL, "GetSystemID returned error");
         }
@@ -589,7 +589,7 @@ grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager:
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Create key request failed: err=" << err;
+        LOG_ERR() << "Create key request failed: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Create key request failed");
     }
@@ -626,7 +626,7 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
     }
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Apply cert request failed: err=" << err;
+        LOG_ERR() << "Apply cert request failed: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "apply cert request failed");
     }
@@ -635,7 +635,7 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
 
     Tie(serial, err) = ConvertSerialToProto(certInfo.mSerial);
     if (!err.IsNone()) {
-        LOG_ERR() << "Serial conversion problem: err=" << err;
+        LOG_ERR() << "Serial conversion problem: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "serial conversion problem");
     }
@@ -668,8 +668,8 @@ grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
 
     for (const auto& [service, permissions] : request->permissions()) {
         err = aosPermissions.PushBack({});
-        if (!err.IsNone() || permissions.permissions_size() > permhandler::cServicePermissionMaxCount) {
-            LOG_ERR() << "Permissions allocation problem";
+        if (!err.IsNone()) {
+            LOG_ERR() << "Error allocating permissions: " << AOS_ERROR_WRAP(err);
 
             return grpc::Status(grpc::StatusCode::INTERNAL, "Permissions allocation problem");
         }
@@ -678,7 +678,12 @@ grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
         servicePerm.mName                                      = service.c_str();
 
         for (const auto& [key, val] : permissions.permissions()) {
-            servicePerm.mPermissions.PushBack({key.c_str(), val.c_str()});
+            err = servicePerm.mPermissions.PushBack({key.c_str(), val.c_str()});
+            if (!err.IsNone()) {
+                LOG_ERR() << "Error allocating permissions: " << AOS_ERROR_WRAP(err);
+
+                return grpc::Status(grpc::StatusCode::INTERNAL, "Permissions allocation problem");
+            }
         }
     }
 
@@ -687,7 +692,7 @@ grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
     Tie(secret, err) = mPermHandler->RegisterInstance(aosInstance, aosPermissions);
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Register instance error: err=" << err;
+        LOG_ERR() << "Register instance error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Register instance error");
     }
@@ -708,9 +713,9 @@ grpc::Status IAMServer::UnregisterInstance(grpc::ServerContext* context,
     LOG_DBG() << "Process unregister instance: serviceID=" << instance.mServiceID
               << ", subjectID=" << instance.mSubjectID << ", instance=" << instance.mInstance;
 
-    const auto err = mPermHandler->UnregisterInstance(instance);
+    auto err = mPermHandler->UnregisterInstance(instance);
     if (!err.IsNone()) {
-        LOG_ERR() << "Unregister instance error: err=" << err;
+        LOG_ERR() << "Unregister instance error: " << AOS_ERROR_WRAP(err);
 
         return grpc::Status(grpc::StatusCode::INTERNAL, "Unregister instance error");
     }
