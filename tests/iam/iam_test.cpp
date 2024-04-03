@@ -14,9 +14,10 @@
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 
-#include "iam/client/iamclient.hpp"
-#include "iam/grpchelper.hpp"
-#include "iam/server/iamserver.hpp"
+#include "iamclient/iamclient.hpp"
+#include "iamserver/iamserver.hpp"
+#include "utils/grpchelper.hpp"
+
 #include "mocks/identhandlermock.hpp"
 #include "mocks/permissionhandlermock.hpp"
 #include "mocks/remoteiamhandlermock.hpp"

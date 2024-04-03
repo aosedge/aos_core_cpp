@@ -9,14 +9,15 @@
 #define REMOTEIAMHANDLER_ITF_MOCK_HPP_
 
 #include <gmock/gmock.h>
-#include <iam/remoteiamhandler.hpp>
+#include <iamclient/remoteiamhandler.hpp>
 
 /**
  * RemoteIAMHandler interface mock
  */
 class RemoteIAMHandlerMock : public RemoteIAMHandlerItf {
 public:
-    MOCK_METHOD(aos::Array<aos::StaticString<aos::cNodeIDLen>>, GetRemoteNodes, (), (override));
+    MOCK_METHOD(
+        (aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes>), GetRemoteNodes, (), (override));
 
     MOCK_METHOD(aos::Error, GetCertTypes,
         (const aos::String& nodeID, aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>& certTypes),

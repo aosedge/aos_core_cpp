@@ -24,7 +24,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(app)
 add_subdirectory(config)
 add_subdirectory(database)
-add_subdirectory(iam)
+add_subdirectory(iamclient)
+add_subdirectory(iamserver)
 add_subdirectory(logger)
 add_subdirectory(utils)
 add_subdirectory(visidentifier)
@@ -45,7 +46,7 @@ add_executable(${TARGET} ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} mbedtls aoscommon app)
+target_link_libraries(${TARGET} aoscommon app)
 
 # ######################################################################################################################
 # Install

@@ -11,7 +11,7 @@ set(TARGET utils)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES json.cpp time.cpp)
+set(SOURCES json.cpp time.cpp grpchelper.cpp)
 
 # ######################################################################################################################
 # Includes
@@ -29,6 +29,6 @@ add_library(${TARGET} STATIC ${SOURCES})
 
 target_link_libraries(
     ${TARGET}
-    PUBLIC aoscommon Poco::Foundation
+    PUBLIC aoscommon Poco::Foundation gRPC::grpc++
     PRIVATE Poco::JSON
 )

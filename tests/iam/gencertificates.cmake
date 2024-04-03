@@ -14,13 +14,14 @@
 
 function(genchildcert CERTIFICATES_DIR FILE_NAME COMMONNAME PARENT_NAME)
     execute_process(
-        COMMAND openssl req -new -keyout ${CERTIFICATES_DIR}/${FILE_NAME}.key -out ${CERTIFICATES_DIR}/${FILE_NAME}.csr -nodes -subj
-                "/CN=${COMMONNAME}" COMMAND_ERROR_IS_FATAL ANY
+        COMMAND openssl req -new -keyout ${CERTIFICATES_DIR}/${FILE_NAME}.key -out ${CERTIFICATES_DIR}/${FILE_NAME}.csr
+                -nodes -subj "/CN=${COMMONNAME}" COMMAND_ERROR_IS_FATAL ANY
     )
 
     execute_process(
         COMMAND
-            openssl x509 -req -days 365 -extfile ${CERTIFICATES_DIR}/extensions.conf -in ${CERTIFICATES_DIR}/${FILE_NAME}.csr -CA ${CERTIFICATES_DIR}/${PARENT_NAME}.cer -CAkey
+            openssl x509 -req -days 365 -extfile ${CERTIFICATES_DIR}/extensions.conf -in
+            ${CERTIFICATES_DIR}/${FILE_NAME}.csr -CA ${CERTIFICATES_DIR}/${PARENT_NAME}.cer -CAkey
             ${CERTIFICATES_DIR}/${PARENT_NAME}.key -out ${CERTIFICATES_DIR}/${FILE_NAME}.cer COMMAND_ERROR_IS_FATAL ANY
     )
 
@@ -40,8 +41,8 @@ function(gencertificates TARGET CERTIFICATES_DIR)
 
     message("\nCreate a CA self-signed certificate...")
     execute_process(
-        COMMAND openssl x509 -extfile ${CERTIFICATES_DIR}/extensions.conf -signkey ${CERTIFICATES_DIR}/ca.key -days 365 -req -in ${CERTIFICATES_DIR}/ca.csr -out
-                ${CERTIFICATES_DIR}/ca.cer COMMAND_ERROR_IS_FATAL ANY
+        COMMAND openssl x509 -extfile ${CERTIFICATES_DIR}/extensions.conf -signkey ${CERTIFICATES_DIR}/ca.key -days 365
+                -req -in ${CERTIFICATES_DIR}/ca.csr -out ${CERTIFICATES_DIR}/ca.cer COMMAND_ERROR_IS_FATAL ANY
     )
 
     message("\nIssue client certificates...")

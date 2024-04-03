@@ -23,8 +23,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC aoscommon aoscoreapi-gen-objects aosiam utils
-    PRIVATE iam_common logger
-)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiam logger utils aoscoreapi-gen-objects Poco::Util)

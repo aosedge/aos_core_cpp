@@ -44,16 +44,9 @@ find_package(libp11)
 set(OPENSSL_CONF "${CMAKE_CURRENT_BINARY_DIR}/openssl.conf")
 
 file(COPY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/openssl.conf" "${OPENSSL_CONF}")
-file(
-    APPEND "${OPENSSL_CONF}"
-    "\n[pkcs11_section]\n"
-    "engine_id = pkcs11\n"
-    "dynamic_path = ${libp11_LIB_DIRS_DEBUG}/libpkcs11.so\n"
-    #"dynamic_path = /usr/lib/x86_64-linux-gnu/engines-3/libpkcs11.so\n"
-    #"dynamic_path = /home/mykola_kobets/work/libp11/build/install/engine/pkcs11.so\n"
-    #"dynamic_path = /home/mykola_kobets/work/openssl/build/install/lib64/engines-3/libpkcs11.so\n"
-    "MODULE_PATH = ${SOFTHSM2_LIB}\n"
-    "init = 0\n"
+file(APPEND "${OPENSSL_CONF}"
+     "\n[pkcs11_section]\n" "engine_id = pkcs11\n" "dynamic_path = ${libp11_LIB_DIRS_DEBUG}/libpkcs11.so\n"
+     "MODULE_PATH = ${SOFTHSM2_LIB}\n" "init = 0\n"
 )
 
 # ######################################################################################################################
@@ -65,4 +58,4 @@ gtest_discover_tests(
                          OPENSSL_CONF=${OPENSSL_CONF}
 )
 
-target_link_libraries(${TARGET} mbedtls aoscommon aoscoretestutils iamserver iamclient GTest::gmock_main)
+target_link_libraries(${TARGET} mbedtls iamserver iamclient aoscoretestutils GTest::gmock_main)

@@ -6,8 +6,8 @@
  */
 
 #include "iamclient.hpp"
-#include "grpchelper.hpp"
-#include "iam/log.hpp"
+#include "log.hpp"
+#include "utils/grpchelper.hpp"
 
 /***********************************************************************************************************************
  * Public

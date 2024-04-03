@@ -22,7 +22,7 @@
 
 #include <iamanager.grpc.pb.h>
 
-#include "iam/remoteiamhandler.hpp"
+#include "iamclient/remoteiamhandler.hpp"
 
 /**
  * IAM GRPC server

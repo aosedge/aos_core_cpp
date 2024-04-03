@@ -20,8 +20,8 @@
 #include <aos/iam/certhandler.hpp>
 #include <utils/exception.hpp>
 
-#include "grpchelper.hpp"
 #include "log.hpp"
+#include "utils/grpchelper.hpp"
 
 using namespace aos;
 using namespace aos::iam;

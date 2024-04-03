@@ -24,7 +24,7 @@
 #include <iamanager.grpc.pb.h>
 
 #include "config/config.hpp"
-#include "iam/remoteiamhandler.hpp"
+#include "iamclient/remoteiamhandler.hpp"
 
 using ProvisioningService        = iamanager::v4::IAMProvisioningService;
 using ProvisioningServiceStubPtr = std::unique_ptr<ProvisioningService::StubInterface>;

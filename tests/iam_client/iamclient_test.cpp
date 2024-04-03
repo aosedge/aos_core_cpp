@@ -7,8 +7,8 @@
 
 #include <gmock/gmock.h>
 
-#include "iam/client/iamclient.hpp"
 #include "iamanager_mock.grpc.pb.h"
+#include "iamclient/iamclient.hpp"
 #include "mocks/certhandlermock.hpp"
 #include "mocks/certloadermock.hpp"
 #include "mocks/x509providermock.hpp"
@@ -17,8 +17,8 @@ using namespace testing;
 
 class IAMClientMock : public IAMClient {
 public:
-    MOCK_METHOD(CertificateServiceStubPtr, CreateIAMCertificateServiceStub, (const aos::String&), (override));
-    MOCK_METHOD(ProvisioningServiceStubPtr, CreateIAMProvisioningServiceStub, (const aos::String&), (override));
+    MOCK_METHOD(CertificateServiceStubPtr, CreateIAMCertificateServiceStub, (const std::string&), (override));
+    MOCK_METHOD(ProvisioningServiceStubPtr, CreateIAMProvisioningServiceStub, (const std::string&), (override));
 };
 
 class IAMClientTest : public Test {

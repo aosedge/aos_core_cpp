@@ -15,8 +15,8 @@
 #include <aos/iam/permhandler.hpp>
 
 #include "database/database.hpp"
-#include "iam/client/iamclient.hpp"
-#include "iam/server/iamserver.hpp"
+#include "iamclient/iamclient.hpp"
+#include "iamserver/iamserver.hpp"
 #include "logger/logger.hpp"
 #include "visidentifier/visidentifier.hpp"
 
