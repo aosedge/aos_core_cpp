@@ -365,14 +365,14 @@ grpc::Status IAMServer::GetCertTypes(
 
     LOG_DBG() << "Process get cert types: nodeID=" << request->node_id().c_str();
 
-    const auto& nodeId = request->node_id();
+    const auto& nodeID = request->node_id();
     Error       err    = ErrorEnum::eNone;
     StaticArray<StaticString<certhandler::cCertTypeLen>, certhandler::cIAMCertModulesMaxCount> certTypes;
 
-    if (nodeId == mNodeID || nodeId.empty()) {
+    if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->GetCertTypes(certTypes);
     } else if (mRemoteHandler) {
-        err = mRemoteHandler->GetCertTypes(mNodeID.c_str(), certTypes);
+        err = mRemoteHandler->GetCertTypes(nodeID.c_str(), certTypes);
     } else {
         LOG_DBG() << "unknown node ID";
 
@@ -398,15 +398,15 @@ grpc::Status IAMServer::SetOwner(
     LOG_DBG() << "Process set owner request: type=" << request->type().c_str()
               << ", nodeID=" << request->node_id().c_str();
 
-    const auto& nodeId   = request->node_id();
+    const auto& nodeID   = request->node_id();
     const auto  certType = String(request->type().c_str());
     const auto  password = String(request->password().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeId == mNodeID || nodeId.empty()) {
+    if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->SetOwner(certType, password);
     } else if (mRemoteHandler) {
-        err = mRemoteHandler->SetOwner(mNodeID.c_str(), certType, password);
+        err = mRemoteHandler->SetOwner(nodeID.c_str(), certType, password);
     } else {
         LOG_DBG() << "unknown node ID";
 
@@ -430,14 +430,14 @@ grpc::Status IAMServer::Clear(
 
     LOG_DBG() << "Process clear request: type=" << request->type().c_str() << ", nodeID=" << request->node_id().c_str();
 
-    const auto& nodeId   = request->node_id();
+    const auto& nodeID   = request->node_id();
     const auto  certType = String(request->type().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeId == mNodeID || nodeId.empty()) {
+    if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->Clear(certType);
     } else if (mRemoteHandler) {
-        err = mRemoteHandler->Clear(mNodeID.c_str(), certType);
+        err = mRemoteHandler->Clear(nodeID.c_str(), certType);
     } else {
         LOG_DBG() << "unknown node ID";
 
@@ -461,15 +461,14 @@ grpc::Status IAMServer::EncryptDisk(
 
     LOG_DBG() << "Process encrypt disk request: nodeID=" << request->node_id().c_str();
 
-    const auto& nodeId   = request->node_id();
+    const auto& nodeID   = request->node_id();
     const auto  password = String(request->password().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeId == mNodeID || nodeId.empty()) {
+    if (nodeID == mNodeID || nodeID.empty()) {
         err = mCertHandler->CreateSelfSignedCert(cDiscEncryptionType, password);
-
         if (!err.IsNone()) {
-            LOG_ERR() << "Encrypt disk error: " << err;
+            LOG_ERR() << "Encrypt disk error: " << AOS_ERROR_WRAP(err);
 
             return grpc::Status(grpc::StatusCode::INTERNAL, "Encrypt disk error");
         }
@@ -486,7 +485,7 @@ grpc::Status IAMServer::EncryptDisk(
 
         err = ExecProcess(mDiskEncryptCmdArgs[0], args, output);
     } else if (mRemoteHandler) {
-        err = mRemoteHandler->EncryptDisk(nodeId.c_str(), password);
+        err = mRemoteHandler->EncryptDisk(nodeID.c_str(), password);
     } else {
         LOG_DBG() << "unknown node ID";
 
