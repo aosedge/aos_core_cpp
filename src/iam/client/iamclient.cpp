@@ -18,7 +18,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
 {
 
     if (provisioningMode) {
-        mCredetials = grpc::InsecureChannelCredentials();
+        mCredentials = grpc::InsecureChannelCredentials();
     } else {
         aos::iam::certhandler::CertInfo certInfo;
 
@@ -29,7 +29,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
-        mCredetials = GetTlsChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
+        mCredentials = GetTlsChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
     }
 
     for (const auto& iamCfg : config.mRemoteIAMs) {
@@ -61,7 +61,7 @@ aos::Array<aos::StaticString<aos::cNodeIDLen>> IAMClient::GetRemoteNodes()
 aos::Error IAMClient::GetCertTypes(
     const aos::String& nodeID, aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>& certTypes)
 {
-    auto stub = CreateIAMProvisioningServiceStub(nodeID);
+    auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -90,7 +90,7 @@ aos::Error IAMClient::GetCertTypes(
 
 aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& certType, const aos::String& password)
 {
-    auto stub = CreateIAMProvisioningServiceStub(nodeID);
+    auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -115,7 +115,7 @@ aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& cer
 
 aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certType)
 {
-    auto stub = CreateIAMProvisioningServiceStub(nodeID);
+    auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -139,7 +139,7 @@ aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certTy
 aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& certType,
     const aos::String& subjectCommonName, const aos::String& password, aos::String& pemCSR)
 {
-    auto stub = CreateIAMCertificateServiceStub(nodeID);
+    auto stub = CreateIAMCertificateServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -168,7 +168,7 @@ aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& ce
 aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::String& certType,
     const aos::String& pemCert, aos::iam::certhandler::CertInfo& info)
 {
-    auto stub = CreateIAMCertificateServiceStub(nodeID);
+    auto stub = CreateIAMCertificateServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -201,7 +201,7 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
 
 aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& password)
 {
-    auto stub = CreateIAMProvisioningServiceStub(nodeID);
+    auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -247,16 +247,16 @@ aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
  * Protected
  **********************************************************************************************************************/
 
-CertificateServiceStubPtr IAMClient::CreateIAMCertificateServiceStub(const aos::String& nodeId)
+CertificateServiceStubPtr IAMClient::CreateIAMCertificateServiceStub(const std::string& nodeID)
 {
     std::lock_guard lock(mMutex);
 
-    if (const auto it = mRemoteIMs.find(nodeId.CStr()); it != mRemoteIMs.cend()) {
+    if (const auto it = mRemoteIMs.find(nodeID); it != mRemoteIMs.cend()) {
         auto& remoteIM = it->second;
 
         if (!remoteIM.mChannel) {
             remoteIM.mChannel
-                = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, grpc::ChannelArguments());
+                = grpc::CreateCustomChannel(remoteIM.mConfig.mURL, mCredentials, grpc::ChannelArguments());
         }
 
         return CertificateService::NewStub(remoteIM.mChannel);
@@ -265,16 +265,16 @@ CertificateServiceStubPtr IAMClient::CreateIAMCertificateServiceStub(const aos::
     return nullptr;
 }
 
-ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const aos::String& nodeId)
+ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const std::string& nodeID)
 {
     std::lock_guard lock(mMutex);
 
-    if (const auto it = mRemoteIMs.find(nodeId.CStr()); it != mRemoteIMs.cend()) {
+    if (const auto it = mRemoteIMs.find(nodeID); it != mRemoteIMs.cend()) {
         auto& remoteIM = it->second;
 
         if (!remoteIM.mChannel) {
             remoteIM.mChannel
-                = grpc::CreateCustomChannel(remoteIM.mRemoteIAMConfig.mURL, mCredetials, grpc::ChannelArguments());
+                = grpc::CreateCustomChannel(remoteIM.mConfig.mURL, mCredentials, grpc::ChannelArguments());
         }
 
         return ProvisioningService::NewStub(remoteIM.mChannel);

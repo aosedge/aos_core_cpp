@@ -32,7 +32,7 @@ using CertificateService         = iamanager::v4::IAMCertificateService;
 using CertificateServiceStubPtr  = std::unique_ptr<CertificateService::StubInterface>;
 
 struct ConnectionDetails {
-    RemoteIAM                      mRemoteIAMConfig;
+    RemoteIAM                      mConfig;
     std::shared_ptr<grpc::Channel> mChannel;
 };
 
@@ -131,8 +131,8 @@ public:
     aos::Error FinishProvisioning(const aos::String& nodeID) override;
 
 protected:
-    virtual CertificateServiceStubPtr  CreateIAMCertificateServiceStub(const aos::String& nodeId);
-    virtual ProvisioningServiceStubPtr CreateIAMProvisioningServiceStub(const aos::String& nodeId);
+    virtual CertificateServiceStubPtr  CreateIAMCertificateServiceStub(const std::string& nodeId);
+    virtual ProvisioningServiceStubPtr CreateIAMProvisioningServiceStub(const std::string& nodeId);
 
 private:
     static constexpr size_t cMaxNodes {2}; // TODO: use const from lib
@@ -141,7 +141,7 @@ private:
 
     std::mutex                                mMutex;
     std::map<std::string, ConnectionDetails>  mRemoteIMs;
-    std::shared_ptr<grpc::ChannelCredentials> mCredetials;
+    std::shared_ptr<grpc::ChannelCredentials> mCredentials;
 
     std::unique_ptr<grpc::ClientContext> GetClientContext(
         const std::string& nodeId, UtilsTime::Duration defaultTimeout);
