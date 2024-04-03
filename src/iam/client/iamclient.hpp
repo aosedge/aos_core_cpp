@@ -135,13 +135,16 @@ protected:
     virtual ProvisioningServiceStubPtr CreateIAMProvisioningServiceStub(const aos::String& nodeId);
 
 private:
-    static constexpr size_t cMaxNodes {2};
+    static constexpr size_t cMaxNodes {2}; // TODO: use const from lib
+    static constexpr auto   cDefaultRequestTimeout = std::chrono::minutes(1);
+    static constexpr auto   cDefaultEncryptTimeout = std::chrono::minutes(5);
 
     std::mutex                                mMutex;
     std::map<std::string, ConnectionDetails>  mRemoteIMs;
     std::shared_ptr<grpc::ChannelCredentials> mCredetials;
 
-    void SetClientContext(grpc::ClientContext& context, const aos::String& nodeId);
+    std::unique_ptr<grpc::ClientContext> GetClientContext(
+        const std::string& nodeId, UtilsTime::Duration defaultTimeout);
 };
 
 #endif

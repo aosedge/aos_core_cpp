@@ -70,13 +70,11 @@ aos::Error IAMClient::GetCertTypes(
     request.set_node_id(nodeID.CStr());
 
     iamanager::v4::CertTypes response;
+    auto                     ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->GetCertTypes(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "GetCertTypes failed. error_code:" << status.error_code()
-                  << "error_message = " << status.error_message().c_str();
+    if (const auto status = stub->GetCertTypes(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Get cert types failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -103,12 +101,11 @@ aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& cer
     request.set_password(password.CStr());
 
     google::protobuf::Empty response;
+    auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->SetOwner(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "SetOwner failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->SetOwner(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Get owner failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -128,12 +125,10 @@ aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certTy
     request.set_type(certType.CStr());
 
     google::protobuf::Empty response;
+    auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->Clear(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "Clear failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->Clear(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Clear failed: code = " << status.error_code() << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -156,12 +151,11 @@ aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& ce
     request.set_password(password.CStr());
 
     iamanager::v4::CreateKeyResponse response;
+    auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->CreateKey(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "CreateKey failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->CreateKey(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Create key failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -185,12 +179,11 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
     request.set_cert(pemCert.CStr());
 
     iamanager::v4::ApplyCertResponse response;
+    auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->ApplyCert(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "ApplyCert failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->ApplyCert(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Apply certificate failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -218,12 +211,11 @@ aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& 
     request.set_password(password.CStr());
 
     google::protobuf::Empty response;
+    auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultEncryptTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->EncryptDisk(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "EncryptDisk failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->EncryptDisk(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Disk encryption failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -233,18 +225,17 @@ aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& 
 
 aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
 {
-    auto stub = CreateIAMProvisioningServiceStub(nodeID);
+    auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
     google::protobuf::Empty request, response;
+    auto                    ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
-    grpc::ClientContext ctx;
-    SetClientContext(ctx, nodeID);
-
-    if (const auto status = stub->FinishProvisioning(&ctx, request, &response); !status.ok()) {
-        LOG_DBG() << "FinishProvisioning failed. error_message = " << status.error_message().c_str();
+    if (const auto status = stub->FinishProvisioning(ctx.get(), request, &response); !status.ok()) {
+        LOG_DBG() << "Finish provisioning failed: code = " << status.error_code()
+                  << ", message = " << status.error_message().c_str();
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -296,11 +287,21 @@ ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const aos
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::SetClientContext(grpc::ClientContext& context, const aos::String& nodeId)
+std::unique_ptr<grpc::ClientContext> IAMClient::GetClientContext(
+    const std::string& nodeID, UtilsTime::Duration defaultTimeout)
 {
     std::lock_guard lock(mMutex);
 
-    if (const auto it = mRemoteIMs.find(nodeId.CStr()); it != mRemoteIMs.cend()) {
-        context.set_deadline(std::chrono::system_clock::now() + it->second.mRemoteIAMConfig.mRequestTimeout);
+    auto                ctx     = std::make_unique<grpc::ClientContext>();
+    UtilsTime::Duration timeout = defaultTimeout;
+
+    if (const auto it = mRemoteIMs.find(nodeID); it != mRemoteIMs.cend()) {
+        if (it->second.mConfig.mRequestTimeout > UtilsTime::Duration::zero()) {
+            timeout = it->second.mConfig.mRequestTimeout;
+        }
     }
+
+    ctx->set_deadline(std::chrono::system_clock::now() + timeout);
+
+    return ctx;
 }
