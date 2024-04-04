@@ -1,8 +1,9 @@
 #!/bin/bash
 
 set +x
+set -e
 
-PrintNextStep () {
+print_next_step () {
   echo
   echo "====================================="
   echo "  $1"
@@ -10,51 +11,40 @@ PrintNextStep () {
   echo
 }
 
+#=======================================================================================================================
 
-#==============================================
 if [ "$1" == "clean" ]; then
-  PrintNextStep "Clean artifacts"
+  print_next_step "Clean artifacts"
 
   rm -rf ./build/
   conan remove 'poco*' -c
   conan remove 'gtest*' -c
+  conan remove 'libp11*' -c
 fi
 
-#==============================================
-PrintNextStep "Setting up conan default profile"
+#=======================================================================================================================
+
+print_next_step "Setting up conan default profile"
 
 conan profile detect --force
-if [ $? -ne 0 ]; then
-  echo "!ERROR"; exit 1
-fi
 
-#==============================================
-PrintNextStep "Generate conan toolchain"
+#=======================================================================================================================
+print_next_step "Generate conan toolchain"
 
-conan install . --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing
-if [ $? -ne 0 ]; then
-  echo "!ERROR"; exit 1
-fi
+conan install ./conan/ --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing
 
-
-#==============================================
-PrintNextStep "Run cmake"
+#=======================================================================================================================
+print_next_step "Run cmake"
 
 cd ./build
 
 cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON -DWITH_TEST=ON
-if [ $? -ne 0 ]; then
-  echo "!ERROR"; exit 1
-fi
 
-#==============================================
-PrintNextStep "Run make"
+#=======================================================================================================================
+print_next_step "Run make"
 
 make -j4
-if [ $? -ne 0 ]; then
-  echo "!ERROR"; exit 1
-fi
 
-#==============================================
+#=======================================================================================================================
 echo
 echo "Build succeeded!"
