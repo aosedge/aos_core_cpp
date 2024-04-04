@@ -24,7 +24,7 @@ jobs:
 
       - name: Prepare
         run: |
-          sudo apt install lcov libpoco-dev libsystemd-dev -y
+          sudo apt install lcov libsofthsm2 libsystemd-dev -y
           pip install conan
 
       - name: Build and test
@@ -33,10 +33,7 @@ jobs:
 
           conan profile detect --force
 
-          conan install . --output-folder build --settings=build_type=Release --options=with_poco=False --build=missing
-          cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-
-          conan install . --output-folder build --settings=build_type=Debug --options=with_poco=False --build=missing
+          conan install ./conan/ --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing
           cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
 
           cd build
