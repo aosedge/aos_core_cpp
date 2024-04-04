@@ -24,7 +24,7 @@ set(SOURCES logger.cpp)
 add_library(${TARGET} STATIC ${SOURCES})
 
 # ######################################################################################################################
-# Labraries
+# Libraries
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} PUBLIC aoscommon ${JOURNALD_LIBRARIES})

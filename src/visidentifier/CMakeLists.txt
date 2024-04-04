@@ -24,11 +24,11 @@ set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp wsclientevent.cpp 
 add_library(${TARGET} STATIC ${SOURCES})
 
 # ######################################################################################################################
-# Labraries
+# Libraries
 # ######################################################################################################################
 
 target_link_libraries(
     ${TARGET}
     PUBLIC utils aoscommon aosiam Poco::Foundation
-    PRIVATE Poco::Crypto Poco::Net Poco::NetSSL
+    PRIVATE config Poco::Crypto Poco::Net Poco::NetSSL
 )

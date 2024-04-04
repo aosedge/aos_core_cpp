@@ -5,13 +5,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosiamtest)
+set(TARGET iamserver_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iam_test.cpp storagestub.cpp)
+set(SOURCES iamserver_test.cpp stubs/storagestub.cpp)
 
 # ######################################################################################################################
 # Target
@@ -23,7 +23,7 @@ add_executable(${TARGET} ${SOURCES})
 # Setup softhsm
 # ######################################################################################################################
 
-include(softhsm.cmake)
+include(cmake/softhsm.cmake)
 
 createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 
@@ -31,12 +31,12 @@ createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 # Gen certificates
 # ######################################################################################################################
 
-include(gencertificates.cmake)
+include(cmake/gencertificates.cmake)
 
 gencertificates(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
 
 # ######################################################################################################################
-# OpenSSL
+# Setup openssl.conf
 # ######################################################################################################################
 
 find_package(libp11)
@@ -58,4 +58,4 @@ gtest_discover_tests(
                          OPENSSL_CONF=${OPENSSL_CONF}
 )
 
-target_link_libraries(${TARGET} mbedtls iamserver iamclient aoscoretestutils GTest::gmock_main)
+target_link_libraries(${TARGET} iamserver iamclient aoscoretestutils mbedtls GTest::gmock_main)

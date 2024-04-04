@@ -24,7 +24,7 @@ set(SOURCES app.cpp)
 add_library(${TARGET} STATIC ${SOURCES})
 
 # ######################################################################################################################
-# Labraries
+# Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC mbedtls config database iamclient iamserver visidentifier)
+target_link_libraries(${TARGET} PUBLIC config database iamclient iamserver visidentifier mbedtls)

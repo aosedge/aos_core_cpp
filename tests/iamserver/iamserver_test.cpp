@@ -21,7 +21,7 @@
 #include "mocks/identhandlermock.hpp"
 #include "mocks/permissionhandlermock.hpp"
 #include "mocks/remoteiamhandlermock.hpp"
-#include "storagestub.hpp"
+#include "stubs/storagestub.hpp"
 
 using namespace testing;
 using namespace aos;
@@ -33,7 +33,7 @@ using namespace iamanager::v4;
  * Suite
  **********************************************************************************************************************/
 
-class IAMTest : public Test {
+class IAMServerTest : public Test {
 protected:
     // Default parameters
     static constexpr auto cPIN                 = "admin";
@@ -100,7 +100,7 @@ private:
     StaticArray<CertModule, cMaxModulesCount>   mCertModules;
 };
 
-void IAMTest::SetUp()
+void IAMServerTest::SetUp()
 {
     InitLogs();
 
@@ -125,12 +125,12 @@ void IAMTest::SetUp()
     mClientConfig = GetClientConfig();
 }
 
-void IAMTest::TearDown()
+void IAMServerTest::TearDown()
 {
     FS::ClearDir(SOFTHSM_BASE_DIR "/tokens");
 }
 
-void IAMTest::RegisterPKCS11Module(const String& name, crypto::KeyType keyType)
+void IAMServerTest::RegisterPKCS11Module(const String& name, crypto::KeyType keyType)
 {
     ASSERT_TRUE(mPKCS11Modules.EmplaceBack().IsNone());
     ASSERT_TRUE(mCertModules.EmplaceBack().IsNone());
@@ -141,7 +141,7 @@ void IAMTest::RegisterPKCS11Module(const String& name, crypto::KeyType keyType)
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
 }
 
-Config IAMTest::GetServerConfig()
+Config IAMServerTest::GetServerConfig()
 {
     Config config;
 
@@ -156,7 +156,7 @@ Config IAMTest::GetServerConfig()
     return config;
 }
 
-Config IAMTest::GetClientConfig()
+Config IAMServerTest::GetClientConfig()
 {
     Config config;
 
@@ -172,7 +172,7 @@ Config IAMTest::GetClientConfig()
     return config;
 }
 
-certhandler::ModuleConfig IAMTest::GetCertModuleConfig(crypto::KeyType keyType)
+certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyType keyType)
 {
     certhandler::ModuleConfig config;
     config.mKeyType         = keyType;
@@ -184,7 +184,7 @@ certhandler::ModuleConfig IAMTest::GetCertModuleConfig(crypto::KeyType keyType)
     return config;
 }
 
-PKCS11ModuleConfig IAMTest::GetPKCS11ModuleConfig()
+PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
 {
     PKCS11ModuleConfig config;
     config.mLibrary         = SOFTHSM2_LIB;
@@ -194,7 +194,7 @@ PKCS11ModuleConfig IAMTest::GetPKCS11ModuleConfig()
     return config;
 }
 
-void IAMTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+void IAMServerTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
     const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
 {
     StaticString<crypto::cCSRPEMLen> csr;
@@ -231,14 +231,14 @@ void IAMTest::ApplyCertificate(const String& certType, const String& subject, co
  * IAMServer tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, InitSucceeds)
+TEST_F(IAMServerTest, InitSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOn);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, InitFails)
+TEST_F(IAMServerTest, InitFails)
 {
     mServerConfig.mCertStorage = "unknown";
 
@@ -251,7 +251,7 @@ TEST_F(IAMTest, InitFails)
  * IAMCertificateService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, CreateKey)
+TEST_F(IAMServerTest, CreateKey)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -265,7 +265,7 @@ TEST_F(IAMTest, CreateKey)
     ASSERT_TRUE(err.IsNone());
 }
 
-TEST_F(IAMTest, CreateKeyFailOnUnkownNodeId)
+TEST_F(IAMServerTest, CreateKeyFailOnUnkownNodeId)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -279,7 +279,7 @@ TEST_F(IAMTest, CreateKeyFailOnUnkownNodeId)
     ASSERT_FALSE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, ApplyCertSucceeds)
+TEST_F(IAMServerTest, ApplyCertSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -315,7 +315,7 @@ TEST_F(IAMTest, ApplyCertSucceeds)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, ApplyCertFails)
+TEST_F(IAMServerTest, ApplyCertFails)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -335,7 +335,7 @@ TEST_F(IAMTest, ApplyCertFails)
  * IAMPermissionsService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, RegisterInstanceSucceeds)
+TEST_F(IAMServerTest, RegisterInstanceSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -360,7 +360,7 @@ TEST_F(IAMTest, RegisterInstanceSucceeds)
     ASSERT_EQ(response.secret(), "test-secret");
 }
 
-TEST_F(IAMTest, RegisterInstanceSucceedsNoMemory)
+TEST_F(IAMServerTest, RegisterInstanceSucceedsNoMemory)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -387,7 +387,7 @@ TEST_F(IAMTest, RegisterInstanceSucceedsNoMemory)
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, RegisterInstanceFailsOnPermHandler)
+TEST_F(IAMServerTest, RegisterInstanceFailsOnPermHandler)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -407,7 +407,7 @@ TEST_F(IAMTest, RegisterInstanceFailsOnPermHandler)
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, UnregisterInstanceSucceeds)
+TEST_F(IAMServerTest, UnregisterInstanceSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -426,7 +426,7 @@ TEST_F(IAMTest, UnregisterInstanceSucceeds)
     ASSERT_TRUE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, UnregisterInstanceFails)
+TEST_F(IAMServerTest, UnregisterInstanceFails)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -449,7 +449,7 @@ TEST_F(IAMTest, UnregisterInstanceFails)
  * IAMPublicService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, GetAPIVersion)
+TEST_F(IAMServerTest, GetAPIVersion)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -467,7 +467,7 @@ TEST_F(IAMTest, GetAPIVersion)
     ASSERT_EQ(response.version(), 4);
 }
 
-TEST_F(IAMTest, GetNodeInfo)
+TEST_F(IAMServerTest, GetNodeInfo)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -486,7 +486,7 @@ TEST_F(IAMTest, GetNodeInfo)
     ASSERT_EQ(response.node_type(), mServerConfig.mNodeType);
 }
 
-TEST_F(IAMTest, GetCertSucceeds)
+TEST_F(IAMServerTest, GetCertSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -508,7 +508,7 @@ TEST_F(IAMTest, GetCertSucceeds)
     ASSERT_FALSE(response.key_url().empty());
 }
 
-TEST_F(IAMTest, GetCertFailsOnUnknownCertType)
+TEST_F(IAMServerTest, GetCertFailsOnUnknownCertType)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -529,7 +529,7 @@ TEST_F(IAMTest, GetCertFailsOnUnknownCertType)
  * IAMPublicIdentityService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, GetSystemInfoSucceeds)
+TEST_F(IAMServerTest, GetSystemInfoSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -553,7 +553,7 @@ TEST_F(IAMTest, GetSystemInfoSucceeds)
     ASSERT_EQ(response.unit_model(), cUnitModel);
 }
 
-TEST_F(IAMTest, GetSystemInfoFailsOnSystemId)
+TEST_F(IAMServerTest, GetSystemInfoFailsOnSystemId)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -574,7 +574,7 @@ TEST_F(IAMTest, GetSystemInfoFailsOnSystemId)
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, GetSystemInfoFailsOnUnitModel)
+TEST_F(IAMServerTest, GetSystemInfoFailsOnUnitModel)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -596,7 +596,7 @@ TEST_F(IAMTest, GetSystemInfoFailsOnUnitModel)
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, GetSubjectsSucceeds)
+TEST_F(IAMServerTest, GetSubjectsSucceeds)
 {
     aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, 10> subjects;
 
@@ -622,7 +622,7 @@ TEST_F(IAMTest, GetSubjectsSucceeds)
     ASSERT_EQ(response.subjects_size(), subjects.Size());
 }
 
-TEST_F(IAMTest, GetSubjectsFails)
+TEST_F(IAMServerTest, GetSubjectsFails)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -641,7 +641,7 @@ TEST_F(IAMTest, GetSubjectsFails)
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, SubscribeSubjectsChanged)
+TEST_F(IAMServerTest, SubscribeSubjectsChanged)
 {
     const std::vector<std::string> cSubjects = {"subject1", "subject2", "subject3"};
 
@@ -684,7 +684,7 @@ TEST_F(IAMTest, SubscribeSubjectsChanged)
  * IAMPublicPermissionsService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, GetPermissionsSucceeds)
+TEST_F(IAMServerTest, GetPermissionsSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -703,7 +703,7 @@ TEST_F(IAMTest, GetPermissionsSucceeds)
     ASSERT_TRUE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, GetPermissionsFails)
+TEST_F(IAMServerTest, GetPermissionsFails)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOff);
@@ -726,7 +726,7 @@ TEST_F(IAMTest, GetPermissionsFails)
  * IAMProvisioningService tests
  **********************************************************************************************************************/
 
-TEST_F(IAMTest, GetAllNodeIDsSucceeds)
+TEST_F(IAMServerTest, GetAllNodeIDsSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOn);
@@ -744,7 +744,7 @@ TEST_F(IAMTest, GetAllNodeIDsSucceeds)
     ASSERT_TRUE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
 }
 
-TEST_F(IAMTest, GetCertTypesSucceeds)
+TEST_F(IAMServerTest, GetCertTypesSucceeds)
 {
     aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> registeredCertTypes;
     ASSERT_TRUE(registeredCertTypes.PushBack("client").IsNone());
@@ -770,7 +770,7 @@ TEST_F(IAMTest, GetCertTypesSucceeds)
     ASSERT_TRUE(receivedCertTypes.IsEmpty());
 }
 
-TEST_F(IAMTest, GetCertTypesFailOnUnknownNodeId)
+TEST_F(IAMServerTest, GetCertTypesFailOnUnknownNodeId)
 {
     mServerConfig.mNodeID = "node10";
 
@@ -788,7 +788,7 @@ TEST_F(IAMTest, GetCertTypesFailOnUnknownNodeId)
     ASSERT_TRUE(receivedCertTypes.IsEmpty());
 }
 
-TEST_F(IAMTest, SetOwnerSucceeds)
+TEST_F(IAMServerTest, SetOwnerSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOn);
@@ -806,7 +806,7 @@ TEST_F(IAMTest, SetOwnerSucceeds)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, SetOwnerFailOnUnknownNodeId)
+TEST_F(IAMServerTest, SetOwnerFailOnUnknownNodeId)
 {
     mServerConfig.mNodeID = "node10";
 
@@ -823,7 +823,7 @@ TEST_F(IAMTest, SetOwnerFailOnUnknownNodeId)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, ClearSucceeds)
+TEST_F(IAMServerTest, ClearSucceeds)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOn);
@@ -841,7 +841,7 @@ TEST_F(IAMTest, ClearSucceeds)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, ClearFailOnInvalidNodeId)
+TEST_F(IAMServerTest, ClearFailOnInvalidNodeId)
 {
     mServerConfig.mNodeID = "unknown-id";
 
@@ -858,7 +858,7 @@ TEST_F(IAMTest, ClearFailOnInvalidNodeId)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, EncryptDiskFailsOnEmptyCmdArgs)
+TEST_F(IAMServerTest, EncryptDiskFailsOnEmptyCmdArgs)
 {
     auto err = mServer.Init(mServerConfig, mCertHandler, &mIdentHandler, &mPermHandler, mRemoteIAMHandler.get(),
         mCertLoader, mCryptoProvider, cProvisioningModeOn);
@@ -873,7 +873,7 @@ TEST_F(IAMTest, EncryptDiskFailsOnEmptyCmdArgs)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, EncryptDiskCmdSucceeds)
+TEST_F(IAMServerTest, EncryptDiskCmdSucceeds)
 {
     RegisterPKCS11Module("diskencryption");
 
@@ -892,7 +892,7 @@ TEST_F(IAMTest, EncryptDiskCmdSucceeds)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, EncryptDiskCmdFails)
+TEST_F(IAMServerTest, EncryptDiskCmdFails)
 {
     mServerConfig.mDiskEncryptionCmdArgs = {"false"};
 
@@ -909,7 +909,7 @@ TEST_F(IAMTest, EncryptDiskCmdFails)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, EncryptDiskFailOnUnknownNodeId)
+TEST_F(IAMServerTest, EncryptDiskFailOnUnknownNodeId)
 {
     mServerConfig.mNodeID = "unknown-id";
 
@@ -926,7 +926,7 @@ TEST_F(IAMTest, EncryptDiskFailOnUnknownNodeId)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMTest, FinishProvisioningSucceedsOnEmptyCmdArgs)
+TEST_F(IAMServerTest, FinishProvisioningSucceedsOnEmptyCmdArgs)
 {
     // make sure that disk encryption command args are empty
     mServerConfig.mFinishProvisioningCmdArgs.clear();
@@ -942,7 +942,7 @@ TEST_F(IAMTest, FinishProvisioningSucceedsOnEmptyCmdArgs)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, FinishProvisioningCmdSucceeds)
+TEST_F(IAMServerTest, FinishProvisioningCmdSucceeds)
 {
     mServerConfig.mFinishProvisioningCmdArgs = {"true"};
 
@@ -957,7 +957,7 @@ TEST_F(IAMTest, FinishProvisioningCmdSucceeds)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMTest, FinishProvisioningCmdFails)
+TEST_F(IAMServerTest, FinishProvisioningCmdFails)
 {
     mServerConfig.mFinishProvisioningCmdArgs = {"false"};
 
