@@ -122,8 +122,8 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
                 return AOS_ERROR_WRAP(err);
             }
 
-            publicOpt    = GetTLSCredentials(certInfo, certLoader, cryptoProvider);
-            protectedOpt = GetMTLSCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
+            publicOpt    = GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
+            protectedOpt = GetMTLSServerCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
             publicOpt    = grpc::InsecureServerCredentials();
             protectedOpt = grpc::InsecureServerCredentials();

@@ -29,7 +29,7 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
-        mCredentials = GetTlsChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
+        mCredentials = GetTLSChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
     }
 
     for (const auto& iamCfg : config.mRemoteIAMs) {

@@ -140,7 +140,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
  * Public interface
  **********************************************************************************************************************/
 
-std::shared_ptr<grpc::ServerCredentials> GetMTLSCredentials(const iam::certhandler::CertInfo& certInfo,
+std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
     const String& rootCertPath, cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
@@ -157,7 +157,7 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSCredentials(const iam::certhandl
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const iam::certhandler::CertInfo& certInfo,
+std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
     cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetTLSCertificates(certInfo, certLoader, cryptoProvider);
@@ -172,7 +172,7 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSCredentials(const iam::certhandle
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ChannelCredentials> GetTlsChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
+std::shared_ptr<grpc::ChannelCredentials> GetTLSChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     const String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider)
 {

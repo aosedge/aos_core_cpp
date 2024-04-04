@@ -53,7 +53,7 @@ protected:
     {
         auto tlsChannelCreds = insecure
             ? grpc::InsecureChannelCredentials()
-            : GetTlsChannelCredentials(certInfo, GetClientConfig().mCACert.c_str(), mCertLoader, mCryptoProvider);
+            : GetTLSChannelCredentials(certInfo, GetClientConfig().mCACert.c_str(), mCertLoader, mCryptoProvider);
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }
