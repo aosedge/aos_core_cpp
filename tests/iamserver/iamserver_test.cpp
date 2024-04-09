@@ -5,7 +5,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef OPENSSL_SUPPRESS_DEPRECATED
+// Suppress deprecated warnings from OpenSSL to use ENGINE_* functions
+#define OPENSSL_SUPPRESS_DEPRECATED
+#endif
+
 #include <gmock/gmock.h>
+#include <openssl/engine.h>
 
 #include <test/utils/log.hpp>
 #include <test/utils/softhsmenv.hpp>
@@ -127,6 +133,11 @@ void IAMServerTest::SetUp()
 
 void IAMServerTest::TearDown()
 {
+    if (auto engine = ENGINE_by_id("pkcs11"); engine != nullptr) {
+        // Clear the PKCS#11 engine cache like slots/sessions
+        ENGINE_get_finish_function(engine)(engine);
+    }
+
     FS::ClearDir(SOFTHSM_BASE_DIR "/tokens");
 }
 
