@@ -184,6 +184,8 @@ TEST_F(ConfigTest, ParsePKCS11ModuleParams)
     params->set("tokenLabel", "token");
     params->set("userPINPath", "/var/aos/pin");
     params->set("modulePathInURL", true);
+    params->set("uid", 42);
+    params->set("gid", 43);
 
     auto [pkcs11Params, error] = ParsePKCS11ModuleParams(params);
     ASSERT_EQ(error, aos::ErrorEnum::eNone);
@@ -194,6 +196,8 @@ TEST_F(ConfigTest, ParsePKCS11ModuleParams)
     EXPECT_EQ(pkcs11Params.mSlotIndex.value(), 2);
     EXPECT_EQ(pkcs11Params.mTokenLabel, "token");
     EXPECT_EQ(pkcs11Params.mSlotID, std::nullopt);
+    EXPECT_EQ(pkcs11Params.mUID, 42);
+    EXPECT_EQ(pkcs11Params.mGID, 43);
 }
 
 TEST_F(ConfigTest, ParseVISIdentifierModuleParams)

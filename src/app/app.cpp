@@ -110,6 +110,8 @@ static aos::Error ConvertPKCS11ModuleParams(
     aosParams.mTokenLabel      = params.mTokenLabel.c_str();
     aosParams.mUserPINPath     = params.mUserPINPath.c_str();
     aosParams.mModulePathInURL = params.mModulePathInURL;
+    aosParams.mUID             = params.mUID;
+    aosParams.mGID             = params.mGID;
 
     return aos::ErrorEnum::eNone;
 }
