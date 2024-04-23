@@ -40,6 +40,8 @@ public:
         aos::Error, ASN1EncodeDERSequence, (const aos::Array<aos::Array<uint8_t>>&, aos::Array<uint8_t>&), (override));
     MOCK_METHOD(aos::Error, ASN1DecodeOctetString, (const aos::Array<uint8_t>&, aos::Array<uint8_t>&), (override));
     MOCK_METHOD(aos::Error, ASN1DecodeOID, (const aos::Array<uint8_t>&, aos::Array<uint8_t>&), (override));
+    MOCK_METHOD(aos::RetWithError<aos::uuid::UUID>, CreateUUIDv5, (const aos::uuid::UUID&, const aos::Array<uint8_t>&),
+        (override));
 };
 
 #endif
