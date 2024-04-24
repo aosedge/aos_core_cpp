@@ -688,7 +688,7 @@ grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
         }
     }
 
-    StaticString<uuid::cUUIDStrLen> secret;
+    StaticString<uuid::cUUIDLen> secret;
 
     Tie(secret, err) = mPermHandler->RegisterInstance(aosInstance, aosPermissions);
 
