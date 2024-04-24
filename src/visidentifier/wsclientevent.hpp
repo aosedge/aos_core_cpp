@@ -23,7 +23,7 @@ public:
     enum class EventEnum { CLOSED, FAILED };
 
     struct Details {
-        EventEnum   mCode;
+        EventEnum   mCode = EventEnum::CLOSED;
         std::string mMessage;
     };
 

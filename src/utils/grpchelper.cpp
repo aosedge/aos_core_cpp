@@ -6,6 +6,7 @@
  */
 
 #include <fstream>
+#include <numeric>
 #include <streambuf>
 
 #include "grpchelper.hpp"
@@ -77,7 +78,7 @@ static std::string ConvertCertificateToPEM(
     String      view = result.c_str();
 
     auto err = cryptoProvider.X509CertToPEM(certificate, view);
-    AOS_ERROR_CHECK_AND_THROW("Certificate convertion problem", err);
+    AOS_ERROR_CHECK_AND_THROW("Certificate conversion problem", err);
 
     result.resize(view.Size());
 
@@ -90,7 +91,7 @@ static std::string ConvertCertificatesToPEM(
     std::string resultChain;
 
     for (const auto& cert : chain) {
-        resultChain += ConvertCertificateToPEM(cert, cryptoProvider);
+        resultChain.append(ConvertCertificateToPEM(cert, cryptoProvider));
     }
 
     return resultChain;
