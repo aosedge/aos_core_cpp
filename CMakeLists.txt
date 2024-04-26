@@ -52,7 +52,7 @@ include(AosCoreLib)
 find_package(gRPC REQUIRED)
 
 # Poco lib
-find_package(Poco REQUIRED JSON)
+find_package(Poco REQUIRED JSON DataSQLite)
 
 # Systemd lib
 find_package(PkgConfig REQUIRED)
