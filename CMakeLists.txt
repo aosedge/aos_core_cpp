@@ -54,6 +54,10 @@ find_package(gRPC REQUIRED)
 # Poco lib
 find_package(Poco REQUIRED JSON)
 
+# Systemd lib
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JOURNALD libsystemd REQUIRED)
+
 if(WITH_TEST)
     find_package(GTest REQUIRED)
 
