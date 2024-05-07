@@ -69,6 +69,9 @@ include(AosCoreLib)
 # Aos core API
 include(AosCoreAPI)
 
+# Aos core common
+include(AosCoreCommon)
+
 # Poco lib
 find_package(
     Poco
