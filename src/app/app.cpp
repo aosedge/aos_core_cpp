@@ -141,7 +141,7 @@ void App::initialize(Application& self)
     auto config = ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
 
-    err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString());
+    err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString(), config.mValue.mMigrationPath);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
 
     if (!config.mValue.mIdentifier.mPlugin.empty()) {

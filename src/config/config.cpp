@@ -104,6 +104,7 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         config.mCACert                   = object.GetValue<std::string>("CACert");
         config.mCertStorage              = object.GetValue<std::string>("CertStorage");
         config.mWorkingDir               = object.GetValue<std::string>("WorkingDir");
+        config.mMigrationPath            = object.GetValue<std::string>("MigrationPath");
         config.mEnablePermissionsHandler = object.GetValue<bool>("EnablePermissionsHandler");
 
         config.mFinishProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,

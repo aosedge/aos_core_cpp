@@ -15,6 +15,7 @@
 #include <Poco/Data/Session.h>
 
 #include <aos/iam/certmodules/certmodule.hpp>
+#include <migration/migration.hpp>
 
 class Database : public aos::iam::certhandler::StorageItf {
 public:
@@ -27,9 +28,10 @@ public:
      * Initializes certificate info storage.
      *
      * @param dbPath path to the database file.
+     * @param migrationPath path to the migration scripts.
      * @return Error.
      */
-    aos::Error Init(const std::string& dbPath);
+    aos::Error Init(const std::string& dbPath, const std::string& migrationPath);
 
     /**
      * Adds new certificate info to the storage.
@@ -91,7 +93,9 @@ private:
     CertInfo ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo);
     void     FromAosCertInfo(const CertInfo& certInfo, aos::iam::certhandler::CertInfo& result);
 
-    std::optional<Poco::Data::Session> mSession;
+    std::optional<Poco::Data::Session>               mSession;
+    std::optional<aos::common::migration::Migration> mMigration;
+    constexpr static int                             mVersion = 0;
 };
 
 #endif

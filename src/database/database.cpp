@@ -22,7 +22,7 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-aos::Error Database::Init(const std::string& dbPath)
+aos::Error Database::Init(const std::string& dbPath, const std::string& migrationPath)
 {
     if (mSession && mSession->isConnected()) {
         return aos::ErrorEnum::eNone;
@@ -36,6 +36,9 @@ aos::Error Database::Init(const std::string& dbPath)
 
         mSession = std::optional<Poco::Data::Session>(Poco::Data::Session("SQLite", dbPath));
         CreateTables();
+
+        mMigration.emplace(mSession.value(), migrationPath);
+        mMigration->MigrateToVersion(mVersion);
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to initialize database: " << e.what();
 

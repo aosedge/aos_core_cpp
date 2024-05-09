@@ -32,6 +32,7 @@ public:
             "NodeID": "NodeID",
             "NodeType": "NodeType",
             "WorkingDir": "/var/aos/iamanager",
+            "MigrationPath": "/var/aos/migration",
             "FinishProvisioningCmdArgs": [
                 "/var/aos/finish.sh"
             ],
@@ -120,6 +121,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeID, "NodeID");
     EXPECT_EQ(config.mNodeType, "NodeType");
     EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
+    EXPECT_EQ(config.mMigrationPath, "/var/aos/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);
 
     EXPECT_EQ(config.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});

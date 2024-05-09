@@ -25,7 +25,8 @@ protected:
     }
 
 protected:
-    std::string mFileName = "database/test/test.db";
+    std::string mFileName      = "database/test/test.db";
+    std::string mMigrationPath = "database/test/migration";
     Database    mDB;
 };
 
@@ -42,7 +43,7 @@ TEST_F(DatabaseTest, AddCertInfo)
     certInfo.mKeyURL   = "keyURL";
     certInfo.mNotAfter = aos::Time::Now();
 
-    EXPECT_EQ(mDB.Init(mFileName), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), aos::ErrorEnum::eNone);
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), aos::ErrorEnum::eFailed);
@@ -57,7 +58,7 @@ TEST_F(DatabaseTest, AddCertInfo)
 
 TEST_F(DatabaseTest, RemoveCertInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo;
 
@@ -74,7 +75,7 @@ TEST_F(DatabaseTest, RemoveCertInfo)
 
 TEST_F(DatabaseTest, RemoveAllCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo;
 
@@ -98,7 +99,7 @@ TEST_F(DatabaseTest, RemoveAllCertsInfo)
 
 TEST_F(DatabaseTest, GetCertInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo {};
 
@@ -133,7 +134,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 
 TEST_F(DatabaseTest, GetCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
 
     aos::StaticArray<aos::iam::certhandler::CertInfo, 2> certsInfo;
 

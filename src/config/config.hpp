@@ -88,6 +88,7 @@ struct Config {
     std::string               mCACert;
     std::string               mCertStorage;
     std::string               mWorkingDir;
+    std::string               mMigrationPath;
     std::vector<ModuleConfig> mCertModules;
     std::vector<std::string>  mFinishProvisioningCmdArgs;
     std::vector<std::string>  mDiskEncryptionCmdArgs;
