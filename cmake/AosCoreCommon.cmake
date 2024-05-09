@@ -23,6 +23,9 @@ ExternalProject_Add(
 
 file(MAKE_DIRECTORY ${aoscorecommon_build_dir}/include)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JOURNALD libsystemd REQUIRED)
+
 add_library(aosmigration STATIC IMPORTED GLOBAL)
 set_target_properties(aosmigration PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${aoscorecommon_build_dir}/include)
 set_target_properties(aosmigration PROPERTIES IMPORTED_LOCATION ${aoscorecommon_build_dir}/lib/libmigration.a)
@@ -37,4 +40,5 @@ add_dependencies(aosutils aoscorecommon)
 add_library(aoslogger STATIC IMPORTED GLOBAL)
 set_target_properties(aoslogger PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${aoscorecommon_build_dir}/include)
 set_target_properties(aoslogger PROPERTIES IMPORTED_LOCATION ${aoscorecommon_build_dir}/lib/liblogger.a)
+target_link_libraries(aoslogger INTERFACE ${JOURNALD_LIBRARIES})
 add_dependencies(aoslogger aoscorecommon)

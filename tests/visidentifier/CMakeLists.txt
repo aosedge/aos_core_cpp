@@ -31,4 +31,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} visidentifier logger GTest::gmock_main)
+target_link_libraries(${TARGET} visidentifier aoslogger GTest::gmock_main)

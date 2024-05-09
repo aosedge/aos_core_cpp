@@ -275,7 +275,7 @@ void App::HandleJournal(const std::string& name, const std::string& value)
     (void)name;
     (void)value;
 
-    mLogger.SetBackend(Logger::Backend::eJournald);
+    mLogger.SetBackend(aos::common::logger::Logger::Backend::eJournald);
 }
 
 void App::HandleLogLevel(const std::string& name, const std::string& value)

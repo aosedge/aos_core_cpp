@@ -18,7 +18,7 @@
 
 #include <aos/common/tools/log.hpp>
 
-#include "logger/logger.hpp"
+#include "logger/logmodule.hpp"
 #include "visidentifier/vismessage.hpp"
 #include "visserver.hpp"
 

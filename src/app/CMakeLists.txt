@@ -27,4 +27,13 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC config database iamclient iamserver visidentifier mbedtls)
+target_link_libraries(
+    ${TARGET}
+    PUBLIC config
+           database
+           iamclient
+           iamserver
+           visidentifier
+           mbedtls
+           aoslogger
+)

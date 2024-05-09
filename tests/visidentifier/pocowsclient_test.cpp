@@ -8,8 +8,8 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <logger/logger.hpp>
 
-#include "logger/logger.hpp"
 #include "mocks/vissubjectsobservermock.hpp"
 #include "visidentifier/pocowsclient.hpp"
 #include "visidentifier/visidentifier.hpp"
@@ -57,9 +57,9 @@ protected:
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()
     {
-        static Logger mLogger;
+        static aos::common::logger::Logger mLogger;
 
-        mLogger.SetBackend(Logger::Backend::eStdIO);
+        mLogger.SetBackend(aos::common::logger::Logger::Backend::eStdIO);
         mLogger.SetLogLevel(aos::LogLevelEnum::eDebug);
         mLogger.Init();
 

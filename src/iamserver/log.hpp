@@ -8,7 +8,7 @@
 #ifndef LOG_HPP_
 #define LOG_HPP_
 
-#include <logger/logger.hpp>
+#include "logger/logmodule.hpp"
 
 #define LOG_DBG() LOG_MODULE_DBG(AosLogModule(::LogModuleEnum::eIAMServer))
 #define LOG_INF() LOG_MODULE_INF(AosLogModule(::LogModuleEnum::eIAMServer))
