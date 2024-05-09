@@ -29,6 +29,6 @@ add_library(${TARGET} STATIC ${SOURCES})
 
 target_link_libraries(
     ${TARGET}
-    PUBLIC utils aoscommon aosiam Poco::Foundation
+    PUBLIC aosutils aoscommon aosiam Poco::Foundation
     PRIVATE config Poco::Crypto Poco::Net Poco::NetSSL
 )

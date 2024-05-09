@@ -39,8 +39,8 @@ protected:
         mIAMProvisioningServiceStub = std::make_unique<iamanager::v4::MockIAMProvisioningServiceStub>();
         mIAMCertificateServiceStub  = std::make_unique<iamanager::v4::MockIAMCertificateServiceStub>();
 
-        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node0", "url0", UtilsTime::Duration(0)});
-        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node1", "url1", UtilsTime::Duration(0)});
+        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node0", "url0", aos::common::utils::Duration(0)});
+        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node1", "url1", aos::common::utils::Duration(0)});
     }
 
     IAMClientMock                                                  mIAMClientMock;

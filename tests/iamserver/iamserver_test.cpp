@@ -57,9 +57,9 @@ protected:
     std::unique_ptr<typename T::Stub> CreateCustomStub(
         const CertInfo& certInfo, const std::string& url, const bool insecure = false)
     {
-        auto tlsChannelCreds = insecure
-            ? grpc::InsecureChannelCredentials()
-            : GetTLSChannelCredentials(certInfo, GetClientConfig().mCACert.c_str(), mCertLoader, mCryptoProvider);
+        auto tlsChannelCreds = insecure ? grpc::InsecureChannelCredentials()
+                                        : aos::common::utils::GetTLSChannelCredentials(
+                                            certInfo, GetClientConfig().mCACert.c_str(), mCertLoader, mCryptoProvider);
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }

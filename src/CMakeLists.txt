@@ -27,7 +27,6 @@ add_subdirectory(database)
 add_subdirectory(iamclient)
 add_subdirectory(iamserver)
 add_subdirectory(logger)
-add_subdirectory(utils)
 add_subdirectory(visidentifier)
 
 # ######################################################################################################################

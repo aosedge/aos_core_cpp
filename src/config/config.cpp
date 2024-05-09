@@ -12,93 +12,18 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
+#include <utils/json.hpp>
+
 #include "config.hpp"
 #include "log.hpp"
-
-/***********************************************************************************************************************
- * Types
- **********************************************************************************************************************/
-
-class CaseInsensitiveObjectWrapper {
-public:
-    explicit CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
-        : mObject(object)
-    {
-        for (const auto& pair : *object) {
-            mKeyMap.emplace(ToLowercase(pair.first), pair.first);
-        }
-    }
-
-    bool Has(const std::string& key) const
-    {
-        std::string lowerKey = ToLowercase(key);
-
-        return mKeyMap.count(lowerKey) > 0;
-    }
-
-    Poco::Dynamic::Var Get(const std::string& key) const
-    {
-        std::string lowerKey = ToLowercase(key);
-        auto        it       = mKeyMap.find(lowerKey);
-
-        if (it == mKeyMap.end()) {
-            throw Poco::NotFoundException("Key not found");
-        }
-
-        return mObject->get(it->second);
-    }
-
-    template <typename T>
-    T GetValue(const std::string& key, const T& defaultValue = T {}) const
-    {
-        if (Has(key)) {
-            return Get(key).convert<T>();
-        }
-
-        return defaultValue;
-    }
-
-    template <typename T>
-    std::optional<T> GetOptionalValue(const std::string& key) const
-    {
-        if (Has(key)) {
-            return Get(key).convert<T>();
-        }
-
-        return std::nullopt;
-    }
-
-    Poco::JSON::Array::Ptr GetArray(const std::string& key) const { return Get(key).extract<Poco::JSON::Array::Ptr>(); }
-
-    operator Poco::JSON::Object::Ptr() const { return mObject; }
-
-    CaseInsensitiveObjectWrapper GetObject(const std::string& key) const
-    {
-        Poco::Dynamic::Var value = Get(key);
-
-        return CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>());
-    }
-
-private:
-    std::string ToLowercase(const std::string& str) const
-    {
-        std::string lowerStr = str;
-
-        std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
-
-        return lowerStr;
-    }
-
-    Poco::JSON::Object::Ptr                      mObject;
-    std::unordered_map<std::string, std::string> mKeyMap;
-};
 
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
 template <typename T, typename ParserFunc>
-std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const std::string& key, ParserFunc parserFunc)
+std::vector<T> GetArrayValue(
+    const aos::common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key, ParserFunc parserFunc)
 {
     std::vector<T> result;
 
@@ -113,18 +38,18 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
     return result;
 }
 
-static Identifier ParseIdentifier(const CaseInsensitiveObjectWrapper& object)
+static Identifier ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return Identifier {object.GetValue<std::string>("Plugin"), object.Get("Params")};
 }
 
-static RemoteIAM ParseRemoteIAM(const CaseInsensitiveObjectWrapper& object)
+static RemoteIAM ParseRemoteIAM(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    UtilsTime::Duration duration {};
-    auto                requestTimeoutString = object.GetValue<std::string>("RequestTimeout");
+    aos::common::utils::Duration duration {};
+    auto                         requestTimeoutString = object.GetValue<std::string>("RequestTimeout");
 
     if (!requestTimeoutString.empty()) {
-        auto ret = UtilsTime::ParseDuration(requestTimeoutString);
+        auto ret = aos::common::utils::ParseDuration(requestTimeoutString);
 
         if (!ret.mError.IsNone()) {
             throw std::runtime_error("Error parsing duration");
@@ -136,16 +61,16 @@ static RemoteIAM ParseRemoteIAM(const CaseInsensitiveObjectWrapper& object)
     return RemoteIAM {object.GetValue<std::string>("NodeID"), object.GetValue<std::string>("URL"), duration};
 }
 
-static ModuleConfig ParseModuleConfig(const CaseInsensitiveObjectWrapper& object)
+static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return ModuleConfig {
         object.GetValue<std::string>("ID"),
         object.GetValue<std::string>("Plugin"),
         object.GetValue<std::string>("Algorithm"),
         object.GetValue<int>("MaxItems"),
-        GetArrayValue<std::string>(
+        aos::common::utils::GetArrayValue<std::string>(
             object, "ExtendedKeyUsage", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); }),
-        GetArrayValue<std::string>(
+        aos::common::utils::GetArrayValue<std::string>(
             object, "AlternativeNames", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); }),
         object.GetValue<bool>("Disabled"),
         object.GetValue<bool>("SkipValidation"),
@@ -168,9 +93,9 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
     Config config {};
 
     try {
-        Poco::JSON::Parser           parser;
-        auto                         result = parser.parse(file);
-        CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
+        Poco::JSON::Parser                               parser;
+        auto                                             result = parser.parse(file);
+        aos::common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
         config.mIAMPublicServerURL       = object.GetValue<std::string>("IAMPublicServerURL");
         config.mIAMProtectedServerURL    = object.GetValue<std::string>("IAMProtectedServerURL");
@@ -181,19 +106,23 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         config.mWorkingDir               = object.GetValue<std::string>("WorkingDir");
         config.mEnablePermissionsHandler = object.GetValue<bool>("EnablePermissionsHandler");
 
-        config.mFinishProvisioningCmdArgs = GetArrayValue<std::string>(object, "FinishProvisioningCmdArgs",
+        config.mFinishProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
+            "FinishProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+
+        config.mDiskEncryptionCmdArgs = aos::common::utils::GetArrayValue<std::string>(object, "DiskEncryptionCmdArgs",
             [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
 
-        config.mDiskEncryptionCmdArgs = GetArrayValue<std::string>(object, "DiskEncryptionCmdArgs",
-            [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+        config.mCertModules = aos::common::utils::GetArrayValue<ModuleConfig>(
+            object, "CertModules", [](const Poco::Dynamic::Var& value) {
+                return ParseModuleConfig(
+                    aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+            });
 
-        config.mCertModules = GetArrayValue<ModuleConfig>(object, "CertModules", [](const Poco::Dynamic::Var& value) {
-            return ParseModuleConfig(CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
-        });
-
-        config.mRemoteIAMs = GetArrayValue<RemoteIAM>(object, "RemoteIAMs", [](const Poco::Dynamic::Var& value) {
-            return ParseRemoteIAM(CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
-        });
+        config.mRemoteIAMs
+            = aos::common::utils::GetArrayValue<RemoteIAM>(object, "RemoteIAMs", [](const Poco::Dynamic::Var& value) {
+                  return ParseRemoteIAM(
+                      aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+              });
 
         if (object.Has("Identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("Identifier"));
@@ -212,7 +141,7 @@ aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var
     PKCS11ModuleParams moduleParams;
 
     try {
-        CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+        aos::common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
 
         moduleParams.mLibrary         = object.GetValue<std::string>("library");
         moduleParams.mSlotID          = object.GetOptionalValue<uint32_t>("slotID");
@@ -237,7 +166,7 @@ aos::RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco
     VISIdentifierModuleParams moduleParams;
 
     try {
-        CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+        aos::common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
 
         moduleParams.mVISServer        = object.GetValue<std::string>("visServer");
         moduleParams.mCaCertFile       = object.GetValue<std::string>("caCertFile");

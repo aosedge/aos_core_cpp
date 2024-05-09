@@ -27,4 +27,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC utils aoscommon Poco::JSON)
+target_link_libraries(${TARGET} PUBLIC aosutils aoscommon Poco::JSON)

@@ -16,8 +16,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <aos/common/tools/error.hpp>
-
-#include "utils/time.hpp"
+#include <utils/time.hpp>
 
 /***********************************************************************************************************************
  * Types
@@ -35,9 +34,9 @@ struct Identifier {
  * Remote IAM parameters.
  */
 struct RemoteIAM {
-    std::string         mNodeID;
-    std::string         mURL;
-    UtilsTime::Duration mRequestTimeout;
+    std::string                  mNodeID;
+    std::string                  mURL;
+    aos::common::utils::Duration mRequestTimeout;
 };
 
 /*

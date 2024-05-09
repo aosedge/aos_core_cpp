@@ -7,9 +7,10 @@
 
 #include <Poco/JSON/JSONException.h>
 
+#include <utils/json.hpp>
+
 #include "log.hpp"
 #include "pocowsclient.hpp"
-#include "utils/json.hpp"
 #include "visidentifier.hpp"
 #include "vismessage.hpp"
 #include "wsexception.hpp"
@@ -383,13 +384,13 @@ void VISIdentifier::Subscribe(const std::string& path, VISSubscriptions::Handler
 
 std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName)
 {
-    auto var = UtilsJson::FindByPath(object, {VISMessage::cValueTagName});
+    auto var = aos::common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
     if (var.isString()) {
         return var.extract<std::string>();
     }
 
-    var = UtilsJson::FindByPath(var, {valueChildTagName});
+    var = aos::common::utils::FindByPath(var, {valueChildTagName});
 
     return var.extract<std::string>();
 }
@@ -397,14 +398,14 @@ std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::
 std::vector<std::string> VISIdentifier::GetValueArrayByPath(
     Poco::Dynamic::Var object, const std::string& valueChildTagName)
 {
-    auto var = UtilsJson::FindByPath(object, {VISMessage::cValueTagName});
+    auto var = aos::common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
     const auto isArray = [](const Poco::Dynamic::Var var) {
         return var.type() == typeid(Poco::JSON::Array) || var.type() == typeid(Poco::JSON::Array::Ptr);
     };
 
     if (!isArray(var)) {
-        var = UtilsJson::FindByPath(var, {valueChildTagName});
+        var = aos::common::utils::FindByPath(var, {valueChildTagName});
     }
 
     Poco::JSON::Array::Ptr array;

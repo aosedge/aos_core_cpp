@@ -11,10 +11,10 @@
 #include <Poco/URI.h>
 
 #include <aos/common/tools/uuid.hpp>
+#include <utils/json.hpp>
 
 #include "log.hpp"
 #include "pocowsclient.hpp"
-#include "utils/json.hpp"
 #include "vismessage.hpp"
 #include "wsexception.hpp"
 
@@ -191,17 +191,17 @@ void PocoWSClient::HandleResponse(const std::string& frame)
         Poco::Dynamic::Var objectVar;
         aos::Error         err;
 
-        aos::Tie(objectVar, err) = UtilsJson::ParseJson(frame);
+        aos::Tie(objectVar, err) = aos::common::utils::ParseJson(frame);
         AOS_ERROR_CHECK_AND_THROW("can't parse as json", err);
 
         const auto object = objectVar.extract<Poco::JSON::Object::Ptr>();
 
         if (object.isNull()) {
-            throw AosException("can't extract json object");
+            throw aos::common::utils::AosException("can't extract json object");
         }
 
         if (!object->has(VISMessage::cActionTagName)) {
-            throw AosException("action tag is missing");
+            throw aos::common::utils::AosException("action tag is missing");
         }
 
         if (const auto action = object->get(VISMessage::cActionTagName); action == "subscription") {
@@ -212,13 +212,13 @@ void PocoWSClient::HandleResponse(const std::string& frame)
 
         const auto requestId = object->get(VISMessage::cRequestIdTagName).convert<std::string>();
         if (requestId.empty()) {
-            throw AosException("requestId tag is empty");
+            throw aos::common::utils::AosException("requestId tag is empty");
         }
 
         if (!mPendingRequests.SetResponse(requestId, frame)) {
             mHandleSubscription(frame);
         }
-    } catch (const AosException& e) {
+    } catch (const aos::common::utils::AosException& e) {
         LOG_ERR() << "Failed to handle VIS response: error = " << e.message().c_str();
     }
 }

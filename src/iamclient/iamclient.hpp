@@ -143,7 +143,7 @@ private:
     std::shared_ptr<grpc::ChannelCredentials> mCredentials;
 
     std::unique_ptr<grpc::ClientContext> GetClientContext(
-        const std::string& nodeId, UtilsTime::Duration defaultTimeout);
+        const std::string& nodeId, aos::common::utils::Duration defaultTimeout);
 };
 
 #endif

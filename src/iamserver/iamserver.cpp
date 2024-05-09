@@ -19,9 +19,9 @@
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <utils/exception.hpp>
+#include <utils/grpchelper.hpp>
 
 #include "log.hpp"
-#include "utils/grpchelper.hpp"
 
 using namespace aos;
 using namespace aos::iam;
@@ -83,7 +83,7 @@ void ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src, iamanager::v4
 static const std::string CorrectAddress(const std::string& addr)
 {
     if (addr.empty()) {
-        throw AosException("bad address");
+        throw aos::common::utils::AosException("bad address");
     }
 
     if (addr[0] == ':') {
@@ -122,8 +122,9 @@ aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& ce
                 return AOS_ERROR_WRAP(err);
             }
 
-            publicOpt    = GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
-            protectedOpt = GetMTLSServerCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
+            publicOpt    = aos::common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
+            protectedOpt = aos::common::utils::GetMTLSServerCredentials(
+                certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
             publicOpt    = grpc::InsecureServerCredentials();
             protectedOpt = grpc::InsecureServerCredentials();

@@ -5,9 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <utils/grpchelper.hpp>
+
 #include "iamclient.hpp"
 #include "log.hpp"
-#include "utils/grpchelper.hpp"
 
 /***********************************************************************************************************************
  * Public
@@ -29,7 +30,8 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::certhandler::CertHand
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
-        mCredentials = GetTLSChannelCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
+        mCredentials = aos::common::utils::GetTLSChannelCredentials(
+            certInfo, config.mCACert.c_str(), certLoader, cryptoProvider);
     }
 
     for (const auto& iamCfg : config.mRemoteIAMs) {
@@ -289,15 +291,15 @@ ProvisioningServiceStubPtr IAMClient::CreateIAMProvisioningServiceStub(const std
  **********************************************************************************************************************/
 
 std::unique_ptr<grpc::ClientContext> IAMClient::GetClientContext(
-    const std::string& nodeID, UtilsTime::Duration defaultTimeout)
+    const std::string& nodeID, aos::common::utils::Duration defaultTimeout)
 {
     std::lock_guard lock(mMutex);
 
-    auto                ctx     = std::make_unique<grpc::ClientContext>();
-    UtilsTime::Duration timeout = defaultTimeout;
+    auto                         ctx     = std::make_unique<grpc::ClientContext>();
+    aos::common::utils::Duration timeout = defaultTimeout;
 
     if (const auto it = mRemoteIMs.find(nodeID); it != mRemoteIMs.cend()) {
-        if (it->second.mConfig.mRequestTimeout > UtilsTime::Duration::zero()) {
+        if (it->second.mConfig.mRequestTimeout > aos::common::utils::Duration::zero()) {
             timeout = it->second.mConfig.mRequestTimeout;
         }
     }

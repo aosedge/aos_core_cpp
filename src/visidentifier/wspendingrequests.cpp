@@ -33,7 +33,7 @@ const std::string& RequestParams::GetRequestId() const
     return mRequestId;
 }
 
-bool RequestParams::TryWaitForResponse(std::string& result, const UtilsTime::Duration timeout)
+bool RequestParams::TryWaitForResponse(std::string& result, const aos::common::utils::Duration timeout)
 {
     using namespace std::chrono;
 
