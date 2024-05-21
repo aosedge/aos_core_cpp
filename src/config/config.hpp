@@ -50,6 +50,8 @@ struct PKCS11ModuleParams {
     std::string             mTokenLabel;
     std::string             mUserPINPath;
     bool                    mModulePathInURL;
+    uint32_t                mUID;
+    uint32_t                mGID;
 };
 
 /*

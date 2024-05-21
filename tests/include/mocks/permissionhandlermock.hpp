@@ -20,7 +20,7 @@ namespace permhandler {
  */
 class PermHandlerMock : public PermHandlerItf {
 public:
-    MOCK_METHOD(RetWithError<StaticString<uuid::cUUIDStrLen>>, RegisterInstance,
+    MOCK_METHOD(RetWithError<StaticString<cSecretLen>>, RegisterInstance,
         (const InstanceIdent& instanceIdent, const Array<FunctionalServicePermissions>& instancePermissions),
         (override));
     MOCK_METHOD(Error, UnregisterInstance, (const InstanceIdent& instanceIdent), (override));

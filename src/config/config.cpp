@@ -222,6 +222,8 @@ aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var
         moduleParams.mTokenLabel      = object.GetValue<std::string>("tokenLabel");
         moduleParams.mUserPINPath     = object.GetValue<std::string>("userPinPath");
         moduleParams.mModulePathInURL = object.GetValue<bool>("modulePathInUrl");
+        moduleParams.mUID             = object.GetOptionalValue<uint32_t>("uid").value_or(0);
+        moduleParams.mGID             = object.GetOptionalValue<uint32_t>("gid").value_or(0);
 
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing PKCS11 module params: " << e.what();

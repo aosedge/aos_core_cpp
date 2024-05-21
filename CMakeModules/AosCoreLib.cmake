@@ -24,7 +24,7 @@ ExternalProject_Add(
 file(MAKE_DIRECTORY ${aoscore_build_dir}/include)
 
 add_library(aoscommon STATIC IMPORTED GLOBAL)
-set_target_properties(aoscommon PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${aoscore_build_dir}/include)
+target_include_directories(aoscommon SYSTEM INTERFACE ${aoscore_build_dir}/include)
 set_target_properties(aoscommon PROPERTIES IMPORTED_LOCATION ${aoscore_build_dir}/lib/libaoscommoncpp.a)
 add_dependencies(aoscommon aoscore)
 
@@ -45,7 +45,7 @@ set_target_properties(mbedtls::mbedx509 PROPERTIES IMPORTED_LOCATION ${aoscore_b
 add_dependencies(mbedtls::mbedx509 aoscore)
 
 add_library(mbedtls INTERFACE IMPORTED)
-set_property(TARGET mbedtls PROPERTY INTERFACE_LINK_LIBRARIES mbedtls::crypto mbedtls::mbedtls mbedtls::mbedx509)
+set_property(TARGET mbedtls PROPERTY INTERFACE_LINK_LIBRARIES mbedtls::mbedx509 mbedtls::mbedtls mbedtls::crypto)
 
 if(WITH_TEST)
     add_library(aoscoretestutils STATIC IMPORTED GLOBAL)
