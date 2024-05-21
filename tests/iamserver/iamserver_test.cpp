@@ -364,7 +364,7 @@ TEST_F(IAMServerTest, RegisterInstanceSucceeds)
     RegisterInstanceResponse response;
 
     EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(RetWithError<StaticString<uuid::cUUIDLen>>("test-secret")));
+        .WillOnce(Return(RetWithError<StaticString<aos::iam::permhandler::cSecretLen>>("test-secret")));
 
     const auto status = clientStub->RegisterInstance(&context, request, &response);
     ASSERT_TRUE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
@@ -412,7 +412,7 @@ TEST_F(IAMServerTest, RegisterInstanceFailsOnPermHandler)
     RegisterInstanceResponse response;
 
     EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(RetWithError<StaticString<uuid::cUUIDLen>>("", aos::ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<aos::iam::permhandler::cSecretLen>>("", aos::ErrorEnum::eFailed)));
 
     const auto status = clientStub->RegisterInstance(&context, request, &response);
     ASSERT_FALSE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
