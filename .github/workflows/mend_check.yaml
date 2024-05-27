@@ -1,0 +1,37 @@
+name: Mend check
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  mend_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Mend check
+        env:
+          MEND_API_KEY: ${{ secrets.MEND_API_KEY }}
+          MEND_PROJECT_TOKEN: ${{ secrets.MEND_PROJECT_TOKEN }}
+          MEND_USER_KEY: ${{ secrets.MEND_USER_KEY }}
+
+        run: |
+          echo "Downloading WhiteSource unified agent"
+          curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
+          if [[ "$(curl -sL https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar.sha256)" != "$(sha256sum wss-unified-agent.jar)" ]] ; then
+            echo "Integrity check failed"
+          else
+            java -jar wss-unified-agent.jar \
+              -apiKey $MEND_API_KEY \
+              -projectToken $MEND_PROJECT_TOKEN \
+              -userKey $MEND_USER_KEY \
+              -c ./.github/workflows/mend_check.conf -d ./ \
+              -scanComment $GITHUB_SHA
+          fi
