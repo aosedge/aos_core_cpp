@@ -60,7 +60,7 @@ void ConvertToProto(const Array<StaticString<Size>>& src, google::protobuf::Repe
     }
 }
 
-aos::InstanceIdent ConvertToAOS(const iamanager::v4::InstanceIdent& val)
+aos::InstanceIdent ConvertToAOS(const iamanager::v5::InstanceIdent& val)
 {
     aos::InstanceIdent result;
 
@@ -71,7 +71,7 @@ aos::InstanceIdent ConvertToAOS(const iamanager::v4::InstanceIdent& val)
     return result;
 }
 
-void ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src, iamanager::v4::Subjects& dst)
+void ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src, iamanager::v5::Subjects& dst)
 {
     dst.clear_subjects();
 
@@ -164,7 +164,7 @@ IAMServer::~IAMServer()
  **********************************************************************************************************************/
 
 grpc::Status IAMServer::GetAPIVersion(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v4::APIVersion* response)
+    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::APIVersion* response)
 {
     (void)context;
     (void)request;
@@ -177,21 +177,21 @@ grpc::Status IAMServer::GetAPIVersion(
 }
 
 grpc::Status IAMServer::GetNodeInfo(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v4::NodeInfo* response)
+    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::NodeInfo* response)
 {
     (void)context;
     (void)request;
 
     LOG_DBG() << "Process get node info";
 
-    response->set_node_id(mNodeInfo.mID.CStr());
-    response->set_node_type(mNodeInfo.mType.CStr());
+    response->set_id(mNodeInfo.mID.CStr());
+    response->set_type(mNodeInfo.mType.CStr());
 
     return grpc::Status::OK;
 }
 
-grpc::Status IAMServer::GetCert(grpc::ServerContext* context, const iamanager::v4::GetCertRequest* request,
-    iamanager::v4::GetCertResponse* response)
+grpc::Status IAMServer::GetCert(grpc::ServerContext* context, const iamanager::v5::GetCertRequest* request,
+    iamanager::v5::GetCertResponse* response)
 {
     (void)context;
 
@@ -231,7 +231,7 @@ grpc::Status IAMServer::GetCert(grpc::ServerContext* context, const iamanager::v
  **********************************************************************************************************************/
 
 grpc::Status IAMServer::GetSystemInfo(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v4::SystemInfo* response)
+    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::SystemInfo* response)
 {
     (void)context;
     (void)request;
@@ -260,7 +260,7 @@ grpc::Status IAMServer::GetSystemInfo(
 }
 
 grpc::Status IAMServer::GetSubjects(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v4::Subjects* response)
+    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::Subjects* response)
 {
     (void)context;
     (void)request;
@@ -284,7 +284,7 @@ grpc::Status IAMServer::GetSubjects(
 }
 
 grpc::Status IAMServer::SubscribeSubjectsChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
-    grpc::ServerWriter<iamanager::v4::Subjects>* writer)
+    grpc::ServerWriter<iamanager::v5::Subjects>* writer)
 {
     (void)context;
     (void)request;
@@ -300,8 +300,8 @@ grpc::Status IAMServer::SubscribeSubjectsChanged(grpc::ServerContext* context, c
  * IAMPublicPermissionsService implementation
  **********************************************************************************************************************/
 
-grpc::Status IAMServer::GetPermissions(grpc::ServerContext* context, const iamanager::v4::PermissionsRequest* request,
-    iamanager::v4::PermissionsResponse* response)
+grpc::Status IAMServer::GetPermissions(grpc::ServerContext* context, const iamanager::v5::PermissionsRequest* request,
+    iamanager::v5::PermissionsResponse* response)
 {
     (void)context;
 
@@ -318,8 +318,8 @@ grpc::Status IAMServer::GetPermissions(grpc::ServerContext* context, const iaman
         return grpc::Status(grpc::StatusCode::INTERNAL, "GetPermissions error");
     }
 
-    iamanager::v4::InstanceIdent instanceIdent;
-    iamanager::v4::Permissions   permissions;
+    iamanager::v5::InstanceIdent instanceIdent;
+    iamanager::v5::Permissions   permissions;
 
     instanceIdent.set_service_id(aosInstanceIdent.mServiceID.CStr());
     instanceIdent.set_subject_id(aosInstanceIdent.mSubjectID.CStr());
@@ -336,11 +336,11 @@ grpc::Status IAMServer::GetPermissions(grpc::ServerContext* context, const iaman
 }
 
 /***********************************************************************************************************************
- * IAMPublicPermissionsService implementation
+ * IAMPublicNodesService implementation
  **********************************************************************************************************************/
 
 grpc::Status IAMServer::GetAllNodeIDs(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v4::NodesID* response)
+    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::NodesID* response)
 {
     (void)context;
     (void)request;
@@ -362,8 +362,64 @@ grpc::Status IAMServer::GetAllNodeIDs(
     return grpc::Status::OK;
 }
 
+grpc::Status IAMServer::GetNodeInfo(
+    grpc::ServerContext* context, const iamanager::v5::GetNodeInfoRequest* request, iamanager::v5::NodeInfo* response)
+{
+    (void)context;
+    (void)request;
+    (void)response;
+
+    return grpc::Status::CANCELLED;
+}
+
+grpc::Status IAMServer::SubscribeNodeChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
+    grpc::ServerWriter<iamanager::v5::NodeInfo>* writer)
+{
+    (void)context;
+    (void)request;
+
+    mNodeInfoSubscriptions.push_back(writer);
+
+    return grpc::Status::OK;
+}
+
+grpc::Status IAMServer::RegisterNode(grpc::ServerContext*                                                 context,
+    grpc::ServerReaderWriter<::iamanager::v5::IAMIncomingMessages, ::iamanager::v5::IAMOutgoingMessages>* stream)
+{
+    (void)context;
+    (void)stream;
+
+    return grpc::Status::CANCELLED;
+}
+
+/***********************************************************************************************************************
+ * IAMNodesService implementation
+ **********************************************************************************************************************/
+grpc::Status IAMServer::PauseNode(grpc::ServerContext* context, const iamanager::v5::PauseNodeRequest* request,
+    iamanager::v5::PauseNodeResponse* response)
+{
+    (void)context;
+    (void)request;
+    (void)response;
+
+    return grpc::Status::CANCELLED;
+}
+
+grpc::Status IAMServer::ResumeNode(grpc::ServerContext* context, const iamanager::v5::ResumeNodeRequest* request,
+    iamanager::v5::ResumeNodeResponse* response)
+{
+    (void)context;
+    (void)request;
+    (void)response;
+
+    return grpc::Status::CANCELLED;
+}
+
+/***********************************************************************************************************************
+ * IAMProvisioningService implementation
+ **********************************************************************************************************************/
 grpc::Status IAMServer::GetCertTypes(
-    grpc::ServerContext* context, const iamanager::v4::GetCertTypesRequest* request, iamanager::v4::CertTypes* response)
+    grpc::ServerContext* context, const iamanager::v5::GetCertTypesRequest* request, iamanager::v5::CertTypes* response)
 {
     (void)context;
 
@@ -393,123 +449,18 @@ grpc::Status IAMServer::GetCertTypes(
     return grpc::Status::OK;
 }
 
-grpc::Status IAMServer::SetOwner(
-    grpc::ServerContext* context, const iamanager::v4::SetOwnerRequest* request, google::protobuf::Empty* response)
+grpc::Status IAMServer::StartProvisioning(grpc::ServerContext* context,
+    const iamanager::v5::StartProvisioningRequest* request, iamanager::v5::StartProvisioningResponse* response)
 {
     (void)context;
+    (void)request;
     (void)response;
 
-    LOG_DBG() << "Process set owner request: type=" << request->type().c_str()
-              << ", nodeID=" << request->node_id().c_str();
-
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
-    const auto  password = String(request->password().c_str());
-    Error       err      = ErrorEnum::eNone;
-
-    if (aos::String(nodeID.c_str()) == mNodeInfo.mID || nodeID.empty()) {
-        err = mCertHandler->SetOwner(certType, password);
-    } else if (mRemoteHandler) {
-        err = mRemoteHandler->SetOwner(nodeID.c_str(), certType, password);
-    } else {
-        LOG_DBG() << "unknown node ID";
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "unknown node ID");
-    }
-
-    if (!err.IsNone()) {
-        LOG_ERR() << "Set owner error: " << AOS_ERROR_WRAP(err);
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "Set owner error");
-    }
-
-    return grpc::Status::OK;
+    return grpc::Status::CANCELLED;
 }
 
-grpc::Status IAMServer::Clear(
-    grpc::ServerContext* context, const iamanager::v4::ClearRequest* request, google::protobuf::Empty* response)
-{
-    (void)context;
-    (void)response;
-
-    LOG_DBG() << "Process clear request: type=" << request->type().c_str() << ", nodeID=" << request->node_id().c_str();
-
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
-    Error       err      = ErrorEnum::eNone;
-
-    if (aos::String(nodeID.c_str()) == mNodeInfo.mID.CStr() || nodeID.empty()) {
-        err = mCertHandler->Clear(certType);
-    } else if (mRemoteHandler) {
-        err = mRemoteHandler->Clear(nodeID.c_str(), certType);
-    } else {
-        LOG_DBG() << "unknown node ID";
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "unknown node ID");
-    }
-
-    if (!err.IsNone()) {
-        LOG_ERR() << "Clear error: " << AOS_ERROR_WRAP(err);
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "Clear error");
-    }
-
-    return grpc::Status::OK;
-}
-
-grpc::Status IAMServer::EncryptDisk(
-    grpc::ServerContext* context, const iamanager::v4::EncryptDiskRequest* request, google::protobuf::Empty* response)
-{
-    (void)context;
-    (void)response;
-
-    LOG_DBG() << "Process encrypt disk request: nodeID=" << request->node_id().c_str();
-
-    const auto& nodeID   = request->node_id();
-    const auto  password = String(request->password().c_str());
-    Error       err      = ErrorEnum::eNone;
-
-    if (aos::String(nodeID.c_str()) == mNodeInfo.mID.CStr() || nodeID.empty()) {
-        err = mCertHandler->CreateSelfSignedCert(cDiscEncryptionType, password);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Encrypt disk error: " << AOS_ERROR_WRAP(err);
-
-            return grpc::Status(grpc::StatusCode::INTERNAL, "Encrypt disk error");
-        }
-
-        if (mDiskEncryptCmdArgs.empty()) {
-            LOG_DBG() << "Bad configuration: encryption command is not specified.";
-
-            return grpc::Status(grpc::StatusCode::INTERNAL, "Bad configuration");
-        }
-
-        const std::vector<std::string> args {mDiskEncryptCmdArgs.begin() + 1, mDiskEncryptCmdArgs.end()};
-
-        std::string output;
-
-        err = ExecProcess(mDiskEncryptCmdArgs[0], args, output);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Exec error: message = " << output.c_str() << ", err = " << AOS_ERROR_WRAP(err);
-        }
-    } else if (mRemoteHandler) {
-        err = mRemoteHandler->EncryptDisk(nodeID.c_str(), password);
-    } else {
-        LOG_DBG() << "unknown node ID";
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "unknown node ID");
-    }
-
-    if (!err.IsNone()) {
-        LOG_ERR() << "Encrypt disk error: " << AOS_ERROR_WRAP(err);
-
-        return grpc::Status(grpc::StatusCode::INTERNAL, "Encrypt disk error");
-    }
-
-    return grpc::Status::OK;
-}
-
-grpc::Status IAMServer::FinishProvisioning(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, google::protobuf::Empty* response)
+grpc::Status IAMServer::FinishProvisioning(grpc::ServerContext* context,
+    const iamanager::v5::FinishProvisioningRequest* request, iamanager::v5::FinishProvisioningResponse* response)
 {
     (void)context;
     (void)request;
@@ -549,12 +500,22 @@ grpc::Status IAMServer::FinishProvisioning(
     return grpc::Status::OK;
 }
 
+grpc::Status IAMServer::Deprovision(grpc::ServerContext* context, const iamanager::v5::DeprovisionRequest* request,
+    iamanager::v5::DeprovisionResponse* response)
+{
+    (void)context;
+    (void)request;
+    (void)response;
+
+    return grpc::Status::CANCELLED;
+}
+
 /***********************************************************************************************************************
  * IAMCertificateService implementation
  **********************************************************************************************************************/
 
-grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager::v4::CreateKeyRequest* request,
-    iamanager::v4::CreateKeyResponse* response)
+grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager::v5::CreateKeyRequest* request,
+    iamanager::v5::CreateKeyResponse* response)
 {
     (void)context;
 
@@ -608,8 +569,8 @@ grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager:
     return grpc::Status::OK;
 }
 
-grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager::v4::ApplyCertRequest* request,
-    iamanager::v4::ApplyCertResponse* response)
+grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager::v5::ApplyCertRequest* request,
+    iamanager::v5::ApplyCertResponse* response)
 {
     (void)context;
 
@@ -660,7 +621,7 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
  **********************************************************************************************************************/
 
 grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
-    const iamanager::v4::RegisterInstanceRequest* request, iamanager::v4::RegisterInstanceResponse* response)
+    const iamanager::v5::RegisterInstanceRequest* request, iamanager::v5::RegisterInstanceResponse* response)
 {
     (void)context;
 
@@ -710,7 +671,7 @@ grpc::Status IAMServer::RegisterInstance(grpc::ServerContext* context,
 }
 
 grpc::Status IAMServer::UnregisterInstance(grpc::ServerContext* context,
-    const iamanager::v4::UnregisterInstanceRequest* request, google::protobuf::Empty* response)
+    const iamanager::v5::UnregisterInstanceRequest* request, google::protobuf::Empty* response)
 {
     (void)context;
     (void)response;
@@ -737,7 +698,7 @@ grpc::Status IAMServer::UnregisterInstance(grpc::ServerContext* context,
 Error IAMServer::SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages)
 {
     std::lock_guard<std::mutex> lock(mSubjectSubscriptionsLock);
-    iamanager::v4::Subjects     subjects;
+    iamanager::v5::Subjects     subjects;
 
     ConvertToProto(messages, subjects);
 
@@ -793,7 +754,7 @@ void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_pt
 
 void IAMServer::RegisterPublicServices(grpc::ServerBuilder& builder)
 {
-    using namespace iamanager::v4;
+    using namespace iamanager::v5;
 
     builder.RegisterService(static_cast<IAMPublicService::Service*>(this));
 
@@ -821,7 +782,7 @@ void IAMServer::CreateProtectedServer(
 
 void IAMServer::RegisterProtectedServices(grpc::ServerBuilder& builder, bool provisionMode)
 {
-    using namespace iamanager::v4;
+    using namespace iamanager::v5;
 
     builder.RegisterService(static_cast<IAMCertificateService::Service*>(this));
 

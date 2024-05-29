@@ -26,9 +26,9 @@
 #include "config/config.hpp"
 #include "iamclient/remoteiamhandler.hpp"
 
-using ProvisioningService        = iamanager::v4::IAMProvisioningService;
+using ProvisioningService        = iamanager::v5::IAMProvisioningService;
 using ProvisioningServiceStubPtr = std::unique_ptr<ProvisioningService::StubInterface>;
-using CertificateService         = iamanager::v4::IAMCertificateService;
+using CertificateService         = iamanager::v5::IAMCertificateService;
 using CertificateServiceStubPtr  = std::unique_ptr<CertificateService::StubInterface>;
 
 struct ConnectionDetails {

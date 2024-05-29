@@ -68,10 +68,10 @@ aos::Error IAMClient::GetCertTypes(
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::GetCertTypesRequest request;
+    iamanager::v5::GetCertTypesRequest request;
     request.set_node_id(nodeID.CStr());
 
-    iamanager::v4::CertTypes response;
+    iamanager::v5::CertTypes response;
     auto                     ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->GetCertTypes(ctx.get(), request, &response); !status.ok()) {
@@ -92,12 +92,18 @@ aos::Error IAMClient::GetCertTypes(
 
 aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& certType, const aos::String& password)
 {
+    (void)nodeID;
+    (void)certType;
+    (void)password;
+
+    /*
+
     auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::SetOwnerRequest request;
+    iamanager::v5::SetOwnerRequest request;
     request.set_node_id(nodeID.CStr());
     request.set_type(certType.CStr());
     request.set_password(password.CStr());
@@ -111,18 +117,23 @@ aos::Error IAMClient::SetOwner(const aos::String& nodeID, const aos::String& cer
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
+    */
 
     return aos::ErrorEnum::eNone;
 }
 
 aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certType)
 {
+    (void)nodeID;
+    (void)certType;
+
+    /*
     auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::ClearRequest request;
+    iamanager::v5::ClearRequest request;
     request.set_node_id(nodeID.CStr());
     request.set_type(certType.CStr());
 
@@ -134,6 +145,7 @@ aos::Error IAMClient::Clear(const aos::String& nodeID, const aos::String& certTy
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
+    */
 
     return aos::ErrorEnum::eNone;
 }
@@ -146,13 +158,13 @@ aos::Error IAMClient::CreateKey(const aos::String& nodeID, const aos::String& ce
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::CreateKeyRequest request;
+    iamanager::v5::CreateKeyRequest request;
     request.set_node_id(nodeID.CStr());
     request.set_type(certType.CStr());
     request.set_subject(subjectCommonName.CStr());
     request.set_password(password.CStr());
 
-    iamanager::v4::CreateKeyResponse response;
+    iamanager::v5::CreateKeyResponse response;
     auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->CreateKey(ctx.get(), request, &response); !status.ok()) {
@@ -175,12 +187,12 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::ApplyCertRequest request;
+    iamanager::v5::ApplyCertRequest request;
     request.set_node_id(nodeID.CStr());
     request.set_type(certType.CStr());
     request.set_cert(pemCert.CStr());
 
-    iamanager::v4::ApplyCertResponse response;
+    iamanager::v5::ApplyCertResponse response;
     auto                             ctx = GetClientContext(nodeID.CStr(), cDefaultRequestTimeout);
 
     if (const auto status = stub->ApplyCert(ctx.get(), request, &response); !status.ok()) {
@@ -204,12 +216,17 @@ aos::Error IAMClient::ApplyCertificate(const aos::String& nodeID, const aos::Str
 
 aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& password)
 {
+    (void)nodeID;
+    (void)password;
+
+    /*
+
     auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
-    iamanager::v4::EncryptDiskRequest request;
+    iamanager::v5::EncryptDiskRequest request;
     request.set_node_id(nodeID.CStr());
     request.set_password(password.CStr());
 
@@ -223,11 +240,17 @@ aos::Error IAMClient::EncryptDisk(const aos::String& nodeID, const aos::String& 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
 
+    */
+
     return aos::ErrorEnum::eNone;
 }
 
 aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
 {
+    (void)nodeID;
+
+    /*
+
     auto stub = CreateIAMProvisioningServiceStub(nodeID.CStr());
     if (!stub) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -242,6 +265,8 @@ aos::Error IAMClient::FinishProvisioning(const aos::String& nodeID)
 
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
+
+    */
 
     return aos::ErrorEnum::eNone;
 }

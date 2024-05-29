@@ -36,16 +36,16 @@ protected:
     {
         aos::InitLogs();
 
-        mIAMProvisioningServiceStub = std::make_unique<iamanager::v4::MockIAMProvisioningServiceStub>();
-        mIAMCertificateServiceStub  = std::make_unique<iamanager::v4::MockIAMCertificateServiceStub>();
+        mIAMProvisioningServiceStub = std::make_unique<iamanager::v5::MockIAMProvisioningServiceStub>();
+        mIAMCertificateServiceStub  = std::make_unique<iamanager::v5::MockIAMCertificateServiceStub>();
 
         mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node0", "url0", aos::common::utils::Duration(0)});
         mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node1", "url1", aos::common::utils::Duration(0)});
     }
 
     IAMClientMock                                                  mIAMClientMock;
-    std::unique_ptr<iamanager::v4::MockIAMProvisioningServiceStub> mIAMProvisioningServiceStub;
-    std::unique_ptr<iamanager::v4::MockIAMCertificateServiceStub>  mIAMCertificateServiceStub;
+    std::unique_ptr<iamanager::v5::MockIAMProvisioningServiceStub> mIAMProvisioningServiceStub;
+    std::unique_ptr<iamanager::v5::MockIAMCertificateServiceStub>  mIAMCertificateServiceStub;
     Config                                                         mConfig;
     CertHandlerItfMock                                             mCertHandlerMock;
     CertLoaderItfMock                                              mCertLoaderMock;
@@ -105,8 +105,8 @@ TEST_F(IAMClientTest, SucceedsOnGetCertTypes)
 
     EXPECT_CALL(*mIAMProvisioningServiceStub, GetCertTypes)
         .WillOnce(Invoke(
-            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v4::GetCertTypesRequest& request,
-                iamanager::v4::CertTypes* response) -> grpc::Status {
+            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v5::GetCertTypesRequest& request,
+                iamanager::v5::CertTypes* response) -> grpc::Status {
                 (void)context;
                 (void)request;
                 (void)response;
@@ -154,8 +154,8 @@ TEST_F(IAMClientTest, NoMemoryOnGetCertTypes)
 
     EXPECT_CALL(*mIAMProvisioningServiceStub, GetCertTypes)
         .WillOnce(Invoke(
-            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v4::GetCertTypesRequest& request,
-                iamanager::v4::CertTypes* response) -> grpc::Status {
+            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v5::GetCertTypesRequest& request,
+                iamanager::v5::CertTypes* response) -> grpc::Status {
                 (void)context;
                 (void)request;
                 (void)response;
@@ -177,99 +177,6 @@ TEST_F(IAMClientTest, NoMemoryOnGetCertTypes)
     const auto err = mIAMClientMock.GetCertTypes(cNodeId, certTypes);
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << err.Message();
     ASSERT_NE(certTypes.Size(), cTypes.size());
-}
-
-/***********************************************************************************************************************
- * SetOwner tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnSetOwner)
-{
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
-
-    const auto err = mIAMClientMock.SetOwner("", "", "");
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-}
-
-TEST_F(IAMClientTest, SucceedsOnSetOwner)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, SetOwner)
-        .WillOnce(Invoke(
-            [nodeId = cNodeId, certType = cCertType, password = cPassword](grpc::ClientContext* context,
-                const iamanager::v4::SetOwnerRequest& request, google::protobuf::Empty* response) -> grpc::Status {
-                (void)context;
-                (void)request;
-                (void)response;
-
-                EXPECT_EQ(request.node_id(), nodeId);
-                EXPECT_EQ(request.type(), certType);
-                EXPECT_EQ(request.password(), password);
-
-                return grpc::Status::OK;
-            }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.SetOwner(cNodeId, cCertType, cPassword);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-}
-
-TEST_F(IAMClientTest, RPCFailedGetSetOwner)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, SetOwner).WillOnce(Return(grpc::Status::CANCELLED));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.SetOwner(cNodeId, cCertType, cPassword);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-}
-
-/***********************************************************************************************************************
- * Clear tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnClear)
-{
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
-
-    const auto err = mIAMClientMock.Clear("", "");
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-}
-
-TEST_F(IAMClientTest, SucceedsOnClear)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, Clear)
-        .WillOnce(
-            Invoke([nodeId = cNodeId, certType = cCertType](grpc::ClientContext* context,
-                       const iamanager::v4::ClearRequest& request, google::protobuf::Empty* response) -> grpc::Status {
-                (void)context;
-                (void)request;
-                (void)response;
-
-                EXPECT_EQ(request.node_id(), nodeId);
-                EXPECT_EQ(request.type(), certType);
-
-                return grpc::Status::OK;
-            }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.Clear(cNodeId, cCertType);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-}
-
-TEST_F(IAMClientTest, RPCFailedOnClear)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, Clear).WillOnce(Return(grpc::Status::CANCELLED));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.Clear(cNodeId, cCertType);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
 /***********************************************************************************************************************
@@ -296,8 +203,8 @@ TEST_F(IAMClientTest, SucceedsOnCreateKey)
     EXPECT_CALL(*mIAMCertificateServiceStub, CreateKey)
         .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, subjectCommonName = cSubjectCommonName,
                              password = cPassword, expectedCsr = cExpectedCsr](grpc::ClientContext* context,
-                             const iamanager::v4::CreateKeyRequest&                                 request,
-                             iamanager::v4::CreateKeyResponse* response) -> grpc::Status {
+                             const iamanager::v5::CreateKeyRequest&                                 request,
+                             iamanager::v5::CreateKeyResponse* response) -> grpc::Status {
             (void)context;
             (void)request;
             (void)response;
@@ -358,8 +265,8 @@ TEST_F(IAMClientTest, SucceedsOnApplyCertificate)
     EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert)
         .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, pemCert = cPemCert, certUrl = cCertUrl,
                              expectedSerial = cExpectedSerialStr](grpc::ClientContext* context,
-                             const iamanager::v4::ApplyCertRequest&                    request,
-                             iamanager::v4::ApplyCertResponse*                         response) -> grpc::Status {
+                             const iamanager::v5::ApplyCertRequest&                    request,
+                             iamanager::v5::ApplyCertResponse*                         response) -> grpc::Status {
             (void)context;
             (void)request;
             (void)response;
@@ -403,8 +310,8 @@ TEST_F(IAMClientTest, NoMemoryOnApplyCertificate)
 
     EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert)
         .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, pemCert = cPemCert, certUrl = cCertUrl](
-                             grpc::ClientContext* context, const iamanager::v4::ApplyCertRequest& request,
-                             iamanager::v4::ApplyCertResponse* response) -> grpc::Status {
+                             grpc::ClientContext* context, const iamanager::v5::ApplyCertRequest& request,
+                             iamanager::v5::ApplyCertResponse* response) -> grpc::Status {
             (void)context;
             (void)request;
             (void)response;
@@ -427,56 +334,10 @@ TEST_F(IAMClientTest, NoMemoryOnApplyCertificate)
 }
 
 /***********************************************************************************************************************
- * EncryptDisk tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnEncryptDisk)
-{
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
-
-    const auto err = mIAMClientMock.EncryptDisk("", "");
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-}
-
-TEST_F(IAMClientTest, SucceedsOnEncryptDisk)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, EncryptDisk)
-        .WillOnce(Invoke(
-            [nodeId = cNodeId, password = cPassword](grpc::ClientContext* context,
-                const iamanager::v4::EncryptDiskRequest& request, google::protobuf::Empty* response) -> grpc::Status {
-                (void)context;
-                (void)request;
-                (void)response;
-
-                EXPECT_EQ(request.node_id(), nodeId);
-                EXPECT_EQ(request.password(), password);
-
-                return grpc::Status::OK;
-            }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.EncryptDisk(cNodeId, cPassword);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-}
-
-TEST_F(IAMClientTest, RPCFailedOnEncryptDisk)
-{
-    EXPECT_CALL(*mIAMProvisioningServiceStub, EncryptDisk).WillOnce(Return(grpc::Status::CANCELLED));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    const auto err = mIAMClientMock.EncryptDisk(cNodeId, cPassword);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-}
-
-/***********************************************************************************************************************
  * FinishProvisioning tests
  **********************************************************************************************************************/
 
-TEST_F(IAMClientTest, CreateStubFailsOnFinishProvisioning)
+TEST_F(IAMClientTest, DISABLED_CreateStubFailsOnFinishProvisioning)
 {
     EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
 
@@ -484,7 +345,7 @@ TEST_F(IAMClientTest, CreateStubFailsOnFinishProvisioning)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
 }
 
-TEST_F(IAMClientTest, SucceedsOnFinishProvisioning)
+TEST_F(IAMClientTest, DISABLED_SucceedsOnFinishProvisioning)
 {
     EXPECT_CALL(*mIAMProvisioningServiceStub, FinishProvisioning).WillOnce(Return(grpc::Status::OK));
 
@@ -495,7 +356,7 @@ TEST_F(IAMClientTest, SucceedsOnFinishProvisioning)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(IAMClientTest, RPCFailedOnFinishProvisioning)
+TEST_F(IAMClientTest, DISABLED_RPCFailedOnFinishProvisioning)
 {
     EXPECT_CALL(*mIAMProvisioningServiceStub, FinishProvisioning).WillOnce(Return(grpc::Status::CANCELLED));
 

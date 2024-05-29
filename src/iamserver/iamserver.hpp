@@ -30,13 +30,15 @@
  */
 class IAMServer :
     // public services
-    private iamanager::v4::IAMPublicService::Service,
-    private iamanager::v4::IAMPublicIdentityService::Service,
-    private iamanager::v4::IAMPublicPermissionsService::Service,
+    private iamanager::v5::IAMPublicService::Service,
+    private iamanager::v5::IAMPublicIdentityService::Service,
+    private iamanager::v5::IAMPublicPermissionsService::Service,
+    private iamanager::v5::IAMPublicNodesService::Service,
     // protected services
-    private iamanager::v4::IAMCertificateService::Service,
-    private iamanager::v4::IAMProvisioningService::Service,
-    private iamanager::v4::IAMPermissionsService::Service,
+    private iamanager::v5::IAMNodesService::Service,
+    private iamanager::v5::IAMCertificateService::Service,
+    private iamanager::v5::IAMProvisioningService::Service,
+    private iamanager::v5::IAMPermissionsService::Service,
     // identhandler subject observer interface
     public aos::iam::identhandler::SubjectsObserverItf {
 public:
@@ -67,49 +69,63 @@ public:
 private:
     // IAMPublicService interface
     grpc::Status GetAPIVersion(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v4::APIVersion* response) override;
+        iamanager::v5::APIVersion* response) override;
     grpc::Status GetNodeInfo(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v4::NodeInfo* response) override;
-    grpc::Status GetCert(grpc::ServerContext* context, const iamanager::v4::GetCertRequest* request,
-        iamanager::v4::GetCertResponse* response) override;
+        iamanager::v5::NodeInfo* response) override;
+    grpc::Status GetCert(grpc::ServerContext* context, const iamanager::v5::GetCertRequest* request,
+        iamanager::v5::GetCertResponse* response) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v4::SystemInfo* response) override;
+        iamanager::v5::SystemInfo* response) override;
     grpc::Status GetSubjects(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v4::Subjects* response) override;
+        iamanager::v5::Subjects* response) override;
     grpc::Status SubscribeSubjectsChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        grpc::ServerWriter<iamanager::v4::Subjects>* writer) override;
+        grpc::ServerWriter<iamanager::v5::Subjects>* writer) override;
 
     // IAMPublicPermissionsService interface
-    grpc::Status GetPermissions(grpc::ServerContext* context, const iamanager::v4::PermissionsRequest* request,
-        iamanager::v4::PermissionsResponse* response) override;
+    grpc::Status GetPermissions(grpc::ServerContext* context, const iamanager::v5::PermissionsRequest* request,
+        iamanager::v5::PermissionsResponse* response) override;
+
+    // IAMPublicNodesService interface
+    grpc::Status GetAllNodeIDs(grpc::ServerContext* context, const google::protobuf::Empty* request,
+        iamanager::v5::NodesID* response) override;
+    grpc::Status GetNodeInfo(grpc::ServerContext* context, const iamanager::v5::GetNodeInfoRequest* request,
+        iamanager::v5::NodeInfo* response) override;
+    grpc::Status SubscribeNodeChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
+        grpc::ServerWriter<iamanager::v5::NodeInfo>* writer) override;
+    grpc::Status RegisterNode(grpc::ServerContext*                                                            context,
+        grpc::ServerReaderWriter<::iamanager::v5::IAMIncomingMessages, ::iamanager::v5::IAMOutgoingMessages>* stream)
+        override;
+
+    // IAMNodesService interface
+    grpc::Status PauseNode(grpc::ServerContext* context, const iamanager::v5::PauseNodeRequest* request,
+        iamanager::v5::PauseNodeResponse* response) override;
+    grpc::Status ResumeNode(grpc::ServerContext* context, const iamanager::v5::ResumeNodeRequest* request,
+        iamanager::v5::ResumeNodeResponse* response) override;
 
     // IAMProvisioningService interface
-    grpc::Status GetAllNodeIDs(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v4::NodesID* response) override;
-    grpc::Status GetCertTypes(grpc::ServerContext* context, const iamanager::v4::GetCertTypesRequest* request,
-        iamanager::v4::CertTypes* response) override;
-    grpc::Status SetOwner(grpc::ServerContext* context, const iamanager::v4::SetOwnerRequest* request,
-        google::protobuf::Empty* response) override;
-    grpc::Status Clear(grpc::ServerContext* context, const iamanager::v4::ClearRequest* request,
-        google::protobuf::Empty* response) override;
-    grpc::Status EncryptDisk(grpc::ServerContext* context, const iamanager::v4::EncryptDiskRequest* request,
-        google::protobuf::Empty* response) override;
-    grpc::Status FinishProvisioning(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        google::protobuf::Empty* response) override;
+    grpc::Status GetCertTypes(grpc::ServerContext* context, const iamanager::v5::GetCertTypesRequest* request,
+        iamanager::v5::CertTypes* response) override;
+    grpc::Status StartProvisioning(grpc::ServerContext* context, const iamanager::v5::StartProvisioningRequest* request,
+        iamanager::v5::StartProvisioningResponse* response) override;
+    grpc::Status FinishProvisioning(grpc::ServerContext* context,
+        const iamanager::v5::FinishProvisioningRequest*  request,
+        iamanager::v5::FinishProvisioningResponse*       response) override;
+    grpc::Status Deprovision(grpc::ServerContext* context, const iamanager::v5::DeprovisionRequest* request,
+        iamanager::v5::DeprovisionResponse* response) override;
 
     // IAMCertificateService interface
-    grpc::Status CreateKey(grpc::ServerContext* context, const iamanager::v4::CreateKeyRequest* request,
-        iamanager::v4::CreateKeyResponse* response) override;
-    grpc::Status ApplyCert(grpc::ServerContext* context, const iamanager::v4::ApplyCertRequest* request,
-        iamanager::v4::ApplyCertResponse* response) override;
+    grpc::Status CreateKey(grpc::ServerContext* context, const iamanager::v5::CreateKeyRequest* request,
+        iamanager::v5::CreateKeyResponse* response) override;
+    grpc::Status ApplyCert(grpc::ServerContext* context, const iamanager::v5::ApplyCertRequest* request,
+        iamanager::v5::ApplyCertResponse* response) override;
 
     // IAMPermissionsService interface
-    grpc::Status RegisterInstance(grpc::ServerContext* context, const iamanager::v4::RegisterInstanceRequest* request,
-        iamanager::v4::RegisterInstanceResponse* response) override;
+    grpc::Status RegisterInstance(grpc::ServerContext* context, const iamanager::v5::RegisterInstanceRequest* request,
+        iamanager::v5::RegisterInstanceResponse* response) override;
     grpc::Status UnregisterInstance(grpc::ServerContext* context,
-        const iamanager::v4::UnregisterInstanceRequest* request, google::protobuf::Empty* response) override;
+        const iamanager::v5::UnregisterInstanceRequest* request, google::protobuf::Empty* response) override;
 
     // identhandler::SubjectsObserverItf interface
     aos::Error SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages) override;
@@ -138,7 +154,8 @@ private:
     std::unique_ptr<grpc::Server> mPublicServer, mProtectedServer;
 
     std::mutex                                                mSubjectSubscriptionsLock;
-    std::vector<grpc::ServerWriter<iamanager::v4::Subjects>*> mSubjectSubscriptions;
+    std::vector<grpc::ServerWriter<iamanager::v5::Subjects>*> mSubjectSubscriptions;
+    std::vector<grpc::ServerWriter<iamanager::v5::NodeInfo>*> mNodeInfoSubscriptions;
 };
 
 #endif
