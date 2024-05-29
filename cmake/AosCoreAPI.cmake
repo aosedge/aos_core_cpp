@@ -28,7 +28,7 @@ find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
 
 set(PROTO_DST_DIR "${CMAKE_CURRENT_BINARY_DIR}/aoscoreapi/gen")
-set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v4")
+set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v5")
 
 file(MAKE_DIRECTORY ${PROTO_DST_DIR})
 
