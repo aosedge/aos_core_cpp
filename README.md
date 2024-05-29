@@ -1,5 +1,5 @@
-[![CI](https://github.com/aoscloud/aos_core_iam_cpp/workflows/Build/badge.svg)](https://github.com/aoscloud/aos_core_iam_cpp/actions?query=workflow%3ABuild)
-[![codecov](https://codecov.io/github/aoscloud/aos_core_iam_cpp/graph/badge.svg?token=MknkthRkpf)](https://codecov.io/github/aoscloud/aos_core_iam_cpp)
+[![ci](https://github.com/aoscloud/aos_core_iam_cpp/actions/workflows/build_test.yaml/badge.svg)](https://github.com/aoscloud/aos_core_iam_cpp/actions/workflows/build_test.yaml)
+[![codecov](https://codecov.io/gh/aoscloud/aos_core_iam_cpp/graph/badge.svg?token=MknkthRkpf)](https://codecov.io/gh/aoscloud/aos_core_iam_cpp)
 
 # Identity and Access Manager(IAM)
 
