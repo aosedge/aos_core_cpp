@@ -144,6 +144,9 @@ void App::initialize(Application& self)
     err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString(), config.mValue.mMigrationPath);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
 
+    err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
+
     if (!config.mValue.mIdentifier.mPlugin.empty()) {
         auto visIdentifier = std::make_unique<VISIdentifier>();
 
@@ -174,7 +177,7 @@ void App::initialize(Application& self)
     }
 
     err = mIAMServer.Init(config.mValue, mCertHandler, mIdentifier.get(), mPermHandler.get(), mIAMClient.get(),
-        mCertLoader, mCryptoProvider, mProvisioning);
+        mCertLoader, mCryptoProvider, mNodeInfoProvider, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     // Notify systemd

@@ -78,13 +78,37 @@ struct ModuleConfig {
 };
 
 /*
+ * Partition information configuration.
+ */
+struct PartitionInfoConfig {
+    std::string              mName;
+    std::vector<std::string> mTypes;
+    std::string              mPath;
+};
+
+/*
+ * Node information configuration.
+ */
+struct NodeInfoConfig {
+    std::string                                  mCPUInfoPath;
+    std::string                                  mMemInfoPath;
+    std::string                                  mProvisioningStatePath;
+    std::string                                  mNodeIDPath;
+    std::string                                  mNodeName;
+    std::string                                  mNodeType;
+    std::string                                  mOSType;
+    float                                        mMaxDMIPS;
+    std::unordered_map<std::string, std::string> mAttrs;
+    std::vector<PartitionInfoConfig>             mPartitions;
+};
+
+/*
  * Config instance.
  */
 struct Config {
+    NodeInfoConfig            mNodeInfo;
     std::string               mIAMPublicServerURL;
     std::string               mIAMProtectedServerURL;
-    std::string               mNodeID;
-    std::string               mNodeType;
     std::string               mCACert;
     std::string               mCertStorage;
     std::string               mWorkingDir;

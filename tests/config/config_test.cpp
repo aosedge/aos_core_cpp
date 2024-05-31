@@ -25,12 +25,35 @@ public:
     {
         std::ofstream file(mFileName);
         file << R"({
+            "NodeInfoConfig": {
+                "CPUInfoPath": "/proc/cpuinfo",
+                "MemInfoPath": "/proc/meminfo",
+                "NodeIDPath": "NodeIDPath",
+                "NodeType": "NodeType",
+                "NodeName": "NodeName",
+                "OSType": "NodeOSType",
+                "MaxDMIPS": 1.1,
+                "Attrs": {
+                    "name1": "value1",
+                    "name2": "value2"
+                },
+                "Partitions": [
+                    {
+                        "Name": "name1",
+                        "Types": ["type1"],
+                        "Path": "path1"
+                    },
+                    {
+                        "Name": "name2",
+                        "Types": ["type2"],
+                        "Path": "path2"
+                    }
+                ]
+            },
             "IAMPublicServerURL": "localhost:8090",
             "IAMProtectedServerURL": "localhost:8089",
             "CACert": "/etc/ssl/certs/rootCA.crt",
             "CertStorage": "/var/aos/crypt/iam/",
-            "NodeID": "NodeID",
-            "NodeType": "NodeType",
             "WorkingDir": "/var/aos/iamanager",
             "MigrationPath": "/var/aos/migration",
             "FinishProvisioningCmdArgs": [
@@ -114,12 +137,18 @@ TEST_F(ConfigTest, ParseConfig)
     auto [config, error] = ParseConfig(mFileName);
     ASSERT_EQ(error, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
+    EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
+    EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
+    EXPECT_EQ(config.mNodeInfo.mOSType, "NodeOSType");
+    EXPECT_FLOAT_EQ(config.mNodeInfo.mMaxDMIPS, 1.1f);
+    EXPECT_EQ(config.mNodeInfo.mAttrs.size(), 2);
+    EXPECT_EQ(config.mNodeInfo.mPartitions.size(), 2);
+
     EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMProtectedServerURL, "localhost:8089");
     EXPECT_EQ(config.mCACert, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/iam/");
-    EXPECT_EQ(config.mNodeID, "NodeID");
-    EXPECT_EQ(config.mNodeType, "NodeType");
     EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
     EXPECT_EQ(config.mMigrationPath, "/var/aos/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);

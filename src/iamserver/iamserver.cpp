@@ -100,16 +100,21 @@ static const std::string CorrectAddress(const std::string& addr)
 aos::Error IAMServer::Init(const Config& config, certhandler::CertHandlerItf& certHandler,
     identhandler::IdentHandlerItf* identHandler, permhandler::PermHandlerItf* permHandler,
     RemoteIAMHandlerItf* remoteHandler, cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    bool provisioningMode)
+    aos::iam::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {
     mCertHandler               = &certHandler;
     mIdentHandler              = identHandler;
     mPermHandler               = permHandler;
     mRemoteHandler             = remoteHandler;
-    mNodeID                    = config.mNodeID;
-    mNodeType                  = config.mNodeType;
+    mNodeInfoProvider          = &nodeInfoProvider;
     mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
     mDiskEncryptCmdArgs        = config.mDiskEncryptionCmdArgs;
+
+    if (const auto err = nodeInfoProvider.GetNodeInfo(mNodeInfo); !err.IsNone()) {
+        LOG_ERR() << "Failed to get node info: " << AOS_ERROR_WRAP(err);
+
+        return ErrorEnum::eFailed;
+    }
 
     try {
         std::shared_ptr<grpc::ServerCredentials> publicOpt, protectedOpt;
@@ -179,8 +184,8 @@ grpc::Status IAMServer::GetNodeInfo(
 
     LOG_DBG() << "Process get node info";
 
-    response->set_node_id(mNodeID);
-    response->set_node_type(mNodeType);
+    response->set_node_id(mNodeInfo.mID.CStr());
+    response->set_node_type(mNodeInfo.mType.CStr());
 
     return grpc::Status::OK;
 }
@@ -342,7 +347,7 @@ grpc::Status IAMServer::GetAllNodeIDs(
 
     LOG_DBG() << "Process get all node IDs";
 
-    response->add_ids(mNodeID.c_str());
+    response->add_ids(mNodeInfo.mID.CStr());
 
     if (!mRemoteHandler) {
         return grpc::Status::OK;
@@ -368,7 +373,7 @@ grpc::Status IAMServer::GetCertTypes(
     Error       err    = ErrorEnum::eNone;
     StaticArray<StaticString<certhandler::cCertTypeLen>, certhandler::cIAMCertModulesMaxCount> certTypes;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID.CStr() || nodeID.empty()) {
         err = mCertHandler->GetCertTypes(certTypes);
     } else if (mRemoteHandler) {
         err = mRemoteHandler->GetCertTypes(nodeID.c_str(), certTypes);
@@ -402,7 +407,7 @@ grpc::Status IAMServer::SetOwner(
     const auto  password = String(request->password().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID || nodeID.empty()) {
         err = mCertHandler->SetOwner(certType, password);
     } else if (mRemoteHandler) {
         err = mRemoteHandler->SetOwner(nodeID.c_str(), certType, password);
@@ -433,7 +438,7 @@ grpc::Status IAMServer::Clear(
     const auto  certType = String(request->type().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID.CStr() || nodeID.empty()) {
         err = mCertHandler->Clear(certType);
     } else if (mRemoteHandler) {
         err = mRemoteHandler->Clear(nodeID.c_str(), certType);
@@ -464,7 +469,7 @@ grpc::Status IAMServer::EncryptDisk(
     const auto  password = String(request->password().c_str());
     Error       err      = ErrorEnum::eNone;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID.CStr() || nodeID.empty()) {
         err = mCertHandler->CreateSelfSignedCert(cDiscEncryptionType, password);
         if (!err.IsNone()) {
             LOG_ERR() << "Encrypt disk error: " << AOS_ERROR_WRAP(err);
@@ -580,7 +585,7 @@ grpc::Status IAMServer::CreateKey(grpc::ServerContext* context, const iamanager:
 
     StaticString<crypto::cCSRPEMLen> csr;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID || nodeID.empty()) {
         err = mCertHandler->CreateKey(certType, subject, password, csr);
     } else if (mRemoteHandler) {
         err = mRemoteHandler->CreateKey(nodeID.c_str(), certType, subject, password, csr);
@@ -617,7 +622,7 @@ grpc::Status IAMServer::ApplyCert(grpc::ServerContext* context, const iamanager:
     Error                 err = ErrorEnum::eNone;
     certhandler::CertInfo certInfo;
 
-    if (nodeID == mNodeID || nodeID.empty()) {
+    if (aos::String(nodeID.c_str()) == mNodeInfo.mID || nodeID.empty()) {
         err = mCertHandler->ApplyCertificate(certType, pemCert, certInfo);
     } else if (mRemoteHandler) {
         err = mRemoteHandler->ApplyCertificate(nodeID.c_str(), certType, pemCert, certInfo);

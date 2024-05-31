@@ -18,25 +18,17 @@
 #include "log.hpp"
 
 /***********************************************************************************************************************
- * Static
+ * Constants
  **********************************************************************************************************************/
 
-template <typename T, typename ParserFunc>
-std::vector<T> GetArrayValue(
-    const aos::common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key, ParserFunc parserFunc)
-{
-    std::vector<T> result;
+constexpr auto cDefaultCPUInfoPath            = "/proc/cpuinfo";
+constexpr auto cDefaultMemInfoPath            = "/proc/meminfo";
+constexpr auto cDefaultProvisioningStatusPath = "/var/aos/.provisionstate";
+constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
 
-    if (!object.Has(key)) {
-        return result;
-    }
-
-    Poco::JSON::Array::Ptr array = object.GetArray(key);
-
-    std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
-
-    return result;
-}
+/***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
 
 static Identifier ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
@@ -78,6 +70,47 @@ static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveO
     };
 }
 
+static PartitionInfoConfig ParsePartitionInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    PartitionInfoConfig partitionInfoConfig {};
+
+    partitionInfoConfig.mName = object.GetValue<std::string>("name");
+    partitionInfoConfig.mPath = object.GetValue<std::string>("path");
+
+    return partitionInfoConfig;
+}
+
+static NodeInfoConfig ParseNodeInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    NodeInfoConfig nodeInfoConfig {};
+
+    nodeInfoConfig.mProvisioningStatePath
+        = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
+    nodeInfoConfig.mCPUInfoPath = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
+    nodeInfoConfig.mMemInfoPath = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
+    nodeInfoConfig.mNodeIDPath  = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
+    nodeInfoConfig.mNodeName    = object.GetValue<std::string>("nodeName");
+    nodeInfoConfig.mNodeType    = object.GetValue<std::string>("nodeType");
+    nodeInfoConfig.mOSType      = object.GetValue<std::string>("osType");
+    nodeInfoConfig.mMaxDMIPS    = object.GetValue<float>("maxDMIPS");
+
+    if (object.Has("attrs")) {
+        for (const auto& [key, value] : *object.Get("attrs").extract<Poco::JSON::Object::Ptr>()) {
+            nodeInfoConfig.mAttrs.emplace(key, value.extract<std::string>());
+        }
+    }
+
+    if (object.Has("partitions")) {
+        nodeInfoConfig.mPartitions = aos::common::utils::GetArrayValue<PartitionInfoConfig>(
+            object, "partitions", [](const Poco::Dynamic::Var& value) {
+                return ParsePartitionInfoConfig(
+                    aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+            });
+    }
+
+    return nodeInfoConfig;
+}
+
 /***********************************************************************************************************************
  * Public functions
  **********************************************************************************************************************/
@@ -97,10 +130,9 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                             result = parser.parse(file);
         aos::common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
+        config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfoConfig"));
         config.mIAMPublicServerURL       = object.GetValue<std::string>("iamPublicServerURL");
         config.mIAMProtectedServerURL    = object.GetValue<std::string>("iamProtectedServerURL");
-        config.mNodeID                   = object.GetValue<std::string>("nodeID");
-        config.mNodeType                 = object.GetValue<std::string>("nodeType");
         config.mCACert                   = object.GetValue<std::string>("caCert");
         config.mCertStorage              = object.GetValue<std::string>("certStorage");
         config.mWorkingDir               = object.GetValue<std::string>("workingDir");

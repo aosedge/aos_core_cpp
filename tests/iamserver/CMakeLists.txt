@@ -11,7 +11,7 @@ set(TARGET iamserver_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamserver_test.cpp stubs/storagestub.cpp)
+set(SOURCES iamserver_test.cpp nodeinfoprovider_test.cpp stubs/storagestub.cpp)
 
 # ######################################################################################################################
 # Target

@@ -17,6 +17,7 @@
 #include <aos/common/cryptoutils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
+#include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/permhandler.hpp>
 #include <config/config.hpp>
 
@@ -49,12 +50,14 @@ public:
      * @param remoteHandler IAM remote handler.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
+     * @param nodeInfoProvider node info provider.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
     aos::Error Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
         aos::iam::identhandler::IdentHandlerItf* identHandler, aos::iam::permhandler::PermHandlerItf* permHandler,
         RemoteIAMHandlerItf* remoteHandler, aos::cryptoutils::CertLoader& certLoader,
-        aos::crypto::x509::ProviderItf& cryptoProvider, bool provisioningMode);
+        aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::NodeInfoProviderItf& nodeInfoProvider,
+        bool provisioningMode);
 
     /**
      * Destroys IAM server.
@@ -122,13 +125,13 @@ private:
         const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials, bool provisionMode);
     void RegisterProtectedServices(grpc::ServerBuilder& builder, bool provisionMode);
 
-    aos::iam::certhandler::CertHandlerItf*   mCertHandler   = nullptr;
-    aos::iam::identhandler::IdentHandlerItf* mIdentHandler  = nullptr;
-    aos::iam::permhandler::PermHandlerItf*   mPermHandler   = nullptr;
-    RemoteIAMHandlerItf*                     mRemoteHandler = nullptr;
+    aos::iam::certhandler::CertHandlerItf*   mCertHandler      = nullptr;
+    aos::iam::identhandler::IdentHandlerItf* mIdentHandler     = nullptr;
+    aos::iam::permhandler::PermHandlerItf*   mPermHandler      = nullptr;
+    RemoteIAMHandlerItf*                     mRemoteHandler    = nullptr;
+    aos::iam::NodeInfoProviderItf*           mNodeInfoProvider = nullptr;
 
-    std::string              mNodeID;
-    std::string              mNodeType;
+    aos::NodeInfo            mNodeInfo;
     std::vector<std::string> mFinishProvisioningCmdArgs;
     std::vector<std::string> mDiskEncryptCmdArgs;
 

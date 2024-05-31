@@ -18,6 +18,7 @@
 #include "database/database.hpp"
 #include "iamclient/iamclient.hpp"
 #include "iamserver/iamserver.hpp"
+#include "iamserver/nodeinfoprovider.hpp"
 #include "visidentifier/visidentifier.hpp"
 
 /**
@@ -54,6 +55,7 @@ private:
         std::pair<std::unique_ptr<aos::iam::certhandler::HSMItf>, std::unique_ptr<aos::iam::certhandler::CertModule>>>
                                                              mCertModules;
     Database                                                 mDatabase;
+    NodeInfoProvider                                         mNodeInfoProvider;
     IAMServer                                                mIAMServer;
     aos::common::logger::Logger                              mLogger;
     std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
