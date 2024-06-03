@@ -489,7 +489,7 @@ TEST_F(IAMServerTest, GetNodeInfo)
 
     grpc::ClientContext     context;
     google::protobuf::Empty request;
-    NodeInfo                response;
+    iamanager::v4::NodeInfo response;
 
     const auto status = clientStub->GetNodeInfo(&context, request, &response);
     ASSERT_TRUE(status.ok()) << status.error_message() << " (" << status.error_code() << ")";
