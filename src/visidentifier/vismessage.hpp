@@ -63,7 +63,7 @@ public:
      *
      * @param action The type of action requested by the client or delivered by the server.
      */
-    VISMessage(const VISAction action);
+    explicit VISMessage(const VISAction action);
 
     /**
      * Creates Vehicle Information Service message.
@@ -79,7 +79,7 @@ public:
      *
      * @param jsonStr JSON string that contains Vehicle Information Service message.
      */
-    VISMessage(const std::string& jsonStr);
+    explicit VISMessage(const std::string& jsonStr);
 
     /**
      * Checks if Vehicle Information Service message has specified type.

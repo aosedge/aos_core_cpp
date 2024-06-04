@@ -417,10 +417,10 @@ std::vector<std::string> VISIdentifier::GetValueArrayByPath(
     }
 
     std::vector<std::string> valueArray;
+    valueArray.reserve(valueArray.size());
 
-    for (const auto& i : *array) {
-        valueArray.push_back(i.convert<std::string>());
-    }
+    std::transform(array->begin(), array->end(), std::back_inserter(valueArray),
+        [](const Poco::Dynamic::Var& i) { return i.convert<std::string>(); });
 
     return valueArray;
 }

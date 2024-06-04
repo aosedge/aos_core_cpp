@@ -22,6 +22,7 @@
 
 #include "app.hpp"
 #include "log.hpp"
+// cppcheck-suppress missingInclude
 #include "version.hpp"
 
 /***********************************************************************************************************************

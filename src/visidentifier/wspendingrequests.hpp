@@ -26,7 +26,7 @@ public:
      *
      * @param requestId request id.
      */
-    RequestParams(const std::string& requestId);
+    explicit RequestParams(const std::string& requestId);
 
     /**
      * Sets response and event.

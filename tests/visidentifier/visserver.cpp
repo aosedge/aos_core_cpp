@@ -179,11 +179,11 @@ std::string WebSocketRequestHandler::handleFrame(const std::string& frame)
         const VISMessage request(frame);
 
         if (request.Is(VISActionEnum::eGet)) {
-            return handleGetRequest(frame);
+            return handleGetRequest(request);
         } else if (request.Is(VISActionEnum::eSubscribe)) {
-            return handleSubscribeRequest(frame);
+            return handleSubscribeRequest(request);
         } else if (request.Is(VISActionEnum::eUnsubscribeAll)) {
-            return handleUnsubscribeAllRequest(frame);
+            return handleUnsubscribeAllRequest(request);
         }
     } catch (...) {
         LOG_WRN() << "VIS frame is not supported VIS Message: frame = " << frame.c_str();

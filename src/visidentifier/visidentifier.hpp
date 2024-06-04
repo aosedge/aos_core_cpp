@@ -121,7 +121,7 @@ private:
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
     std::shared_ptr<WSClientItf>                                                    mWsClientPtr;
-    aos::iam::identhandler::SubjectsObserverItf*                                    mSubjectsObserver;
+    aos::iam::identhandler::SubjectsObserverItf*                                    mSubjectsObserver = nullptr;
     VISSubscriptions                                                                mSubscriptions;
     aos::StaticString<aos::cSystemIDLen>                                            mSystemId;
     aos::StaticString<aos::cUnitModelLen>                                           mUnitModel;

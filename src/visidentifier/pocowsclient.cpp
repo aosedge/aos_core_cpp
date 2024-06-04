@@ -177,7 +177,7 @@ void PocoWSClient::AsyncSendMessage(const ByteArray& message)
 
 PocoWSClient::~PocoWSClient()
 {
-    Close();
+    PocoWSClient::Close();
     StopReceiveFramesThread();
 }
 

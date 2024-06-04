@@ -108,9 +108,7 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
 
     Poco::JSON::Array::Ptr array = object.GetArray(key);
 
-    for (const auto& value : *array) {
-        result.push_back(parserFunc(value));
-    }
+    std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
 
     return result;
 }

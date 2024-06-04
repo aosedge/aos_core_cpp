@@ -81,7 +81,7 @@ public:
      *
      * @param message request payload
      */
-    void AsyncSendMessage(const ByteArray& message);
+    void AsyncSendMessage(const ByteArray& message) override;
 
     /**
      * Destroys web socket client instance.
