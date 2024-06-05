@@ -11,7 +11,7 @@ set(TARGET utils_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES exception_test.cpp json_test.cpp time_test.cpp)
+set(SOURCES exception_test.cpp json_test.cpp parser_test.cpp time_test.cpp)
 
 # ######################################################################################################################
 # Target
