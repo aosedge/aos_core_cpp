@@ -13,11 +13,13 @@
 #include <string>
 
 #include <Poco/Data/Session.h>
+#include <Poco/JSON/Object.h>
 
 #include <aos/iam/certmodules/certmodule.hpp>
+#include <aos/iam/nodemanager.hpp>
 #include <migration/migration.hpp>
 
-class Database : public aos::iam::certhandler::StorageItf {
+class Database : public aos::iam::certhandler::StorageItf, public aos::iam::nodemanager::NodeInfoStorageItf {
 public:
     /**
      * Creates database instance.
@@ -32,6 +34,10 @@ public:
      * @return Error.
      */
     aos::Error Init(const std::string& dbPath, const std::string& migrationPath);
+
+    //
+    // certhandler::StorageItf interface
+    //
 
     /**
      * Adds new certificate info to the storage.
@@ -80,6 +86,43 @@ public:
      */
     aos::Error RemoveAllCertsInfo(const aos::String& certType) override;
 
+    //
+    // nodemanager::NodeInfoStorageItf interface
+    //
+
+    /**
+     * Updates whole information for a node.
+     *
+     * @param info node info.
+     * @return Error.
+     */
+    aos::Error SetNodeInfo(const aos::NodeInfo& info) override;
+
+    /**
+     * Returns node info.
+     *
+     * @param nodeId node identifier.
+     * @param[out] nodeInfo result node identifier.
+     * @return Error.
+     */
+    aos::Error GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeInfo) const override;
+
+    /**
+     * Returns ids for all the node in the manager.
+     *
+     * @param ids result node identifiers.
+     * @return Error.
+     */
+    aos::Error GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>>& ids) const override;
+
+    /**
+     * Removes node info by its id.
+     *
+     * @param nodeId node identifier.
+     * @return Error.
+     */
+    aos::Error RemoveNodeInfo(const aos::String& nodeId) override;
+
     /**
      * Destroys certificate info storage.
      */
@@ -89,13 +132,26 @@ private:
     enum CertColumns { eType = 0, eIssuer, eSerial, eCertURL, eKeyURL, eNotAfter };
     using CertInfo = Poco::Tuple<std::string, Poco::Data::BLOB, Poco::Data::BLOB, std::string, std::string, uint64_t>;
 
+    constexpr static int mVersion = 0;
+
     void     CreateTables();
     CertInfo ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo);
     void     FromAosCertInfo(const CertInfo& certInfo, aos::iam::certhandler::CertInfo& result);
 
-    std::optional<Poco::Data::Session>               mSession;
+    static Poco::JSON::Object ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo);
+    static aos::Error         ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, aos::NodeInfo& dst);
+
+    static Poco::JSON::Array ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>& cpuInfo);
+    static aos::Error        ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::CPUInfo>& dst);
+
+    static Poco::JSON::Array ConvertPartitionInfoToJSON(const aos::Array<aos::PartitionInfo>& partitionInfo);
+    static aos::Error ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::PartitionInfo>& dst);
+
+    static Poco::JSON::Array ConvertAttributesToJSON(const aos::Array<aos::NodeAttribute>& attributes);
+    static aos::Error ConvertAttributesFromJSON(const Poco::JSON::Array& src, aos::Array<aos::NodeAttribute>& dst);
+
+    std::unique_ptr<Poco::Data::Session>             mSession;
     std::optional<aos::common::migration::Migration> mMigration;
-    constexpr static int                             mVersion = 0;
 };
 
 #endif

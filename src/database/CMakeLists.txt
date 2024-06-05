@@ -27,4 +27,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosmigration Poco::DataSQLite)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosmigration Poco::DataSQLite Poco::JSON)
