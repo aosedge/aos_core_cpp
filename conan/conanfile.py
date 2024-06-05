@@ -11,6 +11,7 @@ class AosCoreIAMCPP(ConanFile):
     def requirements(self):
         self.requires("gtest/1.14.0")
         self.requires("grpc/1.54.3")
+        self.requires("openssl/3.2.1")
 
         if self.options.with_poco :
             self.requires("poco/1.13.2")
