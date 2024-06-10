@@ -16,9 +16,9 @@
 
 #include <aos/common/version.hpp>
 #include <aos/iam/certmodules/certmodule.hpp>
+#include <utils/exception.hpp>
 
 #include "config/config.hpp"
-#include "utils/exception.hpp"
 
 #include "app.hpp"
 #include "logger/logmodule.hpp"
@@ -170,16 +170,23 @@ void App::initialize(Application& self)
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW("can't initialize cert modules", err);
 
-    if (config.mValue.mRemoteIAMs.size()) {
+    err = mProvisionManager.Init(mIAMServer, mCertHandler);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize provision manager", err);
+
+    err = mNodeManager.Init(mDatabase);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize node manager", err);
+
+    err = mIAMServer.Init(config.mValue, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader, mCryptoProvider,
+        mNodeInfoProvider, mNodeManager, mProvisionManager, mProvisioning);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
+
+    if (!config.mValue.mMainIAMPublicServerURL.empty() && !config.mValue.mMainIAMProtectedServerURL.empty()) {
         mIAMClient = std::make_unique<IAMClient>();
 
-        // err = mIAMClient->Init(config.mValue, mCertHandler, mCertLoader, mCryptoProvider, mProvisioning);
-        // AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
+        err = mIAMClient->Init(config.mValue, mIdentifier.get(), mProvisionManager, mCertLoader, mCryptoProvider,
+            mNodeInfoProvider, mProvisioning);
+        AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
     }
-
-    // err = mIAMServer.Init(config.mValue, mCertHandler, mIdentifier.get(), mPermHandler.get(), mIAMClient.get(),
-    //     mCertLoader, mCryptoProvider, mNodeInfoProvider, mProvisioning);
-    // AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     // Notify systemd
 
