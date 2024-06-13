@@ -106,19 +106,24 @@ struct NodeInfoConfig {
  * Config instance.
  */
 struct Config {
-    NodeInfoConfig            mNodeInfo;
-    std::string               mIAMPublicServerURL;
-    std::string               mIAMProtectedServerURL;
-    std::string               mCACert;
-    std::string               mCertStorage;
-    std::string               mWorkingDir;
-    std::string               mMigrationPath;
-    std::vector<ModuleConfig> mCertModules;
-    std::vector<std::string>  mFinishProvisioningCmdArgs;
-    std::vector<std::string>  mDiskEncryptionCmdArgs;
-    bool                      mEnablePermissionsHandler;
-    Identifier                mIdentifier;
-    std::vector<RemoteIAM>    mRemoteIAMs;
+    NodeInfoConfig               mNodeInfo;
+    std::string                  mIAMPublicServerURL;
+    std::string                  mIAMProtectedServerURL;
+    std::string                  mMainIAMPublicServerURL;
+    std::string                  mMainIAMProtectedServerURL;
+    aos::common::utils::Duration mNodeReconnectInterval;
+    std::string                  mCACert;
+    std::string                  mCertStorage;
+    std::string                  mWorkingDir;
+    std::string                  mMigrationPath;
+    std::vector<ModuleConfig>    mCertModules;
+    std::vector<std::string>     mStartProvisioningCmdArgs;
+    std::vector<std::string>     mDiskEncryptionCmdArgs;
+    std::vector<std::string>     mFinishProvisioningCmdArgs;
+    std::vector<std::string>     mDeprovisionCmdArgs;
+    bool                         mEnablePermissionsHandler;
+    Identifier                   mIdentifier;
+    std::vector<RemoteIAM>       mRemoteIAMs;
 };
 
 /*******************************************************************************

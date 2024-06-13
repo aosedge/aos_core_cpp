@@ -130,20 +130,29 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                             result = parser.parse(file);
         aos::common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
-        config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfoConfig"));
-        config.mIAMPublicServerURL       = object.GetValue<std::string>("iamPublicServerURL");
-        config.mIAMProtectedServerURL    = object.GetValue<std::string>("iamProtectedServerURL");
+        config.mNodeInfo                  = ParseNodeInfoConfig(object.GetObject("nodeInfoConfig"));
+        config.mIAMPublicServerURL        = object.GetValue<std::string>("iamPublicServerURL");
+        config.mIAMProtectedServerURL     = object.GetValue<std::string>("iamProtectedServerURL");
+        config.mMainIAMPublicServerURL    = object.GetValue<std::string>("mainIAMPublicServerURL");
+        config.mMainIAMProtectedServerURL = object.GetValue<std::string>("mainIAMProtectedServerURL");
+
         config.mCACert                   = object.GetValue<std::string>("caCert");
         config.mCertStorage              = object.GetValue<std::string>("certStorage");
         config.mWorkingDir               = object.GetValue<std::string>("workingDir");
         config.mMigrationPath            = object.GetValue<std::string>("migrationPath");
         config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
 
-        config.mFinishProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
-            "finishProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+        config.mStartProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
+            "startProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
 
         config.mDiskEncryptionCmdArgs = aos::common::utils::GetArrayValue<std::string>(object, "diskEncryptionCmdArgs",
             [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+
+        config.mFinishProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
+            "finishProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+
+        config.mDeprovisionCmdArgs = aos::common::utils::GetArrayValue<std::string>(
+            object, "deprovisionCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
 
         config.mCertModules = aos::common::utils::GetArrayValue<ModuleConfig>(
             object, "certModules", [](const Poco::Dynamic::Var& value) {
@@ -159,6 +168,13 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
+        }
+
+        aos::Error err                          = aos::ErrorEnum::eNone;
+        Tie(config.mNodeReconnectInterval, err) = aos::common::utils::ParseDuration(
+            object.GetOptionalValue<std::string>("nodeReconnectInterval").value_or("10s"));
+        if (!err.IsNone()) {
+            return {{}, AOS_ERROR_WRAP(err)};
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing config: " << e.what();
