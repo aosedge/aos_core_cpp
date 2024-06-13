@@ -8,142 +8,105 @@
 #ifndef IAMCLIENT_HPP_
 #define IAMCLIENT_HPP_
 
-#include <map>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <vector>
+#include <condition_variable>
+#include <thread>
 
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
+#include <aos/common/crypto.hpp>
 #include <aos/common/cryptoutils.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/iam/certhandler.hpp>
+#include <aos/iam/identhandler.hpp>
+#include <aos/iam/nodeinfoprovider.hpp>
+#include <aos/iam/provisionmanager.hpp>
 
-#include <iamanager.grpc.pb.h>
+#include <iamanager/v5/iamanager.grpc.pb.h>
 
 #include "config/config.hpp"
-#include "iamclient/remoteiamhandler.hpp"
 
-using ProvisioningService        = iamanager::v5::IAMProvisioningService;
-using ProvisioningServiceStubPtr = std::unique_ptr<ProvisioningService::StubInterface>;
-using CertificateService         = iamanager::v5::IAMCertificateService;
-using CertificateServiceStubPtr  = std::unique_ptr<CertificateService::StubInterface>;
+using PublicNodeService        = iamanager::v5::IAMPublicNodesService;
+using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterface>;
 
-struct ConnectionDetails {
-    RemoteIAM                      mConfig;
-    std::shared_ptr<grpc::Channel> mChannel;
-};
-
-class IAMClient : public RemoteIAMHandlerItf {
+/**
+ * GRPC IAM client.
+ */
+class IAMClient {
 public:
     /**
      * Initializes IAM client instance.
      *
      * @param config client configuration.
-     * @param certHandler certificate handler.
+     * @param identHandler identification handler.
+     * @param provisionManager provision manager.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
+     * @param nodeInfoProvider node info provider.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns aos::Error.
      */
-    aos::Error Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
-        aos::cryptoutils::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
+    aos::Error Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
+        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::cryptoutils::CertLoaderItf& certLoader,
+        aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::NodeInfoProviderItf& nodeInfoProvider,
         bool provisioningMode);
 
     /**
-     * Returns remote node identifiers.
-     *
-     * @result aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes>
+     * Destroys object instance.
      */
-    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> GetRemoteNodes() override;
-
-    /**
-     * Returns IAM cert types.
-     *
-     * @param nodeID node id.
-     * @param[out] certTypes result certificate types.
-     * @returns aos::Error.
-     */
-    aos::Error GetCertTypes(const aos::String&                              nodeID,
-        aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>& certTypes) override;
-
-    /**
-     * Owns security storage.
-     *
-     * @param nodeID node id.
-     * @param certType certificate type.
-     * @param password owner password.
-     * @returns aos::Error.
-     */
-    aos::Error SetOwner(const aos::String& nodeID, const aos::String& certType, const aos::String& password) override;
-
-    /**
-     * Clears security storage.
-     *
-     * @param nodeID node id.
-     * @param certType certificate type.
-     * @returns aos::Error.
-     */
-    aos::Error Clear(const aos::String& nodeID, const aos::String& certType) override;
-
-    /**
-     * Creates key pair.
-     *
-     * @param nodeID node id.
-     * @param certType certificate type.
-     * @param subjectCommonName common name of the subject.
-     * @param password owner password.
-     * @param[out] pemCSR certificate signing request in PEM.
-     * @returns aos::Error.
-     */
-    aos::Error CreateKey(const aos::String& nodeID, const aos::String& certType, const aos::String& subjectCommonName,
-        const aos::String& password, aos::String& pemCSR) override;
-
-    /**
-     * Applies certificate.
-     *
-     * @param nodeID node id.
-     * @param certType certificate type.
-     * @param pemCert certificate in a pem format.
-     * @param[out] info result certificate information.
-     * @returns aos::Error.
-     */
-    aos::Error ApplyCertificate(const aos::String& nodeID, const aos::String& certType, const aos::String& pemCert,
-        aos::iam::certhandler::CertInfo& info) override;
-
-    /**
-     * Encrypts disk for a node.
-     *
-     * @param nodeID node identifier.
-     * @param password password.
-     * @returns aos::Error.
-     */
-    aos::Error EncryptDisk(const aos::String& nodeID, const aos::String& password) override;
-
-    /**
-     * Finishes provisioning.
-     *
-     * @param nodeID node identifier.
-     * @returns aos::Error.
-     */
-    aos::Error FinishProvisioning(const aos::String& nodeID) override;
-
-protected:
-    virtual CertificateServiceStubPtr  CreateIAMCertificateServiceStub(const std::string& nodeId);
-    virtual ProvisioningServiceStubPtr CreateIAMProvisioningServiceStub(const std::string& nodeId);
+    ~IAMClient();
 
 private:
-    static constexpr auto cDefaultRequestTimeout = std::chrono::minutes(1);
-    static constexpr auto cDefaultEncryptTimeout = std::chrono::minutes(5);
+    using StreamPtr = std::unique_ptr<
+        grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
 
-    std::mutex                                mMutex;
-    std::map<std::string, ConnectionDetails>  mRemoteIMs;
-    std::shared_ptr<grpc::ChannelCredentials> mCredentials;
+    std::unique_ptr<grpc::ClientContext> CreateClientContext();
+    PublicNodeServiceStubPtr             CreateStub(
+                    const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
 
-    std::unique_ptr<grpc::ClientContext> GetClientContext(
-        const std::string& nodeId, aos::common::utils::Duration defaultTimeout);
+    bool RegisterNode(const std::string& url);
+
+    void ConnectionLoop() noexcept;
+    void HandleIncomingMessages() noexcept;
+
+    bool SendNodeInfo();
+    bool ProcessStartProvisioning(const iamanager::v5::StartProvisioningRequest& request);
+    bool ProcessFinishProvisioning(const iamanager::v5::FinishProvisioningRequest& request);
+    bool ProcessDeprovision(const iamanager::v5::DeprovisionRequest& request);
+    bool ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request);
+    bool ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& request);
+    bool ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request);
+    bool ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request);
+    bool ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request);
+
+    aos::Error CheckCurrentNodeStatus(const std::initializer_list<aos::NodeStatus>& allowedStatuses);
+
+    bool SendCreateKeyResponse(
+        const aos::String& nodeId, const aos::String& type, const aos::String& csr, const aos::Error& error);
+    bool SendApplyCertResponse(const aos::String& nodeId, const aos::String& type, const aos::String& certURL,
+        const aos::Array<uint8_t>& serial, const aos::Error& error);
+    bool SendGetCertTypesResponse(const aos::iam::provisionmanager::CertTypes& types, const aos::Error& error);
+
+    aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    aos::iam::NodeInfoProviderItf*                   mNodeInfoProvider = nullptr;
+
+    std::vector<std::string>                               mStartProvisioningCmdArgs;
+    std::vector<std::string>                               mDiskEncryptionCmdArgs;
+    std::vector<std::string>                               mFinishProvisioningCmdArgs;
+    std::vector<std::string>                               mDeprovisionCmdArgs;
+    aos::common::utils::Duration                           mReconnectInterval;
+    std::string                                            mServerURL;
+    std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
+
+    std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
+    StreamPtr                            mStream;
+    PublicNodeServiceStubPtr             mPublicNodeServiceStub;
+
+    std::thread             mConnectionThread;
+    std::condition_variable mShutdownCV;
+    bool                    mShutdown = false;
+    std::mutex              mShutdownLock;
 };
 
 #endif

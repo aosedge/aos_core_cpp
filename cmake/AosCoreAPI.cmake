@@ -28,7 +28,7 @@ find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
 
 set(PROTO_DST_DIR "${CMAKE_CURRENT_BINARY_DIR}/aoscoreapi/gen")
-set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v5")
+set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto")
 
 file(MAKE_DIRECTORY ${PROTO_DST_DIR})
 
@@ -40,23 +40,27 @@ endif()
 
 message(STATUS "gRPC plugin: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
 
-set(PROTO_FILES "${PROTO_SRC_DIR}/iamanager.proto")
+set(PROTO_FILES ${PROTO_SRC_DIR}/common/v1/common.proto ${PROTO_SRC_DIR}/iamanager/v5/iamanager.proto)
+set(PB_FILES ${PROTO_DST_DIR}/common/v1/common.pb.h ${PROTO_DST_DIR}/common/v1/common.pb.cc
+             ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.cc
+)
+set(GRPC_FILES ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.cc)
+set(GRPC_MOCKS "${PROTO_DST_DIR}/iamanager/v5/iamanager_mock.grpc.pb.h")
 
 add_custom_command(
-    OUTPUT "${PROTO_DST_DIR}/iamanager.pb.cc" "${PROTO_DST_DIR}/iamanager.pb.h"
+    OUTPUT ${PB_FILES}
     COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out "${PROTO_DST_DIR}" -I ${PROTO_SRC_DIR} ${PROTO_FILES}
     DEPENDS ${PROTO_FILES}
 )
 
 add_custom_command(
-    OUTPUT "${PROTO_DST_DIR}/iamanager.grpc.pb.cc" "${PROTO_DST_DIR}/iamanager.grpc.pb.h"
-           "${PROTO_DST_DIR}/iamanager_mock.grpc.pb.h"
+    OUTPUT ${GRPC_FILES} ${GRPC_MOCKS}
     COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --grpc_out=generate_mock_code=true:"${PROTO_DST_DIR}"
             --plugin=protoc-gen-grpc=${_GRPC_CPP_PLUGIN_EXECUTABLE} -I ${PROTO_SRC_DIR} ${PROTO_FILES}
-    DEPENDS ${PROTO_FILES} "${PROTO_DST_DIR}/iamanager.pb.cc" "${PROTO_DST_DIR}/iamanager.pb.h"
+    DEPENDS ${PROTO_FILES} ${PB_FILES}
 )
 
-add_library(aoscoreapi-gen-objects OBJECT "${PROTO_DST_DIR}/iamanager.pb.cc" "${PROTO_DST_DIR}/iamanager.grpc.pb.cc")
+add_library(aoscoreapi-gen-objects STATIC ${GRPC_FILES} ${GRPC_MOCKS} ${PB_FILES})
 
 target_link_libraries(aoscoreapi-gen-objects PUBLIC protobuf::libprotobuf gRPC::grpc++)
 target_include_directories(aoscoreapi-gen-objects PUBLIC "${PROTO_DST_DIR}")
