@@ -21,7 +21,7 @@
 #include <aos/iam/permhandler.hpp>
 #include <config/config.hpp>
 
-#include <iamanager.grpc.pb.h>
+#include <iamanager/v5/iamanager.grpc.pb.h>
 
 #include "iamclient/remoteiamhandler.hpp"
 
@@ -68,8 +68,6 @@ public:
 
 private:
     // IAMPublicService interface
-    grpc::Status GetAPIVersion(grpc::ServerContext* context, const google::protobuf::Empty* request,
-        iamanager::v5::APIVersion* response) override;
     grpc::Status GetNodeInfo(grpc::ServerContext* context, const google::protobuf::Empty* request,
         iamanager::v5::NodeInfo* response) override;
     grpc::Status GetCert(grpc::ServerContext* context, const iamanager::v5::GetCertRequest* request,

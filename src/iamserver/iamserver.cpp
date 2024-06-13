@@ -163,19 +163,6 @@ IAMServer::~IAMServer()
  * IAMPublicService implementation
  **********************************************************************************************************************/
 
-grpc::Status IAMServer::GetAPIVersion(
-    grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::APIVersion* response)
-{
-    (void)context;
-    (void)request;
-
-    LOG_DBG() << "Process get API version";
-
-    response->set_version(cIamAPIVersion);
-
-    return grpc::Status::OK;
-}
-
 grpc::Status IAMServer::GetNodeInfo(
     grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::v5::NodeInfo* response)
 {

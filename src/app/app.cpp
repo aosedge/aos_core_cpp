@@ -172,13 +172,13 @@ void App::initialize(Application& self)
     if (config.mValue.mRemoteIAMs.size()) {
         mIAMClient = std::make_unique<IAMClient>();
 
-        err = mIAMClient->Init(config.mValue, mCertHandler, mCertLoader, mCryptoProvider, mProvisioning);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
+        // err = mIAMClient->Init(config.mValue, mCertHandler, mCertLoader, mCryptoProvider, mProvisioning);
+        // AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
     }
 
-    err = mIAMServer.Init(config.mValue, mCertHandler, mIdentifier.get(), mPermHandler.get(), mIAMClient.get(),
-        mCertLoader, mCryptoProvider, mNodeInfoProvider, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
+    // err = mIAMServer.Init(config.mValue, mCertHandler, mIdentifier.get(), mPermHandler.get(), mIAMClient.get(),
+    //     mCertLoader, mCryptoProvider, mNodeInfoProvider, mProvisioning);
+    // AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     // Notify systemd
 
