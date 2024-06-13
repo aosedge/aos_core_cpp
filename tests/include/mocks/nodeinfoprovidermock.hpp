@@ -17,7 +17,7 @@
  */
 class NodeInfoProviderMock : public aos::iam::NodeInfoProviderItf {
 public:
-    MOCK_METHOD(aos::Error, GetNodeInfo, (aos::NodeInfo&), (const override));
+    MOCK_METHOD(aos::Error, GetNodeInfo, (aos::NodeInfo&), (const, override));
     MOCK_METHOD(aos::Error, SetNodeStatus, (const aos::NodeStatus&), (override));
 };
 

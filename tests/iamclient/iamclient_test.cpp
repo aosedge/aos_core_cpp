@@ -7,362 +7,775 @@
 
 #include <gmock/gmock.h>
 
+#include <google/protobuf/util/message_differencer.h>
+#include <grpcpp/server_builder.h>
+#include <iamanager/v5/iamanager.grpc.pb.h>
 #include <test/utils/log.hpp>
 
-#include "iamanager_mock.grpc.pb.h"
 #include "iamclient/iamclient.hpp"
+
 #include "mocks/certhandlermock.hpp"
 #include "mocks/certloadermock.hpp"
+#include "mocks/identhandlermock.hpp"
+#include "mocks/nodeinfoprovidermock.hpp"
+#include "mocks/provisionmanagermock.hpp"
 #include "mocks/x509providermock.hpp"
 
 using namespace testing;
+using namespace aos;
 
-class IAMClientMock : public IAMClient {
+/***********************************************************************************************************************
+ * Test utils
+ **********************************************************************************************************************/
+
+namespace common::v1 {
+
+inline bool operator==(const ErrorInfo& left, const ErrorInfo& right)
+{
+    return google::protobuf::util::MessageDifferencer::Equals(left, right);
+}
+
+} // namespace common::v1
+
+namespace iamanager::v5 {
+
+inline bool operator==(const iamanager::v5::NodeInfo& left, const iamanager::v5::NodeInfo& right)
+{
+    return google::protobuf::util::MessageDifferencer::Equals(left, right);
+}
+
+} // namespace iamanager::v5
+
+template <typename T1, typename T2>
+void FillArray(const std::initializer_list<T1>& src, aos::Array<T2>& dst)
+{
+    for (const auto& val : src) {
+        ASSERT_TRUE(dst.PushBack(val).IsNone());
+    }
+}
+
+template <typename T1, typename T2>
+void FillArray(const std::initializer_list<T1>& src, google::protobuf::RepeatedPtrField<T2>& dst)
+{
+    for (const auto& val : src) {
+        *dst.Add() = val;
+    }
+}
+
+template <typename T>
+std::vector<T> ConvertFromProtoArray(const google::protobuf::RepeatedPtrField<T>& src)
+{
+    std::vector<T> dst;
+
+    for (const auto& val : src) {
+        dst.push_back(val);
+    }
+
+    return dst;
+}
+
+static CPUInfo CreateCPUInfo(int id)
+{
+    CPUInfo cpuInfo;
+
+    cpuInfo.mID         = id;
+    cpuInfo.mModelName  = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
+    cpuInfo.mNumCores   = 4;
+    cpuInfo.mNumThreads = 4;
+    cpuInfo.mArch       = "GenuineIntel";
+    cpuInfo.mArchFamily = "6";
+
+    return cpuInfo;
+}
+
+static PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
+{
+    PartitionInfo partitionInfo;
+
+    partitionInfo.mName = name;
+    FillArray(types, partitionInfo.mTypes);
+    partitionInfo.mTotalSize = 16169908;
+    partitionInfo.mPath      = "/sys/kernel/tracing";
+    partitionInfo.mUsedSize  = 64156;
+
+    return partitionInfo;
+}
+
+static NodeAttribute CreateAttribute(const char* name, const char* value)
+{
+    NodeAttribute attribute;
+
+    attribute.mName  = name;
+    attribute.mValue = value;
+
+    return attribute;
+}
+
+static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned)
+{
+    NodeInfo nodeInfo;
+
+    nodeInfo.mID     = "node0";
+    nodeInfo.mType   = "main";
+    nodeInfo.mName   = "node0";
+    nodeInfo.mStatus = status;
+    nodeInfo.mOSType = "linux";
+    FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
+    FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
+    FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
+    nodeInfo.mMaxDMIPS = 429138.42;
+    nodeInfo.mTotalRAM = 32 * 1024;
+
+    return nodeInfo;
+}
+
+//
+
+static iamanager::v5::CPUInfo CreateCPUInfoProto(int id)
+{
+    (void)id;
+
+    iamanager::v5::CPUInfo cpuInfo;
+
+    cpuInfo.set_model_name("11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz");
+    cpuInfo.set_num_cores(4);
+    cpuInfo.set_num_threads(4);
+    cpuInfo.set_arch("GenuineIntel");
+    cpuInfo.set_arch_family("6");
+
+    return cpuInfo;
+}
+
+static iamanager::v5::PartitionInfo CreatePartitionInfoProto(
+    const char* name, const std::initializer_list<const char*> types)
+{
+    iamanager::v5::PartitionInfo partitionInfo;
+
+    partitionInfo.set_name(name);
+    FillArray(types, *partitionInfo.mutable_types());
+    partitionInfo.set_total_size(16169908);
+
+    return partitionInfo;
+}
+
+static iamanager::v5::NodeAttribute CreateAttributeProto(const char* name, const char* value)
+{
+    iamanager::v5::NodeAttribute attribute;
+
+    attribute.set_name(name);
+    attribute.set_value(value);
+
+    return attribute;
+}
+
+static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = "provisioned")
+{
+    iamanager::v5::NodeInfo nodeInfo;
+
+    nodeInfo.set_id("node0");
+    nodeInfo.set_type("main");
+    nodeInfo.set_name("node0");
+    nodeInfo.set_status(status);
+    nodeInfo.set_os_type("linux");
+    FillArray({CreateCPUInfoProto(1), CreateCPUInfoProto(2), CreateCPUInfoProto(3)}, *nodeInfo.mutable_cpus());
+    FillArray({CreatePartitionInfoProto("trace", {"tracefs"}), CreatePartitionInfoProto("tmp", {})},
+        *nodeInfo.mutable_partitions());
+    FillArray(
+        {CreateAttributeProto("attr1", "val1"), CreateAttributeProto("attr2", "val2")}, *nodeInfo.mutable_attrs());
+    nodeInfo.set_max_dmips(429138.42);
+    nodeInfo.set_total_ram(32 * 1024);
+
+    return nodeInfo;
+}
+
+/***********************************************************************************************************************
+ * Suite
+ **********************************************************************************************************************/
+
+class TestPublicNodeService : public iamanager::v5::IAMPublicNodesService::Service {
 public:
-    MOCK_METHOD(CertificateServiceStubPtr, CreateIAMCertificateServiceStub, (const std::string&), (override));
-    MOCK_METHOD(ProvisioningServiceStubPtr, CreateIAMProvisioningServiceStub, (const std::string&), (override));
+    TestPublicNodeService(const std::string& url)
+    {
+        mStream                 = nullptr;
+        const auto& credentials = grpc::InsecureServerCredentials();
+
+        mServer = CreatePublicServer(url, credentials);
+    }
+
+    ~TestPublicNodeService()
+    {
+        if (mRegisterNodeContext) {
+            mRegisterNodeContext->TryCancel();
+        }
+    }
+
+    grpc::Status RegisterNode(grpc::ServerContext*                                                        context,
+        grpc::ServerReaderWriter<iamanager::v5::IAMIncomingMessages, iamanager::v5::IAMOutgoingMessages>* stream)
+    {
+        LOG_INF() << "Test server message thread started";
+
+        try {
+
+            mStream              = stream;
+            mRegisterNodeContext = context;
+
+            iamanager::v5::IAMOutgoingMessages incomingMsg;
+
+            while (stream->Read(&incomingMsg)) {
+                if (incomingMsg.has_node_info()) {
+
+                    OnNodeInfo(incomingMsg.node_info());
+                    mNodeInfoCV.notify_all();
+                } else if (incomingMsg.has_start_provisioning_response()) {
+                    const auto errorInfo = incomingMsg.start_provisioning_response().error();
+
+                    OnStartProvisioningResponse(errorInfo);
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_finish_provisioning_response()) {
+                    const auto errorInfo = incomingMsg.finish_provisioning_response().error();
+
+                    OnFinishProvisioningResponse(errorInfo);
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_deprovision_response()) {
+                    const auto errorInfo = incomingMsg.deprovision_response().error();
+
+                    OnDeprovisionResponse(errorInfo);
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_pause_node_response()) {
+                    const auto errorInfo = incomingMsg.pause_node_response().error();
+
+                    OnPauseNodeResponse(errorInfo);
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_resume_node_response()) {
+                    const auto errorInfo = incomingMsg.resume_node_response().error();
+
+                    OnResumeNodeResponse(errorInfo);
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_create_key_response()) {
+                    const auto& response = incomingMsg.create_key_response();
+
+                    OnCreateKeyResponse(response.type(), response.csr(), response.error());
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_apply_cert_response()) {
+                    const auto& response = incomingMsg.apply_cert_response();
+
+                    OnApplyCertResponse(response.type(), response.cert_url(), response.serial(), response.error());
+                    mResponseCV.notify_all();
+                } else if (incomingMsg.has_cert_types_response()) {
+                    const auto& response = incomingMsg.cert_types_response();
+
+                    OnCertTypesResponse(ConvertFromProtoArray(response.types()));
+                    mResponseCV.notify_all();
+                }
+            }
+        } catch (const std::exception& e) {
+            LOG_ERR() << e.what();
+        }
+
+        LOG_DBG() << "Test server message thread stoped";
+
+        mRegisterNodeContext = nullptr;
+
+        return grpc::Status::OK;
+    }
+
+    void StartProvisioningRequest(const std::string& id, const std::string& password)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_start_provisioning_request()->set_node_id(id);
+        request.mutable_start_provisioning_request()->set_password(password);
+
+        mStream->Write(request);
+    }
+
+    void FinishProvisioningRequest(const std::string& id, const std::string& password)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_finish_provisioning_request()->set_node_id(id);
+        request.mutable_finish_provisioning_request()->set_password(password);
+
+        mStream->Write(request);
+    }
+
+    void DeprovisionRequest(const std::string& id, const std::string& password)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_deprovision_request()->set_node_id(id);
+        request.mutable_deprovision_request()->set_password(password);
+
+        mStream->Write(request);
+    }
+
+    void PauseNodeRequest(const std::string& id)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_pause_node_request()->set_node_id(id);
+
+        mStream->Write(request);
+    }
+
+    void ResumeNodeRequest(const std::string& id)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_resume_node_request()->set_node_id(id);
+
+        mStream->Write(request);
+    }
+
+    void CreateKeyRequest(
+        const std::string& id, const std::string& subject, const std::string& type, const std::string& password)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_create_key_request()->set_node_id(id);
+        request.mutable_create_key_request()->set_subject(subject);
+        request.mutable_create_key_request()->set_type(type);
+        request.mutable_create_key_request()->set_password(password);
+
+        mStream->Write(request);
+    }
+
+    void ApplyCertRequest(const std::string& id, const std::string& type, const std::string& cert)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_apply_cert_request()->set_node_id(id);
+        request.mutable_apply_cert_request()->set_type(type);
+        request.mutable_apply_cert_request()->set_cert(cert);
+
+        mStream->Write(request);
+    }
+
+    void GetCertTypesRequest(const std::string& id)
+    {
+        iamanager::v5::IAMIncomingMessages request;
+
+        request.mutable_get_cert_types_request()->set_node_id(id);
+
+        mStream->Write(request);
+    }
+
+    MOCK_METHOD(void, OnNodeInfo, (const iamanager::v5::NodeInfo& nodeInfo));
+    MOCK_METHOD(void, OnStartProvisioningResponse, (const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnFinishProvisioningResponse, (const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnDeprovisionResponse, (const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnPauseNodeResponse, (const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnResumeNodeResponse, (const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnCreateKeyResponse,
+        (const std::string& type, const std::string& csr, const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnApplyCertResponse,
+        (const std::string& type, const std::string& certURL, const std::string& serial,
+            const ::common::v1::ErrorInfo& errorInfo));
+    MOCK_METHOD(void, OnCertTypesResponse, (const std::vector<std::string>& types));
+
+    void WaitNodeInfo(const std::chrono::seconds& timeout = std::chrono::seconds(4))
+    {
+        std::unique_lock lock {mLock};
+
+        mNodeInfoCV.wait_for(lock, timeout);
+    }
+
+    void WaitResponse(const std::chrono::seconds& timeout = std::chrono::seconds(4))
+    {
+        std::unique_lock lock {mLock};
+
+        mResponseCV.wait_for(lock, timeout);
+    }
+
+private:
+    std::unique_ptr<grpc::Server> CreatePublicServer(
+        const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
+    {
+        grpc::ServerBuilder builder;
+
+        builder.AddListeningPort(addr, credentials);
+        builder.RegisterService(static_cast<iamanager::v5::IAMPublicNodesService::Service*>(this));
+
+        return builder.BuildAndStart();
+    }
+
+    grpc::ServerReaderWriter<iamanager::v5::IAMIncomingMessages, iamanager::v5::IAMOutgoingMessages>* mStream;
+    grpc::ServerContext* mRegisterNodeContext;
+
+    std::mutex              mLock;
+    std::condition_variable mNodeInfoCV;
+    std::condition_variable mResponseCV;
+
+    std::unique_ptr<grpc::Server> mServer;
 };
 
 class IAMClientTest : public Test {
 protected:
-    static constexpr const char* const cCertType          = "test-cert-type";
-    static constexpr const char* const cCertUrl           = "test-cert-url";
-    static constexpr const char* const cNodeId            = "test-node-1";
-    static constexpr const char* const cPassword          = "test-password";
-    static constexpr const char* const cPemCert           = "test-pem-cert";
-    static constexpr const char* const cSubjectCommonName = "test-subj-name";
+    void SetUp() override { InitLogs(); }
 
-    void SetUp() override
+    static Config GetConfig()
     {
-        aos::InitLogs();
+        Config config;
 
-        mIAMProvisioningServiceStub = std::make_unique<iamanager::v5::MockIAMProvisioningServiceStub>();
-        mIAMCertificateServiceStub  = std::make_unique<iamanager::v5::MockIAMCertificateServiceStub>();
+        config.mMainIAMPublicServerURL    = "localhost:5555";
+        config.mMainIAMProtectedServerURL = "localhost:5556";
+        config.mCertStorage               = "iam";
+        config.mCACert                    = "";
 
-        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node0", "url0", aos::common::utils::Duration(0)});
-        mConfig.mRemoteIAMs.emplace_back(RemoteIAM {"node1", "url1", aos::common::utils::Duration(0)});
+        config.mStartProvisioningCmdArgs  = {"/bin/sh", "-c", "echo 'Hello World'"};
+        config.mDiskEncryptionCmdArgs     = {"/bin/sh", "-c", "echo 'Hello World'"};
+        config.mFinishProvisioningCmdArgs = {"/bin/sh", "-c", "echo 'Hello World'"};
+        config.mDeprovisionCmdArgs        = {"/bin/sh", "-c", "echo 'Hello World'"};
+
+        config.mNodeReconnectInterval = std::chrono::seconds(2);
+
+        return config;
     }
 
-    IAMClientMock                                                  mIAMClientMock;
-    std::unique_ptr<iamanager::v5::MockIAMProvisioningServiceStub> mIAMProvisioningServiceStub;
-    std::unique_ptr<iamanager::v5::MockIAMCertificateServiceStub>  mIAMCertificateServiceStub;
-    Config                                                         mConfig;
-    CertHandlerItfMock                                             mCertHandlerMock;
-    CertLoaderItfMock                                              mCertLoaderMock;
-    ProviderItfMock                                                mProviderMock;
-    bool                                                           mProvisioningMode {true};
+    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const Config& config = GetConfig())
+    {
+        auto client = std::make_unique<IAMClient>();
+
+        assert(client
+                   ->Init(config, &mIdentHandler, mProvisionManager, mCertLoader, mCryptoProvider, mNodeInfoProvider,
+                       provisionMode)
+                   .IsNone());
+
+        return client;
+    }
+
+    std::unique_ptr<TestPublicNodeService> CreateServer(const std::string& url)
+    {
+        return std::make_unique<TestPublicNodeService>(url);
+    }
+
+    std::pair<std::unique_ptr<TestPublicNodeService>, std::unique_ptr<IAMClient>> InitTest(
+        const NodeStatus& status, const Config& config = GetConfig())
+    {
+        auto server = CreateServer(config.mMainIAMPublicServerURL);
+
+        NodeInfo                nodeInfo    = DefaultNodeInfo(status);
+        iamanager::v5::NodeInfo expNodeInfo = DefaultNodeInfoProto(status.ToString().CStr());
+
+        EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+            .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+        EXPECT_CALL(*server, OnNodeInfo(expNodeInfo));
+
+        auto client = CreateClient(true, config);
+
+        server->WaitNodeInfo();
+
+        return std::make_pair(std::move(server), std::move(client));
+    }
+
+    const String                  cSubject     = "aos-core";
+    const String                  cCertType    = "iam";
+    const String                  cPassword    = "admin";
+    const ::common::v1::ErrorInfo cErrorInfoOK = ::common::v1::ErrorInfo();
+
+    iam::identhandler::IdentHandlerMock         mIdentHandler;
+    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    CertLoaderItfMock                           mCertLoader;
+    ProviderItfMock                             mCryptoProvider;
+    NodeInfoProviderMock                        mNodeInfoProvider;
 };
 
 /***********************************************************************************************************************
- * Init tests
+ * Tests
  **********************************************************************************************************************/
 
-TEST_F(IAMClientTest, InitGetCertificateFails)
+TEST_F(IAMClientTest, InitFailed)
 {
-    mProvisioningMode = false;
+    auto server = CreateServer(GetConfig().mMainIAMPublicServerURL);
 
-    EXPECT_CALL(mCertHandlerMock, GetCertificate).WillOnce(Return(aos::ErrorEnum::eFailed));
-    EXPECT_CALL(mCertLoaderMock, LoadCertsChainByURL).Times(0);
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eFailed));
+    // There is no nodeInfo notification if provider failed to return it
+    EXPECT_CALL(*server, OnNodeInfo(_)).Times(0);
 
-    auto err = mIAMClientMock.Init(mConfig, mCertHandlerMock, mCertLoaderMock, mProviderMock, mProvisioningMode);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eInvalidArgument)) << err.Message();
-
-    const auto remoteNodes = mIAMClientMock.GetRemoteNodes();
-    ASSERT_TRUE(remoteNodes.IsEmpty());
+    auto client = CreateClient(true);
+    server->WaitNodeInfo(std::chrono::seconds(1));
 }
 
-TEST_F(IAMClientTest, InitSucceedsInProvisioningMode)
+TEST_F(IAMClientTest, ConnectionFailed)
 {
-    mProvisioningMode = true;
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(mCertHandlerMock, GetCertificate).Times(0);
-    EXPECT_CALL(mCertLoaderMock, LoadCertsChainByURL).Times(0);
-
-    auto err = mIAMClientMock.Init(mConfig, mCertHandlerMock, mCertLoaderMock, mProviderMock, mProvisioningMode);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-
-    const auto remoteNodes = mIAMClientMock.GetRemoteNodes();
-    ASSERT_EQ(remoteNodes.Size(), mConfig.mRemoteIAMs.size());
+    auto client = CreateClient(true);
+    sleep(1);
 }
 
-/***********************************************************************************************************************
- * GetCertTypes tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnGetCertTypes)
+TEST_F(IAMClientTest, Reconnect)
 {
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
+    // Init
+    auto [server1, client]              = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo                nodeInfo    = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
+    iamanager::v5::NodeInfo expNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
-    aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>> certTypes;
+    // close server
+    server1.reset();
 
-    const auto err = mIAMClientMock.GetCertTypes("", certTypes);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    // open server & wait for notification
+    auto server2 = CreateServer(GetConfig().mMainIAMPublicServerURL);
+
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*server2, OnNodeInfo(expNodeInfo));
+
+    server2->WaitNodeInfo();
 }
 
-TEST_F(IAMClientTest, SucceedsOnGetCertTypes)
+TEST_F(IAMClientTest, StartProvisioning)
 {
-    const std::vector<std::string> cTypes = {"type1", "type2"};
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    EXPECT_CALL(*mIAMProvisioningServiceStub, GetCertTypes)
-        .WillOnce(Invoke(
-            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v5::GetCertTypesRequest& request,
-                iamanager::v5::CertTypes* response) -> grpc::Status {
-                (void)context;
-                (void)request;
-                (void)response;
+    // StartProvisioning
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*server, OnStartProvisioningResponse(cErrorInfoOK));
 
-                EXPECT_EQ(request.node_id(), nodeId);
-
-                for (const auto& type : cTypes) {
-                    response->add_types(type);
-                }
-
-                return grpc::Status::OK;
-            }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 2> certTypes;
-
-    const auto err = mIAMClientMock.GetCertTypes(cNodeId, certTypes);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-
-    ASSERT_EQ(certTypes.Size(), cTypes.size());
-
-    for (size_t i = 0; i < certTypes.Size(); ++i) {
-        EXPECT_STREQ(certTypes[i].CStr(), cTypes[i].c_str());
-    }
+    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, RPCFailedGetCertTypes)
+TEST_F(IAMClientTest, StartProvisioningExecFailed)
 {
-    EXPECT_CALL(*mIAMProvisioningServiceStub, GetCertTypes).WillOnce(Return(grpc::Status::CANCELLED));
+    // Init
+    auto config                      = GetConfig();
+    config.mStartProvisioningCmdArgs = {"/bin/sh", "-c", "echo 'Hello World' && false"};
 
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned, config);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 1> certTypes;
+    // StartProvisioning
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eFailed));
+    EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
-    const auto err = mIAMClientMock.GetCertTypes(cNodeId, certTypes);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, NoMemoryOnGetCertTypes)
+TEST_F(IAMClientTest, StartProvisioningWrongNodeStatus)
 {
-    const std::vector<std::string> cTypes = {"type1", "type2"};
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
 
-    EXPECT_CALL(*mIAMProvisioningServiceStub, GetCertTypes)
-        .WillOnce(Invoke(
-            [nodeId = cNodeId, &cTypes](grpc::ClientContext* context, const iamanager::v5::GetCertTypesRequest& request,
-                iamanager::v5::CertTypes* response) -> grpc::Status {
-                (void)context;
-                (void)request;
-                (void)response;
+    // StartProvisioning
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
-                EXPECT_EQ(request.node_id(), nodeId);
+    EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
-                for (const auto& type : cTypes) {
-                    response->add_types(type);
-                }
-
-                return grpc::Status::OK;
-            }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
-
-    aos::StaticArray<aos::StaticString<aos::iam::certhandler::cCertTypeLen>, 1> certTypes;
-
-    const auto err = mIAMClientMock.GetCertTypes(cNodeId, certTypes);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << err.Message();
-    ASSERT_NE(certTypes.Size(), cTypes.size());
+    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-/***********************************************************************************************************************
- * CreateKey tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnCreateKey)
+TEST_F(IAMClientTest, FinishProvisioning)
 {
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub).WillOnce(Return(nullptr));
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    aos::StaticString<aos::crypto::cCSRPEMLen> csr;
+    // FinishProvisioning
+    NodeInfo                provNodeInfo    = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
+    iamanager::v5::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("provisioned");
 
-    const auto err = mIAMClientMock.CreateKey("", "", "", "", csr);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
-    ASSERT_TRUE(csr.IsEmpty());
+    EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::eProvisioned)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
+        .WillOnce(DoAll(SetArgReferee<0>(provNodeInfo), Return(ErrorEnum::eNone)));
+
+    EXPECT_CALL(mProvisionManager, FinishProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*server, OnNodeInfo(expProvNodeInfo));
+    EXPECT_CALL(*server, OnFinishProvisioningResponse(cErrorInfoOK));
+
+    server->FinishProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
+    server->WaitNodeInfo();
 }
 
-TEST_F(IAMClientTest, SucceedsOnCreateKey)
+TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
 {
-    constexpr std::string_view cExpectedCsr {"test-csr"};
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
 
-    aos::StaticString<aos::crypto::cCSRPEMLen> resultCsr;
+    // FinishProvisioning
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(*mIAMCertificateServiceStub, CreateKey)
-        .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, subjectCommonName = cSubjectCommonName,
-                             password = cPassword, expectedCsr = cExpectedCsr](grpc::ClientContext* context,
-                             const iamanager::v5::CreateKeyRequest&                                 request,
-                             iamanager::v5::CreateKeyResponse* response) -> grpc::Status {
-            (void)context;
-            (void)request;
-            (void)response;
+    EXPECT_CALL(*server, OnFinishProvisioningResponse(Not(cErrorInfoOK)));
 
-            EXPECT_EQ(request.node_id(), nodeId);
-            EXPECT_EQ(request.type(), certType);
-            EXPECT_EQ(request.subject(), subjectCommonName);
-            EXPECT_EQ(request.password(), password);
-
-            response->set_csr(expectedCsr.data());
-
-            return grpc::Status::OK;
-        }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub)
-        .WillOnce(Return(std::move(mIAMCertificateServiceStub)));
-
-    const auto err = mIAMClientMock.CreateKey(cNodeId, cCertType, cSubjectCommonName, cPassword, resultCsr);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-    ASSERT_EQ(resultCsr.Size(), cExpectedCsr.length());
-    ASSERT_STREQ(resultCsr.CStr(), cExpectedCsr.data());
+    server->FinishProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, RPCFailedOnCreateKey)
+TEST_F(IAMClientTest, Deprovision)
 {
-    aos::StaticString<aos::crypto::cCSRPEMLen> resultCsr;
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
 
-    EXPECT_CALL(*mIAMCertificateServiceStub, CreateKey).WillOnce(Return(grpc::Status::CANCELLED));
+    // Deprovision
+    NodeInfo                deprovNodeInfo    = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
+    iamanager::v5::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub)
-        .WillOnce(Return(std::move(mIAMCertificateServiceStub)));
+    EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::eUnprovisioned)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
+        .WillOnce(DoAll(SetArgReferee<0>(deprovNodeInfo), Return(ErrorEnum::eNone)));
 
-    const auto err = mIAMClientMock.CreateKey(cNodeId, cCertType, cSubjectCommonName, cPassword, resultCsr);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    EXPECT_CALL(mProvisionManager, Deprovision(cPassword)).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*server, OnNodeInfo(expDeprovNodeInfo));
+    EXPECT_CALL(*server, OnDeprovisionResponse(::common::v1::ErrorInfo()));
+
+    server->DeprovisionRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
+    server->WaitNodeInfo();
 }
 
-/***********************************************************************************************************************
- * ApplyCertificate tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, CreateStubFailsOnApplyCertificate)
+TEST_F(IAMClientTest, DeprovisionWrongNodeStatus)
 {
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub).WillOnce(Return(nullptr));
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    aos::iam::certhandler::CertInfo certInfo;
+    // Deprovision
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
-    const auto err = mIAMClientMock.ApplyCertificate("", "", "", certInfo);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    EXPECT_CALL(*server, OnDeprovisionResponse(Not(cErrorInfoOK)));
+
+    server->DeprovisionRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, SucceedsOnApplyCertificate)
+TEST_F(IAMClientTest, PauseNode)
 {
-    constexpr std::string_view cExpectedSerialStr {"abcDEF0123456789"};
-    const uint8_t              cExpectedSerialByteArray[] = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89};
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
 
-    aos::iam::certhandler::CertInfo resultInfo;
+    // Pause
+    NodeInfo                pausedNodeInfo    = DefaultNodeInfo(NodeStatusEnum::ePaused);
+    iamanager::v5::NodeInfo expPausedNodeInfo = DefaultNodeInfoProto("paused");
 
-    EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert)
-        .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, pemCert = cPemCert, certUrl = cCertUrl,
-                             expectedSerial = cExpectedSerialStr](grpc::ClientContext* context,
-                             const iamanager::v5::ApplyCertRequest&                    request,
-                             iamanager::v5::ApplyCertResponse*                         response) -> grpc::Status {
-            (void)context;
-            (void)request;
-            (void)response;
+    EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::ePaused)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
+        .WillOnce(DoAll(SetArgReferee<0>(pausedNodeInfo), Return(ErrorEnum::eNone)));
 
-            EXPECT_EQ(request.node_id(), nodeId);
-            EXPECT_EQ(request.type(), certType);
-            EXPECT_EQ(request.cert(), pemCert);
+    EXPECT_CALL(*server, OnNodeInfo(expPausedNodeInfo));
+    EXPECT_CALL(*server, OnPauseNodeResponse(::common::v1::ErrorInfo()));
 
-            response->set_cert_url(certUrl);
-            response->set_serial(expectedSerial.data());
-
-            return grpc::Status::OK;
-        }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub)
-        .WillOnce(Return(std::move(mIAMCertificateServiceStub)));
-
-    const auto err = mIAMClientMock.ApplyCertificate(cNodeId, cCertType, cPemCert, resultInfo);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-    ASSERT_STREQ(resultInfo.mCertURL.CStr(), cCertUrl);
-    ASSERT_EQ(resultInfo.mSerial, aos::Array<uint8_t>(cExpectedSerialByteArray, sizeof(cExpectedSerialByteArray)));
+    server->PauseNodeRequest(nodeInfo.mID.CStr());
+    server->WaitResponse();
+    server->WaitNodeInfo();
 }
 
-TEST_F(IAMClientTest, RPCFailedOnApplyCertificate)
+TEST_F(IAMClientTest, PauseWrongNodeStatus)
 {
-    aos::iam::certhandler::CertInfo resultInfo;
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert).WillOnce(Return(grpc::Status::CANCELLED));
+    // Pause
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub)
-        .WillOnce(Return(std::move(mIAMCertificateServiceStub)));
+    EXPECT_CALL(*server, OnPauseNodeResponse(Not(cErrorInfoOK)));
 
-    const auto err = mIAMClientMock.ApplyCertificate(cNodeId, cCertType, cPemCert, resultInfo);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    server->PauseNodeRequest(nodeInfo.mID.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, NoMemoryOnApplyCertificate)
+TEST_F(IAMClientTest, ResumeNode)
 {
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::ePaused);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::ePaused);
 
-    aos::iam::certhandler::CertInfo resultInfo;
+    // Resume
+    NodeInfo                resumedNodeInfo    = DefaultNodeInfo(NodeStatusEnum::eProvisioned);
+    iamanager::v5::NodeInfo expResumedNodeInfo = DefaultNodeInfoProto("provisioned");
 
-    EXPECT_CALL(*mIAMCertificateServiceStub, ApplyCert)
-        .WillOnce(Invoke([nodeId = cNodeId, certType = cCertType, pemCert = cPemCert, certUrl = cCertUrl](
-                             grpc::ClientContext* context, const iamanager::v5::ApplyCertRequest& request,
-                             iamanager::v5::ApplyCertResponse* response) -> grpc::Status {
-            (void)context;
-            (void)request;
-            (void)response;
+    EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::eProvisioned)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
+        .WillOnce(DoAll(SetArgReferee<0>(resumedNodeInfo), Return(ErrorEnum::eNone)));
 
-            EXPECT_EQ(request.node_id(), nodeId);
-            EXPECT_EQ(request.type(), certType);
-            EXPECT_EQ(request.cert(), pemCert);
+    EXPECT_CALL(*server, OnNodeInfo(expResumedNodeInfo));
+    EXPECT_CALL(*server, OnResumeNodeResponse(::common::v1::ErrorInfo()));
 
-            response->set_cert_url(certUrl);
-            response->set_serial(std::string(aos::crypto::cSerialNumStrLen + 1, 'c'));
-
-            return grpc::Status::OK;
-        }));
-
-    EXPECT_CALL(mIAMClientMock, CreateIAMCertificateServiceStub)
-        .WillOnce(Return(std::move(mIAMCertificateServiceStub)));
-
-    const auto err = mIAMClientMock.ApplyCertificate(cNodeId, cCertType, cPemCert, resultInfo);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << err.Message();
+    server->ResumeNodeRequest(nodeInfo.mID.CStr());
+    server->WaitResponse();
+    server->WaitNodeInfo();
 }
 
-/***********************************************************************************************************************
- * FinishProvisioning tests
- **********************************************************************************************************************/
-
-TEST_F(IAMClientTest, DISABLED_CreateStubFailsOnFinishProvisioning)
+TEST_F(IAMClientTest, ResumeWrongNodeStatus)
 {
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub).WillOnce(Return(nullptr));
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    const auto err = mIAMClientMock.FinishProvisioning("");
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    // Resume
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+
+    EXPECT_CALL(*server, OnResumeNodeResponse(Not(cErrorInfoOK)));
+
+    server->ResumeNodeRequest(nodeInfo.mID.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, DISABLED_SucceedsOnFinishProvisioning)
+TEST_F(IAMClientTest, CreateKey)
 {
-    EXPECT_CALL(*mIAMProvisioningServiceStub, FinishProvisioning).WillOnce(Return(grpc::Status::OK));
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
+    // CreateKey
+    EXPECT_CALL(mProvisionManager, CreateKey(cCertType, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cCertType.CStr()), _, ::common::v1::ErrorInfo()));
+    EXPECT_CALL(mIdentHandler, GetSystemID())
+        .WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSubject, ErrorEnum::eNone)));
 
-    const auto err = mIAMClientMock.FinishProvisioning(cNodeId);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
+    server->CreateKeyRequest(nodeInfo.mID.CStr(), "", cCertType.CStr(), cPassword.CStr());
+    server->WaitResponse();
 }
 
-TEST_F(IAMClientTest, DISABLED_RPCFailedOnFinishProvisioning)
+TEST_F(IAMClientTest, ApplyCert)
 {
-    EXPECT_CALL(*mIAMProvisioningServiceStub, FinishProvisioning).WillOnce(Return(grpc::Status::CANCELLED));
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
-    EXPECT_CALL(mIAMClientMock, CreateIAMProvisioningServiceStub)
-        .WillOnce(Return(std::move(mIAMProvisioningServiceStub)));
+    // ApplyCert
+    iam::certhandler::CertInfo certInfo;
 
-    const auto err = mIAMClientMock.FinishProvisioning(cNodeId);
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << err.Message();
+    EXPECT_CALL(mProvisionManager, ApplyCert(cCertType, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>(certInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*server,
+        OnApplyCertResponse(
+            std::string(cCertType.CStr()), std::string(certInfo.mCertURL.CStr()), _, ::common::v1::ErrorInfo()));
+
+    server->ApplyCertRequest(nodeInfo.mID.CStr(), cCertType.CStr(), {});
+    server->WaitResponse();
+}
+
+TEST_F(IAMClientTest, GetCertTypes)
+{
+    // Init
+    auto [server, client] = InitTest(NodeStatusEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
+
+    // GetCertTypes
+    aos::iam::provisionmanager::CertTypes types;
+    FillArray({"iam", "online", "offline"}, types);
+
+    EXPECT_CALL(mProvisionManager, GetCertTypes())
+        .WillOnce(Return(aos::RetWithError<aos::iam::provisionmanager::CertTypes>(types)));
+    EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
+
+    server->GetCertTypesRequest(nodeInfo.mID.CStr());
+    server->WaitResponse();
 }
