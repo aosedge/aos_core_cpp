@@ -40,11 +40,17 @@ endif()
 
 message(STATUS "gRPC plugin: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
 
-set(PROTO_FILES ${PROTO_SRC_DIR}/common/v1/common.proto ${PROTO_SRC_DIR}/iamanager/v5/iamanager.proto)
-set(PB_FILES ${PROTO_DST_DIR}/common/v1/common.pb.h ${PROTO_DST_DIR}/common/v1/common.pb.cc
-             ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.cc
+set(PROTO_FILES ${PROTO_SRC_DIR}/common/v1/common.proto ${PROTO_SRC_DIR}/iamanager/v5/iamanager.proto
+                ${PROTO_SRC_DIR}/iamanager/version.proto
 )
-set(GRPC_FILES ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.cc)
+set(PB_FILES
+    ${PROTO_DST_DIR}/common/v1/common.pb.h ${PROTO_DST_DIR}/common/v1/common.pb.cc
+    ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.pb.cc
+    ${PROTO_DST_DIR}/iamanager/version.pb.h ${PROTO_DST_DIR}/iamanager/version.pb.cc
+)
+set(GRPC_FILES ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.h ${PROTO_DST_DIR}/iamanager/v5/iamanager.grpc.pb.cc
+               ${PROTO_DST_DIR}/iamanager/version.grpc.pb.h ${PROTO_DST_DIR}/iamanager/version.grpc.pb.cc
+)
 set(GRPC_MOCKS "${PROTO_DST_DIR}/iamanager/v5/iamanager_mock.grpc.pb.h")
 
 add_custom_command(
