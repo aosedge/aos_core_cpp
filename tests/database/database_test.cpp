@@ -12,7 +12,74 @@
 using namespace testing;
 
 /***********************************************************************************************************************
- * Static
+ * Utils
+ **********************************************************************************************************************/
+
+template <typename T1, typename T2>
+void FillArray(const std::initializer_list<T1>& src, aos::Array<T2>& dst)
+{
+    for (const auto& val : src) {
+        ASSERT_TRUE(dst.PushBack(val).IsNone());
+    }
+}
+
+static aos::CPUInfo CreateCPUInfo(int id)
+{
+    aos::CPUInfo cpuInfo;
+
+    cpuInfo.mID         = id;
+    cpuInfo.mModelName  = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
+    cpuInfo.mNumCores   = 4;
+    cpuInfo.mNumThreads = 4;
+    cpuInfo.mArch       = "GenuineIntel";
+    cpuInfo.mArchFamily = "6";
+
+    return cpuInfo;
+}
+
+static aos::PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
+{
+    aos::PartitionInfo partitionInfo;
+
+    partitionInfo.mName = name;
+    FillArray(types, partitionInfo.mTypes);
+    partitionInfo.mTotalSize = 16169908;
+    partitionInfo.mPath      = "/sys/kernel/tracing";
+    partitionInfo.mUsedSize  = 64156;
+
+    return partitionInfo;
+}
+
+static aos::NodeAttribute CreateAttribute(const char* name, const char* value)
+{
+    aos::NodeAttribute attribute;
+
+    attribute.mName  = name;
+    attribute.mValue = value;
+
+    return attribute;
+}
+
+static aos::NodeInfo DefaultNodeInfo(const char* id = "node0")
+{
+    aos::NodeInfo nodeInfo;
+
+    nodeInfo.mID     = id;
+    nodeInfo.mType   = "main";
+    nodeInfo.mName   = "node0";
+    nodeInfo.mStatus = aos::NodeStatusEnum::eProvisioned;
+    nodeInfo.mOSType = "linux";
+    FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
+    FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
+    FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
+    nodeInfo.mMaxDMIPS = 429138.42;
+    nodeInfo.mTotalRAM = 32 * 1024;
+
+    return nodeInfo;
+}
+
+/***********************************************************************************************************************
+ * Suite
  **********************************************************************************************************************/
 
 class DatabaseTest : public Test {
@@ -33,6 +100,7 @@ protected:
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
+
 TEST_F(DatabaseTest, AddCertInfo)
 {
     aos::iam::certhandler::CertInfo certInfo;
@@ -166,4 +234,78 @@ TEST_F(DatabaseTest, GetCertsInfo)
     EXPECT_EQ(certsInfo.Size(), 2);
     EXPECT_TRUE(certsInfo[0] == certInfo || certsInfo[1] == certInfo);
     EXPECT_TRUE(certsInfo[0] == certInfo2 || certsInfo[1] == certInfo2);
+}
+
+/***********************************************************************************************************************
+ * Tests
+ **********************************************************************************************************************/
+
+TEST_F(DatabaseTest, GetNodeInfo)
+{
+    const auto& nodeInfo = DefaultNodeInfo();
+
+    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+
+    ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
+
+    aos::NodeInfo resultNodeInfo;
+    ASSERT_TRUE(mDB.GetNodeInfo(nodeInfo.mID, resultNodeInfo).IsNone());
+    ASSERT_EQ(resultNodeInfo, nodeInfo);
+}
+
+TEST_F(DatabaseTest, GetAllNodeIds)
+{
+    const auto& node0 = DefaultNodeInfo("node0");
+    const auto& node1 = DefaultNodeInfo("node1");
+    const auto& node2 = DefaultNodeInfo("node2");
+
+    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+
+    ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> expectedNodeIds, resultNodeIds;
+    FillArray({node0.mID, node1.mID, node2.mID}, expectedNodeIds);
+
+    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
+    ASSERT_EQ(expectedNodeIds, resultNodeIds);
+}
+
+TEST_F(DatabaseTest, GetAllNodeIdsNotEnoughMemory)
+{
+    const auto& node0 = DefaultNodeInfo("node0");
+    const auto& node1 = DefaultNodeInfo("node1");
+    const auto& node2 = DefaultNodeInfo("node2");
+
+    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+
+    ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, 2> resultNodeIds;
+
+    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).Is(aos::ErrorEnum::eNoMemory));
+}
+
+TEST_F(DatabaseTest, RemoveNodeInfo)
+{
+    const auto& node0 = DefaultNodeInfo("node0");
+    const auto& node1 = DefaultNodeInfo("node1");
+    const auto& node2 = DefaultNodeInfo("node2");
+
+    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+
+    ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
+    ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
+
+    ASSERT_TRUE(mDB.RemoveNodeInfo(node1.mID).IsNone());
+
+    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> expectedNodeIds, resultNodeIds;
+    FillArray({node0.mID, node2.mID}, expectedNodeIds);
+
+    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
+    ASSERT_EQ(expectedNodeIds, resultNodeIds);
 }
