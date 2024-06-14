@@ -25,7 +25,7 @@ public:
     {
         std::ofstream file(mFileName);
         file << R"({
-            "NodeInfoConfig": {
+            "NodeInfo": {
                 "CPUInfoPath": "/proc/cpuinfo",
                 "MemInfoPath": "/proc/meminfo",
                 "NodeIDPath": "NodeIDPath",
