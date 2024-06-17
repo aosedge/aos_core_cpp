@@ -158,4 +158,31 @@ TEST_F(JsonTest, CaseInsensitiveObjectWrapperSucceeds)
     EXPECT_EQ(wrapper.GetOptionalValue<std::string>("key").value(), "value");
 }
 
+TEST_F(JsonTest, WriteJsonToFileSucceeds)
+{
+    Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+    object->set("key", "value");
+
+    std::string path = "test.json";
+
+    EXPECT_EQ(WriteJsonToFile(object, path), aos::ErrorEnum::eNone);
+
+    std::ifstream file(path);
+    std::string   content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, R"({"key":"value"})");
+
+    std::remove(path.c_str());
+}
+
+TEST_F(JsonTest, WriteJsonToFileFails)
+{
+    Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+    object->set("key", "value");
+
+    std::string path = "/non/existent/path/test.json";
+
+    EXPECT_EQ(WriteJsonToFile(object, path), aos::ErrorEnum::eFailed);
+}
+
 } // namespace aos::common::utils

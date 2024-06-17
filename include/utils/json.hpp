@@ -39,6 +39,15 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(const std::string& json) noexcep
 aos::RetWithError<Poco::Dynamic::Var> ParseJson(std::istream& in) noexcept;
 
 /**
+ * Writes json to file.
+ *
+ * @param json json object.
+ * @param path path to the file.
+ * @return aos::Error.
+ */
+Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& path);
+
+/**
  * Finds value of the json by path
  *
  * @param object json object.
