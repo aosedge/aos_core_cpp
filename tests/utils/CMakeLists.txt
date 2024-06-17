@@ -11,7 +11,15 @@ set(TARGET utils_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES exception_test.cpp filesystem_test.cpp image_test.cpp json_test.cpp parser_test.cpp time_test.cpp)
+set(SOURCES
+    channel_test.cpp
+    exception_test.cpp
+    filesystem_test.cpp
+    image_test.cpp
+    json_test.cpp
+    parser_test.cpp
+    time_test.cpp
+)
 
 # ######################################################################################################################
 # Target
