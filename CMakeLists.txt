@@ -56,7 +56,7 @@ find_package(Poco REQUIRED JSON DataSQLite)
 
 # Systemd lib
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(JOURNALD libsystemd REQUIRED)
+pkg_check_modules(Systemd libsystemd REQUIRED)
 
 if(WITH_TEST)
     find_package(GTest REQUIRED)

@@ -27,7 +27,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon ${JOURNALD_LIBRARIES})
+target_link_libraries(${TARGET} PUBLIC aoscommon ${Systemd_LIBRARIES})
 
 # ######################################################################################################################
 # Install
