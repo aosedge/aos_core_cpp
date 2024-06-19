@@ -13,20 +13,22 @@ project("aos_core_common_cpp")
 # Options
 # ######################################################################################################################
 
+option(WITH_CORELIB "build with corelib" OFF)
+
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
 option(WITH_DOC "build with documenation" OFF)
-option(WITH_CORELIB "build with corelib" OFF)
 
 message(STATUS)
 message(STATUS "${CMAKE_PROJECT_NAME} configuration:")
 message(STATUS "CMAKE_BUILD_TYPE              = ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_INSTALL_PREFIX          = ${CMAKE_INSTALL_PREFIX}")
 message(STATUS)
+message(STATUS "WITH_CORELIB                  = ${WITH_CORELIB}")
+message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
 message(STATUS "WITH_DOC                      = ${WITH_DOC}")
-message(STATUS "WITH_CORELIB                  = ${WITH_CORELIB}")
 message(STATUS)
 
 # ######################################################################################################################
