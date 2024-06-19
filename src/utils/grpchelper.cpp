@@ -76,7 +76,7 @@ static std::string ConvertCertificateToPEM(
     String      view = result.c_str();
 
     auto err = cryptoProvider.X509CertToPEM(certificate, view);
-    AOS_ERROR_CHECK_AND_THROW("Certificate convertion problem", err);
+    AOS_ERROR_CHECK_AND_THROW("Certificate conversion problem", err);
 
     result.resize(view.Size());
 
