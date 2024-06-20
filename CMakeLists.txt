@@ -31,10 +31,7 @@ message(STATUS)
 # Compiler flags
 # ######################################################################################################################
 
-set(common_flags "-fPIC -Wall -Werror -Wextra -Wpedantic")
-
-set(CMAKE_CXX_FLAGS "${common_flags} ${CMAKE_CXX_FLAGS}")
-set(CMAKE_C_FLAGS "${common_flags} ${CMAKE_C_FLAGS}")
+add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
 
 # ######################################################################################################################
