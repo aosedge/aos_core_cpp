@@ -53,7 +53,7 @@ endif()
 find_package(gRPC REQUIRED)
 
 # Poco lib
-find_package(Poco REQUIRED JSON DataSQLite)
+find_package(Poco REQUIRED JSON DataSQLite Foundation)
 
 # Systemd lib
 find_package(PkgConfig REQUIRED)
