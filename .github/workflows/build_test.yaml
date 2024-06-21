@@ -34,7 +34,8 @@ jobs:
           conan profile detect --force
 
           conan install ./conan/ --output-folder build --settings=build_type=Debug --build=missing
-          cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake \
+            -DWITH_CORELIB=ON -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
 
           cd build
           make; make tests; make coverage
