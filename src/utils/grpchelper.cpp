@@ -114,7 +114,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(rootCert, keyCertPairs);
 }
 
-static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSCertificates(
+static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSServerCertificates(
     const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
@@ -132,6 +132,16 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
     return std::make_shared<grpc::experimental::StaticDataCertificateProvider>("", keyCertPairs);
+}
+
+static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSClientCertificates(
+    const String& rootCertPath)
+{
+    std::ifstream file {rootCertPath.CStr()};
+    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(
+        rootCert, std::vector<grpc::experimental::IdentityKeyCertPair> {});
 }
 
 /***********************************************************************************************************************
@@ -160,7 +170,7 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::cer
 std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
     cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetTLSCertificates(certInfo, certLoader, cryptoProvider);
+    auto certificates = GetTLSServerCertificates(certInfo, certLoader, cryptoProvider);
 
     grpc::experimental::TlsServerCredentialsOptions options {certificates};
 
@@ -172,7 +182,7 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::cert
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ChannelCredentials> GetTLSChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
+std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     const String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider)
 {
@@ -187,6 +197,21 @@ std::shared_ptr<grpc::ChannelCredentials> GetTLSChannelCredentials(const aos::ia
     options.set_root_cert_name("root");
     options.watch_identity_key_cert_pairs();
     options.set_identity_cert_name("identity");
+
+    return grpc::experimental::TlsCredentials(options);
+}
+
+std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::String& rootCertPath)
+{
+    auto certificates = GetTLSClientCertificates(rootCertPath);
+
+    grpc::experimental::TlsChannelCredentialsOptions options;
+    options.set_certificate_provider(certificates);
+    options.set_verify_server_certs(true);
+
+    options.set_check_call_host(false);
+    options.watch_root_certs();
+    options.set_root_cert_name("root");
 
     return grpc::experimental::TlsCredentials(options);
 }

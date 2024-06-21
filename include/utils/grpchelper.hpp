@@ -42,17 +42,25 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const aos::iam:
     aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**
- * Get channel credentials for TLS.
+ * Get client credentials for MTLS connection.
  *
  * @param certInfo certificate information.
  * @param rootCertPath path to the root certificate.
  * @param certLoader certificate loader.
  * @param cryptoProvider crypto provider.
- * @return channel credentials.
+ * @return client credentials.
  */
-std::shared_ptr<grpc::ChannelCredentials> GetTLSChannelCredentials(const aos::iam::certhandler::CertInfo& certInfo,
+std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const aos::iam::certhandler::CertInfo& certInfo,
     const aos::String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider);
+
+/**
+ * Get client credentials for TLS connection.
+ *
+ * @param rootCertPath path to the root certificate.
+ * @return client credentials.
+ */
+std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::String& rootCertPath);
 
 } // namespace aos::common::utils
 
