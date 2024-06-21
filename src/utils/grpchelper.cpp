@@ -130,7 +130,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
 namespace aos::common::utils {
 
 std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
-    const String& rootCertPath, cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+    const String& rootCertPath, cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
 
@@ -147,7 +147,7 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::cer
 }
 
 std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
-    cryptoutils::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+    cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetTLSServerCertificates(certInfo, certLoader, cryptoProvider);
 
