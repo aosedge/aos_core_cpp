@@ -45,7 +45,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # Aos core lib
-include(AosCoreLib)
+if(WITH_CORELIB)
+    include(AosCoreLib)
+endif()
 
 # gRPC lib
 find_package(gRPC REQUIRED)
