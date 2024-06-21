@@ -10,8 +10,6 @@
 #include <Poco/JSON/Object.h>
 #include <gtest/gtest.h>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
-
 #include "utils/grpchelper.hpp"
 #include "utils/json.hpp"
 
