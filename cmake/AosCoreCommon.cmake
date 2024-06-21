@@ -16,10 +16,17 @@ ExternalProject_Add(
     GIT_TAG feature_dynamic_nodes
     GIT_PROGRESS TRUE
     GIT_SHALLOW TRUE
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${aoscorecommon_build_dir}
-               -DWITH_TEST=${WITH_TEST} -DCMAKE_MODULE_PATH=${CMAKE_BINARY_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}
+    CMAKE_ARGS -Daoscore_build_dir=${aoscore_build_dir}
+               -DCMAKE_PROJECT_INCLUDE=${PROJECT_SOURCE_DIR}/cmake/AosCoreLibInclude.cmake
+               -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+               -DCMAKE_INSTALL_PREFIX=${aoscorecommon_build_dir}
+               -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+               -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+               -DWITH_TEST=${WITH_TEST}
     UPDATE_COMMAND ""
 )
+
+add_dependencies(aoscorecommon aoscommon)
 
 file(MAKE_DIRECTORY ${aoscorecommon_build_dir}/include)
 
