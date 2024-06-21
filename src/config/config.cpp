@@ -66,6 +66,7 @@ static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveO
             object, "alternativeNames", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); }),
         object.GetValue<bool>("disabled"),
         object.GetValue<bool>("skipValidation"),
+        object.GetValue<bool>("selfSigned"),
         object.Get("params"),
     };
 }
@@ -135,11 +136,12 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         config.mIAMProtectedServerURL     = object.GetValue<std::string>("iamProtectedServerURL");
         config.mMainIAMPublicServerURL    = object.GetValue<std::string>("mainIAMPublicServerURL");
         config.mMainIAMProtectedServerURL = object.GetValue<std::string>("mainIAMProtectedServerURL");
-        config.mCACert                    = object.GetValue<std::string>("caCert");
-        config.mCertStorage               = object.GetValue<std::string>("certStorage");
-        config.mWorkingDir                = object.GetValue<std::string>("workingDir");
-        config.mMigrationPath             = object.GetValue<std::string>("migrationPath");
-        config.mEnablePermissionsHandler  = object.GetValue<bool>("enablePermissionsHandler");
+
+        config.mCACert                   = object.GetValue<std::string>("caCert");
+        config.mCertStorage              = object.GetValue<std::string>("certStorage");
+        config.mWorkingDir               = object.GetValue<std::string>("workingDir");
+        config.mMigrationPath            = object.GetValue<std::string>("migrationPath");
+        config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
 
         config.mStartProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
             "startProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });

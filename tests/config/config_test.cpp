@@ -107,6 +107,7 @@ public:
                 "ExtendedKeyUsage": ["clientAuth", "serverAuth"],
                 "AlternativeNames": ["host3"],
                 "Disabled": true,
+                "SelfSigned": true,
                 "Params": {
                     "Param1" :"value1",
                     "Param2" : 2
@@ -173,6 +174,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[0].mExtendedKeyUsage, std::vector<std::string> {"clientAuth"});
     EXPECT_EQ(config.mCertModules[0].mAlternativeNames, std::vector<std::string> {"host1"});
     EXPECT_EQ(config.mCertModules[0].mSkipValidation, true);
+    EXPECT_EQ(config.mCertModules[0].mIsSelfSigned, false);
     auto params = config.mCertModules[0].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");
@@ -184,6 +186,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[1].mExtendedKeyUsage, std::vector<std::string> {"serverAuth"});
     EXPECT_EQ(config.mCertModules[1].mAlternativeNames, std::vector<std::string> {"host2"});
     EXPECT_EQ(config.mCertModules[1].mSkipValidation, false);
+    EXPECT_EQ(config.mCertModules[1].mIsSelfSigned, false);
     params = config.mCertModules[1].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");
@@ -195,6 +198,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[2].mExtendedKeyUsage, std::vector<std::string>({"clientAuth", "serverAuth"}));
     EXPECT_EQ(config.mCertModules[2].mAlternativeNames, std::vector<std::string> {"host3"});
     EXPECT_EQ(config.mCertModules[2].mDisabled, true);
+    EXPECT_EQ(config.mCertModules[2].mIsSelfSigned, true);
     params = config.mCertModules[2].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");

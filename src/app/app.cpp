@@ -70,6 +70,7 @@ static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
+    aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         aos::iam::certhandler::ExtendedKeyUsage keyUsage;
