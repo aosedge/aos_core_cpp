@@ -10,6 +10,8 @@
 
 #include <aos/common/tools/log.hpp>
 
+#include <logger/logger.hpp>
+
 /**
  * Log module type.
  */
@@ -67,5 +69,27 @@ constexpr auto IAMLogModule(aos::LogModuleEnum module)
 {
     return static_cast<LogModuleEnum>(static_cast<int>(module) - static_cast<int>(aos::LogModuleEnum::eNumModules));
 }
+
+class IAMLogger : public aos::common::logger::Logger {
+private:
+    std::string GetModule(aos::LogModule module) override
+    {
+        std::stringstream ss;
+
+        ss << (sColored ? cColorModule : "") << "(";
+
+        if (module.GetValue() >= AosLogModule(LogModuleEnum::eNumModules)) {
+            ss << "unknown";
+        } else if (module.GetValue() >= aos::LogModuleEnum::eNumModules) {
+            ss << LogModule(IAMLogModule(module.GetValue())).ToString().CStr();
+        } else {
+            ss << module.ToString().CStr();
+        }
+
+        ss << ")" << (sColored ? cColorNone : "");
+
+        return ss.str();
+    }
+};
 
 #endif
