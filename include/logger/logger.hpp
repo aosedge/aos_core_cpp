@@ -58,29 +58,33 @@ public:
         sLogLevel = level;
     }
 
-private:
+protected:
+    static constexpr auto cColorModule  = "\033[34m";
+    static constexpr auto cColorNone    = "\033[0m";
     static constexpr auto cColorTime    = "\033[90m";
     static constexpr auto cColorDebug   = "\033[37m";
     static constexpr auto cColorInfo    = "\033[32m";
     static constexpr auto cColorWarning = "\033[33m";
     static constexpr auto cColorError   = "\033[31m";
     static constexpr auto cColorUnknown = "\033[36m";
-    static constexpr auto cColorModule  = "\033[34m";
-    static constexpr auto cColorNone    = "\033[0m";
 
+    static bool sColored;
+
+private:
     static void StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message);
     static void JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message);
 
-    static std::string GetCurrentTime();
-    static std::string GetLogLevel(aos::LogLevel level);
-    static std::string GetModule(aos::LogModule module);
-    static void        SetColored(bool colored) { sColored = colored; }
-    static int         GetSyslogPriority(aos::LogLevel level);
+    static void SetColored(bool colored) { sColored = colored; }
+    static int  GetSyslogPriority(aos::LogLevel level);
+
+    virtual std::string GetCurrentTime();
+    virtual std::string GetLogLevel(aos::LogLevel level);
+    virtual std::string GetModule(aos::LogModule module);
 
     static std::mutex    sMutex;
-    static bool          sColored;
     static Backend       sBackend;
     static aos::LogLevel sLogLevel;
+    static Logger*       mInstance;
 };
 
 } // namespace aos::common::logger

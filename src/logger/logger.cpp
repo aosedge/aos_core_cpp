@@ -25,6 +25,7 @@ std::mutex      Logger::sMutex;
 bool            Logger::sColored  = true;
 Logger::Backend Logger::sBackend  = Logger::Backend::eStdIO;
 aos::LogLevel   Logger::sLogLevel = aos::LogLevelEnum::eInfo;
+Logger*         Logger::mInstance {};
 
 /***********************************************************************************************************************
  * Public
@@ -33,6 +34,8 @@ aos::LogLevel   Logger::sLogLevel = aos::LogLevelEnum::eInfo;
 aos::Error Logger::Init()
 {
     std::lock_guard lock(sMutex);
+
+    mInstance = this;
 
     switch (sBackend) {
     case Backend::eStdIO:
@@ -63,8 +66,8 @@ void Logger::StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos
         return;
     }
 
-    std::cout << GetCurrentTime() << " " << GetLogLevel(level) << " " << GetModule(module) << " " << message.CStr()
-              << std::endl;
+    std::cout << mInstance->GetCurrentTime() << " " << mInstance->GetLogLevel(level) << " "
+              << mInstance->GetModule(module) << " " << message.CStr() << std::endl;
 }
 
 void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message)
@@ -75,7 +78,7 @@ void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const 
 
     std::stringstream ss;
 
-    ss << GetModule(module) << " " << message.CStr();
+    ss << mInstance->GetModule(module) << " " << message.CStr();
 
     auto ret = sd_journal_print(GetSyslogPriority(level), "%s", ss.str().c_str());
     if (ret != 0) {
