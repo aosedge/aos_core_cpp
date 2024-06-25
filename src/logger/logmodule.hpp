@@ -8,6 +8,8 @@
 #ifndef LOGMODULE_HPP_
 #define LOGMODULE_HPP_
 
+#include <sstream>
+
 #include <aos/common/tools/log.hpp>
 
 #ifndef LOG_MODULE
