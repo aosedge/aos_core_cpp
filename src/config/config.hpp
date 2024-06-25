@@ -31,15 +31,6 @@ struct Identifier {
 };
 
 /*
- * Remote IAM parameters.
- */
-struct RemoteIAM {
-    std::string                  mNodeID;
-    std::string                  mURL;
-    aos::common::utils::Duration mRequestTimeout;
-};
-
-/*
  * PKCS11 module parameters.
  */
 struct PKCS11ModuleParams {
@@ -124,7 +115,6 @@ struct Config {
     std::vector<std::string>     mDeprovisionCmdArgs;
     bool                         mEnablePermissionsHandler;
     Identifier                   mIdentifier;
-    std::vector<RemoteIAM>       mRemoteIAMs;
 };
 
 /*******************************************************************************

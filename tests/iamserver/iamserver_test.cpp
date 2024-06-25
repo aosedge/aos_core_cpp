@@ -187,7 +187,6 @@ Config IAMServerTest::GetClientConfig()
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mNodeInfo.mNodeType        = "iam-node-type";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
-    config.mRemoteIAMs = {RemoteIAM {"node0", "localhost:8089", std::chrono::seconds(100)}};
 
     return config;
 }

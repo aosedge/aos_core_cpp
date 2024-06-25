@@ -35,24 +35,6 @@ static Identifier ParseIdentifier(const aos::common::utils::CaseInsensitiveObjec
     return Identifier {object.GetValue<std::string>("plugin"), object.Get("params")};
 }
 
-static RemoteIAM ParseRemoteIAM(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
-{
-    aos::common::utils::Duration duration {};
-    auto                         requestTimeoutString = object.GetValue<std::string>("requestTimeout");
-
-    if (!requestTimeoutString.empty()) {
-        auto ret = aos::common::utils::ParseDuration(requestTimeoutString);
-
-        if (!ret.mError.IsNone()) {
-            throw std::runtime_error("Error parsing duration");
-        }
-
-        duration = ret.mValue;
-    }
-
-    return RemoteIAM {object.GetValue<std::string>("nodeID"), object.GetValue<std::string>("url"), duration};
-}
-
 static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return ModuleConfig {
@@ -160,12 +142,6 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
                 return ParseModuleConfig(
                     aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
             });
-
-        config.mRemoteIAMs
-            = aos::common::utils::GetArrayValue<RemoteIAM>(object, "remoteIAMs", [](const Poco::Dynamic::Var& value) {
-                  return ParseRemoteIAM(
-                      aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
-              });
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));

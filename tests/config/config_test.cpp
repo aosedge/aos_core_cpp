@@ -64,17 +64,6 @@ public:
                 "/var/aos/encrypt.sh"
             ],
             "EnablePermissionsHandler": true,
-            "RemoteIams": [
-                {
-                    "NodeID": "Node1",
-                    "URL": "remotehost1:8089"
-                },
-                {
-                    "NodeID": "Node2",
-                    "URL": "remotehost2:8089",
-                    "RequestTimeout": "100s"
-                }
-            ],
             "CertModules":[{
                 "ID": "id1",
                 "Plugin": "test1",
@@ -156,14 +145,6 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(config.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
     EXPECT_EQ(config.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
-
-    EXPECT_EQ(config.mRemoteIAMs.size(), 2);
-
-    EXPECT_EQ(config.mRemoteIAMs[0].mNodeID, "Node1");
-    EXPECT_EQ(config.mRemoteIAMs[0].mURL, "remotehost1:8089");
-    EXPECT_EQ(config.mRemoteIAMs[1].mNodeID, "Node2");
-    EXPECT_EQ(config.mRemoteIAMs[1].mURL, "remotehost2:8089");
-    EXPECT_EQ(config.mRemoteIAMs[1].mRequestTimeout, std::chrono::seconds(100));
 
     EXPECT_EQ(config.mCertModules.size(), 3);
 
