@@ -152,6 +152,7 @@ static iamanager::v5::PartitionInfo CreatePartitionInfoProto(
     iamanager::v5::PartitionInfo partitionInfo;
 
     partitionInfo.set_name(name);
+    partitionInfo.set_path("/sys/kernel/tracing");
     FillArray(types, *partitionInfo.mutable_types());
     partitionInfo.set_total_size(16169908);
 

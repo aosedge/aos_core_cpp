@@ -15,112 +15,7 @@
 
 #include "iamclient.hpp"
 #include "logger/logmodule.hpp"
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-static iamanager::v5::CPUInfo ConvertCpuInfoToProto(const aos::CPUInfo& val)
-{
-    iamanager::v5::CPUInfo result;
-
-    result.set_model_name(val.mModelName.CStr());
-    result.set_num_cores(val.mNumCores);
-    result.set_num_threads(val.mNumThreads);
-    result.set_arch(val.mArch.CStr());
-    result.set_arch_family(val.mArchFamily.CStr());
-
-    return result;
-}
-
-static iamanager::v5::PartitionInfo ConvertPartitionInfoToProto(const aos::PartitionInfo& val)
-{
-    iamanager::v5::PartitionInfo result;
-
-    result.set_name(val.mName.CStr());
-
-    for (const auto& type : val.mTypes) {
-        result.add_types(type.CStr());
-    }
-
-    result.set_total_size(val.mTotalSize);
-
-    return result;
-}
-
-static iamanager::v5::NodeAttribute ConvertNodeAttributeToProto(const aos::NodeAttribute& val)
-{
-    iamanager::v5::NodeAttribute result;
-
-    result.set_name(val.mName.CStr());
-    result.set_value(val.mValue.CStr());
-
-    return result;
-}
-
-static iamanager::v5::NodeInfo ConvertNodeInfoToProto(const aos::NodeInfo& val)
-{
-    iamanager::v5::NodeInfo result;
-
-    result.set_id(val.mID.CStr());
-    result.set_type(val.mType.CStr());
-    result.set_name(val.mName.CStr());
-    result.set_status(val.mStatus.ToString().CStr());
-    result.set_os_type(val.mOSType.CStr());
-
-    for (const auto& item : val.mCPUs) {
-        *result.add_cpus() = ConvertCpuInfoToProto(item);
-    }
-
-    result.set_max_dmips(val.mMaxDMIPS);
-    result.set_total_ram(val.mTotalRAM);
-
-    for (const auto& item : val.mPartitions) {
-        *result.add_partitions() = ConvertPartitionInfoToProto(item);
-    }
-
-    for (const auto& item : val.mAttrs) {
-        *result.add_attrs() = ConvertNodeAttributeToProto(item);
-    }
-
-    return result;
-}
-
-static common::v1::ErrorInfo ConvertAosErrorToProto(aos::Error error)
-{
-    common::v1::ErrorInfo result;
-
-    result.set_aos_code(static_cast<int32_t>(error.Value()));
-    result.set_exit_code(error.Errno());
-
-    if (!error.IsNone()) {
-        aos::StaticString<aos::cMaxErrorStrLen> message;
-
-        auto err = message.Convert(error);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Error conversion problem: err=" << AOS_ERROR_WRAP(err);
-        } else {
-            result.set_message(message.CStr());
-        }
-    }
-
-    return result;
-}
-
-template <typename Message>
-void SetErrorInfo(Message& message, const aos::Error& error)
-{
-    *message.mutable_error() = ConvertAosErrorToProto(error);
-}
-
-static aos::RetWithError<std::string> ConvertSerialToProto(const aos::Array<uint8_t>& src)
-{
-    aos::StaticString<aos::crypto::cSerialNumStrLen> result;
-
-    auto err = result.ByteArrayToHex(src);
-
-    return {result.Get(), err};
-}
+#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * Public
@@ -320,7 +215,7 @@ bool IAMClient::SendNodeInfo()
         return false;
     }
 
-    *outgoingMsg.mutable_node_info() = ConvertNodeInfoToProto(nodeInfo);
+    utils::ConvertToProto(nodeInfo, *outgoingMsg.mutable_node_info());
 
     LOG_DBG() << "Send node info: status=" << nodeInfo.mStatus;
 
@@ -343,13 +238,13 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningR
     if (!err.IsNone()) {
         LOG_ERR() << "Can't start provisioning: wrong node status";
 
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->StartProvisioning(request.password().c_str());
-    SetErrorInfo(response, err);
+    utils::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -365,26 +260,26 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
     if (!err.IsNone()) {
         LOG_ERR() << "Can't finish provisioning: wrong node status";
 
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->FinishProvisioning(request.password().c_str());
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    SetErrorInfo(response, err);
+    utils::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg) && SendNodeInfo();
 }
@@ -400,26 +295,26 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
     if (!err.IsNone()) {
         LOG_ERR() << "Can't deprovision: wrong node status";
 
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->Deprovision(request.password().c_str());
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eUnprovisioned);
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    SetErrorInfo(response, err);
+    utils::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg) && SendNodeInfo();
 }
@@ -437,19 +332,19 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
     if (!err.IsNone()) {
         LOG_ERR() << "Can't pause node: wrong node status";
 
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::ePaused);
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    SetErrorInfo(response, err);
+    utils::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg) && SendNodeInfo();
 }
@@ -467,19 +362,19 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
     if (!err.IsNone()) {
         LOG_ERR() << "Can't resume node: wrong node status";
 
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        SetErrorInfo(response, err);
+        utils::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    SetErrorInfo(response, err);
+    utils::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg) && SendNodeInfo();
 }
@@ -569,7 +464,8 @@ bool IAMClient::SendCreateKeyResponse(
     response.set_node_id(nodeId.CStr());
     response.set_type(type.CStr());
     response.set_csr(csr.CStr());
-    *response.mutable_error() = ConvertAosErrorToProto(error);
+
+    utils::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -583,7 +479,7 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::Stri
     std::string protoSerial;
     aos::Error  resultError = error;
     if (error.IsNone()) {
-        Tie(protoSerial, resultError) = ConvertSerialToProto(serial);
+        Tie(protoSerial, resultError) = utils::ConvertSerialToProto(serial);
         if (!resultError.IsNone()) {
             resultError = AOS_ERROR_WRAP(resultError);
 
@@ -595,7 +491,8 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::Stri
     response.set_type(type.CStr());
     response.set_cert_url(certURL.CStr());
     response.set_serial(protoSerial);
-    *response.mutable_error() = ConvertAosErrorToProto(resultError);
+
+    utils::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }

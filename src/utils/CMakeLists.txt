@@ -5,19 +5,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET iamserver)
-
-# ######################################################################################################################
-# Compiler flags
-# ######################################################################################################################
-
-add_definitions(-DLOG_MODULE="iamserver")
+set(TARGET utils)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamserver.cpp nodeinfoprovider.cpp systeminfo.cpp)
+set(SOURCES convert.cpp)
 
 # ######################################################################################################################
 # Target
@@ -29,4 +23,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosiam aosutils aoscoreapi-gen-objects Poco::Util utils)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiam aosutils aoscoreapi-gen-objects Poco::Util)
