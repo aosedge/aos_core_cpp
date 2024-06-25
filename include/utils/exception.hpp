@@ -13,6 +13,7 @@
 #include <Poco/Exception.h>
 
 #include <aos/common/tools/error.hpp>
+#include <aos/common/tools/string.hpp>
 
 /**
  * Throws exception with Aos error and specified message.
@@ -45,14 +46,12 @@ public:
     {
         std::stringstream ss;
 
-        ss << message << ": " << err.Message();
+        ss << message;
 
-        if (err.Errno()) {
-            ss << " [" << err.Errno() << "]";
-        }
+        StaticString<cMaxErrorStrLen> errStr;
 
-        if (err.FileName()) {
-            ss << " (" << err.FileName() << ":" << err.LineNumber() << ")";
+        if (errStr.Convert(err).IsNone()) {
+            ss << ": " << errStr.CStr();
         }
 
         Poco::Exception::message(ss.str());
