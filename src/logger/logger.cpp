@@ -58,7 +58,7 @@ aos::Error Logger::Init()
  * Private
  **********************************************************************************************************************/
 
-void Logger::StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message)
+void Logger::StdIOCallback(const char* module, aos::LogLevel level, const aos::String& message)
 {
     std::lock_guard lock(sMutex);
 
@@ -66,11 +66,11 @@ void Logger::StdIOCallback(aos::LogModule module, aos::LogLevel level, const aos
         return;
     }
 
-    std::cout << mInstance->GetCurrentTime() << " " << mInstance->GetLogLevel(level) << " "
-              << mInstance->GetModule(module) << " " << message.CStr() << std::endl;
+    std::cout << mInstance->GetCurrentTime() << " " << mInstance->GetLogLevel(level) << " " << GetModule(module) << " "
+              << message.CStr() << std::endl;
 }
 
-void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const aos::String& message)
+void Logger::JournaldCallback(const char* module, aos::LogLevel level, const aos::String& message)
 {
     if (level.GetValue() < sLogLevel.GetValue()) {
         return;
@@ -78,7 +78,7 @@ void Logger::JournaldCallback(aos::LogModule module, aos::LogLevel level, const 
 
     std::stringstream ss;
 
-    ss << mInstance->GetModule(module) << " " << message.CStr();
+    ss << GetModule(module) << " " << message.CStr();
 
     auto ret = sd_journal_print(GetSyslogPriority(level), "%s", ss.str().c_str());
     if (ret != 0) {
@@ -130,11 +130,11 @@ std::string Logger::GetLogLevel(aos::LogLevel level)
     return ss.str();
 }
 
-std::string Logger::GetModule(aos::LogModule module)
+std::string Logger::GetModule(const char* module)
 {
     std::stringstream ss;
 
-    ss << (sColored ? cColorModule : "") << "(" << module.ToString().CStr() << ")" << (sColored ? cColorNone : "");
+    ss << (sColored ? cColorModule : "") << "(" << module << ")" << (sColored ? cColorNone : "");
 
     return ss.str();
 }
