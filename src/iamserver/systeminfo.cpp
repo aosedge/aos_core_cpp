@@ -13,7 +13,7 @@
 #include <utils/exception.hpp>
 #include <utils/parser.hpp>
 
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 #include "systeminfo.hpp"
 
 /***********************************************************************************************************************

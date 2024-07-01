@@ -14,7 +14,7 @@
 #include <utils/grpchelper.hpp>
 
 #include "iamclient.hpp"
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 
 /***********************************************************************************************************************
  * Static

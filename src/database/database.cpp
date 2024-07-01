@@ -12,7 +12,7 @@
 #include <filesystem>
 
 #include "database.hpp"
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 
 using namespace Poco::Data::Keywords;
 

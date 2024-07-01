@@ -9,7 +9,7 @@
 
 #include <utils/json.hpp>
 
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 #include "pocowsclient.hpp"
 #include "visidentifier.hpp"
 #include "vismessage.hpp"

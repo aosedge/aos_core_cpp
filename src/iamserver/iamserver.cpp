@@ -21,7 +21,7 @@
 #include <utils/exception.hpp>
 #include <utils/grpchelper.hpp>
 
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 
 using namespace aos;
 using namespace aos::iam;

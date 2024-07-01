@@ -21,7 +21,7 @@
 #include "utils/exception.hpp"
 
 #include "app.hpp"
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 // cppcheck-suppress missingInclude
 #include "version.hpp"
 

@@ -10,7 +10,7 @@
 
 #include <utils/exception.hpp>
 
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 #include "nodeinfoprovider.hpp"
 #include "systeminfo.hpp"
 

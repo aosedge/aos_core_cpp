@@ -13,7 +13,7 @@
 #include <aos/common/tools/uuid.hpp>
 #include <utils/json.hpp>
 
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 #include "pocowsclient.hpp"
 #include "vismessage.hpp"
 #include "wsexception.hpp"

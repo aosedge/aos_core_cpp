@@ -15,7 +15,7 @@
 #include <utils/json.hpp>
 
 #include "config.hpp"
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 
 /***********************************************************************************************************************
  * Constants
