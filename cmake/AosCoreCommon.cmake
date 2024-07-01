@@ -12,7 +12,7 @@ set(aoscorecommon_build_dir ${CMAKE_CURRENT_BINARY_DIR}/aoscorecommon)
 ExternalProject_Add(
     aoscorecommon
     PREFIX ${aoscorecommon_build_dir}
-    GIT_REPOSITORY https://github.com/aoscloud/aos_core_common_cpp.git
+    GIT_REPOSITORY https://github.com/aosedge/aos_core_common_cpp.git
     GIT_TAG feature_dynamic_nodes
     GIT_PROGRESS TRUE
     GIT_SHALLOW TRUE
