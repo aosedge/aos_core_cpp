@@ -17,9 +17,7 @@ add_definitions(-DLOG_MODULE="iamserver")
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamserver.cpp nodecontroller.cpp nodeinfoprovider.cpp protectedmessagehandler.cpp publicmessagehandler.cpp
-            systeminfo.cpp
-)
+set(SOURCES iamserver.cpp nodecontroller.cpp protectedmessagehandler.cpp publicmessagehandler.cpp)
 
 # ######################################################################################################################
 # Target

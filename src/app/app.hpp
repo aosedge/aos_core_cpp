@@ -20,7 +20,7 @@
 #include "database/database.hpp"
 #include "iamclient/iamclient.hpp"
 #include "iamserver/iamserver.hpp"
-#include "iamserver/nodeinfoprovider.hpp"
+#include "nodeinfoprovider/nodeinfoprovider.hpp"
 #include "visidentifier/visidentifier.hpp"
 
 /**

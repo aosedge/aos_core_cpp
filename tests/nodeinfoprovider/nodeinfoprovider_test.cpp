@@ -15,7 +15,7 @@
 
 #include <test/utils/log.hpp>
 
-#include "iamserver/nodeinfoprovider.hpp"
+#include "nodeinfoprovider/nodeinfoprovider.hpp"
 
 using namespace testing;
 
