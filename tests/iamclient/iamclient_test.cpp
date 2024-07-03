@@ -115,15 +115,15 @@ static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned
 {
     NodeInfo nodeInfo;
 
-    nodeInfo.mID     = "node0";
-    nodeInfo.mType   = "main";
-    nodeInfo.mName   = "node0";
-    nodeInfo.mStatus = status;
-    nodeInfo.mOSType = "linux";
+    nodeInfo.mNodeID   = "node0";
+    nodeInfo.mNodeType = "main";
+    nodeInfo.mName     = "node0";
+    nodeInfo.mStatus   = status;
+    nodeInfo.mOSType   = "linux";
     FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
     FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
-    nodeInfo.mMaxDMIPS = 429138.42;
+    nodeInfo.mMaxDMIPS = 429138;
     nodeInfo.mTotalRAM = 32 * 1024;
 
     return nodeInfo;
@@ -173,8 +173,8 @@ static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = 
 {
     iamanager::v5::NodeInfo nodeInfo;
 
-    nodeInfo.set_id("node0");
-    nodeInfo.set_type("main");
+    nodeInfo.set_node_id("node0");
+    nodeInfo.set_node_type("main");
     nodeInfo.set_name("node0");
     nodeInfo.set_status(status);
     nodeInfo.set_os_type("linux");
@@ -183,7 +183,7 @@ static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = 
         *nodeInfo.mutable_partitions());
     FillArray(
         {CreateAttributeProto("attr1", "val1"), CreateAttributeProto("attr2", "val2")}, *nodeInfo.mutable_attrs());
-    nodeInfo.set_max_dmips(429138.42);
+    nodeInfo.set_max_dmips(429138);
     nodeInfo.set_total_ram(32 * 1024);
 
     return nodeInfo;
@@ -535,7 +535,7 @@ TEST_F(IAMClientTest, StartProvisioning)
     EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*server, OnStartProvisioningResponse(cErrorInfoOK));
 
-    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -553,7 +553,7 @@ TEST_F(IAMClientTest, StartProvisioningExecFailed)
     EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eFailed));
     EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
-    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -568,7 +568,7 @@ TEST_F(IAMClientTest, StartProvisioningWrongNodeStatus)
 
     EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
-    server->StartProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -592,7 +592,7 @@ TEST_F(IAMClientTest, FinishProvisioning)
     EXPECT_CALL(*server, OnNodeInfo(expProvNodeInfo));
     EXPECT_CALL(*server, OnFinishProvisioningResponse(cErrorInfoOK));
 
-    server->FinishProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
 }
@@ -608,7 +608,7 @@ TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
 
     EXPECT_CALL(*server, OnFinishProvisioningResponse(Not(cErrorInfoOK)));
 
-    server->FinishProvisioningRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -632,7 +632,7 @@ TEST_F(IAMClientTest, Deprovision)
     EXPECT_CALL(*server, OnNodeInfo(expDeprovNodeInfo));
     EXPECT_CALL(*server, OnDeprovisionResponse(::common::v1::ErrorInfo()));
 
-    server->DeprovisionRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->DeprovisionRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
 }
@@ -648,7 +648,7 @@ TEST_F(IAMClientTest, DeprovisionWrongNodeStatus)
 
     EXPECT_CALL(*server, OnDeprovisionResponse(Not(cErrorInfoOK)));
 
-    server->DeprovisionRequest(nodeInfo.mID.CStr(), cPassword.CStr());
+    server->DeprovisionRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -670,7 +670,7 @@ TEST_F(IAMClientTest, PauseNode)
     EXPECT_CALL(*server, OnNodeInfo(expPausedNodeInfo));
     EXPECT_CALL(*server, OnPauseNodeResponse(::common::v1::ErrorInfo()));
 
-    server->PauseNodeRequest(nodeInfo.mID.CStr());
+    server->PauseNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
 }
@@ -686,7 +686,7 @@ TEST_F(IAMClientTest, PauseWrongNodeStatus)
 
     EXPECT_CALL(*server, OnPauseNodeResponse(Not(cErrorInfoOK)));
 
-    server->PauseNodeRequest(nodeInfo.mID.CStr());
+    server->PauseNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
 }
 
@@ -708,7 +708,7 @@ TEST_F(IAMClientTest, ResumeNode)
     EXPECT_CALL(*server, OnNodeInfo(expResumedNodeInfo));
     EXPECT_CALL(*server, OnResumeNodeResponse(::common::v1::ErrorInfo()));
 
-    server->ResumeNodeRequest(nodeInfo.mID.CStr());
+    server->ResumeNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
 }
@@ -724,7 +724,7 @@ TEST_F(IAMClientTest, ResumeWrongNodeStatus)
 
     EXPECT_CALL(*server, OnResumeNodeResponse(Not(cErrorInfoOK)));
 
-    server->ResumeNodeRequest(nodeInfo.mID.CStr());
+    server->ResumeNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
 }
 
@@ -740,7 +740,7 @@ TEST_F(IAMClientTest, CreateKey)
     EXPECT_CALL(mIdentHandler, GetSystemID())
         .WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSubject, ErrorEnum::eNone)));
 
-    server->CreateKeyRequest(nodeInfo.mID.CStr(), "", cCertType.CStr(), cPassword.CStr());
+    server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());
     server->WaitResponse();
 }
 
@@ -759,7 +759,7 @@ TEST_F(IAMClientTest, ApplyCert)
         OnApplyCertResponse(
             std::string(cCertType.CStr()), std::string(certInfo.mCertURL.CStr()), _, ::common::v1::ErrorInfo()));
 
-    server->ApplyCertRequest(nodeInfo.mID.CStr(), cCertType.CStr(), {});
+    server->ApplyCertRequest(nodeInfo.mNodeID.CStr(), cCertType.CStr(), {});
     server->WaitResponse();
 }
 
@@ -777,6 +777,6 @@ TEST_F(IAMClientTest, GetCertTypes)
         .WillOnce(Return(aos::RetWithError<aos::iam::provisionmanager::CertTypes>(types)));
     EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
 
-    server->GetCertTypesRequest(nodeInfo.mID.CStr());
+    server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
 }

@@ -153,7 +153,7 @@ aos::Error ConvertToAos(const iamanager::v5::NodeInfo& src, aos::NodeInfo& dst);
  * @param val protobuf instance ident.
  * @return aos::InstanceIdent.
  */
-aos::InstanceIdent ConvertToAos(const iamanager::v5::InstanceIdent& val);
+aos::InstanceIdent ConvertToAos(const common::v1::InstanceIdent& val);
 
 /**
  * Sets protobuf error message from aos.

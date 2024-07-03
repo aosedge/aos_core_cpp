@@ -64,7 +64,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 
 void PublicMessageHandler::OnNodeInfoChange(const aos::NodeInfo& info)
 {
-    LOG_DBG() << "Process on node info changed: nodeID=" << info.mID;
+    LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID;
 
     iamproto::NodeInfo nodeInfo;
     utils::ConvertToProto(info, nodeInfo);
@@ -130,7 +130,7 @@ aos::Error PublicMessageHandler::SetNodeStatus(const aos::NodeStatus& status)
         return AOS_ERROR_WRAP(err);
     }
 
-    err = mNodeManager->SetNodeStatus(mNodeInfo.mID, status);
+    err = mNodeManager->SetNodeStatus(mNodeInfo.mNodeID, status);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -287,8 +287,8 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
         return utils::ConvertAosErrorToGrpcStatus(err);
     }
 
-    iamproto::InstanceIdent instanceIdent;
-    iamproto::Permissions   permissions;
+    common::v1::InstanceIdent instanceIdent;
+    iamproto::Permissions     permissions;
 
     instanceIdent.set_service_id(aosInstanceIdent.mServiceID.CStr());
     instanceIdent.set_subject_id(aosInstanceIdent.mSubjectID.CStr());

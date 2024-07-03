@@ -89,7 +89,7 @@ struct NodeInfoConfig {
     std::string                                  mNodeName;
     std::string                                  mNodeType;
     std::string                                  mOSType;
-    float                                        mMaxDMIPS;
+    uint64_t                                     mMaxDMIPS;
     std::unordered_map<std::string, std::string> mAttrs;
     std::vector<PartitionInfoConfig>             mPartitions;
 };

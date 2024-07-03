@@ -176,8 +176,8 @@ aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
         Poco::JSON::Object pocoNodeInfo;
         const auto         nodeInfo = Stringify(ConvertNodeInfoToJSON(info));
 
-        *mSession << "INSERT OR REPLACE INTO nodeinfo (id, info) VALUES (?, ?);", bind(info.mID.CStr()), bind(nodeInfo),
-            now;
+        *mSession << "INSERT OR REPLACE INTO nodeinfo (id, info) VALUES (?, ?);", bind(info.mNodeID.CStr()),
+            bind(nodeInfo), now;
 
     } catch (const Poco::Exception&) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
@@ -197,7 +197,7 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeI
             return aos::ErrorEnum::eNotFound;
         }
 
-        nodeInfo.mID = nodeId;
+        nodeInfo.mNodeID = nodeId;
 
         if (!pocoInfo.isNull()) {
             Poco::JSON::Parser parser;
@@ -312,7 +312,7 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo
     Poco::JSON::Object object;
 
     object.set("status", static_cast<int>(nodeInfo.mStatus.GetValue()));
-    object.set("type", nodeInfo.mType.CStr());
+    object.set("type", nodeInfo.mNodeType.CStr());
     object.set("name", nodeInfo.mName.CStr());
     object.set("osType", nodeInfo.mOSType.CStr());
     object.set("cpuInfo", ConvertCpuInfoToJSON(nodeInfo.mCPUs));
@@ -327,10 +327,10 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo
 aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, aos::NodeInfo& dst)
 {
     dst.mStatus   = static_cast<aos::NodeStatusEnum>(object.getValue<int>("status"));
-    dst.mType     = object.getValue<std::string>("type").c_str();
+    dst.mNodeType = object.getValue<std::string>("type").c_str();
     dst.mName     = object.getValue<std::string>("name").c_str();
     dst.mOSType   = object.getValue<std::string>("osType").c_str();
-    dst.mMaxDMIPS = object.getValue<float>("maxDMIPS");
+    dst.mMaxDMIPS = object.getValue<uint64_t>("maxDMIPS");
     dst.mTotalRAM = object.getValue<size_t>("totalRAM");
 
     const auto& cpuInfo = object.get("cpuInfo").extract<Poco::JSON::Array::Ptr>();
@@ -374,6 +374,7 @@ Poco::JSON::Array Database::ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>&
         pocoItem.set("numThreads", srcItem.mNumThreads);
         pocoItem.set("arch", srcItem.mArch.CStr());
         pocoItem.set("archFamily", srcItem.mArchFamily.CStr());
+        pocoItem.set("maxDMIPS", srcItem.mMaxDMIPS);
 
         dst.add(pocoItem);
     }
@@ -397,6 +398,7 @@ aos::Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::A
         dstItem.mNumThreads = cpuInfo->getValue<size_t>("numThreads");
         dstItem.mArch       = cpuInfo->getValue<std::string>("arch").c_str();
         dstItem.mArchFamily = cpuInfo->getValue<std::string>("archFamily").c_str();
+        dstItem.mMaxDMIPS   = cpuInfo->getValue<uint64_t>("maxDMIPS");
 
         auto err = dst.PushBack(dstItem);
         if (!err.IsNone()) {

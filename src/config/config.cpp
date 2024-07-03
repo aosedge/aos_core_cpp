@@ -75,7 +75,7 @@ static NodeInfoConfig ParseNodeInfoConfig(const aos::common::utils::CaseInsensit
     nodeInfoConfig.mNodeName    = object.GetValue<std::string>("nodeName");
     nodeInfoConfig.mNodeType    = object.GetValue<std::string>("nodeType");
     nodeInfoConfig.mOSType      = object.GetValue<std::string>("osType");
-    nodeInfoConfig.mMaxDMIPS    = object.GetValue<float>("maxDMIPS");
+    nodeInfoConfig.mMaxDMIPS    = object.GetValue<uint64_t>("maxDMIPS");
 
     if (object.Has("attrs")) {
         for (const auto& [key, value] : *object.Get("attrs").extract<Poco::JSON::Object::Ptr>()) {

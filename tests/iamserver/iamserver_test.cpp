@@ -129,13 +129,13 @@ void IAMServerTest::SetUp()
     mClientConfig = GetClientConfig();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
 
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"NODE_TYPE", "main"});
 
-        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mID.CStr() << ", " << nodeInfo.mType.CStr();
+        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 
         return aos::ErrorEnum::eNone;
     }));
@@ -304,8 +304,8 @@ TEST_F(IAMServerTest, OnNodeInfoChange)
 TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"NODE_TYPE", "secondary"});
 
         return aos::ErrorEnum::eNone;
@@ -334,8 +334,8 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
 TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"NODE_TYPE", "secondary"});
 
         return aos::ErrorEnum::eNone;
@@ -364,8 +364,8 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
 TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"node_type", "secondary"});
 
         return aos::ErrorEnum::eNone;
@@ -395,8 +395,8 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
 TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"NODE_TYPE", "secondary"});
 
         return aos::ErrorEnum::eNone;
@@ -426,8 +426,8 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
         nodeInfo.mAttrs.PushBack({"NODE_TYPE", "secondary"});
 
         return aos::ErrorEnum::eNone;

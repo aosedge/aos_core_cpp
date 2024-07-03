@@ -135,7 +135,7 @@ TEST_F(NodeControllerTest, RegisterNode)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -149,7 +149,7 @@ TEST_F(NodeControllerTest, RegisterNode2ClientsWithSameID)
     std::vector<std::unique_ptr<grpc::ClientReaderWriter<iamproto::IAMOutgoingMessages, iamproto::IAMIncomingMessages>>>
         streams;
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     for (size_t i = 0; i < 2; ++i) {
@@ -183,7 +183,7 @@ TEST_F(NodeControllerTest, StartProvisioningFailsOnUnknownNodeID)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -199,7 +199,7 @@ TEST_F(NodeControllerTest, StartProvisioningFailsDueTimeout)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -236,7 +236,7 @@ TEST_F(NodeControllerTest, StartProvisioningSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     ASSERT_TRUE(stream->Write(mOutgoingMessage));
@@ -286,7 +286,7 @@ TEST_F(NodeControllerTest, FinishProvisioningSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -338,7 +338,7 @@ TEST_F(NodeControllerTest, DeprovisionSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -390,7 +390,7 @@ TEST_F(NodeControllerTest, PauseNodeSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -442,7 +442,7 @@ TEST_F(NodeControllerTest, ResumeNodeSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -494,7 +494,7 @@ TEST_F(NodeControllerTest, CreateKeySucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);
@@ -546,7 +546,7 @@ TEST_F(NodeControllerTest, ApplyCertSucceeds)
     auto stream = CreateRegisterNodeClientStream();
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
-    mOutgoingMessage.mutable_node_info()->set_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
 
     stream->Write(mOutgoingMessage);

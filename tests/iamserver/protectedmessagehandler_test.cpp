@@ -89,10 +89,10 @@ void ProtectedMessageHandlerTest::SetUp()
     aos::InitLogs();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = "test-type";
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = "test-type";
 
-        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mID.CStr() << ", " << nodeInfo.mType.CStr();
+        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 
         return aos::ErrorEnum::eNone;
     }));
@@ -132,7 +132,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterNodeFailsOnProtectedServerWithNotPro
     iamproto::IAMOutgoingMessages outgoing;
     iamproto::IAMIncomingMessages incoming;
 
-    outgoing.mutable_node_info()->set_id("node0");
+    outgoing.mutable_node_info()->set_node_id("node0");
     outgoing.mutable_node_info()->set_status(aos::NodeStatus(aos::NodeStatusEnum::eUnprovisioned).ToString().CStr());
 
     ASSERT_TRUE(stream->Write(outgoing));

@@ -217,8 +217,8 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
 
-    EXPECT_STREQ(nodeInfo.mID.CStr(), cNodeIDFileContent);
-    EXPECT_STREQ(nodeInfo.mType.CStr(), config.mNodeType.c_str());
+    EXPECT_STREQ(nodeInfo.mNodeID.CStr(), cNodeIDFileContent);
+    EXPECT_STREQ(nodeInfo.mNodeType.CStr(), config.mNodeType.c_str());
     EXPECT_STREQ(nodeInfo.mName.CStr(), config.mNodeName.c_str());
     EXPECT_STREQ(nodeInfo.mOSType.CStr(), config.mOSType.c_str());
     EXPECT_EQ(nodeInfo.mTotalRAM, cExpectedMemSizeBytes);

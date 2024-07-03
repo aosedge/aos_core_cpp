@@ -323,7 +323,7 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return err;
     }
 
-    SetNodeID(info.id());
+    SetNodeID(info.node_id());
 
     return aos::ErrorEnum::eNone;
 }

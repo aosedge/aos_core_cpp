@@ -459,5 +459,5 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
 
 bool ProtectedMessageHandler::ProcessOnThisNode(const std::string& nodeId)
 {
-    return nodeId.empty() || aos::String(nodeId.c_str()) == GetNodeInfo().mID;
+    return nodeId.empty() || aos::String(nodeId.c_str()) == GetNodeInfo().mNodeID;
 }

@@ -80,10 +80,10 @@ void PublicMessageHandlerTest::SetUp()
     aos::InitLogs();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = "node0";
-        nodeInfo.mType = "test-type";
+        nodeInfo.mNodeID   = "node0";
+        nodeInfo.mNodeType = "test-type";
 
-        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mID.CStr() << ", " << nodeInfo.mType.CStr();
+        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 
         return aos::ErrorEnum::eNone;
     }));
@@ -148,8 +148,8 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfo)
     ASSERT_TRUE(status.ok()) << "GetNodeInfo failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.id(), "node0");
-    ASSERT_EQ(response.type(), "test-type");
+    ASSERT_EQ(response.node_id(), "node0");
+    ASSERT_EQ(response.node_type(), "test-type");
 }
 
 TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
@@ -473,8 +473,8 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
     request.set_node_id("test-node-id");
 
     EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeInfo& nodeInfo) {
-        nodeInfo.mID   = nodeId;
-        nodeInfo.mName = "test-name";
+        nodeInfo.mNodeID = nodeId;
+        nodeInfo.mName   = "test-name";
 
         return aos::ErrorEnum::eNone;
     }));
@@ -484,7 +484,7 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
     ASSERT_TRUE(status.ok()) << "GetNodeInfo failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.id(), "test-node-id");
+    ASSERT_EQ(response.node_id(), "test-node-id");
     ASSERT_EQ(response.name(), "test-name");
 }
 
@@ -518,15 +518,15 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     aos::NodeInfo nodeInfo;
-    nodeInfo.mID   = "test-node-id";
-    nodeInfo.mName = "test-name";
+    nodeInfo.mNodeID = "test-node-id";
+    nodeInfo.mName   = "test-name";
 
     mPublicMessageHandler.OnNodeInfoChange(nodeInfo);
 
     iamproto::NodeInfo response;
     ASSERT_TRUE(stream->Read(&response));
 
-    EXPECT_EQ(response.id(), "test-node-id");
+    EXPECT_EQ(response.node_id(), "test-node-id");
     EXPECT_EQ(response.name(), "test-name");
 
     context.TryCancel();
@@ -552,7 +552,7 @@ TEST_F(PublicMessageHandlerTest, RegisterNodeFailsOnPublicServerWithProvisionedN
     iamproto::IAMOutgoingMessages outgoing;
     iamproto::IAMIncomingMessages incoming;
 
-    outgoing.mutable_node_info()->set_id("node0");
+    outgoing.mutable_node_info()->set_node_id("node0");
     outgoing.mutable_node_info()->set_status(aos::NodeStatus(aos::NodeStatusEnum::eProvisioned).ToString().CStr());
 
     ASSERT_TRUE(stream->Write(outgoing));

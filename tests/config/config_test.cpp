@@ -32,7 +32,7 @@ public:
                 "NodeType": "NodeType",
                 "NodeName": "NodeName",
                 "OSType": "NodeOSType",
-                "MaxDMIPS": 1.1,
+                "MaxDMIPS": 1000,
                 "Attrs": {
                     "name1": "value1",
                     "name2": "value2"
@@ -131,7 +131,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
     EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
     EXPECT_EQ(config.mNodeInfo.mOSType, "NodeOSType");
-    EXPECT_FLOAT_EQ(config.mNodeInfo.mMaxDMIPS, 1.1f);
+    EXPECT_EQ(config.mNodeInfo.mMaxDMIPS, 1000);
     EXPECT_EQ(config.mNodeInfo.mAttrs.size(), 2);
     EXPECT_EQ(config.mNodeInfo.mPartitions.size(), 2);
 

@@ -64,15 +64,15 @@ static aos::NodeInfo DefaultNodeInfo(const char* id = "node0")
 {
     aos::NodeInfo nodeInfo;
 
-    nodeInfo.mID     = id;
-    nodeInfo.mType   = "main";
-    nodeInfo.mName   = "node0";
-    nodeInfo.mStatus = aos::NodeStatusEnum::eProvisioned;
-    nodeInfo.mOSType = "linux";
+    nodeInfo.mNodeID   = id;
+    nodeInfo.mNodeType = "main";
+    nodeInfo.mName     = "node0";
+    nodeInfo.mStatus   = aos::NodeStatusEnum::eProvisioned;
+    nodeInfo.mOSType   = "linux";
     FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
     FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
-    nodeInfo.mMaxDMIPS = 429138.42;
+    nodeInfo.mMaxDMIPS = 429138;
     nodeInfo.mTotalRAM = 32 * 1024;
 
     return nodeInfo;
@@ -249,7 +249,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
     ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
 
     aos::NodeInfo resultNodeInfo;
-    ASSERT_TRUE(mDB.GetNodeInfo(nodeInfo.mID, resultNodeInfo).IsNone());
+    ASSERT_TRUE(mDB.GetNodeInfo(nodeInfo.mNodeID, resultNodeInfo).IsNone());
     ASSERT_EQ(resultNodeInfo, nodeInfo);
 }
 
@@ -266,7 +266,7 @@ TEST_F(DatabaseTest, GetAllNodeIds)
     ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> expectedNodeIds, resultNodeIds;
-    FillArray({node0.mID, node1.mID, node2.mID}, expectedNodeIds);
+    FillArray({node0.mNodeID, node1.mNodeID, node2.mNodeID}, expectedNodeIds);
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
     ASSERT_EQ(expectedNodeIds, resultNodeIds);
@@ -301,10 +301,10 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
 
-    ASSERT_TRUE(mDB.RemoveNodeInfo(node1.mID).IsNone());
+    ASSERT_TRUE(mDB.RemoveNodeInfo(node1.mNodeID).IsNone());
 
     aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> expectedNodeIds, resultNodeIds;
-    FillArray({node0.mID, node2.mID}, expectedNodeIds);
+    FillArray({node0.mNodeID, node2.mNodeID}, expectedNodeIds);
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
     ASSERT_EQ(expectedNodeIds, resultNodeIds);

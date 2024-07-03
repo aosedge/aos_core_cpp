@@ -51,8 +51,8 @@ void ConvertToProto(const aos::CPUInfo& src, iamanager::v5::CPUInfo& dst)
 
 void ConvertToProto(const aos::NodeInfo& src, iamanager::v5::NodeInfo& dst)
 {
-    dst.set_id(src.mID.CStr());
-    dst.set_type(src.mType.CStr());
+    dst.set_node_id(src.mNodeID.CStr());
+    dst.set_node_type(src.mNodeType.CStr());
     dst.set_name(src.mName.CStr());
     dst.set_status(src.mStatus.ToString().CStr());
     dst.set_os_type(src.mOSType.CStr());
@@ -178,9 +178,9 @@ aos::Error ConvertToAos(
 
 aos::Error ConvertToAos(const iamanager::v5::NodeInfo& src, aos::NodeInfo& dst)
 {
-    dst.mID   = src.id().c_str();
-    dst.mType = src.type().c_str();
-    dst.mName = src.name().c_str();
+    dst.mNodeID   = src.node_id().c_str();
+    dst.mNodeType = src.node_type().c_str();
+    dst.mName     = src.name().c_str();
 
     aos::NodeStatus nodeStatus;
     nodeStatus.FromString(src.status().c_str());
@@ -205,7 +205,7 @@ aos::Error ConvertToAos(const iamanager::v5::NodeInfo& src, aos::NodeInfo& dst)
     return aos::ErrorEnum::eNone;
 }
 
-aos::InstanceIdent ConvertToAos(const iamanager::v5::InstanceIdent& val)
+aos::InstanceIdent ConvertToAos(const common::v1::InstanceIdent& val)
 {
     aos::InstanceIdent result;
 

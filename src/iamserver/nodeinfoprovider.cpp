@@ -62,12 +62,12 @@ aos::Error NodeInfoProvider::Init(const NodeInfoConfig& config)
 {
     aos::Error err;
 
-    if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mID); !err.IsNone()) {
+    if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mNodeID); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     mProvisioningStatusPath = config.mProvisioningStatePath;
-    mNodeInfo.mType         = config.mNodeType.c_str();
+    mNodeInfo.mNodeType     = config.mNodeType.c_str();
     mNodeInfo.mName         = config.mNodeName.c_str();
     mNodeInfo.mOSType       = config.mOSType.c_str();
 
