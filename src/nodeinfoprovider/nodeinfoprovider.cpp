@@ -70,6 +70,7 @@ aos::Error NodeInfoProvider::Init(const NodeInfoConfig& config)
     mNodeInfo.mNodeType     = config.mNodeType.c_str();
     mNodeInfo.mName         = config.mNodeName.c_str();
     mNodeInfo.mOSType       = config.mOSType.c_str();
+    mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
 
     aos::Tie(mNodeInfo.mTotalRAM, err) = UtilsSystemInfo::GetMemTotal(config.mMemInfoPath);
     if (!err.IsNone()) {
@@ -112,13 +113,14 @@ aos::Error NodeInfoProvider::SetNodeStatus(const aos::NodeStatus& status)
     std::ofstream file;
 
     if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
+        LOG_ERR() << "Provision status file open failed: path=" << mProvisioningStatusPath.c_str();
+
         return aos::ErrorEnum::eNotFound;
     }
 
     file << status.ToString().CStr();
 
-    LOG_DBG() << "Node status updated: status = " << status.ToString().CStr()
-              << ", path = " << mProvisioningStatusPath.c_str();
+    LOG_DBG() << "Node status updated: status=" << status.ToString();
 
     return aos::ErrorEnum::eNone;
 }
@@ -150,8 +152,7 @@ aos::Error NodeInfoProvider::InitPartitionInfo(const NodeInfoConfig& config)
 
         aos::Tie(partitionInfo.mTotalSize, err) = UtilsSystemInfo::GetMountFSTotalSize(partition.mPath);
         if (!err.IsNone()) {
-            LOG_WRN() << "Failed to get total size for partition: path = " << partition.mPath.c_str()
-                      << ", err = " << err;
+            LOG_WRN() << "Failed to get total size for partition: path=" << partition.mPath.c_str() << ", err=" << err;
         }
 
         for (const auto& type : partition.mTypes) {

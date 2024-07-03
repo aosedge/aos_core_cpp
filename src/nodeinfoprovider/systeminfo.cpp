@@ -72,8 +72,8 @@ private:
                     cpuInfo.mArch = keyValue.mValue.c_str();
                 }
             } catch (...) {
-                LOG_DBG() << "CPU info parsing failed: key = " << keyValue.mKey.c_str()
-                          << ", value = " << keyValue.mValue.c_str();
+                LOG_DBG() << "CPU info parsing failed: key=" << keyValue.mKey.c_str()
+                          << ", value=" << keyValue.mValue.c_str();
 
                 throw aos::common::utils::AosException("Failed to parse CPU info", aos::ErrorEnum::eFailed);
             }
@@ -106,7 +106,7 @@ private:
             // populate last CPU info object
             PopulateCPUInfoObject();
         } catch (...) {
-            LOG_ERR() << "Failed to parse CPU info file: line = " << line.c_str();
+            LOG_ERR() << "Failed to parse CPU info file: line=" << line.c_str();
 
             return aos::ErrorEnum::eFailed;
         }
@@ -133,8 +133,8 @@ aos::Error GetCPUInfo(const std::string& path, aos::Array<aos::CPUInfo>& cpuInfo
         CPUInfoParser parser;
 
         return parser.GetCPUInfo(path, cpuInfoArray);
-    } catch (...) {
-        return aos::ErrorEnum::eFailed;
+    } catch (const std::exception& e) {
+        return aos::Error(aos::ErrorEnum::eFailed, e.what());
     }
 }
 

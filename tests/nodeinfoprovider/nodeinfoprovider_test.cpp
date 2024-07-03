@@ -83,7 +83,7 @@ static NodeInfoConfig CreateConfig()
     config.mMemInfoPath           = cMemInfoPath;
     config.mNodeIDPath            = cNodeIDPath;
     config.mNodeName              = "node-name";
-    config.mMaxDMIPS              = 1.1;
+    config.mMaxDMIPS              = 1000;
 
     config.mAttrs      = {{"attr1", "value1"}, {"attr2", "value2"}};
     config.mPartitions = {cPartitionsInfoConfig.cbegin(), cPartitionsInfoConfig.cend()};
