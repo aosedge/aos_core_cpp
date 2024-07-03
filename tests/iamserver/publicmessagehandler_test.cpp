@@ -82,6 +82,7 @@ void PublicMessageHandlerTest::SetUp()
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
+        nodeInfo.mAttrs.PushBack({"MainNode", ""});
 
         LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 

@@ -86,7 +86,8 @@ static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std:
 aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
-    aos::iam::NodeInfoProviderItf& nodeInfoProvider, aos::iam::nodemanager::NodeManagerItf& nodeManager,
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";

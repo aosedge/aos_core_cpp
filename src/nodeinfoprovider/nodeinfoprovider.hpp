@@ -17,7 +17,7 @@
 /**
  * Node info provider.
  */
-class NodeInfoProvider : public aos::iam::NodeInfoProviderItf {
+class NodeInfoProvider : public aos::iam::nodeinfoprovider::NodeInfoProviderItf {
 public:
     /**
      * Initializes the node info provider.

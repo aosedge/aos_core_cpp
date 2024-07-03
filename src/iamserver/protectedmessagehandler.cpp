@@ -29,7 +29,8 @@ static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "Stre
 
 aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-    aos::iam::NodeInfoProviderItf& nodeInfoProvider, aos::iam::nodemanager::NodeManagerItf& nodeManager,
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
     LOG_DBG() << "Initialize message handler: handler=protected";
@@ -48,7 +49,7 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder, boo
         builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
     }
 
-    if (IsMainNode()) {
+    if (aos::iam::nodeinfoprovider::IsMainNode(GetNodeInfo())) {
         builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
 
         if (provisionMode) {

@@ -49,7 +49,8 @@ public:
      * @param provisionManager provision manager.
      */
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
-        aos::iam::permhandler::PermHandlerItf& permHandler, aos::iam::NodeInfoProviderItf& nodeInfoProvider,
+        aos::iam::permhandler::PermHandlerItf&           permHandler,
+        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         aos::iam::nodemanager::NodeManagerItf&           nodeManager,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager);
 

@@ -53,7 +53,8 @@ public:
      * @param provisionManager provision manager.
      */
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
-        aos::iam::permhandler::PermHandlerItf& permHandler, aos::iam::NodeInfoProviderItf& nodeInfoProvider,
+        aos::iam::permhandler::PermHandlerItf&           permHandler,
+        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         aos::iam::nodemanager::NodeManagerItf&           nodeManager,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager);
 
@@ -173,12 +174,11 @@ protected:
 
     aos::iam::identhandler::IdentHandlerItf*         GetIdentHandler() { return mIdentHandler; }
     aos::iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
-    aos::iam::NodeInfoProviderItf*                   GetNodeInfoProvider() { return mNodeInfoProvider; }
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
     NodeController*                                  GetNodeController() { return mNodeController; }
     aos::NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
     aos::iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
     aos::iam::provisionmanager::ProvisionManagerItf* GetProvisionManager() { return mProvisionManager; }
-    bool                                             IsMainNode() const;
     aos::Error                                       SetNodeStatus(const aos::NodeStatus& status);
 
 private:
@@ -214,14 +214,12 @@ private:
     grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
         grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
 
-    static constexpr auto       cIamAPIVersion            = 5;
-    static constexpr auto       cNodeTypeTag              = "NODE_TYPE";
-    static constexpr auto       cNodeTypeTagMainNodeValue = "main";
-    static constexpr std::array cAllowedStatuses          = {aos::NodeStatusEnum::eUnprovisioned};
+    static constexpr auto       cIamAPIVersion   = 5;
+    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eUnprovisioned};
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
-    aos::iam::NodeInfoProviderItf*                   mNodeInfoProvider = nullptr;
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     aos::iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
     NodeController*                                  mNodeController   = nullptr;

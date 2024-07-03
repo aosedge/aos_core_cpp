@@ -48,8 +48,8 @@ public:
      */
     aos::Error Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::cryptoutils::CertLoaderItf& certLoader,
-        aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::NodeInfoProviderItf& nodeInfoProvider,
-        bool provisioningMode);
+        aos::crypto::x509::ProviderItf&                  cryptoProvider,
+        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
     /**
      * Destroys object instance.
@@ -89,7 +89,7 @@ private:
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    aos::iam::NodeInfoProviderItf*                   mNodeInfoProvider = nullptr;
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
 
     std::vector<std::string>                               mStartProvisioningCmdArgs;
     std::vector<std::string>                               mDiskEncryptionCmdArgs;

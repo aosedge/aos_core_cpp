@@ -23,7 +23,8 @@
 
 aos::Error PublicMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-    aos::iam::NodeInfoProviderItf& nodeInfoProvider, aos::iam::nodemanager::NodeManagerItf& nodeManager,
+    aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
@@ -53,7 +54,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
         builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
     }
 
-    if (IsMainNode()) {
+    if (aos::iam::nodeinfoprovider::IsMainNode(mNodeInfo)) {
         if (GetIdentHandler() != nullptr) {
             builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
         }
@@ -100,26 +101,6 @@ void PublicMessageHandler::Close()
 /***********************************************************************************************************************
  * Protected
  **********************************************************************************************************************/
-
-bool PublicMessageHandler::IsMainNode() const
-{
-    // Case-insensitive equality for strings
-    auto caseInsensitiveEqual = [](std::string_view a, std::string_view b) {
-        return std::equal(
-            a.begin(), a.end(), b.begin(), b.end(), [](char a, char b) { return std::tolower(a) == std::tolower(b); });
-    };
-
-    auto it = std::find_if(mNodeInfo.mAttrs.begin(), mNodeInfo.mAttrs.end(), [&](const auto& attr) {
-        return caseInsensitiveEqual(std::string_view(attr.mName.CStr(), attr.mName.Size()), cNodeTypeTag);
-    });
-
-    if (it != mNodeInfo.mAttrs.end()) {
-        return caseInsensitiveEqual(std::string_view(it->mValue.CStr(), it->mValue.Size()), cNodeTypeTagMainNodeValue);
-    }
-
-    // If attribute is not found, then it is the main node.
-    return true;
-}
 
 aos::Error PublicMessageHandler::SetNodeStatus(const aos::NodeStatus& status)
 {
