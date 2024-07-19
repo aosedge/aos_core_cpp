@@ -60,6 +60,13 @@ static PartitionInfoConfig ParsePartitionInfoConfig(const aos::common::utils::Ca
     partitionInfoConfig.mName = object.GetValue<std::string>("name");
     partitionInfoConfig.mPath = object.GetValue<std::string>("path");
 
+    const auto& types = aos::common::utils::GetArrayValue<std::string>(
+        object, "types", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+
+    for (const auto& type : types) {
+        partitionInfoConfig.mTypes.push_back(type);
+    }
+
     return partitionInfoConfig;
 }
 

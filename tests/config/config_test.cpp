@@ -45,8 +45,12 @@ public:
                     },
                     {
                         "Name": "name2",
-                        "Types": ["type2"],
+                        "Types": ["type1", "type2"],
                         "Path": "path2"
+                    },
+                    {
+                        "Name": "name3",
+                        "Path": "path3"
                     }
                 ]
             },
@@ -133,7 +137,24 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mOSType, "NodeOSType");
     EXPECT_EQ(config.mNodeInfo.mMaxDMIPS, 1000);
     EXPECT_EQ(config.mNodeInfo.mAttrs.size(), 2);
-    EXPECT_EQ(config.mNodeInfo.mPartitions.size(), 2);
+
+    // Check partition info
+    ASSERT_EQ(config.mNodeInfo.mPartitions.size(), 3);
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mName, "name1");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mPath, "path1");
+    ASSERT_EQ(config.mNodeInfo.mPartitions[0].mTypes.size(), 1);
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mTypes[0], "type1");
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mName, "name2");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mPath, "path2");
+    ASSERT_EQ(config.mNodeInfo.mPartitions[1].mTypes.size(), 2);
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mTypes[0], "type1");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mTypes[1], "type2");
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[2].mName, "name3");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[2].mPath, "path3");
+    ASSERT_TRUE(config.mNodeInfo.mPartitions[2].mTypes.empty());
 
     EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMProtectedServerURL, "localhost:8089");
