@@ -56,7 +56,7 @@ static std::unique_ptr<typename T::Stub> CreateClientStub()
 
 class ProtectedMessageHandlerTest : public Test {
 protected:
-    void InitServer(const bool provisionMode = true);
+    void InitServer();
 
     NodeController                mNodeController;
     ProtectedMessageHandler       mServerHandler;
@@ -74,12 +74,12 @@ private:
     void TearDown() override;
 };
 
-void ProtectedMessageHandlerTest::InitServer(const bool provisionMode)
+void ProtectedMessageHandlerTest::InitServer()
 {
     grpc::ServerBuilder builder;
 
     builder.AddListeningPort(cServerURL, grpc::InsecureServerCredentials());
-    mServerHandler.RegisterServices(builder, provisionMode);
+    mServerHandler.RegisterServices(builder);
 
     mServer = builder.BuildAndStart();
 }

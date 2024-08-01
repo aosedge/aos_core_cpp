@@ -117,8 +117,7 @@ private:
 
     // creating routines
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
-    void CreateProtectedServer(
-        const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials, bool provisionMode);
+    void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
     Config                        mConfig;
     NodeController                mNodeController;

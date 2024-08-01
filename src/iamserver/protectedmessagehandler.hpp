@@ -58,9 +58,8 @@ public:
      * Registers grpc services.
      *
      * @param builder server builder.
-     * @param provisionMode provision mode flag.
      */
-    void RegisterServices(grpc::ServerBuilder& builder, bool provisionMode);
+    void RegisterServices(grpc::ServerBuilder& builder);
 
     using PublicMessageHandler::OnNodeInfoChange;
     using PublicMessageHandler::OnNodeRemoved;

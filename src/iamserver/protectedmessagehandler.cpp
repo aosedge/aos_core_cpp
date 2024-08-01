@@ -39,7 +39,7 @@ aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
         nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
 }
 
-void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder, bool provisionMode)
+void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 {
     LOG_DBG() << "Register services: handler=protected";
 
@@ -51,11 +51,7 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder, boo
 
     if (aos::iam::nodeinfoprovider::IsMainNode(GetNodeInfo())) {
         builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
-
-        if (provisionMode) {
-            builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
-        }
-
+        builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
         builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
     }
 }

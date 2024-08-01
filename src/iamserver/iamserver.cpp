@@ -137,7 +137,7 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
         }
 
         CreatePublicServer(CorrectAddress(mConfig.mIAMPublicServerURL), publicOpt);
-        CreateProtectedServer(CorrectAddress(mConfig.mIAMProtectedServerURL), protectedOpt, provisioningMode);
+        CreateProtectedServer(CorrectAddress(mConfig.mIAMProtectedServerURL), protectedOpt);
     } catch (const aos::common::utils::AosException& e) {
         return e.GetError();
     } catch (const std::exception& e) {
@@ -255,7 +255,7 @@ void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_pt
 }
 
 void IAMServer::CreateProtectedServer(
-    const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials, bool provisionMode)
+    const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
 {
     LOG_DBG() << "Process create protected server: URL=" << addr.c_str();
 
@@ -263,7 +263,7 @@ void IAMServer::CreateProtectedServer(
 
     builder.AddListeningPort(addr, credentials);
 
-    mProtectedMessageHandler.RegisterServices(builder, provisionMode);
+    mProtectedMessageHandler.RegisterServices(builder);
 
     mProtectedServer = builder.BuildAndStart();
 }
