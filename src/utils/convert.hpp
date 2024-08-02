@@ -165,7 +165,11 @@ aos::InstanceIdent ConvertToAos(const common::v1::InstanceIdent& val);
 template <typename Message>
 void SetErrorInfo(const aos::Error& src, Message& dst)
 {
-    *dst.mutable_error() = ConvertAosErrorToProto(src);
+    if (!src.IsNone()) {
+        *dst.mutable_error() = ConvertAosErrorToProto(src);
+    } else {
+        dst.clear_error();
+    }
 }
 
 } // namespace utils
