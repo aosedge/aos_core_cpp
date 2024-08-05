@@ -315,10 +315,6 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return err;
     }
 
-    if (std::find(mAllowedStatuses.cbegin(), mAllowedStatuses.cend(), nodeInfo.mStatus) == mAllowedStatuses.cend()) {
-        return {aos::ErrorEnum::eInvalidArgument, "Node status is not allowed"};
-    }
-
     if (auto err = mNodeManager->SetNodeInfo(nodeInfo); !err.IsNone()) {
         return err;
     }

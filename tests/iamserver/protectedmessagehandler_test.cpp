@@ -117,31 +117,6 @@ void ProtectedMessageHandlerTest::TearDown()
 }
 
 /***********************************************************************************************************************
- * IAMPublicNodesService tests
- **********************************************************************************************************************/
-
-TEST_F(ProtectedMessageHandlerTest, RegisterNodeFailsOnProtectedServerWithNotProvisionedNodeStatus)
-{
-    auto clientStub = CreateClientStub<iamproto::IAMPublicNodesService>();
-    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
-
-    grpc::ClientContext context;
-
-    auto stream = clientStub->RegisterNode(&context);
-    ASSERT_NE(stream, nullptr) << "Failed to create client stream";
-
-    iamproto::IAMOutgoingMessages outgoing;
-    iamproto::IAMIncomingMessages incoming;
-
-    outgoing.mutable_node_info()->set_node_id("node0");
-    outgoing.mutable_node_info()->set_status(aos::NodeStatus(aos::NodeStatusEnum::eUnprovisioned).ToString().CStr());
-
-    ASSERT_TRUE(stream->Write(outgoing));
-
-    ASSERT_FALSE(stream->Read(&incoming));
-}
-
-/***********************************************************************************************************************
  * IAMNodesService tests
  **********************************************************************************************************************/
 
