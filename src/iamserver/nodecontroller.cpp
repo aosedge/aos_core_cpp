@@ -61,7 +61,7 @@ aos::Error NodeStreamHandler::HandleStream()
     iamproto::IAMOutgoingMessages outgoing;
 
     while (mStream->Read(&outgoing)) {
-        LOG_DBG() << "Receive message: type=" << outgoing.GetTypeName().c_str();
+        LOG_DBG() << "Receive message: type=" << outgoing.IAMOutgoingMessage_case();
 
         const auto messageCase = outgoing.IAMOutgoingMessage_case();
         if (messageCase == iamproto::IAMOutgoingMessages::IAMOutgoingMessageCase::IAMOUTGOINGMESSAGE_NOT_SET) {
@@ -89,7 +89,7 @@ aos::Error NodeStreamHandler::HandleStream()
         }
     }
 
-    LOG_DBG() << "Stop stream handler";
+    LOG_DBG() << "Stop stream handler: err=" << err;
 
     return err;
 }
