@@ -208,6 +208,8 @@ IAMServer::~IAMServer()
 {
     LOG_DBG() << "IAM Server shutdown";
 
+    mNodeController.Close();
+
     if (mPublicServer) {
         mPublicServer->Shutdown();
         mPublicServer->Wait();
@@ -220,7 +222,6 @@ IAMServer::~IAMServer()
 
     mPublicMessageHandler.Close();
     mProtectedMessageHandler.Close();
-    mNodeController.Close();
 }
 
 /***********************************************************************************************************************

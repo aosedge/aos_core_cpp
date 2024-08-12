@@ -343,8 +343,10 @@ void NodeController::Close()
 {
     std::lock_guard lock {mMutex};
 
+    // Call Close method explicitly to avoid hanging on shutdown.
+    // HandleRegisterNodeStream method references handler so destructor is not called here.
     for (auto& handler : mHandlers) {
-        handler.reset();
+        handler->Close();
     }
 
     mHandlers.clear();
