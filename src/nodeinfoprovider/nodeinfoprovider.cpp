@@ -118,9 +118,51 @@ aos::Error NodeInfoProvider::SetNodeStatus(const aos::NodeStatus& status)
         return aos::ErrorEnum::eNotFound;
     }
 
+    if (status == mNodeInfo.mStatus) {
+        LOG_DBG() << "Node status is not changed: status=" << status.ToString();
+
+        return aos::ErrorEnum::eNone;
+    }
+
     file << status.ToString().CStr();
 
+    {
+        std::lock_guard lock {mMutex};
+
+        mNodeInfo.mStatus = status;
+    }
+
     LOG_DBG() << "Node status updated: status=" << status.ToString();
+
+    if (auto err = NotifyNodeStatusChanged(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(aos::Error(err, "failed to notify node status changed subscribers"));
+    }
+
+    return aos::ErrorEnum::eNone;
+}
+
+aos::Error NodeInfoProvider::SubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Subscribe node status changed observer";
+
+    try {
+        mObservers.insert(&observer);
+    } catch (const std::exception& e) {
+        return aos::Error(aos::ErrorEnum::eFailed, e.what());
+    }
+
+    return aos::ErrorEnum::eNone;
+}
+
+aos::Error NodeInfoProvider::UnsubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Unsubscribe node status changed observer";
+
+    mObservers.erase(&observer);
 
     return aos::ErrorEnum::eNone;
 }
@@ -167,4 +209,23 @@ aos::Error NodeInfoProvider::InitPartitionInfo(const NodeInfoConfig& config)
     }
 
     return aos::ErrorEnum::eNone;
+}
+
+aos::Error NodeInfoProvider::NotifyNodeStatusChanged()
+{
+    aos::Error err;
+
+    std::lock_guard lock {mMutex};
+
+    for (auto observer : mObservers) {
+        LOG_DBG() << "Notify node status changed observer: nodeID=" << mNodeInfo.mNodeID.CStr()
+                  << ", status=" << mNodeInfo.mStatus.ToString();
+
+        auto errNotify = observer->OnNodeStatusChanged(mNodeInfo.mNodeID, mNodeInfo.mStatus);
+        if (err.IsNone() && !errNotify.IsNone()) {
+            err = errNotify;
+        }
+    }
+
+    return err;
 }

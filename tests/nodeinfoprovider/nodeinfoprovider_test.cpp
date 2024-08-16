@@ -15,6 +15,7 @@
 
 #include <test/utils/log.hpp>
 
+#include "mocks/nodeinfoprovidermock.hpp"
 #include "nodeinfoprovider/nodeinfoprovider.hpp"
 
 using namespace testing;
@@ -309,4 +310,71 @@ TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
     file >> status;
 
     EXPECT_STREQ(status.c_str(), cProvisionedStatus.ToString().CStr());
+}
+
+TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
+{
+    NodeStatusObserverMock observer1, observer2;
+
+    NodeInfoProvider provider;
+
+    NodeInfoConfig config         = CreateConfig();
+    config.mProvisioningStatePath = "test-tmp/test-provisioning-status";
+
+    std::remove(config.mProvisioningStatePath.c_str());
+
+    auto err = provider.Init(config);
+    ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
+
+    err = provider.SubscribeNodeStatusChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+
+    err = provider.SubscribeNodeStatusChanged(observer2);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+
+    EXPECT_CALL(observer1, OnNodeStatusChanged(_, _)).Times(0);
+    EXPECT_CALL(observer2, OnNodeStatusChanged(_, _)).Times(0);
+
+    err = provider.SetNodeStatus(cUnprovisionedStatus);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
+}
+
+TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
+{
+    NodeStatusObserverMock observer1, observer2;
+
+    NodeInfoProvider provider;
+
+    NodeInfoConfig config         = CreateConfig();
+    config.mProvisioningStatePath = "test-tmp/test-provisioning-status";
+
+    std::remove(config.mProvisioningStatePath.c_str());
+
+    auto err = provider.Init(config);
+    ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
+
+    err = provider.SubscribeNodeStatusChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+
+    err = provider.SubscribeNodeStatusChanged(observer2);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+
+    EXPECT_CALL(observer1, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cProvisionedStatus))
+        .WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(observer2, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cProvisionedStatus))
+        .WillOnce(Return(aos::ErrorEnum::eNone));
+
+    err = provider.SetNodeStatus(cProvisionedStatus);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
+
+    // unsubscribe observer1
+    err = provider.UnsubscribeNodeStatusChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "UnsubscribeNodeStatusChanged should succeed, err=" << err.Message();
+
+    EXPECT_CALL(observer1, OnNodeStatusChanged(_, _)).Times(0);
+    EXPECT_CALL(observer2, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cUnprovisionedStatus))
+        .WillOnce(Return(aos::ErrorEnum::eNone));
+
+    err = provider.SetNodeStatus(cUnprovisionedStatus);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
 }

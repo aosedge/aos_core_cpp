@@ -8,7 +8,9 @@
 #ifndef NODEINFOPROVIDER_HPP_
 #define NODEINFOPROVIDER_HPP_
 
+#include <mutex>
 #include <string>
+#include <unordered_set>
 
 #include <aos/iam/nodeinfoprovider.hpp>
 
@@ -43,13 +45,32 @@ public:
      */
     aos::Error SetNodeStatus(const aos::NodeStatus& status) override;
 
+    /**
+     * Subscribes on node status changed event.
+     *
+     * @param observer node status changed observer
+     * @return Error
+     */
+    aos::Error SubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+
+    /**
+     * Unsubscribes from node status changed event.
+     *
+     * @param observer node status changed observer
+     * @return Error
+     */
+    aos::Error UnsubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+
 private:
     aos::Error InitAtrributesInfo(const NodeInfoConfig& config);
     aos::Error InitPartitionInfo(const NodeInfoConfig& config);
+    aos::Error NotifyNodeStatusChanged();
 
-    std::string   mMemInfoPath;
-    std::string   mProvisioningStatusPath;
-    aos::NodeInfo mNodeInfo;
+    std::mutex                                                             mMutex;
+    std::unordered_set<aos::iam::nodeinfoprovider::NodeStatusObserverItf*> mObservers;
+    std::string                                                            mMemInfoPath;
+    std::string                                                            mProvisioningStatusPath;
+    aos::NodeInfo                                                          mNodeInfo;
 };
 
 #endif
