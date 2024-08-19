@@ -32,7 +32,7 @@
  */
 class IAMServer : public aos::iam::nodemanager::NodeInfoListenerItf,
                   public aos::iam::identhandler::SubjectsObserverItf,
-                  public aos::iam::provisionmanager::ProvisionManagerCallback {
+                  public aos::iam::provisionmanager::ProvisionManagerCallbackItf {
 public:
     /**
      * Constructor.
