@@ -368,7 +368,6 @@ Poco::JSON::Array Database::ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>&
     for (const auto& srcItem : cpuInfo) {
         Poco::JSON::Object pocoItem;
 
-        pocoItem.set("id", srcItem.mID);
         pocoItem.set("modelName", srcItem.mModelName.CStr());
         pocoItem.set("numCores", srcItem.mNumCores);
         pocoItem.set("numThreads", srcItem.mNumThreads);
@@ -392,7 +391,6 @@ aos::Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::A
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
 
-        dstItem.mID         = cpuInfo->getValue<size_t>("id");
         dstItem.mModelName  = cpuInfo->getValue<std::string>("modelName").c_str();
         dstItem.mNumCores   = cpuInfo->getValue<size_t>("numCores");
         dstItem.mNumThreads = cpuInfo->getValue<size_t>("numThreads");

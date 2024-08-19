@@ -23,11 +23,10 @@ void FillArray(const std::initializer_list<T1>& src, aos::Array<T2>& dst)
     }
 }
 
-static aos::CPUInfo CreateCPUInfo(int id)
+static aos::CPUInfo CreateCPUInfo()
 {
     aos::CPUInfo cpuInfo;
 
-    cpuInfo.mID         = id;
     cpuInfo.mModelName  = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
     cpuInfo.mNumCores   = 4;
     cpuInfo.mNumThreads = 4;
@@ -69,7 +68,7 @@ static aos::NodeInfo DefaultNodeInfo(const char* id = "node0")
     nodeInfo.mName     = "node0";
     nodeInfo.mStatus   = aos::NodeStatusEnum::eProvisioned;
     nodeInfo.mOSType   = "linux";
-    FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
+    FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
     FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
     nodeInfo.mMaxDMIPS = 429138;
