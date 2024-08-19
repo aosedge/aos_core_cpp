@@ -100,7 +100,7 @@ class NodeInfoProviderTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::InitLogs();
+        aos::InitLog();
 
         std::filesystem::create_directory(TEST_TMP_DIR);
 

@@ -412,7 +412,7 @@ private:
 
 class IAMClientTest : public Test {
 protected:
-    void SetUp() override { InitLogs(); }
+    void SetUp() override { InitLog(); }
 
     static Config GetConfig()
     {

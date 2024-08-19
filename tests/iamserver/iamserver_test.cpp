@@ -106,7 +106,7 @@ private:
 
 void IAMServerTest::SetUp()
 {
-    aos::InitLogs();
+    aos::InitLog();
 
     ASSERT_TRUE(mCryptoProvider.Init().IsNone());
     ASSERT_TRUE(mSOFTHSMEnv

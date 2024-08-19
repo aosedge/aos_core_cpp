@@ -107,7 +107,7 @@ protected:
 private:
     void SetUp() override
     {
-        aos::InitLogs();
+        aos::InitLog();
 
         mServer.Start();
 

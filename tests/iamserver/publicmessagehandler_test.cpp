@@ -77,7 +77,7 @@ private:
 
 void PublicMessageHandlerTest::SetUp()
 {
-    aos::InitLogs();
+    aos::InitLog();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
