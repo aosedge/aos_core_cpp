@@ -56,12 +56,13 @@ private:
             return;
         }
 
+        size_t       physicalId = 0;
         aos::CPUInfo cpuInfo;
 
         for (const auto& keyValue : mCurrentEntryKeyValues) {
             try {
                 if (keyValue.mKey == "physical id") {
-                    cpuInfo.mID = std::stoul(keyValue.mValue);
+                    physicalId = std::stoul(keyValue.mValue);
                 } else if (keyValue.mKey == "model name") {
                     cpuInfo.mModelName = keyValue.mValue.c_str();
                 } else if (keyValue.mKey == "cpu cores") {
@@ -80,7 +81,7 @@ private:
         }
 
         // only the first entry for the CPU is stored in the map.
-        mCPUInfos.insert({cpuInfo.mID, cpuInfo});
+        mCPUInfos.insert({physicalId, cpuInfo});
 
         mCurrentEntryKeyValues.clear();
     }
