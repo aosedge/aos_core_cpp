@@ -202,7 +202,7 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeI
         if (!pocoInfo.isNull()) {
             Poco::JSON::Parser parser;
 
-            const auto& ptr = parser.parse(pocoInfo.value()).extract<Poco::JSON::Object::Ptr>();
+            const auto ptr = parser.parse(pocoInfo.value()).extract<Poco::JSON::Object::Ptr>();
             if (ptr == nullptr) {
                 return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
             }
@@ -333,7 +333,7 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
     dst.mMaxDMIPS = object.getValue<uint64_t>("maxDMIPS");
     dst.mTotalRAM = object.getValue<size_t>("totalRAM");
 
-    const auto& cpuInfo = object.get("cpuInfo").extract<Poco::JSON::Array::Ptr>();
+    const auto cpuInfo = object.get("cpuInfo").extract<Poco::JSON::Array::Ptr>();
     if (cpuInfo == nullptr) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -343,7 +343,7 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
         return err;
     }
 
-    const auto& partitions = object.get("partitions").extract<Poco::JSON::Array::Ptr>();
+    const auto partitions = object.get("partitions").extract<Poco::JSON::Array::Ptr>();
     if (partitions == nullptr) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -353,7 +353,7 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
         return err;
     }
 
-    const auto& attributes = object.get("attrs").extract<Poco::JSON::Array::Ptr>();
+    const auto attributes = object.get("attrs").extract<Poco::JSON::Array::Ptr>();
     if (attributes == nullptr) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }
@@ -386,7 +386,7 @@ aos::Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::A
     for (const auto& srcItem : src) {
         aos::CPUInfo dstItem;
 
-        const auto& cpuInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
+        const auto cpuInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (cpuInfo == nullptr) {
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
@@ -435,12 +435,12 @@ aos::Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, 
     for (const auto& srcItem : src) {
         aos::PartitionInfo dstItem;
 
-        const auto& partitionInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
+        const auto partitionInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (partitionInfo == nullptr) {
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
 
-        const auto& types = partitionInfo->get("types").extract<Poco::JSON::Array::Ptr>();
+        const auto types = partitionInfo->get("types").extract<Poco::JSON::Array::Ptr>();
         if (types == nullptr) {
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
@@ -487,7 +487,7 @@ aos::Error Database::ConvertAttributesFromJSON(const Poco::JSON::Array& src, aos
     for (const auto& srcItem : src) {
         aos::NodeAttribute dstItem;
 
-        const auto& attribute = srcItem.extract<Poco::JSON::Object::Ptr>();
+        const auto attribute = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (attribute == nullptr) {
             return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
         }
