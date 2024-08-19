@@ -74,11 +74,10 @@ std::vector<T> ConvertFromProtoArray(const google::protobuf::RepeatedPtrField<T>
     return dst;
 }
 
-static CPUInfo CreateCPUInfo(int id)
+static CPUInfo CreateCPUInfo()
 {
     CPUInfo cpuInfo;
 
-    cpuInfo.mID         = id;
     cpuInfo.mModelName  = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
     cpuInfo.mNumCores   = 4;
     cpuInfo.mNumThreads = 4;
@@ -120,7 +119,7 @@ static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned
     nodeInfo.mName     = "node0";
     nodeInfo.mStatus   = status;
     nodeInfo.mOSType   = "linux";
-    FillArray({CreateCPUInfo(1), CreateCPUInfo(2), CreateCPUInfo(3)}, nodeInfo.mCPUs);
+    FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
     FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
     nodeInfo.mMaxDMIPS = 429138;
@@ -131,10 +130,8 @@ static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned
 
 //
 
-static iamanager::v5::CPUInfo CreateCPUInfoProto(int id)
+static iamanager::v5::CPUInfo CreateCPUInfoProto()
 {
-    (void)id;
-
     iamanager::v5::CPUInfo cpuInfo;
 
     cpuInfo.set_model_name("11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz");
@@ -178,7 +175,7 @@ static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = 
     nodeInfo.set_name("node0");
     nodeInfo.set_status(status);
     nodeInfo.set_os_type("linux");
-    FillArray({CreateCPUInfoProto(1), CreateCPUInfoProto(2), CreateCPUInfoProto(3)}, *nodeInfo.mutable_cpus());
+    FillArray({CreateCPUInfoProto(), CreateCPUInfoProto(), CreateCPUInfoProto()}, *nodeInfo.mutable_cpus());
     FillArray({CreatePartitionInfoProto("trace", {"tracefs"}), CreatePartitionInfoProto("tmp", {})},
         *nodeInfo.mutable_partitions());
     FillArray(
