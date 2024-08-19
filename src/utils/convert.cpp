@@ -115,12 +115,9 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
 aos::Error ConvertToAos(
     const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, aos::CPUInfoStaticArray& dst)
 {
-    size_t id = 0;
-
     for (const auto& srcCPU : src) {
         aos::CPUInfo dstCPU;
 
-        dstCPU.mID         = id++;
         dstCPU.mModelName  = srcCPU.model_name().c_str();
         dstCPU.mNumCores   = srcCPU.num_cores();
         dstCPU.mNumThreads = srcCPU.num_threads();
