@@ -110,21 +110,25 @@ aos::Error NodeInfoProvider::GetNodeInfo(aos::NodeInfo& nodeInfo) const
 
 aos::Error NodeInfoProvider::SetNodeStatus(const aos::NodeStatus& status)
 {
-    std::ofstream file;
-
-    if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
-        LOG_ERR() << "Provision status file open failed: path=" << mProvisioningStatusPath.c_str();
-
-        return aos::ErrorEnum::eNotFound;
-    }
-
     if (status == mNodeInfo.mStatus) {
         LOG_DBG() << "Node status is not changed: status=" << status.ToString();
 
         return aos::ErrorEnum::eNone;
     }
 
-    file << status.ToString().CStr();
+    if (status == aos::NodeStatusEnum::eUnprovisioned) {
+        std::filesystem::remove(mProvisioningStatusPath);
+    } else {
+        std::ofstream file;
+
+        if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
+            LOG_ERR() << "Provision status file open failed: path=" << mProvisioningStatusPath.c_str();
+
+            return aos::ErrorEnum::eNotFound;
+        }
+
+        file << status.ToString().CStr();
+    }
 
     {
         std::lock_guard lock {mMutex};
