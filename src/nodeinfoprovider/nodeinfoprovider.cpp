@@ -23,7 +23,8 @@ static aos::RetWithError<aos::NodeStatus> GetNodeStatus(const std::string& path)
     std::ifstream file;
 
     if (file.open(path); !file.is_open()) {
-        return {aos::NodeStatusEnum::eUnprovisioned, aos::ErrorEnum::eNotFound};
+        // .provisionstate file doesn't exist => state unprovisioned
+        return {aos::NodeStatusEnum::eUnprovisioned, aos::ErrorEnum::eNone};
     }
 
     std::string line;
@@ -89,6 +90,11 @@ aos::Error NodeInfoProvider::Init(const NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
+    aos::Tie(mNodeInfo.mStatus, err) = GetNodeStatus(mProvisioningStatusPath);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     return aos::ErrorEnum::eNone;
 }
 
@@ -98,7 +104,7 @@ aos::Error NodeInfoProvider::GetNodeInfo(aos::NodeInfo& nodeInfo) const
     aos::NodeStatus status;
 
     aos::Tie(status, err) = GetNodeStatus(mProvisioningStatusPath);
-    if (!err.IsNone() && !err.Is(aos::ErrorEnum::eNotFound)) {
+    if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
