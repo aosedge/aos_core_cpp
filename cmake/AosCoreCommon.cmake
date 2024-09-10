@@ -13,7 +13,7 @@ ExternalProject_Add(
     aoscorecommon
     PREFIX ${aoscorecommon_build_dir}
     GIT_REPOSITORY https://github.com/aosedge/aos_core_common_cpp.git
-    GIT_TAG feature_dynamic_nodes
+    GIT_TAG develop
     GIT_PROGRESS TRUE
     GIT_SHALLOW TRUE
     CMAKE_ARGS -Daoscore_build_dir=${aoscore_build_dir}
