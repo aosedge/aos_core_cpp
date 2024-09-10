@@ -18,18 +18,9 @@
 
 #include <aos/common/tools/log.hpp>
 
-#include "logger/logger.hpp"
+#include "logger/logmodule.hpp"
 #include "visidentifier/vismessage.hpp"
 #include "visserver.hpp"
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-#define LOG_DBG() LOG_MODULE_DBG(aos::LogModuleEnum::eDefault)
-#define LOG_INF() LOG_MODULE_INF(aos::LogModuleEnum::eDefault)
-#define LOG_WRN() LOG_MODULE_WRN(aos::LogModuleEnum::eDefault)
-#define LOG_ERR() LOG_MODULE_ERR(aos::LogModuleEnum::eDefault)
 
 /***********************************************************************************************************************
  * Public

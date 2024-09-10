@@ -14,7 +14,7 @@
 
 #include <Poco/Event.h>
 
-#include "utils/time.hpp"
+#include <utils/time.hpp>
 
 /**
  * Request Params.
@@ -50,7 +50,7 @@ public:
      *
      * @return bool - true if response was set within specified timeout.
      */
-    bool TryWaitForResponse(std::string& result, const UtilsTime::Duration timeout);
+    bool TryWaitForResponse(std::string& result, const aos::common::utils::Duration timeout);
 
     /**
      * Compares request params.

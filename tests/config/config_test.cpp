@@ -25,13 +25,41 @@ public:
     {
         std::ofstream file(mFileName);
         file << R"({
+            "NodeInfo": {
+                "CPUInfoPath": "/proc/cpuinfo",
+                "MemInfoPath": "/proc/meminfo",
+                "NodeIDPath": "NodeIDPath",
+                "NodeType": "NodeType",
+                "NodeName": "NodeName",
+                "OSType": "NodeOSType",
+                "MaxDMIPS": 1000,
+                "Attrs": {
+                    "name1": "value1",
+                    "name2": "value2"
+                },
+                "Partitions": [
+                    {
+                        "Name": "name1",
+                        "Types": ["type1"],
+                        "Path": "path1"
+                    },
+                    {
+                        "Name": "name2",
+                        "Types": ["type1", "type2"],
+                        "Path": "path2"
+                    },
+                    {
+                        "Name": "name3",
+                        "Path": "path3"
+                    }
+                ]
+            },
             "IAMPublicServerURL": "localhost:8090",
             "IAMProtectedServerURL": "localhost:8089",
             "CACert": "/etc/ssl/certs/rootCA.crt",
             "CertStorage": "/var/aos/crypt/iam/",
-            "NodeID": "NodeID",
-            "NodeType": "NodeType",
             "WorkingDir": "/var/aos/iamanager",
+            "MigrationPath": "/var/aos/migration",
             "FinishProvisioningCmdArgs": [
                 "/var/aos/finish.sh"
             ],
@@ -40,17 +68,6 @@ public:
                 "/var/aos/encrypt.sh"
             ],
             "EnablePermissionsHandler": true,
-            "RemoteIams": [
-                {
-                    "NodeID": "Node1",
-                    "URL": "remotehost1:8089"
-                },
-                {
-                    "NodeID": "Node2",
-                    "URL": "remotehost2:8089",
-                    "RequestTimeout": "100s"
-                }
-            ],
             "CertModules":[{
                 "ID": "id1",
                 "Plugin": "test1",
@@ -83,6 +100,7 @@ public:
                 "ExtendedKeyUsage": ["clientAuth", "serverAuth"],
                 "AlternativeNames": ["host3"],
                 "Disabled": true,
+                "SelfSigned": true,
                 "Params": {
                     "Param1" :"value1",
                     "Param2" : 2
@@ -113,25 +131,41 @@ TEST_F(ConfigTest, ParseConfig)
     auto [config, error] = ParseConfig(mFileName);
     ASSERT_EQ(error, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
+    EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
+    EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
+    EXPECT_EQ(config.mNodeInfo.mOSType, "NodeOSType");
+    EXPECT_EQ(config.mNodeInfo.mMaxDMIPS, 1000);
+    EXPECT_EQ(config.mNodeInfo.mAttrs.size(), 2);
+
+    // Check partition info
+    ASSERT_EQ(config.mNodeInfo.mPartitions.size(), 3);
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mName, "name1");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mPath, "path1");
+    ASSERT_EQ(config.mNodeInfo.mPartitions[0].mTypes.size(), 1);
+    EXPECT_EQ(config.mNodeInfo.mPartitions[0].mTypes[0], "type1");
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mName, "name2");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mPath, "path2");
+    ASSERT_EQ(config.mNodeInfo.mPartitions[1].mTypes.size(), 2);
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mTypes[0], "type1");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[1].mTypes[1], "type2");
+
+    EXPECT_EQ(config.mNodeInfo.mPartitions[2].mName, "name3");
+    EXPECT_EQ(config.mNodeInfo.mPartitions[2].mPath, "path3");
+    ASSERT_TRUE(config.mNodeInfo.mPartitions[2].mTypes.empty());
+
     EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMProtectedServerURL, "localhost:8089");
     EXPECT_EQ(config.mCACert, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/iam/");
-    EXPECT_EQ(config.mNodeID, "NodeID");
-    EXPECT_EQ(config.mNodeType, "NodeType");
     EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
+    EXPECT_EQ(config.mMigrationPath, "/var/aos/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);
 
     EXPECT_EQ(config.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
     EXPECT_EQ(config.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
-
-    EXPECT_EQ(config.mRemoteIAMs.size(), 2);
-
-    EXPECT_EQ(config.mRemoteIAMs[0].mNodeID, "Node1");
-    EXPECT_EQ(config.mRemoteIAMs[0].mURL, "remotehost1:8089");
-    EXPECT_EQ(config.mRemoteIAMs[1].mNodeID, "Node2");
-    EXPECT_EQ(config.mRemoteIAMs[1].mURL, "remotehost2:8089");
-    EXPECT_EQ(config.mRemoteIAMs[1].mRequestTimeout, std::chrono::seconds(100));
 
     EXPECT_EQ(config.mCertModules.size(), 3);
 
@@ -142,6 +176,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[0].mExtendedKeyUsage, std::vector<std::string> {"clientAuth"});
     EXPECT_EQ(config.mCertModules[0].mAlternativeNames, std::vector<std::string> {"host1"});
     EXPECT_EQ(config.mCertModules[0].mSkipValidation, true);
+    EXPECT_EQ(config.mCertModules[0].mIsSelfSigned, false);
     auto params = config.mCertModules[0].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");
@@ -153,6 +188,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[1].mExtendedKeyUsage, std::vector<std::string> {"serverAuth"});
     EXPECT_EQ(config.mCertModules[1].mAlternativeNames, std::vector<std::string> {"host2"});
     EXPECT_EQ(config.mCertModules[1].mSkipValidation, false);
+    EXPECT_EQ(config.mCertModules[1].mIsSelfSigned, false);
     params = config.mCertModules[1].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");
@@ -164,6 +200,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCertModules[2].mExtendedKeyUsage, std::vector<std::string>({"clientAuth", "serverAuth"}));
     EXPECT_EQ(config.mCertModules[2].mAlternativeNames, std::vector<std::string> {"host3"});
     EXPECT_EQ(config.mCertModules[2].mDisabled, true);
+    EXPECT_EQ(config.mCertModules[2].mIsSelfSigned, true);
     params = config.mCertModules[2].mParams.extract<Poco::JSON::Object::Ptr>();
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "2");

@@ -11,7 +11,9 @@ set(TARGET iamserver_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamserver_test.cpp stubs/storagestub.cpp)
+set(SOURCES iamserver_test.cpp nodecontroller_test.cpp protectedmessagehandler_test.cpp publicmessagehandler_test.cpp
+            stubs/storagestub.cpp
+)
 
 # ######################################################################################################################
 # Target

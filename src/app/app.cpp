@@ -16,12 +16,12 @@
 
 #include <aos/common/version.hpp>
 #include <aos/iam/certmodules/certmodule.hpp>
+#include <utils/exception.hpp>
 
 #include "config/config.hpp"
-#include "utils/exception.hpp"
 
 #include "app.hpp"
-#include "log.hpp"
+#include "logger/logmodule.hpp"
 // cppcheck-suppress missingInclude
 #include "version.hpp"
 
@@ -70,6 +70,7 @@ static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
+    aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         aos::iam::certhandler::ExtendedKeyUsage keyUsage;
@@ -141,8 +142,11 @@ void App::initialize(Application& self)
     auto config = ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
 
-    err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString());
+    err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString(), config.mValue.mMigrationPath);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
+
+    err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
 
     if (!config.mValue.mIdentifier.mPlugin.empty()) {
         auto visIdentifier = std::make_unique<VISIdentifier>();
@@ -166,16 +170,23 @@ void App::initialize(Application& self)
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW("can't initialize cert modules", err);
 
-    if (config.mValue.mRemoteIAMs.size()) {
+    err = mProvisionManager.Init(mIAMServer, mCertHandler);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize provision manager", err);
+
+    err = mNodeManager.Init(mDatabase);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize node manager", err);
+
+    err = mIAMServer.Init(config.mValue, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader, mCryptoProvider,
+        mNodeInfoProvider, mNodeManager, mProvisionManager, mProvisioning);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
+
+    if (!config.mValue.mMainIAMPublicServerURL.empty() && !config.mValue.mMainIAMProtectedServerURL.empty()) {
         mIAMClient = std::make_unique<IAMClient>();
 
-        err = mIAMClient->Init(config.mValue, mCertHandler, mCertLoader, mCryptoProvider, mProvisioning);
+        err = mIAMClient->Init(config.mValue, mIdentifier.get(), mProvisionManager, mCertLoader, mCryptoProvider,
+            mNodeInfoProvider, mProvisioning);
         AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
     }
-
-    err = mIAMServer.Init(config.mValue, mCertHandler, mIdentifier.get(), mPermHandler.get(), mIAMClient.get(),
-        mCertLoader, mCryptoProvider, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     // Notify systemd
 
@@ -275,7 +286,7 @@ void App::HandleJournal(const std::string& name, const std::string& value)
     (void)name;
     (void)value;
 
-    mLogger.SetBackend(Logger::Backend::eJournald);
+    mLogger.SetBackend(aos::common::logger::Logger::Backend::eJournald);
 }
 
 void App::HandleLogLevel(const std::string& name, const std::string& value)

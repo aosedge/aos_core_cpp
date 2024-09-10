@@ -8,12 +8,12 @@
 #ifndef WSEXCEPTION_HPP_
 #define WSEXCEPTION_HPP_
 
-#include "utils/exception.hpp"
+#include <utils/exception.hpp>
 
 /**
  * Web socket exception.
  */
-class WSException : public AosException {
+class WSException : public aos::common::utils::AosException {
 public:
     /**
      * Creates WSException exception instance.
@@ -22,7 +22,7 @@ public:
      * @param err Aos error.
      */
     explicit WSException(const std::string& message, const aos::Error& err = aos::ErrorEnum::eFailed)
-        : AosException(message, err) {};
+        : aos::common::utils::AosException(message, err) {};
 };
 
 #endif

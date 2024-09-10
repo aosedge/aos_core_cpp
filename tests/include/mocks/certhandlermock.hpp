@@ -28,6 +28,8 @@ public:
         (const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, aos::iam::certhandler::CertInfo&),
         (override));
     MOCK_METHOD(aos::Error, CreateSelfSignedCert, (const aos::String&, const aos::String&), (override));
+    MOCK_METHOD(aos::RetWithError<aos::iam::certhandler::ModuleConfig>, GetModuleConfig, (const aos::String&),
+        (const, override));
 };
 
 #endif

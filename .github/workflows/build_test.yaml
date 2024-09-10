@@ -21,7 +21,7 @@ jobs:
 
       - name: Prepare
         run: |
-          sudo apt install lcov libsofthsm2 libsystemd-dev -y
+          sudo apt install lcov libsofthsm2 libsystemd-dev cppcheck -y
           pip install conan
 
       - name: Build and test
@@ -35,6 +35,11 @@ jobs:
 
           cd build
           make; make tests; make coverage
+
+      - name: Static analysis
+        run: |
+          cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
+          --suppressions-list=./suppressions.txt -I build/aoscorecommon/include src
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4

@@ -12,12 +12,15 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <aos/iam/nodemanager.hpp>
 #include <aos/iam/permhandler.hpp>
+#include <aos/iam/provisionmanager.hpp>
+#include <logger/logger.hpp>
 
 #include "database/database.hpp"
 #include "iamclient/iamclient.hpp"
 #include "iamserver/iamserver.hpp"
-#include "logger/logger.hpp"
+#include "nodeinfoprovider/nodeinfoprovider.hpp"
 #include "visidentifier/visidentifier.hpp"
 
 /**
@@ -54,8 +57,11 @@ private:
         std::pair<std::unique_ptr<aos::iam::certhandler::HSMItf>, std::unique_ptr<aos::iam::certhandler::CertModule>>>
                                                              mCertModules;
     Database                                                 mDatabase;
+    NodeInfoProvider                                         mNodeInfoProvider;
+    aos::iam::nodemanager::NodeManager                       mNodeManager;
+    aos::iam::provisionmanager::ProvisionManager             mProvisionManager;
     IAMServer                                                mIAMServer;
-    Logger                                                   mLogger;
+    aos::common::logger::Logger                              mLogger;
     std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
     std::unique_ptr<IAMClient>                               mIAMClient;
     std::unique_ptr<aos::iam::identhandler::IdentHandlerItf> mIdentifier;

@@ -7,8 +7,9 @@
 
 #include <Poco/JSON/Stringifier.h>
 
-#include "utils/exception.hpp"
-#include "utils/json.hpp"
+#include <utils/exception.hpp>
+#include <utils/json.hpp>
+
 #include "vismessage.hpp"
 
 /***********************************************************************************************************************
@@ -39,14 +40,14 @@ VISMessage::VISMessage(const std::string& jsonStr)
         Poco::Dynamic::Var objectVar;
         aos::Error         err;
 
-        aos::Tie(objectVar, err) = UtilsJson::ParseJson(jsonStr);
+        aos::Tie(objectVar, err) = aos::common::utils::ParseJson(jsonStr);
         AOS_ERROR_CHECK_AND_THROW("can't parse as json", err);
 
         mJsonObject = std::move(*objectVar.extract<JsonObject::Ptr>());
 
         mAction.FromString(mJsonObject.getValue<std::string>(cActionTagName).c_str());
     } catch (const Poco::Exception& e) {
-        throw AosException(e.message(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed));
+        throw aos::common::utils::AosException(e.message(), AOS_ERROR_WRAP(aos::ErrorEnum::eFailed));
     }
 }
 

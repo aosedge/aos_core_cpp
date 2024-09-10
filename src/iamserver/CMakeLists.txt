@@ -8,10 +8,16 @@
 set(TARGET iamserver)
 
 # ######################################################################################################################
+# Compiler flags
+# ######################################################################################################################
+
+add_definitions(-DLOG_MODULE="iamserver")
+
+# ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamserver.cpp)
+set(SOURCES iamserver.cpp nodecontroller.cpp protectedmessagehandler.cpp publicmessagehandler.cpp)
 
 # ######################################################################################################################
 # Target
@@ -23,4 +29,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosiam logger utils aoscoreapi-gen-objects Poco::Util)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiam aosutils aoscoreapi-gen-objects Poco::Util utils)

@@ -5,13 +5,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET utils_test)
+set(TARGET nodeinfoprovider_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES exception_test.cpp json_test.cpp time_test.cpp)
+set(SOURCES nodeinfoprovider_test.cpp)
 
 # ######################################################################################################################
 # Target
@@ -19,10 +19,10 @@ set(SOURCES exception_test.cpp json_test.cpp time_test.cpp)
 
 add_executable(${TARGET} ${SOURCES})
 
-gtest_discover_tests(${TARGET})
-
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} utils logger GTest::gmock_main)
+gtest_discover_tests(${TARGET})
+
+target_link_libraries(${TARGET} nodeinfoprovider aoscoretestutils GTest::gmock_main)

@@ -31,10 +31,7 @@ message(STATUS)
 # Compiler flags
 # ######################################################################################################################
 
-set(common_flags "-fPIC -Wall -Werror -Wextra -Wpedantic")
-
-set(CMAKE_CXX_FLAGS "${common_flags} ${CMAKE_CXX_FLAGS}")
-set(CMAKE_C_FLAGS "${common_flags} ${CMAKE_C_FLAGS}")
+add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
 
 # ######################################################################################################################
@@ -69,6 +66,9 @@ include(AosCoreLib)
 # Aos core API
 include(AosCoreAPI)
 
+# Aos core common
+include(AosCoreCommon)
+
 # Poco lib
 find_package(
     Poco
@@ -81,10 +81,6 @@ find_package(
     NetSSL
     Util
 )
-
-# Systemd lib
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(JOURNALD libsystemd REQUIRED)
 
 if(WITH_TEST)
     find_package(GTest REQUIRED)
