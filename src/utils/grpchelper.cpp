@@ -7,6 +7,7 @@
 
 #include <fstream>
 #include <numeric>
+#include <regex>
 #include <streambuf>
 
 #include "utils/exception.hpp"
@@ -18,55 +19,33 @@ using namespace aos;
  * Statics
  **********************************************************************************************************************/
 
-// The PKCS #11 URI Scheme: https://www.rfc-editor.org/rfc/rfc7512.html
-static std::string CreateRFC7512URL(
-    const String& token, const String& label, const Array<uint8_t>& id, const String& userPin)
+// LibP11 has its limitations on RFC7512 urls:
+// https://www.rfc-editor.org/rfc/rfc7512.html
+static std::string CreateLibP11PKCS11URL(const String& url)
 {
-    const auto addParam = [](const char* name, const char* param, bool opaque, std::string& paramList) {
-        if (!paramList.empty()) {
-            const char* delim = opaque ? ";" : "&";
-            paramList.append(delim);
-        }
+    std::string result;
 
-        paramList += std::string(name) + "=" + param;
-    };
+    try {
+        // libp11 v0.4.11(provided with Ubuntu 22.04) loads pkcs11 objects with invalid id if label available.
+        // Remove label to protect against loading invalid objects.
+        std::regex objLabelRegex {"object=[^&?;]*[&?;]?"};
 
-    std::string                     opaque, query;
-    StaticString<pkcs11::cIDStrLen> idStr;
+        result = std::regex_replace(url.CStr(), objLabelRegex, "");
 
-    // create opaque part of url
-    addParam("token", token.CStr(), true, opaque);
+        // libp11 doesn't process module-path
+        std::regex modulePathRegex {"module\\-path=[^&?;]*[&?;]?"};
 
-    (void)label; // label is not required, id should be enough to identify the object
+        result = std::regex_replace(result, modulePathRegex, "");
+    } catch (const std::exception& exc) {
+        AOS_ERROR_THROW(exc.what(), aos::ErrorEnum::eFailed);
+    }
 
-    auto err = cryptoutils::EncodePKCS11ID(id, idStr);
-    AOS_ERROR_CHECK_AND_THROW("PKCS11ID encoding problem", err);
-
-    addParam("id", idStr.CStr(), true, opaque);
-
-    addParam("pin-value", userPin.CStr(), false, query);
-
-    // combine opaque & query parts of url
-    StaticString<cURLLen> url;
-
-    err = url.Format("pkcs11:%s?%s", opaque.c_str(), query.c_str());
-    AOS_ERROR_CHECK_AND_THROW("RFC7512 URL format problem", err);
-
-    return url.CStr();
+    return result;
 }
 
-static std::string CreatePKCS11URL(const String& keyURL)
+static std::string CreateGRPCPKCS11URL(const String& keyURL)
 {
-    StaticString<cFilePathLen>      library;
-    StaticString<pkcs11::cLabelLen> token;
-    StaticString<pkcs11::cLabelLen> label;
-    StaticString<pkcs11::cPINLen>   userPIN;
-    uuid::UUID                      id;
-
-    auto err = cryptoutils::ParsePKCS11URL(keyURL, library, token, label, id, userPIN);
-    AOS_ERROR_CHECK_AND_THROW("URL parsing problem", err);
-
-    return "engine:pkcs11:" + CreateRFC7512URL(token, label, id, userPIN);
+    return "engine:pkcs11:" + CreateLibP11PKCS11URL(keyURL);
 }
 
 static std::string ConvertCertificateToPEM(
@@ -107,7 +86,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     auto chain = Array<crypto::x509::Certificate>(certificates->begin(), certificates->Size());
 
     auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(chain, cryptoProvider)};
+        CreateGRPCPKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(chain, cryptoProvider)};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -127,7 +106,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
     }
 
     auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreatePKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(*certificates, cryptoProvider)};
+        CreateGRPCPKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(*certificates, cryptoProvider)};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
