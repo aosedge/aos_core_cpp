@@ -146,7 +146,10 @@ aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::i
             aos::iam::certhandler::CertInfo certInfo {};
 
             FromAosCertInfo(cert, certInfo);
-            certsInfo.PushBack(certInfo);
+
+            if (auto err = certsInfo.PushBack(certInfo); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
         }
     } catch (const Poco::Exception& e) {
         LOG_ERR() << "Failed to get certificates info: " << e.what();

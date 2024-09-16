@@ -233,6 +233,12 @@ TEST_F(DatabaseTest, GetCertsInfo)
     EXPECT_EQ(certsInfo.Size(), 2);
     EXPECT_TRUE(certsInfo[0] == certInfo || certsInfo[1] == certInfo);
     EXPECT_TRUE(certsInfo[0] == certInfo2 || certsInfo[1] == certInfo2);
+
+    aos::StaticArray<aos::iam::certhandler::CertInfo, 1> certsInfoNotEnoughMemory;
+    EXPECT_EQ(mDB.GetCertsInfo("type", certsInfoNotEnoughMemory), aos::ErrorEnum::eNoMemory);
+
+    ASSERT_EQ(certsInfoNotEnoughMemory.Size(), 1);
+    EXPECT_TRUE(certsInfoNotEnoughMemory[0] == certInfo || certsInfoNotEnoughMemory[0] == certInfo2);
 }
 
 /***********************************************************************************************************************
