@@ -71,12 +71,12 @@ protected:
     static bool sColored;
 
 private:
-    static void StdIOCallback(const char* module, aos::LogLevel level, const aos::String& message);
-    static void JournaldCallback(const char* module, aos::LogLevel level, const aos::String& message);
+    static void StdIOCallback(const String& module, aos::LogLevel level, const aos::String& message);
+    static void JournaldCallback(const String& module, aos::LogLevel level, const aos::String& message);
 
     static void        SetColored(bool colored) { sColored = colored; }
     static int         GetSyslogPriority(aos::LogLevel level);
-    static std::string GetModule(const char* module);
+    static std::string GetModule(const String& module);
 
     virtual std::string GetCurrentTime();
     virtual std::string GetLogLevel(aos::LogLevel level);
