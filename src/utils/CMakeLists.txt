@@ -11,7 +11,16 @@ set(TARGET utils)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES filesystem.cpp grpchelper.cpp image.cpp json.cpp parser.cpp time.cpp)
+set(SOURCES
+    cryptohelper.cpp
+    filesystem.cpp
+    grpchelper.cpp
+    image.cpp
+    json.cpp
+    parser.cpp
+    pkcs11helper.cpp
+    time.cpp
+)
 
 # ######################################################################################################################
 # Includes

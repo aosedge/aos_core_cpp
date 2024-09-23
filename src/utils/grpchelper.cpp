@@ -10,8 +10,10 @@
 #include <regex>
 #include <streambuf>
 
+#include "utils/cryptohelper.hpp"
 #include "utils/exception.hpp"
 #include "utils/grpchelper.hpp"
+#include "utils/pkcs11helper.hpp"
 
 using namespace aos;
 
@@ -19,74 +21,25 @@ using namespace aos;
  * Statics
  **********************************************************************************************************************/
 
-// LibP11 has its limitations on RFC7512 urls:
-// https://www.rfc-editor.org/rfc/rfc7512.html
-static std::string CreateLibP11PKCS11URL(const String& url)
-{
-    std::string result;
-
-    try {
-        // libp11 v0.4.11(provided with Ubuntu 22.04) loads pkcs11 objects with invalid id if label available.
-        // Remove label to protect against loading invalid objects.
-        std::regex objLabelRegex {"object=[^&?;]*[&?;]?"};
-
-        result = std::regex_replace(url.CStr(), objLabelRegex, "");
-
-        // libp11 doesn't process module-path
-        std::regex modulePathRegex {"module\\-path=[^&?;]*[&?;]?"};
-
-        result = std::regex_replace(result, modulePathRegex, "");
-    } catch (const std::exception& exc) {
-        AOS_ERROR_THROW(exc.what(), aos::ErrorEnum::eFailed);
-    }
-
-    return result;
-}
-
 static std::string CreateGRPCPKCS11URL(const String& keyURL)
 {
-    return "engine:pkcs11:" + CreateLibP11PKCS11URL(keyURL);
-}
+    auto [libP11URL, err] = aos::common::utils::CreatePKCS11URL(keyURL);
+    AOS_ERROR_CHECK_AND_THROW("Failed to create PKCS11 URL", err);
 
-static std::string ConvertCertificateToPEM(
-    const crypto::x509::Certificate& certificate, crypto::x509::ProviderItf& cryptoProvider)
-{
-    std::string result(crypto::cCertPEMLen, '0');
-    String      view = result.c_str();
-
-    auto err = cryptoProvider.X509CertToPEM(certificate, view);
-    AOS_ERROR_CHECK_AND_THROW("Certificate conversion problem", err);
-
-    result.resize(view.Size());
-
-    return result;
-}
-
-static std::string ConvertCertificatesToPEM(
-    const Array<crypto::x509::Certificate>& chain, crypto::x509::ProviderItf& cryptoProvider)
-{
-    std::string resultChain
-        = std::accumulate(chain.begin(), chain.end(), std::string {}, [&](const std::string& result, const auto& cert) {
-              return result + ConvertCertificateToPEM(cert, cryptoProvider);
-          });
-
-    return resultChain;
+    return "engine:pkcs11:" + libP11URL;
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
     const iam::certhandler::CertInfo& certInfo, const String& rootCertPath, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
+    auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW("Load certificate by URL failed", err);
 
     std::ifstream file {rootCertPath.CStr()};
     std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-    auto chain = Array<crypto::x509::Certificate>(certificates->begin(), certificates->Size());
-
-    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreateGRPCPKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(chain, cryptoProvider)};
+    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11URL(certInfo.mKeyURL), certificates};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -97,16 +50,10 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
     const iam::certhandler::CertInfo& certInfo, cryptoutils::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
-
+    auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW("Load certificate by URL failed", err);
 
-    if (certificates->Size() < 1) {
-        throw std::runtime_error("Not expected number of certificates in the chain");
-    }
-
-    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {
-        CreateGRPCPKCS11URL(certInfo.mKeyURL), ConvertCertificatesToPEM(*certificates, cryptoProvider)};
+    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11URL(certInfo.mKeyURL), certificates};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
