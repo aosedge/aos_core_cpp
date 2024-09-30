@@ -32,7 +32,7 @@ using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterfac
 /**
  * GRPC IAM client.
  */
-class IAMClient {
+class IAMClient : private aos::iam::certhandler::CertReceiverItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -57,6 +57,8 @@ public:
     ~IAMClient();
 
 private:
+    void OnCertChanged(const aos::iam::certhandler::CertInfo& info) override;
+
     using StreamPtr = std::unique_ptr<
         grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
 
@@ -89,15 +91,20 @@ private:
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    aos::cryptoutils::CertLoaderItf*                 mCertLoader       = nullptr;
+    aos::crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
     aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
 
-    std::vector<std::string>                               mStartProvisioningCmdArgs;
-    std::vector<std::string>                               mDiskEncryptionCmdArgs;
-    std::vector<std::string>                               mFinishProvisioningCmdArgs;
-    std::vector<std::string>                               mDeprovisionCmdArgs;
-    aos::common::utils::Duration                           mReconnectInterval;
-    std::string                                            mServerURL;
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
+    bool                                                   mCredentialListUpdated = false;
+
+    std::vector<std::string>     mStartProvisioningCmdArgs;
+    std::vector<std::string>     mDiskEncryptionCmdArgs;
+    std::vector<std::string>     mFinishProvisioningCmdArgs;
+    std::vector<std::string>     mDeprovisionCmdArgs;
+    aos::common::utils::Duration mReconnectInterval;
+    std::string                  mServerURL;
+    std::string                  mCACert;
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     StreamPtr                            mStream;

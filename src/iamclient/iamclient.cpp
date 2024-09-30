@@ -26,6 +26,19 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHa
     aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     bool provisioningMode)
 {
+    mIdentHandler     = identHandler;
+    mNodeInfoProvider = &nodeInfoProvider;
+    mCertLoader       = &certLoader;
+    mCryptoProvider   = &cryptoProvider;
+    mProvisionManager = &provisionManager;
+
+    mStartProvisioningCmdArgs  = config.mStartProvisioningCmdArgs;
+    mDiskEncryptionCmdArgs     = config.mDiskEncryptionCmdArgs;
+    mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
+    mDeprovisionCmdArgs        = config.mDeprovisionCmdArgs;
+    mReconnectInterval         = config.mNodeReconnectInterval;
+    mCACert                    = config.mCACert;
+
     if (provisioningMode) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
         if (!config.mCACert.empty()) {
@@ -43,20 +56,18 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHa
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
+        err = provisionManager.SubscribeCertChanged(aos::String(config.mCertStorage.c_str()), *this);
+        if (!err.IsNone()) {
+            LOG_ERR() << "Subscribe certificate receiver failed: error=" << err.Message();
+
+            return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
+        }
+
         mCredentialList.push_back(
             aos::common::utils::GetMTLSClientCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider));
+
         mServerURL = config.mMainIAMProtectedServerURL;
     }
-
-    mIdentHandler     = identHandler;
-    mNodeInfoProvider = &nodeInfoProvider;
-    mProvisionManager = &provisionManager;
-
-    mStartProvisioningCmdArgs  = config.mStartProvisioningCmdArgs;
-    mDiskEncryptionCmdArgs     = config.mDiskEncryptionCmdArgs;
-    mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
-    mDeprovisionCmdArgs        = config.mDeprovisionCmdArgs;
-    mReconnectInterval         = config.mNodeReconnectInterval;
 
     mConnectionThread = std::thread(&IAMClient::ConnectionLoop, this);
 
@@ -71,6 +82,8 @@ IAMClient::~IAMClient()
         mShutdown = true;
         mShutdownCV.notify_all();
 
+        mProvisionManager->UnsubscribeCertChanged(*this);
+
         if (mRegisterNodeCtx) {
             mRegisterNodeCtx->TryCancel();
         }
@@ -84,6 +97,17 @@ IAMClient::~IAMClient()
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+void IAMClient::OnCertChanged(const aos::iam::certhandler::CertInfo& info)
+{
+    std::unique_lock lock {mShutdownLock};
+
+    mCredentialList.clear();
+    mCredentialList.push_back(
+        aos::common::utils::GetMTLSClientCredentials(info, mCACert.c_str(), *mCertLoader, *mCryptoProvider));
+
+    mCredentialListUpdated = true;
+}
 
 std::unique_ptr<grpc::ClientContext> IAMClient::CreateClientContext()
 {
@@ -134,6 +158,8 @@ bool IAMClient::RegisterNode(const std::string& url)
         }
 
         LOG_DBG() << "Connection established";
+
+        mCredentialListUpdated = false;
 
         return true;
     }
@@ -195,6 +221,18 @@ void IAMClient::HandleIncomingMessages() noexcept
 
             if (!ok) {
                 break;
+            }
+
+            {
+                std::unique_lock lock {mShutdownLock};
+
+                if (mCredentialListUpdated) {
+                    LOG_DBG() << "Credential list updated: closing connection";
+
+                    mRegisterNodeCtx->TryCancel();
+
+                    break;
+                }
             }
         }
 
