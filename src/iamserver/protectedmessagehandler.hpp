@@ -31,7 +31,7 @@
  */
 class ProtectedMessageHandler :
     // public services
-    private PublicMessageHandler,
+    public PublicMessageHandler,
     // protected services
     private iamproto::IAMNodesService::Service,
     private iamproto::IAMProvisioningService::Service,

@@ -26,6 +26,7 @@
 #include <iamanager/version.grpc.pb.h>
 
 #include "nodecontroller.hpp"
+#include "streamwriter.hpp"
 
 /**
  * Public message handler. Responsible for handling public IAM services.
@@ -88,90 +89,16 @@ public:
     aos::Error SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages) override;
 
     /**
+     * Start public message handler.
+     */
+    void Start();
+
+    /**
      * Closes public message handler.
      */
     void Close();
 
 protected:
-    /**
-     * Server writer controller handles server writer streams.
-     */
-    template <typename T>
-    class ServerWriterController {
-    public:
-        /**
-         * Closes all streams.
-         */
-        void Close()
-        {
-            mIsRunning = false;
-
-            {
-                std::unique_lock lock {mMutex};
-
-                mLastMessage.reset();
-            }
-
-            mCV.notify_all();
-        }
-
-        /**
-         * Writes notification message to all streams.
-         *
-         * @param message notification message.
-         */
-        void WriteToStreams(const T& message)
-        {
-            {
-                std::unique_lock lock {mMutex};
-
-                ++mNotificationID;
-
-                mLastMessage = message;
-            }
-
-            mCV.notify_all();
-        }
-
-        /**
-         * Handles stream. Blocks the caller until the stream is closed.
-         *
-         * @param context server context.
-         * @param writer server writer.
-         * @return grpc::Status.
-         */
-        grpc::Status HandleStream(grpc::ServerContext* context, grpc::ServerWriter<T>* writer)
-        {
-            uint32_t lastNotificationID = 0;
-
-            while (mIsRunning && !context->IsCancelled()) {
-                std::shared_lock lock {mMutex};
-
-                if (mCV.wait_for(lock, cWaitTimeout, [this, lastNotificationID] {
-                        return mNotificationID != lastNotificationID && mLastMessage.has_value();
-                    })) {
-                    // got notification, send it to the client
-                    if (!writer->Write(*mLastMessage)) {
-                        break;
-                    }
-
-                    lastNotificationID = mNotificationID;
-                }
-            }
-
-            return grpc::Status::OK;
-        }
-
-    private:
-        static constexpr auto cWaitTimeout = std::chrono::seconds(10);
-
-        std::atomic_bool            mIsRunning = true;
-        std::condition_variable_any mCV;
-        std::shared_mutex           mMutex;
-        std::atomic_uint32_t        mNotificationID = 0;
-        std::optional<T>            mLastMessage;
-    };
-
     aos::iam::identhandler::IdentHandlerItf*         GetIdentHandler() { return mIdentHandler; }
     aos::iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
     aos::iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
@@ -189,8 +116,11 @@ private:
     // IAMPublicService interface
     grpc::Status GetNodeInfo(
         grpc::ServerContext* context, const google::protobuf::Empty* request, iamproto::NodeInfo* response) override;
-    grpc::Status GetCert(grpc::ServerContext* context, const iamproto::GetCertRequest* request,
-        iamproto::GetCertResponse* response) override;
+    grpc::Status GetCert(
+        grpc::ServerContext* context, const iamproto::GetCertRequest* request, iamproto::CertInfo* response) override;
+    grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
+        const iamanager::v5::SubscribeCertChangedRequest*  request,
+        grpc::ServerWriter<iamanager::v5::CertInfo>*       writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(
@@ -223,9 +153,12 @@ private:
     aos::iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
     NodeController*                                  mNodeController   = nullptr;
-    ServerWriterController<iamproto::NodeInfo>       mNodeChangedController;
-    ServerWriterController<iamproto::Subjects>       mSubjectsChangedController;
+    StreamWriter<iamproto::NodeInfo>                 mNodeChangedController;
+    StreamWriter<iamproto::Subjects>                 mSubjectsChangedController;
     aos::NodeInfo                                    mNodeInfo;
+
+    std::vector<std::shared_ptr<CertWriter>> mCertWriters;
+    std::mutex                               mCertWritersLock;
 };
 
 #endif

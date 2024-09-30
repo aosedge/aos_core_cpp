@@ -179,6 +179,16 @@ using NodeStreamHandlerPtr = std::shared_ptr<NodeStreamHandler>;
 class NodeController {
 public:
     /**
+     * Constructor.
+     */
+    NodeController();
+
+    /**
+     * Starts node controller.
+     */
+    void Start();
+
+    /**
      * Closes all stream handlers.
      */
     void Close();
@@ -209,6 +219,7 @@ private:
     void StoreHandler(NodeStreamHandlerPtr handler);
     void RemoveHandler(NodeStreamHandlerPtr handler);
 
+    bool                              mIsClosed = false;
     std::mutex                        mMutex;
     std::vector<NodeStreamHandlerPtr> mHandlers;
 };

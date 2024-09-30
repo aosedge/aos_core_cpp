@@ -90,12 +90,28 @@ aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticStr
     return aos::ErrorEnum::eNone;
 }
 
+void PublicMessageHandler::Start()
+{
+    mNodeChangedController.Start();
+    mSubjectsChangedController.Start();
+}
+
 void PublicMessageHandler::Close()
 {
     LOG_DBG() << "Close message handler: handler=public";
 
     mNodeChangedController.Close();
     mSubjectsChangedController.Close();
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        for (auto& certWriter : mCertWriters) {
+            certWriter->Close();
+        }
+
+        mCertWriters.clear();
+    }
 }
 
 /***********************************************************************************************************************
@@ -152,7 +168,7 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 }
 
 grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext* context,
-    const iamproto::GetCertRequest* request, iamproto::GetCertResponse* response)
+    const iamproto::GetCertRequest* request, iamproto::CertInfo* response)
 {
     LOG_DBG() << "Process get cert request: type=" << request->type().c_str()
               << ", serial=" << request->serial().c_str();
@@ -183,6 +199,45 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     response->set_cert_url(certInfo.mCertURL.CStr());
 
     return grpc::Status::OK;
+}
+
+grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
+    const iamanager::v5::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v5::CertInfo>* writer)
+{
+    LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
+
+    auto certWriter = std::make_shared<CertWriter>(request->type());
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        mCertWriters.push_back(certWriter);
+    }
+
+    auto err = GetProvisionManager()->SubscribeCertChanged(request->type().c_str(), *certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
+
+        return utils::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    auto status = certWriter->HandleStream(context, writer);
+
+    err = GetProvisionManager()->UnsubscribeCertChanged(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
+
+        return utils::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        auto iter = std::remove(mCertWriters.begin(), mCertWriters.end(), certWriter);
+        mCertWriters.erase(iter, mCertWriters.end());
+    }
+
+    return status;
 }
 
 /***********************************************************************************************************************

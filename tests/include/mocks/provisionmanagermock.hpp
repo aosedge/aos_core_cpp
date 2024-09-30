@@ -28,6 +28,9 @@ public:
         (const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
             certhandler::CertInfo& resCert),
         (override));
+    MOCK_METHOD(
+        Error, SubscribeCertChanged, (const String& certType, certhandler::CertReceiverItf& certReceiver), (override));
+    MOCK_METHOD(Error, UnsubscribeCertChanged, (certhandler::CertReceiverItf & certReceiver), (override));
     MOCK_METHOD(Error, FinishProvisioning, (const String& password), (override));
     MOCK_METHOD(Error, Deprovision, (const String& password), (override));
 };

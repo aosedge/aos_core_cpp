@@ -92,7 +92,9 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
 {
     LOG_DBG() << "IAM Server init";
 
-    mConfig = config;
+    mConfig         = config;
+    mCertLoader     = &certLoader;
+    mCryptoProvider = &cryptoProvider;
 
     aos::Error    err;
     aos::NodeInfo nodeInfo;
@@ -118,8 +120,6 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
     }
 
     try {
-        std::shared_ptr<grpc::ServerCredentials> publicOpt, protectedOpt;
-
         if (!provisioningMode) {
             aos::iam::certhandler::CertInfo certInfo;
 
@@ -128,16 +128,21 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
                 return AOS_ERROR_WRAP(err);
             }
 
-            publicOpt    = aos::common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
-            protectedOpt = aos::common::utils::GetMTLSServerCredentials(
+            err = certHandler.SubscribeCertChanged(aos::String(mConfig.mCertStorage.c_str()), *this);
+            if (!err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            mPublicCred    = aos::common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
+            mProtectedCred = aos::common::utils::GetMTLSServerCredentials(
                 certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
-            publicOpt    = grpc::InsecureServerCredentials();
-            protectedOpt = grpc::InsecureServerCredentials();
+            mPublicCred    = grpc::InsecureServerCredentials();
+            mProtectedCred = grpc::InsecureServerCredentials();
         }
 
-        CreatePublicServer(CorrectAddress(mConfig.mIAMPublicServerURL), publicOpt);
-        CreateProtectedServer(CorrectAddress(mConfig.mIAMProtectedServerURL), protectedOpt);
+        Start();
+
     } catch (const aos::common::utils::AosException& e) {
         return e.GetError();
     } catch (const std::exception& e) {
@@ -206,22 +211,7 @@ void IAMServer::OnNodeRemoved(const aos::String& id)
 
 IAMServer::~IAMServer()
 {
-    LOG_DBG() << "IAM Server shutdown";
-
-    mNodeController.Close();
-
-    if (mPublicServer) {
-        mPublicServer->Shutdown();
-        mPublicServer->Wait();
-    }
-
-    if (mProtectedServer) {
-        mProtectedServer->Shutdown();
-        mProtectedServer->Wait();
-    }
-
-    mPublicMessageHandler.Close();
-    mProtectedMessageHandler.Close();
+    Shutdown();
 }
 
 /***********************************************************************************************************************
@@ -240,6 +230,65 @@ aos::Error IAMServer::SubjectsChanged(const aos::Array<aos::StaticString<aos::cS
     }
 
     return aos::ErrorEnum::eNone;
+}
+
+void IAMServer::OnCertChanged(const aos::iam::certhandler::CertInfo& info)
+{
+    mPublicCred = aos::common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
+    mProtectedCred
+        = aos::common::utils::GetMTLSServerCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+
+    // postpone restart so it didn't block ApplyCert
+    mCertChangedResult = std::async(std::launch::async, [this]() {
+        sleep(1);
+        Shutdown();
+        Start();
+    });
+}
+
+void IAMServer::Start()
+{
+    if (mIsStarted) {
+        return;
+    }
+
+    LOG_DBG() << "IAM Server start";
+
+    mNodeController.Start();
+
+    mPublicMessageHandler.Start();
+    mProtectedMessageHandler.Start();
+
+    CreatePublicServer(CorrectAddress(mConfig.mIAMPublicServerURL), mPublicCred);
+    CreateProtectedServer(CorrectAddress(mConfig.mIAMProtectedServerURL), mProtectedCred);
+
+    mIsStarted = true;
+}
+
+void IAMServer::Shutdown()
+{
+    if (!mIsStarted) {
+        return;
+    }
+
+    LOG_DBG() << "IAM Server shutdown";
+
+    mNodeController.Close();
+
+    mPublicMessageHandler.Close();
+    mProtectedMessageHandler.Close();
+
+    if (mPublicServer) {
+        mPublicServer->Shutdown();
+        mPublicServer->Wait();
+    }
+
+    if (mProtectedServer) {
+        mProtectedServer->Shutdown();
+        mProtectedServer->Wait();
+    }
+
+    mIsStarted = false;
 }
 
 void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
