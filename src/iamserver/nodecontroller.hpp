@@ -9,6 +9,7 @@
 #define NODECONTROLLER_HPP_
 
 #include <future>
+#include <map>
 #include <string>
 
 #include <Poco/Event.h>
@@ -28,18 +29,47 @@ using PendingMessagesMap
 /**
  * Handles register node input/output stream.
  */
-class NodeStreamHandler {
+class NodeStreamHandler : public std::enable_shared_from_this<NodeStreamHandler> {
 public:
+    using Ptr = std::shared_ptr<NodeStreamHandler>;
+
     /**
-     * Constructor.
+     * Stream registry interface.
+     */
+    struct StreamRegistryItf {
+        /**
+         * Links nodeID to handler. If nodeID is already linked to another handler, it will be reset.
+         *
+         * @param nodeID node identifier.
+         * @param handler node stream handler.
+         */
+        virtual void LinkNodeIDToHandler(const std::string& nodeID, NodeStreamHandler::Ptr handler) = 0;
+
+        /**
+         * Unlinks nodeID from handler.
+         *
+         * @param handler node stream handler.
+         */
+        virtual void UnlinkNodeIDFromHandler(NodeStreamHandler::Ptr handler) = 0;
+
+        /**
+         * Destroys object instance.
+         */
+        virtual ~StreamRegistryItf() = default;
+    };
+
+    /**
+     * Creates instance.
      *
      * @param allowedStatuses allowed node statuses.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
+     * @param streamRegistry stream registry.
      */
-    NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager);
+    static NodeStreamHandler::Ptr Create(const std::vector<aos::NodeStatus>& allowedStatuses,
+        NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        aos::iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     /**
      * Destructor.
@@ -51,20 +81,7 @@ public:
      */
     void Close();
 
-    /**
-     * Gets node id that current handler handles.
-     *
-     * @return std::string.
-     */
-    std::string GetNodeID() const;
-
-    /**
-     * Handles input/output streams. This method is blocking and should be called in a separate thread.
-     *
-     * @return aos::Error.
-     */
     aos::Error HandleStream();
-
     /**
      * Sends get cert types request and waits for response with timeout.
      *
@@ -154,29 +171,28 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
+    NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+        grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
+        StreamRegistryItf* streamRegistry);
+
     aos::Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
     aos::Error HandleNodeInfo(const iamproto::NodeInfo& info);
-    void       SetNodeID(const std::string& nodeID);
-
-    mutable std::mutex mNodeIDMutex;
-    std::string        mNodeID;
 
     std::vector<aos::NodeStatus>           mAllowedStatuses;
-    NodeServerReaderWriter*                mStream      = nullptr;
-    grpc::ServerContext*                   mContext     = nullptr;
-    aos::iam::nodemanager::NodeManagerItf* mNodeManager = nullptr;
+    NodeServerReaderWriter*                mStream         = nullptr;
+    grpc::ServerContext*                   mContext        = nullptr;
+    aos::iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
+    StreamRegistryItf*                     mStreamRegistry = nullptr;
     std::mutex                             mMutex;
     std::atomic_bool                       mIsClosed = false;
     PendingMessagesMap                     mPendingMessages;
 };
 
-using NodeStreamHandlerPtr = std::shared_ptr<NodeStreamHandler>;
-
 /**
- * Register node manager manages register node stream handlers.
+ * Node controller manages register node stream handlers.
  */
-class NodeController {
+class NodeController : private NodeStreamHandler::StreamRegistryItf {
 public:
     /**
      * Constructor.
@@ -211,17 +227,19 @@ public:
      * Gets node stream handler by node id.
      *
      * @param nodeID node id.
-     * @return NodeStreamHandlerPtr.
+     * @return NodeStreamHandler::Ptr.
      */
-    NodeStreamHandlerPtr GetNodeStreamHandler(const std::string& nodeID);
+    NodeStreamHandler::Ptr GetNodeStreamHandler(const std::string& nodeID);
 
 private:
-    void StoreHandler(NodeStreamHandlerPtr handler);
-    void RemoveHandler(NodeStreamHandlerPtr handler);
+    void LinkNodeIDToHandler(const std::string& nodeID, NodeStreamHandler::Ptr handler) override;
+    void UnlinkNodeIDFromHandler(NodeStreamHandler::Ptr handler) override;
+    void Store(NodeStreamHandler::Ptr handler);
+    void Remove(NodeStreamHandler::Ptr handler);
 
-    bool                              mIsClosed = false;
-    std::mutex                        mMutex;
-    std::vector<NodeStreamHandlerPtr> mHandlers;
+    bool                                          mIsClosed = false;
+    std::mutex                                    mMutex;
+    std::map<NodeStreamHandler::Ptr, std::string> mHandlers;
 };
 
 #endif

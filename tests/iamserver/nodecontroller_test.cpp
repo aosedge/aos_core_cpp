@@ -209,7 +209,7 @@ TEST_F(NodeControllerTest, StartProvisioningFailsDueTimeout)
 
     request.set_node_id("node1");
 
-    grpc::Status status;
+    grpc::Status status = grpc::Status::CANCELLED;
 
     for (size_t i = 1; i < 4; ++i) {
         auto steamHandler = GetNodeController()->GetNodeStreamHandler("node1");
@@ -226,7 +226,7 @@ TEST_F(NodeControllerTest, StartProvisioningFailsDueTimeout)
         break;
     }
 
-    ASSERT_TRUE(!status.ok());
+    ASSERT_FALSE(status.ok());
 
     stream->WritesDone();
 }
