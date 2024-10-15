@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET utils)
+set(TARGET aosutils)
 
 # ######################################################################################################################
 # Sources
@@ -44,6 +44,8 @@ target_link_libraries(
     PRIVATE Poco::JSON
 )
 
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
+
 # ######################################################################################################################
 # Install
 # ######################################################################################################################
@@ -51,7 +53,7 @@ target_link_libraries(
 install(TARGETS ${TARGET} DESTINATION lib)
 
 install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/include/utils
+    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/utils
     DESTINATION include
     FILES_MATCHING
     PATTERN "*.hpp"

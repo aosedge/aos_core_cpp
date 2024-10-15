@@ -25,4 +25,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} migration GTest::gmock_main)
+target_link_libraries(${TARGET} aoscommon aosmigration GTest::gmock_main)

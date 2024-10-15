@@ -38,26 +38,14 @@ message(STATUS)
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
 
+set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_lib_cpp)
+set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 # ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-# Aos core lib
-if(WITH_CORELIB)
-    include(AosCoreLib)
-endif()
-
-# gRPC lib
-find_package(gRPC REQUIRED)
-
-# Poco lib
-find_package(Poco REQUIRED JSON DataSQLite Foundation)
-
-# Systemd lib
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(Systemd libsystemd REQUIRED)
 
 if(WITH_TEST)
     find_package(GTest REQUIRED)
@@ -78,19 +66,15 @@ if(WITH_COVERAGE)
 endif()
 
 # ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-include_directories(include)
-
-# ######################################################################################################################
 # Targets
 # ######################################################################################################################
 
+add_subdirectory(external/aos_core_lib_cpp/src/common)
 add_subdirectory(src)
 
 if(WITH_TEST)
     add_subdirectory(tests)
+    add_subdirectory(external/aos_core_lib_cpp/tests/utils)
 endif()
 
 # ######################################################################################################################

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET migration)
+set(TARGET aosmigration)
 
 # ######################################################################################################################
 # Sources
@@ -29,6 +29,8 @@ add_library(${TARGET} STATIC ${SOURCES})
 
 target_link_libraries(${TARGET} PUBLIC aoscommon Poco::DataSQLite)
 
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
+
 # ######################################################################################################################
 # Install
 # ######################################################################################################################
@@ -36,7 +38,7 @@ target_link_libraries(${TARGET} PUBLIC aoscommon Poco::DataSQLite)
 install(TARGETS ${TARGET} DESTINATION lib)
 
 install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/include/migration
+    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/migration
     DESTINATION include
     FILES_MATCHING
     PATTERN "*.hpp"

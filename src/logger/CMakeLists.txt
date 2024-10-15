@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET logger)
+set(TARGET aoslogger)
 
 # ######################################################################################################################
 # Sources
@@ -29,6 +29,8 @@ add_library(${TARGET} STATIC ${SOURCES})
 
 target_link_libraries(${TARGET} PUBLIC aoscommon ${Systemd_LIBRARIES})
 
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
+
 # ######################################################################################################################
 # Install
 # ######################################################################################################################
@@ -36,7 +38,7 @@ target_link_libraries(${TARGET} PUBLIC aoscommon ${Systemd_LIBRARIES})
 install(TARGETS ${TARGET} DESTINATION lib)
 
 install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/include/logger
+    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/logger
     DESTINATION include
     FILES_MATCHING
     PATTERN "*.hpp"

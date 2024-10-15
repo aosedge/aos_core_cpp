@@ -1,0 +1,3 @@
+[submodule "external/aos_core_lib_cpp"]
+	path = external/aos_core_lib_cpp
+	url = https://github.com/aosedge/aos_core_lib_cpp.git
