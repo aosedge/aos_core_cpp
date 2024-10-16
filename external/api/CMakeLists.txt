@@ -5,26 +5,11 @@
 #
 
 # ######################################################################################################################
-# Add API repo
-# ######################################################################################################################
-
-include(FetchContent)
-
-FetchContent_Declare(
-    aoscoreapi
-    GIT_REPOSITORY https://github.com/aosedge/aos_core_api.git
-    GIT_TAG develop
-    GIT_PROGRESS TRUE
-    GIT_SHALLOW TRUE
-)
-
-FetchContent_MakeAvailable(aoscoreapi)
-
-# ######################################################################################################################
 # Set include directory for the AOS protocol headers
 # ######################################################################################################################
 
-set(AOSPROTOCOL_INCLUDE_DIR "${aoscoreapi_SOURCE_DIR}/aosprotocol")
+set(AOSCOREAPI_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/aos_core_api")
+set(AOSPROTOCOL_INCLUDE_DIR "${AOSCOREAPI_SOURCE_DIR}/aosprotocol")
 
 add_library(aosprotocol INTERFACE)
 target_include_directories(aosprotocol INTERFACE ${AOSPROTOCOL_INCLUDE_DIR})
@@ -37,17 +22,16 @@ find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
 
 set(PROTO_DST_DIR "${CMAKE_CURRENT_BINARY_DIR}/aoscoreapi/gen")
-set(PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto")
-set(COMMON_PROTO_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto")
+set(PROTO_SRC_DIR "${AOSCOREAPI_SOURCE_DIR}/proto")
 
 set(PROTO_COMMON_DST_DIR "${PROTO_DST_DIR}/common/v1")
-set(PROTO_COMMON_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/common/v1")
+set(PROTO_COMMON_SRC_DIR "${AOSCOREAPI_SOURCE_DIR}/proto/common/v1")
 
 set(PROTO_SM_DST_DIR "${PROTO_DST_DIR}/servicemanager/v4")
-set(PROTO_SM_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/servicemanager/v4")
+set(PROTO_SM_SRC_DIR "${AOSCOREAPI_SOURCE_DIR}/proto/servicemanager/v4")
 
 set(PROTO_IAM_DST_DIR "${PROTO_DST_DIR}/iamanager/v5")
-set(PROTO_IAM_SRC_DIR "${aoscoreapi_SOURCE_DIR}/proto/iamanager/v5")
+set(PROTO_IAM_SRC_DIR "${AOSCOREAPI_SOURCE_DIR}/proto/iamanager/v5")
 
 file(MAKE_DIRECTORY ${PROTO_DST_DIR})
 

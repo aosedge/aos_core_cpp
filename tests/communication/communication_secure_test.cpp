@@ -24,8 +24,8 @@
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include <test/utils/log.hpp>
-#include <test/utils/softhsmenv.hpp>
+#include <aos/test/log.hpp>
+#include <aos/test/softhsmenv.hpp>
 
 #include "communication/communicationmanager.hpp"
 
@@ -91,12 +91,12 @@ protected:
         mConfig.mCMConfig.mOpenPort    = 30001;
         mConfig.mCMConfig.mSecurePort  = 30002;
 
-        mConfig.mCACert = CERTIFICATES_DIR "/ca.cer";
+        mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
 
         ASSERT_TRUE(mCryptoProvider.Init().IsNone());
         ASSERT_TRUE(mSOFTHSMEnv
-                        .Init("", "certhandler-integration-tests", SOFTHSM_BASE_DIR "/softhsm2.conf",
-                            SOFTHSM_BASE_DIR "/tokens", SOFTHSM2_LIB)
+                        .Init("", "certhandler-integration-tests", SOFTHSM_BASE_MP_DIR "/softhsm2.conf",
+                            SOFTHSM_BASE_MP_DIR "/tokens", SOFTHSM2_LIB)
                         .IsNone());
         ASSERT_TRUE(mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager()).IsNone());
 
@@ -105,10 +105,10 @@ protected:
 
         RegisterPKCS11Module("server");
 
-        ApplyCertificate("client", "client", CERTIFICATES_DIR "/client_int.key", CERTIFICATES_DIR "/client_int.cer",
-            0x3333444, mClientInfo);
-        ApplyCertificate("server", "localhost", CERTIFICATES_DIR "/server_int.key", CERTIFICATES_DIR "/server_int.cer",
-            0x3333333, mServerInfo);
+        ApplyCertificate("client", "client", CERTIFICATES_MP_DIR "/client_int.key",
+            CERTIFICATES_MP_DIR "/client_int.cer", 0x3333444, mClientInfo);
+        ApplyCertificate("server", "localhost", CERTIFICATES_MP_DIR "/server_int.key",
+            CERTIFICATES_MP_DIR "/server_int.cer", 0x3333333, mServerInfo);
 
         mPipePair.emplace();
         mPipe1.emplace();
@@ -127,10 +127,10 @@ protected:
         mCommManagerClient.emplace(mPipe2.value());
 
         mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
-        mIAMSecurePipe.emplace(*mIAMClientChannel, keyURI, certPEM, CERTIFICATES_DIR "/ca.cer");
+        mIAMSecurePipe.emplace(*mIAMClientChannel, keyURI, certPEM, CERTIFICATES_MP_DIR "/ca.cer");
 
         mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
-        mCMSecurePipe.emplace(*mCMClientChannel, keyURI, certPEM, CERTIFICATES_DIR "/ca.cer");
+        mCMSecurePipe.emplace(*mCMClientChannel, keyURI, certPEM, CERTIFICATES_MP_DIR "/ca.cer");
 
         mOpenCMClientChannel = mCommManagerClient->CreateCommChannel(30001);
 
@@ -171,7 +171,7 @@ protected:
 
         config.mLibrary         = SOFTHSM2_LIB;
         config.mSlotID          = mSOFTHSMEnv.GetSlotID();
-        config.mUserPINPath     = CERTIFICATES_DIR "/pin.txt";
+        config.mUserPINPath     = CERTIFICATES_MP_DIR "/pin.txt";
         config.mModulePathInURL = true;
 
         return config;
@@ -201,11 +201,10 @@ protected:
         // add CA certificate to the chain
         aos::StaticString<aos::crypto::cCertPEMLen> caCert;
 
-        ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_DIR "/ca.cer", caCert).IsNone());
+        ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
         clientCertChain.Append(caCert);
 
         // apply client certificate
-        // FS::WriteStringToFile(CERTIFICATES_DIR "/client-out.pem", clientCertChain, 0666);
         ASSERT_TRUE(mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo).IsNone());
         EXPECT_EQ(certInfo.mSerial, serialArr);
     }
@@ -230,8 +229,7 @@ protected:
             ENGINE_get_finish_function(engine)(engine);
         }
 
-        // aos::FS::ClearDir(SOFTHSM_BASE_DIR "/tokens");
-        std::filesystem::remove_all(SOFTHSM_BASE_DIR "/tokens");
+        std::filesystem::remove_all(SOFTHSM_BASE_MP_DIR "/tokens");
     }
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;

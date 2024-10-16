@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>

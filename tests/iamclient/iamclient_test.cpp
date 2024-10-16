@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include "iamclient/iamclient.hpp"
 #include "iamclient/types.hpp"

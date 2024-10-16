@@ -9,7 +9,7 @@
 #include <mutex>
 #include <optional>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 #include <utils/channel.hpp>
 
 #include <gtest/gtest.h>
