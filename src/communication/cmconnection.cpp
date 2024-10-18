@@ -91,6 +91,8 @@ void CMConnection::RunSecureChannel()
 
     LOG_DBG() << "Run CM secure channel";
 
+    auto writeFuture = StartTaskWithWait([this]() { WriteSecureMsgHandler(); });
+
     while (!mShutdown) {
         if (auto err = mCMCommSecureChannel->Connect(); !err.IsNone()) {
             std::unique_lock lock {mMutex};
@@ -102,16 +104,17 @@ void CMConnection::RunSecureChannel()
             continue;
         }
 
-        mHandler->OnConnected();
-
         LOG_DBG() << "Secure CM channel connected";
 
-        auto readFuture  = StartTaskWithWait([this]() { ReadSecureMsgHandler(); });
-        auto writeFuture = StartTaskWithWait([this]() { WriteSecureMsgHandler(); });
+        mHandler->OnConnected();
+        mCondVar.notify_all();
+
+        auto readFuture = StartTaskWithWait([this]() { ReadSecureMsgHandler(); });
 
         readFuture.wait();
-        writeFuture.wait();
     }
+
+    writeFuture.wait();
 
     LOG_DBG() << "Secure channel stopped";
 }
@@ -382,13 +385,20 @@ void CMConnection::WriteSecureMsgHandler()
         if (!message.mError.IsNone()) {
             LOG_ERR() << "Failed to receive message error=" << message.mError;
 
+            continue;
+        }
+
+        std::unique_lock lock {mMutex};
+
+        mCondVar.wait(lock, [this] { return mCMCommSecureChannel->IsConnected() || mShutdown; });
+        if (mShutdown) {
             return;
         }
 
         if (auto err = SendMessage(std::move(message.mValue), mCMCommSecureChannel); !err.IsNone()) {
             LOG_ERR() << "Failed to write secure message error=" << err;
 
-            return;
+            continue;
         }
     }
 }

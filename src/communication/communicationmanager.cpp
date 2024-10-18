@@ -104,7 +104,7 @@ Error CommunicationManager::Write(std::vector<uint8_t> message)
 {
     std::unique_lock lock {mMutex};
 
-    mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mIsConnected; });
+    mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mIsConnected.load(); });
 
     if (!mIsConnected) {
         return ErrorEnum::eTimeout;
@@ -141,6 +141,11 @@ Error CommunicationManager::Close()
     return err;
 }
 
+bool CommunicationManager::IsConnected() const
+{
+    return mIsConnected;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -167,6 +172,10 @@ void CommunicationManager::Run()
         }
 
         mIsConnected = false;
+
+        for (const auto& channel : mChannels) {
+            channel.second->Close();
+        }
     }
 }
 

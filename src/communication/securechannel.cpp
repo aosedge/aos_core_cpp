@@ -96,6 +96,8 @@ Error SecureChannel::Connect()
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
+    mConnected = true;
+
     LOG_DBG() << "SSL connection accepted";
 
     return ErrorEnum::eNone;
@@ -139,6 +141,11 @@ Error SecureChannel::Close()
     }
 
     return err;
+}
+
+bool SecureChannel::IsConnected() const
+{
+    return mConnected;
 }
 
 /***********************************************************************************************************************

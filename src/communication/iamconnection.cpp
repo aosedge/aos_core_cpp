@@ -38,6 +38,7 @@ void IAMConnection::Close()
     mHandler->OnDisconnected();
     mIAMCommChannel->Close();
     mShutdown = true;
+    mCondVar.notify_all();
 
     if (mConnectThread.joinable()) {
         mConnectThread.join();
@@ -49,6 +50,8 @@ void IAMConnection::Close()
 void IAMConnection::Run()
 {
     LOG_DBG() << "Run IAM connection";
+
+    auto writeThread = std::thread(&IAMConnection::WriteHandler, this);
 
     while (!mShutdown) {
         if (auto err = mIAMCommChannel->Connect(); !err.IsNone()) {
@@ -62,13 +65,14 @@ void IAMConnection::Run()
         }
 
         mHandler->OnConnected();
+        mCondVar.notify_all();
 
-        auto readThread  = std::thread(&IAMConnection::ReadHandler, this);
-        auto writeThread = std::thread(&IAMConnection::WriteHandler, this);
+        auto readThread = std::thread(&IAMConnection::ReadHandler, this);
 
         readThread.join();
-        writeThread.join();
     }
+
+    writeThread.join();
 
     LOG_DBG() << "Run IAM connection finished";
 }
@@ -126,6 +130,13 @@ void IAMConnection::WriteHandler()
         }
 
         LOG_DBG() << "Received message from IAM: size=" << message.mValue.size();
+
+        std::unique_lock lock {mMutex};
+
+        mCondVar.wait(lock, [this]() { return mIAMCommChannel->IsConnected() || mShutdown.load(); });
+        if (mShutdown) {
+            return;
+        }
 
         auto header = PrepareProtobufHeader(message.mValue.size());
         header.insert(header.end(), message.mValue.begin(), message.mValue.end());

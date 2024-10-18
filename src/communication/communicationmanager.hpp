@@ -83,6 +83,13 @@ public:
      */
     Error Close() override;
 
+    /**
+     * Checks if the communication manager is connected.
+     *
+     * @return bool
+     */
+    bool IsConnected() const override;
+
 private:
     static constexpr auto                      cMaxMessageSize    = 64 * 1024; // 64 KB
     static constexpr std::chrono::milliseconds cConnectionTimeout = std::chrono::seconds(10);
@@ -99,7 +106,7 @@ private:
     std::map<int, std::shared_ptr<CommunicationChannel>> mChannels;
     std::thread                                          mThread;
     std::atomic<bool>                                    mShutdown {};
-    bool                                                 mIsConnected {};
+    std::atomic<bool>                                    mIsConnected {};
     std::mutex                                           mMutex;
     std::condition_variable                              mCondVar;
 };

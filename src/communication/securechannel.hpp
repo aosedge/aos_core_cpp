@@ -74,6 +74,13 @@ public:
      */
     Error Close() override;
 
+    /**
+     * Checks if channel is connected.
+     *
+     * @return bool.
+     */
+    bool IsConnected() const override;
+
 private:
     void        InitOpenssl();
     void        CleanupOpenssl();
@@ -94,6 +101,7 @@ private:
     std::string                 mCertStorage {};
     SSL_CTX*                    mCtx {};
     SSL*                        mSsl {};
+    std::atomic<bool>           mConnected {false};
 };
 
 } // namespace aos::mp::communication

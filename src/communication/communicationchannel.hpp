@@ -65,13 +65,20 @@ public:
      */
     Error Receive(std::vector<uint8_t> message);
 
+    /**
+     * Checks if channel is connected.
+     *
+     * @return bool
+     */
+    bool IsConnected() const override;
+
 private:
     // Global mutex for synchronization communication channel
     static std::mutex mCommChannelMutex;
 
     CommChannelItf*         mCommChannel {};
     int                     mPort {-1};
-    bool                    mShutdown {false};
+    bool                    mClose {false};
     std::vector<uint8_t>    mReceivedMessage;
     std::mutex              mMutex;
     std::condition_variable mCondVar;

@@ -176,15 +176,18 @@ public:
         return aos::ErrorEnum::eNone;
     }
 
+    bool IsConnected() const override { return mConnected; }
+
 private:
-    CommChannelItf& mChannel;
-    std::string     mKeyID;
-    std::string     mCertPEM;
-    std::string     mCaCertPath;
-    SSL_CTX*        mCtx       = nullptr;
-    SSL*            mSSL       = nullptr;
-    ENGINE*         mEngine    = nullptr;
-    BIO_METHOD*     mBioMethod = nullptr;
+    CommChannelItf&   mChannel;
+    std::string       mKeyID;
+    std::string       mCertPEM;
+    std::string       mCaCertPath;
+    SSL_CTX*          mCtx       = nullptr;
+    SSL*              mSSL       = nullptr;
+    ENGINE*           mEngine    = nullptr;
+    BIO_METHOD*       mBioMethod = nullptr;
+    std::atomic<bool> mConnected {false};
 
     aos::Error initializeOpenSSL()
     {
@@ -304,6 +307,8 @@ private:
             return aos::Error(aos::ErrorEnum::eRuntime, "SSL handshake failed");
         }
 
+        mConnected = true;
+
         return aos::ErrorEnum::eNone;
     }
 
@@ -393,6 +398,7 @@ public:
     aos::Error Close() override { return aos::ErrorEnum::eNone; }
     aos::Error Connect() override { return aos::ErrorEnum::eNone; }
     aos::Error Read([[maybe_unused]] std::vector<uint8_t>& message) override { return aos::ErrorEnum::eNone; }
+    bool       IsConnected() const override { return true; }
 
 private:
     static void CalculateChecksum(const std::vector<uint8_t>& data, uint8_t* checksum)

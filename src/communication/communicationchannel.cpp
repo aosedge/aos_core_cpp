@@ -33,9 +33,16 @@ Error CommunicationChannel::Connect()
 {
     std::unique_lock lock {mCommChannelMutex};
 
+    mClose = false;
+
     LOG_DBG() << "Connect in communication channel";
 
     return mCommChannel->Connect();
+}
+
+bool CommunicationChannel::IsConnected() const
+{
+    return mCommChannel->IsConnected();
 }
 
 Error CommunicationChannel::Read(std::vector<uint8_t>& message)
@@ -44,9 +51,9 @@ Error CommunicationChannel::Read(std::vector<uint8_t>& message)
 
     LOG_DBG() << "Requesting: port=" << mPort << ", size=" << message.size();
 
-    mCondVar.wait(lock, [this] { return !mReceivedMessage.empty() || mShutdown; });
+    mCondVar.wait(lock, [this] { return !mReceivedMessage.empty() || mClose; });
 
-    if (mShutdown) {
+    if (mClose) {
         return ErrorEnum::eRuntime;
     }
 
@@ -64,7 +71,7 @@ Error CommunicationChannel::Write(std::vector<uint8_t> message)
 {
     {
         std::unique_lock lock {mMutex};
-        if (mShutdown) {
+        if (mClose) {
             return ErrorEnum::eRuntime;
         }
     }
@@ -89,24 +96,21 @@ Error CommunicationChannel::Write(std::vector<uint8_t> message)
 
 Error CommunicationChannel::Close()
 {
-
     {
         std::unique_lock lock {mMutex};
 
         LOG_DBG() << "Close communication channel: port=" << mPort;
 
-        if (mShutdown) {
+        if (mClose) {
             return ErrorEnum::eFailed;
         }
 
-        mShutdown = true;
+        mClose = true;
     }
 
     mCondVar.notify_all();
 
-    std::unique_lock lock {mCommChannelMutex};
-
-    return mCommChannel->Close();
+    return ErrorEnum::eNone;
 }
 
 Error CommunicationChannel::Receive(std::vector<uint8_t> message)

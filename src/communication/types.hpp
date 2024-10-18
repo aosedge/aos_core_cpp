@@ -57,6 +57,13 @@ public:
      * @return Error.
      */
     virtual Error Close() = 0;
+
+    /**
+     * Checks if channel is connected.
+     *
+     * @return bool.
+     */
+    virtual bool IsConnected() const = 0;
 };
 
 /**
