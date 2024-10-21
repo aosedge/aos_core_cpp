@@ -97,7 +97,7 @@ void CMConnection::RunSecureChannel()
         if (auto err = mCMCommSecureChannel->Connect(); !err.IsNone()) {
             std::unique_lock lock {mMutex};
 
-            LOG_ERR() << "Failed to connect: error=" << err;
+            LOG_WRN() << "Failed to connect: error=" << err;
 
             mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mShutdown.load(); });
 
@@ -127,7 +127,7 @@ void CMConnection::RunOpenChannel()
         if (auto err = mCMCommOpenChannel->Connect(); !err.IsNone()) {
             std::unique_lock lock {mMutex};
 
-            LOG_ERR() << "Failed to connect CM: error=" << err;
+            LOG_WRN() << "Failed to connect CM: error=" << err;
 
             mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mShutdown.load(); });
 

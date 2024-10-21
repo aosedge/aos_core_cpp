@@ -158,7 +158,7 @@ void CommunicationManager::Run()
         if (auto err = Connect(); !err.IsNone()) {
             std::unique_lock lock {mMutex};
 
-            LOG_ERR() << "Failed to connect communication manager: error=" << err;
+            LOG_WRN() << "Failed to connect communication manager: error=" << err;
 
             mCondVar.wait_for(lock, cReconnectTimeout, [this]() { return mIsConnected || mShutdown; });
 

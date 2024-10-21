@@ -132,7 +132,7 @@ void PublicNodeClient::ConnectionLoop(const std::string& url) noexcept
                 LOG_ERR() << "Failed to register node: error=" << err.Message();
             }
         } catch (const std::exception& e) {
-            LOG_ERR() << "Failed to connect: error=" << e.what();
+            LOG_WRN() << "Failed to connect: error=" << e.what();
         }
 
         std::unique_lock lock {mMutex};
