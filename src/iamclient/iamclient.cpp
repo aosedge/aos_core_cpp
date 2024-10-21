@@ -152,7 +152,7 @@ bool IAMClient::RegisterNode(const std::string& url)
         }
 
         if (!SendNodeInfo()) {
-            LOG_ERR() << "Connection failed with provided credentials";
+            LOG_WRN() << "Connection failed with provided credentials";
 
             continue;
         }
@@ -259,7 +259,7 @@ bool IAMClient::SendNodeInfo()
 
     bool isOk = mStream->Write(outgoingMsg);
     if (!isOk) {
-        LOG_ERR() << "Stream closed before sending node info";
+        LOG_WRN() << "Stream closed before sending node info";
     }
 
     return isOk;
