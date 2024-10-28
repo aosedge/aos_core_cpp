@@ -112,6 +112,11 @@ public:
 class CommunicationManagerItf : public CommChannelItf {
 public:
     /**
+     * Destructor.
+     */
+    virtual ~CommunicationManagerItf() = default;
+
+    /**
      * Creates channel.
      *
      * @param port Port.

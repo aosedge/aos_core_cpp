@@ -34,6 +34,12 @@
  * Aos message-proxy application.
  */
 class App : public Poco::Util::ServerApplication {
+public:
+    /**
+     * Constructor.
+     */
+    App() = default;
+
 protected:
     void initialize(Application& self) override;
     void uninitialize() override;

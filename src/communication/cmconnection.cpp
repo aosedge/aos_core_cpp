@@ -142,17 +142,6 @@ void CMConnection::RunOpenChannel()
     LOG_DBG() << "Open channel stopped";
 }
 
-bool CMConnection::IsPublicMessage(const std::vector<uint8_t>& message)
-{
-    servicemanager::v4::SMIncomingMessages incomingMessages;
-
-    if (!incomingMessages.ParseFromArray(message.data(), message.size())) {
-        return false;
-    }
-
-    return incomingMessages.has_clock_sync();
-}
-
 void CMConnection::ReadSecureMsgHandler()
 {
     LOG_DBG() << "Read secure message handler";
@@ -186,7 +175,7 @@ void CMConnection::ReadSecureMsgHandler()
             continue;
         }
 
-        if (auto err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
+        if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
             LOG_ERR() << "Failed to send message: error=" << err;
 
             return;
@@ -212,8 +201,8 @@ Error CMConnection::SendFailedImageContentResponse(uint64_t requestID, const Err
         return Error(ErrorEnum::eFailed, "failed to serialize message");
     }
 
-    if (auto err = SendMessage(std::move(data), mCMCommSecureChannel); !err.IsNone()) {
-        return err;
+    if (auto errSend = SendMessage(std::move(data), mCMCommSecureChannel); !errSend.IsNone()) {
+        return errSend;
     }
 
     return ErrorEnum::eNone;
@@ -283,7 +272,7 @@ Error CMConnection::SendImageContentInfo(const filechunker::ContentInfo& content
     }
 
     for (const auto& imageContent : contentInfo.mImageContents) {
-        servicemanager::v4::SMIncomingMessages incomingMessages;
+        incomingMessages.Clear();
 
         auto imageContentProto = incomingMessages.mutable_image_content();
         imageContentProto->set_request_id(imageContent.mRequestID);
@@ -292,7 +281,7 @@ Error CMConnection::SendImageContentInfo(const filechunker::ContentInfo& content
         imageContentProto->set_part(imageContent.mPart);
         imageContentProto->set_data(imageContent.mData.data(), imageContent.mData.size());
 
-        std::vector<uint8_t> data(incomingMessages.ByteSizeLong());
+        data.resize(incomingMessages.ByteSizeLong());
 
         if (!incomingMessages.SerializeToArray(data.data(), static_cast<int>(data.size()))) {
             return Error(ErrorEnum::eFailed, "failed to serialize image content");
@@ -339,14 +328,14 @@ void CMConnection::ReadOpenMsgHandler()
         }
 
         if (outgoingMessages.has_clock_sync_request()) {
-            if (auto err = SendSMClockSync(); !err.IsNone()) {
+            if (err = SendSMClockSync(); !err.IsNone()) {
                 LOG_ERR() << "Failed to send clock sync: error=" << err;
             }
 
             continue;
         }
 
-        if (auto err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
+        if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
             LOG_ERR() << "Failed to send message: error=" << err;
 
             return;

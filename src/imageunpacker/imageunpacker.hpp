@@ -24,7 +24,7 @@ public:
      *
      * @param imageStoreDir image store directory.
      */
-    ImageUnpacker(const std::string& imageStoreDir);
+    explicit ImageUnpacker(const std::string& imageStoreDir);
 
     /**
      * Unpacks archive.

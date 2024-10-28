@@ -35,7 +35,7 @@ public:
      *
      * @param downloadDir download directory.
      */
-    Downloader(const std::string& downloadDir);
+    explicit Downloader(const std::string& downloadDir);
 
     /**
      * Destructor.

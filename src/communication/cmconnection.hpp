@@ -65,7 +65,7 @@ private:
     public:
         using Callback = std::function<void()>;
 
-        Task(Callback callback)
+        explicit Task(Callback callback)
             : Poco::Task(generateTaskName())
             , mCallback(std::move(callback))
         {
@@ -107,7 +107,6 @@ private:
     void ReadOpenMsgHandler();
     void WriteSecureMsgHandler();
 
-    bool  IsPublicMessage(const std::vector<uint8_t>& message);
     Error SendSMClockSync();
 
     Error Download(const std::string& url, uint64_t requestID, const std::string& contentType);

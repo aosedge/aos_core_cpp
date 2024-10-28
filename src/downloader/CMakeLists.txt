@@ -33,4 +33,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aosutils aoscommon CURL::libcurl)
+target_link_libraries(${TARGET} PUBLIC aosutils aoscommon CURL::libcurl Poco::Foundation)

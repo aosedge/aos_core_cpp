@@ -36,6 +36,11 @@ namespace aos::mp::iamclient {
 class PublicNodeClient : public aos::mp::communication::HandlerItf {
 public:
     /**
+     * Constructor.
+     */
+    PublicNodeClient() = default;
+
+    /**
      * Initializes the client.
      *
      * @param cfg Configuration.
@@ -103,7 +108,7 @@ private:
     bool                    mNotifyConnected {};
     std::mutex              mMutex;
     std::string             mUrl;
-    bool                    mPublicServer;
+    bool                    mPublicServer {};
 
     common::utils::Channel<std::vector<uint8_t>> mOutgoingMsgChannel;
     common::utils::Channel<std::vector<uint8_t>> mIncomingMsgChannel;

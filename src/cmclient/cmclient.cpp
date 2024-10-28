@@ -147,7 +147,7 @@ void CMClient::RegisterSM(const std::string& url)
     mCV.notify_one();
 }
 
-void CMClient::RunCM(std::string url)
+void CMClient::RunCM(const std::string& url)
 {
     LOG_DBG() << "CM client thread started";
 

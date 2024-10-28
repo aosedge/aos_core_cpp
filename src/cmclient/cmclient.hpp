@@ -82,7 +82,7 @@ private:
     using StreamPtr = std::unique_ptr<grpc::ClientReaderWriterInterface<::servicemanager::v4::SMOutgoingMessages,
         servicemanager::v4::SMIncomingMessages>>;
 
-    void                                                    RunCM(std::string url);
+    void                                                    RunCM(const std::string& url);
     SMServiceStubPtr                                        CreateSMStub(const std::string& url);
     void                                                    RegisterSM(const std::string& url);
     void                                                    ProcessIncomingSMMessage();

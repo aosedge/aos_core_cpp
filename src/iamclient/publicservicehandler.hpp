@@ -21,6 +21,11 @@ namespace aos::mp::iamclient {
 class PublicServiceHandler {
 public:
     /**
+     * Constructor.
+     */
+    PublicServiceHandler() = default;
+
+    /**
      * Initializes handler.
      *
      * @param cfg Configuration.
@@ -62,9 +67,9 @@ private:
 
     Error CreateCredentials(bool insecureConnection);
 
-    const config::Config*                     mConfig;
-    cryptoutils::CertLoaderItf*               mCertLoader;
-    crypto::x509::ProviderItf*                mCryptoProvider;
+    const config::Config*                     mConfig {};
+    cryptoutils::CertLoaderItf*               mCertLoader {};
+    crypto::x509::ProviderItf*                mCryptoProvider {};
     std::shared_ptr<grpc::ChannelCredentials> mCredentials;
     MTLSCredentialsFunc                       mMTLSCredentialsFunc;
 };
