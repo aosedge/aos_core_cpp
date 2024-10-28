@@ -95,7 +95,7 @@ private:
     }
 
     grpc::Status GetCert(grpc::ServerContext*, const iamanager::v5::GetCertRequest* request,
-        iamanager::v5::GetCertResponse* response) override
+        iamanager::v5::CertInfo* response) override
     {
 
         mCertType = request->type();
