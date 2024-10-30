@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>

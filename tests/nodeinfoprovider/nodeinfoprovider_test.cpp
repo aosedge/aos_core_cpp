@@ -13,7 +13,7 @@
 #include <Poco/Environment.h>
 #include <gmock/gmock.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "nodeinfoprovider/nodeinfoprovider.hpp"

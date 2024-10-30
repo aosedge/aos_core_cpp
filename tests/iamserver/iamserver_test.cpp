@@ -13,8 +13,8 @@
 #include <gmock/gmock.h>
 #include <openssl/engine.h>
 
-#include <test/utils/log.hpp>
-#include <test/utils/softhsmenv.hpp>
+#include <aos/test/log.hpp>
+#include <aos/test/softhsmenv.hpp>
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>
@@ -110,8 +110,8 @@ void IAMServerTest::SetUp()
 
     ASSERT_TRUE(mCryptoProvider.Init().IsNone());
     ASSERT_TRUE(mSOFTHSMEnv
-                    .Init("", "certhandler-integration-tests", SOFTHSM_BASE_DIR "/softhsm2.conf",
-                        SOFTHSM_BASE_DIR "/tokens", SOFTHSM2_LIB)
+                    .Init("", "certhandler-integration-tests", SOFTHSM_BASE_IAM_DIR "/softhsm2.conf",
+                        SOFTHSM_BASE_IAM_DIR "/tokens", SOFTHSM2_LIB)
                     .IsNone());
     ASSERT_TRUE(mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager()).IsNone());
 
@@ -120,10 +120,10 @@ void IAMServerTest::SetUp()
 
     RegisterPKCS11Module("server");
 
-    ApplyCertificate("client", "client", CERTIFICATES_DIR "/client_int.key", CERTIFICATES_DIR "/client_int.cer",
+    ApplyCertificate("client", "client", CERTIFICATES_IAM_DIR "/client_int.key", CERTIFICATES_IAM_DIR "/client_int.cer",
         0x3333444, mClientInfo);
-    ApplyCertificate("server", "localhost", CERTIFICATES_DIR "/server_int.key", CERTIFICATES_DIR "/server_int.cer",
-        0x3333333, mServerInfo);
+    ApplyCertificate("server", "localhost", CERTIFICATES_IAM_DIR "/server_int.key",
+        CERTIFICATES_IAM_DIR "/server_int.cer", 0x3333333, mServerInfo);
 
     mServerConfig = GetServerConfig();
     mClientConfig = GetClientConfig();
@@ -148,7 +148,7 @@ void IAMServerTest::TearDown()
         ENGINE_get_finish_function(engine)(engine);
     }
 
-    aos::FS::ClearDir(SOFTHSM_BASE_DIR "/tokens");
+    aos::FS::ClearDir(SOFTHSM_BASE_IAM_DIR "/tokens");
 }
 
 void IAMServerTest::RegisterPKCS11Module(const aos::String& name, aos::crypto::KeyType keyType)
@@ -167,7 +167,7 @@ Config IAMServerTest::GetServerConfig()
     Config config;
 
     config.mCertStorage               = "server";
-    config.mCACert                    = CERTIFICATES_DIR "/ca.cer";
+    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mNodeInfo.mNodeIDPath      = "nodeid";
@@ -182,7 +182,7 @@ Config IAMServerTest::GetClientConfig()
     Config config;
 
     config.mCertStorage               = "client";
-    config.mCACert                    = CERTIFICATES_DIR "/ca.cer";
+    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mNodeInfo.mNodeType        = "iam-node-type";
@@ -211,7 +211,7 @@ aos::iam::certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
 
     config.mLibrary         = SOFTHSM2_LIB;
     config.mSlotID          = mSOFTHSMEnv.GetSlotID();
-    config.mUserPINPath     = CERTIFICATES_DIR "/pin.txt";
+    config.mUserPINPath     = CERTIFICATES_IAM_DIR "/pin.txt";
     config.mModulePathInURL = true;
 
     return config;
@@ -242,11 +242,10 @@ void IAMServerTest::ApplyCertificate(const aos::String& certType, const aos::Str
     // add CA certificate to the chain
     aos::StaticString<aos::crypto::cCertPEMLen> caCert;
 
-    ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_DIR "/ca.cer", caCert).IsNone());
+    ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_IAM_DIR "/ca.cer", caCert).IsNone());
     clientCertChain.Append(caCert);
 
     // apply client certificate
-    // FS::WriteStringToFile(CERTIFICATES_DIR "/client-out.pem", clientCertChain, 0666);
     ASSERT_TRUE(mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo).IsNone());
     EXPECT_EQ(certInfo.mSerial, serialArr);
 }

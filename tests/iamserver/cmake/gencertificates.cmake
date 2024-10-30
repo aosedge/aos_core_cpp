@@ -53,5 +53,5 @@ function(gencertificates TARGET CERTIFICATES_DIR)
     genchildcert(${CERTIFICATES_DIR} "server_int" "server_int" "ca")
     genchildcert(${CERTIFICATES_DIR} "server" "localhost" "server_int")
 
-    target_compile_definitions(${TARGET} PUBLIC CERTIFICATES_DIR="${CERTIFICATES_DIR}")
+    target_compile_definitions(${TARGET} PUBLIC CERTIFICATES_IAM_DIR="${CERTIFICATES_DIR}")
 endfunction()

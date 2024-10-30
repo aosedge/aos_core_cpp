@@ -12,7 +12,7 @@
 #include <grpcpp/server_builder.h>
 #include <openssl/engine.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 

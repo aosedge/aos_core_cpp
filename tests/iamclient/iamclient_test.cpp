@@ -7,10 +7,10 @@
 
 #include <gmock/gmock.h>
 
+#include <aos/test/log.hpp>
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 #include <iamanager/v5/iamanager.grpc.pb.h>
-#include <test/utils/log.hpp>
 
 #include "iamclient/iamclient.hpp"
 

@@ -34,6 +34,13 @@ message(STATUS)
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
 
+set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp/external/aos_core_lib_cpp)
+set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp)
+
+if(WITH_TEST)
+    add_definitions(-include ${AOS_CORE_LIB_DIR}/include/aos/test/aoscoretestconfig.hpp)
+endif()
+
 # ######################################################################################################################
 # Versioning
 # ######################################################################################################################
@@ -59,15 +66,6 @@ include_directories(${CMAKE_BINARY_DIR})
 # ######################################################################################################################
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-# Aos core lib
-include(AosCoreLib)
-
-# Aos core API
-include(AosCoreAPI)
-
-# Aos core common
-include(AosCoreCommon)
 
 # Poco lib
 find_package(
@@ -104,9 +102,14 @@ endif()
 # Targets
 # ######################################################################################################################
 
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/common)
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/iam)
+add_subdirectory(external/api)
+add_subdirectory(external/aos_core_common_cpp/src)
 add_subdirectory(src)
 
 if(WITH_TEST)
+    add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/tests/utils)
     add_subdirectory(tests)
 endif()
 

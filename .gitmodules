@@ -1,0 +1,8 @@
+[submodule "external/api/aos_core_api"]
+	path = external/api/aos_core_api
+	url = https://github.com/aosedge/aos_core_api.git
+	branch = develop
+[submodule "external/aos_core_common_cpp"]
+	path = external/aos_core_common_cpp
+	url = https://github.com/aosedge/aos_core_common_cpp.git
+	branch = develop

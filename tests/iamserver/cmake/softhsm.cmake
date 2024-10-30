@@ -27,5 +27,7 @@ function(createsofthsmtestenv TARGET SOFTHSM_BASE_DIR)
     configure_file(${AOSCORE_UTILS_LIB_DIR}/softhsm2.conf ${SOFTHSM_BASE_DIR}/softhsm2.conf COPYONLY)
     file(APPEND ${SOFTHSM_BASE_DIR}/softhsm2.conf "directories.tokendir = ${SOFTHSM_BASE_DIR}/tokens/\n")
 
-    target_compile_definitions(${TARGET} PUBLIC SOFTHSM_BASE_DIR="${SOFTHSM_BASE_DIR}" SOFTHSM2_LIB="${SOFTHSM2_LIB}")
+    target_compile_definitions(
+        ${TARGET} PUBLIC SOFTHSM_BASE_IAM_DIR="${SOFTHSM_BASE_DIR}" SOFTHSM2_LIB="${SOFTHSM2_LIB}"
+    )
 endfunction()
