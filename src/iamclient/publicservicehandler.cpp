@@ -66,8 +66,8 @@ Error PublicServiceHandler::GetCertificate(const std::string& certType, iam::cer
 
     ctx->set_deadline(std::chrono::system_clock::now() + cIAMPublicServiceTimeout);
 
-    iamanager::v5::GetCertRequest  request;
-    iamanager::v5::CertInfo response;
+    iamanager::v5::GetCertRequest request;
+    iamanager::v5::CertInfo       response;
 
     request.set_type(certType);
 
