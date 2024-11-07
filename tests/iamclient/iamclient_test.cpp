@@ -580,18 +580,14 @@ TEST_F(IAMClientTest, FinishProvisioning)
     iamanager::v5::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("provisioned");
 
     EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::eProvisioned)));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
-        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
-        .WillOnce(DoAll(SetArgReferee<0>(provNodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(mProvisionManager, FinishProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*server, OnNodeInfo(expProvNodeInfo));
     EXPECT_CALL(*server, OnFinishProvisioningResponse(cErrorInfoOK));
 
     server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
-    server->WaitNodeInfo();
 }
 
 TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
@@ -602,7 +598,6 @@ TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
 
     // FinishProvisioning
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
-
     EXPECT_CALL(*server, OnFinishProvisioningResponse(Not(cErrorInfoOK)));
 
     server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
@@ -620,18 +615,14 @@ TEST_F(IAMClientTest, Deprovision)
     iamanager::v5::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
     EXPECT_CALL(mNodeInfoProvider, SetNodeStatus(NodeStatus(NodeStatusEnum::eUnprovisioned)));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
-        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
-        .WillOnce(DoAll(SetArgReferee<0>(deprovNodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(mProvisionManager, Deprovision(cPassword)).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*server, OnNodeInfo(expDeprovNodeInfo));
     EXPECT_CALL(*server, OnDeprovisionResponse(::common::v1::ErrorInfo()));
 
     server->DeprovisionRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
-    server->WaitNodeInfo();
 }
 
 TEST_F(IAMClientTest, DeprovisionWrongNodeStatus)

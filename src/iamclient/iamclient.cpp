@@ -319,7 +319,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
 
     utils::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    return mStream->Write(outgoingMsg);
 }
 
 bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& request)
@@ -354,7 +354,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
 
     utils::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    return mStream->Write(outgoingMsg);
 }
 
 bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
