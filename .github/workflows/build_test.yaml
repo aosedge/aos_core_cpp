@@ -1,0 +1,49 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - develop
+      - feature_*
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: 'recursive'
+
+      - name: Prepare
+        run: |
+          sudo apt install lcov libsofthsm2 libsystemd-dev cppcheck -y
+          pip install conan
+
+      - name: Build and test
+        run: |
+          mkdir build
+
+          conan profile detect --force
+
+          conan install ./conan/ --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing
+          cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+
+          cd build
+          make; make tests; make coverage
+
+      - name: Static analysis
+        run: |
+          cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
+          --suppressions-list=./suppressions.txt src
+
+      - name: Upload codecov report
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./build/coverage.total
