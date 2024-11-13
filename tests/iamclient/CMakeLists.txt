@@ -5,35 +5,31 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+set(TARGET iamclient_test)
+
 # ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
 
-# gRPC lib
-find_package(gRPC REQUIRED)
-
 # Poco lib
-find_package(Poco REQUIRED JSON DataSQLite Foundation)
-
-# Systemd lib
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(Systemd libsystemd REQUIRED)
+find_package(Poco REQUIRED Foundation)
 
 # ######################################################################################################################
-# Defines
+# Sources
 # ######################################################################################################################
 
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-include_directories(${AOS_CORE_COMMON_LIB_DIR}/include)
+set(SOURCES iamclient_test.cpp)
 
 # ######################################################################################################################
-# Modules
+# Target
 # ######################################################################################################################
 
-add_subdirectory(logger)
-add_subdirectory(migration)
-add_subdirectory(utils)
-add_subdirectory(iamclient)
+add_executable(${TARGET} ${SOURCES})
+
+gtest_discover_tests(${TARGET})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} aosiamclient testutils GTest::gmock_main Poco::Foundation)

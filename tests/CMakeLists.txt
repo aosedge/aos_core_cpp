@@ -17,3 +17,4 @@ include_directories(include)
 
 add_subdirectory(utils)
 add_subdirectory(migration)
+add_subdirectory(iamclient)
