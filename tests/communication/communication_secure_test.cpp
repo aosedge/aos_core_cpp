@@ -15,7 +15,7 @@
 #include <openssl/trace.h>
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 #include <utils/cryptohelper.hpp>
@@ -28,13 +28,14 @@
 #include <aos/test/softhsmenv.hpp>
 
 #include "communication/communicationmanager.hpp"
+#include "communication/socket.hpp"
 
 #include "stubs/storagestub.hpp"
 #include "stubs/transport.hpp"
 #include "utils/generateimage.hpp"
 
 using namespace testing;
-using namespace aos::mp::iamclient;
+using namespace aos::common::iamclient;
 using namespace aos::mp::communication;
 
 /***********************************************************************************************************************
@@ -57,13 +58,42 @@ public:
 
     aos::Error GetCertificate(const std::string& certType, aos::iam::certhandler::CertInfo& certInfo) override
     {
+        mCertCalled = true;
+        mCondVar.notify_all();
+
         mCertHandler.GetCertificate(certType.c_str(), {}, {}, certInfo);
 
         return aos::ErrorEnum::eNone;
     }
 
+    aos::Error SubscribeCertChanged([[maybe_unused]] const std::string& certType,
+        [[maybe_unused]] aos::iam::certhandler::CertReceiverItf&        subscriber) override
+    {
+        return aos::ErrorEnum::eNone;
+    }
+
+    void UnsubscribeCertChanged([[maybe_unused]] const std::string& certType,
+        [[maybe_unused]] aos::iam::certhandler::CertReceiverItf&    subscriber) override
+    {
+    }
+
+    bool IsCertCalled()
+    {
+        std::unique_lock lock {mMutex};
+
+        mCondVar.wait_for(lock, cWaitTimeout, [this] { return mCertCalled.load(); });
+
+        return mCertCalled;
+    }
+
+    void ResetCertCalled() { mCertCalled = false; }
+
 private:
     aos::iam::certhandler::CertHandler& mCertHandler;
+    std::atomic_bool                    mCertCalled {};
+    std::mutex                          mMutex;
+    std::condition_variable             mCondVar;
+    constexpr static auto               cWaitTimeout = std::chrono::seconds(3);
 };
 
 class CommunicationSecureManagerTest : public ::testing::Test {
@@ -110,29 +140,24 @@ protected:
         ApplyCertificate("server", "localhost", CERTIFICATES_MP_DIR "/server_int.key",
             CERTIFICATES_MP_DIR "/server_int.cer", 0x3333333, mServerInfo);
 
-        mPipePair.emplace();
-        mPipe1.emplace();
-        mPipe2.emplace();
+        mServer.emplace();
+        EXPECT_EQ(mServer->Init(30001), aos::ErrorEnum::eNone);
 
-        EXPECT_EQ(mPipePair->CreatePair(mPipe1.value(), mPipe2.value()), aos::ErrorEnum::eNone);
+        mClient.emplace("localhost", 30001);
 
         aos::iam::certhandler::CertInfo certInfo;
         mCertHandler.GetCertificate("client", {}, {}, certInfo);
         auto [keyURI, errPkcs] = aos::common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, aos::ErrorEnum::eNone);
 
+        mKeyURI = keyURI;
+
         auto [certPEM, err2] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, aos::ErrorEnum::eNone);
 
-        mCommManagerClient.emplace(mPipe2.value());
+        mCertPEM = certPEM;
 
-        mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
-        mIAMSecurePipe.emplace(*mIAMClientChannel, keyURI, certPEM, CERTIFICATES_MP_DIR "/ca.cer");
-
-        mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
-        mCMSecurePipe.emplace(*mCMClientChannel, keyURI, certPEM, CERTIFICATES_MP_DIR "/ca.cer");
-
-        mOpenCMClientChannel = mCommManagerClient->CreateCommChannel(30001);
+        mCommManagerClient.emplace(mClient.value());
 
         mCertProvider.emplace(mCertHandler);
         mCommManager.emplace();
@@ -215,15 +240,6 @@ protected:
         std::filesystem::remove_all(mConfig.mDownload.mDownloadDir);
         std::filesystem::remove_all(mConfig.mImageStoreDir);
 
-        mPipe1->Close();
-        mPipe2->Close();
-        mCommManager->Close();
-        mIAMOpenConnection.Close();
-        mIAMSecureConnection.Close();
-        mCMConnection.Close();
-        mIAMSecurePipe->Close();
-        mCMSecurePipe->Close();
-
         if (auto engine = ENGINE_by_id("pkcs11"); engine != nullptr) {
             // Clear the PKCS#11 engine cache like slots/sessions
             ENGINE_get_finish_function(engine)(engine);
@@ -233,15 +249,17 @@ protected:
     }
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::cryptoutils::CertLoader       mCertLoader;
+    aos::crypto::CertLoader            mCertLoader;
     aos::iam::certhandler::CertHandler mCertHandler;
     aos::iam::certhandler::CertInfo    mClientInfo;
     aos::iam::certhandler::CertInfo    mServerInfo;
     std::optional<CertProvider>        mCertProvider;
+    std::string                        mKeyURI;
+    std::string                        mCertPEM;
 
-    std::optional<Pipe>                 mPipe1;
-    std::optional<Pipe>                 mPipe2;
-    std::optional<PipePair>             mPipePair;
+    std::optional<aos::mp::communication::Socket> mServer;
+    std::optional<SocketClient>                   mClient;
+
     std::optional<CommunicationManager> mCommManager;
     aos::mp::config::Config             mConfig;
 
@@ -255,10 +273,6 @@ protected:
     Handler                            IAMOpenHandler {};
     Handler                            IAMSecureHandler {};
     Handler                            CMHandler {};
-
-    IAMConnection mIAMOpenConnection {};
-    IAMConnection mIAMSecureConnection {};
-    CMConnection  mCMConnection {};
 
     std::string mTmpDir {"tmp"};
 
@@ -275,7 +289,19 @@ private:
 
 TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
 {
-    auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
+    IAMConnection mIAMOpenConnection {};
+    IAMConnection mIAMSecureConnection {};
+    CMConnection  mCMConnection {};
+
+    mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
+    mIAMSecurePipe.emplace(*mIAMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
+    mCMSecurePipe.emplace(*mCMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    mOpenCMClientChannel = mCommManagerClient->CreateCommChannel(30001);
+
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
@@ -325,28 +351,33 @@ TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
 
     EXPECT_TRUE(smOutgoingMessages.ParseFromArray(receivedMsg2.data(), receivedMsg2.size()));
     EXPECT_TRUE(smOutgoingMessages.has_node_config_status());
+
+    mServer->Shutdown();
+    mCommManager->Close();
+    mCommManagerClient->Close();
+    mIAMOpenConnection.Close();
+    mIAMSecureConnection.Close();
+    mCMConnection.Close();
+    mIAMSecurePipe->Close();
+    mCMSecurePipe->Close();
 }
 
 TEST_F(CommunicationSecureManagerTest, TestIAMFlow)
 {
-    auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    IAMConnection mIAMSecureConnection {};
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
+    mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
+    mIAMSecurePipe.emplace(*mIAMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
         &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
     // connect to IAM
     EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
-
-    // connect to CM
-    EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
 
     iamanager::v5::IAMIncomingMessages incomingMsg;
     incomingMsg.mutable_start_provisioning_request();
@@ -379,25 +410,26 @@ TEST_F(CommunicationSecureManagerTest, TestIAMFlow)
     EXPECT_EQ(errReceive, aos::ErrorEnum::eNone);
     EXPECT_TRUE(outgoingMsg.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
     EXPECT_TRUE(outgoingMsg.has_start_provisioning_response());
+
+    mServer->Shutdown();
+    mCommManager->Close();
+    mCommManagerClient->Close();
+    mIAMSecureConnection.Close();
+    mIAMSecurePipe->Close();
 }
 
 TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
 {
-    auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    CMConnection mCMConnection {};
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
+    mCMSecurePipe.emplace(*mCMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
 
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    // connect to IAM
-    EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
 
     // connect to CM
     EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
@@ -434,25 +466,26 @@ TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
 
     EXPECT_TRUE(smOutgoingMessages.ParseFromArray(receivedMsg2.data(), receivedMsg2.size()));
     EXPECT_TRUE(smOutgoingMessages.has_node_config_status());
+
+    mServer->Shutdown();
+    mCommManager->Close();
+    mCommManagerClient->Close();
+    mCMConnection.Close();
+    mCMSecurePipe->Close();
 }
 
 TEST_F(CommunicationSecureManagerTest, TestDownload)
 {
-    auto err = mCommManager->Init(mConfig, mPipe1.value(), &mCertProvider.value(), &mCertLoader, &mCryptoProvider);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    CMConnection mCMConnection {};
 
-    err = mIAMOpenConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMOpenHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
+    mCMSecurePipe.emplace(*mCMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
 
-    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
-        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
-
-    // connect to IAM
-    EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
 
     // connect to CM
     EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
@@ -509,4 +542,45 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
     }
 
     EXPECT_TRUE(foundService);
+
+    mServer->Shutdown();
+    mCommManager->Close();
+    mCommManagerClient->Close();
+    mCMConnection.Close();
+    mCMSecurePipe->Close();
+}
+
+TEST_F(CommunicationSecureManagerTest, TestCertChange)
+{
+    IAMConnection mIAMSecureConnection {};
+
+    mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
+    mIAMSecurePipe.emplace(*mIAMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    err = mIAMSecureConnection.Init(mConfig.mIAMConfig.mSecurePort, IAMSecureHandler, *mCommManager,
+        &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
+
+    EXPECT_TRUE(mCertProvider->IsCertCalled());
+
+    mCommManager->OnCertChanged(aos::iam::certhandler::CertInfo {});
+    mIAMSecurePipe->Close();
+    mCertProvider->ResetCertCalled();
+
+    EXPECT_TRUE(mClient->WaitForConnection());
+
+    EXPECT_EQ(mIAMSecurePipe->Connect(), aos::ErrorEnum::eNone);
+
+    EXPECT_TRUE(mCertProvider->IsCertCalled());
+
+    mServer->Shutdown();
+    mCommManager->Close();
+    mCommManagerClient->Close();
+    mIAMSecureConnection.Close();
+    mIAMSecurePipe->Close();
 }

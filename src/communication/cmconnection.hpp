@@ -51,7 +51,7 @@ public:
      * @return Error.
      */
     Error Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-        iamclient::CertProviderItf* certProvider = nullptr);
+        common::iamclient::CertProviderItf* certProvider = nullptr);
 
     /**
      * Closes connection.
@@ -101,11 +101,11 @@ private:
 
     void StartTask(std::function<void()> func) { mTaskManager.start(new Task(std::move(func))); }
 
-    void RunSecureChannel();
-    void RunOpenChannel();
-    void ReadSecureMsgHandler();
-    void ReadOpenMsgHandler();
-    void WriteSecureMsgHandler();
+    void  RunSecureChannel();
+    void  RunOpenChannel();
+    Error ReadSecureMsgHandler();
+    Error ReadOpenMsgHandler();
+    void  WriteSecureMsgHandler();
 
     Error SendSMClockSync();
 

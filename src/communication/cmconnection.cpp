@@ -9,9 +9,8 @@
 
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
+#include <logger/logmodule.hpp>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
-
-#include "logger/logmodule.hpp"
 
 #include "cmconnection.hpp"
 #include "communication/utils.hpp"
@@ -28,7 +27,7 @@ CMConnection::CMConnection()
 }
 
 Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-    iamclient::CertProviderItf* certProvider)
+    common::iamclient::CertProviderItf* certProvider)
 {
     LOG_DBG() << "Init CM connection";
 
@@ -57,21 +56,26 @@ Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, Communi
 
 void CMConnection::Close()
 {
-    LOG_DBG() << "Close CM connection";
-
-    mShutdown = true;
-
     {
         std::lock_guard lock {mMutex};
-        mCondVar.notify_all();
+
+        if (mShutdown) {
+            return;
+        }
+
+        LOG_DBG() << "Close CM connection";
+
+        mShutdown = true;
+
+        mCMCommOpenChannel->Close();
+
+        if (mCMCommSecureChannel != nullptr) {
+            mHandler->OnDisconnected();
+            mCMCommSecureChannel->Close();
+        }
     }
 
-    mCMCommOpenChannel->Close();
-
-    if (mCMCommSecureChannel != nullptr) {
-        mHandler->OnDisconnected();
-        mCMCommSecureChannel->Close();
-    }
+    mCondVar.notify_all();
 
     mTaskManager.cancelAll();
     mTaskManager.joinAll();
@@ -109,9 +113,15 @@ void CMConnection::RunSecureChannel()
         mHandler->OnConnected();
         mCondVar.notify_all();
 
-        auto readFuture = StartTaskWithWait([this]() { ReadSecureMsgHandler(); });
+        if (auto err = ReadSecureMsgHandler(); !err.IsNone()) {
+            LOG_ERR() << "Failed to read secure message: error=" << err;
+        }
 
-        readFuture.wait();
+        if (auto err = mCMCommSecureChannel->Close(); !err.IsNone()) {
+            LOG_ERR() << "Failed to close secure channel: error=" << err;
+        }
+
+        LOG_DBG() << "Secure CM channel disconnected";
     }
 
     writeFuture.wait();
@@ -134,24 +144,22 @@ void CMConnection::RunOpenChannel()
             continue;
         }
 
-        auto readFuture = StartTaskWithWait([this]() { ReadOpenMsgHandler(); });
-
-        readFuture.wait();
+        if (auto err = ReadOpenMsgHandler(); !err.IsNone()) {
+            LOG_ERR() << "Failed to read open message: error=" << err;
+        }
     }
 
     LOG_DBG() << "Open channel stopped";
 }
 
-void CMConnection::ReadSecureMsgHandler()
+Error CMConnection::ReadSecureMsgHandler()
 {
     LOG_DBG() << "Read secure message handler";
 
     while (!mShutdown) {
         auto [message, err] = ReadMessage(mCMCommSecureChannel);
         if (!err.IsNone()) {
-            LOG_ERR() << "Failed to read secure message: error=" << err;
-
-            return;
+            return err;
         }
 
         servicemanager::v4::SMOutgoingMessages outgoingMessages;
@@ -176,11 +184,11 @@ void CMConnection::ReadSecureMsgHandler()
         }
 
         if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
-            LOG_ERR() << "Failed to send message: error=" << err;
-
-            return;
+            return err;
         }
     }
+
+    return ErrorEnum::eNone;
 }
 
 Error CMConnection::SendFailedImageContentResponse(uint64_t requestID, const Error& err)
@@ -308,16 +316,14 @@ RetWithError<filechunker::ContentInfo> CMConnection::GetFileContent(
     return filechunker::ChunkFiles(unpackedDir, requestID);
 }
 
-void CMConnection::ReadOpenMsgHandler()
+Error CMConnection::ReadOpenMsgHandler()
 {
     LOG_DBG() << "Read open message handler";
 
     while (!mShutdown) {
         auto [message, err] = ReadMessage(mCMCommOpenChannel);
         if (!err.IsNone()) {
-            LOG_ERR() << "Failed to read open message: error=" << err;
-
-            return;
+            return err;
         }
 
         servicemanager::v4::SMOutgoingMessages outgoingMessages;
@@ -336,11 +342,11 @@ void CMConnection::ReadOpenMsgHandler()
         }
 
         if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
-            LOG_ERR() << "Failed to send message: error=" << err;
-
-            return;
+            return err;
         }
     }
+
+    return ErrorEnum::eNone;
 }
 
 Error CMConnection::SendSMClockSync()
@@ -377,11 +383,13 @@ void CMConnection::WriteSecureMsgHandler()
             continue;
         }
 
-        std::unique_lock lock {mMutex};
+        {
+            std::unique_lock lock {mMutex};
 
-        mCondVar.wait(lock, [this] { return mCMCommSecureChannel->IsConnected() || mShutdown; });
-        if (mShutdown) {
-            return;
+            mCondVar.wait(lock, [this] { return mCMCommSecureChannel->IsConnected() || mShutdown; });
+            if (mShutdown) {
+                return;
+            }
         }
 
         if (auto err = SendMessage(std::move(message.mValue), mCMCommSecureChannel); !err.IsNone()) {

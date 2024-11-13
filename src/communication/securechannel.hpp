@@ -8,15 +8,17 @@
 #ifndef SECURECHANNEL_HPP_
 #define SECURECHANNEL_HPP_
 
+#include <atomic>
+#include <memory>
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 
 #include "config/config.hpp"
-#include "iamclient/types.hpp"
 #include "types.hpp"
+#include <iamclient/publicservicehandler.hpp>
 
 namespace aos::mp::communication {
 
@@ -34,9 +36,10 @@ public:
      * @param certLoader Certificate loader.
      * @param cryptoProvider Crypto provider.
      * @param port Port.
+     * @param certStorage Certificate storage path.
      */
-    SecureChannel(const config::Config& cfg, CommChannelItf& channel, iamclient::CertProviderItf& certProvider,
-        cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, int port,
+    SecureChannel(const config::Config& cfg, CommChannelItf& channel, common::iamclient::CertProviderItf& certProvider,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, int port,
         const std::string& certStorage);
 
     /**
@@ -82,26 +85,28 @@ public:
     bool IsConnected() const override;
 
 private:
+    static int  CustomBIOWrite(BIO* bio, const char* buf, int len);
+    static int  CustomBIORead(BIO* bio, char* buf, int len);
+    static long CustomBIOCtrl(BIO* bio, int cmd, long num, void* ptr);
+
     void        InitOpenssl();
     void        CleanupOpenssl();
     SSL_CTX*    CreateSSLContext(const SSL_METHOD* method);
     Error       ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng);
-    static int  CustomBIOWrite(BIO* bio, const char* buf, int len);
-    static int  CustomBIORead(BIO* bio, char* buf, int len);
-    static long CustomBIOCtrl(BIO* bio, int cmd, long num, void* ptr);
-    BIO_METHOD* CreateCustomBIOMethod();
     std::string GetOpensslErrorString();
 
-    CommChannelItf*             mChannel {};
-    iamclient::CertProviderItf* mCertProvider {};
-    cryptoutils::CertLoaderItf* mCertLoader {};
-    crypto::x509::ProviderItf*  mCryptoProvider {};
-    const config::Config*       mCfg {};
-    int                         mPort {};
-    std::string                 mCertStorage {};
-    SSL_CTX*                    mCtx {};
-    SSL*                        mSsl {};
-    std::atomic<bool>           mConnected {false};
+    CommChannelItf*                     mChannel {};
+    common::iamclient::CertProviderItf* mCertProvider {};
+    crypto::CertLoaderItf*              mCertLoader {};
+    crypto::x509::ProviderItf*          mCryptoProvider {};
+    const config::Config*               mCfg {};
+    int                                 mPort {};
+    std::string                         mCertStorage;
+
+    SSL_CTX*                                              mCtx {};
+    SSL*                                                  mSSL {};
+    std::unique_ptr<BIO_METHOD, decltype(&BIO_meth_free)> mBioMethod {nullptr, BIO_meth_free};
+    std::atomic<bool>                                     mConnected {};
 };
 
 } // namespace aos::mp::communication

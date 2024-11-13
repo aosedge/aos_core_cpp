@@ -7,9 +7,10 @@
 
 #include <thread>
 
+#include <logger/logmodule.hpp>
+
 #include "communication/utils.hpp"
 #include "communicationchannel.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::mp::communication {
 
@@ -106,6 +107,8 @@ Error CommunicationChannel::Close()
         }
 
         mClose = true;
+
+        mReceivedMessage.clear();
     }
 
     mCondVar.notify_all();

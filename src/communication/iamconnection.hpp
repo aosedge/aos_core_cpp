@@ -15,8 +15,8 @@
 
 #include <aos/common/tools/error.hpp>
 
-#include "iamclient/types.hpp"
 #include "types.hpp"
+#include <iamclient/publicservicehandler.hpp>
 
 namespace aos::mp::communication {
 
@@ -35,7 +35,7 @@ public:
      * @return Error.
      */
     Error Init(int port, HandlerItf& handler, CommunicationManagerItf& comManager,
-        iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "");
+        common::iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "");
 
     /**
      * Closes connection.
@@ -46,9 +46,9 @@ public:
 private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
 
-    void Run();
-    void ReadHandler();
-    void WriteHandler();
+    void  Run();
+    Error ReadHandler();
+    void  WriteHandler();
 
     std::atomic<bool>               mShutdown {};
     std::thread                     mConnectThread;

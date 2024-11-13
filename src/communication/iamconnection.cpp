@@ -5,14 +5,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "iamconnection.hpp"
+#include <logger/logmodule.hpp>
+
 #include "communication/utils.hpp"
-#include "logger/logmodule.hpp"
+#include "iamconnection.hpp"
 
 namespace aos::mp::communication {
 
 Error IAMConnection::Init(int port, HandlerItf& handler, CommunicationManagerItf& comManager,
-    iamclient::CertProviderItf* certProvider, const std::string& certStorage)
+    common::iamclient::CertProviderItf* certProvider, const std::string& certStorage)
 {
     LOG_DBG() << "Init IAM connection";
 
@@ -33,11 +34,21 @@ Error IAMConnection::Init(int port, HandlerItf& handler, CommunicationManagerItf
 
 void IAMConnection::Close()
 {
-    LOG_DBG() << "Close IAM connection";
+    {
+        std::lock_guard lock {mMutex};
 
-    mHandler->OnDisconnected();
-    mIAMCommChannel->Close();
-    mShutdown = true;
+        if (mShutdown) {
+            return;
+        }
+
+        LOG_DBG() << "Close IAM connection";
+
+        mShutdown = true;
+
+        mHandler->OnDisconnected();
+        mIAMCommChannel->Close();
+    }
+
     mCondVar.notify_all();
 
     if (mConnectThread.joinable()) {
@@ -67,9 +78,13 @@ void IAMConnection::Run()
         mHandler->OnConnected();
         mCondVar.notify_all();
 
-        auto readThread = std::thread(&IAMConnection::ReadHandler, this);
+        if (auto err = ReadHandler(); !err.IsNone()) {
+            LOG_ERR() << "Failed to read from IAM: error=" << err;
+        }
 
-        readThread.join();
+        if (auto err = mIAMCommChannel->Close(); !err.IsNone()) {
+            LOG_ERR() << "Failed to close IAM: error=" << err;
+        }
     }
 
     writeThread.join();
@@ -77,7 +92,7 @@ void IAMConnection::Run()
     LOG_DBG() << "Run IAM connection finished";
 }
 
-void IAMConnection::ReadHandler()
+Error IAMConnection::ReadHandler()
 {
     LOG_DBG() << "Read handler IAM connection";
 
@@ -86,9 +101,7 @@ void IAMConnection::ReadHandler()
 
         std::vector<uint8_t> message(cProtobufHeaderSize);
         if (auto err = mIAMCommChannel->Read(message); !err.IsNone()) {
-            LOG_ERR() << "Failed to read from IAM: error=" << err;
-
-            return;
+            return err;
         }
 
         LOG_DBG() << "Received message from IAM: size=" << message.size();
@@ -98,23 +111,21 @@ void IAMConnection::ReadHandler()
         message.resize(protobufHeader.mDataSize);
 
         if (auto err = mIAMCommChannel->Read(message); !err.IsNone()) {
-            LOG_ERR() << "Failed to read from IAM: error=" << err;
-
-            return;
+            return err;
         }
 
         LOG_DBG() << "Received message from IAM: size=" << message.size();
 
         if (auto err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
-            LOG_ERR() << "Failed to send message to IAM: error=" << err;
-
-            return;
+            return err;
         }
 
         LOG_DBG() << "Message sent to IAM";
     }
 
     LOG_DBG() << "Read handler IAM connection finished";
+
+    return ErrorEnum::eNone;
 }
 
 void IAMConnection::WriteHandler()
@@ -131,11 +142,13 @@ void IAMConnection::WriteHandler()
 
         LOG_DBG() << "Received message from IAM: size=" << message.mValue.size();
 
-        std::unique_lock lock {mMutex};
+        {
+            std::unique_lock lock {mMutex};
 
-        mCondVar.wait(lock, [this]() { return mIAMCommChannel->IsConnected() || mShutdown.load(); });
-        if (mShutdown) {
-            return;
+            mCondVar.wait(lock, [this]() { return mIAMCommChannel->IsConnected() || mShutdown.load(); });
+            if (mShutdown) {
+                return;
+            }
         }
 
         auto header = PrepareProtobufHeader(message.mValue.size());

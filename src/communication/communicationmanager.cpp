@@ -7,9 +7,9 @@
 
 #include <openssl/sha.h>
 
-#include "communication/utils.hpp"
-#include "logger/logmodule.hpp"
+#include <logger/logmodule.hpp>
 
+#include "communication/utils.hpp"
 #include "communicationmanager.hpp"
 #include "securechannel.hpp"
 
@@ -31,14 +31,12 @@ static void CalculateChecksum(const std::vector<uint8_t>& data, uint8_t* checksu
  * Public
  **********************************************************************************************************************/
 
-Error CommunicationManager::Init(const config::Config& cfg, TransportItf& transport,
-    iamclient::CertProviderItf* certProvider, cryptoutils::CertLoaderItf* certLoader,
+Error CommunicationManager::Init(const config::Config& cfg, TransportItf& transport, crypto::CertLoaderItf* certLoader,
     crypto::x509::ProviderItf* cryptoProvider)
 {
     LOG_DBG() << "Init communication manager";
 
     mTransport      = &transport;
-    mCertProvider   = certProvider;
     mCertLoader     = certLoader;
     mCryptoProvider = cryptoProvider;
     mCfg            = &cfg;
@@ -49,7 +47,7 @@ Error CommunicationManager::Init(const config::Config& cfg, TransportItf& transp
 }
 
 std::shared_ptr<CommChannelItf> CommunicationManager::CreateChannel(
-    int port, mp::iamclient::CertProviderItf* certProvider, const std::string& certStorage)
+    int port, common::iamclient::CertProviderItf* certProvider, const std::string& certStorage)
 {
     auto chan = std::make_shared<CommunicationChannel>(port, this);
 
@@ -75,6 +73,10 @@ Error CommunicationManager::Connect()
 {
     {
         std::lock_guard lock {mMutex};
+
+        if (mShutdown) {
+            return ErrorEnum::eFailed;
+        }
 
         if (mIsConnected) {
             return ErrorEnum::eNone;
@@ -104,7 +106,11 @@ Error CommunicationManager::Write(std::vector<uint8_t> message)
 {
     std::unique_lock lock {mMutex};
 
-    mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mIsConnected.load(); });
+    mCondVar.wait_for(lock, cConnectionTimeout, [this]() { return mIsConnected.load() || mShutdown.load(); });
+
+    if (mShutdown) {
+        return ErrorEnum::eFailed;
+    }
 
     if (!mIsConnected) {
         return ErrorEnum::eTimeout;
@@ -115,24 +121,24 @@ Error CommunicationManager::Write(std::vector<uint8_t> message)
 
 Error CommunicationManager::Close()
 {
-    if (mShutdown) {
-        return ErrorEnum::eNone;
-    }
-
-    LOG_DBG() << "Close communication manager";
-
-    mShutdown = true;
-
     Error err;
 
     {
         std::lock_guard lock {mMutex};
 
+        if (mShutdown) {
+            return ErrorEnum::eNone;
+        }
+
+        LOG_DBG() << "Close communication manager";
+
+        mShutdown = true;
+
         err = mTransport->Close();
         mCondVar.notify_all();
-    }
 
-    mIsConnected = false;
+        mIsConnected = false;
+    }
 
     if (mThread.joinable()) {
         mThread.join();
@@ -144,6 +150,21 @@ Error CommunicationManager::Close()
 bool CommunicationManager::IsConnected() const
 {
     return mIsConnected;
+}
+
+void CommunicationManager::OnCertChanged([[maybe_unused]] const iam::certhandler::CertInfo& info)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Certificate changed";
+
+    mIsConnected = false;
+
+    if (auto err = mTransport->Close(); !err.IsNone()) {
+        LOG_ERR() << "Failed to close transport: error=" << err;
+    }
+
+    mCondVar.notify_all();
 }
 
 /***********************************************************************************************************************

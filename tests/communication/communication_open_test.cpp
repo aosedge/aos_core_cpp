@@ -15,6 +15,7 @@
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include "communication/communicationmanager.hpp"
+#include "communication/socket.hpp"
 #include "config/config.hpp"
 #include "stubs/transport.hpp"
 
@@ -34,14 +35,13 @@ protected:
         mConfig.mIAMConfig.mOpenPort = 8080;
         mConfig.mCMConfig.mOpenPort  = 30001;
 
-        mPipePair.emplace();
-        mPipe1.emplace();
-        mPipe2.emplace();
+        mServer.emplace();
+        EXPECT_EQ(mServer->Init(30001), aos::ErrorEnum::eNone);
 
-        EXPECT_EQ(mPipePair->CreatePair(mPipe1.value(), mPipe2.value()), aos::ErrorEnum::eNone);
+        mClient.emplace("localhost", 30001);
 
         mCommManager.emplace();
-        mCommManagerClient.emplace(mPipe2.value());
+        mCommManagerClient.emplace(mClient.value());
 
         mIAMClientChannel = mCommManagerClient->CreateCommChannel(8080);
         mCMClientChannel  = mCommManagerClient->CreateCommChannel(30001);
@@ -49,29 +49,29 @@ protected:
 
     void TearDown() override
     {
-        mPipe2->Close();
+        mClient->Close();
         mCommManager->Close();
         mIAMConnection.Close();
         mCMConnection.Close();
+        mCommManagerClient->Close();
     }
 
-    std::optional<PipePair> mPipePair;
-    std::optional<Pipe>     mPipe1;
-    std::optional<Pipe>     mPipe2;
+    std::optional<aos::mp::communication::Socket> mServer;
+    std::optional<SocketClient>                   mClient;
 
     std::shared_ptr<CommChannelItf> mIAMClientChannel;
     std::shared_ptr<CommChannelItf> mCMClientChannel;
     std::optional<CommManager>      mCommManagerClient;
 
-    aos::mp::config::Config              mConfig;
-    aos::mp::iamclient::CertProviderItf* mCertProvider {};
-    aos::cryptoutils::CertLoaderItf*     mCertLoader {};
-    aos::crypto::x509::ProviderItf*      mCryptoProvider {};
-    Handler                              IAMHandler {};
-    Handler                              CMHandler {};
-    IAMConnection                        mIAMConnection {};
-    CMConnection                         mCMConnection {};
-    std::optional<CommunicationManager>  mCommManager;
+    aos::mp::config::Config                  mConfig;
+    aos::common::iamclient::CertProviderItf* mCertProvider {};
+    aos::crypto::CertLoaderItf*              mCertLoader {};
+    aos::crypto::x509::ProviderItf*          mCryptoProvider {};
+    Handler                                  IAMHandler {};
+    Handler                                  CMHandler {};
+    IAMConnection                            mIAMConnection {};
+    CMConnection                             mCMConnection {};
+    std::optional<CommunicationManager>      mCommManager;
 };
 
 /***********************************************************************************************************************
@@ -80,7 +80,7 @@ protected:
 
 TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mPipe1.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
@@ -122,7 +122,7 @@ TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 
 TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mPipe1.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
@@ -159,7 +159,7 @@ TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
 
 TEST_F(CommunicationOpenManagerTest, TestSendIAMIncomingMessages)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mPipe1.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
@@ -188,7 +188,7 @@ TEST_F(CommunicationOpenManagerTest, TestSendIAMIncomingMessages)
 
 TEST_F(CommunicationOpenManagerTest, TestIAMFlow)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mPipe1.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);

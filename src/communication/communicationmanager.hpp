@@ -26,7 +26,7 @@ namespace aos::mp::communication {
 /**
  * Communication manager class.
  */
-class CommunicationManager : public CommunicationManagerItf {
+class CommunicationManager : public CommunicationManagerItf, public iam::certhandler::CertReceiverItf {
 public:
     /**
      * Constructor.
@@ -45,8 +45,8 @@ public:
      * @param cryptoProvider Crypto provider
      * @return Error
      */
-    Error Init(const config::Config& cfg, TransportItf& transport, iamclient::CertProviderItf* certProvider = nullptr,
-        cryptoutils::CertLoaderItf* certLoader = nullptr, crypto::x509::ProviderItf* cryptoProvider = nullptr);
+    Error Init(const config::Config& cfg, TransportItf& transport, crypto::CertLoaderItf* certLoader = nullptr,
+        crypto::x509::ProviderItf* cryptoProvider = nullptr);
 
     /**
      * Creates communication channel.
@@ -56,7 +56,7 @@ public:
      * @return std::unique_ptr<CommChannelItf>
      */
     std::shared_ptr<CommChannelItf> CreateChannel(
-        int port, iamclient::CertProviderItf* certProvider, const std::string& certStorage) override;
+        int port, common::iamclient::CertProviderItf* certProvider, const std::string& certStorage) override;
 
     /**
      * Connects to the communication manager.
@@ -95,17 +95,23 @@ public:
      */
     bool IsConnected() const override;
 
+    /**
+     * Subscribes to certificate changes.
+     *
+     * @param certType Certificate type.
+     */
+    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+
 private:
     static constexpr auto                      cMaxMessageSize    = 64 * 1024; // 64 KB
-    static constexpr std::chrono::milliseconds cConnectionTimeout = std::chrono::seconds(10);
+    static constexpr std::chrono::milliseconds cConnectionTimeout = std::chrono::seconds(5);
     static constexpr std::chrono::seconds      cReconnectTimeout  = std::chrono::seconds(3);
 
     void  Run();
     Error ReadHandler();
 
     TransportItf*                                        mTransport {};
-    iamclient::CertProviderItf*                          mCertProvider {};
-    cryptoutils::CertLoaderItf*                          mCertLoader {};
+    crypto::CertLoaderItf*                               mCertLoader {};
     crypto::x509::ProviderItf*                           mCryptoProvider {};
     const config::Config*                                mCfg {};
     std::map<int, std::shared_ptr<CommunicationChannel>> mChannels;

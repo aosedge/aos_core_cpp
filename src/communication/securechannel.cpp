@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2024 Renesas Electronics Corporation.
  * Copyright (C) 2024 EPAM Systems, Inc.
@@ -14,10 +13,10 @@
 #include <openssl/ssl.h>
 #include <openssl/trace.h>
 
+#include <logger/logmodule.hpp>
 #include <utils/cryptohelper.hpp>
 #include <utils/pkcs11helper.hpp>
 
-#include "logger/logmodule.hpp"
 #include "securechannel.hpp"
 
 namespace aos::mp::communication {
@@ -27,7 +26,7 @@ namespace aos::mp::communication {
  **********************************************************************************************************************/
 
 SecureChannel::SecureChannel(const config::Config& cfg, CommChannelItf& channel,
-    iamclient::CertProviderItf& certProvider, cryptoutils::CertLoaderItf& certLoader,
+    common::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, int port, const std::string& certStorage)
     : mChannel(&channel)
     , mCertProvider(&certProvider)
@@ -40,33 +39,12 @@ SecureChannel::SecureChannel(const config::Config& cfg, CommChannelItf& channel,
     LOG_DBG() << "Create secure channel: port=" << mPort;
 
     InitOpenssl();
-
-    ENGINE* eng = ENGINE_by_id("pkcs11");
-    if (!eng) {
-        throw std::runtime_error("failed to load PKCS11 engine");
-    }
-
-    if (!ENGINE_init(eng)) {
-        throw std::runtime_error("failed to initialize PKCS11 engine");
-    }
-
-    const SSL_METHOD* method = TLS_server_method();
-    mCtx                     = CreateSSLContext(method);
-
-    if (auto err = ConfigureSSLContext(mCtx, eng); !err.IsNone()) {
-        SSL_CTX_free(mCtx);
-        CleanupOpenssl();
-
-        throw std::runtime_error(err.Message());
-    }
 }
 
 SecureChannel::~SecureChannel()
 {
     LOG_DBG() << "Destroy secure channel: port=" << mPort;
 
-    SSL_free(mSsl);
-    SSL_CTX_free(mCtx);
     CleanupOpenssl();
 }
 
@@ -74,30 +52,84 @@ Error SecureChannel::Connect()
 {
     LOG_DBG() << "Connect to secure channel: port=" << mPort;
 
+    if (mConnected) {
+        return ErrorEnum::eNone;
+    }
+
     if (auto err = mChannel->Connect(); !err.IsNone()) {
         return err;
     }
 
-    if (mSsl != nullptr) {
-        SSL_free(mSsl);
+    if (mSSL != nullptr) {
+        SSL_free(mSSL);
+        mSSL = nullptr;
     }
 
-    mSsl               = SSL_new(mCtx);
-    BIO_METHOD* method = CreateCustomBIOMethod();
-    BIO*        rbio   = BIO_new(method);
-    BIO*        wbio   = BIO_new(method);
+    if (mCtx != nullptr) {
+        SSL_CTX_free(mCtx);
+        mCtx = nullptr;
+    }
+
+    mBioMethod.reset(nullptr);
+    mBioMethod.reset(BIO_meth_new(BIO_TYPE_SOURCE_SINK, "SecureChannel BIO"));
+    if (!mBioMethod) {
+        return Error(ErrorEnum::eRuntime, "failed to create BIO method");
+    }
+
+    BIO_meth_set_write(mBioMethod.get(), CustomBIOWrite);
+    BIO_meth_set_read(mBioMethod.get(), CustomBIORead);
+    BIO_meth_set_ctrl(mBioMethod.get(), CustomBIOCtrl);
+
+    std::unique_ptr<ENGINE, decltype(&ENGINE_free)> eng(ENGINE_by_id("pkcs11"), ENGINE_free);
+    if (!eng) {
+        return Error(ErrorEnum::eRuntime, "failed to load PKCS11 engine");
+    }
+
+    if (!ENGINE_init(eng.get())) {
+        return Error(ErrorEnum::eRuntime, "failed to initialize PKCS11 engine");
+    }
+
+    const SSL_METHOD* method = TLS_server_method();
+    mCtx                     = CreateSSLContext(method);
+    if (!mCtx) {
+        return Error(ErrorEnum::eRuntime, "failed to create SSL context");
+    }
+
+    if (auto err = ConfigureSSLContext(mCtx, eng.get()); !err.IsNone()) {
+        SSL_CTX_free(mCtx);
+        mCtx = nullptr;
+
+        return err;
+    }
+
+    mSSL = SSL_new(mCtx);
+    if (!mSSL) {
+        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    }
+
+    BIO* rbio = BIO_new(mBioMethod.get());
+    BIO* wbio = BIO_new(mBioMethod.get());
+
+    if (!rbio || !wbio) {
+        BIO_free(rbio);
+        BIO_free(wbio);
+
+        return Error(ErrorEnum::eRuntime, "failed to create BIO objects");
+    }
+
     BIO_set_data(rbio, this);
     BIO_set_data(wbio, this);
-    SSL_set_bio(mSsl, rbio, wbio);
+    SSL_set_bio(mSSL, rbio, wbio);
 
-    if (SSL_accept(mSsl) <= 0) {
+    if (SSL_accept(mSSL) <= 0) {
         LOG_ERR() << "Failed to accept SSL connection";
+        SSL_free(mSSL);
+        mSSL = nullptr;
 
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
     mConnected = true;
-
     LOG_DBG() << "SSL connection accepted";
 
     return ErrorEnum::eNone;
@@ -111,8 +143,8 @@ Error SecureChannel::Read(std::vector<uint8_t>& message)
 
     LOG_DBG() << "Requesting secure read: port=" << mPort << ", size=" << message.size();
 
-    int bytes_read = SSL_read(mSsl, message.data(), message.size());
-    if (bytes_read <= 0) {
+    int bytesRead = SSL_read(mSSL, message.data(), message.size());
+    if (bytesRead <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
@@ -123,7 +155,8 @@ Error SecureChannel::Write(std::vector<uint8_t> message)
 {
     LOG_DBG() << "Write secure data port=" << mPort << ", size=" << message.size();
 
-    if (int bytes_written = SSL_write(mSsl, message.data(), message.size()); bytes_written <= 0) {
+    int bytesWritten = SSL_write(mSSL, message.data(), message.size());
+    if (bytesWritten <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
@@ -134,13 +167,26 @@ Error SecureChannel::Close()
 {
     LOG_DBG() << "Close secure channel: port=" << mPort;
 
-    auto err = mChannel->Close();
-
-    if (mSsl != nullptr) {
-        SSL_shutdown(mSsl);
+    if (!mConnected) {
+        return ErrorEnum::eNone;
     }
 
-    return err;
+    mConnected = false;
+
+    if (mSSL) {
+        SSL_shutdown(mSSL);
+        SSL_free(mSSL);
+        mSSL = nullptr;
+    }
+
+    if (mCtx) {
+        SSL_CTX_free(mCtx);
+        mCtx = nullptr;
+    }
+
+    mBioMethod.reset(nullptr);
+
+    return mChannel->Close();
 }
 
 bool SecureChannel::IsConnected() const
@@ -216,11 +262,11 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> pkeyPtr(pkey, EVP_PKEY_free);
     if (SSL_CTX_use_PrivateKey(ctx, pkey) <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    // Split the certificate chain into individual certificates
     BIO* bio = BIO_new_mem_buf(certificate.c_str(), -1);
     if (!bio) {
         return Error(ErrorEnum::eRuntime, "failed to create BIO");
@@ -228,7 +274,7 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
 
     std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
 
-    X509* cert = PEM_read_bio_X509(bio, nullptr, 0, nullptr);
+    X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
     if (!cert) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
@@ -240,16 +286,14 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
     }
 
     auto chain_deleter = [](STACK_OF(X509) * chain) { sk_X509_pop_free(chain, X509_free); };
-
     std::unique_ptr<STACK_OF(X509), decltype(chain_deleter)> chain(sk_X509_new_null(), chain_deleter);
 
     X509* intermediateCert = nullptr;
-
-    while ((intermediateCert = PEM_read_bio_X509(bio, nullptr, 0, nullptr)) != nullptr) {
+    while ((intermediateCert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr) {
         sk_X509_push(chain.get(), intermediateCert);
     }
 
-    if (SSL_CTX_set1_chain(ctx, chain.get()) <= 0) {
+    if (sk_X509_num(chain.get()) > 0 && SSL_CTX_set1_chain(ctx, chain.get()) <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
@@ -298,17 +342,6 @@ long SecureChannel::CustomBIOCtrl(
     default:
         return 0;
     }
-}
-
-BIO_METHOD* SecureChannel::CreateCustomBIOMethod()
-{
-    BIO_METHOD* method = BIO_meth_new(BIO_TYPE_SOURCE_SINK, "Custom BIO");
-
-    BIO_meth_set_write(method, CustomBIOWrite);
-    BIO_meth_set_read(method, CustomBIORead);
-    BIO_meth_set_ctrl(method, CustomBIOCtrl);
-
-    return method;
 }
 
 } // namespace aos::mp::communication

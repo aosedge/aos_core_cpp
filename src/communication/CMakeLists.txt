@@ -48,7 +48,8 @@ target_link_libraries(
            Poco::Foundation
            Poco::Net
            aoscommon
-           aoscoreapi-gen-objects
+           aoscoreapi-gen-sm
+           iamclient
            aosprotocol
            aosutils
            downloader

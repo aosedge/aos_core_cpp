@@ -9,7 +9,7 @@
 #include <map>
 #include <vector>
 
-#include <unistd.h>
+#include <Poco/Net/StreamSocket.h>
 
 #include <openssl/engine.h>
 #include <openssl/err.h>
@@ -23,79 +23,105 @@
 
 using namespace aos::mp::communication;
 
-class Pipe : public TransportItf {
+class SocketClient {
 public:
-    Pipe() = default;
-
-    void SetFds(int readFd, int writeFd)
+    SocketClient(const std::string& address, int port)
+        : mAddress(address)
+        , mPort(port)
     {
-        mReadFd  = readFd;
-        mWriteFd = writeFd;
     }
 
-    aos::Error Connect() override { return aos::ErrorEnum::eNone; }
-
-    aos::Error Read(std::vector<uint8_t>& message) override
+    bool WaitForConnection()
     {
-        auto bytesRead = read(mReadFd, message.data(), message.size());
-        if (bytesRead <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to read");
-        }
+        std::unique_lock lock {mMutex};
 
-        message.resize(bytesRead);
+        mCondVar.wait_for(lock, cWaitTimeout, [this] { return mConnected.load(); });
 
-        return aos::ErrorEnum::eNone;
+        return mConnected;
     }
 
-    aos::Error Write(std::vector<uint8_t> message) override
+    aos::Error Connect()
     {
-        ssize_t bytesWritten = write(mWriteFd, message.data(), message.size());
-        if (bytesWritten <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to write");
-        }
+        try {
+            if (mClientSocket.impl()->initialized()) {
+                mClientSocket.close();
+            }
 
-        return aos::ErrorEnum::eNone;
+            mClientSocket = Poco::Net::StreamSocket();
+
+            mClientSocket.connect(Poco::Net::SocketAddress(mAddress, mPort));
+            mConnected = true;
+            mCondVar.notify_all();
+
+            return aos::ErrorEnum::eNone;
+
+        } catch (const Poco::Exception& e) {
+            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+        }
     }
 
-    aos::Error Close() override
+    aos::Error Read(std::vector<uint8_t>& message)
     {
-        if (close(mReadFd) == -1) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to close read fd");
+        try {
+            int totalRead = 0;
+            while (totalRead < static_cast<int>(message.size())) {
+                int bytesRead = mClientSocket.receiveBytes(message.data() + totalRead, message.size() - totalRead);
+                if (bytesRead == 0) {
+                    return aos::Error {ECONNRESET};
+                }
+                totalRead += bytesRead;
+            }
+            return aos::ErrorEnum::eNone;
+        } catch (const Poco::Exception& e) {
+            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+        }
+    }
+
+    aos::Error Write(std::vector<uint8_t> message)
+    {
+        try {
+            int totalSent = 0;
+            while (totalSent < static_cast<int>(message.size())) {
+                int bytesSent = mClientSocket.sendBytes(message.data() + totalSent, message.size() - totalSent);
+                if (bytesSent == 0) {
+                    return aos::Error {ECONNRESET};
+                }
+                totalSent += bytesSent;
+            }
+            return aos::ErrorEnum::eNone;
+        } catch (const Poco::Exception& e) {
+            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+        }
+    }
+
+    aos::Error Close()
+    {
+        LOG_INF() << "Closing connection to " << mAddress.c_str() << ":" << mPort;
+
+        if (mClientSocket.impl()->initialized()) {
+            try {
+                mClientSocket.shutdown();
+                mClientSocket.close();
+            } catch (const Poco::Exception&) {
+            }
         }
 
-        if (close(mWriteFd) == -1) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to close write fd");
-        }
+        mClientSocket = Poco::Net::StreamSocket();
+        mConnected    = false;
+        mCondVar.notify_all();
 
         return aos::ErrorEnum::eNone;
     }
 
 private:
-    int mReadFd {-1};
-    int mWriteFd {-1};
-};
+    static constexpr auto cWaitTimeout = std::chrono::seconds(3);
 
-class PipePair {
-public:
-    PipePair() = default;
-
-    aos::Error CreatePair(Pipe& transport1, Pipe& transport2)
-    {
-        if (pipe(mPipeFd1) == -1 || pipe(mPipeFd2) == -1) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create pipe");
-        }
-
-        // transport1: write to mPipeFd1[1], read from mPipeFd2[0]
-        // transport2: read from mPipeFd1[0], write to mPipeFd2[1]
-        transport1.SetFds(mPipeFd2[0], mPipeFd1[1]);
-        transport2.SetFds(mPipeFd1[0], mPipeFd2[1]);
-
-        return aos::ErrorEnum::eNone;
-    }
-
-private:
-    int mPipeFd1[2] {-1};
-    int mPipeFd2[2] {-1};
+    Poco::Net::StreamSocket mClientSocket;
+    std::string             mAddress;
+    int                     mPort;
+    std::atomic<bool>       mConnected {false};
+    std::mutex              mMutex;
+    std::condition_variable mCondVar;
 };
 
 class SecureClientChannel : public CommChannelItf {
@@ -111,8 +137,128 @@ public:
         OpenSSL_add_ssl_algorithms();
     }
 
+    ~SecureClientChannel()
+    {
+        Close();
+        EVP_cleanup();
+        if (mBioMethod) {
+            BIO_meth_free(mBioMethod);
+            mBioMethod = nullptr;
+        }
+    }
+
     aos::Error Connect() override
     {
+        if (mConnected) {
+            return aos::ErrorEnum::eNone;
+        }
+
+        mCtx    = nullptr;
+        mSSL    = nullptr;
+        mEngine = nullptr;
+
+        int retryCount = 0;
+
+        while (retryCount < cMaxRetryCount) {
+            if (auto err = AttemptConnect(); err.IsNone()) {
+                mConnected = true;
+
+                return aos::ErrorEnum::eNone;
+            }
+
+            retryCount++;
+
+            std::this_thread::sleep_for(cConnectionTimeout);
+        }
+
+        return aos::Error(aos::ErrorEnum::eRuntime, "failed to connect");
+    }
+
+    aos::Error Read(std::vector<uint8_t>& message) override
+    {
+        if (!mConnected || !mSSL) {
+            return aos::Error(aos::ErrorEnum::eRuntime, "Not connected");
+        }
+
+        int bytesRead = SSL_read(mSSL, message.data(), message.size());
+        if (bytesRead <= 0) {
+            return aos::Error(aos::ErrorEnum::eRuntime, "SSL read failed");
+        }
+
+        return aos::ErrorEnum::eNone;
+    }
+
+    aos::Error Write(std::vector<uint8_t> message) override
+    {
+        if (!mConnected || !mSSL) {
+            return aos::Error(aos::ErrorEnum::eRuntime, "Not connected");
+        }
+
+        int bytesWritten = SSL_write(mSSL, message.data(), message.size());
+        if (bytesWritten <= 0) {
+            return aos::Error(aos::ErrorEnum::eRuntime, "SSL write failed");
+        }
+
+        return aos::ErrorEnum::eNone;
+    }
+
+    aos::Error Close() override
+    {
+        if (mConnected && mSSL) {
+            SSL_shutdown(mSSL);
+        }
+
+        if (mSSL) {
+            SSL_free(mSSL);
+            mSSL = nullptr;
+        }
+
+        if (mCtx) {
+            SSL_CTX_free(mCtx);
+            mCtx = nullptr;
+        }
+
+        if (mEngine) {
+            ENGINE_finish(mEngine);
+            ENGINE_free(mEngine);
+            mEngine = nullptr;
+        }
+
+        mConnected = false;
+
+        if (auto err = mChannel.Close(); !err.IsNone()) {
+            return err;
+        }
+
+        return aos::ErrorEnum::eNone;
+    }
+
+    bool IsConnected() const override { return mConnected; }
+
+private:
+    static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
+    static constexpr int  cMaxRetryCount     = 3;
+
+    CommChannelItf&   mChannel;
+    std::string       mKeyID;
+    std::string       mCertPEM;
+    std::string       mCaCertPath;
+    SSL_CTX*          mCtx       = nullptr;
+    SSL*              mSSL       = nullptr;
+    ENGINE*           mEngine    = nullptr;
+    BIO_METHOD*       mBioMethod = nullptr;
+    std::atomic<bool> mConnected {false};
+
+    aos::Error AttemptConnect()
+    {
+        if (mConnected) {
+            Close();
+        }
+
+        if (auto err = mChannel.Connect(); !err.IsNone()) {
+            return err;
+        }
+
         auto err = createContext();
         if (err != aos::ErrorEnum::eNone)
             return err;
@@ -132,72 +278,24 @@ public:
         return performHandshake();
     }
 
-    aos::Error Read(std::vector<uint8_t>& message) override
+    aos::Error initializeOpenSSL()
     {
-        int bytesRead = SSL_read(mSSL, message.data(), message.size());
-        if (bytesRead <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "SSL read failed");
-        }
-
-        return aos::ErrorEnum::eNone;
-    }
-
-    aos::Error Write(std::vector<uint8_t> message) override
-    {
-        int bytesWritten = SSL_write(mSSL, message.data(), message.size());
-        if (bytesWritten <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "SSL write failed");
-        }
-
-        return aos::ErrorEnum::eNone;
-    }
-
-    aos::Error Close() override
-    {
-        if (mSSL) {
-            SSL_shutdown(mSSL);
-            SSL_free(mSSL);
-            mSSL = nullptr;
-        }
-
-        if (mCtx) {
-            SSL_CTX_free(mCtx);
-            mCtx = nullptr;
-        }
-
         if (mEngine) {
             ENGINE_finish(mEngine);
             ENGINE_free(mEngine);
             mEngine = nullptr;
         }
 
-        EVP_cleanup();
-
-        return aos::ErrorEnum::eNone;
-    }
-
-    bool IsConnected() const override { return mConnected; }
-
-private:
-    CommChannelItf&   mChannel;
-    std::string       mKeyID;
-    std::string       mCertPEM;
-    std::string       mCaCertPath;
-    SSL_CTX*          mCtx       = nullptr;
-    SSL*              mSSL       = nullptr;
-    ENGINE*           mEngine    = nullptr;
-    BIO_METHOD*       mBioMethod = nullptr;
-    std::atomic<bool> mConnected {false};
-
-    aos::Error initializeOpenSSL()
-    {
         mEngine = ENGINE_by_id("pkcs11");
         if (!mEngine) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to load PKCS#11 engine");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load PKCS#11 engine");
         }
 
         if (!ENGINE_init(mEngine)) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to initialize PKCS#11 engine");
+            ENGINE_free(mEngine);
+            mEngine = nullptr;
+
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to initialize PKCS#11 engine");
         }
 
         return aos::ErrorEnum::eNone;
@@ -208,7 +306,7 @@ private:
         const SSL_METHOD* method = TLS_client_method();
         mCtx                     = SSL_CTX_new(method);
         if (!mCtx) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Unable to create SSL context");
+            return aos::Error(aos::ErrorEnum::eRuntime, "unable to create SSL context");
         }
 
         return aos::ErrorEnum::eNone;
@@ -216,54 +314,50 @@ private:
 
     aos::Error configureContext()
     {
-        SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, nullptr);
 
-        EVP_PKEY* pkey = ENGINE_load_private_key(mEngine, mKeyID.c_str(), NULL, NULL);
+        EVP_PKEY* pkey = ENGINE_load_private_key(mEngine, mKeyID.c_str(), nullptr, nullptr);
         if (!pkey) {
-            unsigned long err = ERR_get_error();
-            char          err_buf[256];
-            ERR_error_string_n(err, err_buf, sizeof(err_buf));
-
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to load private key");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load private key");
         }
 
         if (SSL_CTX_use_PrivateKey(mCtx, pkey) <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to set private key");
+            EVP_PKEY_free(pkey);
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set private key");
         }
+        EVP_PKEY_free(pkey);
 
-        // Split the certificate chain into individual certificates
         BIO* bio = BIO_new_mem_buf(mCertPEM.c_str(), -1);
         if (!bio) {
             return aos::Error(aos::ErrorEnum::eRuntime, "failed to create BIO");
         }
         std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
 
-        X509* cert = PEM_read_bio_X509(bio, nullptr, 0, nullptr);
+        X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
         if (!cert) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to load certificate");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load certificate");
         }
         std::unique_ptr<X509, decltype(&X509_free)> certPtr(cert, X509_free);
 
         if (SSL_CTX_use_certificate(mCtx, cert) <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to set certificate");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set certificate");
         }
 
-        // Load the intermediate certificates
         STACK_OF(X509)* chain  = sk_X509_new_null();
         X509* intermediateCert = nullptr;
-        while ((intermediateCert = PEM_read_bio_X509(bio, nullptr, 0, nullptr)) != nullptr) {
+        while ((intermediateCert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr) {
             sk_X509_push(chain, intermediateCert);
         }
 
-        if (SSL_CTX_set1_chain(mCtx, chain) <= 0) {
+        if (sk_X509_num(chain) > 0 && SSL_CTX_set1_chain(mCtx, chain) <= 0) {
             sk_X509_pop_free(chain, X509_free);
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to set certificate chain");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set certificate chain");
         }
 
         sk_X509_pop_free(chain, X509_free);
 
-        if (SSL_CTX_load_verify_locations(mCtx, mCaCertPath.c_str(), NULL) <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to load CA certificate");
+        if (SSL_CTX_load_verify_locations(mCtx, mCaCertPath.c_str(), nullptr) <= 0) {
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load CA certificate");
         }
 
         return aos::ErrorEnum::eNone;
@@ -273,19 +367,22 @@ private:
     {
         mSSL = SSL_new(mCtx);
         if (!mSSL) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to create SSL object");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create SSL object");
         }
 
         mBioMethod = createCustomBioMethod();
         if (!mBioMethod) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to create custom BIO method");
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create custom BIO method");
         }
 
         BIO* rbio = BIO_new(mBioMethod);
         BIO* wbio = BIO_new(mBioMethod);
 
         if (!rbio || !wbio) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Failed to create BIO objects");
+            BIO_free(rbio);
+            BIO_free(wbio);
+
+            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create BIO objects");
         }
 
         BIO_set_data(rbio, this);
@@ -300,10 +397,6 @@ private:
     {
         int result = SSL_connect(mSSL);
         if (result <= 0) {
-            unsigned long errCode = ERR_get_error();
-            char          errBuffer[256];
-            ERR_error_string_n(errCode, errBuffer, sizeof(errBuffer));
-
             return aos::Error(aos::ErrorEnum::eRuntime, "SSL handshake failed");
         }
 
@@ -360,17 +453,13 @@ private:
 
 class CommManager : public CommChannelItf {
 public:
-    CommManager(Pipe& transport)
+    CommManager(SocketClient& transport)
         : mTransport(transport)
     {
-        mThread = std::thread(&CommManager::ReadHandler, this);
+        mThread = std::thread(&CommManager::Run, this);
     }
 
-    ~CommManager()
-    {
-        mShutdown = true;
-        mThread.join();
-    }
+    ~CommManager() { Close(); }
 
     std::shared_ptr<CommChannelItf> CreateCommChannel(int port)
     {
@@ -395,12 +484,57 @@ public:
         return aos::ErrorEnum::eNone;
     }
 
-    aos::Error Close() override { return aos::ErrorEnum::eNone; }
-    aos::Error Connect() override { return aos::ErrorEnum::eNone; }
+    aos::Error Close() override
+    {
+        {
+            std::lock_guard lock {mMutex};
+
+            if (mShutdown) {
+                return aos::ErrorEnum::eNone;
+            }
+
+            mShutdown = true;
+
+            if (auto err = mTransport.Close(); !err.IsNone()) {
+                return err;
+            }
+        }
+
+        mCondVar.notify_all();
+
+        mThread.join();
+
+        return aos::ErrorEnum::eNone;
+    }
+
+    aos::Error Connect() override
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mShutdown) {
+            return aos::ErrorEnum::eRuntime;
+        }
+
+        if (mConnected) {
+            return aos::ErrorEnum::eNone;
+        }
+
+        mConnected = false;
+
+        if (auto err = mTransport.Connect(); !err.IsNone()) {
+            return err;
+        }
+
+        mConnected = true;
+
+        return aos::ErrorEnum::eNone;
+    }
     aos::Error Read([[maybe_unused]] std::vector<uint8_t>& message) override { return aos::ErrorEnum::eNone; }
-    bool       IsConnected() const override { return true; }
+    bool       IsConnected() const override { return mConnected; }
 
 private:
+    static constexpr auto mWaitTimeout = std::chrono::seconds(1);
+
     static void CalculateChecksum(const std::vector<uint8_t>& data, uint8_t* checksum)
     {
         SHA256_CTX sha256;
@@ -409,13 +543,42 @@ private:
         SHA256_Final(checksum, &sha256);
     }
 
-    void ReadHandler()
+    void Run()
+    {
+        while (!mShutdown) {
+            if (auto err = Connect(); !err.IsNone()) {
+                std::unique_lock lock {mMutex};
+
+                LOG_WRN() << "Failed connect to transport: error=" << err;
+
+                mCondVar.wait_for(lock, mWaitTimeout, [this] { return mShutdown.load(); });
+
+                continue;
+            }
+
+            if (auto err = ReadHandler(); !err.IsNone()) {
+                LOG_ERR() << "Failed to read in transport: error=" << err;
+            }
+
+            mConnected = false;
+
+            for (const auto& channel : mChannels) {
+                channel.second->Close();
+            }
+
+            if (auto err = mTransport.Close(); !err.IsNone()) {
+                LOG_ERR() << "Failed to close transport: error=" << err;
+            }
+        }
+    }
+
+    aos::Error ReadHandler()
     {
         while (!mShutdown) {
             std::vector<uint8_t> headerBuffer(sizeof(AosProtocolHeader));
             auto                 err = mTransport.Read(headerBuffer);
             if (!err.IsNone()) {
-                return;
+                return err;
             }
 
             AosProtocolHeader header;
@@ -425,7 +588,7 @@ private:
             std::vector<uint8_t> message(header.mDataSize);
             err = mTransport.Read(message);
             if (!err.IsNone()) {
-                return;
+                return err;
             }
 
             std::array<uint8_t, SHA256_DIGEST_LENGTH> checksum;
@@ -440,16 +603,21 @@ private:
             }
 
             if (err = mChannels[header.mPort]->Receive(message); !err.IsNone()) {
-                return;
+                return err;
             }
         }
+
+        return aos::ErrorEnum::eNone;
     }
 
-    Pipe&                                                mTransport;
+    SocketClient&                                        mTransport;
     std::shared_ptr<CommunicationChannel>                mCommChannel;
     std::thread                                          mThread;
     std::atomic<bool>                                    mShutdown {false};
+    std::atomic<bool>                                    mConnected {false};
     std::map<int, std::shared_ptr<CommunicationChannel>> mChannels;
+    std::mutex                                           mMutex;
+    std::condition_variable                              mCondVar;
 };
 
 class Handler : public HandlerItf {

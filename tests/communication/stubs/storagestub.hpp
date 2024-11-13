@@ -75,6 +75,8 @@ private:
     struct StorageCell {
         StaticString<cCertTypeLen>       mCertType;
         StaticArray<CertInfo, cCellSize> mCertificates;
+
+        bool operator==(const StorageCell& other) const { return mCertType == other.mCertType; }
     };
 
     template <typename Res, typename Func>
