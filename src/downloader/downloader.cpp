@@ -17,10 +17,10 @@
 #include <Poco/ThreadPool.h>
 #include <curl/curl.h>
 
+#include <logger/logmodule.hpp>
 #include <utils/exception.hpp>
 
 #include "downloader.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::mp::downloader {
 

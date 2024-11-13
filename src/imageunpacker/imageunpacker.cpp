@@ -7,9 +7,8 @@
 
 #include <filesystem>
 
+#include <logger/logmodule.hpp>
 #include <utils/exception.hpp>
-
-#include "logger/logmodule.hpp"
 
 #include "imageunpacker.hpp"
 #include "serviceimage.hpp"

@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "logger/logmodule.hpp"
+#include <logger/logmodule.hpp>
 
 #include "vchan.hpp"
 

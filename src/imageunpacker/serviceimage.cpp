@@ -17,11 +17,11 @@
 #include <Poco/SHA2Engine.h>
 #include <Poco/StreamCopier.h>
 
+#include <logger/logmodule.hpp>
 #include <utils/filesystem.hpp>
 #include <utils/image.hpp>
 #include <utils/json.hpp>
 
-#include "logger/logmodule.hpp"
 #include "serviceimage.hpp"
 
 namespace fs = std::filesystem;

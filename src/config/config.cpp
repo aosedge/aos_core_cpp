@@ -7,10 +7,10 @@
 
 #include <fstream>
 
+#include <logger/logmodule.hpp>
 #include <utils/json.hpp>
 
 #include "config.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::mp::config {
 
