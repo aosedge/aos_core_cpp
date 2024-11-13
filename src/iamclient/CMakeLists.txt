@@ -17,7 +17,7 @@ add_definitions(-DLOG_MODULE="iamclient")
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamclient.cpp publicnodeclient.cpp publicservicehandler.cpp)
+set(SOURCES publicnodeclient.cpp)
 
 # ######################################################################################################################
 # Includes
@@ -33,4 +33,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-objects aosutils)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiamclient aosutils)

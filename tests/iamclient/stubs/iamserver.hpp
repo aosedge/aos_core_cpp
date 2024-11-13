@@ -18,8 +18,7 @@
 /**
  * Test IAM server.
  */
-class TestIAMServer final : public iamanager::v5::IAMPublicService::Service,
-                            public iamanager::v5::IAMPublicNodesService::Service {
+class TestIAMServer final : public iamanager::v5::IAMPublicNodesService::Service {
 public:
     /**
      * Constructor.
@@ -32,13 +31,6 @@ public:
      * @return Certificate type.
      */
     std::string GetCertType() const { return mCertType; }
-
-    /**
-     * Set certificate info.
-     *
-     * @param certInfo Certificate info.
-     */
-    void SetCertInfo(const aos::iam::certhandler::CertInfo& certInfo) { mCertInfo = certInfo; }
 
     /**
      * Send incoming message.
@@ -60,6 +52,20 @@ public:
         mCV.wait_for(lock, kTimeout, [this] { return mConnected; });
 
         return mConnected;
+    }
+
+    /**
+     * Wait for disconnection.
+     *
+     * @return True if disconnected.
+     */
+    bool WaitForDisconnection()
+    {
+        std::unique_lock lock {mLock};
+
+        mCV.wait_for(lock, kTimeout, [this] { return !mConnected; });
+
+        return !mConnected;
     }
 
     /**
@@ -88,22 +94,9 @@ private:
     {
         grpc::ServerBuilder builder;
         builder.AddListeningPort("localhost:8002", grpc::InsecureServerCredentials());
-        builder.RegisterService(static_cast<iamanager::v5::IAMPublicService::Service*>(this));
         builder.RegisterService(static_cast<iamanager::v5::IAMPublicNodesService::Service*>(this));
 
         return builder.BuildAndStart();
-    }
-
-    grpc::Status GetCert(
-        grpc::ServerContext*, const iamanager::v5::GetCertRequest* request, iamanager::v5::CertInfo* response) override
-    {
-
-        mCertType = request->type();
-
-        response->set_cert_url(mCertInfo.mCertURL.CStr());
-        response->set_key_url(mCertInfo.mKeyURL.CStr());
-
-        return grpc::Status::OK;
     }
 
     grpc::Status RegisterNode(grpc::ServerContext*,
@@ -123,6 +116,9 @@ private:
             };
         } catch (const std::exception& e) {
         }
+
+        mConnected = false;
+        mCV.notify_all();
 
         return grpc::Status::OK;
     }

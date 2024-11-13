@@ -13,8 +13,7 @@
 #include <vector>
 
 #include <aos/common/tools/error.hpp>
-
-#include "iamclient/types.hpp"
+#include <iamclient/types.hpp>
 
 namespace aos::mp::communication {
 
@@ -125,7 +124,7 @@ public:
      * @return std::unique_ptr<CommChannelItf>.
      */
     virtual std::shared_ptr<CommChannelItf> CreateChannel(
-        int port, iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "")
+        int port, common::iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "")
         = 0;
 };
 

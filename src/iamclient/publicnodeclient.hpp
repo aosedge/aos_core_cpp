@@ -15,17 +15,20 @@
 #include <thread>
 #include <vector>
 
+#include <Poco/Runnable.h>
+#include <Poco/ThreadPool.h>
+
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
 #include <aos/common/tools/error.hpp>
+#include <iamclient/publicservicehandler.hpp>
 #include <utils/channel.hpp>
 
 #include "communication/types.hpp"
 #include "config/config.hpp"
-#include "types.hpp"
 #include "utils/time.hpp"
 
 namespace aos::mp::iamclient {
@@ -33,7 +36,7 @@ namespace aos::mp::iamclient {
 /**
  * Public node client interface.
  */
-class PublicNodeClient : public aos::mp::communication::HandlerItf {
+class PublicNodeClient : public communication::HandlerItf, public iam::certhandler::CertReceiverItf {
 public:
     /**
      * Constructor.
@@ -48,7 +51,8 @@ public:
      * @param publicServer Public server.
      * @return Error error code.
      */
-    Error Init(const config::IAMConfig& cfg, CertProviderItf& certProvider, bool publicServer);
+    Error Init(
+        const config::IAMConfig& cfg, common::iamclient::CertProviderItf& certProvider, bool publicServer = true);
 
     /**
      * Notifies that connection is established.
@@ -75,6 +79,13 @@ public:
      */
     RetWithError<std::vector<uint8_t>> ReceiveMessages() override;
 
+    /**
+     * Subscribes to certificate changes.
+     *
+     * @param certType Certificate type.
+     */
+    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+
 private:
     using StreamPtr = std::unique_ptr<
         grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
@@ -82,9 +93,28 @@ private:
     using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterface>;
     using HandlerFunc              = std::function<Error(const iamanager::v5::IAMIncomingMessages&)>;
 
+    template <typename F>
+    class RunnableWrapper : public Poco::Runnable {
+        F mFunc;
+
+    public:
+        explicit RunnableWrapper(F&& func)
+            : mFunc(std::move(func))
+        {
+        }
+
+        void run() override { mFunc(); }
+    };
+
+    template <typename F>
+    static auto makeRunnable(F&& f)
+    {
+        return new RunnableWrapper<F>(std::forward<F>(f));
+    }
+
     static constexpr auto cReconnectInterval = std::chrono::seconds(3);
 
-    Error CreateCredentials(const std::string& certStorage, CertProviderItf& certProvider, bool publicServer);
+    Error CreateCredentials();
     void  ConnectionLoop(const std::string& url) noexcept;
     Error HandleIncomingMessages();
     Error RegisterNode(const std::string& url);
@@ -95,10 +125,13 @@ private:
     Error SendCachedMessages();
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
+    std::string                                            mCertStorage;
+    common::iamclient::CertProviderItf*                    mCertProvider {};
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     StreamPtr                            mStream;
     PublicNodeServiceStubPtr             mPublicNodeServiceStub;
+    Poco::ThreadPool                     mThreadPool;
 
     std::thread             mConnectionThread;
     std::thread             mHandlerOutgoingMsgsThread;
