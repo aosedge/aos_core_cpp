@@ -40,6 +40,14 @@ jobs:
           cd build
           make; make tests; make coverage
 
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+
       - name: Static analysis
         run: |
           cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
