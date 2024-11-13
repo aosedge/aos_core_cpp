@@ -41,6 +41,14 @@ jobs:
           cd build
           make; make tests; make coverage
 
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+
       - name: Upload codecov report
         uses: codecov/codecov-action@v3
         with:
