@@ -2,3 +2,6 @@
 	path = external/aos_core_lib_cpp
 	url = https://github.com/aosedge/aos_core_lib_cpp.git
 	branch = develop
+[submodule "external/aos_core_api"]
+	path = external/aos_core_api
+	url = https://github.com/aosedge/aos_core_api.git

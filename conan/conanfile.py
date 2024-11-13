@@ -10,4 +10,5 @@ class AosCommonCpp(ConanFile):
         self.requires("grpc/1.54.3")
 
     def build_requirements(self):
+        self.tool_requires("protobuf/3.21.12")
         self.tool_requires("grpc/1.54.3")
