@@ -39,16 +39,23 @@ public:
         grpc::ServerReaderWriter<servicemanager::v4::SMIncomingMessages, servicemanager::v4::SMOutgoingMessages>*
             stream) override
     {
-        servicemanager::v4::SMOutgoingMessages outgoingMsg;
+        try {
+            servicemanager::v4::SMOutgoingMessages outgoingMsg;
 
-        mStream = stream;
-        mCV.notify_all();
-
-        while (stream->Read(&outgoingMsg)) {
-            mOutgoingMsg = outgoingMsg;
-            mReceived.store(true);
+            mStream    = stream;
+            mConnected = true;
             mCV.notify_all();
+
+            while (stream->Read(&outgoingMsg)) {
+                mOutgoingMsg = outgoingMsg;
+                mReceived.store(true);
+                mCV.notify_all();
+            }
+        } catch (const std::exception& e) {
         }
+
+        mConnected = false;
+        mCV.notify_all();
 
         return grpc::Status::OK;
     }
@@ -63,6 +70,34 @@ public:
         mCV.wait_for(lock, cWaitTimeout, [&] { return mReceived.load(); });
 
         mReceived.store(false);
+    }
+
+    /**
+     * Wait for connection.
+     *
+     * @return True if connected.
+     */
+    bool WaitForConnection()
+    {
+        std::unique_lock lock {mMutex};
+
+        mCV.wait_for(lock, cWaitTimeout, [this] { return mConnected; });
+
+        return mConnected;
+    }
+
+    /**
+     * Wait for disconnection.
+     *
+     * @return True if disconnected.
+     */
+    bool WaitForDisconnection()
+    {
+        std::unique_lock lock {mMutex};
+
+        mCV.wait_for(lock, cWaitTimeout, [this] { return !mConnected; });
+
+        return !mConnected;
     }
 
     /**
@@ -442,6 +477,7 @@ private:
     std::condition_variable                mCV;
     servicemanager::v4::SMOutgoingMessages mOutgoingMsg;
     std::atomic<bool>                      mReceived {false};
+    bool                                   mConnected {};
 };
 
 #endif /* SMSERVICE_HPP_ */

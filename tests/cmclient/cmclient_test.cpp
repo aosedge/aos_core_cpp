@@ -10,13 +10,14 @@
 #include <optional>
 
 #include <aos/test/log.hpp>
+#include <iamclient/publicservicehandler.hpp>
 #include <utils/channel.hpp>
 
 #include <gtest/gtest.h>
 
 #include "cmclient/cmclient.hpp"
 #include "config/config.hpp"
-#include "iamclient/types.hpp"
+#include "iamclient/mocks/certprovider.hpp"
 #include "stubs/smservice.hpp"
 
 using namespace testing;
@@ -266,30 +267,24 @@ static servicemanager::v4::SMOutgoingMessages CreateClockSyncRequest()
  **********************************************************************************************************************/
 
 class CMClientTest : public ::testing::Test {
+public:
+    CMClientTest() { mCfg.mCMConfig.mCMServerURL = "localhost:8080"; }
+
 protected:
     void SetUp() override
     {
         aos::InitLog();
 
-        aos::mp::config::Config cfg;
-        cfg.mCMConfig.mCMServerURL = "localhost:8080";
-
-        mSMService.emplace(cfg.mCMConfig.mCMServerURL);
+        mSMService.emplace(mCfg.mCMConfig.mCMServerURL);
 
         mCMClient.emplace();
-
-        auto err = mCMClient->Init(cfg, *mCertProvider, *mCertLoader, *mCryptoProvider, true);
-        ASSERT_EQ(err, aos::ErrorEnum::eNone);
-        mCMClient->OnConnected();
     }
 
-    void TearDown() override { mCMClient->OnDisconnected(); }
-
-    std::optional<TestSMService>         mSMService;
-    aos::mp::iamclient::CertProviderItf* mCertProvider {};
-    aos::cryptoutils::CertLoaderItf*     mCertLoader {};
-    aos::crypto::x509::ProviderItf*      mCryptoProvider {};
-    std::optional<CMClient>              mCMClient;
+    std::optional<TestSMService>    mSMService;
+    aos::crypto::CertLoaderItf*     mCertLoader {};
+    aos::crypto::x509::ProviderItf* mCryptoProvider {};
+    std::optional<CMClient>         mCMClient;
+    aos::mp::config::Config         mCfg;
 };
 
 /***********************************************************************************************************************
@@ -298,6 +293,11 @@ protected:
 
 TEST_F(CMClientTest, SendOutgoingMsg)
 {
+    MockCertProvider certProvider {};
+    auto             err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    mCMClient->OnConnected();
+
     // Send a unit config status message
     auto                 outgoingMsg = CreateNodeConfigStatus();
     std::vector<uint8_t> data(outgoingMsg.ByteSizeLong());
@@ -518,15 +518,22 @@ TEST_F(CMClientTest, SendOutgoingMsg)
     mSMService->WaitForResponse();
 
     EXPECT_TRUE(mSMService->GetOutgoingMsg().has_clock_sync_request());
+
+    mCMClient->OnDisconnected();
 }
 
 TEST_F(CMClientTest, SendIncomingMessages)
 {
+    MockCertProvider certProvider {};
+    auto             err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    mCMClient->OnConnected();
+
     // Send a get unit config status message
     EXPECT_TRUE(mSMService->SendGetNodeConfigStatus());
 
-    auto [msg, err] = mCMClient->ReceiveMessages();
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    auto [msg, errRecv] = mCMClient->ReceiveMessages();
+    ASSERT_EQ(errRecv, aos::ErrorEnum::eNone);
 
     servicemanager::v4::SMIncomingMessages incomingMsg;
 
@@ -744,4 +751,27 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(incomingMsg.has_clock_sync());
     EXPECT_EQ(incomingMsg.clock_sync().current_time().seconds(), 1);
     EXPECT_EQ(incomingMsg.clock_sync().current_time().nanos(), 1);
+
+    mCMClient->OnDisconnected();
+}
+
+TEST_F(CMClientTest, CertChanged)
+{
+    MockCertProvider certProvider {};
+    EXPECT_CALL(certProvider, GetMTLSConfig(_))
+        .Times(2)
+        .WillRepeatedly(testing::Return(grpc::InsecureChannelCredentials()));
+
+    auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, false);
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+
+    mCMClient->OnConnected();
+    EXPECT_TRUE(mSMService->WaitForConnection());
+
+    mCMClient->OnCertChanged(aos::iam::certhandler::CertInfo {});
+
+    EXPECT_TRUE(mSMService->WaitForDisconnection());
+    EXPECT_TRUE(mSMService->WaitForConnection());
+
+    mCMClient->OnDisconnected();
 }

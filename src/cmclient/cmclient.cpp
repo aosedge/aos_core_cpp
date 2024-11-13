@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <logger/logmodule.hpp>
 #include <utils/grpchelper.hpp>
 
 #include "cmclient.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::mp::cmclient {
 
@@ -16,17 +16,19 @@ namespace aos::mp::cmclient {
  * Public
  **********************************************************************************************************************/
 
-Error CMClient::Init(const config::Config& config, iamclient::CertProviderItf& certProvider,
-    cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection)
+Error CMClient::Init(const config::Config& config, common::iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection)
 {
     LOG_INF() << "Initializing CM client";
 
-    mCertProvider   = &certProvider;
-    mCertLoader     = &certLoader;
-    mCryptoProvider = &cryptoProvider;
-    mUrl            = config.mCMConfig.mCMServerURL;
+    mCertProvider       = &certProvider;
+    mCertLoader         = &certLoader;
+    mCryptoProvider     = &cryptoProvider;
+    mUrl                = config.mCMConfig.mCMServerURL;
+    mInsecureConnection = insecureConnection;
+    mCertStorage        = config.mCertStorage;
 
-    auto [credentials, err] = CreateCredentials(config.mCertStorage, insecureConnection);
+    auto [credentials, err] = CreateCredentials();
     if (!err.IsNone()) {
         return err;
     }
@@ -69,19 +71,70 @@ void CMClient::OnDisconnected()
     Close();
 }
 
+// cppcheck-suppress unusedFunction
+void CMClient::OnCertChanged([[maybe_unused]] const iam::certhandler::CertInfo& info)
+{
+    LOG_DBG() << "Certificate changed";
+
+    auto task = [this] {
+        {
+            std::lock_guard lock {mMutex};
+
+            if (mCtx) {
+                mCtx->TryCancel();
+            }
+
+            mCMConnected = false;
+        }
+
+        while (!mShutdown) {
+            auto [credentials, err] = CreateCredentials();
+            if (!err.IsNone()) {
+                std::unique_lock lock {mMutex};
+
+                LOG_ERR() << "Failed to create credentials: error=" << err;
+
+                mCV.wait_for(lock, cReconnectTimeout, [this] { return mShutdown.load(); });
+
+                continue;
+            }
+
+            std::lock_guard lock {mMutex};
+
+            mCredentials = credentials;
+
+            return;
+        }
+    };
+
+    try {
+        mThreadPool.start(*makeRunnable(std::move(task)));
+    } catch (const Poco::Exception& e) {
+        LOG_ERR() << "Failed to start cert change task: error=" << e.displayText().c_str();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to start cert change task: error=" << e.what();
+    }
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
 void CMClient::Close()
 {
-
     {
         std::lock_guard lock {mMutex};
 
         LOG_INF() << "Shutting down CM client";
 
-        if (mShutdown || !mNotifyConnected) {
+        if (mShutdown) {
+            return;
+        }
+
+        mOutgoingMsgChannel.Close();
+        mIncomingMsgChannel.Close();
+
+        if (!mNotifyConnected) {
             return;
         }
 
@@ -95,8 +148,7 @@ void CMClient::Close()
 
     mCV.notify_all();
 
-    mOutgoingMsgChannel.Close();
-    mIncomingMsgChannel.Close();
+    mThreadPool.joinAll();
 
     if (mCMThread.joinable()) {
         mCMThread.join();
@@ -107,16 +159,15 @@ void CMClient::Close()
     }
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CMClient::CreateCredentials(
-    const std::string& certStorage, bool insecureConnection)
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CMClient::CreateCredentials()
 {
-    if (insecureConnection) {
+    if (mInsecureConnection) {
         return {grpc::InsecureChannelCredentials(), ErrorEnum::eNone};
     }
 
     iam::certhandler::CertInfo certInfo;
 
-    return mCertProvider->GetMTLSConfig(certStorage);
+    return mCertProvider->GetMTLSConfig(mCertStorage);
 }
 
 SMServiceStubPtr CMClient::CreateSMStub(const std::string& url)

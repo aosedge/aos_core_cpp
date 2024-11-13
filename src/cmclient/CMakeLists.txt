@@ -33,4 +33,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-objects aosutils)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiamclient aoscoreapi-gen-sm aosutils)
