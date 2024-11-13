@@ -30,7 +30,7 @@ public:
      * @param config Configuration
      * @return Error
      */
-    Error Init(const VChanConfig& config);
+    Error Init(const config::VChanConfig& config);
 
     /**
      * Connects to the virtual channel.
@@ -65,7 +65,7 @@ private:
 
     struct libxenvchan* mVChanRead {};
     struct libxenvchan* mVChanWrite {};
-    VChanConfig         mConfig;
+    config::VChanConfig mConfig {};
     std::atomic<bool>   mShutdown {false};
 };
 
