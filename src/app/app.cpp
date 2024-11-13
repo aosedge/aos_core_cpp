@@ -21,10 +21,10 @@
 #include <systemd/sd-daemon.h>
 
 #include <aos/common/version.hpp>
+#include <logger/logmodule.hpp>
 #include <utils/exception.hpp>
 
 #include "app.hpp"
-#include "logger/logmodule.hpp"
 // cppcheck-suppress missingInclude
 #include "version.hpp"
 
@@ -93,10 +93,12 @@ void App::initialize(Application& self)
 
     mConfig = retConfig.mValue;
 
-    err = mIAMClient.Init(mConfig, mCertLoader, mCryptoProvider, mProvisioning);
+    err = mPublicServiceHandler.Init(
+        aos::common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL, mConfig.mCACert}, mCertLoader,
+        mCryptoProvider, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
 
-    err = mCMClient.Init(mConfig, mIAMClient, mCertLoader, mCryptoProvider, mProvisioning);
+    err = mCMClient.Init(mConfig, mPublicServiceHandler, mCertLoader, mCryptoProvider, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW("can't initialize CM client", err);
 
 #ifdef VCHAN
@@ -112,18 +114,40 @@ void App::initialize(Application& self)
         err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
     } else {
-        err = mCommunicationManager.Init(mConfig, mTransport, &mIAMClient, &mCertLoader, &mCryptoProvider);
+        err = mCommunicationManager.Init(mConfig, mTransport, &mCertLoader, &mCryptoProvider);
         AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
 
-        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mIAMClient);
+        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mPublicServiceHandler);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
 
-        err = mIAMProtectedConnection.Init(mConfig.mIAMConfig.mSecurePort, mIAMClient.GetProtectedHandler(),
-            mCommunicationManager, &mIAMClient, mConfig.mVChan.mIAMCertStorage);
+        err = mProtectedNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, false);
+        AOS_ERROR_CHECK_AND_THROW("can't initialize protected node client", err);
+
+        err = mIAMProtectedConnection.Init(mConfig.mIAMConfig.mSecurePort, mProtectedNodeClient, mCommunicationManager,
+            &mPublicServiceHandler, mConfig.mVChan.mIAMCertStorage);
         AOS_ERROR_CHECK_AND_THROW("can't initialize IAM protected connection", err);
     }
-    err = mIAMPublicConnection.Init(mConfig.mIAMConfig.mOpenPort, mIAMClient.GetPublicHandler(), mCommunicationManager);
+    err = mPublicNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, true);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize public node client", err);
+
+    err = mIAMPublicConnection.Init(mConfig.mIAMConfig.mOpenPort, mPublicNodeClient, mCommunicationManager);
     AOS_ERROR_CHECK_AND_THROW("can't initialize IAM public connection", err);
+
+    // Subscribe to certificate changed
+
+    if (!mProvisioning) {
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage, mCMClient);
+        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage, mProtectedNodeClient);
+        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage, mCommunicationManager);
+        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage, mCommunicationManager);
+        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+    }
 
     // Notify systemd
 
@@ -137,8 +161,9 @@ void App::uninitialize()
 {
     LOG_INF() << "Uninitialize message-proxy";
 
-    mTransport.Close();
+    mTransport.Shutdown();
     mCommunicationManager.Close();
+    mPublicServiceHandler.Close();
 
     mCMConnection.Close();
     if (!mProvisioning) {

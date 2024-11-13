@@ -16,6 +16,7 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <iamclient/publicservicehandler.hpp>
 
 #include "cmclient/cmclient.hpp"
 #include "communication/cmconnection.hpp"
@@ -28,7 +29,7 @@
 #endif
 
 #include "config/config.hpp"
-#include "iamclient/iamclient.hpp"
+#include "iamclient/publicnodeclient.hpp"
 
 /**
  * Aos message-proxy application.
@@ -64,13 +65,15 @@ private:
     std::string                 mConfigFile;
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::cryptoutils::CertLoader       mCertLoader;
+    aos::crypto::CertLoader            mCertLoader;
     aos::pkcs11::PKCS11Manager         mPKCS11Manager;
 
     aos::mp::config::Config mConfig;
 
-    aos::mp::iamclient::IAMClient mIAMClient;
-    aos::mp::cmclient::CMClient   mCMClient;
+    aos::common::iamclient::PublicServiceHandler mPublicServiceHandler;
+    aos::mp::cmclient::CMClient                  mCMClient;
+    aos::mp::iamclient::PublicNodeClient         mPublicNodeClient;
+    aos::mp::iamclient::PublicNodeClient         mProtectedNodeClient;
 
 #ifdef VCHAN
     aos::mp::communication::VChan mTransport;
