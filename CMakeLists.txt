@@ -58,12 +58,14 @@ if(NOT GIT_FOUND)
     set(GIT_EXECUTABLE git)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${AOS_CORE_LIB_DIR}/cmake")
+
 execute_process(
     OUTPUT_FILE ${CMAKE_BINARY_DIR}/version.hpp
     COMMAND
         ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE} -D INPUT_FILE=${CMAKE_SOURCE_DIR}/src/version.hpp.in -D
         OUTPUT_FILE=${CMAKE_BINARY_DIR}/version.hpp -D GIT_SOURCE_DIR=${CMAKE_SOURCE_DIR} -P
-        ${CMAKE_SOURCE_DIR}/cmake/GenerateVersion.cmake
+        ${AOS_CORE_LIB_DIR}/cmake/GenerateVersion.cmake
 )
 
 include_directories(${CMAKE_BINARY_DIR})
@@ -71,8 +73,6 @@ include_directories(${CMAKE_BINARY_DIR})
 # ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
-
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # Poco lib
 find_package(
