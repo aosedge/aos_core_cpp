@@ -65,17 +65,15 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 
 void PublicMessageHandler::OnNodeInfoChange(const aos::NodeInfo& info)
 {
-    LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID;
-
     iamproto::NodeInfo nodeInfo;
     utils::ConvertToProto(info, nodeInfo);
 
     mNodeChangedController.WriteToStreams(nodeInfo);
 }
 
-void PublicMessageHandler::OnNodeRemoved(const aos::String& id)
+void PublicMessageHandler::OnNodeRemoved(const aos::String& nodeID)
 {
-    LOG_DBG() << "Process on node removed: nodeID=" << id;
+    (void)nodeID;
 }
 
 aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages)
@@ -120,7 +118,7 @@ void PublicMessageHandler::Close()
 
 aos::Error PublicMessageHandler::SetNodeStatus(const aos::NodeStatus& status)
 {
-    LOG_DBG() << "Process set node status: status=" << status;
+    LOG_DBG() << "Process set node status: nodeID=" << mNodeInfo.mNodeID << ", status=" << status;
 
     auto err = mNodeInfoProvider->SetNodeStatus(status);
     if (!err.IsNone()) {

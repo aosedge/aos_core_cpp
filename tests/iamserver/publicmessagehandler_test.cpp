@@ -539,8 +539,8 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
 
     request.set_node_id("test-node-id");
 
-    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeInfo& nodeInfo) {
-        nodeInfo.mNodeID = nodeId;
+    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeInfo& nodeInfo) {
+        nodeInfo.mNodeID = nodeID;
         nodeInfo.mName   = "test-name";
 
         return aos::ErrorEnum::eNone;

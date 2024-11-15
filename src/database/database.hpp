@@ -101,11 +101,11 @@ public:
     /**
      * Returns node info.
      *
-     * @param nodeId node identifier.
+     * @param nodeID node identifier.
      * @param[out] nodeInfo result node identifier.
      * @return Error.
      */
-    aos::Error GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeInfo) const override;
+    aos::Error GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const override;
 
     /**
      * Returns ids for all the node in the manager.
@@ -118,10 +118,10 @@ public:
     /**
      * Removes node info by its id.
      *
-     * @param nodeId node identifier.
+     * @param nodeID node identifier.
      * @return Error.
      */
-    aos::Error RemoveNodeInfo(const aos::String& nodeId) override;
+    aos::Error RemoveNodeInfo(const aos::String& nodeID) override;
 
     /**
      * Destroys certificate info storage.

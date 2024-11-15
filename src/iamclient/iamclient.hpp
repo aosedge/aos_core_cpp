@@ -84,8 +84,8 @@ private:
     aos::Error CheckCurrentNodeStatus(const std::initializer_list<aos::NodeStatus>& allowedStatuses);
 
     bool SendCreateKeyResponse(
-        const aos::String& nodeId, const aos::String& type, const aos::String& csr, const aos::Error& error);
-    bool SendApplyCertResponse(const aos::String& nodeId, const aos::String& type, const aos::String& certURL,
+        const aos::String& nodeID, const aos::String& type, const aos::String& csr, const aos::Error& error);
+    bool SendApplyCertResponse(const aos::String& nodeID, const aos::String& type, const aos::String& certURL,
         const aos::Array<uint8_t>& serial, const aos::Error& error);
     bool SendGetCertTypesResponse(const aos::iam::provisionmanager::CertTypes& types, const aos::Error& error);
 

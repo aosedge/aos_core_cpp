@@ -94,8 +94,8 @@ grpc::Status NodeStreamHandler::GetCertTypes(const iamproto::GetCertTypesRequest
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_cert_types_response();
 
+    outgoing.mutable_cert_types_response();
     incoming.mutable_get_cert_types_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -116,8 +116,8 @@ grpc::Status NodeStreamHandler::StartProvisioning(const iamproto::StartProvision
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_start_provisioning_response();
 
+    outgoing.mutable_start_provisioning_response();
     incoming.mutable_start_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -138,8 +138,8 @@ grpc::Status NodeStreamHandler::FinishProvisioning(const iamproto::FinishProvisi
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_finish_provisioning_response();
 
+    outgoing.mutable_finish_provisioning_response();
     incoming.mutable_finish_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -160,8 +160,8 @@ grpc::Status NodeStreamHandler::Deprovision(const iamproto::DeprovisionRequest* 
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_deprovision_response();
 
+    outgoing.mutable_deprovision_response();
     incoming.mutable_deprovision_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -182,8 +182,8 @@ grpc::Status NodeStreamHandler::PauseNode(const iamproto::PauseNodeRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_pause_node_response();
 
+    outgoing.mutable_pause_node_response();
     incoming.mutable_pause_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -204,8 +204,8 @@ grpc::Status NodeStreamHandler::ResumeNode(const iamproto::ResumeNodeRequest* re
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_resume_node_response();
 
+    outgoing.mutable_resume_node_response();
     incoming.mutable_resume_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -226,8 +226,8 @@ grpc::Status NodeStreamHandler::CreateKey(const iamproto::CreateKeyRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_create_key_response();
 
+    outgoing.mutable_create_key_response();
     incoming.mutable_create_key_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -248,8 +248,8 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_apply_cert_response();
 
+    outgoing.mutable_apply_cert_response();
     incoming.mutable_apply_cert_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -284,11 +284,11 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
     iamproto::IAMOutgoingMessages& response, const std::chrono::seconds responseTimeout)
 {
     if (mIsClosed) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "Stream is closed"));
+        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "stream is closed"));
     }
 
     if (!mStream->Write(request)) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "Failed to send message"));
+        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "failed to send message"));
     }
 
     try {
@@ -302,7 +302,7 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
         }
 
         if (responseFuture.wait_for(responseTimeout) != std::future_status::ready) {
-            return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eTimeout, "Response timeout"));
+            return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eTimeout, "response timeout"));
         }
 
         response = responseFuture.get();

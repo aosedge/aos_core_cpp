@@ -131,8 +131,8 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeStatus status) {
-        EXPECT_EQ(nodeId, "node0");
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+        EXPECT_EQ(nodeID, "node0");
         EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::ePaused);
 
         return aos::ErrorEnum::eNone;
@@ -158,8 +158,8 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeStatus status) {
-        EXPECT_EQ(nodeId, "node0");
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+        EXPECT_EQ(nodeID, "node0");
         EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::ePaused);
 
         return aos::ErrorEnum::eFailed;
@@ -185,8 +185,8 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeStatus status) {
-        EXPECT_EQ(nodeId, "node0");
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+        EXPECT_EQ(nodeID, "node0");
         EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::eProvisioned);
 
         return aos::ErrorEnum::eNone;
@@ -212,8 +212,8 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeId, aos::NodeStatus status) {
-        EXPECT_EQ(nodeId, "node0");
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+        EXPECT_EQ(nodeID, "node0");
         EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::eProvisioned);
 
         return aos::ErrorEnum::eFailed;

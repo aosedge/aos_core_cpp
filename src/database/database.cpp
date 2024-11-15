@@ -189,18 +189,18 @@ aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error Database::GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeInfo) const
+aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const
 {
     try {
         Poco::Data::Statement       statement {*mSession};
         Poco::Nullable<std::string> pocoInfo;
 
-        statement << "SELECT info FROM nodeinfo WHERE id = ?;", bind(nodeId.CStr()), into(pocoInfo);
+        statement << "SELECT info FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), into(pocoInfo);
         if (statement.execute() == 0) {
             return aos::ErrorEnum::eNotFound;
         }
 
-        nodeInfo.mNodeID = nodeId;
+        nodeInfo.mNodeID = nodeID;
 
         if (!pocoInfo.isNull()) {
             Poco::JSON::Parser parser;
@@ -246,10 +246,10 @@ aos::Error Database::GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>
     }
 }
 
-aos::Error Database::RemoveNodeInfo(const aos::String& nodeId)
+aos::Error Database::RemoveNodeInfo(const aos::String& nodeID)
 {
     try {
-        *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeId.CStr()), now;
+        *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), now;
     } catch (const Poco::Exception&) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }

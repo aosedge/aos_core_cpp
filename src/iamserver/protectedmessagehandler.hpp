@@ -105,7 +105,7 @@ private:
     grpc::Status UnregisterInstance(grpc::ServerContext* context, const iamproto::UnregisterInstanceRequest* request,
         google::protobuf::Empty* response) override;
 
-    bool ProcessOnThisNode(const std::string& nodeId);
+    bool ProcessOnThisNode(const std::string& nodeID);
 
     static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
     static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);

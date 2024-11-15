@@ -55,7 +55,7 @@ static aos::Error ExecProcess(const std::string& cmd, const std::vector<std::str
     if (int exitCode = ph.wait(); exitCode != 0) {
         aos::StaticString<aos::cMaxErrorStrLen> errStr;
 
-        errStr.Format("Process failed: cmd=%s,code=%d", cmd.c_str(), exitCode);
+        errStr.Format("Process failed: cmd=%s, code=%d", cmd.c_str(), exitCode);
 
         return {aos::ErrorEnum::eFailed, errStr.CStr()};
     }
@@ -70,7 +70,7 @@ static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std:
         const std::vector<std::string> args {cmdArgs.begin() + 1, cmdArgs.end()};
 
         if (auto err = ExecProcess(cmdArgs[0], args, output); !err.IsNone()) {
-            LOG_ERR() << cmdName.c_str() << " exec failed: output = " << output.c_str() << ", err = " << err;
+            LOG_ERR() << cmdName.c_str() << " exec failed: output=" << output.c_str() << ", error=" << err;
 
             return err;
         }
@@ -195,7 +195,7 @@ aos::Error IAMServer::OnEncryptDisk(const aos::String& password)
 
 void IAMServer::OnNodeInfoChange(const aos::NodeInfo& info)
 {
-    LOG_DBG() << "Process on node info change";
+    LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", status=" << info.mStatus;
 
     mPublicMessageHandler.OnNodeInfoChange(info);
     mProtectedMessageHandler.OnNodeInfoChange(info);
@@ -203,7 +203,7 @@ void IAMServer::OnNodeInfoChange(const aos::NodeInfo& info)
 
 void IAMServer::OnNodeRemoved(const aos::String& id)
 {
-    LOG_DBG() << "Process on node removed";
+    LOG_DBG() << "Process on node removed: nodeID=" << id;
 
     mPublicMessageHandler.OnNodeRemoved(id);
     mProtectedMessageHandler.OnNodeRemoved(id);

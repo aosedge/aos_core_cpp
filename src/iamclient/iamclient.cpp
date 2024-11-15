@@ -419,7 +419,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
 
 bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 {
-    const aos::String                    nodeId   = request.node_id().c_str();
+    const aos::String                    nodeID   = request.node_id().c_str();
     const aos::String                    certType = request.type().c_str();
     aos::StaticString<aos::cSystemIDLen> subject  = request.subject().c_str();
     const aos::String                    password = request.password().c_str();
@@ -429,7 +429,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
     if (subject.IsEmpty() && !mIdentHandler) {
         LOG_ERR() << "Subject can't be empty";
 
-        return SendCreateKeyResponse(nodeId, certType, {}, AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument));
+        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument));
     }
 
     aos::Error err = aos::ErrorEnum::eNone;
@@ -439,7 +439,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
         if (!err.IsNone()) {
             LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
 
-            return SendCreateKeyResponse(nodeId, certType, {}, AOS_ERROR_WRAP(err));
+            return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(err));
         }
     }
 
@@ -447,12 +447,12 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 
     err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, csr));
 
-    return SendCreateKeyResponse(nodeId, certType, csr, err);
+    return SendCreateKeyResponse(nodeID, certType, csr, err);
 }
 
 bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
 {
-    const aos::String nodeId   = request.node_id().c_str();
+    const aos::String nodeID   = request.node_id().c_str();
     const aos::String certType = request.type().c_str();
     const aos::String pemCert  = request.cert().c_str();
 
@@ -461,7 +461,7 @@ bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
     aos::iam::certhandler::CertInfo certInfo;
     aos::Error                      err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
 
-    return SendApplyCertResponse(nodeId, certType, certInfo.mCertURL, certInfo.mSerial, err);
+    return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
 
 bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request)
@@ -494,12 +494,12 @@ aos::Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<aos::No
 }
 
 bool IAMClient::SendCreateKeyResponse(
-    const aos::String& nodeId, const aos::String& type, const aos::String& csr, const aos::Error& error)
+    const aos::String& nodeID, const aos::String& type, const aos::String& csr, const aos::Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
 
-    response.set_node_id(nodeId.CStr());
+    response.set_node_id(nodeID.CStr());
     response.set_type(type.CStr());
     response.set_csr(csr.CStr());
 
@@ -508,7 +508,7 @@ bool IAMClient::SendCreateKeyResponse(
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::String& type, const aos::String& certURL,
+bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::String& type, const aos::String& certURL,
     const aos::Array<uint8_t>& serial, const aos::Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
@@ -525,7 +525,7 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::Stri
         }
     }
 
-    response.set_node_id(nodeId.CStr());
+    response.set_node_id(nodeID.CStr());
     response.set_type(type.CStr());
     response.set_cert_url(certURL.CStr());
     response.set_serial(protoSerial);
