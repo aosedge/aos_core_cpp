@@ -417,6 +417,8 @@ NodeStreamHandler::Ptr NodeController::GetNodeStreamHandler(const std::string& n
         return it->first;
     }
 
+    LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
+
     return {nullptr};
 }
 

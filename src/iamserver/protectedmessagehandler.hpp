@@ -108,8 +108,6 @@ private:
         iamproto::RegisterInstanceResponse* response) override;
     grpc::Status UnregisterInstance(grpc::ServerContext* context, const iamproto::UnregisterInstanceRequest* request,
         google::protobuf::Empty* response) override;
-
-    bool ProcessOnThisNode(const std::string& nodeID);
 };
 
 #endif

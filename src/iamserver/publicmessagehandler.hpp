@@ -106,7 +106,8 @@ protected:
     aos::NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
     aos::iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
     aos::iam::provisionmanager::ProvisionManagerItf* GetProvisionManager() { return mProvisionManager; }
-    aos::Error                                       SetNodeStatus(const aos::NodeStatus& status);
+    aos::Error SetNodeStatus(const std::string& nodeID, const aos::NodeStatus& status);
+    bool       ProcessOnThisNode(const std::string& nodeID);
 
 private:
     static constexpr auto       cIamAPIVersion       = 5;

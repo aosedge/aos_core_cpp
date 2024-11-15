@@ -116,21 +116,25 @@ void PublicMessageHandler::Close()
  * Protected
  **********************************************************************************************************************/
 
-aos::Error PublicMessageHandler::SetNodeStatus(const aos::NodeStatus& status)
+aos::Error PublicMessageHandler::SetNodeStatus(const std::string& nodeID, const aos::NodeStatus& status)
 {
-    LOG_DBG() << "Process set node status: nodeID=" << mNodeInfo.mNodeID << ", status=" << status;
-
-    auto err = mNodeInfoProvider->SetNodeStatus(status);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (ProcessOnThisNode(nodeID)) {
+        if (auto err = mNodeInfoProvider->SetNodeStatus(status); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
-    err = mNodeManager->SetNodeStatus(mNodeInfo.mNodeID, status);
-    if (!err.IsNone()) {
+    if (auto err = mNodeManager->SetNodeStatus(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), status);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     return aos::ErrorEnum::eNone;
+}
+
+bool PublicMessageHandler::ProcessOnThisNode(const std::string& nodeID)
+{
+    return nodeID.empty() || aos::String(nodeID.c_str()) == GetNodeInfo().mNodeID;
 }
 
 /***********************************************************************************************************************
