@@ -14,7 +14,7 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
@@ -56,7 +56,7 @@ public:
      */
     aos::Error Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
         aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-        aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
+        aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         aos::iam::nodemanager::NodeManagerItf&           nodeManager,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode);
@@ -128,7 +128,7 @@ private:
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
     Config                          mConfig;
-    aos::cryptoutils::CertLoader*   mCertLoader;
+    aos::crypto::CertLoader*        mCertLoader;
     aos::crypto::x509::ProviderItf* mCryptoProvider;
 
     NodeController                           mNodeController;

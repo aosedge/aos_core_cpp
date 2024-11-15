@@ -16,8 +16,8 @@
  */
 class CertHandlerItfMock : public aos::iam::certhandler::CertHandlerItf {
 public:
-    MOCK_METHOD(
-        aos::Error, GetCertTypes, (aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>&), (override));
+    MOCK_METHOD(aos::Error, GetCertTypes, (aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>&),
+        (const override));
     MOCK_METHOD(aos::Error, SetOwner, (const aos::String&, const aos::String&), (override));
     MOCK_METHOD(aos::Error, Clear, (const aos::String&), (override));
     MOCK_METHOD(

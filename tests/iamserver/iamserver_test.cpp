@@ -76,7 +76,7 @@ protected:
 
     aos::iam::certhandler::CertHandler mCertHandler;
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::cryptoutils::CertLoader       mCertLoader;
+    aos::crypto::CertLoader            mCertLoader;
 
     // mocks
     aos::iam::identhandler::IdentHandlerMock         mIdentHandler;

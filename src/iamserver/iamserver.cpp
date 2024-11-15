@@ -15,8 +15,8 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
@@ -85,7 +85,7 @@ static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std:
 
 aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-    aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
+    aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     aos::iam::nodemanager::NodeManagerItf&           nodeManager,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode)

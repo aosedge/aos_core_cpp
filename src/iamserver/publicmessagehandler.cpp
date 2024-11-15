@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>

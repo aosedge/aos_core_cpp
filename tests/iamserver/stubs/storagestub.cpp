@@ -70,7 +70,9 @@ Error StorageStub::RemoveCertInfo(const String& certType, const String& certURL)
 
     for (auto& cur : cell->mCertificates) {
         if (cur.mCertURL == certURL) {
-            return cell->mCertificates.Remove(&cur).mError;
+            cell->mCertificates.Erase(&cur);
+
+            return ErrorEnum::eNone;
         }
     }
 
@@ -84,7 +86,9 @@ Error StorageStub::RemoveAllCertsInfo(const String& certType)
         return ErrorEnum::eNotFound;
     }
 
-    return mStorage.Remove(cell).mError;
+    mStorage.Erase(cell);
+
+    return ErrorEnum::eNone;
 }
 
 StorageStub::StorageCell* StorageStub::FindCell(const String& certType)

@@ -19,7 +19,7 @@ namespace aos::iam::provisionmanager {
 class ProvisionManagerMock : public ProvisionManagerItf {
 public:
     MOCK_METHOD(Error, StartProvisioning, (const String& password), (override));
-    MOCK_METHOD(RetWithError<CertTypes>, GetCertTypes, (), (override));
+    MOCK_METHOD(RetWithError<CertTypes>, GetCertTypes, (), (const override));
     MOCK_METHOD(Error, CreateKey, (const String& certType, const String& subject, const String& password, String& csr),
         (override));
     MOCK_METHOD(
@@ -27,7 +27,7 @@ public:
     MOCK_METHOD(Error, GetCert,
         (const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
             certhandler::CertInfo& resCert),
-        (override));
+        (const override));
     MOCK_METHOD(
         Error, SubscribeCertChanged, (const String& certType, certhandler::CertReceiverItf& certReceiver), (override));
     MOCK_METHOD(Error, UnsubscribeCertChanged, (certhandler::CertReceiverItf & certReceiver), (override));

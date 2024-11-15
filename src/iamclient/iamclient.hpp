@@ -14,8 +14,8 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
@@ -47,7 +47,7 @@ public:
      * @returns aos::Error.
      */
     aos::Error Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
-        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::cryptoutils::CertLoaderItf& certLoader,
+        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
         aos::crypto::x509::ProviderItf&                  cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
@@ -91,7 +91,7 @@ private:
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    aos::cryptoutils::CertLoaderItf*                 mCertLoader       = nullptr;
+    aos::crypto::CertLoaderItf*                      mCertLoader       = nullptr;
     aos::crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
     aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
 

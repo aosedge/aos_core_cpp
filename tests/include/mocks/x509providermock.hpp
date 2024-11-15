@@ -8,7 +8,7 @@
 #ifndef X509_PROVIDER_MOCK_HPP_
 #define X509_PROVIDER_MOCK_HPP_
 
-#include <aos/common/crypto.hpp>
+#include <aos/common/crypto/crypto.hpp>
 #include <gmock/gmock.h>
 
 /**

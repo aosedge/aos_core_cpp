@@ -8,7 +8,7 @@
 #ifndef CONVERT_HPP_
 #define CONVERT_HPP_
 
-#include <aos/common/crypto.hpp>
+#include <aos/common/crypto/crypto.hpp>
 #include <aos/common/types.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>

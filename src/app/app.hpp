@@ -50,7 +50,7 @@ private:
     aos::Error InitCertModules(const Config& config);
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::cryptoutils::CertLoader       mCertLoader;
+    aos::crypto::CertLoader            mCertLoader;
     aos::iam::certhandler::CertHandler mCertHandler;
     aos::pkcs11::PKCS11Manager         mPKCS11Manager;
     std::vector<

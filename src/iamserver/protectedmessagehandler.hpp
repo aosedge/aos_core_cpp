@@ -14,7 +14,7 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
