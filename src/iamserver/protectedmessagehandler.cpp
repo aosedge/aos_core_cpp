@@ -92,12 +92,15 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
     LOG_DBG() << "Process pause node: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
 
-        if (auto status = handler->PauseNode(request, response, cDefaultTimeout); !status.ok()) {
+                return handler->PauseNode(request, response, cDefaultTimeout);
+            });
+            !status.ok()) {
             return status;
         }
     }
@@ -119,12 +122,15 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
     LOG_DBG() << "Process resume node: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
 
-        if (auto status = handler->ResumeNode(request, response, cDefaultTimeout); !status.ok()) {
+                return handler->ResumeNode(request, response, cDefaultTimeout);
+            });
+            !status.ok()) {
             return status;
         }
     }
@@ -150,12 +156,14 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
     LOG_DBG() << "Process get cert types: ID = " << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
 
-        return handler->GetCertTypes(request, response, cDefaultTimeout);
+            return handler->GetCertTypes(request, response, cDefaultTimeout);
+        });
     }
 
     aos::Error                            err;
@@ -181,12 +189,14 @@ grpc::Status ProtectedMessageHandler::StartProvisioning([[maybe_unused]] grpc::S
     LOG_DBG() << "Process start provisioning request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
 
-        return handler->StartProvisioning(request, response, cProvisioningTimeout);
+            return handler->StartProvisioning(request, response, cProvisioningTimeout);
+        });
     }
 
     if (auto err = GetProvisionManager()->StartProvisioning(request->password().c_str()); !err.IsNone()) {
@@ -206,12 +216,15 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
     LOG_DBG() << "Process finish provisioning request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
 
-        if (auto status = handler->FinishProvisioning(request, response, cProvisioningTimeout); !status.ok()) {
+                return handler->FinishProvisioning(request, response, cProvisioningTimeout);
+            });
+            !status.ok()) {
             return status;
         }
     } else {
@@ -241,12 +254,15 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
     LOG_DBG() << "Process deprovision request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
 
-        if (auto status = handler->Deprovision(request, response, cProvisioningTimeout); !status.ok()) {
+                return handler->Deprovision(request, response, cProvisioningTimeout);
+            });
+            !status.ok()) {
             return status;
         }
     } else {
@@ -306,15 +322,17 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
 
-        iamproto::CreateKeyRequest keyRequest = *request;
-        keyRequest.set_subject(subject.CStr());
+            iamproto::CreateKeyRequest keyRequest = *request;
+            keyRequest.set_subject(subject.CStr());
 
-        return handler->CreateKey(&keyRequest, response, cDefaultTimeout);
+            return handler->CreateKey(&keyRequest, response, cDefaultTimeout);
+        });
     }
 
     const auto password = aos::String(request->password().c_str());
@@ -348,12 +366,14 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     response->set_type(certType.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
-        auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
-        if (!handler) {
-            return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
-        }
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
 
-        return handler->ApplyCert(request, response, cDefaultTimeout);
+            return handler->ApplyCert(request, response, cDefaultTimeout);
+        });
     }
 
     const auto pemCert = aos::String(request->cert().c_str());

@@ -25,6 +25,8 @@
 
 #include <iamanager/version.grpc.pb.h>
 
+#include "utils/convert.hpp"
+
 #include "nodecontroller.hpp"
 #include "streamwriter.hpp"
 
@@ -109,9 +111,33 @@ protected:
     aos::Error SetNodeStatus(const std::string& nodeID, const aos::NodeStatus& status);
     bool       ProcessOnThisNode(const std::string& nodeID);
 
+    template <typename R>
+    grpc::Status RequestWithRetry(R request)
+    {
+        std::unique_lock lock {mMutex};
+
+        grpc::Status status = grpc::Status::OK;
+
+        for (auto i = 0; i < cRequestRetryMaxTry; i++) {
+            if (mClose) {
+                return utils::ConvertAosErrorToGrpcStatus({aos::ErrorEnum::eWrongState, "handler is closed"});
+            }
+
+            if (status = request(); status.ok()) {
+                return status;
+            }
+
+            mRetryCondVar.wait_for(lock, cRequestRetryTimeout, [this] { return mClose; });
+        }
+
+        return status;
+    }
+
 private:
     static constexpr auto       cIamAPIVersion       = 5;
     static constexpr std::array cAllowedStatuses     = {aos::NodeStatusEnum::eUnprovisioned};
+    static constexpr auto       cRequestRetryTimeout = std::chrono::seconds(10);
+    static constexpr auto       cRequestRetryMaxTry  = 3;
 
     // IAMVersionService interface
     grpc::Status GetAPIVersion(
@@ -160,6 +186,9 @@ private:
 
     std::vector<std::shared_ptr<CertWriter>> mCertWriters;
     std::mutex                               mCertWritersLock;
+    std::condition_variable                  mRetryCondVar;
+    std::mutex                               mMutex;
+    bool                                     mClose = false;
 };
 
 #endif

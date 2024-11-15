@@ -15,7 +15,6 @@
 
 #include "logger/logmodule.hpp"
 #include "publicmessagehandler.hpp"
-#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * Public
@@ -90,19 +89,24 @@ aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticStr
 
 void PublicMessageHandler::Start()
 {
+    std::lock_guard lock {mMutex};
+
     mNodeChangedController.Start();
     mSubjectsChangedController.Start();
+    mClose = false;
 }
 
 void PublicMessageHandler::Close()
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Close message handler: handler=public";
 
     mNodeChangedController.Close();
     mSubjectsChangedController.Close();
 
     {
-        std::lock_guard lock {mCertWritersLock};
+        std::lock_guard certWritersLock {mCertWritersLock};
 
         for (auto& certWriter : mCertWriters) {
             certWriter->Close();
@@ -110,6 +114,9 @@ void PublicMessageHandler::Close()
 
         mCertWriters.clear();
     }
+
+    mClose = true;
+    mRetryCondVar.notify_one();
 }
 
 /***********************************************************************************************************************
