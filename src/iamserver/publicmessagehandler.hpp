@@ -109,6 +109,9 @@ protected:
     aos::Error                                       SetNodeStatus(const aos::NodeStatus& status);
 
 private:
+    static constexpr auto       cIamAPIVersion       = 5;
+    static constexpr std::array cAllowedStatuses     = {aos::NodeStatusEnum::eUnprovisioned};
+
     // IAMVersionService interface
     grpc::Status GetAPIVersion(
         grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::APIVersion* response) override;
@@ -143,9 +146,6 @@ private:
         grpc::ServerWriter<iamproto::NodeInfo>* writer) override;
     grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
         grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
-
-    static constexpr auto       cIamAPIVersion   = 5;
-    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eUnprovisioned};
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;

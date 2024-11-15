@@ -73,6 +73,10 @@ public:
     void Close();
 
 private:
+    static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
+    static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
+    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused};
+
     // IAMPublicNodesService interface
     grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
         grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
@@ -106,10 +110,6 @@ private:
         google::protobuf::Empty* response) override;
 
     bool ProcessOnThisNode(const std::string& nodeID);
-
-    static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
-    static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
-    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused};
 };
 
 #endif

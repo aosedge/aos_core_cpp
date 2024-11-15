@@ -100,6 +100,8 @@ aos::Error NodeInfoProvider::Init(const NodeInfoConfig& config)
 
 aos::Error NodeInfoProvider::GetNodeInfo(aos::NodeInfo& nodeInfo) const
 {
+    std::lock_guard lock {mMutex};
+
     aos::Error      err;
     aos::NodeStatus status;
 
@@ -116,6 +118,8 @@ aos::Error NodeInfoProvider::GetNodeInfo(aos::NodeInfo& nodeInfo) const
 
 aos::Error NodeInfoProvider::SetNodeStatus(const aos::NodeStatus& status)
 {
+    std::lock_guard lock {mMutex};
+
     if (status == mNodeInfo.mStatus) {
         LOG_DBG() << "Node status is not changed: status=" << status.ToString();
 
@@ -136,11 +140,7 @@ aos::Error NodeInfoProvider::SetNodeStatus(const aos::NodeStatus& status)
         file << status.ToString().CStr();
     }
 
-    {
-        std::lock_guard lock {mMutex};
-
-        mNodeInfo.mStatus = status;
-    }
+    mNodeInfo.mStatus = status;
 
     LOG_DBG() << "Node status updated: status=" << status.ToString();
 
@@ -224,8 +224,6 @@ aos::Error NodeInfoProvider::InitPartitionInfo(const NodeInfoConfig& config)
 aos::Error NodeInfoProvider::NotifyNodeStatusChanged()
 {
     aos::Error err;
-
-    std::lock_guard lock {mMutex};
 
     for (auto observer : mObservers) {
         LOG_DBG() << "Notify node status changed observer: nodeID=" << mNodeInfo.mNodeID.CStr()
