@@ -44,7 +44,7 @@ static std::string ConvertCertificatesToPEM(
  **********************************************************************************************************************/
 
 RetWithError<std::string> LoadPEMCertificates(
-    const String& certURL, cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+    const String& certURL, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     try {
         auto [certificates, err] = certLoader.LoadCertsChainByURL(certURL);

@@ -10,8 +10,8 @@
 
 #include <string>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/array.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/common/tools/string.hpp>
@@ -27,7 +27,7 @@ namespace aos::common::utils {
  * @return RetWithError<std::string> PEM certificates.
  */
 RetWithError<std::string> LoadPEMCertificates(
-    const String& certURL, cryptoutils::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider);
+    const String& certURL, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider);
 
 } // namespace aos::common::utils
 
