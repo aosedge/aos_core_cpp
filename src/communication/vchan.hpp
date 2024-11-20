@@ -12,7 +12,7 @@ extern "C" {
 #include <libxenvchan.h>
 }
 
-#include <atomic>
+#include <mutex>
 
 #include "config/config.hpp"
 #include "types.hpp"
@@ -60,13 +60,20 @@ public:
      */
     Error Close() override;
 
+    /**
+     * Shuts down virtual channel.
+     */
+    void Shutdown();
+
 private:
     Error ConnectToVChan(struct libxenvchan*& vchan, const std::string& path, int domain);
 
     struct libxenvchan* mVChanRead {};
     struct libxenvchan* mVChanWrite {};
     config::VChanConfig mConfig {};
-    std::atomic<bool>   mShutdown {false};
+    bool                mShutdown {};
+    bool                mConnected {};
+    std::mutex          mMutex;
 };
 
 } // namespace aos::mp::communication

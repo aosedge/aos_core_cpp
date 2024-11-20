@@ -26,8 +26,14 @@ Error VChan::Init(const config::VChanConfig& config)
 
 Error VChan::Connect()
 {
+    std::lock_guard lock {mMutex};
+
     if (mShutdown) {
         return ErrorEnum::eFailed;
+    }
+
+    if (mConnected) {
+        return ErrorEnum::eNone;
     }
 
     LOG_DBG() << "Connect to the virtual channel";
@@ -36,7 +42,13 @@ Error VChan::Connect()
         return AOS_ERROR_WRAP(err);
     }
 
-    return ConnectToVChan(mVChanWrite, mConfig.mXSTXPath, mConfig.mDomain);
+    if (auto err = ConnectToVChan(mVChanWrite, mConfig.mXSTXPath, mConfig.mDomain); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mConnected = true;
+
+    return ErrorEnum::eNone;
 }
 
 Error VChan::Read(std::vector<uint8_t>& message)
@@ -77,14 +89,34 @@ Error VChan::Write(std::vector<uint8_t> message)
 
 aos::Error VChan::Close()
 {
+    std::lock_guard lock {mMutex};
+
+    if (!mConnected || mShutdown) {
+        return ErrorEnum::eNone;
+    }
+
     LOG_DBG() << "Close virtual channel";
 
     libxenvchan_close(mVChanRead);
     libxenvchan_close(mVChanWrite);
 
-    mShutdown = true;
+    mConnected = false;
 
     return ErrorEnum::eNone;
+}
+
+void VChan::Shutdown()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Shutting down socket";
+
+    mShutdown = true;
+
+    if (mConnected) {
+        libxenvchan_close(mVChanRead);
+        libxenvchan_close(mVChanWrite);
+    }
 }
 
 /***********************************************************************************************************************
