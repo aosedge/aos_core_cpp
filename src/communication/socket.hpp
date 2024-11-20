@@ -11,6 +11,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -66,20 +67,26 @@ public:
      */
     Error Close() override;
 
+    /**
+     * Shuts down socket.
+     */
+    void Shutdown();
+
 private:
     void OnAccept(Poco::Net::ReadableNotification* pNf);
     void CleanupResources();
     void ReactorThread();
 
-    int                      mPort {-1};
-    std::atomic<bool>        mShutdown {};
-    bool                     mConnectionAccepted {};
-    Poco::Net::ServerSocket  mServerSocket;
-    Poco::Net::StreamSocket  mClientSocket;
-    Poco::Net::SocketReactor mReactor;
-    std::thread              mReactorThread;
-    std::mutex               mMutex;
-    std::condition_variable  mCV;
+    int                                     mPort {-1};
+    std::atomic<bool>                       mClose {};
+    std::atomic<bool>                       mShutdown {};
+    bool                                    mConnectionAccepted {};
+    Poco::Net::ServerSocket                 mServerSocket;
+    Poco::Net::StreamSocket                 mClientSocket;
+    std::optional<Poco::Net::SocketReactor> mReactor;
+    std::thread                             mReactorThread;
+    std::mutex                              mMutex;
+    std::condition_variable                 mCV;
 };
 
 } // namespace aos::mp::communication

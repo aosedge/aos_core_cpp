@@ -23,71 +23,83 @@ Error Socket::Init(int port)
 
     mPort = port;
 
-    try {
-        mServerSocket.bind(Poco::Net::SocketAddress("0.0.0.0", mPort), true, true);
-        mServerSocket.listen(1);
-
-        mReactor.addEventHandler(
-            mServerSocket, Poco::Observer<Socket, Poco::Net::ReadableNotification>(*this, &Socket::OnAccept));
-
-        mReactorThread = std::thread(&Socket::ReactorThread, this);
-
-        LOG_DBG() << "Socket initialized and listening on: port=" << mPort;
-    } catch (const Poco::Exception& e) {
-        return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
-    }
-
     return ErrorEnum::eNone;
 }
 
 Error Socket::Connect()
 {
-    if (mShutdown) {
-        return ErrorEnum::eFailed;
-    }
-
     std::unique_lock lock {mMutex};
-
-    LOG_DBG() << "Waiting for client connection";
-
-    mCV.wait(lock, [this] { return mConnectionAccepted || mShutdown; });
-
-    mConnectionAccepted = false;
 
     if (mShutdown) {
         return Error {EINTR};
     }
+
+    LOG_DBG() << "Initializing socket with: port=" << mPort;
+
+    mClose = false;
+
+    if (!mReactorThread.joinable()) {
+        try {
+            mServerSocket.bind(Poco::Net::SocketAddress("0.0.0.0", mPort), true, true);
+            mServerSocket.listen(1);
+
+            mReactor.emplace();
+
+            mReactor->addEventHandler(
+                mServerSocket, Poco::Observer<Socket, Poco::Net::ReadableNotification>(*this, &Socket::OnAccept));
+
+            mReactorThread = std::thread(&Socket::ReactorThread, this);
+
+            LOG_DBG() << "Socket initialized and listening on: port=" << mPort;
+        } catch (const Poco::Exception& e) {
+            return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
+        }
+    }
+
+    LOG_DBG() << "Waiting for client connection";
+
+    mCV.wait(lock, [this] { return mConnectionAccepted || mClose || mShutdown; });
+
+    if (mClose || mShutdown) {
+        return Error {EINTR};
+    }
+
+    mConnectionAccepted = false;
 
     return ErrorEnum::eNone;
 }
 
 Error Socket::Close()
 {
-    LOG_DBG() << "Closing current connection";
+    {
+        std::lock_guard lock {mMutex};
 
-    if (mShutdown) {
-        return ErrorEnum::eNone;
-    }
+        LOG_DBG() << "Closing all connections";
 
-    mShutdown = true;
-    mReactor.stop();
+        mClose = true;
+        mReactor->stop();
 
-    if (mReactorThread.joinable()) {
-        mReactorThread.join();
-    }
-
-    mReactor.removeEventHandler(
-        mServerSocket, Poco::Observer<Socket, Poco::Net::ReadableNotification>(*this, &Socket::OnAccept));
-
-    try {
-        if (mClientSocket.impl()->initialized()) {
-            mClientSocket.shutdown();
-            mClientSocket.close();
+        if (mReactorThread.joinable()) {
+            mReactorThread.join();
         }
 
-        mServerSocket.close();
-    } catch (const Poco::Exception& e) {
-        return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
+        mReactor->removeEventHandler(
+            mServerSocket, Poco::Observer<Socket, Poco::Net::ReadableNotification>(*this, &Socket::OnAccept));
+
+        try {
+            if (mClientSocket.impl()->initialized()) {
+                mClientSocket.shutdown();
+                mClientSocket.close();
+
+                mClientSocket = Poco::Net::StreamSocket {};
+            }
+
+            mServerSocket.close();
+            mServerSocket = Poco::Net::ServerSocket {};
+
+        } catch (const Poco::Exception& e) {
+            return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
+        }
     }
 
     mCV.notify_all();
@@ -141,17 +153,27 @@ Error Socket::Write(std::vector<uint8_t> message)
     return ErrorEnum::eNone;
 }
 
+void Socket::Shutdown()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Shutting down socket";
+
+    mShutdown = true;
+    mCV.notify_all();
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
 void Socket::ReactorThread()
 {
-    while (!mShutdown) {
+    while (!mClose) {
         try {
-            mReactor.run();
+            mReactor->run();
         } catch (const Poco::Exception& e) {
-            if (!mShutdown) {
+            if (!mClose) {
                 LOG_ERR() << "Reactor error: error=" << e.displayText().c_str();
             }
         }
@@ -160,6 +182,8 @@ void Socket::ReactorThread()
 
 void Socket::OnAccept([[maybe_unused]] Poco::Net::ReadableNotification* pNf)
 {
+    LOG_DBG() << "Accepting client connection";
+
     try {
         mClientSocket = mServerSocket.acceptConnection();
 
