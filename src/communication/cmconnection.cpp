@@ -79,8 +79,6 @@ void CMConnection::Close()
 
     mTaskManager.cancelAll();
     mTaskManager.joinAll();
-
-    LOG_DBG() << "Close CM connection finished";
 }
 
 /***********************************************************************************************************************
@@ -107,8 +105,6 @@ void CMConnection::RunSecureChannel()
 
             continue;
         }
-
-        LOG_DBG() << "Secure CM channel connected";
 
         mHandler->OnConnected();
         mCondVar.notify_all();
@@ -186,6 +182,8 @@ Error CMConnection::ReadSecureMsgHandler()
         if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
             return err;
         }
+
+        LOG_DBG() << "Message sent to CM";
     }
 
     return ErrorEnum::eNone;
@@ -344,6 +342,8 @@ Error CMConnection::ReadOpenMsgHandler()
         if (err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
             return err;
         }
+
+        LOG_DBG() << "Message sent to CM";
     }
 
     return ErrorEnum::eNone;
@@ -382,6 +382,8 @@ void CMConnection::WriteSecureMsgHandler()
 
             continue;
         }
+
+        LOG_DBG() << "Received message from CM: size=" << message.mValue.size();
 
         {
             std::unique_lock lock {mMutex};

@@ -53,8 +53,6 @@ Error VChan::Connect()
 
 Error VChan::Read(std::vector<uint8_t>& message)
 {
-    LOG_DBG() << "Read from virtual channel: expectedSize=" << message.size();
-
     int read {};
 
     while (read < static_cast<int>(message.size())) {
@@ -71,8 +69,6 @@ Error VChan::Read(std::vector<uint8_t>& message)
 
 Error VChan::Write(std::vector<uint8_t> message)
 {
-    LOG_DBG() << "Write to virtual channel: size=" << message.size();
-
     int written {};
 
     while (written < static_cast<int>(message.size())) {

@@ -109,8 +109,6 @@ Error Socket::Close()
 
 Error Socket::Read(std::vector<uint8_t>& message)
 {
-    LOG_DBG() << "Read from client: expectedSize=" << message.size();
-
     try {
         int totalRead = 0;
         while (totalRead < static_cast<int>(message.size())) {
@@ -121,8 +119,6 @@ Error Socket::Read(std::vector<uint8_t>& message)
 
             totalRead += bytesRead;
         }
-
-        LOG_DBG() << "Total read: totalRead=" << totalRead << ", size=" << message.size();
     } catch (const Poco::Exception& e) {
         return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
     }
@@ -132,8 +128,6 @@ Error Socket::Read(std::vector<uint8_t>& message)
 
 Error Socket::Write(std::vector<uint8_t> message)
 {
-    LOG_DBG() << "Write to client: size=" << message.size();
-
     try {
         int totalSent = 0;
         while (totalSent < static_cast<int>(message.size())) {
@@ -144,8 +138,6 @@ Error Socket::Write(std::vector<uint8_t> message)
 
             totalSent += bytesSent;
         }
-
-        LOG_DBG() << "Total written: totalSent=" << totalSent << ", messageSize=" << message.size();
     } catch (const Poco::Exception& e) {
         return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
     }

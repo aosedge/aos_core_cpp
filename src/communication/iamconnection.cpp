@@ -97,14 +97,10 @@ Error IAMConnection::ReadHandler()
     LOG_DBG() << "Read handler IAM connection";
 
     while (!mShutdown) {
-        LOG_DBG() << "Waiting for message from IAM";
-
         std::vector<uint8_t> message(cProtobufHeaderSize);
         if (auto err = mIAMCommChannel->Read(message); !err.IsNone()) {
             return err;
         }
-
-        LOG_DBG() << "Received message from IAM: size=" << message.size();
 
         auto protobufHeader = ParseProtobufHeader(message);
         message.clear();
@@ -113,8 +109,6 @@ Error IAMConnection::ReadHandler()
         if (auto err = mIAMCommChannel->Read(message); !err.IsNone()) {
             return err;
         }
-
-        LOG_DBG() << "Received message from IAM: size=" << message.size();
 
         if (auto err = mHandler->SendMessages(std::move(message)); !err.IsNone()) {
             return err;
@@ -153,8 +147,6 @@ void IAMConnection::WriteHandler()
 
         auto header = PrepareProtobufHeader(message.mValue.size());
         header.insert(header.end(), message.mValue.begin(), message.mValue.end());
-
-        LOG_DBG() << "Send message to IAM channel: size=" << header.size();
 
         if (auto err = mIAMCommChannel->Write(std::move(header)); !err.IsNone()) {
             LOG_ERR() << "Failed to write to IAM: error=" << err;

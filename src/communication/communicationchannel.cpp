@@ -90,8 +90,6 @@ Error CommunicationChannel::Write(std::vector<uint8_t> message)
         return err;
     }
 
-    LOG_DBG() << "Write message: msg=" << message.size();
-
     return mCommChannel->Write(std::move(message));
 }
 
@@ -120,12 +118,8 @@ Error CommunicationChannel::Receive(std::vector<uint8_t> message)
 {
     std::unique_lock lock {mMutex};
 
-    LOG_DBG() << "Received message: port=" << mPort << ", size=" << message.size();
-
     mReceivedMessage.insert(mReceivedMessage.end(), message.begin(), message.end());
     mCondVar.notify_all();
-
-    LOG_DBG() << "Received message: size=" << mReceivedMessage.size();
 
     return ErrorEnum::eNone;
 }

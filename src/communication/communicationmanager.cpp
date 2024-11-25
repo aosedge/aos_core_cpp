@@ -212,8 +212,6 @@ aos::Error CommunicationManager::ReadHandler()
             return err;
         }
 
-        LOG_DBG() << "Received header";
-
         AosProtocolHeader header;
 
         std::memcpy(&header, headerBuffer.data(), sizeof(AosProtocolHeader));
@@ -225,8 +223,6 @@ aos::Error CommunicationManager::ReadHandler()
 
             continue;
         }
-
-        LOG_DBG() << "Requesting message: port=" << port << ", size=" << header.mDataSize;
 
         std::vector<uint8_t> message(header.mDataSize);
 
@@ -252,8 +248,6 @@ aos::Error CommunicationManager::ReadHandler()
 
             continue;
         }
-
-        LOG_DBG() << "Send message to channel: port=" << port;
 
         if (err = mChannels[port]->Receive(std::move(message)); !err.IsNone()) {
             return err;

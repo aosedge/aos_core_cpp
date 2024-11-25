@@ -141,8 +141,6 @@ Error SecureChannel::Read(std::vector<uint8_t>& message)
         return Error(ErrorEnum::eRuntime, "message buffer is empty");
     }
 
-    LOG_DBG() << "Requesting secure read: port=" << mPort << ", size=" << message.size();
-
     int bytesRead = SSL_read(mSSL, message.data(), message.size());
     if (bytesRead <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
@@ -153,8 +151,6 @@ Error SecureChannel::Read(std::vector<uint8_t>& message)
 
 Error SecureChannel::Write(std::vector<uint8_t> message)
 {
-    LOG_DBG() << "Write secure data port=" << mPort << ", size=" << message.size();
-
     int bytesWritten = SSL_write(mSSL, message.data(), message.size());
     if (bytesWritten <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
@@ -308,8 +304,6 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
 
 int SecureChannel::CustomBIOWrite(BIO* bio, const char* buf, int len)
 {
-    LOG_DBG() << "Write to the secure channel: expectedSize=" << len;
-
     SecureChannel*       channel = static_cast<SecureChannel*>(BIO_get_data(bio));
     std::vector<uint8_t> data(buf, buf + len);
     auto                 err = channel->mChannel->Write(std::move(data));
@@ -319,8 +313,6 @@ int SecureChannel::CustomBIOWrite(BIO* bio, const char* buf, int len)
 
 int SecureChannel::CustomBIORead(BIO* bio, char* buf, int len)
 {
-    LOG_DBG() << "Read from the secure channel: expectedSize=" << len;
-
     SecureChannel*       channel = static_cast<SecureChannel*>(BIO_get_data(bio));
     std::vector<uint8_t> data(len);
 
