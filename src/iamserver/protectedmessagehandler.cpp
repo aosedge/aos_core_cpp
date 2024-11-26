@@ -27,6 +27,7 @@ static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "stre
  * Public
  **********************************************************************************************************************/
 
+// cppcheck-suppress duplInheritedMember
 aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
@@ -39,6 +40,7 @@ aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
         nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
 }
 
+// cppcheck-suppress duplInheritedMember
 void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 {
     LOG_DBG() << "Register services: handler=protected";
@@ -56,6 +58,7 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 }
 
+// cppcheck-suppress duplInheritedMember
 void ProtectedMessageHandler::Close()
 {
     LOG_DBG() << "Close message handler: handler=protected";

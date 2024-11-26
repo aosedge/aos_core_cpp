@@ -127,9 +127,9 @@ private:
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
-    Config                          mConfig;
-    aos::crypto::CertLoader*        mCertLoader;
-    aos::crypto::x509::ProviderItf* mCryptoProvider;
+    Config                          mConfig         = {};
+    aos::crypto::CertLoader*        mCertLoader     = nullptr;
+    aos::crypto::x509::ProviderItf* mCryptoProvider = nullptr;
 
     NodeController                           mNodeController;
     PublicMessageHandler                     mPublicMessageHandler;

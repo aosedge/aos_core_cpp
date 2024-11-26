@@ -48,6 +48,7 @@ public:
      * @param nodeManager node manager.
      * @param provisionManager provision manager.
      */
+    // cppcheck-suppress duplInheritedMember
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
         aos::iam::permhandler::PermHandlerItf&           permHandler,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
@@ -59,6 +60,7 @@ public:
      *
      * @param builder server builder.
      */
+    // cppcheck-suppress duplInheritedMember
     void RegisterServices(grpc::ServerBuilder& builder);
 
     using PublicMessageHandler::OnNodeInfoChange;
@@ -70,6 +72,7 @@ public:
     /**
      * Closes protected message handler.
      */
+    // cppcheck-suppress duplInheritedMember
     void Close();
 
 private:
