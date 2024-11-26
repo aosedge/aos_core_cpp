@@ -13,17 +13,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions: read-all
+    container:
+      image: ghcr.io/aosedge/aos-core-build-base:latest
+      options: '--entrypoint /usr/bin/bash'
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
     steps:
+      # Apply solution to "HOME is overridden for containers" problem: https://github.com/actions/runner/issues/863
+      - name: Preserve $HOME set in the container
+        run: echo HOME=/root >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: 'recursive'
-
-      - name: Prepare
-        run: |
-          sudo apt install lcov libsofthsm2 libsystemd-dev cppcheck -y
-          pip install conan
 
       - name: Build and test
         run: |
@@ -40,7 +47,7 @@ jobs:
       - name: Static analysis
         run: |
           cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
-          --suppressions-list=./suppressions.txt -I build/aoscorecommon/include src
+          --suppressions-list=./suppressions.txt -I external/aos_core_common_cpp/include src
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
