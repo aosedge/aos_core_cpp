@@ -158,6 +158,74 @@ TEST_F(JsonTest, CaseInsensitiveObjectWrapperSucceeds)
     EXPECT_EQ(wrapper.GetOptionalValue<std::string>("key").value(), "value");
 }
 
+TEST_F(JsonTest, CaseInsensitiveObjectWrapperFromPocoVarSucceeds)
+{
+    try {
+        Poco::JSON::Parser parser;
+        auto               result = parser.parse({R"({"Key":"value","Array":["value1","value2"]})"});
+
+        CaseInsensitiveObjectWrapper wrapper(result);
+
+        EXPECT_TRUE(wrapper.Has("key"));
+        EXPECT_EQ(wrapper.GetValue<std::string>("key"), "value");
+    } catch (const Poco::Exception& e) {
+        FAIL() << e.displayText();
+    }
+}
+
+TEST_F(JsonTest, CaseInsensitiveObjectWrapperFromPocoVarFails)
+{
+    try {
+        Poco::JSON::Parser parser;
+        auto               result = parser.parse({R"(["value1","value2"])"});
+
+        ASSERT_THROW(CaseInsensitiveObjectWrapper {result}, Poco::BadCastException);
+    } catch (const Poco::Exception& e) {
+        FAIL() << e.displayText();
+    }
+}
+
+TEST_F(JsonTest, ParseValueArraySucceeds)
+{
+    try {
+        Poco::JSON::Object::Ptr object      = new Poco::JSON::Object();
+        Poco::JSON::Array::Ptr  numberArray = new Poco::JSON::Array();
+        Poco::JSON::Array::Ptr  stringArray = new Poco::JSON::Array();
+
+        const std::vector<uint32_t>    expectedNumbers = {1, 2, 3, 4};
+        const std::vector<std::string> expectedStrings = {"value1", "value2", "value3"};
+
+        for (const auto number : expectedNumbers) {
+            numberArray->add(number);
+        }
+
+        for (const auto& string : expectedStrings) {
+            stringArray->add(string);
+        }
+
+        object->set("numbers", numberArray);
+        object->set("strings", stringArray);
+
+        CaseInsensitiveObjectWrapper wrapper(object);
+
+        const auto numbers = GetArrayValue<uint32_t>(wrapper, "numbers");
+
+        ASSERT_EQ(numbers.size(), expectedNumbers.size());
+        for (size_t i = 0; i < numbers.size(); ++i) {
+            EXPECT_EQ(numbers[i], expectedNumbers[i]);
+        }
+
+        const auto strings = GetArrayValue<std::string>(wrapper, "strings");
+
+        ASSERT_EQ(strings.size(), expectedStrings.size());
+        for (size_t i = 0; i < strings.size(); ++i) {
+            EXPECT_EQ(strings[i], expectedStrings[i]);
+        }
+    } catch (const Poco::Exception& e) {
+        FAIL() << e.displayText();
+    }
+}
+
 TEST_F(JsonTest, WriteJsonToFileSucceeds)
 {
     Poco::JSON::Object::Ptr object = new Poco::JSON::Object();

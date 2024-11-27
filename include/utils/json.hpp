@@ -69,6 +69,13 @@ public:
     explicit CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object);
 
     /**
+     * Constructor from poco dynamic variable. Throws exception json object ptr extract fail.
+     *
+     * @param var dynamic variable.
+     */
+    explicit CaseInsensitiveObjectWrapper(const Poco::Dynamic::Var& var);
+
+    /**
      * Checks if key exists.
      *
      * @param key key.
@@ -152,7 +159,8 @@ private:
  *
  * @param object json object.
  * @param key key.
- * @return T.
+ * @param parserFunc function to parse array entities.
+ * @return std::vector<T>.
  */
 template <typename T, typename ParserFunc>
 std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const std::string& key, ParserFunc parserFunc)
@@ -168,6 +176,19 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
     std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
 
     return result;
+}
+
+/**
+ * Gets value array by key.
+ *
+ * @param object json object.
+ * @param key key.
+ * @return std::vector<T>.
+ */
+template <typename T>
+std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const std::string& key)
+{
+    return GetArrayValue<T>(object, key, [](const Poco::Dynamic::Var& value) { return value.convert<T>(); });
 }
 
 } // namespace aos::common::utils

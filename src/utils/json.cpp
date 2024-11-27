@@ -19,6 +19,11 @@ CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Obj
     }
 }
 
+CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::Dynamic::Var& var)
+    : CaseInsensitiveObjectWrapper(var.extract<Poco::JSON::Object::Ptr>())
+{
+}
+
 bool CaseInsensitiveObjectWrapper::Has(const std::string& key) const
 {
     std::string lowerKey = ToLowercase(key);
