@@ -121,6 +121,7 @@ endif()
 add_subdirectory(external/aos_core_common_cpp/external/aos_core_api)
 add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/common)
 add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/iam)
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/sm)
 add_subdirectory(external/aos_core_common_cpp/src)
 add_subdirectory(src)
 
