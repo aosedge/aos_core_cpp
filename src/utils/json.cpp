@@ -5,7 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <fstream>
+#include <sstream>
+
+#include <Poco/JSON/JSONException.h>
+#include <Poco/JSON/Parser.h>
 
 #include "utils/json.hpp"
 
@@ -133,6 +138,15 @@ Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector
     }
 
     return result;
+}
+
+std::string Stringify(const Poco::Dynamic::Var& json)
+{
+    std::ostringstream oss;
+
+    Poco::JSON::Stringifier::stringify(json, oss);
+
+    return oss.str();
 }
 
 } // namespace aos::common::utils

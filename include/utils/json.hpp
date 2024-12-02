@@ -8,16 +8,13 @@
 #ifndef UTILS_JSON_HPP_
 #define UTILS_JSON_HPP_
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <Poco/Dynamic/Var.h>
-#include <Poco/JSON/JSONException.h>
 #include <Poco/JSON/Object.h>
-#include <Poco/JSON/Parser.h>
 
 #include <aos/common/tools/error.hpp>
 
@@ -190,6 +187,14 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
 {
     return GetArrayValue<T>(object, key, [](const Poco::Dynamic::Var& value) { return value.convert<T>(); });
 }
+
+/**
+ * Stringifies json.
+ *
+ * @param json json object.
+ * @return std::string.
+ */
+std::string Stringify(const Poco::Dynamic::Var& json);
 
 } // namespace aos::common::utils
 
