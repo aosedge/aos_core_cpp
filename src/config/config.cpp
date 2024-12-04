@@ -65,8 +65,7 @@ static JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseIns
 {
     JournalAlertsConfig config {};
 
-    config.mFilter = common::utils::GetArrayValue<std::string>(
-        object, "filter", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+    config.mFilter = common::utils::GetArrayValue<std::string>(object, "filter");
 
     config.mServiceAlertPriority
         = object.GetOptionalValue<int>("serviceAlertPriority").value_or(cDefaultServiceAlertPriority);
@@ -88,16 +87,10 @@ static JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseIns
     return config;
 }
 
-static std::vector<std::string> ParseHostBinds(const common::utils::CaseInsensitiveObjectWrapper& object)
-{
-    return common::utils::GetArrayValue<std::string>(
-        object, "hostBinds", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
-}
-
 static std::vector<HostInfoConfig> ParseHostsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return common::utils::GetArrayValue<HostInfoConfig>(object, "hosts", [](const Poco::Dynamic::Var& value) {
-        common::utils::CaseInsensitiveObjectWrapper item(value.extract<Poco::JSON::Object::Ptr>());
+        common::utils::CaseInsensitiveObjectWrapper item(value);
 
         return HostInfoConfig {
             item.GetValue<std::string>("ip"),
@@ -131,7 +124,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
     try {
         Poco::JSON::Parser                          parser;
         auto                                        result = parser.parse(file);
-        common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
+        common::utils::CaseInsensitiveObjectWrapper object(result);
 
         config.mCACert                = object.GetValue<std::string>("caCert");
         config.mCertStorage           = object.GetValue<std::string>("certStorage");
@@ -182,7 +175,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         }
 
         if (object.Has("hostBinds")) {
-            config.mHostBinds = ParseHostBinds(object);
+            config.mHostBinds = common::utils::GetArrayValue<std::string>(object, "hostBinds");
         }
 
         if (object.Has("hosts")) {
