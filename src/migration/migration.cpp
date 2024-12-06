@@ -15,10 +15,15 @@ using namespace Poco::Data::Keywords;
 
 namespace aos::common::migration {
 
-Migration::Migration(Poco::Data::Session& session, const std::string& migrationDir)
+Migration::Migration(
+    Poco::Data::Session& session, const std::string& migrationDir, const std::string& mergedMigrationDir)
     : mSession(session)
-    , mMigrationDir(migrationDir)
+    , mMergedMigrationDir(std::filesystem::absolute(mergedMigrationDir))
 {
+    auto absMigrationPath = std::filesystem::absolute(migrationDir).native();
+
+    MergeMigrationFiles(absMigrationPath);
+
     CreateVersionTable();
 }
 
@@ -41,7 +46,7 @@ void Migration::MigrateToVersion(int targetVersion)
 
 void Migration::ApplyMigration(const std::string& migrationScript)
 {
-    std::string   path = std::filesystem::path(mMigrationDir) / migrationScript;
+    std::string   path = std::filesystem::path(mMergedMigrationDir) / migrationScript;
     std::ifstream file(path);
 
     if (!file.is_open()) {
@@ -90,6 +95,18 @@ int Migration::GetCurrentVersion()
     select << "SELECT version FROM SchemaVersion LIMIT 1;", into(version), now;
 
     return version;
+}
+
+void Migration::MergeMigrationFiles(const std::string& migrationDir)
+{
+    if (!std::filesystem::exists(migrationDir)) {
+        AOS_ERROR_THROW("migration path doesn't exist (" + migrationDir + ")", aos::ErrorEnum::eInvalidArgument);
+    }
+
+    std::filesystem::create_directories(mMergedMigrationDir);
+
+    std::filesystem::copy(migrationDir, mMergedMigrationDir,
+        std::filesystem::copy_options::skip_existing | std::filesystem::copy_options::recursive);
 }
 
 } // namespace aos::common::migration
