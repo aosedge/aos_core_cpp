@@ -87,7 +87,6 @@ void PublicServiceHandler::Close()
 
     LOG_INF() << "Closing public service handler";
 
-    // cppcheck-suppress unusedVariable
     for (auto& [_, subscription] : mSubscriptions) {
         subscription.mClose = true;
         if (subscription.mCtx) {
