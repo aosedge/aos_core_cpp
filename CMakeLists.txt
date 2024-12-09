@@ -28,6 +28,13 @@ message(STATUS "WITH_DOC                      = ${WITH_DOC}")
 message(STATUS)
 
 # ######################################################################################################################
+# External project options
+# ######################################################################################################################
+
+# aos core api options
+set(WITH_IAM_API ON)
+
+# ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
@@ -102,9 +109,9 @@ endif()
 # Targets
 # ######################################################################################################################
 
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_api)
 add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/common)
 add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/iam)
-add_subdirectory(external/api)
 add_subdirectory(external/aos_core_common_cpp/src)
 add_subdirectory(src)
 
