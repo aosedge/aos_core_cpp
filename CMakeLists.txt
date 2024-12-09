@@ -100,7 +100,7 @@ if(WITH_COVERAGE)
 
     append_coverage_compiler_flags()
 
-    set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp")
+    set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp" "external/*")
 
     setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
 endif()
