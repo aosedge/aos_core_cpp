@@ -16,17 +16,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions: read-all
+    container:
+      image: ghcr.io/aosedge/aos-core-build-base:latest
+      options: '--entrypoint /usr/bin/bash'
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
     steps:
+     # Apply solution to "HOME is overridden for containers" problem: https://github.com/actions/runner/issues/863
+      - name: Preserve $HOME set in the container
+        run: echo HOME=/root >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
           submodules: "recursive"
-
-      - name: Prepare
-        run: |
-          sudo apt install lcov libsofthsm2 libsystemd-dev -y
-          pip install conan
 
       - name: Build and test
         run: |
@@ -39,7 +46,7 @@ jobs:
             -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
 
           cd build
-          make; make tests; make coverage
+          make -j$(nproc); make tests; make coverage
 
       - name: Upload test logs
         if: always()
