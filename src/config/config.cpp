@@ -129,8 +129,12 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         config.mCACert                   = object.GetValue<std::string>("caCert");
         config.mCertStorage              = object.GetValue<std::string>("certStorage");
         config.mWorkingDir               = object.GetValue<std::string>("workingDir");
-        config.mMigrationPath            = object.GetValue<std::string>("migrationPath");
         config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
+
+        auto migration = object.GetObject("migration");
+
+        config.mMigrationPath       = migration.GetValue<std::string>("migrationPath");
+        config.mMergedMigrationPath = migration.GetValue<std::string>("mergedMigrationPath");
 
         config.mStartProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
             "startProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });

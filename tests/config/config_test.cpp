@@ -59,7 +59,10 @@ public:
             "CACert": "/etc/ssl/certs/rootCA.crt",
             "CertStorage": "/var/aos/crypt/iam/",
             "WorkingDir": "/var/aos/iamanager",
-            "MigrationPath": "/var/aos/migration",
+            "Migration": {
+                "MigrationPath" : "/usr/share/aos/iam/migration",
+                "MergedMigrationPath" : "/var/aos/workdirs/iam/migration"
+            },
             "FinishProvisioningCmdArgs": [
                 "/var/aos/finish.sh"
             ],
@@ -161,7 +164,8 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mCACert, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/iam/");
     EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
-    EXPECT_EQ(config.mMigrationPath, "/var/aos/migration");
+    EXPECT_EQ(config.mMigrationPath, "/usr/share/aos/iam/migration");
+    EXPECT_EQ(config.mMergedMigrationPath, "/var/aos/workdirs/iam/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);
 
     EXPECT_EQ(config.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
