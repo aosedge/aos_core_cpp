@@ -6,6 +6,8 @@
 
 #include <fstream>
 
+#include <Poco/JSON/Parser.h>
+
 #include <utils/exception.hpp>
 #include <utils/json.hpp>
 
