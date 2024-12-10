@@ -31,9 +31,11 @@ public:
      *
      * @param dbPath path to the database file.
      * @param migrationPath path to the migration scripts.
+     * @param mergedMigrationPath path to the merged migration scripts.
      * @return Error.
      */
-    aos::Error Init(const std::string& dbPath, const std::string& migrationPath);
+    aos::Error Init(
+        const std::string& dbPath, const std::string& migrationPath, const std::string& mergedMigrationPath);
 
     //
     // certhandler::StorageItf interface
