@@ -9,6 +9,7 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/JSON/Stringifier.h>
+#include <Poco/Path.h>
 #include <filesystem>
 
 #include "database.hpp"
@@ -38,24 +39,24 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-aos::Error Database::Init(
-    const std::string& dbPath, const std::string& migrationPath, const std::string& mergedMigrationPath)
+aos::Error Database::Init(const std::string& workDir, const MigrationConfig& migration)
 {
     if (mSession && mSession->isConnected()) {
         return aos::ErrorEnum::eNone;
     }
 
     try {
-        auto dirPath = std::filesystem::path(dbPath).parent_path();
+        auto dirPath = std::filesystem::path(workDir);
         if (!std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 
-        mSession = std::make_unique<Poco::Data::Session>("SQLite", dbPath);
+        const auto dbPath = Poco::Path(workDir, cDBFileName);
+        mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
         CreateTables();
 
-        mMigration.emplace(*mSession, migrationPath, mergedMigrationPath);
-        mMigration->MigrateToVersion(mVersion);
+        mMigration.emplace(*mSession, migration.mMigrationPath, migration.mMergedMigrationPath);
+        mMigration->MigrateToVersion(cVersion);
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to initialize database: " << e.what();
 

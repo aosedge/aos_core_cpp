@@ -94,6 +94,14 @@ struct NodeInfoConfig {
     std::vector<PartitionInfoConfig>             mPartitions;
 };
 
+/**
+ * Migration configuration.
+ */
+struct MigrationConfig {
+    std::string mMigrationPath;
+    std::string mMergedMigrationPath;
+};
+
 /*
  * Config instance.
  */
@@ -107,8 +115,7 @@ struct Config {
     std::string                  mCACert;
     std::string                  mCertStorage;
     std::string                  mWorkingDir;
-    std::string                  mMigrationPath;
-    std::string                  mMergedMigrationPath;
+    MigrationConfig              mMigration;
     std::vector<ModuleConfig>    mCertModules;
     std::vector<std::string>     mStartProvisioningCmdArgs;
     std::vector<std::string>     mDiskEncryptionCmdArgs;

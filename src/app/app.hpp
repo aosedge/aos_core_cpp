@@ -36,7 +36,6 @@ protected:
 
 private:
     static constexpr auto cSDNotifyReady     = "READY=1";
-    static constexpr auto cDBFileName        = "iamanager.db";
     static constexpr auto cDefaultConfigFile = "aos_iamanager.cfg";
     static constexpr auto cPKCS11CertModule  = "pkcs11module";
 

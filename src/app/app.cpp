@@ -9,7 +9,6 @@
 #include <execinfo.h>
 #include <iostream>
 
-#include <Poco/Path.h>
 #include <Poco/SignalHandler.h>
 #include <Poco/Util/HelpFormatter.h>
 #include <systemd/sd-daemon.h>
@@ -142,8 +141,7 @@ void App::initialize(Application& self)
     auto config = ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
 
-    err = mDatabase.Init(Poco::Path(config.mValue.mWorkingDir, cDBFileName).toString(), config.mValue.mMigrationPath,
-        config.mValue.mMergedMigrationPath);
+    err = mDatabase.Init(config.mValue.mWorkingDir, config.mValue.mMigration);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
 
     err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
