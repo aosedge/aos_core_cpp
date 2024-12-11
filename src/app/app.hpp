@@ -67,7 +67,7 @@ private:
     aos::crypto::CertLoader            mCertLoader;
     aos::pkcs11::PKCS11Manager         mPKCS11Manager;
 
-    aos::mp::config::Config mConfig;
+    aos::mp::config::Config mConfig = {};
 
     aos::common::iamclient::PublicServiceHandler mPublicServiceHandler;
     aos::mp::cmclient::CMClient                  mCMClient;

@@ -33,6 +33,11 @@ jobs:
           fetch-depth: 0
           submodules: 'recursive'
 
+      - name: Static analysis
+        run: |
+          cppcheck --enable=all --inline-suppr -I src -I external/aos_core_common_cpp/include \
+          --std=c++17 --error-exitcode=1 --suppressions-list=./suppressions.txt src
+
       - name: Build and test
         run: |
           mkdir build
@@ -53,11 +58,6 @@ jobs:
           name: test-logs
           path: build/Testing/Temporary/LastTest.log
           if-no-files-found: ignore
-
-      - name: Static analysis
-        run: |
-          cppcheck --enable=all --inline-suppr -I src -I external/aos_core_common_cpp/include \
-          --std=c++17 --error-exitcode=1 --suppressions-list=./suppressions.txt src
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4

@@ -70,6 +70,7 @@ private:
         {
         }
 
+        // cppcheck-suppress unusedFunction
         void runTask() override { mCallback(); }
 
     private:
