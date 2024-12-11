@@ -1,25 +1,31 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
 # Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Common include directories
-# ######################################################################################################################
-
-include_directories(include)
+set(TARGET pbconvert_test)
 
 # ######################################################################################################################
-# Add tests
+# Sources
 # ######################################################################################################################
 
-add_subdirectory(iamclient)
-add_subdirectory(jsonprovider)
-add_subdirectory(migration)
-add_subdirectory(utils)
+set(SOURCES common_test.cpp)
 
-if(WITH_IAM_API OR WITH_SM_API)
-    add_subdirectory(pbconvert)
+if(WITH_SM_API)
+    list(APPEND SOURCES sm_test.cpp)
 endif()
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_executable(${TARGET} ${SOURCES})
+
+gtest_discover_tests(${TARGET})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} testutils aospbconvert GTest::gmock_main)
