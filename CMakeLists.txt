@@ -102,7 +102,15 @@ if(WITH_COVERAGE)
 
     set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp" "external/*")
 
-    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
+    setup_target_for_coverage_lcov(
+        NAME
+        coverage
+        EXECUTABLE
+        ctest
+        LCOV_ARGS
+        --ignore-errors
+        mismatch,negative
+    )
 endif()
 
 # ######################################################################################################################
