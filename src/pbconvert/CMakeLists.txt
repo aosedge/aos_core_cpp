@@ -1,44 +1,52 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
 # Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Dependencies
-# ######################################################################################################################
-
-# gRPC lib
-find_package(gRPC REQUIRED)
-
-# Poco lib
-find_package(Poco REQUIRED JSON DataSQLite Foundation)
-
-# Systemd lib
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(Systemd libsystemd REQUIRED)
+set(TARGET aospbconvert)
 
 # ######################################################################################################################
-# Defines
+# Sources
 # ######################################################################################################################
 
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
+set(SOURCES common.cpp)
 
-include_directories(${AOS_CORE_COMMON_LIB_DIR}/include)
-
-# ######################################################################################################################
-# Modules
-# ######################################################################################################################
-
-add_subdirectory(jsonprovider)
-add_subdirectory(logger)
-add_subdirectory(migration)
-add_subdirectory(utils)
-add_subdirectory(iamclient)
-
-if(WITH_IAM_API OR WITH_SM_API)
-    add_subdirectory(pbconvert)
+if(WITH_SM_API)
+    list(APPEND SOURCES sm.cpp)
 endif()
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_library(${TARGET} STATIC ${SOURCES})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::Util)
+
+if(WITH_IAM_API)
+    target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-iam)
+endif()
+
+if(WITH_SM_API)
+    target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-sm)
+endif()
+
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
+
+# ######################################################################################################################
+# Install
+# ######################################################################################################################
+
+install(TARGETS ${TARGET} DESTINATION lib)
+
+install(
+    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/pbconvert
+    DESTINATION include
+    FILES_MATCHING
+    PATTERN "*.hpp"
+)

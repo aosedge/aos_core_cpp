@@ -33,6 +33,7 @@ message(STATUS)
 
 # aos core api options
 set(WITH_IAM_API ON)
+set(WITH_SM_API ON)
 
 # ######################################################################################################################
 # Compiler flags
