@@ -87,7 +87,9 @@ void PublicServiceHandler::Close()
 
     LOG_INF() << "Closing public service handler";
 
-    for (auto& [_, subscription] : mSubscriptions) {
+    for (auto& [certType, subscription] : mSubscriptions) {
+        (void)certType;
+
         subscription.mClose = true;
         if (subscription.mCtx) {
             subscription.mCtx->TryCancel();
