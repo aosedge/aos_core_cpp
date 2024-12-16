@@ -40,20 +40,30 @@ namespace aos::sm::config {
 
 namespace {
 
-MonitoringConfig ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+monitoring::Config ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    MonitoringConfig config {};
+    monitoring::Config config {};
 
-    config.mSource = object.GetValue<std::string>("source");
+    const auto pollPeriod = object.Has("monitoring")
+        ? object.GetObject("monitoring").GetValue<std::string>("pollPeriod", cDefaultMonitoringPollPeriod)
+        : cDefaultMonitoringPollPeriod;
 
-    Error err                    = ErrorEnum::eNone;
-    Tie(config.mPollPeriod, err) = common::utils::ParseDuration(
-        object.GetOptionalValue<std::string>("pollPeriod").value_or(cDefaultMonitoringPollPeriod));
+    const auto averageWindow = object.Has("monitoring")
+        ? object.GetObject("monitoring").GetValue<std::string>("averageWindow", cDefaultMonitoringAverageWindow)
+        : cDefaultMonitoringAverageWindow;
+
+    Error                   err = ErrorEnum::eNone;
+    common::utils::Duration duration;
+
+    Tie(duration, err) = common::utils::ParseDuration(pollPeriod);
     AOS_ERROR_CHECK_AND_THROW("error parsing pollPeriod tag", err);
 
-    Tie(config.mAverageWindow, err) = common::utils::ParseDuration(
-        object.GetOptionalValue<std::string>("averageWindow").value_or(cDefaultMonitoringAverageWindow));
+    config.mPollPeriod = duration.count();
+
+    Tie(duration, err) = common::utils::ParseDuration(averageWindow);
     AOS_ERROR_CHECK_AND_THROW("error parsing averageWindow tag", err);
+
+    config.mAverageWindow = duration.count();
 
     return config;
 }
@@ -248,9 +258,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
-        if (object.Has("monitoring")) {
-            config.mMonitoring = ParseMonitoringConfig(object.GetObject("monitoring"));
-        }
+        config.mMonitoring = ParseMonitoringConfig(object);
 
         if (object.Has("logging")) {
             config.mLogging = ParseLoggingConfig(object.GetObject("logging"));

@@ -85,9 +85,15 @@ void AosCore::Init(const std::string& configFile)
         mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
 
+    // Initialize resource usage provider
+
+    err = mResourceUsageProvider.Init(mNetworkManager);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize resource usage provider", err);
+
     // Initialize resource monitor
 
-    err = mResourceMonitor.Init(mIAMClientPublic, mResourceUsageProvider, mSMClient, mSMClient);
+    err = mResourceMonitor.Init(mConfig.mMonitoring, mIAMClientPublic, mResourceManager, mResourceUsageProvider,
+        mSMClient, mSMClient, mSMClient);
     AOS_ERROR_CHECK_AND_THROW("can't initialize resource monitor", err);
 
     // Initialize image handler

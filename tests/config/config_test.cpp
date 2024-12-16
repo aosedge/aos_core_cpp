@@ -84,7 +84,6 @@ static constexpr auto cTestServiceManagerJSON          = R"({
 })";
 static constexpr auto cTestDefaultValuesJSON           = R"({
     "workingDir": "test",
-    "monitoring" : {},
     "journalAlerts": {
         "filter": [
             "test",
@@ -190,9 +189,8 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_STREQ(config.mMigration.mMigrationPath.c_str(), "/usr/share/aos_servicemanager/migration");
     EXPECT_STREQ(config.mMigration.mMergedMigrationPath.c_str(), "/var/aos/servicemanager/mergedMigration");
 
-    EXPECT_EQ(config.mMonitoring.mAverageWindow, std::chrono::minutes(5)) << config.mMonitoring.mAverageWindow.count();
-    EXPECT_EQ(config.mMonitoring.mPollPeriod, std::chrono::hours(1) + std::chrono::minutes(1) + std::chrono::seconds(5))
-        << config.mMonitoring.mPollPeriod.count();
+    EXPECT_EQ(config.mMonitoring.mAverageWindow, 5 * aos::Time::cMinutes);
+    EXPECT_EQ(config.mMonitoring.mPollPeriod, aos::Time::cHours + aos::Time::cMinutes + 5 * aos::Time::cSeconds);
 
     EXPECT_STREQ(config.mNodeConfigFile.c_str(), "/var/aos/aos_node.cfg");
     EXPECT_EQ(config.mServicesPartLimit, 10);
@@ -217,8 +215,8 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     EXPECT_EQ(config.mSMClientConfig.mCMReconnectTimeout, std::chrono::seconds(10))
         << config.mSMClientConfig.mCMReconnectTimeout.count();
 
-    EXPECT_EQ(config.mMonitoring.mPollPeriod, std::chrono::seconds(35)) << config.mMonitoring.mPollPeriod.count();
-    EXPECT_EQ(config.mMonitoring.mAverageWindow, std::chrono::seconds(35)) << config.mMonitoring.mAverageWindow.count();
+    EXPECT_EQ(config.mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
+    EXPECT_EQ(config.mMonitoring.mAverageWindow, 35 * aos::Time::cSeconds);
 
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/sm/");
 

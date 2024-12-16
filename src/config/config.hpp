@@ -12,6 +12,7 @@
 
 #include <Poco/Dynamic/Var.h>
 
+#include <aos/common/monitoring/resourcemonitor.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/sm/launcher/config.hpp>
 #include <aos/sm/layermanager.hpp>
@@ -26,15 +27,6 @@ namespace aos::sm::config {
 /***********************************************************************************************************************
  * Types
  **********************************************************************************************************************/
-
-/*
- * Monitoring configuration.
- */
-struct MonitoringConfig {
-    common::utils::Duration mPollPeriod;
-    common::utils::Duration mAverageWindow;
-    std::string             mSource;
-};
 
 /*
  * Logging configuration.
@@ -76,7 +68,7 @@ struct Config {
     uint32_t                   mServicesPartLimit;
     uint32_t                   mLayersPartLimit;
     std::string                mNodeConfigFile;
-    MonitoringConfig           mMonitoring;
+    monitoring::Config         mMonitoring;
     LoggingConfig              mLogging;
     JournalAlertsConfig        mJournalAlerts;
     MigrationConfig            mMigration;

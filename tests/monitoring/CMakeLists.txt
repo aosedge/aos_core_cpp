@@ -4,24 +4,24 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Common include directories
-# ######################################################################################################################
-
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(include)
+set(TARGET monitoring_test)
 
 # ######################################################################################################################
-# Add tests
+# Sources
 # ######################################################################################################################
 
-add_subdirectory(config)
-add_subdirectory(database)
-add_subdirectory(image)
-add_subdirectory(launcher)
-add_subdirectory(monitoring)
-add_subdirectory(networkmanager)
-add_subdirectory(resourcemanager)
-add_subdirectory(runner)
-add_subdirectory(smclient)
-add_subdirectory(logprovider)
+set(SOURCES resourceusageprovider_test.cpp)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_executable(${TARGET} ${SOURCES})
+
+gtest_discover_tests(${TARGET})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} aostestcore monitoring GTest::gmock_main)
