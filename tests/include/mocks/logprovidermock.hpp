@@ -10,8 +10,18 @@
 #include <gmock/gmock.h>
 
 #include <aos/sm/logprovider.hpp>
+#include <logprovider/logprovider.hpp>
 
 namespace aos::sm::logprovider {
+
+/**
+ * Instance id provider mock.
+ */
+class InstanceIDProviderMock : public InstanceIDProviderItf {
+public:
+    MOCK_METHOD(RetWithError<std::vector<std::string>>, GetInstanceIDs, (const cloudprotocol::InstanceFilter& filter),
+        (override));
+};
 
 /**
  * Log observer mock.
