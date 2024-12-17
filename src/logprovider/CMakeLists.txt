@@ -4,23 +4,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET app)
+set(TARGET logprovider)
 
 # ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="app")
+add_definitions(-DLOG_MODULE="logprovider")
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES app.cpp aoscore.cpp)
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
+set(SOURCES logprovider.cpp journal.cpp archivator.cpp)
 
 # ######################################################################################################################
 # Target
@@ -32,22 +28,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC config
-           database
-           image
-           launcher
-           resourcemanager
-           runner
-           smclient
-           networkmanager
-           aosdownloader
-           aosocispec
-           aossm
-           aosiamclient
-           aosjsonprovider
-           aoslogger
-           logprovider
-           Poco::Util
-)
+target_link_libraries(${TARGET} PUBLIC aosutils aoscommon Poco::JSON Poco::Foundation)

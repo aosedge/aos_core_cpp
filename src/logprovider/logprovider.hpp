@@ -7,12 +7,20 @@
 #ifndef LOGPROVIDER_HPP_
 #define LOGPROVIDER_HPP_
 
-#include <aos/sm/logprovider.hpp>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "archivator.hpp"
+#include "journal.hpp"
 
 namespace aos::sm::logprovider {
 
 /*
- * Provides service instances IDs.
+ * Provides service instances ID.
  */
 class InstanceIDProviderItf {
 public:
@@ -31,48 +39,62 @@ public:
 };
 
 /**
- * Log provider interface.
+ * Provides journal logs.
  */
 class LogProvider : public LogProviderItf {
 public:
     /**
-     * Gets instance log.
+     * Initializes LogProvider object instance.
      *
-     * @param request request log.
+     * @param instanceProvider instance provider.
+     * @param logReceiver log receiver.
+     * @param config log provider config.
      * @return Error.
      */
-    Error GetInstanceLog(const cloudprotocol::RequestLog& request) override
-    {
-        (void)request;
-
-        return ErrorEnum::eNone;
-    }
+    Error Init(const config::LoggingConfig& config, InstanceIDProviderItf& instanceProvider);
 
     /**
-     * Gets instance crash log.
+     * Starts requests processing thread.
      *
-     * @param request request log.
      * @return Error.
      */
-    Error GetInstanceCrashLog(const cloudprotocol::RequestLog& request) override
-    {
-        (void)request;
-
-        return ErrorEnum::eNone;
-    }
+    Error Start();
 
     /**
-     * Gets system log.
+     * Stops LogProvider.
      *
-     * @param request request log.
      * @return Error.
      */
-    Error GetSystemLog(const cloudprotocol::RequestLog& request) override
-    {
-        (void)request;
+    Error Stop();
 
-        return ErrorEnum::eNone;
-    }
+    /**
+     * Destructor.
+     */
+    ~LogProvider();
+
+    /**
+     * Returns service instance log.
+     *
+     * @param request log request.
+     * @return bool.
+     */
+    Error GetInstanceLog(const cloudprotocol::RequestLog& request) override;
+
+    /**
+     * Returns service instance crash log.
+     *
+     * @param request log request.
+     * @return bool.
+     */
+    Error GetInstanceCrashLog(const cloudprotocol::RequestLog& request) override;
+
+    /**
+     * Returns system log.
+     *
+     * @param request log request.
+     * @return bool.
+     */
+    Error GetSystemLog(const cloudprotocol::RequestLog& request) override;
 
     /**
      * Subscribes on logs.
@@ -80,12 +102,7 @@ public:
      * @param observer logs observer.
      * @return Error.
      */
-    Error Subscribe(LogObserverItf& observer) override
-    {
-        (void)observer;
-
-        return ErrorEnum::eNone;
-    }
+    Error Subscribe(LogObserverItf& observer) override;
 
     /**
      * Unsubscribes from logs.
@@ -93,14 +110,64 @@ public:
      * @param observer logs observer.
      * @return Error.
      */
-    Error Unsubscribe(LogObserverItf& observer) override
-    {
-        (void)observer;
+    Error Unsubscribe(LogObserverItf& observer) override;
 
-        return ErrorEnum::eNone;
-    }
+private:
+    static constexpr auto cAOSServicePrefix = "aos-service@";
+
+    struct GetLogRequest {
+        std::vector<std::string>               mInstanceIDs;
+        StaticString<cloudprotocol::cLogIDLen> mLogID;
+        Optional<Time>                         mFrom, mTill;
+        bool                                   mCrashLog = false;
+    };
+
+    std::shared_ptr<Archivator> CreateArchivator();
+    // to be overridden in unit tests.
+    virtual std::shared_ptr<JournalItf> CreateJournal();
+
+    void ScheduleGetLog(const std::vector<std::string>& instanceIDs,
+        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+
+    void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
+        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+
+    void ProcessLogs();
+
+    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cloudprotocol::cLogIDLen>& logID,
+        const Optional<Time>& from, const Optional<Time>& till);
+
+    void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
+        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+
+    void SendErrorResponse(const String& logID, const std::string& errorMsg);
+    void SendEmptyResponse(const String& logID, const std::string& errorMsg);
+
+    void AddServiceCgroupFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs);
+    void SeekToTime(JournalItf& journal, const Optional<Time>& from);
+    void AddUnitFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs);
+
+    void ProcessJournalLogs(JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator);
+    void ProcessJournalCrashLogs(
+        JournalItf& journal, Time crashTime, const std::vector<std::string>& instanceIDs, Archivator& archivator);
+
+    std::string FormatLogEntry(const JournalEntry& journalEntry, bool addUnit);
+
+    Time        GetCrashTime(JournalItf& journal, const Optional<Time>& from);
+    std::string GetUnitNameFromLog(const JournalEntry& entry);
+    std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
+
+    InstanceIDProviderItf* mInstanceProvider = nullptr;
+    config::LoggingConfig  mConfig           = {};
+    LogObserverItf*        mLogReceiver      = nullptr;
+
+    std::thread               mWorkerThread;
+    std::queue<GetLogRequest> mLogRequests;
+    std::mutex                mMutex;
+    std::condition_variable   mCondVar;
+    bool                      mStopped = false;
 };
 
 } // namespace aos::sm::logprovider
 
-#endif
+#endif // LOGPROVIDER_HPP_
