@@ -4,19 +4,25 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Common include directories
-# ######################################################################################################################
-
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(include)
+set(TARGET image_test)
 
 # ######################################################################################################################
-# Add tests
+# Sources
 # ######################################################################################################################
 
-add_subdirectory(config)
-add_subdirectory(database)
-add_subdirectory(image)
-add_subdirectory(resourcemanager)
-add_subdirectory(smclient)
+set(SOURCES imagehandler_test.cpp)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_executable(${TARGET} ${SOURCES})
+
+gtest_discover_tests(${TARGET})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} image GTest::gmock_main)
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_LIB_DIR}/tests/include ${AOS_CORE_LIB_DIR}/tests/sm)

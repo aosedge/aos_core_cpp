@@ -89,6 +89,11 @@ void AosCore::Init(const std::string& configFile)
     err = mResourceMonitor.Init(mIAMClientPublic, mResourceUsageProvider, mSMClient, mSMClient);
     AOS_ERROR_CHECK_AND_THROW("can't initialize resource monitor", err);
 
+    // Initialize image handler
+
+    err = mImageHandler.Init(mCryptoProvider, mLayersSpaceAllocator, mDownloadSpaceAllocator, mOCISpec);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize image handler", err);
+
     // Initialize service manager
 
     auto serviceManagerConfig = std::make_shared<sm::servicemanager::Config>();

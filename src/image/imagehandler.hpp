@@ -7,6 +7,8 @@
 #ifndef IMAGEHANDLER_HPP_
 #define IMAGEHANDLER_HPP_
 
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/tools/error.hpp>
 #include <aos/sm/image/imagehandler.hpp>
 
 namespace aos::sm::image {
@@ -14,8 +16,21 @@ namespace aos::sm::image {
 /**
  * Image handler interface.
  */
-class ImageHandler : public aos::sm::image::ImageHandlerItf {
+class ImageHandler : public ImageHandlerItf {
 public:
+    /**
+     * Initializes image handler.
+     *
+     * @param hasher hasher.
+     * @param layerSpaceAllocator layer space allocator.
+     * @param serviceSpaceAllocator service space allocator.
+     * @param ociSpec OCI spec.
+     * @param uid default user id.
+     * @return Error.
+     */
+    Error Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocatorItf& layerSpaceAllocator,
+        spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec, uint32_t uid = 0);
+
     /**
      * Installs layer from the provided archive.
      *
@@ -26,15 +41,7 @@ public:
      * @return RetWithError<StaticString<cFilePathLen>>.
      */
     RetWithError<StaticString<cFilePathLen>> InstallLayer(const String& archivePath, const String& installBasePath,
-        const LayerInfo& layer, UniquePtr<spaceallocator::SpaceItf>& space) override
-    {
-        (void)archivePath;
-        (void)installBasePath;
-        (void)layer;
-        (void)space;
-
-        return {""};
-    }
+        const LayerInfo& layer, UniquePtr<aos::spaceallocator::SpaceItf>& space) override;
 
     /**
      * Installs service from the provided archive.
@@ -46,15 +53,7 @@ public:
      * @return RetWithError<StaticString<cFilePathLen>>.
      */
     RetWithError<StaticString<cFilePathLen>> InstallService(const String& archivePath, const String& installBasePath,
-        const ServiceInfo& service, UniquePtr<spaceallocator::SpaceItf>& space) override
-    {
-        (void)archivePath;
-        (void)installBasePath;
-        (void)service;
-        (void)space;
-
-        return {""};
-    }
+        const ServiceInfo& service, UniquePtr<aos::spaceallocator::SpaceItf>& space) override;
 
     /**
      * Validates service.
@@ -62,12 +61,7 @@ public:
      * @param path service path.
      * @return Error.
      */
-    Error ValidateService(const String& path) const override
-    {
-        (void)path;
-
-        return ErrorEnum::eNone;
-    }
+    Error ValidateService(const String& path) const override;
 
     /**
      * Calculates digest for the given path or file.
@@ -75,12 +69,27 @@ public:
      * @param path root folder or file.
      * @return RetWithError<StaticString<cMaxDigestLen>>.
      */
-    RetWithError<StaticString<oci::cMaxDigestLen>> CalculateDigest(const String& path) const override
-    {
-        (void)path;
+    RetWithError<StaticString<oci::cMaxDigestLen>> CalculateDigest(const String& path) const override;
 
-        return {""};
-    }
+    /**
+     * Destructor.
+     */
+    ~ImageHandler() = default;
+
+private:
+    Error ValidateService(const String& path, const oci::ImageManifest& manifest) const;
+    Error ValidateDigest(const String& path, const String& digest) const;
+    RetWithError<StaticArray<uint8_t, cSHA256Size>> CalculateHash(const String& path, crypto::Hash algorithm) const;
+    Error CheckFileInfo(const String& path, uint64_t size, const Array<uint8_t>& sha256) const;
+    Error UnpackArchive(const String& source, const String& destination) const;
+    Error PrepareServiceFS(const String& baseDir, const ServiceInfo& service, oci::ImageManifest& manifest,
+        UniquePtr<aos::spaceallocator::SpaceItf>& space) const;
+
+    crypto::HasherItf*                 mHasher                = nullptr;
+    spaceallocator::SpaceAllocatorItf* mLayerSpaceAllocator   = nullptr;
+    spaceallocator::SpaceAllocatorItf* mServiceSpaceAllocator = nullptr;
+    oci::OCISpecItf*                   mOCISpec               = nullptr;
+    uint32_t                           mUID                   = 0;
 };
 
 } // namespace aos::sm::image
