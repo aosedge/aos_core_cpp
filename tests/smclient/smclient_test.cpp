@@ -19,6 +19,7 @@
 
 #include "mocks/certhandlermock.hpp"
 #include "mocks/certloadermock.hpp"
+#include "mocks/connectionsubscribermock.hpp"
 #include "mocks/launchermock.hpp"
 #include "mocks/logprovidermock.hpp"
 #include "mocks/networkmanagermock.hpp"
@@ -481,30 +482,6 @@ TEST_F(SMClientTest, ClientReconnectOnGettingUnhandlerMessage)
     // Client is expected to reconnect and send node config status
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
     server->WaitNodeConfigStatus(std::chrono::seconds(3));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsIfFailsToProcessMessage)
-{
-    auto [server, client] = InitTest();
-
-    std::promise<void> promise;
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(mLauncher, SetCloudConnection).WillOnce(Invoke([&] {
-        promise.set_value();
-
-        return aos::ErrorEnum::eFailed;
-    }));
-
-    server->SendConnectionStatus();
-
-    EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready)
-        << "didn't receive connection status connected";
-
-    server->WaitNodeConfigStatus();
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -1060,18 +1037,20 @@ TEST_F(SMClientTest, ConnectionStatusConnectedSucceeds)
 {
     auto [server, client] = InitTest();
 
+    ConnectionSubscriberMock subscriber;
+
+    ASSERT_TRUE(client->Subscribe(subscriber).IsNone());
+
     std::promise<void> promise;
 
-    EXPECT_CALL(mLauncher, SetCloudConnection(true)).WillOnce(Invoke([&] {
-        promise.set_value();
-
-        return aos::ErrorEnum::eNone;
-    }));
+    EXPECT_CALL(subscriber, OnConnect).WillOnce(Invoke([&] { promise.set_value(); }));
 
     server->SendConnectionStatus(smproto::ConnectionEnum::CONNECTED);
 
     EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready)
         << "didn't receive connection status connected";
+
+    client->Unsubscribe(subscriber);
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -1081,18 +1060,20 @@ TEST_F(SMClientTest, ConnectionStatusDisconnectedSucceeds)
 {
     auto [server, client] = InitTest();
 
+    ConnectionSubscriberMock subscriber;
+
+    ASSERT_TRUE(client->Subscribe(subscriber).IsNone());
+
     std::promise<void> promise;
 
-    EXPECT_CALL(mLauncher, SetCloudConnection(false)).WillOnce(Invoke([&] {
-        promise.set_value();
-
-        return aos::ErrorEnum::eNone;
-    }));
+    EXPECT_CALL(subscriber, OnDisconnect).WillOnce(Invoke([&] { promise.set_value(); }));
 
     server->SendConnectionStatus(smproto::ConnectionEnum::DISCONNECTED);
 
     EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready)
         << "didn't receive connection status connected";
+
+    client->Unsubscribe(subscriber);
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();

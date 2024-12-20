@@ -15,6 +15,7 @@
 
 #include <aos/common/alerts/alerts.hpp>
 #include <aos/common/cloudprotocol/alerts.hpp>
+#include <aos/common/connectionsubsc.hpp>
 #include <aos/common/crypto/crypto.hpp>
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/monitoring/monitoring.hpp>
@@ -45,6 +46,7 @@ class SMClient : public iam::certhandler::CertReceiverItf,
                  public alerts::SenderItf,
                  public sm::logprovider::LogObserverItf,
                  public sm::launcher::InstanceStatusReceiverItf,
+                 public ConnectionPublisherItf,
                  private NonCopyable {
 public:
     /**
@@ -132,6 +134,20 @@ public:
     Error InstancesUpdateStatus(const Array<InstanceStatus>& instances) override;
 
     /**
+     * Subscribes to cloud connection events.
+     *
+     * @param subscriber subscriber reference.
+     */
+    Error Subscribe(ConnectionSubscriberItf& subscriber) override;
+
+    /**
+     * Unsubscribes from cloud connection events.
+     *
+     * @param subscriber subscriber reference.
+     */
+    void Unsubscribe(ConnectionSubscriberItf& subscriber) override;
+
+    /**
      * Destroys object instance.
      */
     ~SMClient() = default;
@@ -177,6 +193,7 @@ private:
     bool                                                   mCredentialListUpdated = false;
     bool                                                   mSecureConnection      = true;
     NodeInfo                                               mNodeInfo;
+    std::vector<ConnectionSubscriberItf*>                  mCloudConnectionSubscribers;
 
     std::unique_ptr<grpc::ClientContext> mCtx;
     StreamPtr                            mStream;

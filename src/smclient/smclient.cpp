@@ -223,6 +223,29 @@ Error SMClient::InstancesUpdateStatus(const Array<InstanceStatus>& instances)
     return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send update instances status"));
 }
 
+Error SMClient::Subscribe(ConnectionSubscriberItf& subscriber)
+{
+    std::lock_guard lock {mMutex};
+
+    if (std::find(mCloudConnectionSubscribers.begin(), mCloudConnectionSubscribers.end(), &subscriber)
+        != mCloudConnectionSubscribers.end()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "subscriber already exists"));
+    }
+
+    mCloudConnectionSubscribers.push_back(&subscriber);
+
+    return ErrorEnum::eNone;
+}
+
+void SMClient::Unsubscribe(ConnectionSubscriberItf& subscriber)
+{
+    std::lock_guard lock {mMutex};
+
+    mCloudConnectionSubscribers.erase(
+        std::remove(mCloudConnectionSubscribers.begin(), mCloudConnectionSubscribers.end(), &subscriber),
+        mCloudConnectionSubscribers.end());
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -584,11 +607,12 @@ bool SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& request)
 {
     LOG_DBG() << "Process connection status: cloudStatus=" << request.cloud_status();
 
-    if (auto err = mLauncher->SetCloudConnection(request.cloud_status() == smproto::ConnectionEnum::CONNECTED);
-        !err.IsNone()) {
-        LOG_ERR() << "Set cloud connection failed: err=" << err;
-
-        return false;
+    for (auto* subscriber : mCloudConnectionSubscribers) {
+        if (request.cloud_status() == smproto::ConnectionEnum::CONNECTED) {
+            subscriber->OnConnect();
+        } else {
+            subscriber->OnDisconnect();
+        }
     }
 
     return true;
