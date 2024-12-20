@@ -16,7 +16,7 @@ add_definitions(-DLOG_MODULE="networkmanager")
 # Sources
 # ######################################################################################################################
 
-set(SOURCES cni.cpp exec.cpp)
+set(SOURCES cni.cpp exec.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
 # Target
@@ -28,4 +28,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils aossm Poco::JSON Poco::Foundation)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosnetwork aosutils aossm Poco::JSON Poco::Foundation)
