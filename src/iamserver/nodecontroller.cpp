@@ -7,6 +7,8 @@
 
 #include <thread>
 
+#include <pbconvert/common.hpp>
+
 #include "logger/logmodule.hpp"
 #include "nodecontroller.hpp"
 #include "utils/convert.hpp"
@@ -319,7 +321,7 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 
     aos::NodeInfo nodeInfo;
 
-    if (auto err = utils::ConvertToAos(info, nodeInfo); !err.IsNone()) {
+    if (auto err = aos::common::pbconvert::ConvertToAos(info, nodeInfo); !err.IsNone()) {
         return err;
     }
 

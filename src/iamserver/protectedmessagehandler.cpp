@@ -13,6 +13,8 @@
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
 
+#include <pbconvert/common.hpp>
+
 #include "logger/logmodule.hpp"
 #include "protectedmessagehandler.hpp"
 #include "utils/convert.hpp"
@@ -112,7 +114,7 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
     if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::ePaused); !err.IsNone()) {
         LOG_ERR() << "Set node status failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
     }
 
     return grpc::Status::OK;
@@ -142,7 +144,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
     if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node status failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
     }
 
     return grpc::Status::OK;
@@ -206,7 +208,7 @@ grpc::Status ProtectedMessageHandler::StartProvisioning([[maybe_unused]] grpc::S
     if (auto err = mProvisionManager->StartProvisioning(request->password().c_str()); !err.IsNone()) {
         LOG_ERR() << "Start provisioning error: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
     }
 
     return grpc::Status::OK;
@@ -235,7 +237,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         if (auto err = mProvisionManager->FinishProvisioning(request->password().c_str()); !err.IsNone()) {
             LOG_ERR() << "Finish provisioning failed: error=" << err;
 
-            utils::SetErrorInfo(err, *response);
+            aos::common::pbconvert::SetErrorInfo(err, *response);
 
             return grpc::Status::OK;
         }
@@ -244,7 +246,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
     if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node status failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
     }
 
     return grpc::Status::OK;
@@ -273,7 +275,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         if (auto err = mProvisionManager->Deprovision(request->password().c_str()); !err.IsNone()) {
             LOG_ERR() << "Deprovision failed: error=" << err;
 
-            utils::SetErrorInfo(err, *response);
+            aos::common::pbconvert::SetErrorInfo(err, *response);
 
             return grpc::Status::OK;
         }
@@ -282,7 +284,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
     if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eUnprovisioned); !err.IsNone()) {
         LOG_ERR() << "Set node status failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
     }
 
     return grpc::Status::OK;
@@ -307,7 +309,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
         LOG_ERR() << "Create key failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
 
         return grpc::Status::OK;
     }
@@ -319,7 +321,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
         if (!err.IsNone()) {
             LOG_ERR() << "Get system ID failed: error=" << err;
 
-            utils::SetErrorInfo(err, *response);
+            aos::common::pbconvert::SetErrorInfo(err, *response);
 
             return grpc::Status::OK;
         }
@@ -346,7 +348,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     if (err = mProvisionManager->CreateKey(certType, subject, password, csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
 
         return grpc::Status::OK;
     }
@@ -387,7 +389,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     if (auto err = mProvisionManager->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
 
         return grpc::Status::OK;
     }
@@ -399,7 +401,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     if (!err.IsNone()) {
         LOG_ERR() << "Convert serial failed: error=" << err;
 
-        utils::SetErrorInfo(err, *response);
+        aos::common::pbconvert::SetErrorInfo(err, *response);
 
         return grpc::Status::OK;
     }
@@ -418,7 +420,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     const iamproto::RegisterInstanceRequest* request, iamproto::RegisterInstanceResponse* response)
 {
     aos::Error err         = aos::ErrorEnum::eNone;
-    const auto aosInstance = utils::ConvertToAos(request->instance());
+    const auto aosInstance = aos::common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process register instance: serviceID=" << aosInstance.mServiceID
               << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
@@ -463,7 +465,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
 grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::UnregisterInstanceRequest* request, [[maybe_unused]] google::protobuf::Empty* response)
 {
-    const auto instance = utils::ConvertToAos(request->instance());
+    const auto instance = aos::common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process unregister instance: serviceID=" << instance.mServiceID
               << ", subjectID=" << instance.mSubjectID << ", instance=" << instance.mInstance;

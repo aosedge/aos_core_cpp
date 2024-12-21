@@ -10,6 +10,7 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
+#include <pbconvert/common.hpp>
 #include <utils/exception.hpp>
 #include <utils/grpchelper.hpp>
 
@@ -278,13 +279,13 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningR
     if (!err.IsNone()) {
         LOG_ERR() << "Can't start provisioning: wrong node status";
 
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->StartProvisioning(request.password().c_str());
-    utils::SetErrorInfo(err, response);
+    aos::common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -300,26 +301,26 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
     if (!err.IsNone()) {
         LOG_ERR() << "Can't finish provisioning: wrong node status";
 
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->FinishProvisioning(request.password().c_str());
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    utils::SetErrorInfo(err, response);
+    aos::common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -335,26 +336,26 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
     if (!err.IsNone()) {
         LOG_ERR() << "Can't deprovision: wrong node status";
 
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->Deprovision(request.password().c_str());
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eUnprovisioned);
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    utils::SetErrorInfo(err, response);
+    aos::common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -372,19 +373,19 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
     if (!err.IsNone()) {
         LOG_ERR() << "Can't pause node: wrong node status";
 
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::ePaused);
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    utils::SetErrorInfo(err, response);
+    aos::common::pbconvert::SetErrorInfo(err, response);
 
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
@@ -402,19 +403,19 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
     if (!err.IsNone()) {
         LOG_ERR() << "Can't resume node: wrong node status";
 
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        utils::SetErrorInfo(err, response);
+        aos::common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    utils::SetErrorInfo(err, response);
+    aos::common::pbconvert::SetErrorInfo(err, response);
 
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
@@ -505,7 +506,7 @@ bool IAMClient::SendCreateKeyResponse(
     response.set_type(type.CStr());
     response.set_csr(csr.CStr());
 
-    utils::SetErrorInfo(error, response);
+    aos::common::pbconvert::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -532,7 +533,7 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::Stri
     response.set_cert_url(certURL.CStr());
     response.set_serial(protoSerial);
 
-    utils::SetErrorInfo(error, response);
+    aos::common::pbconvert::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }
