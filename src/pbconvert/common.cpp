@@ -71,4 +71,94 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time)
     return result;
 }
 
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoStaticArray& dst)
+{
+    for (const auto& srcCPU : src) {
+        CPUInfo dstCPU;
+
+        dstCPU.mModelName  = srcCPU.model_name().c_str();
+        dstCPU.mNumCores   = srcCPU.num_cores();
+        dstCPU.mNumThreads = srcCPU.num_threads();
+        dstCPU.mArch       = srcCPU.arch().c_str();
+        dstCPU.mArchFamily = srcCPU.arch_family().c_str();
+        dstCPU.mMaxDMIPS   = srcCPU.max_dmips();
+
+        if (auto err = dst.PushBack(dstCPU); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToAos(
+    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoStaticArray& dst)
+{
+    for (const auto& srcPartition : src) {
+        PartitionInfo dstPartition;
+
+        dstPartition.mName      = srcPartition.name().c_str();
+        dstPartition.mPath      = srcPartition.path().c_str();
+        dstPartition.mTotalSize = srcPartition.total_size();
+
+        for (const auto& srcType : srcPartition.types()) {
+            if (auto err = dstPartition.mTypes.PushBack(srcType.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        if (auto err = dst.PushBack(dstPartition); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToAos(
+    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeStaticArray& dst)
+{
+    for (const auto& srcAttribute : src) {
+        NodeAttribute dstAttribute;
+
+        dstAttribute.mName  = srcAttribute.name().c_str();
+        dstAttribute.mValue = srcAttribute.value().c_str();
+
+        if (auto err = dst.PushBack(dstAttribute); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfo& dst)
+{
+    dst.mNodeID   = src.node_id().c_str();
+    dst.mNodeType = src.node_type().c_str();
+    dst.mName     = src.name().c_str();
+
+    NodeStatus nodeStatus;
+    nodeStatus.FromString(src.status().c_str());
+
+    dst.mStatus   = nodeStatus;
+    dst.mOSType   = src.os_type().c_str();
+    dst.mMaxDMIPS = src.max_dmips();
+    dst.mTotalRAM = src.total_ram();
+
+    if (auto err = ConvertToAos(src.cpus(), dst.mCPUs); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = ConvertToAos(src.partitions(), dst.mPartitions); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = ConvertToAos(src.attrs(), dst.mAttrs); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::pbconvert

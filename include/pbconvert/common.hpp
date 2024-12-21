@@ -13,6 +13,7 @@
 #include <aos/common/types.hpp>
 
 #include <common/v1/common.grpc.pb.h>
+#include <iamanager/v5/iamanager.grpc.pb.h>
 
 namespace aos::common::pbconvert {
 
@@ -56,6 +57,44 @@ Optional<Time> ConvertToAos(const google::protobuf::Timestamp& val);
  * @return google::protobuf::Timestamp .
  */
 google::protobuf::Timestamp TimestampToPB(const aos::Time& time);
+
+/**
+ * Converts protobuf cpus to aos.
+ *
+ * @param src protobuf cpus.
+ * @param[out] dst aos cpus.
+ * @return Error.
+ */
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoStaticArray& dst);
+
+/**
+ * Converts protobuf partitions to aos.
+ *
+ * @param src protobuf partitions.
+ * @param[out] dst aos partitions.
+ * @return Error.
+ */
+Error ConvertToAos(
+    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoStaticArray& dst);
+
+/**
+ * Converts protobuf node attributes to aos.
+ *
+ * @param src protobuf node attributes.
+ * @param[out] dst aos node attributes.
+ * @return Error.
+ */
+Error ConvertToAos(
+    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeStaticArray& dst);
+
+/**
+ * Converts protobuf node info to aos.
+ *
+ * @param src protobuf node info.
+ * @param[out] dst aos node info.
+ * @return Error.
+ */
+Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfo& dst);
 
 /**
  * Sets protobuf error message from aos.

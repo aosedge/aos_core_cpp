@@ -40,7 +40,7 @@ find_package(gRPC REQUIRED)
 
 target_link_libraries(
     ${TARGET}
-    PUBLIC aoscommon Poco::Foundation gRPC::grpc++
+    PUBLIC aoscommon Poco::Foundation gRPC::grpc++ aoscoreapi-gen-iam
     PRIVATE Poco::JSON
 )
 
