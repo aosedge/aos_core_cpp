@@ -32,7 +32,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-iam aosutils)
+target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-iam aosutils aospbconvert)
 
 target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 
