@@ -17,6 +17,7 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/iam/certprovider.hpp>
+#include <aos/iam/nodeinfoprovider.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
@@ -66,7 +67,7 @@ using MTLSCredentialsFunc
 /**
  * Public service handler.
  */
-class PublicServiceHandler : public TLSCredentialsItf {
+class PublicServiceHandler : public TLSCredentialsItf, public iam::nodeinfoprovider::NodeInfoProviderItf {
 public:
     /**
      * Default constructor.
@@ -136,6 +137,38 @@ public:
      * @returns Error.
      */
     Error UnsubscribeCertChanged(iam::certhandler::CertReceiverItf& certReceiver) override;
+
+    /**
+     * Gets the node info object.
+     *
+     * @param[out] nodeInfo node info
+     * @return Error
+     */
+    Error GetNodeInfo(NodeInfo& nodeInfo) const override;
+
+    /**
+     * Sets the node status.
+     *
+     * @param status node status
+     * @return Error
+     */
+    Error SetNodeStatus(const NodeStatus& status) override;
+
+    /**
+     * Subscribes on node status changed event.
+     *
+     * @param observer node status changed observer
+     * @return Error
+     */
+    Error SubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+
+    /**
+     * Unsubscribes from node status changed event.
+     *
+     * @param observer node status changed observer
+     * @return Error
+     */
+    Error UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
 
 private:
     struct Subscription {

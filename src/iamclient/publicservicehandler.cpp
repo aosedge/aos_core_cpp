@@ -6,6 +6,7 @@
 
 #include "iamclient/publicservicehandler.hpp"
 #include "logger/logmodule.hpp"
+#include "pbconvert/common.hpp"
 #include "utils/grpchelper.hpp"
 
 namespace aos::common::iamclient {
@@ -90,6 +91,49 @@ Error PublicServiceHandler::GetCert(const String& certType, const Array<uint8_t>
     LOG_DBG() << "Certificate received: certURL=" << resCert.mCertURL.CStr() << ", keyURL=" << resCert.mKeyURL.CStr();
 
     return ErrorEnum::eNone;
+}
+
+Error PublicServiceHandler::GetNodeInfo(NodeInfo& nodeInfo) const
+{
+    LOG_DBG() << "Getting node info";
+
+    auto ctx = std::make_unique<grpc::ClientContext>();
+    ctx->set_deadline(std::chrono::system_clock::now() + cIAMPublicServiceTimeout);
+
+    iamanager::v5::NodeInfo nodeInfoResponse;
+
+    if (auto status = mStub->GetNodeInfo(ctx.get(), google::protobuf::Empty {}, &nodeInfoResponse); !status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, status.error_message().c_str()));
+    }
+
+    if (auto err = pbconvert::ConvertToAos(nodeInfoResponse, nodeInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error PublicServiceHandler::SetNodeStatus(const NodeStatus& status)
+{
+    LOG_DBG() << "Setting node status: status=" << status;
+
+    return ErrorEnum::eNotSupported;
+}
+
+Error PublicServiceHandler::SubscribeNodeStatusChanged(
+    [[maybe_unused]] iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+{
+    LOG_DBG() << "Subscribing to node status changed";
+
+    return ErrorEnum::eNotSupported;
+}
+
+Error PublicServiceHandler::UnsubscribeNodeStatusChanged(
+    [[maybe_unused]] iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+{
+    LOG_DBG() << "Unsubscribing from node status changed";
+
+    return ErrorEnum::eNotSupported;
 }
 
 PublicServiceHandler::~PublicServiceHandler()
