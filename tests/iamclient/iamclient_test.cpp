@@ -90,6 +90,43 @@ TEST_F(IamClientTest, GetCertificate)
     EXPECT_EQ(certInfo, requestCertInfo);
 }
 
+TEST_F(IamClientTest, GetNodeInfo)
+{
+    aos::NodeInfo nodeInfo;
+
+    auto err = mClient->GetNodeInfo(nodeInfo);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_STREQ(nodeInfo.mNodeID.CStr(), "node_id");
+    EXPECT_STREQ(nodeInfo.mNodeType.CStr(), "node_type");
+    EXPECT_STREQ(nodeInfo.mName.CStr(), "name");
+    EXPECT_EQ(nodeInfo.mStatus, aos::NodeStatusEnum::eProvisioned);
+    EXPECT_STREQ(nodeInfo.mOSType.CStr(), "os_type");
+
+    EXPECT_EQ(nodeInfo.mCPUs.Size(), 1);
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mModelName.CStr(), "model_name");
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1);
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1);
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), "arch");
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchFamily.CStr(), "arch_family");
+    EXPECT_EQ(nodeInfo.mCPUs[0].mMaxDMIPS, 1);
+
+    EXPECT_EQ(nodeInfo.mMaxDMIPS, 1);
+    EXPECT_EQ(nodeInfo.mTotalRAM, 1);
+
+    EXPECT_EQ(nodeInfo.mPartitions.Size(), 1);
+    EXPECT_STREQ(nodeInfo.mPartitions[0].mName.CStr(), "name");
+    EXPECT_EQ(nodeInfo.mPartitions[0].mTypes.Size(), 1);
+    EXPECT_STREQ(nodeInfo.mPartitions[0].mTypes[0].CStr(), "types");
+    EXPECT_EQ(nodeInfo.mPartitions[0].mTotalSize, 1);
+    EXPECT_STREQ(nodeInfo.mPartitions[0].mPath.CStr(), "path");
+
+    EXPECT_EQ(nodeInfo.mAttrs.Size(), 1);
+    EXPECT_STREQ(nodeInfo.mAttrs[0].mName.CStr(), "name");
+    EXPECT_STREQ(nodeInfo.mAttrs[0].mValue.CStr(), "value");
+}
+
 TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
 {
     aos::iam::certhandler::CertReceiverMock subscriber1;
