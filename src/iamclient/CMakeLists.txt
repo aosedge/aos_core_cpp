@@ -16,7 +16,7 @@ add_definitions(-DLOG_MODULE="iamclient")
 # Sources
 # ######################################################################################################################
 
-set(SOURCES publicservicehandler.cpp)
+set(SOURCES permservicehandler.cpp publicservicehandler.cpp)
 
 # ######################################################################################################################
 # Includes
