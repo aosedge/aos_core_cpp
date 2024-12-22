@@ -10,8 +10,10 @@
 
 #include <aos/test/log.hpp>
 
+#include "iamclient/permservicehandler.hpp"
 #include "iamclient/publicservicehandler.hpp"
 #include "mocks/certhandlermock.hpp"
+#include "mocks/iamclientmock.hpp"
 #include "stubs/iamserverstub.hpp"
 
 using namespace testing;
@@ -32,6 +34,7 @@ protected:
 
         mIAMServerStub.emplace();
         mClient.emplace();
+        mPermServiceHandler.emplace();
 
         auto getMTLSCredentials = [this](const aos::iam::certhandler::CertInfo& certInfo, const aos::String&,
                                       aos::crypto::CertLoaderItf&, aos::crypto::x509::ProviderItf&) {
@@ -43,15 +46,19 @@ protected:
         auto err = mClient->Init(mConfig, *mCertLoader, *mCryptoProvider, true, std::move(getMTLSCredentials));
 
         ASSERT_EQ(err, aos::ErrorEnum::eNone);
+
+        err = mPermServiceHandler->Init("localhost:8002", "cert_storage", mTLSCredentialsMock);
     }
 
     std::optional<TestIAMServerStub> mIAMServerStub;
 
-    std::optional<PublicServiceHandler> mClient;
-    aos::crypto::CertLoaderItf*         mCertLoader {};
-    aos::crypto::x509::ProviderItf*     mCryptoProvider {};
-    Config                              mConfig {};
-    aos::iam::certhandler::CertInfo     mCertInfo {};
+    std::optional<PublicServiceHandler>      mClient;
+    std::optional<PermissionsServiceHandler> mPermServiceHandler;
+    aos::crypto::CertLoaderItf*              mCertLoader {};
+    aos::crypto::x509::ProviderItf*          mCryptoProvider {};
+    TLSCredentialsMock                       mTLSCredentialsMock {};
+    Config                                   mConfig {};
+    aos::iam::certhandler::CertInfo          mCertInfo {};
 };
 
 /***********************************************************************************************************************
@@ -169,5 +176,32 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
     EXPECT_EQ(requestCertInfo.mKeyURL, "client_key");
 
     mClient->UnsubscribeCertChanged(subscriber2);
+    mIAMServerStub->Close();
+}
+
+TEST_F(IamClientTest, RegisterUnregisterInstance)
+{
+    aos::InstanceIdent instanceIdent;
+    instanceIdent.mServiceID = "service_id";
+    instanceIdent.mSubjectID = "subject_id";
+    instanceIdent.mInstance  = 1;
+
+    aos::StaticArray<aos::iam::permhandler::FunctionalServicePermissions, 1> instancePermissions;
+
+    EXPECT_CALL(mTLSCredentialsMock, GetMTLSClientCredentials(_))
+        .Times(2)
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+
+    auto [secret, err] = mPermServiceHandler->RegisterInstance(instanceIdent, instancePermissions);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_STREQ(secret.CStr(), "secret");
+
+    err = mPermServiceHandler->UnregisterInstance(instanceIdent);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
     mIAMServerStub->Close();
 }
