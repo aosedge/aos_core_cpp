@@ -18,7 +18,8 @@
 /**
  * Test IAM server.
  */
-class TestIAMServerStub final : public iamanager::v5::IAMPublicService::Service {
+class TestIAMServerStub final : public iamanager::v5::IAMPublicService::Service,
+                                public iamanager::v5::IAMPermissionsService::Service {
 public:
     /**
      * Constructor.
@@ -88,6 +89,7 @@ private:
         grpc::ServerBuilder builder;
         builder.AddListeningPort("localhost:8002", grpc::InsecureServerCredentials());
         builder.RegisterService(static_cast<iamanager::v5::IAMPublicService::Service*>(this));
+        builder.RegisterService(static_cast<iamanager::v5::IAMPermissionsService::Service*>(this));
 
         return builder.BuildAndStart();
     }
@@ -138,7 +140,7 @@ private:
     }
 
     grpc::Status SubscribeCertChanged(grpc::ServerContext*, const iamanager::v5::SubscribeCertChangedRequest* request,
-        grpc::ServerWriter<iamanager::v5::CertInfo>* writer)
+        grpc::ServerWriter<iamanager::v5::CertInfo>* writer) override
     {
         mCertType = request->type();
 
@@ -152,6 +154,20 @@ private:
             mCV.wait(lock, [this] { return mClose; });
         }
 
+        return grpc::Status::OK;
+    }
+
+    grpc::Status RegisterInstance(grpc::ServerContext*, [[maybe_unused]] const iamanager::v5::RegisterInstanceRequest*,
+        iamanager::v5::RegisterInstanceResponse* response) override
+    {
+        response->set_secret("secret");
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status UnregisterInstance(
+        grpc::ServerContext*, const iamanager::v5::UnregisterInstanceRequest*, google::protobuf::Empty*) override
+    {
         return grpc::Status::OK;
     }
 
