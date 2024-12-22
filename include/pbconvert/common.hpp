@@ -11,6 +11,7 @@
 
 #include <aos/common/tools/optional.hpp>
 #include <aos/common/types.hpp>
+#include <aos/iam/permhandler.hpp>
 
 #include <common/v1/common.grpc.pb.h>
 #include <iamanager/v5/iamanager.grpc.pb.h>
@@ -33,6 +34,16 @@ namespace aos::common::pbconvert {
  * @return ::common::v1::InstanceIdent.
  */
 ::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src);
+
+/**
+ * Converts aos instance permissions to protobuf.
+ *
+ * @param instanceIdent instance ident.
+ * @param instancePermissions instance permissions to convert.
+ * @return iamanager::v5::RegisterInstanceRequest.
+ */
+iamanager::v5::RegisterInstanceRequest ConvertToProto(const InstanceIdent& instanceIdent,
+    const Array<iam::permhandler::FunctionalServicePermissions>&           instancePermissions);
 
 /**
  * Converts protobuf instance ident to aos.
