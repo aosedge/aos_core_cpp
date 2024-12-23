@@ -40,14 +40,15 @@ public:
      * @param certStorage Certificate storage.
      * @return MTLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSCredentials(const String& certStorage) = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(const String& certStorage)
+        = 0;
 
     /**
      * Gets TLS credentials.
      *
      * @return TLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSCredentials() = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() = 0;
 
     /**
      * Destructor.
@@ -97,14 +98,15 @@ public:
      * @param certStorage Certificate storage.
      * @return MTLS credentials.
      */
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSCredentials(const String& certStorage) override;
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(
+        const String& certStorage) override;
 
     /**
      * Gets TLS credentials.
      *
      * @return TLS credentials.
      */
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSCredentials() override;
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() override;
 
     /**
      * Returns certificate info.
