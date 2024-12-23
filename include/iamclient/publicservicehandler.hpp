@@ -13,14 +13,14 @@
 #include <thread>
 #include <unordered_map>
 
-#include <grpcpp/security/credentials.h>
-#include <iamanager/v5/iamanager.grpc.pb.h>
-
 #include <aos/common/crypto/crypto.hpp>
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/error.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <utils/grpchelper.hpp>
+#include <aos/iam/certprovider.hpp>
+
+#include <iamanager/v5/iamanager.grpc.pb.h>
+
+#include "utils/grpchelper.hpp"
 
 namespace aos::common::iamclient {
 
@@ -32,73 +32,50 @@ struct Config {
     std::string mCACert;
 };
 
-/**
- * Certificate provider interface.
- */
-class CertProviderItf {
+class TLSCredentialsItf : public iam::certprovider::CertProviderItf {
 public:
-    /**
-     * Destructor.
-     */
-    virtual ~CertProviderItf() = default;
-
     /**
      * Gets MTLS configuration.
      *
      * @param certStorage Certificate storage.
-     * @return MTLS configuration.
+     * @return MTLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSConfig(const std::string& certStorage) = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSCredentials(const String& certStorage) = 0;
 
     /**
      * Gets TLS credentials.
      *
      * @return TLS credentials.
      */
-    virtual std::shared_ptr<grpc::ChannelCredentials> GetTLSCredentials() = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSCredentials() = 0;
 
     /**
-     * Gets certificate.
-     *
-     * @param certType Certificate type.
-     * @param certInfo Certificate info.
-     * @return Error.
+     * Destructor.
      */
-    virtual Error GetCertificate(const std::string& certType, iam::certhandler::CertInfo& certInfo) = 0;
-
-    /**
-     * Subscribe to certificate changed.
-     *
-     * @param certType Certificate type.
-     * @return Error.
-     */
-    virtual Error SubscribeCertChanged(const std::string& certType, iam::certhandler::CertReceiverItf& subscriber) = 0;
-
-    /**
-     * Unsubscribe to certificate changed.
-     *
-     * @param certType Certificate type.
-     * @param subscriber Subscriber.
-     * @return Error.
-     */
-    virtual void UnsubscribeCertChanged(const std::string& certType, iam::certhandler::CertReceiverItf& subscriber) = 0;
+    virtual ~TLSCredentialsItf() = default;
 };
 
 /**
  * MTLS credentials function.
  */
-using MTLSCredentialsFunc = std::function<std::shared_ptr<grpc::ChannelCredentials>(
-    const iam::certhandler::CertInfo&, const String&, crypto::CertLoaderItf&, crypto::x509::ProviderItf&)>;
+using MTLSCredentialsFunc
+    = std::function<std::shared_ptr<grpc::ChannelCredentials>(const iam::certhandler::CertInfo& certInfo,
+        const String& rootCA, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)>;
 
 /**
  * Public service handler.
  */
-class PublicServiceHandler : public CertProviderItf {
+class PublicServiceHandler : public TLSCredentialsItf {
 public:
     /**
      * Default constructor.
      */
     PublicServiceHandler() = default;
+
+    /**
+     * Destructor.
+     */
+    virtual ~PublicServiceHandler();
 
     /**
      * Initializes handler.
@@ -118,47 +95,45 @@ public:
      * Gets MTLS configuration.
      *
      * @param certStorage Certificate storage.
-     * @return MTLS configuration.
+     * @return MTLS credentials.
      */
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSConfig(const std::string& certStorage) override;
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSCredentials(const String& certStorage) override;
 
     /**
      * Gets TLS credentials.
      *
      * @return TLS credentials.
      */
-    std::shared_ptr<grpc::ChannelCredentials> GetTLSCredentials() override;
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSCredentials() override;
 
     /**
-     * Gets certificate.
+     * Returns certificate info.
      *
-     * @param certType Certificate type.
-     * @param certInfo Certificate info.
-     * @return Error.
+     * @param certType certificate type.
+     * @param issuer issuer name.
+     * @param serial serial number.
+     * @param[out] resCert result certificate.
+     * @returns Error.
      */
-    Error GetCertificate(const std::string& certType, iam::certhandler::CertInfo& certInfo) override;
+    virtual Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+        iam::certhandler::CertInfo& resCert) const override;
 
     /**
-     * Close handler
-     */
-    void Close();
-
-    /**
-     * Subscribe to certificate changed.
+     * Subscribes certificates receiver.
      *
-     * @param certType Certificate type.
-     * @return Error.
+     * @param certType certificate type.
+     * @param certReceiver certificate receiver.
+     * @returns Error.
      */
-    Error SubscribeCertChanged(const std::string& certType, iam::certhandler::CertReceiverItf& subscriber) override;
+    Error SubscribeCertChanged(const String& certType, iam::certhandler::CertReceiverItf& certReceiver) override;
 
     /**
-     * Unsubscribe to certificate changed.
+     * Unsubscribes certificate receiver.
      *
-     * @param certType Certificate type.
-     * @param subscriber Subscriber.
-     * @return Error.
+     * @param certReceiver certificate receiver.
+     * @returns Error.
      */
-    void UnsubscribeCertChanged(const std::string& certType, iam::certhandler::CertReceiverItf& subscriber) override;
+    Error UnsubscribeCertChanged(iam::certhandler::CertReceiverItf& certReceiver) override;
 
 private:
     struct Subscription {

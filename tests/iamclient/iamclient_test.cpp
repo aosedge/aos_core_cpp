@@ -66,7 +66,7 @@ TEST_F(IamClientTest, GetClientMTLSConfig)
 
     mIAMServerStub->SetCertInfo(certInfo);
 
-    auto [_, err] = mClient->GetMTLSConfig("client_cert_type");
+    auto [_, err] = mClient->GetMTLSCredentials("client_cert_type");
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(mIAMServerStub->GetCertType(), "client_cert_type");
@@ -83,7 +83,7 @@ TEST_F(IamClientTest, GetCertificate)
 
     aos::iam::certhandler::CertInfo requestCertInfo;
 
-    auto err = mClient->GetCertificate("client_cert_type", requestCertInfo);
+    auto err = mClient->GetCert("client_cert_type", {}, {}, requestCertInfo);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(mIAMServerStub->GetCertType(), "client_cert_type");
@@ -112,26 +112,25 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
 
     aos::iam::certhandler::CertInfo requestCertInfo;
 
-    auto err = mClient->GetCertificate("client_cert_type", requestCertInfo);
+    auto err = mClient->GetCert("client_cert_type", {}, {}, requestCertInfo);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(requestCertInfo.mCertURL, "client_cert");
     EXPECT_EQ(requestCertInfo.mKeyURL, "client_key");
 
-    mClient->UnsubscribeCertChanged("client_cert_type", subscriber1);
+    mClient->UnsubscribeCertChanged(subscriber1);
 
     mIAMServerStub->SendCertChangedInfo(certInfo);
 
     EXPECT_CALL(subscriber1, OnCertChanged(_)).Times(0);
     EXPECT_CALL(subscriber2, OnCertChanged(_)).Times(1);
 
-    err = mClient->GetCertificate("client_cert_type", requestCertInfo);
+    err = mClient->GetCert("client_cert_type", {}, {}, requestCertInfo);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(requestCertInfo.mCertURL, "client_cert");
     EXPECT_EQ(requestCertInfo.mKeyURL, "client_key");
 
-    mClient->UnsubscribeCertChanged("client_cert_type", subscriber2);
-    mClient->Close();
+    mClient->UnsubscribeCertChanged(subscriber2);
     mIAMServerStub->Close();
 }
