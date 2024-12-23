@@ -16,6 +16,7 @@
 
 #include "iamserver/protectedmessagehandler.hpp"
 
+#include "mocks/certprovidermock.hpp"
 #include "mocks/identhandlermock.hpp"
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/nodemanagermock.hpp"
@@ -68,6 +69,7 @@ protected:
     NodeInfoProviderMock                             mNodeInfoProvider;
     NodeManagerMock                                  mNodeManager;
     aos::iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    aos::iam::certprovider::CertProviderMock         mCertProvider;
 
 private:
     void SetUp() override;
@@ -98,8 +100,8 @@ void ProtectedMessageHandlerTest::SetUp()
         return aos::ErrorEnum::eNone;
     }));
 
-    auto err = mServerHandler.Init(
-        mNodeController, mIdentHandler, mPermHandler, mNodeInfoProvider, mNodeManager, mProvisionManager);
+    auto err = mServerHandler.Init(mNodeController, mIdentHandler, mPermHandler, mNodeInfoProvider, mNodeManager,
+        mCertProvider, mProvisionManager);
 
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();
 

@@ -16,6 +16,7 @@
 
 #include "mocks/certhandlermock.hpp"
 #include "mocks/certloadermock.hpp"
+#include "mocks/certprovidermock.hpp"
 #include "mocks/identhandlermock.hpp"
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/provisionmanagermock.hpp"
@@ -435,8 +436,8 @@ protected:
         auto client = std::make_unique<IAMClient>();
 
         assert(client
-                   ->Init(config, &mIdentHandler, mProvisionManager, mCertLoader, mCryptoProvider, mNodeInfoProvider,
-                       provisionMode)
+                   ->Init(config, &mIdentHandler, mCertProvider, mProvisionManager, mCertLoader, mCryptoProvider,
+                       mNodeInfoProvider, provisionMode)
                    .IsNone());
 
         return client;
@@ -473,6 +474,7 @@ protected:
 
     iam::identhandler::IdentHandlerMock         mIdentHandler;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    iam::certprovider::CertProviderMock         mCertProvider;
     CertLoaderItfMock                           mCertLoader;
     ProviderItfMock                             mCryptoProvider;
     NodeInfoProviderMock                        mNodeInfoProvider;

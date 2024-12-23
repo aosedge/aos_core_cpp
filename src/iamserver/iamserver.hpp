@@ -16,6 +16,7 @@
 
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
+#include <aos/iam/certprovider.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/permhandler.hpp>
@@ -47,10 +48,11 @@ public:
      * @param certHandler certificate handler.
      * @param identHandler identification handler.
      * @param permHandler permission handler.
+     * @param certProvider certificate provider.
      * @param certLoader certificate loader.
-     * @param cryptoProvider crypto provider.
      * @param nodeInfoProvider node info provider.
      * @param nodeManager node manager.
+     * @param cryptoProvider crypto provider.
      * @param provisionManager provision manager.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
@@ -58,7 +60,7 @@ public:
         aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
         aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        aos::iam::nodemanager::NodeManagerItf&           nodeManager,
+        aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode);
 
     /**

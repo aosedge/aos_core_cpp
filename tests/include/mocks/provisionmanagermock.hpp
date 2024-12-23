@@ -24,13 +24,6 @@ public:
         (override));
     MOCK_METHOD(
         Error, ApplyCert, (const String& certType, const String& pemCert, certhandler::CertInfo& certInfo), (override));
-    MOCK_METHOD(Error, GetCert,
-        (const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
-            certhandler::CertInfo& resCert),
-        (const override));
-    MOCK_METHOD(
-        Error, SubscribeCertChanged, (const String& certType, certhandler::CertReceiverItf& certReceiver), (override));
-    MOCK_METHOD(Error, UnsubscribeCertChanged, (certhandler::CertReceiverItf & certReceiver), (override));
     MOCK_METHOD(Error, FinishProvisioning, (const String& password), (override));
     MOCK_METHOD(Error, Deprovision, (const String& password), (override));
 };

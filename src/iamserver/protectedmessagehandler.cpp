@@ -31,13 +31,15 @@ static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "stre
 aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
+    aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
     LOG_DBG() << "Initialize message handler: handler=protected";
 
+    mProvisionManager = &provisionManager;
+
     return PublicMessageHandler::Init(
-        nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
+        nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider);
 }
 
 // cppcheck-suppress duplInheritedMember
@@ -172,7 +174,7 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
     aos::Error                            err;
     aos::iam::provisionmanager::CertTypes certTypes;
 
-    aos::Tie(certTypes, err) = GetProvisionManager()->GetCertTypes();
+    aos::Tie(certTypes, err) = mProvisionManager->GetCertTypes();
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types error: " << AOS_ERROR_WRAP(err);
 
@@ -202,7 +204,7 @@ grpc::Status ProtectedMessageHandler::StartProvisioning([[maybe_unused]] grpc::S
         });
     }
 
-    if (auto err = GetProvisionManager()->StartProvisioning(request->password().c_str()); !err.IsNone()) {
+    if (auto err = mProvisionManager->StartProvisioning(request->password().c_str()); !err.IsNone()) {
         LOG_ERR() << "Start provisioning error: error=" << err;
 
         utils::SetErrorInfo(err, *response);
@@ -231,7 +233,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
             return status;
         }
     } else {
-        if (auto err = GetProvisionManager()->FinishProvisioning(request->password().c_str()); !err.IsNone()) {
+        if (auto err = mProvisionManager->FinishProvisioning(request->password().c_str()); !err.IsNone()) {
             LOG_ERR() << "Finish provisioning failed: error=" << err;
 
             utils::SetErrorInfo(err, *response);
@@ -269,7 +271,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
             return status;
         }
     } else {
-        if (auto err = GetProvisionManager()->Deprovision(request->password().c_str()); !err.IsNone()) {
+        if (auto err = mProvisionManager->Deprovision(request->password().c_str()); !err.IsNone()) {
             LOG_ERR() << "Deprovision failed: error=" << err;
 
             utils::SetErrorInfo(err, *response);
@@ -342,7 +344,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     aos::StaticString<aos::crypto::cCSRPEMLen> csr;
 
-    if (err = GetProvisionManager()->CreateKey(certType, subject, password, csr); !err.IsNone()) {
+    if (err = mProvisionManager->CreateKey(certType, subject, password, csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
@@ -383,7 +385,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
 
     aos::iam::certhandler::CertInfo certInfo;
 
-    if (auto err = GetProvisionManager()->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
+    if (auto err = mProvisionManager->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);

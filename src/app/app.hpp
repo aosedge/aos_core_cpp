@@ -12,6 +12,7 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <aos/iam/certprovider.hpp>
 #include <aos/iam/nodemanager.hpp>
 #include <aos/iam/permhandler.hpp>
 #include <aos/iam/provisionmanager.hpp>
@@ -58,6 +59,7 @@ private:
     Database                                                 mDatabase;
     NodeInfoProvider                                         mNodeInfoProvider;
     aos::iam::nodemanager::NodeManager                       mNodeManager;
+    aos::iam::certprovider::CertProvider                     mCertProvider;
     aos::iam::provisionmanager::ProvisionManager             mProvisionManager;
     IAMServer                                                mIAMServer;
     aos::common::logger::Logger                              mLogger;

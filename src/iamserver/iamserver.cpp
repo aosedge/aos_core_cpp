@@ -87,7 +87,7 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
+    aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";
@@ -108,13 +108,13 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
     }
 
     if (err = mPublicMessageHandler.Init(
-            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
+            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     if (err = mProtectedMessageHandler.Init(
-            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
+            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider, provisionManager);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }

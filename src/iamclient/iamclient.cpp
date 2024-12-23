@@ -22,12 +22,14 @@
  **********************************************************************************************************************/
 
 aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
+    aos::iam::certprovider::CertProviderItf&         certProvider,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     bool provisioningMode)
 {
     mIdentHandler     = identHandler;
     mNodeInfoProvider = &nodeInfoProvider;
+    mCertProvider     = &certProvider;
     mCertLoader       = &certLoader;
     mCryptoProvider   = &cryptoProvider;
     mProvisionManager = &provisionManager;
@@ -49,14 +51,14 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHa
     } else {
         aos::iam::certhandler::CertInfo certInfo;
 
-        auto err = provisionManager.GetCert(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
+        auto err = mCertProvider->GetCert(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
         if (!err.IsNone()) {
             LOG_ERR() << "Get certificates failed: error=" << err.Message();
 
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
-        err = provisionManager.SubscribeCertChanged(aos::String(config.mCertStorage.c_str()), *this);
+        err = mCertProvider->SubscribeCertChanged(aos::String(config.mCertStorage.c_str()), *this);
         if (!err.IsNone()) {
             LOG_ERR() << "Subscribe certificate receiver failed: error=" << err.Message();
 
@@ -82,7 +84,7 @@ IAMClient::~IAMClient()
         mShutdown = true;
         mShutdownCV.notify_all();
 
-        mProvisionManager->UnsubscribeCertChanged(*this);
+        mCertProvider->UnsubscribeCertChanged(*this);
 
         if (mRegisterNodeCtx) {
             mRegisterNodeCtx->TryCancel();

@@ -23,8 +23,7 @@
 aos::Error PublicMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    aos::iam::nodemanager::NodeManagerItf&           nodeManager,
-    aos::iam::provisionmanager::ProvisionManagerItf& provisionManager)
+    aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
 
@@ -33,7 +32,7 @@ aos::Error PublicMessageHandler::Init(NodeController& nodeController,
     mPermHandler      = &permHandler;
     mNodeInfoProvider = &nodeInfoProvider;
     mNodeManager      = &nodeManager;
-    mProvisionManager = &provisionManager;
+    mCertProvider     = &certProvider;
 
     if (auto err = mNodeInfoProvider->GetNodeInfo(mNodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -197,7 +196,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 
     aos::iam::certhandler::CertInfo certInfo;
 
-    err = GetProvisionManager()->GetCert(request->type().c_str(), issuer, serial, certInfo);
+    err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, certInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get cert: " << err;
 
@@ -223,7 +222,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
         mCertWriters.push_back(certWriter);
     }
 
-    auto err = GetProvisionManager()->SubscribeCertChanged(request->type().c_str(), *certWriter);
+    auto err = mCertProvider->SubscribeCertChanged(request->type().c_str(), *certWriter);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
 
@@ -232,7 +231,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
     auto status = certWriter->HandleStream(context, writer);
 
-    err = GetProvisionManager()->UnsubscribeCertChanged(*certWriter);
+    err = mCertProvider->UnsubscribeCertChanged(*certWriter);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
 

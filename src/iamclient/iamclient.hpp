@@ -18,6 +18,7 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/iam/certhandler.hpp>
+#include <aos/iam/certprovider.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/provisionmanager.hpp>
@@ -39,6 +40,7 @@ public:
      *
      * @param config client configuration.
      * @param identHandler identification handler.
+     * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
@@ -47,6 +49,7 @@ public:
      * @returns aos::Error.
      */
     aos::Error Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
+        aos::iam::certprovider::CertProviderItf&         certProvider,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
         aos::crypto::x509::ProviderItf&                  cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
@@ -91,6 +94,7 @@ private:
 
     aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    aos::iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
     aos::crypto::CertLoaderItf*                      mCertLoader       = nullptr;
     aos::crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
     aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;

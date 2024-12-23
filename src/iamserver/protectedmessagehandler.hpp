@@ -19,6 +19,7 @@
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/permhandler.hpp>
+#include <aos/iam/provisionmanager.hpp>
 #include <config/config.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
@@ -46,13 +47,14 @@ public:
      * @param permHandler permission handler.
      * @param nodeInfoProvider node info provider.
      * @param nodeManager node manager.
+     * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      */
     // cppcheck-suppress duplInheritedMember
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
         aos::iam::permhandler::PermHandlerItf&           permHandler,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        aos::iam::nodemanager::NodeManagerItf&           nodeManager,
+        aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager);
 
     /**
@@ -111,6 +113,8 @@ private:
         iamproto::RegisterInstanceResponse* response) override;
     grpc::Status UnregisterInstance(grpc::ServerContext* context, const iamproto::UnregisterInstanceRequest* request,
         google::protobuf::Empty* response) override;
+
+    aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
 };
 
 #endif
