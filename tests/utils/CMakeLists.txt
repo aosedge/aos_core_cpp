@@ -33,4 +33,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} testutils aosutils mbedtls GTest::gmock_main)
+target_link_libraries(${TARGET} aostestutils aosutils mbedtls GTest::gmock_main)

@@ -32,5 +32,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aosiamclient testutils GTest::gmock_main Poco::Foundation)
-target_include_directories(${TARGET} PRIVATE ${AOS_CORE_LIB_DIR}/tests/include)
+target_link_libraries(${TARGET} aosiamclient aostestutils GTest::gmock_main Poco::Foundation)
