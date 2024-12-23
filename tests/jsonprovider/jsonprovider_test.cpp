@@ -232,7 +232,7 @@ static void CompareNodeConfig(
 
 class JSONProviderTest : public Test {
 public:
-    void SetUp() override { InitLog(); }
+    void SetUp() override { test::InitLog(); }
 
     JSONProvider mProvider;
 };

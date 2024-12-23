@@ -28,7 +28,7 @@ void CompareTimestamps(const aos::Time& lhs, const google::protobuf::Timestamp& 
 
 class PBConvertCommon : public Test {
 public:
-    void SetUp() override { aos::InitLog(); }
+    void SetUp() override { aos::test::InitLog(); }
 };
 
 /***********************************************************************************************************************

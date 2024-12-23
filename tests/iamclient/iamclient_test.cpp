@@ -11,8 +11,8 @@
 #include <aos/test/log.hpp>
 
 #include "iamclient/publicservicehandler.hpp"
-#include "mocks/certsubscriber.hpp"
-#include "stubs/iamserver.hpp"
+#include "mocks/certhandlermock.hpp"
+#include "stubs/iamserverstub.hpp"
 
 using namespace testing;
 using namespace aos::common::iamclient;
@@ -28,7 +28,7 @@ public:
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         mIAMServerStub.emplace();
         mClient.emplace();
@@ -45,7 +45,7 @@ protected:
         ASSERT_EQ(err, aos::ErrorEnum::eNone);
     }
 
-    std::optional<TestIAMServer> mIAMServerStub;
+    std::optional<TestIAMServerStub> mIAMServerStub;
 
     std::optional<PublicServiceHandler> mClient;
     aos::crypto::CertLoaderItf*         mCertLoader {};
@@ -92,8 +92,8 @@ TEST_F(IamClientTest, GetCertificate)
 
 TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
 {
-    MockCertSubscriber subscriber1;
-    MockCertSubscriber subscriber2;
+    aos::iam::certhandler::CertReceiverMock subscriber1;
+    aos::iam::certhandler::CertReceiverMock subscriber2;
 
     iamanager::v5::CertInfo certInfo;
     certInfo.set_type("client_cert_type");
