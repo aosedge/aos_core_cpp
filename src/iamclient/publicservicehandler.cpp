@@ -34,7 +34,7 @@ Error PublicServiceHandler::Init(const Config& cfg, crypto::CertLoaderItf& certL
     return ErrorEnum::eNone;
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetMTLSCredentials(
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetMTLSClientCredentials(
     const String& certStorage)
 {
     iam::certhandler::CertInfo certInfo;
@@ -48,7 +48,7 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::Ge
     return {mMTLSCredentialsFunc(certInfo, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider), ErrorEnum::eNone};
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetTLSCredentials()
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetTLSClientCredentials()
 {
     LOG_DBG() << "Get TLS config";
 

@@ -66,7 +66,7 @@ TEST_F(IamClientTest, GetClientMTLSConfig)
 
     mIAMServerStub->SetCertInfo(certInfo);
 
-    auto [_, err] = mClient->GetMTLSCredentials("client_cert_type");
+    auto [_, err] = mClient->GetMTLSClientCredentials("client_cert_type");
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(mIAMServerStub->GetCertType(), "client_cert_type");
