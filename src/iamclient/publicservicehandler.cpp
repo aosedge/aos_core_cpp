@@ -34,32 +34,33 @@ Error PublicServiceHandler::Init(const Config& cfg, crypto::CertLoaderItf& certL
     return ErrorEnum::eNone;
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetMTLSConfig(
-    const std::string& certStorage)
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetMTLSCredentials(
+    const String& certStorage)
 {
     iam::certhandler::CertInfo certInfo;
 
-    LOG_DBG() << "Getting MTLS config: certStorage=" << certStorage.c_str();
+    LOG_DBG() << "Get MTLS config: certStorage=" << certStorage;
 
-    if (auto err = GetCertificate(certStorage, certInfo); !err.IsNone()) {
+    if (auto err = GetCert(certStorage, {}, {}, certInfo); !err.IsNone()) {
         return {nullptr, err};
     }
 
     return {mMTLSCredentialsFunc(certInfo, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider), ErrorEnum::eNone};
 }
 
-std::shared_ptr<grpc::ChannelCredentials> PublicServiceHandler::GetTLSCredentials()
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetTLSCredentials()
 {
-    if (!mConfig.mCACert.empty()) {
-        LOG_DBG() << "Getting TLS config";
+    LOG_DBG() << "Get TLS config";
 
-        return common::utils::GetTLSClientCredentials(mConfig.mCACert.c_str());
+    if (!mConfig.mCACert.empty()) {
+        return {common::utils::GetTLSClientCredentials(mConfig.mCACert.c_str()), ErrorEnum::eNone};
     }
 
-    return nullptr;
+    return {nullptr, ErrorEnum::eNone};
 }
 
-Error PublicServiceHandler::GetCertificate(const std::string& certType, iam::certhandler::CertInfo& certInfo)
+Error PublicServiceHandler::GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    iam::certhandler::CertInfo& resCert) const
 {
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cIAMPublicServiceTimeout);
@@ -67,21 +68,31 @@ Error PublicServiceHandler::GetCertificate(const std::string& certType, iam::cer
     iamanager::v5::GetCertRequest request;
     iamanager::v5::CertInfo       certInfoResponse;
 
-    request.set_type(certType);
+    request.set_type(certType.CStr());
+
+    aos::StaticString<aos::crypto::cSerialNumStrLen> serialStr;
+
+    auto err = serialStr.ByteArrayToHex(serial);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    request.set_issuer(issuer.Get(), issuer.Size());
+    request.set_serial(serialStr.CStr());
 
     if (auto status = mStub->GetCert(ctx.get(), request, &certInfoResponse); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    certInfo.mCertURL = certInfoResponse.cert_url().c_str();
-    certInfo.mKeyURL  = certInfoResponse.key_url().c_str();
+    resCert.mCertURL = certInfoResponse.cert_url().c_str();
+    resCert.mKeyURL  = certInfoResponse.key_url().c_str();
 
-    LOG_DBG() << "Certificate received: certURL=" << certInfo.mCertURL.CStr() << ", keyURL=" << certInfo.mKeyURL.CStr();
+    LOG_DBG() << "Certificate received: certURL=" << resCert.mCertURL.CStr() << ", keyURL=" << resCert.mKeyURL.CStr();
 
     return ErrorEnum::eNone;
 }
 
-void PublicServiceHandler::Close()
+PublicServiceHandler::~PublicServiceHandler()
 {
     std::unique_lock lock {mMutex};
 
@@ -110,72 +121,64 @@ void PublicServiceHandler::Close()
 }
 
 Error PublicServiceHandler::SubscribeCertChanged(
-    const std::string& certType, iam::certhandler::CertReceiverItf& subscriber)
+    const String& certType, iam::certhandler::CertReceiverItf& certReceiver)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Subscribing to certificate changed: certType=" << certType.c_str();
+    LOG_INF() << "Subscribing to certificate changed: certType=" << certType;
 
-    auto& subscription = mSubscriptions[certType];
+    auto& subscription = mSubscriptions[certType.CStr()];
 
-    if (!subscription.mSubscribers.insert(&subscriber).second) {
-        return Error(ErrorEnum::eAlreadyExist, "Subscriber already exists for this cert type");
+    if (!subscription.mSubscribers.insert(&certReceiver).second) {
+        return Error(ErrorEnum::eAlreadyExist, "subscriber already exists for this cert type");
     }
 
     if (subscription.mSubscribers.size() == 1) {
         subscription.mFuture
-            = std::async(std::launch::async, &PublicServiceHandler::RunTask, this, certType, &subscription);
+            = std::async(std::launch::async, &PublicServiceHandler::RunTask, this, certType.CStr(), &subscription);
     }
 
     return ErrorEnum::eNone;
 }
 
-void PublicServiceHandler::UnsubscribeCertChanged(
-    const std::string& certType, iam::certhandler::CertReceiverItf& subscriber)
+Error PublicServiceHandler::UnsubscribeCertChanged(iam::certhandler::CertReceiverItf& certReceiver)
 {
-    decltype(mSubscriptions)::iterator it;
+    for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
+        {
+            std::lock_guard lock {mMutex};
 
-    {
-        std::lock_guard lock {mMutex};
+            auto& subscription = it->second;
 
-        LOG_INF() << "Unsubscribing from certificate changed: certType=" << certType.c_str();
+            if (subscription.mSubscribers.erase(&certReceiver) != 0) {
+                LOG_INF() << "Unsubscribing from certificate changed: certType=" << it->first.c_str();
+            }
 
-        if (it = mSubscriptions.find(certType); it == mSubscriptions.end()) {
-            LOG_WRN() << "Subscription not found: certType=" << certType.c_str();
+            if (!subscription.mSubscribers.empty()) {
+                it++;
+                continue;
+            }
 
-            return;
+            subscription.mClose = true;
+
+            if (subscription.mCtx) {
+                subscription.mCtx->TryCancel();
+            }
         }
 
-        auto& subscription = it->second;
+        mCV.notify_all();
 
-        if (subscription.mSubscribers.erase(&subscriber) == 0) {
-            LOG_WRN() << "Subscriber not found for certType=" << certType.c_str();
-
-            return;
+        if (it->second.mFuture.valid()) {
+            it->second.mFuture.wait();
         }
 
-        if (!subscription.mSubscribers.empty()) {
-            return;
-        }
+        {
+            std::lock_guard lock {mMutex};
 
-        subscription.mClose = true;
-
-        if (subscription.mCtx) {
-            subscription.mCtx->TryCancel();
+            it = mSubscriptions.erase(it);
         }
     }
 
-    mCV.notify_all();
-
-    if (it->second.mFuture.valid()) {
-        it->second.mFuture.wait();
-    }
-
-    {
-        std::lock_guard lock {mMutex};
-
-        mSubscriptions.erase(it);
-    }
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************
