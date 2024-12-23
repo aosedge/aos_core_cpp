@@ -37,7 +37,7 @@ aos::PartitionInfo CreatePartition(const aos::String& name, size_t usedSize)
 } // namespace
 class PBConvertSMTest : public Test {
 public:
-    void SetUp() override { aos::InitLog(); }
+    void SetUp() override { aos::test::InitLog(); }
 };
 
 /***********************************************************************************************************************

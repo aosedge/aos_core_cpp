@@ -18,12 +18,12 @@
 /**
  * Test IAM server.
  */
-class TestIAMServer final : public iamanager::v5::IAMPublicService::Service {
+class TestIAMServerStub final : public iamanager::v5::IAMPublicService::Service {
 public:
     /**
      * Constructor.
      */
-    TestIAMServer() { mServer = CreateServer(); }
+    TestIAMServerStub() { mServer = CreateServer(); }
 
     /**
      * Get certificate type.
