@@ -60,4 +60,12 @@ gtest_discover_tests(
                          OPENSSL_CONF=${OPENSSL_CONF}
 )
 
-target_link_libraries(${TARGET} iamserver iamclient testutils mbedtls GTest::gmock_main)
+target_link_libraries(
+    ${TARGET}
+    iamserver
+    iamclient
+    mbedtls
+    aostestcore
+    aostestutils
+    GTest::gmock_main
+)

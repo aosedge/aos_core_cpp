@@ -12,15 +12,15 @@
 #include <grpcpp/server_builder.h>
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include "iamclient/iamclient.hpp"
-
 #include "mocks/certhandlermock.hpp"
 #include "mocks/certloadermock.hpp"
 #include "mocks/certprovidermock.hpp"
+#include "mocks/cryptomock.hpp"
 #include "mocks/identhandlermock.hpp"
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/provisionmanagermock.hpp"
-#include "mocks/x509providermock.hpp"
+
+#include "iamclient/iamclient.hpp"
 
 using namespace testing;
 using namespace aos;
@@ -410,7 +410,7 @@ private:
 
 class IAMClientTest : public Test {
 protected:
-    void SetUp() override { InitLog(); }
+    void SetUp() override { test::InitLog(); }
 
     static Config GetConfig()
     {
@@ -475,9 +475,9 @@ protected:
     iam::identhandler::IdentHandlerMock         mIdentHandler;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
     iam::certprovider::CertProviderMock         mCertProvider;
-    CertLoaderItfMock                           mCertLoader;
-    ProviderItfMock                             mCryptoProvider;
-    NodeInfoProviderMock                        mNodeInfoProvider;
+    crypto::CertLoaderMock                      mCertLoader;
+    crypto::x509::ProviderMock                  mCryptoProvider;
+    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
 };
 
 /***********************************************************************************************************************

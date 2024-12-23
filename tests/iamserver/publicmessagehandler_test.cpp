@@ -23,7 +23,7 @@
 #include "mocks/identhandlermock.hpp"
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/nodemanagermock.hpp"
-#include "mocks/permissionhandlermock.hpp"
+#include "mocks/permhandlermock.hpp"
 #include "mocks/provisionmanagermock.hpp"
 #include "stubs/storagestub.hpp"
 
@@ -67,8 +67,8 @@ protected:
     // mocks
     aos::iam::identhandler::IdentHandlerMock         mIdentHandler;
     aos::iam::permhandler::PermHandlerMock           mPermHandler;
-    NodeInfoProviderMock                             mNodeInfoProvider;
-    NodeManagerMock                                  mNodeManager;
+    aos::iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    aos::iam::nodemanager::NodeManagerMock           mNodeManager;
     aos::iam::certprovider::CertProviderMock         mCertProvider;
     aos::iam::provisionmanager::ProvisionManagerMock mProvisionManager;
 
@@ -79,7 +79,7 @@ private:
 
 void PublicMessageHandlerTest::SetUp()
 {
-    aos::InitLog();
+    aos::test::InitLog();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";

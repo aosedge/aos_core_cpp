@@ -25,4 +25,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} testutils iamclient GTest::gmock_main)
+target_link_libraries(${TARGET} iamclient aostestcore GTest::gmock_main)

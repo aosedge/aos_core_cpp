@@ -100,7 +100,7 @@ class NodeInfoProviderTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         std::filesystem::create_directory(TEST_TMP_DIR);
 
@@ -314,7 +314,7 @@ TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
 
 TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
 {
-    NodeStatusObserverMock observer1, observer2;
+    aos::iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 
@@ -341,7 +341,7 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
 
 TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
 {
-    NodeStatusObserverMock observer1, observer2;
+    aos::iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 

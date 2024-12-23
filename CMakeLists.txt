@@ -125,6 +125,7 @@ add_subdirectory(src)
 
 if(WITH_TEST)
     add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/tests/utils)
+    add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/tests/include)
     add_subdirectory(tests)
 endif()
 

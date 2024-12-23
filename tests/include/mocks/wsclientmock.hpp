@@ -8,9 +8,11 @@
 #ifndef WS_CLIENT_MOCK_HPP_
 #define WS_CLIENT_MOCK_HPP_
 
-#include "visidentifier/wsclient.hpp"
-#include <gmock/gmock.h>
 #include <memory>
+
+#include <gmock/gmock.h>
+
+#include "visidentifier/wsclient.hpp"
 
 /**
  * Subjects observer mock.

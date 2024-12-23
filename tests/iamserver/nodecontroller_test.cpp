@@ -78,9 +78,9 @@ public:
     NodeController* GetNodeController() { return &mNodeController; }
 
 private:
-    std::unique_ptr<grpc::Server> mServer;
-    NodeController                mNodeController;
-    NodeManagerMock               mNodeManager;
+    std::unique_ptr<grpc::Server>     mServer;
+    NodeController                    mNodeController;
+    iam::nodemanager::NodeManagerMock mNodeManager;
 };
 
 std::unique_ptr<iamproto::IAMPublicNodesService::Stub> CreateClientStub(const std::string& url)
@@ -107,7 +107,7 @@ protected:
 private:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         mServer.Start();
 

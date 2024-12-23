@@ -8,7 +8,7 @@
 #include <gmock/gmock.h>
 #include <logger/logger.hpp>
 
-#include "mocks/vissubjectsobservermock.hpp"
+#include "mocks/identhandlermock.hpp"
 #include "mocks/wsclientmock.hpp"
 #include "visidentifier/pocowsclient.hpp"
 #include "visidentifier/visidentifier.hpp"
@@ -41,11 +41,11 @@ protected:
     const std::string               cTestSubscriptionId {"1234-4321"};
     const VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
-    WSClientEvent           mWSClientEvent;
-    VISSubjectsObserverMock mVISSubjectsObserverMock;
-    WSClientMockPtr         mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
-    TestVISIdentifier       mVisIdentifier;
-    Config                  mConfig;
+    WSClientEvent                                mWSClientEvent;
+    aos::iam::identhandler::SubjectsObserverMock mVISSubjectsObserverMock;
+    WSClientMockPtr                              mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
+    TestVISIdentifier                            mVisIdentifier;
+    Config                                       mConfig;
 
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()

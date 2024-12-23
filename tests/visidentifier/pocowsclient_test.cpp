@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 #include <logger/logger.hpp>
 
-#include "mocks/vissubjectsobservermock.hpp"
+#include "mocks/identhandlermock.hpp"
 #include "visidentifier/pocowsclient.hpp"
 #include "visidentifier/visidentifier.hpp"
 #include "visidentifier/wsexception.hpp"
@@ -160,7 +160,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 
     Config config = CreateConfigWithVisParams(cConfig);
 
-    VISSubjectsObserverMock observer;
+    aos::iam::identhandler::SubjectsObserverMock observer;
 
     auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -179,7 +179,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 
     Config config = CreateConfigWithVisParams(cConfig);
 
-    VISSubjectsObserverMock observer;
+    aos::iam::identhandler::SubjectsObserverMock observer;
 
     auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -198,7 +198,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     Config config = CreateConfigWithVisParams(cConfig);
 
-    VISSubjectsObserverMock observer;
+    aos::iam::identhandler::SubjectsObserverMock observer;
 
     auto err = visIdentifier.Init(config, observer);
     ASSERT_TRUE(err.IsNone()) << err.Message();
