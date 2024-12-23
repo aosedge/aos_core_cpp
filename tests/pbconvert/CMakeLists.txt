@@ -28,4 +28,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} testutils aospbconvert GTest::gmock_main)
+target_link_libraries(${TARGET} aostestutils aospbconvert GTest::gmock_main)
