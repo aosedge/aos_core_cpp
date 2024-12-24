@@ -78,8 +78,30 @@ void App::initialize(Application& self)
 
     // Initialize Aos modules
 
-    auto config = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
-    AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
+    auto config = std::make_shared<config::Config>();
+
+    Tie(*config, err) = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
+    AOS_ERROR_CHECK_AND_THROW("can't parse config", err);
+
+    // Initialize crypto provider
+
+    err = mCryptoProvider.Init();
+    AOS_ERROR_CHECK_AND_THROW("can't initialize crypto provider", err);
+
+    // Initialize cert loader
+
+    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize cert loader", err);
+
+    // Initialize IAM client
+
+    auto iamConfig = std::make_unique<common::iamclient::Config>();
+
+    iamConfig->mCACert             = config->mCACert;
+    iamConfig->mIAMPublicServerURL = config->mIAMPublicServerURL;
+
+    err = mIAMClientPublic.Init(*iamConfig, mCertLoader, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize public IAM client", err);
 
     // Notify systemd
 

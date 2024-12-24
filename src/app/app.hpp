@@ -9,6 +9,10 @@
 
 #include <Poco/Util/ServerApplication.h>
 
+#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+
+#include <iamclient/publicservicehandler.hpp>
+
 #include "logger/logger.hpp"
 
 namespace aos::sm::app {
@@ -34,7 +38,11 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    common::logger::Logger mLogger;
+    pkcs11::PKCS11Manager                   mPKCS11Manager;
+    common::iamclient::PublicServiceHandler mIAMClientPublic;
+    common::logger::Logger                  mLogger;
+    crypto::CertLoader                      mCertLoader;
+    crypto::MbedTLSCryptoProvider           mCryptoProvider;
 
     bool        mStopProcessing = false;
     std::string mConfigFile;
