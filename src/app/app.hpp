@@ -12,8 +12,10 @@
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 
 #include <iamclient/publicservicehandler.hpp>
+#include <jsonprovider/jsonprovider.hpp>
 
 #include "logger/logger.hpp"
+#include "resourcemanager/resourcemanager.hpp"
 
 namespace aos::sm::app {
 
@@ -38,11 +40,14 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    pkcs11::PKCS11Manager                   mPKCS11Manager;
     common::iamclient::PublicServiceHandler mIAMClientPublic;
+    common::jsonprovider::JSONProvider      mJSONProvider;
     common::logger::Logger                  mLogger;
     crypto::CertLoader                      mCertLoader;
     crypto::MbedTLSCryptoProvider           mCryptoProvider;
+    pkcs11::PKCS11Manager                   mPKCS11Manager;
+    sm::resourcemanager::ResourceManager    mResourceManager;
+    sm::resourcemanager::HostDeviceManager  mHostDeviceManager;
 
     bool        mStopProcessing = false;
     std::string mConfigFile;

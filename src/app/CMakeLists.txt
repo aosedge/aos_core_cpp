@@ -32,4 +32,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC config aosiamclient aoslogger Poco::Util)
+target_link_libraries(${TARGET} PUBLIC config resourcemanager aosiamclient aosjsonprovider aoslogger Poco::Util)

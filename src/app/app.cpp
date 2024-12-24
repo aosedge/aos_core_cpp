@@ -103,6 +103,22 @@ void App::initialize(Application& self)
     err = mIAMClientPublic.Init(*iamConfig, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW("can't initialize public IAM client", err);
 
+    auto nodeInfo = std::make_shared<NodeInfo>();
+
+    err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
+    AOS_ERROR_CHECK_AND_THROW("can't get node info", err);
+
+    // Initialize host device manager
+
+    err = mHostDeviceManager.Init();
+    AOS_ERROR_CHECK_AND_THROW("can't initialize host device manager", err);
+
+    // Initialize resource manager
+
+    err = mResourceManager.Init(
+        mJSONProvider, mHostDeviceManager, nodeInfo->mNodeType, config->mNodeConfigFile.c_str());
+    AOS_ERROR_CHECK_AND_THROW("can't initialize resource manager", err);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
