@@ -17,7 +17,7 @@
 #include "logger/logmodule.hpp"
 #include "smclient.hpp"
 
-namespace aos::sm::client {
+namespace aos::sm::smclient {
 
 /***********************************************************************************************************************
  * Public
@@ -625,4 +625,4 @@ bool SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& request)
     return true;
 }
 
-} // namespace aos::sm::client
+} // namespace aos::sm::smclient

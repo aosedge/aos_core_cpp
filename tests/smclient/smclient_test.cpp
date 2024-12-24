@@ -372,10 +372,10 @@ protected:
         return config;
     }
 
-    std::unique_ptr<sm::client::SMClient> CreateClient(
+    std::unique_ptr<sm::smclient::SMClient> CreateClient(
         const sm::config::Config& config = GetConfig(), bool secureConnection = false)
     {
-        auto client = std::make_unique<sm::client::SMClient>();
+        auto client = std::make_unique<sm::smclient::SMClient>();
 
         auto err = client->Init(config, mTLSCredentials, mNodeInfoProvider, mResourceManager, mNetworkManager,
             mLogProvider, mResourceMonitor, mLauncher, secureConnection);
@@ -391,7 +391,7 @@ protected:
 
     std::unique_ptr<TestSMService> CreateServer(const std::string& url) { return std::make_unique<TestSMService>(url); }
 
-    std::pair<std::unique_ptr<TestSMService>, std::unique_ptr<sm::client::SMClient>> InitTest(
+    std::pair<std::unique_ptr<TestSMService>, std::unique_ptr<sm::smclient::SMClient>> InitTest(
         const sm::config::Config& config = GetConfig(), bool provisionMode = true)
     {
         auto server = CreateServer(config.mCMServerURL);

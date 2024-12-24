@@ -36,7 +36,7 @@
 
 namespace smproto = servicemanager::v4;
 
-namespace aos::sm::client {
+namespace aos::sm::smclient {
 
 using PublicNodeService = smproto::SMService;
 
@@ -202,6 +202,6 @@ private:
     std::condition_variable mStoppedCV;
 };
 
-} // namespace aos::sm::client
+} // namespace aos::sm::smclient
 
 #endif
