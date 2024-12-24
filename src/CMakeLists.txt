@@ -26,6 +26,7 @@ add_subdirectory(image)
 add_subdirectory(database)
 add_subdirectory(resourcemanager)
 add_subdirectory(smclient)
+add_subdirectory(runner)
 
 # ######################################################################################################################
 # Sources
