@@ -26,6 +26,14 @@ using Digest = std::string;
 Error UnpackTarImage(const std::string& archivePath, const std::string& destination);
 
 /**
+ * Returns size of the unpacked archive.
+ *
+ * @param archivePath path to the archive.
+ * @return RetWithError<uint64_t>.
+ */
+RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath);
+
+/**
  * Parses the digest string.
  *
  * @param digest digest string.

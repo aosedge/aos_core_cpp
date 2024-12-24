@@ -35,7 +35,7 @@ static void createTestTarFile(
     ofs.close();
 
     Poco::Process::Args args;
-    args.push_back("cf");
+    args.push_back("czf");
     args.push_back(tarPath);
     args.push_back(contentFilePath);
 
@@ -67,11 +67,16 @@ TEST(UnpackTarImageTest, UnpackTarImageSuccess)
 
     createTestTarFile(archivePath, contentFilePath, fileContent);
 
+    auto [upackedSize, err] = GetUnpackedArchiveSize(archivePath);
+
+    EXPECT_TRUE(err.IsNone()) << err.StrValue();
+    EXPECT_EQ(upackedSize, fileContent.length());
+
     fs::create_directory(destination);
 
-    auto result = UnpackTarImage(archivePath, destination);
+    err = UnpackTarImage(archivePath, destination);
 
-    ASSERT_EQ(result, ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
     EXPECT_TRUE(fs::exists(destination + "/" + contentFilePath));
 
     fs::remove(archivePath);
@@ -87,12 +92,17 @@ TEST(UnpackTarImageTest, UnpackTarImageFailure)
     ofs << "test_content";
     ofs.close();
 
+    auto [upackedSize, err] = GetUnpackedArchiveSize(archivePath);
+
+    EXPECT_EQ(err, ErrorEnum::eFailed);
+    EXPECT_EQ(upackedSize, 0);
+
     std::filesystem::create_directory(destination);
 
-    auto result = UnpackTarImage(archivePath, destination);
+    err = UnpackTarImage(archivePath, destination);
 
-    ASSERT_EQ(result, ErrorEnum::eFailed);
-    ASSERT_NE(result.Message(), "");
+    ASSERT_EQ(err, ErrorEnum::eFailed);
+    ASSERT_NE(err.Message(), "");
 
     fs::remove(archivePath);
     fs::remove_all(destination);
