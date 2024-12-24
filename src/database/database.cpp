@@ -665,8 +665,6 @@ Error Database::GetServiceVersions(const String& serviceID, Array<sm::serviceman
 {
     LOG_DBG() << "Get service versions: serviceID=" << serviceID;
 
-    RetWithError<sm::servicemanager::ServiceData> result {{}, ErrorEnum::eNone};
-
     try {
         Poco::Data::Statement statement {*mSession};
 
@@ -684,7 +682,7 @@ Error Database::GetServiceVersions(const String& serviceID, Array<sm::serviceman
             }
         }
     } catch (const Poco::Exception& e) {
-        result.mError = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
     }
 
     return ErrorEnum::eNone;

@@ -46,8 +46,9 @@ jobs:
 
       - name: Static analysis
         run: |
-          cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
-          --suppressions-list=./suppressions.txt -I external/aos_core_common_cpp/include src
+          cppcheck --enable=all --inline-suppr --std=c++17 --error-exitcode=1 \
+          --suppressions-list=./suppressions.txt -I src -I external/aos_core_common_cpp/include \
+          -I external/aos_core_common_cpp/external/aos_core_lib_cpp/include/ src
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4

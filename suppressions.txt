@@ -1,2 +1,4 @@
 missingIncludeSystem
 unusedFunction
+unusedScopedObject
+*:external/*
