@@ -1,0 +1,11 @@
+[Unit]
+Description=AOS Service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/opt/hello-world.sh 300
+ExecStop=/bin/sh -c "/bin/kill -s TERM $MAINPID; while [ -d /proc/$MAINPID ]; do sleep 1; done"
+Restart=always
+RestartSec=10
