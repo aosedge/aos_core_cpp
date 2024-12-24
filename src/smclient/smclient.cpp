@@ -23,8 +23,7 @@ namespace aos::sm::client {
  * Public
  **********************************************************************************************************************/
 
-Error SMClient::Init(const config::Config& config, iam::provisionmanager::ProvisionManagerItf& provisionManager,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+Error SMClient::Init(const config::Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
     iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
     sm::logprovider::LogProviderItf& logProvider, monitoring::ResourceMonitorItf& resourceMonitor,
@@ -33,10 +32,8 @@ Error SMClient::Init(const config::Config& config, iam::provisionmanager::Provis
     LOG_DBG() << "Init SM client";
 
     mConfig           = config;
+    mTLSCredentials   = &tlsCredentials;
     mNodeInfoProvider = &nodeInfoProvider;
-    mCertLoader       = &certLoader;
-    mCryptoProvider   = &cryptoProvider;
-    mProvisionManager = &provisionManager;
     mResourceManager  = &resourceManager;
     mNetworkManager   = &networkManager;
     mLogProvider      = &logProvider;
@@ -64,24 +61,26 @@ Error SMClient::Start()
     mStopped = false;
 
     if (mSecureConnection) {
-        iam::certhandler::CertInfo certInfo;
-
-        if (auto err = mProvisionManager->GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
-            !err.IsNone()) {
-            return AOS_ERROR_WRAP(Error(err, "can't get certificate"));
+        auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "can't get client credentials"));
         }
 
-        if (auto err = mProvisionManager->SubscribeCertChanged(String(mConfig.mCertStorage.c_str()), *this);
-            !err.IsNone()) {
+        mCredentialList.push_back(creds);
+
+        if (err = mTLSCredentials->SubscribeCertChanged(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
-
-        mCredentialList.push_back(
-            common::utils::GetMTLSClientCredentials(certInfo, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider));
     } else {
-        mCredentialList.push_back(grpc::InsecureChannelCredentials());
-        if (!mConfig.mCACert.empty()) {
-            mCredentialList.push_back(common::utils::GetTLSClientCredentials(mConfig.mCACert.c_str()));
+        auto [creds, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "can't get client credentials"));
+        }
+
+        if (creds) {
+            mCredentialList.push_back(creds);
+        } else {
+            mCredentialList.push_back(grpc::InsecureChannelCredentials());
         }
     }
 
@@ -105,7 +104,7 @@ Error SMClient::Stop()
         mStoppedCV.notify_all();
 
         if (mSecureConnection) {
-            mProvisionManager->UnsubscribeCertChanged(*this);
+            mTLSCredentials->UnsubscribeCertChanged(*this);
         }
 
         if (mCtx) {
@@ -128,9 +127,17 @@ void SMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
 
     LOG_INF() << "Certificate changed";
 
+    (void)info;
+
+    auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
+    if (!err.IsNone()) {
+        LOG_ERR() << "Can't get client credentials: err=" << err;
+
+        return;
+    }
+
     mCredentialList.clear();
-    mCredentialList.push_back(
-        common::utils::GetMTLSClientCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider));
+    mCredentialList.push_back(creds);
 
     mCredentialListUpdated = true;
 }

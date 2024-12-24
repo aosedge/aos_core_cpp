@@ -30,6 +30,8 @@
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
+#include <iamclient/publicservicehandler.hpp>
+
 #include "config/config.hpp"
 
 namespace smproto = servicemanager::v4;
@@ -53,9 +55,7 @@ public:
      * Initializes SM client instance.
      *
      * @param config client configuration.
-     * @param provisionManager provision manager.
-     * @param certLoader certificate loader.
-     * @param cryptoProvider crypto provider.
+     * @param tlcCredentials TLS credentials provider.
      * @param nodeInfoProvider node info provider.
      * @param resourceManager resource manager.
      * @param networkManager network manager.
@@ -65,8 +65,7 @@ public:
      * @param secureConnection flag indicating whether connection is secured.
      * @returns Error.
      */
-    Error Init(const config::Config& config, iam::provisionmanager::ProvisionManagerItf& provisionManager,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+    Error Init(const config::Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
         iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
         sm::logprovider::LogProviderItf& logProvider, monitoring::ResourceMonitorItf& resourceMonitor,
@@ -179,9 +178,7 @@ private:
     bool ProcessConnectionStatus(const smproto::ConnectionStatus& request);
 
     config::Config                              mConfig           = {};
-    iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    crypto::CertLoaderItf*                      mCertLoader       = nullptr;
-    crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
+    common::iamclient::TLSCredentialsItf*       mTLSCredentials   = nullptr;
     iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     sm::resourcemanager::ResourceManagerItf*    mResourceManager  = nullptr;
     sm::networkmanager::NetworkManagerItf*      mNetworkManager   = nullptr;

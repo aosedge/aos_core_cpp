@@ -28,4 +28,13 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aossm aosutils aoscoreapi-gen-sm aospbconvert Poco::Util)
+target_link_libraries(
+    ${TARGET}
+    PUBLIC aoscommon
+           aoscoreapi-gen-sm
+           aosiamclient
+           aospbconvert
+           aossm
+           aosutils
+           Poco::Util
+)
