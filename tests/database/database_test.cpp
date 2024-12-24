@@ -135,7 +135,7 @@ class DatabaseTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         std::filesystem::remove_all(sWorkingDir);
 

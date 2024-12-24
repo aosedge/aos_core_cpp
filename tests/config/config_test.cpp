@@ -105,7 +105,7 @@ class ConfigTest : public Test {
 public:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         if (std::ofstream file(cConfigFileName); file.good()) {
             file << cTestServiceManagerJSON;

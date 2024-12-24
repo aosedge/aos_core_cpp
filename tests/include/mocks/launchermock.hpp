@@ -11,6 +11,8 @@
 
 #include <aos/sm/launcher.hpp>
 
+namespace aos::sm::launcher {
+
 /**
  * Logs observer mock.
  */
@@ -24,8 +26,8 @@ public:
     MOCK_METHOD(aos::Error, OverrideEnvVars,
         (const aos::Array<aos::cloudprotocol::EnvVarsInstanceInfo>&, aos::cloudprotocol::EnvVarsInstanceStatusArray&),
         (override));
-
-    MOCK_METHOD(aos::Error, SetCloudConnection, (bool), (override));
 };
+
+} // namespace aos::sm::launcher
 
 #endif

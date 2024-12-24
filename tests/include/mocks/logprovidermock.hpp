@@ -11,6 +11,8 @@
 
 #include <aos/sm/logprovider.hpp>
 
+namespace aos::sm::logprovider {
+
 /**
  * Log observer mock.
  */
@@ -30,5 +32,7 @@ public:
     MOCK_METHOD(aos::Error, Subscribe, (aos::sm::logprovider::LogObserverItf&), (override));
     MOCK_METHOD(aos::Error, Unsubscribe, (aos::sm::logprovider::LogObserverItf&), (override));
 };
+
+} // namespace aos::sm::logprovider
 
 #endif

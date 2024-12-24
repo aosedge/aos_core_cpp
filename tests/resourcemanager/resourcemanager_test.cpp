@@ -16,7 +16,7 @@ namespace aos::sm::resourcemanager {
 
 class ResourcemanagerTest : public Test {
 public:
-    void SetUp() override { InitLog(); }
+    void SetUp() override { test::InitLog(); }
 
     HostDeviceManager mHostDeviceManager;
 };

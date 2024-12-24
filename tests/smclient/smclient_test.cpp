@@ -18,16 +18,16 @@
 #include "smclient/smclient.hpp"
 
 #include "mocks/certhandlermock.hpp"
-#include "mocks/certloadermock.hpp"
-#include "mocks/connectionsubscribermock.hpp"
+#include "mocks/connectionsubscmock.hpp"
+#include "mocks/cryptomock.hpp"
+#include "mocks/iamclientmock.hpp"
 #include "mocks/launchermock.hpp"
 #include "mocks/logprovidermock.hpp"
+#include "mocks/monitoringmock.hpp"
 #include "mocks/networkmanagermock.hpp"
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/provisionmanagermock.hpp"
 #include "mocks/resourcemanagermock.hpp"
-#include "mocks/resourcemonitormock.hpp"
-#include "mocks/x509providermock.hpp"
 
 using namespace testing;
 using namespace aos;
@@ -359,7 +359,7 @@ private:
 
 class SMClientTest : public Test {
 protected:
-    void SetUp() override { InitLog(); }
+    void SetUp() override { test::InitLog(); }
 
     static aos::sm::config::Config GetConfig()
     {
@@ -377,8 +377,8 @@ protected:
     {
         auto client = std::make_unique<sm::client::SMClient>();
 
-        auto err = client->Init(config, mProvisionManager, mCertLoader, mCryptoProvider, mNodeInfoProvider,
-            mResourceManager, mNetworkManager, mLogProvider, mResourceMonitor, mLauncher, secureConnection);
+        auto err = client->Init(config, mTLSCredentials, mNodeInfoProvider, mResourceManager, mNetworkManager,
+            mLogProvider, mResourceMonitor, mLauncher, secureConnection);
 
         if (!err.IsNone()) {
             LOG_ERR() << "Can't init client: error=" << err.Message();
@@ -395,7 +395,6 @@ protected:
         const sm::config::Config& config = GetConfig(), bool provisionMode = true)
     {
         auto server = CreateServer(config.mCMServerURL);
-
         auto client = CreateClient(config);
 
         NodeInfo                                nodeInfo          = CreateNodeInfo();
@@ -408,12 +407,14 @@ protected:
 
         EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
             .WillRepeatedly(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+        EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials)
+            .WillRepeatedly(Return(std::shared_ptr<grpc::ChannelCredentials>()));
         EXPECT_CALL(mResourceManager, GetNodeConfigVersion).WillRepeatedly(Return(nodeConfigVersion));
         EXPECT_CALL(*server, OnNodeConfigStatus(expNodeConfigVersion)).Times(1);
 
         if (!provisionMode) {
-            EXPECT_CALL(mProvisionManager, SubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
-            EXPECT_CALL(mProvisionManager, UnsubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
+            EXPECT_CALL(mTLSCredentials, SubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
+            EXPECT_CALL(mTLSCredentials, UnsubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
         }
 
         if (auto err = client->Start(); !err.IsNone()) {
@@ -427,15 +428,13 @@ protected:
         return std::make_pair(std::move(server), std::move(client));
     }
 
-    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
-    CertLoaderItfMock                           mCertLoader;
-    ProviderItfMock                             mCryptoProvider;
-    NodeInfoProviderMock                        mNodeInfoProvider;
+    aos::common::iamclient::TLSCredentialsMock  mTLSCredentials;
+    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     sm::resourcemanager::ResourceManagerMock    mResourceManager;
-    NetworkManagerMock                          mNetworkManager;
-    LogProviderMock                             mLogProvider;
-    ResourceMonitorMock                         mResourceMonitor;
-    LauncherMock                                mLauncher;
+    sm::networkmanager::NetworkManagerMock      mNetworkManager;
+    sm::logprovider::LogProviderMock            mLogProvider;
+    monitoring::ResourceMonitorMock             mResourceMonitor;
+    sm::launcher::LauncherMock                  mLauncher;
 };
 
 /***********************************************************************************************************************
