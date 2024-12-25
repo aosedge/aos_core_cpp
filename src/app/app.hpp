@@ -16,6 +16,7 @@
 #include <aos/sm/servicemanager.hpp>
 
 #include <downloader/downloader.hpp>
+#include <iamclient/permservicehandler.hpp>
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
 
@@ -29,6 +30,7 @@
 #include "networkmanager/networkmanager.hpp"
 #include "ocispec/ocispec.hpp"
 #include "resourcemanager/resourcemanager.hpp"
+#include "runner/runner.hpp"
 #include "smclient/smclient.hpp"
 
 namespace aos::sm::app {
@@ -62,6 +64,7 @@ private:
     aos::spaceallocator::SpaceAllocator<cMaxNumServices + cMaxNumLayers> mDownloadSpaceAllocator;
     aos::spaceallocator::SpaceAllocator<cMaxNumServices>                 mServicesSpaceAllocator;
     common::downloader::Downloader                                       mDownloader;
+    common::iamclient::PermissionsServiceHandler                         mIAMClientPermissions;
     common::iamclient::PublicServiceHandler                              mIAMClientPublic;
     common::jsonprovider::JSONProvider                                   mJSONProvider;
     common::logger::Logger                                               mLogger;
@@ -79,6 +82,7 @@ private:
     sm::networkmanager::TrafficMonitor                                   mTrafficMonitor;
     sm::resourcemanager::HostDeviceManager                               mHostDeviceManager;
     sm::resourcemanager::ResourceManager                                 mResourceManager;
+    sm::runner::Runner                                                   mRunner;
     sm::servicemanager::ServiceManager                                   mServiceManager;
     sm::smclient::SMClient                                               mSMClient;
 

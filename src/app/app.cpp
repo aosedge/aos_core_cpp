@@ -108,6 +108,9 @@ void App::initialize(Application& self)
     err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
     AOS_ERROR_CHECK_AND_THROW("can't get node info", err);
 
+    err = mIAMClientPermissions.Init(config->mIAMProtectedServerURL, config->mCertStorage, mIAMClientPublic);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize permissions IAM client", err);
+
     // Initialize host device manager
 
     err = mHostDeviceManager.Init();
@@ -176,6 +179,10 @@ void App::initialize(Application& self)
         err = launcherConfig->mHosts.EmplaceBack(Host {host.mIP.c_str(), host.mHostname.c_str()});
         AOS_ERROR_CHECK_AND_THROW("can't add host", err);
     }
+
+    err = mLauncher.Init(*launcherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
+        mNetworkManager, mIAMClientPermissions, mRunner, mResourceMonitor, mOCISpec, mSMClient, mSMClient, mDatabase);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize launcher", err);
 
     // Notify systemd
 
