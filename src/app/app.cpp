@@ -130,6 +130,11 @@ void App::initialize(Application& self)
         mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, config->mWorkingDir.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
 
+    // Initialize resource monitor
+
+    err = mResourceMonitor.Init(mIAMClientPublic, mResourceUsageProvider, mSMClient, mSMClient);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize resource monitor", err);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);

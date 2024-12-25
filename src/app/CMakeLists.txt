@@ -37,6 +37,7 @@ target_link_libraries(
     PUBLIC config
            database
            resourcemanager
+           smclient
            aossm
            aosiamclient
            aosjsonprovider

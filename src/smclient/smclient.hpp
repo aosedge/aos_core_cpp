@@ -44,7 +44,7 @@ using PublicNodeService = smproto::SMService;
  * GRPC service manager client.
  */
 class SMClient : public iam::certhandler::CertReceiverItf,
-                 public monitoring::SenderItf,
+                 public aos::monitoring::SenderItf,
                  public alerts::SenderItf,
                  public sm::logprovider::LogObserverItf,
                  public sm::launcher::InstanceStatusReceiverItf,
@@ -68,7 +68,7 @@ public:
     Error Init(const config::Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
         iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
-        sm::logprovider::LogProviderItf& logProvider, monitoring::ResourceMonitorItf& resourceMonitor,
+        sm::logprovider::LogProviderItf& logProvider, aos::monitoring::ResourceMonitorItf& resourceMonitor,
         sm::launcher::LauncherItf& launcher, bool secureConnection = true);
 
     /**
@@ -98,7 +98,7 @@ public:
      * @param monitoringData monitoring data.
      * @return Error.
      */
-    Error SendMonitoringData(const monitoring::NodeMonitoringData& monitoringData) override;
+    Error SendMonitoringData(const aos::monitoring::NodeMonitoringData& monitoringData) override;
 
     /**
      * Sends alert data.
@@ -183,7 +183,7 @@ private:
     sm::resourcemanager::ResourceManagerItf*    mResourceManager  = nullptr;
     sm::networkmanager::NetworkManagerItf*      mNetworkManager   = nullptr;
     sm::logprovider::LogProviderItf*            mLogProvider      = nullptr;
-    monitoring::ResourceMonitorItf*             mResourceMonitor  = nullptr;
+    aos::monitoring::ResourceMonitorItf*        mResourceMonitor  = nullptr;
     sm::launcher::LauncherItf*                  mLauncher         = nullptr;
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
