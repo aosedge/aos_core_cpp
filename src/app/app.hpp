@@ -11,6 +11,7 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
+#include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
 
 #include <downloader/downloader.hpp>
@@ -56,6 +57,7 @@ private:
     aos::crypto::MbedTLSCryptoProvider                                   mCryptoProvider;
     aos::monitoring::ResourceMonitor                                     mResourceMonitor;
     aos::pkcs11::PKCS11Manager                                           mPKCS11Manager;
+    aos::spaceallocator::SpaceAllocator<cMaxNumLayers>                   mLayersSpaceAllocator;
     aos::spaceallocator::SpaceAllocator<cMaxNumServices + cMaxNumLayers> mDownloadSpaceAllocator;
     aos::spaceallocator::SpaceAllocator<cMaxNumServices>                 mServicesSpaceAllocator;
     common::downloader::Downloader                                       mDownloader;
@@ -66,6 +68,7 @@ private:
     sm::cni::CNI                                                         mCNI;
     sm::database::Database                                               mDatabase;
     sm::image::ImageHandler                                              mImageHandler;
+    sm::layermanager::LayerManager                                       mLayerManager;
     sm::logprovider::LogProvider                                         mLogProvider;
     sm::monitoring::ResourceUsageProvider                                mResourceUsageProvider;
     sm::networkmanager::NamespaceManager                                 mNamespaceManager;

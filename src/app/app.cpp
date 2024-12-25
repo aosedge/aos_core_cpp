@@ -147,6 +147,18 @@ void App::initialize(Application& self)
         mDownloadSpaceAllocator, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize service manager", err);
 
+    // Initialize layer manager
+
+    auto layerManagerConfig = std::make_shared<sm::layermanager::Config>();
+
+    layerManagerConfig->mLayersDir   = config->mLayersDir.c_str();
+    layerManagerConfig->mDownloadDir = config->mDownloadDir.c_str();
+    layerManagerConfig->mTTL         = config->mLayerTTL.count();
+
+    err = mLayerManager.Init(*layerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
+        mDownloader, mImageHandler, mOCISpec);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
