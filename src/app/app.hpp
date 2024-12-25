@@ -16,6 +16,7 @@
 
 #include "database/database.hpp"
 #include "logger/logger.hpp"
+#include "logprovider/logprovider.hpp"
 #include "networkmanager/cni.hpp"
 #include "networkmanager/networkmanager.hpp"
 #include "resourcemanager/resourcemanager.hpp"
@@ -51,6 +52,7 @@ private:
     common::logger::Logger                      mLogger;
     sm::cni::CNI                                mCNI;
     sm::database::Database                      mDatabase;
+    sm::logprovider::LogProvider                mLogProvider;
     sm::networkmanager::NamespaceManager        mNamespaceManager;
     sm::networkmanager::NetworkInterfaceManager mNetworkInterfaceManager;
     sm::networkmanager::NetworkManager          mNetworkManager;
