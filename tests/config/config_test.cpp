@@ -68,7 +68,7 @@ static constexpr auto cTestServiceManagerJSON          = R"({
     },
     "migration": {
         "mergedMigrationPath": "/var/aos/servicemanager/mergedMigration",
-        "migrationPath": "/usr/share/aos_servicemnager/migration"
+        "migrationPath": "/usr/share/aos_servicemanager/migration"
     },
     "monitoring": {
         "averageWindow": "5m",
@@ -175,7 +175,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mLogging.mMaxPartCount, 10);
     EXPECT_EQ(config.mLogging.mMaxPartSize, 1024);
 
-    EXPECT_STREQ(config.mMigration.mMigrationPath.c_str(), "/usr/share/aos_servicemnager/migration");
+    EXPECT_STREQ(config.mMigration.mMigrationPath.c_str(), "/usr/share/aos_servicemanager/migration");
     EXPECT_STREQ(config.mMigration.mMergedMigrationPath.c_str(), "/var/aos/servicemanager/mergedMigration");
 
     EXPECT_EQ(config.mMonitoring.mAverageWindow, std::chrono::minutes(5)) << config.mMonitoring.mAverageWindow.count();
