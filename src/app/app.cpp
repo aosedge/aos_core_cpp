@@ -184,6 +184,12 @@ void App::initialize(Application& self)
         mNetworkManager, mIAMClientPermissions, mRunner, mResourceMonitor, mOCISpec, mSMClient, mSMClient, mDatabase);
     AOS_ERROR_CHECK_AND_THROW("can't initialize launcher", err);
 
+    // Initialize SM client
+
+    err = mSMClient.Init(*config, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager, mLogProvider,
+        mResourceMonitor, mLauncher);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize SM client", err);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
