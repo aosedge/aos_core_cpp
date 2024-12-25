@@ -145,6 +145,7 @@ void App::initialize(Application& self)
 
     err = mServiceManager.Init(*serviceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
         mDownloadSpaceAllocator, mImageHandler);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize service manager", err);
 
     // Notify systemd
 

@@ -396,8 +396,6 @@ Database::Database()
 
 Database::~Database()
 {
-    LOG_DBG() << "Close database";
-
     if (mSession && mSession->isConnected()) {
         mSession->close();
     }
