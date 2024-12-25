@@ -11,6 +11,7 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
+#include <aos/sm/launcher.hpp>
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
 
@@ -68,6 +69,7 @@ private:
     sm::cni::CNI                                                         mCNI;
     sm::database::Database                                               mDatabase;
     sm::image::ImageHandler                                              mImageHandler;
+    sm::launcher::Launcher                                               mLauncher;
     sm::layermanager::LayerManager                                       mLayerManager;
     sm::logprovider::LogProvider                                         mLogProvider;
     sm::monitoring::ResourceUsageProvider                                mResourceUsageProvider;

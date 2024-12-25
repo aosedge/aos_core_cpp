@@ -159,6 +159,24 @@ void App::initialize(Application& self)
         mDownloader, mImageHandler, mOCISpec);
     AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
 
+    // Initialize launcher
+
+    auto launcherConfig = std::make_shared<sm::launcher::Config>();
+
+    launcherConfig->mWorkDir    = config->mWorkingDir.c_str();
+    launcherConfig->mStorageDir = config->mStorageDir.c_str();
+    launcherConfig->mStateDir   = config->mStateDir.c_str();
+
+    for (const auto& bind : config->mHostBinds) {
+        err = launcherConfig->mHostBinds.EmplaceBack(bind.c_str());
+        AOS_ERROR_CHECK_AND_THROW("can't add host bind", err);
+    }
+
+    for (const auto& host : config->mHosts) {
+        err = launcherConfig->mHosts.EmplaceBack(Host {host.mIP.c_str(), host.mHostname.c_str()});
+        AOS_ERROR_CHECK_AND_THROW("can't add host", err);
+    }
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
