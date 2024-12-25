@@ -56,6 +56,10 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
+    void InitAosCore();
+    void StartAosCore();
+    void StopAosCore();
+
     aos::crypto::CertLoader                                              mCertLoader;
     aos::crypto::MbedTLSCryptoProvider                                   mCryptoProvider;
     aos::monitoring::ResourceMonitor                                     mResourceMonitor;

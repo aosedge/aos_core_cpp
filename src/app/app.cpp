@@ -67,12 +67,68 @@ void App::initialize(Application& self)
         return;
     }
 
+    Application::initialize(self);
     RegisterSegfaultSignal();
+    InitAosCore();
 
+    // Notify systemd
+
+    auto ret = sd_notify(0, cSDNotifyReady);
+    if (ret < 0) {
+        AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
+    }
+}
+
+void App::uninitialize()
+{
+    Application::uninitialize();
+    StopAosCore();
+}
+
+void App::reinitialize(Application& self)
+{
+    Application::reinitialize(self);
+}
+
+int App::main(const ArgVec& args)
+{
+    (void)args;
+
+    if (mStopProcessing) {
+        return Application::EXIT_OK;
+    }
+
+    waitForTerminationRequest();
+
+    return Application::EXIT_OK;
+}
+
+void App::defineOptions(Poco::Util::OptionSet& options)
+{
+    Application::defineOptions(options);
+
+    options.addOption(Poco::Util::Option("help", "h", "displays help information")
+                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleHelp)));
+    options.addOption(Poco::Util::Option("version", "", "displays version information")
+                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleVersion)));
+    options.addOption(Poco::Util::Option("journal", "j", "redirects logs to systemd journal")
+                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleJournal)));
+    options.addOption(Poco::Util::Option("verbose", "v", "sets current log level")
+                          .argument("${level}")
+                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleLogLevel)));
+    options.addOption(Poco::Util::Option("config", "c", "path to config file")
+                          .argument("${file}")
+                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleConfigFile)));
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+void App::InitAosCore()
+{
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
-
-    Application::initialize(self);
 
     LOG_INF() << "Initialize SM: version = " << AOS_CORE_SM_VERSION;
 
@@ -189,59 +245,49 @@ void App::initialize(Application& self)
     err = mSMClient.Init(*config, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager, mLogProvider,
         mResourceMonitor, mLauncher);
     AOS_ERROR_CHECK_AND_THROW("can't initialize SM client", err);
-
-    // Notify systemd
-
-    auto ret = sd_notify(0, cSDNotifyReady);
-    if (ret < 0) {
-        AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
-    }
 }
 
-void App::uninitialize()
+void App::StartAosCore()
 {
-    Application::uninitialize();
+    auto err = mSMClient.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
+
+    err = mLauncher.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start launcher", err);
+
+    err = mLayerManager.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start layer manager", err);
+
+    err = mNetworkManager.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start network manager", err);
+
+    err = mResourceMonitor.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start resource monitor", err);
+
+    err = mServiceManager.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start service manager", err);
 }
 
-void App::reinitialize(Application& self)
+void App::StopAosCore()
 {
-    Application::reinitialize(self);
+    auto err = mSMClient.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop SM client", err);
+
+    err = mLauncher.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop launcher", err);
+
+    err = mLayerManager.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop layer manager", err);
+
+    err = mNetworkManager.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop network manager", err);
+
+    err = mResourceMonitor.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop resource monitor", err);
+
+    err = mServiceManager.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop service manager", err);
 }
-
-int App::main(const ArgVec& args)
-{
-    (void)args;
-
-    if (mStopProcessing) {
-        return Application::EXIT_OK;
-    }
-
-    waitForTerminationRequest();
-
-    return Application::EXIT_OK;
-}
-
-void App::defineOptions(Poco::Util::OptionSet& options)
-{
-    Application::defineOptions(options);
-
-    options.addOption(Poco::Util::Option("help", "h", "displays help information")
-                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleHelp)));
-    options.addOption(Poco::Util::Option("version", "", "displays version information")
-                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleVersion)));
-    options.addOption(Poco::Util::Option("journal", "j", "redirects logs to systemd journal")
-                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleJournal)));
-    options.addOption(Poco::Util::Option("verbose", "v", "sets current log level")
-                          .argument("${level}")
-                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleLogLevel)));
-    options.addOption(Poco::Util::Option("config", "c", "path to config file")
-                          .argument("${file}")
-                          .callback(Poco::Util::OptionCallback<App>(this, &App::HandleConfigFile)));
-}
-
-/***********************************************************************************************************************
- * Private
- **********************************************************************************************************************/
 
 void App::HandleHelp(const std::string& name, const std::string& value)
 {
