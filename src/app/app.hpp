@@ -14,7 +14,10 @@
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
 
+#include "database/database.hpp"
 #include "logger/logger.hpp"
+#include "networkmanager/cni.hpp"
+#include "networkmanager/networkmanager.hpp"
 #include "resourcemanager/resourcemanager.hpp"
 
 namespace aos::sm::app {
@@ -40,14 +43,20 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    common::iamclient::PublicServiceHandler mIAMClientPublic;
-    common::jsonprovider::JSONProvider      mJSONProvider;
-    common::logger::Logger                  mLogger;
-    crypto::CertLoader                      mCertLoader;
-    crypto::MbedTLSCryptoProvider           mCryptoProvider;
-    pkcs11::PKCS11Manager                   mPKCS11Manager;
-    sm::resourcemanager::ResourceManager    mResourceManager;
-    sm::resourcemanager::HostDeviceManager  mHostDeviceManager;
+    aos::crypto::CertLoader                     mCertLoader;
+    aos::crypto::MbedTLSCryptoProvider          mCryptoProvider;
+    aos::pkcs11::PKCS11Manager                  mPKCS11Manager;
+    common::iamclient::PublicServiceHandler     mIAMClientPublic;
+    common::jsonprovider::JSONProvider          mJSONProvider;
+    common::logger::Logger                      mLogger;
+    sm::cni::CNI                                mCNI;
+    sm::database::Database                      mDatabase;
+    sm::networkmanager::NamespaceManager        mNamespaceManager;
+    sm::networkmanager::NetworkInterfaceManager mNetworkInterfaceManager;
+    sm::networkmanager::NetworkManager          mNetworkManager;
+    sm::networkmanager::TrafficMonitor          mTrafficMonitor;
+    sm::resourcemanager::HostDeviceManager      mHostDeviceManager;
+    sm::resourcemanager::ResourceManager        mResourceManager;
 
     bool        mStopProcessing = false;
     std::string mConfigFile;

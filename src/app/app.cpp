@@ -119,6 +119,17 @@ void App::initialize(Application& self)
         mJSONProvider, mHostDeviceManager, nodeInfo->mNodeType, config->mNodeConfigFile.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize resource manager", err);
 
+    // Initialize database
+
+    err = mDatabase.Init(config->mWorkingDir, config->mMigration);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
+
+    // Initialize network manager
+
+    err = mNetworkManager.Init(
+        mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, config->mWorkingDir.c_str());
+    AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
