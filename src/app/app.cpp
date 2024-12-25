@@ -135,6 +135,17 @@ void App::initialize(Application& self)
     err = mResourceMonitor.Init(mIAMClientPublic, mResourceUsageProvider, mSMClient, mSMClient);
     AOS_ERROR_CHECK_AND_THROW("can't initialize resource monitor", err);
 
+    // Initialize service manager
+
+    auto serviceManagerConfig = std::make_shared<sm::servicemanager::Config>();
+
+    serviceManagerConfig->mServicesDir = config->mServicesDir.c_str();
+    serviceManagerConfig->mDownloadDir = config->mDownloadDir.c_str();
+    serviceManagerConfig->mTTL         = config->mServiceTTL.count();
+
+    err = mServiceManager.Init(*serviceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
+        mDownloadSpaceAllocator, mImageHandler);
+
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);

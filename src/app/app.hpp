@@ -11,16 +11,21 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
+#include <aos/sm/servicemanager.hpp>
 
+#include <downloader/downloader.hpp>
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
 
 #include "database/database.hpp"
+#include "downloader/downloader.hpp"
+#include "image/imagehandler.hpp"
 #include "logger/logger.hpp"
 #include "logprovider/logprovider.hpp"
 #include "monitoring/resourceusageprovider.hpp"
 #include "networkmanager/cni.hpp"
 #include "networkmanager/networkmanager.hpp"
+#include "ocispec/ocispec.hpp"
 #include "resourcemanager/resourcemanager.hpp"
 #include "smclient/smclient.hpp"
 
@@ -47,24 +52,30 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    aos::crypto::CertLoader                     mCertLoader;
-    aos::crypto::MbedTLSCryptoProvider          mCryptoProvider;
-    aos::monitoring::ResourceMonitor            mResourceMonitor;
-    aos::pkcs11::PKCS11Manager                  mPKCS11Manager;
-    common::iamclient::PublicServiceHandler     mIAMClientPublic;
-    common::jsonprovider::JSONProvider          mJSONProvider;
-    common::logger::Logger                      mLogger;
-    sm::cni::CNI                                mCNI;
-    sm::database::Database                      mDatabase;
-    sm::logprovider::LogProvider                mLogProvider;
-    sm::monitoring::ResourceUsageProvider       mResourceUsageProvider;
-    sm::networkmanager::NamespaceManager        mNamespaceManager;
-    sm::networkmanager::NetworkInterfaceManager mNetworkInterfaceManager;
-    sm::networkmanager::NetworkManager          mNetworkManager;
-    sm::networkmanager::TrafficMonitor          mTrafficMonitor;
-    sm::resourcemanager::HostDeviceManager      mHostDeviceManager;
-    sm::resourcemanager::ResourceManager        mResourceManager;
-    sm::smclient::SMClient                      mSMClient;
+    aos::crypto::CertLoader                                              mCertLoader;
+    aos::crypto::MbedTLSCryptoProvider                                   mCryptoProvider;
+    aos::monitoring::ResourceMonitor                                     mResourceMonitor;
+    aos::pkcs11::PKCS11Manager                                           mPKCS11Manager;
+    aos::spaceallocator::SpaceAllocator<cMaxNumServices + cMaxNumLayers> mDownloadSpaceAllocator;
+    aos::spaceallocator::SpaceAllocator<cMaxNumServices>                 mServicesSpaceAllocator;
+    common::downloader::Downloader                                       mDownloader;
+    common::iamclient::PublicServiceHandler                              mIAMClientPublic;
+    common::jsonprovider::JSONProvider                                   mJSONProvider;
+    common::logger::Logger                                               mLogger;
+    common::oci::OCISpec                                                 mOCISpec;
+    sm::cni::CNI                                                         mCNI;
+    sm::database::Database                                               mDatabase;
+    sm::image::ImageHandler                                              mImageHandler;
+    sm::logprovider::LogProvider                                         mLogProvider;
+    sm::monitoring::ResourceUsageProvider                                mResourceUsageProvider;
+    sm::networkmanager::NamespaceManager                                 mNamespaceManager;
+    sm::networkmanager::NetworkInterfaceManager                          mNetworkInterfaceManager;
+    sm::networkmanager::NetworkManager                                   mNetworkManager;
+    sm::networkmanager::TrafficMonitor                                   mTrafficMonitor;
+    sm::resourcemanager::HostDeviceManager                               mHostDeviceManager;
+    sm::resourcemanager::ResourceManager                                 mResourceManager;
+    sm::servicemanager::ServiceManager                                   mServiceManager;
+    sm::smclient::SMClient                                               mSMClient;
 
     bool        mStopProcessing = false;
     std::string mConfigFile;
