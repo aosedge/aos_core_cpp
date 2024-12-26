@@ -8,6 +8,7 @@ class AosCommonCpp(ConanFile):
         self.requires("gtest/1.14.0")
         self.requires("poco/1.13.2")
         self.requires("grpc/1.54.3")
+        self.requires("libcurl/8.8.0")
 
     def build_requirements(self):
         self.tool_requires("protobuf/3.21.12")
