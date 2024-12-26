@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CERTPROVIDER_HPP_
-#define CERTPROVIDER_HPP_
+#ifndef IAMCLIENT_HPP_
+#define IAMCLIENT_HPP_
 
 #include <gmock/gmock.h>
 
@@ -30,4 +30,4 @@ public:
 
 } // namespace aos::common::iamclient
 
-#endif // CERTPROVIDER_HPP_
+#endif
