@@ -12,7 +12,7 @@
 namespace aos::common::oci {
 
 /**
- * OCI spec interface.
+ * OCI spec instance.
  */
 class OCISpec : public aos::oci::OCISpecItf {
 public:
@@ -20,7 +20,7 @@ public:
      * Loads OCI image manifest.
      *
      * @param path file path.
-     * @param manifest image manifest.
+     * @param[out] manifest image manifest.
      * @return Error.
      */
     Error LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest) override
@@ -50,9 +50,10 @@ public:
      * Loads OCI image spec.
      *
      * @param path file path.
-     * @param imageSpec image spec.
+     * @param[out] imageSpec image spec.
      * @return Error.
      */
+    // cppcheck-suppress constParameterReference
     Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
     {
         (void)path;
@@ -80,9 +81,10 @@ public:
      * Loads OCI runtime spec.
      *
      * @param path file path.
-     * @param runtimeSpec runtime spec.
+     * @param[out] runtimeSpec runtime spec.
      * @return Error.
      */
+    // cppcheck-suppress constParameterReference
     Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec)
     {
         (void)path;
