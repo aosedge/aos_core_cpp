@@ -1,20 +1,14 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
 # Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
+set(TARGET aostestcommon)
+
 # ######################################################################################################################
-# Add tests
+# Target
 # ######################################################################################################################
 
-add_subdirectory(iamclient)
-add_subdirectory(include)
-add_subdirectory(jsonprovider)
-add_subdirectory(migration)
-add_subdirectory(utils)
-
-if(WITH_IAM_API OR WITH_SM_API)
-    add_subdirectory(pbconvert)
-endif()
+add_library(${TARGET} INTERFACE)
+target_include_directories(${TARGET} INTERFACE .)
