@@ -30,6 +30,14 @@ namespace aos::common::utils {
  */
 RetWithError<std::string> MkTmpDir(const std::string& dir = "", const std::string& pattern = "");
 
+/**
+ * Calculates the size of a file or directory.
+ *
+ * @param path path to the file or directory.
+ * @return RetWithError<uintmax_t>.
+ */
+RetWithError<uintmax_t> CalculateSize(const std::string& path);
+
 } // namespace aos::common::utils
 
 #endif // UTILS_FILESYSTEM_HPP
