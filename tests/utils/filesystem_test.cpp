@@ -153,4 +153,17 @@ TEST_F(FSTest, CalculateSize)
     EXPECT_EQ(size, 4 * buffer.size());
 }
 
+TEST_F(FSTest, ChangeOwner)
+{
+    const auto root = fs::path(cTestDir) / "change-owner-test";
+
+    fs::create_directories(root);
+
+    if (getuid() != 0 && getgid() != 0) {
+        ASSERT_EQ(ChangeOwner(root.string(), 0, 0), aos::ErrorEnum::eFailed);
+    }
+
+    ASSERT_EQ(ChangeOwner(root.string(), getuid(), getgid()), aos::ErrorEnum::eNone);
+}
+
 } // namespace aos::common::utils

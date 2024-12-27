@@ -65,4 +65,26 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path)
     return {0, ErrorEnum::eNotSupported};
 }
 
+Error ChangeOwner(const std::string& path, uint32_t newUID, uint32_t newGID)
+{
+    try {
+        for (const auto& entry : fs::recursive_directory_iterator(path)) {
+            const std::string file_path = entry.path().string();
+
+            if (auto res = chown(file_path.c_str(), newUID, newGID); res == -1) {
+                return Error(ErrorEnum::eFailed, strerror(errno));
+            }
+        }
+
+        if (auto res = chown(path.c_str(), newUID, newGID); res == -1) {
+            return Error(ErrorEnum::eFailed, strerror(errno));
+        }
+
+    } catch (const std::exception& ex) {
+        return Error(ErrorEnum::eFailed, ex.what());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::utils
