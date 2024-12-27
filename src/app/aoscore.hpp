@@ -19,6 +19,7 @@
 #include <iamclient/permservicehandler.hpp>
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
+#include <network/iptables.hpp>
 
 #include "database/database.hpp"
 #include "downloader/downloader.hpp"
@@ -30,6 +31,7 @@
 #include "networkmanager/cni.hpp"
 #include "networkmanager/exec.hpp"
 #include "networkmanager/networkmanager.hpp"
+#include "networkmanager/trafficmonitor.hpp"
 #include "ocispec/ocispec.hpp"
 #include "resourcemanager/resourcemanager.hpp"
 #include "runner/runner.hpp"
@@ -98,6 +100,7 @@ private:
     sm::networkmanager::NetworkInterfaceManager                          mNetworkInterfaceManager;
     sm::networkmanager::NetworkManager                                   mNetworkManager;
     sm::networkmanager::TrafficMonitor                                   mTrafficMonitor;
+    common::network::IPTables                                            mIPTables;
     sm::resourcemanager::HostDeviceManager                               mHostDeviceManager;
     sm::resourcemanager::ResourceManager                                 mResourceManager;
     sm::runner::Runner                                                   mRunner;

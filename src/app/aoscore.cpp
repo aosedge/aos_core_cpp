@@ -78,6 +78,11 @@ void AosCore::Init(const std::string& configFile)
     err = mDatabase.Init(config->mWorkingDir, config->mMigration);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
 
+    // Initialize traffic monitor
+
+    err = mTrafficMonitor.Init(mDatabase, mIPTables);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize traffic monitor", err);
+
     // Initialize network manager
 
     err = mCNI.Init(mExec);
