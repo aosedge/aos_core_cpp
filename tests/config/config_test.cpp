@@ -83,6 +83,7 @@ static constexpr auto cTestServiceManagerJSON          = R"({
     "workingDir": "workingDir"
 })";
 static constexpr auto cTestDefaultValuesJSON           = R"({
+    "workingDir": "test",
     "monitoring" : {},
     "journalAlerts": {
         "filter": [
@@ -212,6 +213,17 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     EXPECT_EQ(config.mMonitoring.mPollPeriod, std::chrono::seconds(35)) << config.mMonitoring.mPollPeriod.count();
     EXPECT_EQ(config.mMonitoring.mAverageWindow, std::chrono::seconds(35)) << config.mMonitoring.mAverageWindow.count();
+
+    EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/sm/");
+
+    ASSERT_EQ(config.mWorkingDir, "test");
+
+    EXPECT_EQ(config.mStorageDir, "test/storages");
+    EXPECT_EQ(config.mLayersDir, "test/layers");
+    EXPECT_EQ(config.mServicesDir, "test/services");
+    EXPECT_EQ(config.mDownloadDir, "test/downloads");
+    EXPECT_EQ(config.mExtractDir, "test/extracts");
+    EXPECT_EQ(config.mNodeConfigFile, "test/aos_node.cfg");
 }
 
 TEST_F(ConfigTest, ErrorReturnedOnFileMissing)

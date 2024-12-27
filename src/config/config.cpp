@@ -4,9 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <filesystem>
 #include <fstream>
 
 #include <Poco/JSON/Parser.h>
+
+#include <aos/common/tools/fs.hpp>
 
 #include <utils/exception.hpp>
 #include <utils/json.hpp>
@@ -35,7 +38,9 @@ namespace aos::sm::config {
  * Static
  **********************************************************************************************************************/
 
-static MonitoringConfig ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+namespace {
+
+MonitoringConfig ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     MonitoringConfig config {};
 
@@ -53,7 +58,7 @@ static MonitoringConfig ParseMonitoringConfig(const common::utils::CaseInsensiti
     return config;
 }
 
-static LoggingConfig ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+LoggingConfig ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return LoggingConfig {
         object.GetValue<uint64_t>("maxPartSize"),
@@ -61,7 +66,7 @@ static LoggingConfig ParseLoggingConfig(const common::utils::CaseInsensitiveObje
     };
 }
 
-static JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     JournalAlertsConfig config {};
 
@@ -87,7 +92,7 @@ static JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseIns
     return config;
 }
 
-static std::vector<HostInfoConfig> ParseHostsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+std::vector<HostInfoConfig> ParseHostsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return common::utils::GetArrayValue<HostInfoConfig>(object, "hosts", [](const Poco::Dynamic::Var& value) {
         common::utils::CaseInsensitiveObjectWrapper item(value);
@@ -99,13 +104,26 @@ static std::vector<HostInfoConfig> ParseHostsConfig(const common::utils::CaseIns
     });
 }
 
-static MigrationConfig ParseMigrationConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+MigrationConfig ParseMigrationConfig(
+    const std::string& workDir, const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return MigrationConfig {
-        object.GetValue<std::string>("migrationPath"),
-        object.GetValue<std::string>("mergedMigrationPath"),
+        object.GetOptionalValue<std::string>("migrationPath").value_or("/usr/share/aos/servicemanager/migration"),
+        object.GetOptionalValue<std::string>("mergedMigrationPath")
+            .value_or(FS::JoinPath(workDir.c_str(), "mergedMigration").CStr()),
     };
 }
+
+std::filesystem::path JoinPath(const std::string& base, const std::string& entry)
+{
+    auto path = std::filesystem::path(base);
+
+    path /= entry;
+
+    return path;
+}
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public functions
@@ -126,24 +144,36 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                        result = parser.parse(file);
         common::utils::CaseInsensitiveObjectWrapper object(result);
 
-        config.mCACert                = object.GetValue<std::string>("caCert");
-        config.mCertStorage           = object.GetValue<std::string>("certStorage");
-        config.mCMServerURL           = object.GetValue<std::string>("cmServerURL");
-        config.mIAMPublicServerURL    = object.GetValue<std::string>("iamPublicServerURL");
+        config.mCACert             = object.GetValue<std::string>("caCert");
+        config.mCertStorage        = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
+        config.mCMServerURL        = object.GetValue<std::string>("cmServerURL");
+        config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
         config.mWorkingDir            = object.GetValue<std::string>("workingDir");
-        config.mStorageDir            = object.GetValue<std::string>("storageDir");
-        config.mStateDir              = object.GetValue<std::string>("stateDir");
 
-        config.mServicesDir       = object.GetValue<std::string>("servicesDir");
+        config.mStorageDir
+            = object.GetOptionalValue<std::string>("storageDir").value_or(JoinPath(config.mWorkingDir, "storages"));
+
+        config.mStateDir = object.GetValue<std::string>("stateDir");
+
+        config.mServicesDir
+            = object.GetOptionalValue<std::string>("servicesDir").value_or(JoinPath(config.mWorkingDir, "services"));
+
         config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
 
-        config.mLayersDir       = object.GetValue<std::string>("layersDir");
+        config.mLayersDir
+            = object.GetOptionalValue<std::string>("layersDir").value_or(JoinPath(config.mWorkingDir, "layers"));
+
         config.mLayersPartLimit = object.GetValue<uint32_t>("layersPartLimit");
 
-        config.mDownloadDir    = object.GetValue<std::string>("downloadDir");
-        config.mExtractDir     = object.GetValue<std::string>("extractDir");
-        config.mNodeConfigFile = object.GetValue<std::string>("nodeConfigFile");
+        config.mDownloadDir
+            = object.GetOptionalValue<std::string>("downloadDir").value_or(JoinPath(config.mWorkingDir, "downloads"));
+
+        config.mExtractDir
+            = object.GetOptionalValue<std::string>("extractDir").value_or(JoinPath(config.mWorkingDir, "extracts"));
+
+        config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
+                                     .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
         Error err = ErrorEnum::eNone;
 
@@ -183,7 +213,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         }
 
         if (object.Has("migration")) {
-            config.mMigration = ParseMigrationConfig(object.GetObject("migration"));
+            config.mMigration = ParseMigrationConfig(config.mWorkingDir, object.GetObject("migration"));
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing config: " << e.what();
