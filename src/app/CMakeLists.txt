@@ -38,6 +38,7 @@ target_link_libraries(
            database
            resourcemanager
            smclient
+           aosdownloader
            aossm
            aosiamclient
            aosjsonprovider
