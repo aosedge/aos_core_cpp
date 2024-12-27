@@ -27,7 +27,6 @@ static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "stre
  * Public
  **********************************************************************************************************************/
 
-// cppcheck-suppress duplInheritedMember
 aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,

@@ -50,7 +50,6 @@ public:
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      */
-    // cppcheck-suppress duplInheritedMember
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
         aos::iam::permhandler::PermHandlerItf&           permHandler,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
