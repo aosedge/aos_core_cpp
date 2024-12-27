@@ -10,6 +10,9 @@
 
 #include <gtest/gtest.h>
 
+#include <aos/common/tools/fs.hpp>
+#include <aos/test/log.hpp>
+
 #include "utils/filesystem.hpp"
 
 using namespace testing;
@@ -19,12 +22,37 @@ namespace fs = std::filesystem;
 namespace aos::common::utils {
 
 /***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
+
+namespace {
+
+constexpr auto cTestDir = "fs_tests";
+
+}
+
+using namespace testing;
+
+/***********************************************************************************************************************
+ * Suite
+ **********************************************************************************************************************/
+
+class FSTest : public Test {
+protected:
+    void SetUp() override
+    {
+        FS::ClearDir(cTestDir);
+        test::InitLog();
+    }
+};
+
+/***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
 
-TEST(MkTmpDirTest, CreatesDirectory)
+TEST_F(FSTest, CreatesDirectory)
 {
-    auto result = MkTmpDir("", "my_temp_dir.XXXXXX");
+    auto result = MkTmpDir(cTestDir, "my_temp_dir.XXXXXX");
 
     ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(result.mValue));
@@ -43,9 +71,9 @@ TEST(MkTmpDirTest, CreatesDirectory)
     std::filesystem::remove_all(result.mValue);
 }
 
-TEST(MkTmpDirTest, WithCustomDir)
+TEST_F(FSTest, WithCustomDir)
 {
-    std::string customDir = std::filesystem::temp_directory_path() / "custom_temp_dir";
+    std::string customDir = std::filesystem::path(cTestDir) / "custom_temp_dir";
     std::filesystem::create_directory(customDir);
 
     auto result = MkTmpDir(customDir, "my_temp_dir.XXXXXX");
@@ -70,9 +98,9 @@ TEST(MkTmpDirTest, WithCustomDir)
     std::filesystem::remove_all(customDir);
 }
 
-TEST(MkTmpDirTest, PatternHandling)
+TEST_F(FSTest, PatternHandling)
 {
-    auto result = MkTmpDir("", "test_dir");
+    auto result = MkTmpDir(cTestDir, "test_dir");
 
     ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(result.mValue));
@@ -81,7 +109,7 @@ TEST(MkTmpDirTest, PatternHandling)
 
     std::filesystem::remove_all(result.mValue);
 
-    result = MkTmpDir("", "another_test.XXXXXX");
+    result = MkTmpDir(cTestDir, "another_test.XXXXXX");
 
     ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(result.mValue));
@@ -89,6 +117,40 @@ TEST(MkTmpDirTest, PatternHandling)
     EXPECT_TRUE(result.mValue.find("another_test.") != std::string::npos);
 
     std::filesystem::remove_all(result.mValue);
+}
+
+TEST_F(FSTest, CalculateSize)
+{
+    std::array<char, 1024> buffer;
+
+    const auto root = fs::path(cTestDir) / "size-test";
+    const auto f1   = root / "f1";
+    const auto f1s1 = f1 / "s1";
+    const auto f2   = root / "f2";
+
+    fs::create_directories(f1s1);
+    fs::create_directories(f2);
+
+    if (auto file = std::ofstream(root / "root.txt", std::ios::binary); file.good()) {
+        file.write(buffer.data(), buffer.size());
+    }
+
+    if (auto file = std::ofstream(f1 / "f1.txt", std::ios::binary); file.good()) {
+        file.write(buffer.data(), buffer.size());
+    }
+
+    if (auto file = std::ofstream(f1s1 / "f1s1.txt", std::ios::binary); file.good()) {
+        file.write(buffer.data(), buffer.size());
+    }
+
+    if (auto file = std::ofstream(f2 / "f2.txt", std::ios::binary); file.good()) {
+        file.write(buffer.data(), buffer.size());
+    }
+
+    auto [size, err] = CalculateSize(root.string());
+
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(size, 4 * buffer.size());
 }
 
 } // namespace aos::common::utils
