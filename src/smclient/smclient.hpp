@@ -45,7 +45,7 @@ using PublicNodeService = smproto::SMService;
  */
 class SMClient : public iam::certhandler::CertReceiverItf,
                  public aos::monitoring::SenderItf,
-                 public alerts::SenderItf,
+                 public aos::alerts::SenderItf,
                  public sm::logprovider::LogObserverItf,
                  public sm::launcher::InstanceStatusReceiverItf,
                  public ConnectionPublisherItf,
