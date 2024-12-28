@@ -11,12 +11,13 @@
 #include <optional>
 #include <string>
 
-#include <aos/common/alerts/alerts.hpp>
+#include <alerts/alerts.hpp>
 #include <aos/common/cloudprotocol/alerts.hpp>
 #include <aos/sm/launcher.hpp>
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/networkmanager.hpp>
 #include <aos/sm/servicemanager.hpp>
+#include <logprovider/logprovider.hpp>
 #include <migration/migration.hpp>
 
 #include "config/config.hpp"
@@ -27,7 +28,9 @@ class Database : public sm::launcher::StorageItf,
                  public sm::servicemanager::StorageItf,
                  public sm::networkmanager::StorageItf,
                  public sm::layermanager::StorageItf,
-                 public alerts::StorageItf {
+                 public sm::alerts::StorageItf,
+                 public sm::logprovider::InstanceIDProviderItf,
+                 public sm::alerts::InstanceInfoProviderItf {
 public:
     /**
      * Creates database instance.
@@ -286,6 +289,26 @@ public:
      * @return Error.
      */
     Error GetJournalCursor(String& cursor) const override;
+
+    // sm::logprovider::InstanceIDProviderItf interface
+
+    /**
+     * Gets instance ids.
+     *
+     * @param filter service instance filter.
+     * @return RetWithError<std::vector<std::string>>.
+     */
+    RetWithError<std::vector<std::string>> GetInstanceIDs(const cloudprotocol::InstanceFilter& filter) override;
+
+    // sm::alerts::InstanceInfoProviderItf interface
+
+    /**
+     * Gets instance info.
+     *
+     * @param id instance id.
+     * @return RetWithError<alerts::ServiceInstanceData>.
+     */
+    RetWithError<alerts::ServiceInstanceData> GetInstanceInfoByID(const String& id) override;
 
 private:
     static constexpr int  sVersion    = 0;

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include <aos/test/log.hpp>
 
@@ -625,4 +625,66 @@ TEST_F(DatabaseTest, JournalCursor)
 
     ASSERT_TRUE(mDB.GetJournalCursor(journalCursor).IsNone());
     EXPECT_EQ(journalCursor, aos::String("cursor"));
+}
+
+TEST_F(DatabaseTest, GetInstanceInfoByIDOk)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    constexpr auto serviceID  = "service-1";
+    constexpr auto instanceID = "instance-1";
+
+    auto serviceV1 = CreateServiceData(serviceID, "0.0.1");
+    auto serviceV2 = CreateServiceData(serviceID, "0.0.2");
+
+    ASSERT_TRUE(mDB.AddService(serviceV1).IsNone());
+    ASSERT_TRUE(mDB.AddService(serviceV2).IsNone());
+
+    auto instance = CreateInstanceData(instanceID, CreateInstanceIdent(serviceID, "subject", 0));
+
+    EXPECT_TRUE(mDB.AddInstance(instance).IsNone());
+
+    const aos::sm::alerts::ServiceInstanceData cExpServiceInfo = {{serviceID, "subject", 0}, "0.0.2"};
+
+    auto [serviceInstanceInfo, err] = mDB.GetInstanceInfoByID(instanceID);
+
+    EXPECT_EQ(cExpServiceInfo, serviceInstanceInfo);
+    EXPECT_TRUE(err.IsNone());
+}
+
+TEST_F(DatabaseTest, GetInstanceIDsOk)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    constexpr auto serviceID   = "service-1";
+    constexpr auto instanceID  = "instance-1";
+    constexpr auto instanceID2 = "instance-2";
+
+    auto instance1 = CreateInstanceData(instanceID, CreateInstanceIdent(serviceID, "subject", 0));
+    auto instance2 = CreateInstanceData(instanceID2, CreateInstanceIdent(serviceID, "subject", 0));
+
+    EXPECT_TRUE(mDB.AddInstance(instance1).IsNone());
+    EXPECT_TRUE(mDB.AddInstance(instance2).IsNone());
+
+    aos::cloudprotocol::InstanceFilter filter;
+
+    filter.mServiceID.SetValue(serviceID);
+
+    auto [instanceIDs, err] = mDB.GetInstanceIDs(filter);
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_THAT(instanceIDs, ElementsAre(instanceID, instanceID2));
+}
+
+TEST_F(DatabaseTest, GetInstanceIDsNOK)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    constexpr auto serviceID = "service-1";
+
+    aos::cloudprotocol::InstanceFilter filter;
+
+    filter.mServiceID.SetValue(serviceID);
+
+    auto [instanceIDs, err] = mDB.GetInstanceIDs(filter);
+    EXPECT_FALSE(err.IsNone());
 }

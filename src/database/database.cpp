@@ -1007,6 +1007,101 @@ Error Database::GetJournalCursor(String& cursor) const
 }
 
 /***********************************************************************************************************************
+ * sm::loggging::InstanceIDProvider implementation
+ **********************************************************************************************************************/
+
+RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudprotocol::InstanceFilter& filter)
+{
+    LOG_DBG() << "Get instance IDs";
+
+    std::vector<std::string> instanceIDs;
+
+    try {
+        std::string where;
+
+        if (filter.mServiceID.HasValue()) {
+            where += Poco::format("serviceID = \"%s\"", std::string(filter.mServiceID.GetValue().CStr()));
+        }
+
+        if (filter.mSubjectID.HasValue()) {
+            if (where.empty()) {
+                where += " AND ";
+            }
+
+            where += Poco::format("subjectID = \"%s\"", std::string(filter.mSubjectID.GetValue().CStr()));
+        }
+
+        if (filter.mInstance.HasValue()) {
+            if (where.empty()) {
+                where += " AND ";
+            }
+
+            where += Poco::format("instance = \"%d\"", filter.mInstance.GetValue());
+        }
+
+        if (!where.empty()) {
+            where = "WHERE " + where;
+        }
+
+        std::vector<Poco::Tuple<std::string>> result;
+
+        *mSession << "SELECT instanceID FROM instances " << where << ";", into(result), now;
+
+        std::transform(result.begin(), result.end(), std::back_inserter(instanceIDs),
+            [](const Poco::Tuple<std::string>& info) { return info.get<0>(); });
+    } catch (const Poco::Exception& e) {
+        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+    }
+
+    if (instanceIDs.empty()) {
+        return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+    }
+
+    return {instanceIDs, ErrorEnum::eNone};
+}
+
+/***********************************************************************************************************************
+ * sm::loggging::InstanceInfoProviderItf implementation
+ **********************************************************************************************************************/
+
+RetWithError<alerts::ServiceInstanceData> Database::GetInstanceInfoByID(const String& id)
+{
+    try {
+        alerts::ServiceInstanceData                                  result;
+        std::vector<Poco::Tuple<std::string, std::string, uint64_t>> instanceIdent;
+
+        *mSession << "SELECT serviceID, subjectID, instance FROM instances WHERE instanceID = ?;",
+            bind(std::string(id.CStr())), into(instanceIdent), now;
+
+        if (instanceIdent.empty()) {
+            return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+        }
+
+        result.mInstanceIdent.mServiceID = instanceIdent[0].get<0>().c_str();
+        result.mInstanceIdent.mSubjectID = instanceIdent[0].get<1>().c_str();
+        result.mInstanceIdent.mInstance  = instanceIdent[0].get<2>();
+
+        auto serviceVersions = std::make_unique<sm::servicemanager::ServiceDataStaticArray>();
+
+        auto err = GetServiceVersions(result.mInstanceIdent.mServiceID, *serviceVersions);
+        if (!err.IsNone()) {
+            return {{}, AOS_ERROR_WRAP(err)};
+        }
+
+        std::sort(serviceVersions->begin(), serviceVersions->end(),
+            [](const sm::servicemanager::ServiceData& a, const sm::servicemanager::ServiceData& b) {
+                return std::strcmp(a.mVersion.CStr(), b.mVersion.CStr()) == 1;
+            });
+
+        result.mVersion = (*serviceVersions)[0].mVersion;
+
+        return result;
+    } catch (const Poco::Exception& e) {
+        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+    }
+}
+
+/***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
