@@ -25,4 +25,4 @@ add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
 
-target_link_libraries(${TARGET} nodeinfoprovider aoscoretestutils GTest::gmock_main)
+target_link_libraries(${TARGET} nodeinfoprovider testutils GTest::gmock_main)

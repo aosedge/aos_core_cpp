@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
@@ -21,12 +21,13 @@
  * Constants
  **********************************************************************************************************************/
 
-static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "Stream not found"};
+static const aos::Error cStreamNotFoundError = {aos::ErrorEnum::eNotFound, "stream not found"};
 
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
+// cppcheck-suppress duplInheritedMember
 aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
@@ -39,6 +40,7 @@ aos::Error ProtectedMessageHandler::Init(NodeController& nodeController,
         nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, provisionManager);
 }
 
+// cppcheck-suppress duplInheritedMember
 void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 {
     LOG_DBG() << "Register services: handler=protected";
@@ -56,6 +58,7 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 }
 
+// cppcheck-suppress duplInheritedMember
 void ProtectedMessageHandler::Close()
 {
     LOG_DBG() << "Close message handler: handler=protected";
@@ -92,16 +95,22 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
     LOG_DBG() << "Process pause node: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
-            return handler->PauseNode(request, response, cDefaultTimeout);
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
+
+                return handler->PauseNode(request, response, cDefaultTimeout);
+            });
+            !status.ok()) {
+            return status;
         }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
     }
 
-    if (auto err = SetNodeStatus(aos::NodeStatusEnum::ePaused); !err.IsNone()) {
+    if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::ePaused); !err.IsNone()) {
+        LOG_ERR() << "Set node status failed: error=" << err;
+
         utils::SetErrorInfo(err, *response);
     }
 
@@ -116,17 +125,21 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
     LOG_DBG() << "Process resume node: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
-            return handler->ResumeNode(request, response, cDefaultTimeout);
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
+
+                return handler->ResumeNode(request, response, cDefaultTimeout);
+            });
+            !status.ok()) {
+            return status;
         }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
     }
 
-    if (auto err = SetNodeStatus(aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
-        LOG_ERR() << "Failed to set node status error: " << err;
+    if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
+        LOG_ERR() << "Set node status failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
     }
@@ -146,13 +159,14 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
     LOG_DBG() << "Process get cert types: ID = " << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
             return handler->GetCertTypes(request, response, cDefaultTimeout);
-        }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+        });
     }
 
     aos::Error                            err;
@@ -178,17 +192,18 @@ grpc::Status ProtectedMessageHandler::StartProvisioning([[maybe_unused]] grpc::S
     LOG_DBG() << "Process start provisioning request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
             return handler->StartProvisioning(request, response, cProvisioningTimeout);
-        }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+        });
     }
 
     if (auto err = GetProvisionManager()->StartProvisioning(request->password().c_str()); !err.IsNone()) {
-        LOG_ERR() << "Start provisioning error: " << err;
+        LOG_ERR() << "Start provisioning error: error=" << err;
 
         utils::SetErrorInfo(err, *response);
     }
@@ -204,30 +219,31 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
     LOG_DBG() << "Process finish provisioning request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
-            return handler->FinishProvisioning(request, response, cProvisioningTimeout);
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
+
+                return handler->FinishProvisioning(request, response, cProvisioningTimeout);
+            });
+            !status.ok()) {
+            return status;
         }
+    } else {
+        if (auto err = GetProvisionManager()->FinishProvisioning(request->password().c_str()); !err.IsNone()) {
+            LOG_ERR() << "Finish provisioning failed: error=" << err;
 
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
+            utils::SetErrorInfo(err, *response);
 
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            return grpc::Status::OK;
+        }
     }
 
-    auto err = GetProvisionManager()->FinishProvisioning(request->password().c_str());
-    if (!err.IsNone()) {
-        LOG_ERR() << "Finish provisioning failed: " << err;
+    if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
+        LOG_ERR() << "Set node status failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
-
-        return grpc::Status::OK;
-    }
-
-    if (err = SetNodeStatus(aos::NodeStatusEnum::eProvisioned); !err.IsNone()) {
-        LOG_ERR() << "Set node status failed: " << err;
-
-        utils::SetErrorInfo(err, *response);
-
-        return grpc::Status::OK;
     }
 
     return grpc::Status::OK;
@@ -241,25 +257,29 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
     LOG_DBG() << "Process deprovision request: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
-            return handler->Deprovision(request, response, cProvisioningTimeout);
+        if (auto status = RequestWithRetry([&]() {
+                auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+                if (!handler) {
+                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                }
+
+                return handler->Deprovision(request, response, cProvisioningTimeout);
+            });
+            !status.ok()) {
+            return status;
         }
+    } else {
+        if (auto err = GetProvisionManager()->Deprovision(request->password().c_str()); !err.IsNone()) {
+            LOG_ERR() << "Deprovision failed: error=" << err;
 
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
+            utils::SetErrorInfo(err, *response);
 
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            return grpc::Status::OK;
+        }
     }
 
-    if (auto err = GetProvisionManager()->Deprovision(request->password().c_str()); !err.IsNone()) {
-        LOG_ERR() << "Deprovision failed: " << err;
-
-        utils::SetErrorInfo(err, *response);
-
-        return grpc::Status::OK;
-    }
-
-    if (auto err = SetNodeStatus(aos::NodeStatusEnum::eUnprovisioned); !err.IsNone()) {
-        LOG_ERR() << "Set node status failed: " << err;
+    if (auto err = SetNodeStatus(nodeID, aos::NodeStatusEnum::eUnprovisioned); !err.IsNone()) {
+        LOG_ERR() << "Set node status failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
     }
@@ -284,7 +304,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     if (subject.IsEmpty() && !GetIdentHandler()) {
         aos::Error err(aos::ErrorEnum::eNotFound, "Subject can't be empty");
 
-        LOG_ERR() << "Create key failed: " << err;
+        LOG_ERR() << "Create key failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
 
@@ -296,7 +316,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     if (subject.IsEmpty() && GetIdentHandler()) {
         Tie(subject, err) = GetIdentHandler()->GetSystemID();
         if (!err.IsNone()) {
-            LOG_ERR() << "Get system ID failed: " << err;
+            LOG_ERR() << "Get system ID failed: error=" << err;
 
             utils::SetErrorInfo(err, *response);
 
@@ -305,16 +325,17 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
             iamproto::CreateKeyRequest keyRequest = *request;
             keyRequest.set_subject(subject.CStr());
 
             return handler->CreateKey(&keyRequest, response, cDefaultTimeout);
-        }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+        });
     }
 
     const auto password = aos::String(request->password().c_str());
@@ -322,7 +343,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     aos::StaticString<aos::crypto::cCSRPEMLen> csr;
 
     if (err = GetProvisionManager()->CreateKey(certType, subject, password, csr); !err.IsNone()) {
-        LOG_ERR() << "Create key failed: " << err;
+        LOG_ERR() << "Create key failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
 
@@ -348,13 +369,14 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     response->set_type(certType.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
-        if (auto handler = GetNodeController()->GetNodeStreamHandler(nodeID); handler) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
             return handler->ApplyCert(request, response, cDefaultTimeout);
-        }
-
-        LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
-
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+        });
     }
 
     const auto pemCert = aos::String(request->cert().c_str());
@@ -362,7 +384,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     aos::iam::certhandler::CertInfo certInfo;
 
     if (auto err = GetProvisionManager()->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
-        LOG_ERR() << "Apply cert failed: " << err;
+        LOG_ERR() << "Apply cert failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
 
@@ -374,7 +396,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
 
     Tie(serial, err) = utils::ConvertSerialToProto(certInfo.mSerial);
     if (!err.IsNone()) {
-        LOG_ERR() << "Convert serial failed: " << err;
+        LOG_ERR() << "Convert serial failed: error=" << err;
 
         utils::SetErrorInfo(err, *response);
 
@@ -397,15 +419,15 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     aos::Error err         = aos::ErrorEnum::eNone;
     const auto aosInstance = utils::ConvertToAos(request->instance());
 
-    LOG_DBG() << "Process register instance: servicenodeID=" << aosInstance.mServiceID
-              << ", subjectnodeID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
+    LOG_DBG() << "Process register instance: serviceID=" << aosInstance.mServiceID
+              << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
 
     // Convert permissions
     aos::StaticArray<aos::iam::permhandler::FunctionalServicePermissions, aos::cMaxNumServices> aosPermissions;
 
     for (const auto& [service, permissions] : request->permissions()) {
         if (err = aosPermissions.PushBack({}); !err.IsNone()) {
-            LOG_ERR() << "Failed to push back permissions: " << err;
+            LOG_ERR() << "Failed to push back permissions: error=" << err;
 
             return utils::ConvertAosErrorToGrpcStatus(err);
         }
@@ -415,7 +437,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
 
         for (const auto& [key, val] : permissions.permissions()) {
             if (err = servicePerm.mPermissions.PushBack({key.c_str(), val.c_str()}); !err.IsNone()) {
-                LOG_ERR() << "Failed to push back permissions: " << err;
+                LOG_ERR() << "Failed to push back permissions: error=" << err;
 
                 return utils::ConvertAosErrorToGrpcStatus(err);
             }
@@ -427,7 +449,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     Tie(secret, err) = GetPermHandler()->RegisterInstance(aosInstance, aosPermissions);
 
     if (!err.IsNone()) {
-        LOG_ERR() << "Register instance failed: " << err;
+        LOG_ERR() << "Register instance failed: error=" << err;
 
         return utils::ConvertAosErrorToGrpcStatus(err);
     }
@@ -442,19 +464,14 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
 {
     const auto instance = utils::ConvertToAos(request->instance());
 
-    LOG_DBG() << "Process unregister instance: servicenodeID=" << instance.mServiceID
-              << ", subjectnodeID=" << instance.mSubjectID << ", instance=" << instance.mInstance;
+    LOG_DBG() << "Process unregister instance: serviceID=" << instance.mServiceID
+              << ", subjectID=" << instance.mSubjectID << ", instance=" << instance.mInstance;
 
     if (auto err = GetPermHandler()->UnregisterInstance(instance); !err.IsNone()) {
-        LOG_ERR() << "Unregister instance failed: " << err;
+        LOG_ERR() << "Unregister instance failed: error=" << err;
 
         return utils::ConvertAosErrorToGrpcStatus(err);
     }
 
     return grpc::Status::OK;
-}
-
-bool ProtectedMessageHandler::ProcessOnThisNode(const std::string& nodeId)
-{
-    return nodeId.empty() || aos::String(nodeId.c_str()) == GetNodeInfo().mNodeID;
 }

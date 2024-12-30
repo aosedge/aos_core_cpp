@@ -16,8 +16,8 @@
  */
 class CertHandlerItfMock : public aos::iam::certhandler::CertHandlerItf {
 public:
-    MOCK_METHOD(
-        aos::Error, GetCertTypes, (aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>&), (override));
+    MOCK_METHOD(aos::Error, GetCertTypes, (aos::Array<aos::StaticString<aos::iam::certhandler::cCertTypeLen>>&),
+        (const override));
     MOCK_METHOD(aos::Error, SetOwner, (const aos::String&, const aos::String&), (override));
     MOCK_METHOD(aos::Error, Clear, (const aos::String&), (override));
     MOCK_METHOD(
@@ -27,6 +27,10 @@ public:
     MOCK_METHOD(aos::Error, GetCertificate,
         (const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, aos::iam::certhandler::CertInfo&),
         (override));
+    MOCK_METHOD(aos::Error, SubscribeCertChanged,
+        (const aos::String& certType, aos::iam::certhandler::CertReceiverItf& certReceiver), (override));
+    MOCK_METHOD(
+        aos::Error, UnsubscribeCertChanged, (aos::iam::certhandler::CertReceiverItf & certReceiver), (override));
     MOCK_METHOD(aos::Error, CreateSelfSignedCert, (const aos::String&, const aos::String&), (override));
     MOCK_METHOD(aos::RetWithError<aos::iam::certhandler::ModuleConfig>, GetModuleConfig, (const aos::String&),
         (const, override));

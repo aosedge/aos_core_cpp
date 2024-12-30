@@ -28,11 +28,25 @@ message(STATUS "WITH_DOC                      = ${WITH_DOC}")
 message(STATUS)
 
 # ######################################################################################################################
+# External project options
+# ######################################################################################################################
+
+# aos core api options
+set(WITH_IAM_API ON)
+
+# ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
+
+set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp/external/aos_core_lib_cpp)
+set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp)
+
+if(WITH_TEST)
+    add_definitions(-include ${AOS_CORE_LIB_DIR}/include/aos/test/aoscoretestconfig.hpp)
+endif()
 
 # ######################################################################################################################
 # Versioning
@@ -44,12 +58,14 @@ if(NOT GIT_FOUND)
     set(GIT_EXECUTABLE git)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${AOS_CORE_LIB_DIR}/cmake")
+
 execute_process(
     OUTPUT_FILE ${CMAKE_BINARY_DIR}/version.hpp
     COMMAND
         ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE} -D INPUT_FILE=${CMAKE_SOURCE_DIR}/src/version.hpp.in -D
         OUTPUT_FILE=${CMAKE_BINARY_DIR}/version.hpp -D GIT_SOURCE_DIR=${CMAKE_SOURCE_DIR} -P
-        ${CMAKE_SOURCE_DIR}/cmake/GenerateVersion.cmake
+        ${AOS_CORE_LIB_DIR}/cmake/GenerateVersion.cmake
 )
 
 include_directories(${CMAKE_BINARY_DIR})
@@ -57,17 +73,6 @@ include_directories(${CMAKE_BINARY_DIR})
 # ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
-
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-# Aos core lib
-include(AosCoreLib)
-
-# Aos core API
-include(AosCoreAPI)
-
-# Aos core common
-include(AosCoreCommon)
 
 # Poco lib
 find_package(
@@ -95,18 +100,31 @@ if(WITH_COVERAGE)
 
     append_coverage_compiler_flags()
 
-    set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp")
+    set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp" "external/*")
 
-    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
+    setup_target_for_coverage_lcov(
+        NAME
+        coverage
+        EXECUTABLE
+        ctest
+        LCOV_ARGS
+        --ignore-errors
+        mismatch,negative
+    )
 endif()
 
 # ######################################################################################################################
 # Targets
 # ######################################################################################################################
 
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_api)
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/common)
+add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/src/iam)
+add_subdirectory(external/aos_core_common_cpp/src)
 add_subdirectory(src)
 
 if(WITH_TEST)
+    add_subdirectory(external/aos_core_common_cpp/external/aos_core_lib_cpp/tests/utils)
     add_subdirectory(tests)
 endif()
 

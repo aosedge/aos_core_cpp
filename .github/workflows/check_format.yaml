@@ -13,7 +13,7 @@ on:
 jobs:
   formatting-check:
     name: Formatting Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run clang-format style check

@@ -9,6 +9,7 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/JSON/Stringifier.h>
+#include <Poco/Path.h>
 #include <filesystem>
 
 #include "database.hpp"
@@ -38,23 +39,24 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-aos::Error Database::Init(const std::string& dbPath, const std::string& migrationPath)
+aos::Error Database::Init(const std::string& workDir, const MigrationConfig& migration)
 {
     if (mSession && mSession->isConnected()) {
         return aos::ErrorEnum::eNone;
     }
 
     try {
-        auto dirPath = std::filesystem::path(dbPath).parent_path();
+        auto dirPath = std::filesystem::path(workDir);
         if (!std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 
-        mSession = std::make_unique<Poco::Data::Session>("SQLite", dbPath);
+        const auto dbPath = Poco::Path(workDir, cDBFileName);
+        mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
         CreateTables();
 
-        mMigration.emplace(*mSession, migrationPath);
-        mMigration->MigrateToVersion(mVersion);
+        mMigration.emplace(*mSession, migration.mMigrationPath, migration.mMergedMigrationPath);
+        mMigration->MigrateToVersion(cVersion);
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to initialize database: " << e.what();
 
@@ -146,7 +148,10 @@ aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::i
             aos::iam::certhandler::CertInfo certInfo {};
 
             FromAosCertInfo(cert, certInfo);
-            certsInfo.PushBack(certInfo);
+
+            if (auto err = certsInfo.PushBack(certInfo); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
         }
     } catch (const Poco::Exception& e) {
         LOG_ERR() << "Failed to get certificates info: " << e.what();
@@ -186,18 +191,18 @@ aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error Database::GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeInfo) const
+aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const
 {
     try {
         Poco::Data::Statement       statement {*mSession};
         Poco::Nullable<std::string> pocoInfo;
 
-        statement << "SELECT info FROM nodeinfo WHERE id = ?;", bind(nodeId.CStr()), into(pocoInfo);
+        statement << "SELECT info FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), into(pocoInfo);
         if (statement.execute() == 0) {
             return aos::ErrorEnum::eNotFound;
         }
 
-        nodeInfo.mNodeID = nodeId;
+        nodeInfo.mNodeID = nodeID;
 
         if (!pocoInfo.isNull()) {
             Poco::JSON::Parser parser;
@@ -243,10 +248,10 @@ aos::Error Database::GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>
     }
 }
 
-aos::Error Database::RemoveNodeInfo(const aos::String& nodeId)
+aos::Error Database::RemoveNodeInfo(const aos::String& nodeID)
 {
     try {
-        *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeId.CStr()), now;
+        *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), now;
     } catch (const Poco::Exception&) {
         return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
     }

@@ -14,7 +14,7 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
@@ -31,7 +31,7 @@
  */
 class ProtectedMessageHandler :
     // public services
-    private PublicMessageHandler,
+    public PublicMessageHandler,
     // protected services
     private iamproto::IAMNodesService::Service,
     private iamproto::IAMProvisioningService::Service,
@@ -48,6 +48,7 @@ public:
      * @param nodeManager node manager.
      * @param provisionManager provision manager.
      */
+    // cppcheck-suppress duplInheritedMember
     aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
         aos::iam::permhandler::PermHandlerItf&           permHandler,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
@@ -59,6 +60,7 @@ public:
      *
      * @param builder server builder.
      */
+    // cppcheck-suppress duplInheritedMember
     void RegisterServices(grpc::ServerBuilder& builder);
 
     using PublicMessageHandler::OnNodeInfoChange;
@@ -70,9 +72,14 @@ public:
     /**
      * Closes protected message handler.
      */
+    // cppcheck-suppress duplInheritedMember
     void Close();
 
 private:
+    static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
+    static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
+    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused};
+
     // IAMPublicNodesService interface
     grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
         grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
@@ -104,12 +111,6 @@ private:
         iamproto::RegisterInstanceResponse* response) override;
     grpc::Status UnregisterInstance(grpc::ServerContext* context, const iamproto::UnregisterInstanceRequest* request,
         google::protobuf::Empty* response) override;
-
-    bool ProcessOnThisNode(const std::string& nodeId);
-
-    static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
-    static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
-    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused};
 };
 
 #endif

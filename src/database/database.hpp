@@ -17,6 +17,7 @@
 
 #include <aos/iam/certmodules/certmodule.hpp>
 #include <aos/iam/nodemanager.hpp>
+#include <config/config.hpp>
 #include <migration/migration.hpp>
 
 class Database : public aos::iam::certhandler::StorageItf, public aos::iam::nodemanager::NodeInfoStorageItf {
@@ -29,11 +30,11 @@ public:
     /**
      * Initializes certificate info storage.
      *
-     * @param dbPath path to the database file.
-     * @param migrationPath path to the migration scripts.
+     * @param workDir working directory.
+     * @param migrationConf migration configuration.
      * @return Error.
      */
-    aos::Error Init(const std::string& dbPath, const std::string& migrationPath);
+    aos::Error Init(const std::string& workDir, const MigrationConfig& migrationConf);
 
     //
     // certhandler::StorageItf interface
@@ -101,11 +102,11 @@ public:
     /**
      * Returns node info.
      *
-     * @param nodeId node identifier.
+     * @param nodeID node identifier.
      * @param[out] nodeInfo result node identifier.
      * @return Error.
      */
-    aos::Error GetNodeInfo(const aos::String& nodeId, aos::NodeInfo& nodeInfo) const override;
+    aos::Error GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const override;
 
     /**
      * Returns ids for all the node in the manager.
@@ -118,10 +119,10 @@ public:
     /**
      * Removes node info by its id.
      *
-     * @param nodeId node identifier.
+     * @param nodeID node identifier.
      * @return Error.
      */
-    aos::Error RemoveNodeInfo(const aos::String& nodeId) override;
+    aos::Error RemoveNodeInfo(const aos::String& nodeID) override;
 
     /**
      * Destroys certificate info storage.
@@ -132,7 +133,8 @@ private:
     enum CertColumns { eType = 0, eIssuer, eSerial, eCertURL, eKeyURL, eNotAfter };
     using CertInfo = Poco::Tuple<std::string, Poco::Data::BLOB, Poco::Data::BLOB, std::string, std::string, uint64_t>;
 
-    constexpr static int mVersion = 0;
+    constexpr static int  cVersion    = 0;
+    constexpr static auto cDBFileName = "iamanager.db";
 
     void     CreateTables();
     CertInfo ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo);

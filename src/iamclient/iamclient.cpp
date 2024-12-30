@@ -22,10 +22,23 @@
  **********************************************************************************************************************/
 
 aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
-    aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::cryptoutils::CertLoaderItf& certLoader,
+    aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     bool provisioningMode)
 {
+    mIdentHandler     = identHandler;
+    mNodeInfoProvider = &nodeInfoProvider;
+    mCertLoader       = &certLoader;
+    mCryptoProvider   = &cryptoProvider;
+    mProvisionManager = &provisionManager;
+
+    mStartProvisioningCmdArgs  = config.mStartProvisioningCmdArgs;
+    mDiskEncryptionCmdArgs     = config.mDiskEncryptionCmdArgs;
+    mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
+    mDeprovisionCmdArgs        = config.mDeprovisionCmdArgs;
+    mReconnectInterval         = config.mNodeReconnectInterval;
+    mCACert                    = config.mCACert;
+
     if (provisioningMode) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
         if (!config.mCACert.empty()) {
@@ -43,20 +56,18 @@ aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHa
             return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
         }
 
+        err = provisionManager.SubscribeCertChanged(aos::String(config.mCertStorage.c_str()), *this);
+        if (!err.IsNone()) {
+            LOG_ERR() << "Subscribe certificate receiver failed: error=" << err.Message();
+
+            return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
+        }
+
         mCredentialList.push_back(
             aos::common::utils::GetMTLSClientCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider));
+
         mServerURL = config.mMainIAMProtectedServerURL;
     }
-
-    mIdentHandler     = identHandler;
-    mNodeInfoProvider = &nodeInfoProvider;
-    mProvisionManager = &provisionManager;
-
-    mStartProvisioningCmdArgs  = config.mStartProvisioningCmdArgs;
-    mDiskEncryptionCmdArgs     = config.mDiskEncryptionCmdArgs;
-    mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
-    mDeprovisionCmdArgs        = config.mDeprovisionCmdArgs;
-    mReconnectInterval         = config.mNodeReconnectInterval;
 
     mConnectionThread = std::thread(&IAMClient::ConnectionLoop, this);
 
@@ -71,6 +82,8 @@ IAMClient::~IAMClient()
         mShutdown = true;
         mShutdownCV.notify_all();
 
+        mProvisionManager->UnsubscribeCertChanged(*this);
+
         if (mRegisterNodeCtx) {
             mRegisterNodeCtx->TryCancel();
         }
@@ -84,6 +97,17 @@ IAMClient::~IAMClient()
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+void IAMClient::OnCertChanged(const aos::iam::certhandler::CertInfo& info)
+{
+    std::unique_lock lock {mShutdownLock};
+
+    mCredentialList.clear();
+    mCredentialList.push_back(
+        aos::common::utils::GetMTLSClientCredentials(info, mCACert.c_str(), *mCertLoader, *mCryptoProvider));
+
+    mCredentialListUpdated = true;
+}
 
 std::unique_ptr<grpc::ClientContext> IAMClient::CreateClientContext()
 {
@@ -128,12 +152,14 @@ bool IAMClient::RegisterNode(const std::string& url)
         }
 
         if (!SendNodeInfo()) {
-            LOG_ERR() << "Connection failed with provided credentials";
+            LOG_WRN() << "Connection failed with provided credentials";
 
             continue;
         }
 
         LOG_DBG() << "Connection established";
+
+        mCredentialListUpdated = false;
 
         return true;
     }
@@ -196,6 +222,18 @@ void IAMClient::HandleIncomingMessages() noexcept
             if (!ok) {
                 break;
             }
+
+            {
+                std::unique_lock lock {mShutdownLock};
+
+                if (mCredentialListUpdated) {
+                    LOG_DBG() << "Credential list updated: closing connection";
+
+                    mRegisterNodeCtx->TryCancel();
+
+                    break;
+                }
+            }
         }
 
     } catch (const std::exception& e) {
@@ -221,7 +259,7 @@ bool IAMClient::SendNodeInfo()
 
     bool isOk = mStream->Write(outgoingMsg);
     if (!isOk) {
-        LOG_ERR() << "Stream closed before sending node info";
+        LOG_WRN() << "Stream closed before sending node info";
     }
 
     return isOk;
@@ -281,7 +319,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
 
     utils::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    return mStream->Write(outgoingMsg);
 }
 
 bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& request)
@@ -316,7 +354,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
 
     utils::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    return mStream->Write(outgoingMsg);
 }
 
 bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
@@ -381,7 +419,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
 
 bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 {
-    const aos::String                    nodeId   = request.node_id().c_str();
+    const aos::String                    nodeID   = request.node_id().c_str();
     const aos::String                    certType = request.type().c_str();
     aos::StaticString<aos::cSystemIDLen> subject  = request.subject().c_str();
     const aos::String                    password = request.password().c_str();
@@ -391,7 +429,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
     if (subject.IsEmpty() && !mIdentHandler) {
         LOG_ERR() << "Subject can't be empty";
 
-        return SendCreateKeyResponse(nodeId, certType, {}, AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument));
+        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument));
     }
 
     aos::Error err = aos::ErrorEnum::eNone;
@@ -401,7 +439,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
         if (!err.IsNone()) {
             LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
 
-            return SendCreateKeyResponse(nodeId, certType, {}, AOS_ERROR_WRAP(err));
+            return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(err));
         }
     }
 
@@ -409,12 +447,12 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 
     err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, csr));
 
-    return SendCreateKeyResponse(nodeId, certType, csr, err);
+    return SendCreateKeyResponse(nodeID, certType, csr, err);
 }
 
 bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
 {
-    const aos::String nodeId   = request.node_id().c_str();
+    const aos::String nodeID   = request.node_id().c_str();
     const aos::String certType = request.type().c_str();
     const aos::String pemCert  = request.cert().c_str();
 
@@ -423,7 +461,7 @@ bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
     aos::iam::certhandler::CertInfo certInfo;
     aos::Error                      err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
 
-    return SendApplyCertResponse(nodeId, certType, certInfo.mCertURL, certInfo.mSerial, err);
+    return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
 
 bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request)
@@ -456,12 +494,12 @@ aos::Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<aos::No
 }
 
 bool IAMClient::SendCreateKeyResponse(
-    const aos::String& nodeId, const aos::String& type, const aos::String& csr, const aos::Error& error)
+    const aos::String& nodeID, const aos::String& type, const aos::String& csr, const aos::Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
 
-    response.set_node_id(nodeId.CStr());
+    response.set_node_id(nodeID.CStr());
     response.set_type(type.CStr());
     response.set_csr(csr.CStr());
 
@@ -470,7 +508,7 @@ bool IAMClient::SendCreateKeyResponse(
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::String& type, const aos::String& certURL,
+bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::String& type, const aos::String& certURL,
     const aos::Array<uint8_t>& serial, const aos::Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
@@ -487,7 +525,7 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeId, const aos::Stri
         }
     }
 
-    response.set_node_id(nodeId.CStr());
+    response.set_node_id(nodeID.CStr());
     response.set_type(type.CStr());
     response.set_cert_url(certURL.CStr());
     response.set_serial(protoSerial);

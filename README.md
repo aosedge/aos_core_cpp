@@ -10,6 +10,17 @@ sudo apt install lcov libsofthsm2 libsystemd-dev
 pip install conan
 ```
 
+## Cloning Submodules
+
+To download the submodules, use the following command:
+
+```sh
+git submodule update --init --recursive
+```
+
+This command will recursively fetch all submodules located in the `external` directory. Additionally, the submodules
+themselves may include other submodules, which will also be placed in the `external` directory.
+
 ## Build for host
 
 To make a build for host please run:

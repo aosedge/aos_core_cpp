@@ -7,15 +7,14 @@
 
 #include <memory>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
 
 #include "logger/logmodule.hpp"
 #include "publicmessagehandler.hpp"
-#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * Public
@@ -65,17 +64,15 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 
 void PublicMessageHandler::OnNodeInfoChange(const aos::NodeInfo& info)
 {
-    LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID;
-
     iamproto::NodeInfo nodeInfo;
     utils::ConvertToProto(info, nodeInfo);
 
     mNodeChangedController.WriteToStreams(nodeInfo);
 }
 
-void PublicMessageHandler::OnNodeRemoved(const aos::String& id)
+void PublicMessageHandler::OnNodeRemoved(const aos::String& nodeID)
 {
-    LOG_DBG() << "Process on node removed: nodeID=" << id;
+    (void)nodeID;
 }
 
 aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages)
@@ -90,33 +87,61 @@ aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticStr
     return aos::ErrorEnum::eNone;
 }
 
+void PublicMessageHandler::Start()
+{
+    std::lock_guard lock {mMutex};
+
+    mNodeChangedController.Start();
+    mSubjectsChangedController.Start();
+    mClose = false;
+}
+
 void PublicMessageHandler::Close()
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Close message handler: handler=public";
 
     mNodeChangedController.Close();
     mSubjectsChangedController.Close();
+
+    {
+        std::lock_guard certWritersLock {mCertWritersLock};
+
+        for (auto& certWriter : mCertWriters) {
+            certWriter->Close();
+        }
+
+        mCertWriters.clear();
+    }
+
+    mClose = true;
+    mRetryCondVar.notify_one();
 }
 
 /***********************************************************************************************************************
  * Protected
  **********************************************************************************************************************/
 
-aos::Error PublicMessageHandler::SetNodeStatus(const aos::NodeStatus& status)
+aos::Error PublicMessageHandler::SetNodeStatus(const std::string& nodeID, const aos::NodeStatus& status)
 {
-    LOG_DBG() << "Process set node status: status=" << status;
-
-    auto err = mNodeInfoProvider->SetNodeStatus(status);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (ProcessOnThisNode(nodeID)) {
+        if (auto err = mNodeInfoProvider->SetNodeStatus(status); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
-    err = mNodeManager->SetNodeStatus(mNodeInfo.mNodeID, status);
-    if (!err.IsNone()) {
+    if (auto err = mNodeManager->SetNodeStatus(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), status);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     return aos::ErrorEnum::eNone;
+}
+
+bool PublicMessageHandler::ProcessOnThisNode(const std::string& nodeID)
+{
+    return nodeID.empty() || aos::String(nodeID.c_str()) == GetNodeInfo().mNodeID;
 }
 
 /***********************************************************************************************************************
@@ -152,7 +177,7 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 }
 
 grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext* context,
-    const iamproto::GetCertRequest* request, iamproto::GetCertResponse* response)
+    const iamproto::GetCertRequest* request, iamproto::CertInfo* response)
 {
     LOG_DBG() << "Process get cert request: type=" << request->type().c_str()
               << ", serial=" << request->serial().c_str();
@@ -183,6 +208,45 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     response->set_cert_url(certInfo.mCertURL.CStr());
 
     return grpc::Status::OK;
+}
+
+grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
+    const iamanager::v5::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v5::CertInfo>* writer)
+{
+    LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
+
+    auto certWriter = std::make_shared<CertWriter>(request->type());
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        mCertWriters.push_back(certWriter);
+    }
+
+    auto err = GetProvisionManager()->SubscribeCertChanged(request->type().c_str(), *certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
+
+        return utils::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    auto status = certWriter->HandleStream(context, writer);
+
+    err = GetProvisionManager()->UnsubscribeCertChanged(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
+
+        return utils::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        auto iter = std::remove(mCertWriters.begin(), mCertWriters.end(), certWriter);
+        mCertWriters.erase(iter, mCertWriters.end());
+    }
+
+    return status;
 }
 
 /***********************************************************************************************************************

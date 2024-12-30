@@ -14,7 +14,7 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/identhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
@@ -32,7 +32,8 @@
  */
 class IAMServer : public aos::iam::nodemanager::NodeInfoListenerItf,
                   public aos::iam::identhandler::SubjectsObserverItf,
-                  public aos::iam::provisionmanager::ProvisionManagerCallbackItf {
+                  public aos::iam::provisionmanager::ProvisionManagerCallbackItf,
+                  private aos::iam::certhandler::CertReceiverItf {
 public:
     /**
      * Constructor.
@@ -55,7 +56,7 @@ public:
      */
     aos::Error Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
         aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-        aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
+        aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         aos::iam::nodemanager::NodeManagerItf&           nodeManager,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode);
@@ -115,15 +116,29 @@ private:
     // identhandler::SubjectsObserverItf interface
     aos::Error SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages) override;
 
+    // certhandler::CertReceiverItf interface
+    void OnCertChanged(const aos::iam::certhandler::CertInfo& info) override;
+
+    // lifecycle routines
+    void Start();
+    void Shutdown();
+
     // creating routines
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
-    Config                        mConfig;
-    NodeController                mNodeController;
-    PublicMessageHandler          mPublicMessageHandler;
-    ProtectedMessageHandler       mProtectedMessageHandler;
-    std::unique_ptr<grpc::Server> mPublicServer, mProtectedServer;
+    Config                          mConfig         = {};
+    aos::crypto::CertLoader*        mCertLoader     = nullptr;
+    aos::crypto::x509::ProviderItf* mCryptoProvider = nullptr;
+
+    NodeController                           mNodeController;
+    PublicMessageHandler                     mPublicMessageHandler;
+    ProtectedMessageHandler                  mProtectedMessageHandler;
+    std::unique_ptr<grpc::Server>            mPublicServer, mProtectedServer;
+    std::shared_ptr<grpc::ServerCredentials> mPublicCred, mProtectedCred;
+
+    bool              mIsStarted = false;
+    std::future<void> mCertChangedResult;
 };
 
 #endif

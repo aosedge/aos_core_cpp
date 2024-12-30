@@ -24,7 +24,7 @@
 template <class F>
 static auto OnScopeExit(F&& f)
 {
-    return std::unique_ptr<void, typename std::decay<F>::type>((void*)1, std::forward<F>(f));
+    return std::unique_ptr<void, typename std::decay<F>::type>(reinterpret_cast<void*>(1), std::forward<F>(f));
 }
 
 /***********************************************************************************************************************

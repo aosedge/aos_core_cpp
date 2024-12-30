@@ -83,7 +83,15 @@ static aos::NodeInfo DefaultNodeInfo(const char* id = "node0")
 
 class DatabaseTest : public Test {
 protected:
-    void TearDown() override { std::remove(mFileName.c_str()); }
+    void SetUp() override
+    {
+        mMigrationConfig.mMigrationPath       = cMigrationPath;
+        mMigrationConfig.mMergedMigrationPath = cMergedMigrationPath;
+
+        std::filesystem::create_directories(cMigrationPath);
+    }
+
+    void TearDown() override { std::filesystem::remove_all(cWorkingDir); }
 
     const aos::Array<uint8_t> StringToDN(const char* str)
     {
@@ -91,9 +99,12 @@ protected:
     }
 
 protected:
-    std::string mFileName      = "database/test/test.db";
-    std::string mMigrationPath = "database/test/migration";
-    Database    mDB;
+    static constexpr auto cWorkingDir          = "database";
+    static constexpr auto cMigrationPath       = "database/migration";
+    static constexpr auto cMergedMigrationPath = "database/merged-migration";
+
+    MigrationConfig mMigrationConfig;
+    Database        mDB;
 };
 
 /***********************************************************************************************************************
@@ -110,7 +121,7 @@ TEST_F(DatabaseTest, AddCertInfo)
     certInfo.mKeyURL   = "keyURL";
     certInfo.mNotAfter = aos::Time::Now();
 
-    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), aos::ErrorEnum::eNone);
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), aos::ErrorEnum::eNone);
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), aos::ErrorEnum::eFailed);
@@ -125,7 +136,7 @@ TEST_F(DatabaseTest, AddCertInfo)
 
 TEST_F(DatabaseTest, RemoveCertInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo;
 
@@ -142,7 +153,7 @@ TEST_F(DatabaseTest, RemoveCertInfo)
 
 TEST_F(DatabaseTest, RemoveAllCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo;
 
@@ -166,7 +177,7 @@ TEST_F(DatabaseTest, RemoveAllCertsInfo)
 
 TEST_F(DatabaseTest, GetCertInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), aos::ErrorEnum::eNone);
 
     aos::iam::certhandler::CertInfo certInfo {};
 
@@ -201,7 +212,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 
 TEST_F(DatabaseTest, GetCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(mFileName, mMigrationPath), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), aos::ErrorEnum::eNone);
 
     aos::StaticArray<aos::iam::certhandler::CertInfo, 2> certsInfo;
 
@@ -233,6 +244,12 @@ TEST_F(DatabaseTest, GetCertsInfo)
     EXPECT_EQ(certsInfo.Size(), 2);
     EXPECT_TRUE(certsInfo[0] == certInfo || certsInfo[1] == certInfo);
     EXPECT_TRUE(certsInfo[0] == certInfo2 || certsInfo[1] == certInfo2);
+
+    aos::StaticArray<aos::iam::certhandler::CertInfo, 1> certsInfoNotEnoughMemory;
+    EXPECT_EQ(mDB.GetCertsInfo("type", certsInfoNotEnoughMemory), aos::ErrorEnum::eNoMemory);
+
+    ASSERT_EQ(certsInfoNotEnoughMemory.Size(), 1);
+    EXPECT_TRUE(certsInfoNotEnoughMemory[0] == certInfo || certsInfoNotEnoughMemory[0] == certInfo2);
 }
 
 /***********************************************************************************************************************
@@ -243,7 +260,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
 {
     const auto& nodeInfo = DefaultNodeInfo();
 
-    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
 
@@ -258,7 +275,7 @@ TEST_F(DatabaseTest, GetAllNodeIds)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
@@ -277,7 +294,7 @@ TEST_F(DatabaseTest, GetAllNodeIdsNotEnoughMemory)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
@@ -294,7 +311,7 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(mFileName, mMigrationPath).IsNone());
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());

@@ -15,7 +15,7 @@
  * Mocks load certificates and keys interface.
  */
 
-class CertLoaderItfMock : public aos::cryptoutils::CertLoaderItf {
+class CertLoaderItfMock : public aos::crypto::CertLoaderItf {
 public:
     MOCK_METHOD(aos::RetWithError<aos::SharedPtr<aos::crypto::x509::CertificateChain>>, LoadCertsChainByURL,
         (const aos::String&), (override));

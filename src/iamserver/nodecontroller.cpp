@@ -19,13 +19,11 @@
  * Public
  **********************************************************************************************************************/
 
-NodeStreamHandler::NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager)
-    : mAllowedStatuses(allowedStatuses)
-    , mStream(stream)
-    , mContext(context)
-    , mNodeManager(nodeManager)
+NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<aos::NodeStatus>& allowedStatuses,
+    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
+    StreamRegistryItf* streamRegistry)
 {
+    return NodeStreamHandler::Ptr(new NodeStreamHandler(allowedStatuses, stream, context, nodeManager, streamRegistry));
 }
 
 NodeStreamHandler::~NodeStreamHandler()
@@ -39,18 +37,13 @@ void NodeStreamHandler::Close()
         return;
     }
 
+    LOG_DBG() << "Close node stream handler";
+
     std::lock_guard lock {mMutex};
 
     mContext->TryCancel();
 
     mPendingMessages.clear();
-}
-
-std::string NodeStreamHandler::GetNodeID() const
-{
-    std::lock_guard lock {mNodeIDMutex};
-
-    return mNodeID;
 }
 
 aos::Error NodeStreamHandler::HandleStream()
@@ -74,6 +67,8 @@ aos::Error NodeStreamHandler::HandleStream()
 
                 break;
             }
+
+            continue;
         }
 
         std::lock_guard lock {mMutex};
@@ -99,8 +94,8 @@ grpc::Status NodeStreamHandler::GetCertTypes(const iamproto::GetCertTypesRequest
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_cert_types_response();
 
+    outgoing.mutable_cert_types_response();
     incoming.mutable_get_cert_types_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -121,8 +116,8 @@ grpc::Status NodeStreamHandler::StartProvisioning(const iamproto::StartProvision
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_start_provisioning_response();
 
+    outgoing.mutable_start_provisioning_response();
     incoming.mutable_start_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -143,8 +138,8 @@ grpc::Status NodeStreamHandler::FinishProvisioning(const iamproto::FinishProvisi
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_finish_provisioning_response();
 
+    outgoing.mutable_finish_provisioning_response();
     incoming.mutable_finish_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -165,8 +160,8 @@ grpc::Status NodeStreamHandler::Deprovision(const iamproto::DeprovisionRequest* 
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_deprovision_response();
 
+    outgoing.mutable_deprovision_response();
     incoming.mutable_deprovision_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -187,8 +182,8 @@ grpc::Status NodeStreamHandler::PauseNode(const iamproto::PauseNodeRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_pause_node_response();
 
+    outgoing.mutable_pause_node_response();
     incoming.mutable_pause_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -209,8 +204,8 @@ grpc::Status NodeStreamHandler::ResumeNode(const iamproto::ResumeNodeRequest* re
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_resume_node_response();
 
+    outgoing.mutable_resume_node_response();
     incoming.mutable_resume_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -231,8 +226,8 @@ grpc::Status NodeStreamHandler::CreateKey(const iamproto::CreateKeyRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_create_key_response();
 
+    outgoing.mutable_create_key_response();
     incoming.mutable_create_key_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -253,8 +248,8 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
-    outgoing.mutable_apply_cert_response();
 
+    outgoing.mutable_apply_cert_response();
     incoming.mutable_apply_cert_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -274,15 +269,26 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
  * Private
  **********************************************************************************************************************/
 
+NodeStreamHandler::NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses,
+    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
+    StreamRegistryItf* streamRegistry)
+    : mAllowedStatuses(allowedStatuses)
+    , mStream(stream)
+    , mContext(context)
+    , mNodeManager(nodeManager)
+    , mStreamRegistry(streamRegistry)
+{
+}
+
 aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& request,
     iamproto::IAMOutgoingMessages& response, const std::chrono::seconds responseTimeout)
 {
     if (mIsClosed) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "Stream is closed"));
+        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "stream is closed"));
     }
 
     if (!mStream->Write(request)) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "Failed to send message"));
+        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "failed to send message"));
     }
 
     try {
@@ -296,7 +302,7 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
         }
 
         if (responseFuture.wait_for(responseTimeout) != std::future_status::ready) {
-            return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eTimeout, "Response timeout"));
+            return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eTimeout, "response timeout"));
         }
 
         response = responseFuture.get();
@@ -309,26 +315,30 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
 
 aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
+    LOG_DBG() << "Received node info: nodeID=" << info.node_id().c_str() << ", status=" << info.status().c_str();
+
     aos::NodeInfo nodeInfo;
 
     if (auto err = utils::ConvertToAos(info, nodeInfo); !err.IsNone()) {
         return err;
     }
 
+    if (std::find(mAllowedStatuses.cbegin(), mAllowedStatuses.cend(), nodeInfo.mStatus) == mAllowedStatuses.cend()) {
+        LOG_WRN() << "Node status is not in allowed list: nodeID=" << nodeInfo.mNodeID
+                  << ", status=" << nodeInfo.mStatus;
+
+        mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
+
+        return aos::ErrorEnum::eNone;
+    }
+
     if (auto err = mNodeManager->SetNodeInfo(nodeInfo); !err.IsNone()) {
         return err;
     }
 
-    SetNodeID(info.node_id());
+    mStreamRegistry->LinkNodeIDToHandler(info.node_id(), shared_from_this());
 
     return aos::ErrorEnum::eNone;
-}
-
-void NodeStreamHandler::SetNodeID(const std::string& nodeID)
-{
-    std::lock_guard lock {mNodeIDMutex};
-
-    mNodeID = nodeID;
 }
 
 /***********************************************************************************************************************
@@ -339,14 +349,30 @@ void NodeStreamHandler::SetNodeID(const std::string& nodeID)
  * Public
  **********************************************************************************************************************/
 
+NodeController::NodeController()
+{
+    Start();
+}
+
+void NodeController::Start()
+{
+    std::lock_guard lock {mMutex};
+
+    mIsClosed = false;
+}
+
 void NodeController::Close()
 {
     std::lock_guard lock {mMutex};
 
+    mIsClosed = true;
+
     // Call Close method explicitly to avoid hanging on shutdown.
     // HandleRegisterNodeStream method references handler so destructor is not called here.
-    for (auto& handler : mHandlers) {
-        handler->Close();
+    for (auto& it : mHandlers) {
+        if (it.first != nullptr) {
+            it.first->Close();
+        }
     }
 
     mHandlers.clear();
@@ -355,27 +381,43 @@ void NodeController::Close()
 grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<aos::NodeStatus>& allowedStatuses,
     NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager)
 {
-    auto handler = std::make_shared<NodeStreamHandler>(allowedStatuses, stream, context, nodeManager);
-    StoreHandler(handler);
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mIsClosed) {
+            LOG_DBG() << "Node controller closed, cancel node registration";
+
+            return grpc::Status::CANCELLED;
+        }
+    }
+
+    auto handler = NodeStreamHandler::Create(
+        allowedStatuses, stream, context, nodeManager, static_cast<NodeStreamHandler::StreamRegistryItf*>(this));
+
+    Store(handler);
 
     auto ret = handler->HandleStream();
 
     handler->Close();
 
-    RemoveHandler(handler);
+    Remove(handler);
 
     return utils::ConvertAosErrorToGrpcStatus(ret);
 }
 
-NodeStreamHandlerPtr NodeController::GetNodeStreamHandler(const std::string& nodeID)
+NodeStreamHandler::Ptr NodeController::GetNodeStreamHandler(const std::string& nodeID)
 {
     std::lock_guard lock {mMutex};
 
-    auto it = std::find_if(
-        mHandlers.begin(), mHandlers.end(), [&nodeID](const auto& handler) { return handler->GetNodeID() == nodeID; });
-    if (it != mHandlers.end()) {
-        return *it;
+    LOG_DBG() << "Get node controller stream handler: nodeID=" << nodeID.c_str();
+
+    if (auto it = std::find_if(
+            mHandlers.begin(), mHandlers.end(), [nodeID](const auto& pair) { return pair.second == nodeID; });
+        it != mHandlers.end()) {
+        return it->first;
     }
+
+    LOG_ERR() << "Stream handler not found: nodeID=" << nodeID.c_str();
 
     return {nullptr};
 }
@@ -384,16 +426,49 @@ NodeStreamHandlerPtr NodeController::GetNodeStreamHandler(const std::string& nod
  * Private
  **********************************************************************************************************************/
 
-void NodeController::StoreHandler(NodeStreamHandlerPtr handler)
+void NodeController::LinkNodeIDToHandler(const std::string& nodeID, NodeStreamHandler::Ptr handler)
 {
     std::lock_guard lock {mMutex};
 
-    mHandlers.push_back(std::move(handler));
+    LOG_DBG() << "Link node id with stream handler: nodeID=" << nodeID.c_str();
+
+    for (auto& it : mHandlers) {
+        if (it.second == nodeID) {
+            it.second.clear();
+        }
+    }
+
+    mHandlers[std::move(handler)] = nodeID;
 }
 
-void NodeController::RemoveHandler(NodeStreamHandlerPtr handler)
+void NodeController::UnlinkNodeIDFromHandler(NodeStreamHandler::Ptr handler)
 {
     std::lock_guard lock {mMutex};
 
-    mHandlers.erase(std::remove(mHandlers.begin(), mHandlers.end(), handler), mHandlers.end());
+    if (auto it = std::find_if(
+            mHandlers.begin(), mHandlers.end(), [&handler](const auto& pair) { return pair.first == handler; });
+        it != mHandlers.end()) {
+
+        LOG_DBG() << "Unlink nodeID from steam handler: nodeID=" << it->second.c_str();
+
+        it->second.clear();
+    }
+}
+
+void NodeController::Store(NodeStreamHandler::Ptr handler)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Store node stream handler";
+
+    mHandlers[std::move(handler)] = {};
+}
+
+void NodeController::Remove(NodeStreamHandler::Ptr handler)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Remove node stream handler";
+
+    mHandlers.erase(handler);
 }

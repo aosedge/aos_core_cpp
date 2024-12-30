@@ -66,7 +66,7 @@ private:
     aos::Error InitPartitionInfo(const NodeInfoConfig& config);
     aos::Error NotifyNodeStatusChanged();
 
-    std::mutex                                                             mMutex;
+    mutable std::mutex                                                     mMutex;
     std::unordered_set<aos::iam::nodeinfoprovider::NodeStatusObserverItf*> mObservers;
     std::string                                                            mMemInfoPath;
     std::string                                                            mProvisioningStatusPath;
