@@ -7,27 +7,36 @@
 #ifndef CNI_HPP_
 #define CNI_HPP_
 
+#include <string>
+#include <unordered_map>
+
+#include <Poco/JSON/Array.h>
+#include <Poco/JSON/Object.h>
+
 #include <aos/sm/cni.hpp>
 
-namespace aos::sm::cni {
+#include "exec.hpp"
 
+namespace aos::sm::cni {
 /**
- * CNI instance.
+ * CNI.
  */
 class CNI : public CNIItf {
 public:
     /**
      * Initializes CNI.
      *
-     * @param cniConfigDir Path to CNI configuration directory.
+     * @param exec Exec interface.
      * @return Error.
      */
-    Error Init(const String& configDir) override
-    {
-        (void)configDir;
+    Error Init(ExecItf& exec);
 
-        return ErrorEnum::eNone;
-    }
+    /**
+     * Sets CNI configuration directory.
+     *
+     * @param cniConfigDir Path to CNI configuration directory.
+     */
+    Error SetConfDir(const String& configDir) override;
 
     /**
      * Executes a sequence of plugins with the ADD command
@@ -36,13 +45,7 @@ public:
      * @param rt Runtime configuration parameters.
      * @return RetWithError<Result>.
      */
-    RetWithError<Result> AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt) override
-    {
-        (void)net;
-        (void)rt;
-
-        return {Result(), ErrorEnum::eNone};
-    }
+    RetWithError<Result> AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt) override;
 
     /**
      * Executes a sequence of plugins with the DEL command
@@ -51,13 +54,7 @@ public:
      * @param rt Runtime configuration parameters.
      * @return Error.
      */
-    Error DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt) override
-    {
-        (void)net;
-        (void)rt;
-
-        return ErrorEnum::eNone;
-    }
+    Error DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt) override;
 
     /**
      * Checks that a configuration is reasonably valid.
@@ -65,14 +62,78 @@ public:
      * @param net List of network configurations.
      * @return Error.
      */
-    Error ValidateNetworkList(const NetworkConfigList& net) override
-    {
-        (void)net;
+    Error ValidateNetworkList(const NetworkConfigList& net) override;
 
-        return ErrorEnum::eNone;
-    }
+    /**
+     * Returns network list from cache.
+     *
+     * @param[out] net Network list.
+     * @param[out] rt Runtime configuration.
+     * @return Error.
+     */
+    Error GetNetworkListCachedConfig(NetworkConfigList& net, RuntimeConf& rt) override;
+
+private:
+    class ActionType {
+    public:
+        enum class Enum { eAdd, eDel, eCheck };
+
+        static const Array<const char* const> GetStrings()
+        {
+            static const char* const sActionStrings[] = {"ADD", "DEL", "CHECK"};
+
+            return Array<const char* const>(sActionStrings, ArraySize(sActionStrings));
+        };
+    };
+
+    using ActionEnum = ActionType::Enum;
+    using Action     = EnumStringer<ActionType>;
+
+    static constexpr auto cBinaryPluginDir = "/opt/cni/bin";
+
+    std::string ExecuteBridgePlugin(
+        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
+    std::string ExecuteFirewallPlugin(
+        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
+    std::string ExecuteBandwidthPlugin(
+        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
+    std::string ExecuteDNSPlugin(
+        const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult, const std::string& args);
+    std::string ArgsAsString(const RuntimeConf& rt, Action action) const;
+
+    std::string CreateBridgePluginConfig(const BridgePluginConf& bridge) const;
+    std::string BridgeConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+
+    Result ParsePrevResult(const std::string& prevResult) const;
+
+    std::string CreateDNSPluginConfig(const DNSPluginConf& dns) const;
+    std::string DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult);
+    std::string AddDNSRuntimeConfig(
+        const std::string& pluginConfig, const std::string& name, const RuntimeConf& rt) const;
+
+    std::string AddCNIData(const std::string& pluginConfig, const std::string& version, const std::string& name,
+        const std::string& prevResult) const;
+
+    std::string CreateFirewallPluginConfig(const FirewallPluginConf& firewall) const;
+    std::string FirewallConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+
+    std::string CreateBandwidthPluginConfig(const BandwidthNetConf& bandwidth) const;
+    std::string BandwidthConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+
+    std::string        CreatePluginsConfig(const NetworkConfigList& net) const;
+    Poco::JSON::Array  CreateCNIArgsArray(const RuntimeConf& rt) const;
+    Poco::JSON::Object CreateCapabilityArgsObject(const RuntimeConf& rt, const std::string& networkName) const;
+    std::string        CreateCacheEntry(
+               const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult) const;
+
+    void WriteCacheEntryToFile(const std::string& cacheEntry, const std::string& cachePath) const;
+
+    std::string ResultToJSON(const Result& result) const;
+
+    std::string              mConfigDir;
+    ExecItf*                 mExec {};
+    std::vector<std::string> mPlugins;
 };
-
 } // namespace aos::sm::cni
 
-#endif // CNI_HPP_
+#endif /* CNI_HPP_ */
