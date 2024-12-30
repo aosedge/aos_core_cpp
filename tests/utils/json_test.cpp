@@ -255,6 +255,17 @@ TEST_F(JsonTest, WriteJsonToFileFails)
     EXPECT_EQ(WriteJsonToFile(object, path), aos::ErrorEnum::eFailed);
 }
 
+TEST_F(JsonTest, ToJSONArray)
+{
+    Poco::JSON::Array array
+        = ToJsonArray(std::vector<int> {1, 2}, [](const auto value) { return std::to_string(value).append("-str"); });
+
+    ASSERT_EQ(array.size(), 2);
+
+    EXPECT_EQ(array.get(0).convert<std::string>(), "1-str");
+    EXPECT_EQ(array.get(1).convert<std::string>(), "2-str");
+}
+
 TEST_F(JsonTest, Stringify)
 {
     Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
