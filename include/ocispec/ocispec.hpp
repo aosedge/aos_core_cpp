@@ -54,7 +54,7 @@ public:
      * @return Error.
      */
     // cppcheck-suppress constParameterReference
-    Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
+    Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec) override
     {
         (void)path;
         (void)imageSpec;
@@ -69,7 +69,7 @@ public:
      * @param imageSpec image spec.
      * @return Error.
      */
-    Error SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec)
+    Error SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec) override
     {
         (void)path;
         (void)imageSpec;
@@ -85,7 +85,7 @@ public:
      * @return Error.
      */
     // cppcheck-suppress constParameterReference
-    Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec)
+    Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec) override
     {
         (void)path;
         (void)runtimeSpec;
@@ -100,10 +100,40 @@ public:
      * @param runtimeSpec runtime spec.
      * @return Error.
      */
-    Error SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec)
+    Error SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec) override
     {
         (void)path;
         (void)runtimeSpec;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
+     * Loads Aos service config.
+     *
+     * @param path file path.
+     * @param serviceConfig service config.
+     * @return Error.
+     */
+    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override
+    {
+        (void)path;
+        (void)serviceConfig;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
+     * Saves Aos service config.
+     *
+     * @param path file path.
+     * @param serviceConfig service config.
+     * @return Error.
+     */
+    Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override
+    {
+        (void)path;
+        (void)serviceConfig;
 
         return ErrorEnum::eNone;
     }
