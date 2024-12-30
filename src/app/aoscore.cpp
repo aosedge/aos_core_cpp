@@ -118,6 +118,11 @@ void AosCore::Init(const std::string& configFile)
         mDownloader, mImageHandler, mOCISpec);
     AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
 
+    // Initialize runner
+
+    err = mRunner.Init(mLauncher);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize runner", err);
+
     // Initialize launcher
 
     auto launcherConfig = std::make_shared<sm::launcher::Config>();
@@ -153,6 +158,9 @@ void AosCore::Start()
     auto err = mSMClient.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
 
+    err = mRunner.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start runner", err);
+
     err = mLauncher.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start launcher", err);
 
@@ -173,6 +181,9 @@ void AosCore::Stop()
 {
     auto err = mSMClient.Stop();
     AOS_ERROR_CHECK_AND_THROW("can't stop SM client", err);
+
+    err = mRunner.Stop();
+    AOS_ERROR_CHECK_AND_THROW("can't stop runner", err);
 
     err = mLauncher.Stop();
     AOS_ERROR_CHECK_AND_THROW("can't stop launcher", err);
