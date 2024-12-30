@@ -34,7 +34,13 @@ aos::PartitionInfo CreatePartition(const aos::String& name, size_t usedSize)
     return result;
 }
 
+aos::Array<uint8_t> StringToArray(const aos::String& str)
+{
+    return aos::Array<uint8_t>(reinterpret_cast<const uint8_t*>(str.CStr()), str.Size());
+}
+
 } // namespace
+
 class PBConvertSMTest : public Test {
 public:
     void SetUp() override { aos::test::InitLog(); }
@@ -478,7 +484,7 @@ TEST_F(PBConvertSMTest, ConvertServiceInfoToAos)
     EXPECT_EQ(result.mVersion, aos::String(param.version().c_str()));
     EXPECT_EQ(result.mGID, param.gid());
     EXPECT_EQ(result.mURL, aos::String(param.url().c_str()));
-    EXPECT_EQ(result.mSHA256, aos::String(param.sha256().c_str()));
+    EXPECT_EQ(result.mSHA256, StringToArray(aos::String(param.sha256().c_str())));
     EXPECT_EQ(result.mSize, param.size());
 }
 
@@ -499,7 +505,7 @@ TEST_F(PBConvertSMTest, ConvertLayerInfoToAos)
     EXPECT_EQ(result.mLayerDigest, aos::String(param.digest().c_str()));
     EXPECT_EQ(result.mVersion, aos::String(param.version().c_str()));
     EXPECT_EQ(result.mURL, aos::String(param.url().c_str()));
-    EXPECT_EQ(result.mSHA256, aos::String(param.sha256().c_str()));
+    EXPECT_EQ(result.mSHA256, StringToArray(aos::String(param.sha256().c_str())));
     EXPECT_EQ(result.mSize, param.size());
 }
 
@@ -660,7 +666,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceQuotaAlertToProto)
 
     EXPECT_EQ(aos::String(pbAlert.parameter().c_str()), alert.mParameter);
     EXPECT_EQ(pbAlert.value(), alert.mValue);
-    EXPECT_EQ(aos::String(pbAlert.status().c_str()), alert.mStatus);
+    EXPECT_EQ(aos::String(pbAlert.status().c_str()), alert.mStatus.ToString());
 }
 
 TEST_F(PBConvertSMTest, ConvertDeviceAllocateAlertToProto)
