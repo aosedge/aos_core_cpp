@@ -21,6 +21,7 @@
 #include "database/database.hpp"
 #include "downloader/downloader.hpp"
 #include "image/imagehandler.hpp"
+#include "launcher/runtime.hpp"
 #include "logger/logger.hpp"
 #include "logprovider/logprovider.hpp"
 #include "monitoring/resourceusageprovider.hpp"
@@ -85,6 +86,7 @@ private:
     sm::database::Database                                               mDatabase;
     sm::image::ImageHandler                                              mImageHandler;
     sm::launcher::Launcher                                               mLauncher;
+    sm::launcher::Runtime                                                mRuntime;
     sm::layermanager::LayerManager                                       mLayerManager;
     sm::logprovider::LogProvider                                         mLogProvider;
     sm::monitoring::ResourceUsageProvider                                mResourceUsageProvider;
