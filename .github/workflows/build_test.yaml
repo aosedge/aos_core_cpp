@@ -16,16 +16,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions: read-all
+    container:
+      image: ghcr.io/aosedge/aos-core-build-base:latest
+      options: '--entrypoint /usr/bin/bash'
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
     steps:
+     # Apply solution to "HOME is overridden for containers" problem: https://github.com/actions/runner/issues/863
+      - name: Preserve $HOME set in the container
+        run: echo HOME=/root >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Prepare
-        run: |
-          sudo apt install lcov libsofthsm2 libsystemd-dev -y
-          pip install conan
+          submodules: "recursive"
 
       - name: Build and test
         run: |
@@ -35,10 +43,18 @@ jobs:
 
           conan install ./conan/ --output-folder build --settings=build_type=Debug --build=missing
           cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake \
-            -DWITH_CORELIB=ON -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+            -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
 
           cd build
-          make; make tests; make coverage
+          make -j$(nproc); make tests; make coverage
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v3

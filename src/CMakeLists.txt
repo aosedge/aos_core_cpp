@@ -6,6 +6,20 @@
 #
 
 # ######################################################################################################################
+# Dependencies
+# ######################################################################################################################
+
+# gRPC lib
+find_package(gRPC REQUIRED)
+
+# Poco lib
+find_package(Poco REQUIRED JSON DataSQLite Foundation)
+
+# Systemd lib
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(Systemd libsystemd REQUIRED)
+
+# ######################################################################################################################
 # Defines
 # ######################################################################################################################
 
@@ -13,7 +27,7 @@
 # Includes
 # ######################################################################################################################
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${AOS_CORE_COMMON_LIB_DIR}/include)
 
 # ######################################################################################################################
 # Modules
@@ -22,3 +36,4 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_subdirectory(logger)
 add_subdirectory(migration)
 add_subdirectory(utils)
+add_subdirectory(iamclient)

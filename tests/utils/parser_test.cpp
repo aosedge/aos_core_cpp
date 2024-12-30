@@ -7,7 +7,7 @@
 
 #include <gmock/gmock.h>
 
-#include <test/utils/log.hpp>
+#include <aos/test/log.hpp>
 
 #include "utils/parser.hpp"
 

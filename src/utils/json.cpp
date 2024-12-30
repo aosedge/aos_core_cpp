@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fstream>
+
 #include "utils/json.hpp"
 
 namespace aos::common::utils {
@@ -15,6 +17,11 @@ CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Obj
     for (const auto& pair : *object) {
         mKeyMap.emplace(ToLowercase(pair.first), pair.first);
     }
+}
+
+CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::Dynamic::Var& var)
+    : CaseInsensitiveObjectWrapper(var.extract<Poco::JSON::Object::Ptr>())
+{
 }
 
 bool CaseInsensitiveObjectWrapper::Has(const std::string& key) const
@@ -86,6 +93,22 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(std::istream& in) noexcept
     } catch (...) {
         return {{}, aos::ErrorEnum::eFailed};
     }
+}
+
+Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& path)
+{
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return Error(ErrorEnum::eFailed, "Failed to open file");
+    }
+
+    try {
+        Poco::JSON::Stringifier::stringify(json, file);
+    } catch (const std::exception& e) {
+        return Error(ErrorEnum::eFailed, e.what());
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& keys)

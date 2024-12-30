@@ -11,8 +11,8 @@
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/server_credentials.h>
 
-#include <aos/common/crypto.hpp>
-#include <aos/common/cryptoutils.hpp>
+#include <aos/common/crypto/crypto.hpp>
+#include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 
 namespace aos::common::utils {
@@ -27,7 +27,7 @@ namespace aos::common::utils {
  * @return server credentials.
  */
 std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    const aos::String& rootCertPath, aos::cryptoutils::CertLoader& certLoader,
+    const aos::String& rootCertPath, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**
@@ -39,7 +39,7 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const aos::iam
  * @return server credentials.
  */
 std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    aos::cryptoutils::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
+    aos::crypto::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**
  * Get client credentials for MTLS connection.
@@ -51,7 +51,7 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const aos::iam:
  * @return client credentials.
  */
 std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    const aos::String& rootCertPath, aos::cryptoutils::CertLoaderItf& certLoader,
+    const aos::String& rootCertPath, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**

@@ -39,6 +39,15 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(const std::string& json) noexcep
 aos::RetWithError<Poco::Dynamic::Var> ParseJson(std::istream& in) noexcept;
 
 /**
+ * Writes json to file.
+ *
+ * @param json json object.
+ * @param path path to the file.
+ * @return aos::Error.
+ */
+Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& path);
+
+/**
  * Finds value of the json by path
  *
  * @param object json object.
@@ -58,6 +67,13 @@ public:
      * @param object json object.
      */
     explicit CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object);
+
+    /**
+     * Constructor from poco dynamic variable. Throws exception json object ptr extract fail.
+     *
+     * @param var dynamic variable.
+     */
+    explicit CaseInsensitiveObjectWrapper(const Poco::Dynamic::Var& var);
 
     /**
      * Checks if key exists.
@@ -143,7 +159,8 @@ private:
  *
  * @param object json object.
  * @param key key.
- * @return T.
+ * @param parserFunc function to parse array entities.
+ * @return std::vector<T>.
  */
 template <typename T, typename ParserFunc>
 std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const std::string& key, ParserFunc parserFunc)
@@ -159,6 +176,19 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
     std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
 
     return result;
+}
+
+/**
+ * Gets value array by key.
+ *
+ * @param object json object.
+ * @param key key.
+ * @return std::vector<T>.
+ */
+template <typename T>
+std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const std::string& key)
+{
+    return GetArrayValue<T>(object, key, [](const Poco::Dynamic::Var& value) { return value.convert<T>(); });
 }
 
 } // namespace aos::common::utils

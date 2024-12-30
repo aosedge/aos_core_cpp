@@ -1,17 +1,22 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
 # Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosmigration)
+set(TARGET aosiamclient)
+
+# ######################################################################################################################
+# Compiler flags
+# ######################################################################################################################
+
+add_definitions(-DLOG_MODULE="iamclient")
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES migration.cpp)
+set(SOURCES publicservicehandler.cpp)
 
 # ######################################################################################################################
 # Includes
@@ -27,7 +32,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon Poco::DataSQLite)
+target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-iam aosutils)
 
 target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 
@@ -38,7 +43,7 @@ target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 install(TARGETS ${TARGET} DESTINATION lib)
 
 install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/migration
+    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/iamclient
     DESTINATION include
     FILES_MATCHING
     PATTERN "*.hpp"

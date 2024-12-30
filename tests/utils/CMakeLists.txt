@@ -11,7 +11,15 @@ set(TARGET utils_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES exception_test.cpp json_test.cpp parser_test.cpp time_test.cpp)
+set(SOURCES
+    channel_test.cpp
+    exception_test.cpp
+    filesystem_test.cpp
+    image_test.cpp
+    json_test.cpp
+    parser_test.cpp
+    time_test.cpp
+)
 
 # ######################################################################################################################
 # Target
@@ -25,4 +33,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} utils mbedtls GTest::gmock_main)
+target_link_libraries(${TARGET} testutils aosutils mbedtls GTest::gmock_main)

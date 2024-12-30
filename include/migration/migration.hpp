@@ -9,6 +9,7 @@
 #define MIGRATION_HPP_
 
 #include <Poco/Data/Session.h>
+#include <filesystem>
 
 namespace aos::common::migration {
 
@@ -22,8 +23,9 @@ public:
      *
      * @param[out] session database session.
      * @param migrationDir directory with migration scripts.
+     * @param mergedMigrationDir directory with merged migration scripts.
      */
-    Migration(Poco::Data::Session& session, const std::string& migrationDir);
+    Migration(Poco::Data::Session& session, const std::string& migrationDir, const std::string& mergedMigrationDir);
 
     /**
      * Migrates database to the specified version.
@@ -46,8 +48,10 @@ private:
     void UpgradeDatabase(int targetVersion, int currentVersion);
     void DowngradeDatabase(int targetVersion, int currentVersion);
 
-    Poco::Data::Session& mSession;
-    const std::string    mMigrationDir;
+    void MergeMigrationFiles(const std::string& migrationDir);
+
+    Poco::Data::Session&  mSession;
+    std::filesystem::path mMergedMigrationDir;
 };
 
 } // namespace aos::common::migration

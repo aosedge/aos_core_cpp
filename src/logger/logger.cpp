@@ -58,7 +58,7 @@ aos::Error Logger::Init()
  * Private
  **********************************************************************************************************************/
 
-void Logger::StdIOCallback(const char* module, aos::LogLevel level, const aos::String& message)
+void Logger::StdIOCallback(const String& module, aos::LogLevel level, const aos::String& message)
 {
     std::lock_guard lock(sMutex);
 
@@ -70,7 +70,7 @@ void Logger::StdIOCallback(const char* module, aos::LogLevel level, const aos::S
               << message.CStr() << std::endl;
 }
 
-void Logger::JournaldCallback(const char* module, aos::LogLevel level, const aos::String& message)
+void Logger::JournaldCallback(const String& module, aos::LogLevel level, const aos::String& message)
 {
     if (level.GetValue() < sLogLevel.GetValue()) {
         return;
@@ -130,11 +130,11 @@ std::string Logger::GetLogLevel(aos::LogLevel level)
     return ss.str();
 }
 
-std::string Logger::GetModule(const char* module)
+std::string Logger::GetModule(const String& module)
 {
     std::stringstream ss;
 
-    ss << (sColored ? cColorModule : "") << "(" << module << ")" << (sColored ? cColorNone : "");
+    ss << (sColored ? cColorModule : "") << "(" << module.CStr() << ")" << (sColored ? cColorNone : "");
 
     return ss.str();
 }
