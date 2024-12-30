@@ -7,6 +7,8 @@
 #ifndef AOSCORE_HPP_
 #define AOSCORE_HPP_
 
+#include <optional>
+
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
 #include <aos/sm/launcher.hpp>
@@ -26,6 +28,7 @@
 #include "logprovider/logprovider.hpp"
 #include "monitoring/resourceusageprovider.hpp"
 #include "networkmanager/cni.hpp"
+#include "networkmanager/exec.hpp"
 #include "networkmanager/networkmanager.hpp"
 #include "ocispec/ocispec.hpp"
 #include "resourcemanager/resourcemanager.hpp"
@@ -83,6 +86,7 @@ private:
     common::logger::Logger                                               mLogger;
     common::oci::OCISpec                                                 mOCISpec;
     sm::cni::CNI                                                         mCNI;
+    sm::cni::Exec                                                        mExec;
     sm::database::Database                                               mDatabase;
     sm::image::ImageHandler                                              mImageHandler;
     sm::launcher::Launcher                                               mLauncher;

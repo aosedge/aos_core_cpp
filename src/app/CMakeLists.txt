@@ -39,6 +39,7 @@ target_link_libraries(
            image
            resourcemanager
            smclient
+           networkmanager
            aosdownloader
            aosocispec
            aossm

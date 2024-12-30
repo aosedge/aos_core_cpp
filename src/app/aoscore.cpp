@@ -80,6 +80,9 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize network manager
 
+    err = mCNI.Init(mExec);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize CNI", err);
+
     err = mNetworkManager.Init(
         mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, config->mWorkingDir.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
