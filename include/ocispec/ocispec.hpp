@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,13 +23,7 @@ public:
      * @param[out] manifest image manifest.
      * @return Error.
      */
-    Error LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest) override
-    {
-        (void)path;
-        (void)manifest;
-
-        return ErrorEnum::eNone;
-    }
+    Error LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest) override;
 
     /**
      * Saves OCI image manifest.
@@ -38,13 +32,7 @@ public:
      * @param manifest image manifest.
      * @return Error.
      */
-    Error SaveImageManifest(const String& path, const aos::oci::ImageManifest& manifest) override
-    {
-        (void)path;
-        (void)manifest;
-
-        return ErrorEnum::eNone;
-    }
+    Error SaveImageManifest(const String& path, const aos::oci::ImageManifest& manifest) override;
 
     /**
      * Loads OCI image spec.
@@ -53,14 +41,7 @@ public:
      * @param[out] imageSpec image spec.
      * @return Error.
      */
-    // cppcheck-suppress constParameterReference
-    Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec) override
-    {
-        (void)path;
-        (void)imageSpec;
-
-        return ErrorEnum::eNone;
-    }
+    Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec) override;
 
     /**
      * Saves OCI image spec.
@@ -69,13 +50,7 @@ public:
      * @param imageSpec image spec.
      * @return Error.
      */
-    Error SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec) override
-    {
-        (void)path;
-        (void)imageSpec;
-
-        return ErrorEnum::eNone;
-    }
+    Error SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec) override;
 
     /**
      * Loads OCI runtime spec.
@@ -84,14 +59,7 @@ public:
      * @param[out] runtimeSpec runtime spec.
      * @return Error.
      */
-    // cppcheck-suppress constParameterReference
-    Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec) override
-    {
-        (void)path;
-        (void)runtimeSpec;
-
-        return ErrorEnum::eNone;
-    }
+    Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec) override;
 
     /**
      * Saves OCI runtime spec.
@@ -100,13 +68,7 @@ public:
      * @param runtimeSpec runtime spec.
      * @return Error.
      */
-    Error SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec) override
-    {
-        (void)path;
-        (void)runtimeSpec;
-
-        return ErrorEnum::eNone;
-    }
+    Error SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec) override;
 
     /**
      * Loads Aos service config.
@@ -115,13 +77,7 @@ public:
      * @param serviceConfig service config.
      * @return Error.
      */
-    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override
-    {
-        (void)path;
-        (void)serviceConfig;
-
-        return ErrorEnum::eNone;
-    }
+    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
 
     /**
      * Saves Aos service config.
@@ -130,13 +86,7 @@ public:
      * @param serviceConfig service config.
      * @return Error.
      */
-    Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override
-    {
-        (void)path;
-        (void)serviceConfig;
-
-        return ErrorEnum::eNone;
-    }
+    Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override;
 };
 
 } // namespace aos::common::oci
