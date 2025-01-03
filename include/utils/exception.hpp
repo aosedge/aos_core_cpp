@@ -40,7 +40,7 @@ public:
      *
      * @param err Aos error.
      */
-    explicit AosException(const std::string& message, const aos::Error& err = aos::ErrorEnum::eFailed)
+    explicit AosException(const std::string& message, const Error& err = ErrorEnum::eFailed)
         : Poco::Exception(message, err.Message(), err.Errno())
         , mError(err)
     {
@@ -60,9 +60,9 @@ public:
     /**
      * Returns Aos error.
      *
-     * @return aos::Error.
+     * @return Error.
      */
-    aos::Error GetError() const { return mError; }
+    Error GetError() const { return mError; }
 
     /**
      * Returns a static string describing the exception.
@@ -72,7 +72,7 @@ public:
     const char* what() const noexcept override { return mError.Message(); }
 
 private:
-    aos::Error mError;
+    Error mError;
 };
 
 } // namespace aos::common::utils
