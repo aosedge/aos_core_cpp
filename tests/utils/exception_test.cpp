@@ -11,6 +11,8 @@
 
 using namespace testing;
 
+namespace aos::common::utils {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -21,7 +23,7 @@ protected:
     {
         mFileName = __FILENAME__;
         mLineNum  = __LINE__ + 1;
-        AOS_ERROR_THROW("oops", aos::ErrorEnum::eFailed);
+        AOS_ERROR_THROW("oops", ErrorEnum::eFailed);
     }
 
     std::string GetFileAndLine() const { return "(" + mFileName + ":" + std::to_string(mLineNum) + ")"; }
@@ -34,8 +36,6 @@ private:
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
-
-namespace aos::common::utils {
 
 TEST_F(ExceptionTest, ThrowAosException)
 {
