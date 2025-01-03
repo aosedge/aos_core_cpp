@@ -11,29 +11,31 @@
 
 #include "jsonprovider/jsonprovider.hpp"
 
+namespace aos::common::jsonprovider {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
 
 namespace {
 
-aos::DeviceInfo DeviceInfoFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+DeviceInfo DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::DeviceInfo deviceInfo;
+    DeviceInfo deviceInfo;
 
     const auto name = object.GetValue<std::string>("name");
 
     deviceInfo.mName        = name.c_str();
     deviceInfo.mSharedCount = object.GetValue<int>("sharedCount");
 
-    const auto groups = aos::common::utils::GetArrayValue<std::string>(object, "groups");
+    const auto groups = utils::GetArrayValue<std::string>(object, "groups");
 
     for (const auto& group : groups) {
         AOS_ERROR_CHECK_AND_THROW(
             "parsed groups count exceeds application limit", deviceInfo.mGroups.PushBack(group.c_str()));
     }
 
-    const auto hostDevices = aos::common::utils::GetArrayValue<std::string>(object, "hostDevices");
+    const auto hostDevices = utils::GetArrayValue<std::string>(object, "hostDevices");
 
     for (const auto& device : hostDevices) {
         AOS_ERROR_CHECK_AND_THROW(
@@ -43,20 +45,19 @@ aos::DeviceInfo DeviceInfoFromJSON(const aos::common::utils::CaseInsensitiveObje
     return deviceInfo;
 }
 
-void DevicesFromJSON(
-    const aos::common::utils::CaseInsensitiveObjectWrapper& object, aos::Array<aos::DeviceInfo>& outDevices)
+void DevicesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<DeviceInfo>& outDevices)
 {
-    const auto devices = aos::common::utils::GetArrayValue<aos::DeviceInfo>(object, "devices",
-        [](const auto& value) { return DeviceInfoFromJSON(aos::common::utils::CaseInsensitiveObjectWrapper(value)); });
+    const auto devices = utils::GetArrayValue<DeviceInfo>(object, "devices",
+        [](const auto& value) { return DeviceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& device : devices) {
         AOS_ERROR_CHECK_AND_THROW("parsed devices count exceeds application limit", outDevices.PushBack(device));
     }
 }
 
-aos::FileSystemMount FileSystemMountFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+FileSystemMount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::FileSystemMount fsMount;
+    FileSystemMount fsMount;
 
     const auto destination = object.GetValue<std::string>("destination");
     const auto type        = object.GetValue<std::string>("type");
@@ -66,7 +67,7 @@ aos::FileSystemMount FileSystemMountFromJSON(const aos::common::utils::CaseInsen
     fsMount.mType        = type.c_str();
     fsMount.mSource      = source.c_str();
 
-    const auto options = aos::common::utils::GetArrayValue<std::string>(object, "options");
+    const auto options = utils::GetArrayValue<std::string>(object, "options");
 
     for (const auto& option : options) {
         auto err = fsMount.mOptions.PushBack(option.c_str());
@@ -76,45 +77,43 @@ aos::FileSystemMount FileSystemMountFromJSON(const aos::common::utils::CaseInsen
     return fsMount;
 }
 
-aos::Host HostFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+Host HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     return {object.GetValue<std::string>("ip").c_str(), object.GetValue<std::string>("hostName").c_str()};
 }
 
-aos::ResourceInfo ResourceInfoFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+ResourceInfo ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::ResourceInfo resourceInfo;
+    ResourceInfo resourceInfo;
 
     const auto name = object.GetValue<std::string>("name");
 
     resourceInfo.mName = name.c_str();
 
-    const auto groups = aos::common::utils::GetArrayValue<std::string>(object, "groups");
+    const auto groups = utils::GetArrayValue<std::string>(object, "groups");
 
     for (const auto& group : groups) {
         auto err = resourceInfo.mGroups.PushBack(group.c_str());
         AOS_ERROR_CHECK_AND_THROW("parsed groups count exceeds application limit", err);
     }
 
-    const auto mounts
-        = aos::common::utils::GetArrayValue<aos::FileSystemMount>(object, "mounts", [](const auto& value) {
-              return FileSystemMountFromJSON(aos::common::utils::CaseInsensitiveObjectWrapper(value));
-          });
+    const auto mounts = utils::GetArrayValue<FileSystemMount>(object, "mounts",
+        [](const auto& value) { return FileSystemMountFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& mount : mounts) {
         auto err = resourceInfo.mMounts.PushBack(mount);
         AOS_ERROR_CHECK_AND_THROW("parsed mounts count exceeds application limit", err);
     }
 
-    const auto envs = aos::common::utils::GetArrayValue<std::string>(object, "env");
+    const auto envs = utils::GetArrayValue<std::string>(object, "env");
 
     for (const auto& env : envs) {
         auto err = resourceInfo.mEnv.PushBack(env.c_str());
         AOS_ERROR_CHECK_AND_THROW("parsed envs count exceeds application limit", err);
     }
 
-    const auto hosts = aos::common::utils::GetArrayValue<aos::Host>(object, "hosts",
-        [](const auto& value) { return HostFromJSON(aos::common::utils::CaseInsensitiveObjectWrapper(value)); });
+    const auto hosts = utils::GetArrayValue<Host>(
+        object, "hosts", [](const auto& value) { return HostFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& host : hosts) {
         auto err = resourceInfo.mHosts.PushBack(host);
@@ -124,13 +123,10 @@ aos::ResourceInfo ResourceInfoFromJSON(const aos::common::utils::CaseInsensitive
     return resourceInfo;
 }
 
-void ResourcesFromJSON(
-    const aos::common::utils::CaseInsensitiveObjectWrapper& object, aos::Array<aos::ResourceInfo>& outResources)
+void ResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<ResourceInfo>& outResources)
 {
-    const auto resources
-        = aos::common::utils::GetArrayValue<aos::ResourceInfo>(object, "resources", [](const auto& value) {
-              return ResourceInfoFromJSON(aos::common::utils::CaseInsensitiveObjectWrapper(value));
-          });
+    const auto resources = utils::GetArrayValue<ResourceInfo>(object, "resources",
+        [](const auto& value) { return ResourceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& resource : resources) {
         auto err = outResources.PushBack(resource);
@@ -138,10 +134,9 @@ void ResourcesFromJSON(
     }
 }
 
-void LabelsFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object,
-    aos::Array<aos::StaticString<aos::cLabelNameLen>>&                      outLabels)
+void LabelsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<StaticString<cLabelNameLen>>& outLabels)
 {
-    const auto labels = aos::common::utils::GetArrayValue<std::string>(object, "labels");
+    const auto labels = utils::GetArrayValue<std::string>(object, "labels");
 
     for (const auto& label : labels) {
         auto err = outLabels.PushBack(label.c_str());
@@ -150,7 +145,7 @@ void LabelsFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& obje
 }
 
 template <size_t cMaxSize>
-Poco::JSON::Array ToJSONArray(const aos::Array<aos::StaticString<cMaxSize>>& aosArray)
+Poco::JSON::Array ToJSONArray(const Array<StaticString<cMaxSize>>& aosArray)
 {
     Poco::JSON::Array array;
 
@@ -161,7 +156,7 @@ Poco::JSON::Array ToJSONArray(const aos::Array<aos::StaticString<cMaxSize>>& aos
     return array;
 }
 
-Poco::JSON::Array DevicesToJson(const aos::Array<aos::DeviceInfo>& devices)
+Poco::JSON::Array DevicesToJson(const Array<DeviceInfo>& devices)
 {
     Poco::JSON::Array array;
 
@@ -179,7 +174,7 @@ Poco::JSON::Array DevicesToJson(const aos::Array<aos::DeviceInfo>& devices)
     return array;
 }
 
-Poco::JSON::Array MountsToJson(const aos::Array<aos::FileSystemMount>& mounts)
+Poco::JSON::Array MountsToJson(const Array<FileSystemMount>& mounts)
 {
     Poco::JSON::Array array;
 
@@ -197,7 +192,7 @@ Poco::JSON::Array MountsToJson(const aos::Array<aos::FileSystemMount>& mounts)
     return array;
 }
 
-Poco::JSON::Array HostsToJson(const aos::Array<aos::Host>& hosts)
+Poco::JSON::Array HostsToJson(const Array<Host>& hosts)
 {
     Poco::JSON::Array array;
 
@@ -213,7 +208,7 @@ Poco::JSON::Array HostsToJson(const aos::Array<aos::Host>& hosts)
     return array;
 }
 
-Poco::JSON::Array ResourcesToJson(const aos::Array<aos::ResourceInfo>& resources)
+Poco::JSON::Array ResourcesToJson(const Array<ResourceInfo>& resources)
 {
     Poco::JSON::Array array;
 
@@ -233,8 +228,6 @@ Poco::JSON::Array ResourcesToJson(const aos::Array<aos::ResourceInfo>& resources
 }
 
 } // namespace
-
-namespace aos::common::jsonprovider {
 
 /***********************************************************************************************************************
  * Public

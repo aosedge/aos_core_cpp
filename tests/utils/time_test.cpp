@@ -14,6 +14,8 @@
 
 using namespace testing;
 
+namespace aos::common::utils {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -64,7 +66,7 @@ public:
         return *this;
     }
 
-    bool operator==(const aos::Time& time) const
+    bool operator==(const Time& time) const
     {
         int day, month, year, hour, minute, second;
 
@@ -231,6 +233,8 @@ TEST_F(TimeTest, FormatISO8601Duration)
 
 TEST_F(TimeTest, FromToUTCString)
 {
+    test::InitLog();
+
     struct Test {
         std::string      input;
         std::string      expectedUTCString;
