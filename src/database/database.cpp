@@ -21,6 +21,8 @@
 
 using namespace Poco::Data::Keywords;
 
+namespace aos::sm::database {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
@@ -32,22 +34,22 @@ Poco::Data::BLOB ToBlob(const std::string& str)
     return Poco::Data::BLOB {reinterpret_cast<const uint8_t*>(str.c_str()), str.size()};
 }
 
-Poco::Data::BLOB ToBlob(const aos::String& str)
+Poco::Data::BLOB ToBlob(const String& str)
 {
     return Poco::Data::BLOB {reinterpret_cast<const uint8_t*>(str.CStr()), str.Size()};
 }
 
-aos::Time ConvertTimestamp(uint64_t timestamp)
+Time ConvertTimestamp(uint64_t timestamp)
 {
-    const auto seconds = static_cast<int64_t>(timestamp / aos::Time::cSeconds);
-    const auto nanos   = static_cast<int64_t>(timestamp % aos::Time::cSeconds);
+    const auto seconds = static_cast<int64_t>(timestamp / Time::cSeconds);
+    const auto nanos   = static_cast<int64_t>(timestamp % Time::cSeconds);
 
-    return aos::Time::Unix(seconds, nanos);
+    return Time::Unix(seconds, nanos);
 }
 
-aos::cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::cloudprotocol::EnvVarInfo envVar;
+    cloudprotocol::EnvVarInfo envVar;
 
     envVar.mTTL.Reset();
 
@@ -67,7 +69,7 @@ aos::cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const aos::common::util
 }
 
 Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
-    const aos::cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
+    const cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
 {
     Poco::JSON::Array result;
 
@@ -112,10 +114,9 @@ Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
     return result;
 }
 
-aos::cloudprotocol::EnvVarsInstanceInfo ConvertEnvVarsInfoFromJSON(
-    const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+cloudprotocol::EnvVarsInstanceInfo ConvertEnvVarsInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::cloudprotocol::EnvVarsInstanceInfo result;
+    cloudprotocol::EnvVarsInstanceInfo result;
 
     if (object.Has("instanceFilter")) {
         const auto filter = object.GetObject("instanceFilter");
@@ -133,38 +134,38 @@ aos::cloudprotocol::EnvVarsInstanceInfo ConvertEnvVarsInfoFromJSON(
         }
     }
 
-    const auto envVars = aos::common::utils::GetArrayValue<aos::cloudprotocol::EnvVarInfo>(
+    const auto envVars = common::utils::GetArrayValue<cloudprotocol::EnvVarInfo>(
         object, "envVars", [&](const Poco::Dynamic::Var& value) {
             return ConvertEnvVarInfoFromJSON(
-                aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+                common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
         });
 
     for (auto& envVar : envVars) {
         AOS_ERROR_CHECK_AND_THROW(
-            "DB instance's envVar count exceeds application limit", result.mVariables.PushBack(aos::Move(envVar)));
+            "DB instance's envVar count exceeds application limit", result.mVariables.PushBack(Move(envVar)));
     }
 
     return result;
 }
 
-aos::Error ConvertEnvVarsInstanceInfoArrayFromJSON(
-    const std::string& src, aos::cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
+Error ConvertEnvVarsInstanceInfoArrayFromJSON(
+    const std::string& src, cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
 {
     if (src.empty()) {
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     try {
-        auto [parser, err] = aos::common::utils::ParseJson(src);
+        auto [parser, err] = common::utils::ParseJson(src);
 
         if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(aos::Error(err, "Failed to parse envvars"));
+            return AOS_ERROR_WRAP(Error(err, "Failed to parse envvars"));
         }
 
         auto items = parser.extract<Poco::JSON::Array::Ptr>();
 
         if (items.isNull()) {
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         }
 
         for (const auto& item : *items) {
@@ -176,16 +177,16 @@ aos::Error ConvertEnvVarsInstanceInfoArrayFromJSON(
 
             AOS_ERROR_CHECK_AND_THROW("DB instance's envvars count exceeds application limit",
                 envVarsInstanceInfos.PushBack(
-                    ConvertEnvVarsInfoFromJSON(aos::common::utils::CaseInsensitiveObjectWrapper(objectPtr))));
+                    ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr))));
         }
     } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-Poco::JSON::Object ConvertNetworkParametersToJSON(const aos::NetworkParameters& networkParameters)
+Poco::JSON::Object ConvertNetworkParametersToJSON(const NetworkParameters& networkParameters)
 {
     Poco::JSON::Object object;
     Poco::JSON::Array  dnsServers;
@@ -218,7 +219,7 @@ Poco::JSON::Object ConvertNetworkParametersToJSON(const aos::NetworkParameters& 
     return object;
 }
 
-aos::Error ConvertNetworkParametersFromJSON(const Poco::JSON::Object& src, aos::NetworkParameters& networkParameters)
+Error ConvertNetworkParametersFromJSON(const Poco::JSON::Object& src, NetworkParameters& networkParameters)
 {
     try {
         networkParameters.mNetworkID = src.getValue<std::string>("networkID").c_str();
@@ -226,10 +227,10 @@ aos::Error ConvertNetworkParametersFromJSON(const Poco::JSON::Object& src, aos::
         networkParameters.mIP        = src.getValue<std::string>("ip").c_str();
         networkParameters.mVlanID    = src.getValue<uint64_t>("vlanID");
     } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 class DBInstanceData {
@@ -237,9 +238,9 @@ public:
     using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, uint32_t, uint64_t, std::string,
         std::string, Poco::Nullable<std::string>>;
 
-    static aos::sm::launcher::InstanceData ToAos(const Fields& dbFields)
+    static sm::launcher::InstanceData ToAos(const Fields& dbFields)
     {
-        aos::sm::launcher::InstanceData result;
+        sm::launcher::InstanceData result;
 
         result.mInstanceID = dbFields.get<Columns::eInstanceID>().c_str();
 
@@ -262,7 +263,7 @@ public:
 
         const auto ptr = parser.parse(networkJson.value()).extract<Poco::JSON::Object::Ptr>();
         if (ptr == nullptr) {
-            AOS_ERROR_CHECK_AND_THROW("Failed to parse network json", AOS_ERROR_WRAP(aos::ErrorEnum::eFailed));
+            AOS_ERROR_CHECK_AND_THROW("Failed to parse network json", AOS_ERROR_WRAP(ErrorEnum::eFailed));
         }
 
         ConvertNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);
@@ -289,19 +290,19 @@ public:
     using Fields = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint32_t, uint64_t,
         uint32_t, uint32_t>;
 
-    static aos::sm::servicemanager::ServiceData ToAos(const Fields& dbFields)
+    static sm::servicemanager::ServiceData ToAos(const Fields& dbFields)
     {
-        aos::sm::servicemanager::ServiceData result;
+        sm::servicemanager::ServiceData result;
 
         result.mServiceID      = dbFields.get<Columns::eServiceID>().c_str();
         result.mVersion        = dbFields.get<Columns::eVersion>().c_str();
         result.mProviderID     = dbFields.get<Columns::eProviderID>().c_str();
         result.mImagePath      = dbFields.get<Columns::eImagePath>().c_str();
         result.mManifestDigest = dbFields.get<Columns::eManifestDigest>().c_str();
-        result.mState     = static_cast<aos::sm::servicemanager::ServiceStateEnum>(dbFields.get<Columns::eCached>());
-        result.mTimestamp = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
-        result.mSize      = dbFields.get<Columns::eSize>();
-        result.mGID       = dbFields.get<Columns::eGID>();
+        result.mState          = static_cast<sm::servicemanager::ServiceStateEnum>(dbFields.get<Columns::eCached>());
+        result.mTimestamp      = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
+        result.mSize           = dbFields.get<Columns::eSize>();
+        result.mGID            = dbFields.get<Columns::eGID>();
 
         return result;
     }
@@ -324,9 +325,9 @@ class DBNetworkInfo {
 public:
     using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string>;
 
-    static aos::sm::networkmanager::NetworkParameters ToAos(const Fields& dbFields)
+    static sm::networkmanager::NetworkParameters ToAos(const Fields& dbFields)
     {
-        aos::sm::networkmanager::NetworkParameters networkParameters;
+        sm::networkmanager::NetworkParameters networkParameters;
 
         networkParameters.mNetworkID  = dbFields.get<Columns::eNetworkID>().c_str();
         networkParameters.mSubnet     = dbFields.get<Columns::eSubnet>().c_str();
@@ -352,9 +353,9 @@ public:
     using Fields
         = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, uint32_t>;
 
-    static aos::sm::layermanager::LayerData ToAos(const Fields& dbFields)
+    static sm::layermanager::LayerData ToAos(const Fields& dbFields)
     {
-        aos::sm::layermanager::LayerData layer;
+        sm::layermanager::LayerData layer;
 
         layer.mLayerDigest = dbFields.get<Columns::eDigest>().c_str();
         layer.mLayerID     = dbFields.get<Columns::eLayerId>().c_str();
@@ -362,7 +363,7 @@ public:
         layer.mOSVersion   = dbFields.get<Columns::eOSVersion>().c_str();
         layer.mVersion     = dbFields.get<Columns::eVersion>().c_str();
         layer.mSize        = dbFields.get<Columns::eSize>();
-        layer.mState       = static_cast<aos::sm::layermanager::LayerStateEnum>(dbFields.get<Columns::eState>());
+        layer.mState       = static_cast<sm::layermanager::LayerStateEnum>(dbFields.get<Columns::eState>());
         layer.mTimestamp   = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
 
         return layer;
@@ -382,8 +383,6 @@ private:
 };
 
 } // namespace
-
-namespace aos::sm::database {
 
 /***********************************************************************************************************************
  * Public
