@@ -37,7 +37,7 @@ namespace {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cTestDirRoot         = "image_test_dir";
+constexpr auto cTestDirRoot         = "test_dir/image";
 constexpr auto cConfigJSON          = R"({
     "created": "2024-11-14T13:50:53Z",
     "author": "Aos cloud",
@@ -320,6 +320,8 @@ protected:
 
         std::filesystem::remove_all(cTestDirRoot);
     }
+
+    void TearDown() override { std::filesystem::remove_all(cTestDirRoot); }
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
     oci::OCISpecMock                   mOCISpec;
