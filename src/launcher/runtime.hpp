@@ -20,13 +20,7 @@ public:
      * @param hostBinds host binds.
      * @return Error.
      */
-    Error CreateHostFSWhiteouts(const String& path, const Array<StaticString<cFilePathLen>>& hostBinds) override
-    {
-        (void)path;
-        (void)hostBinds;
-
-        return ErrorEnum::eNone;
-    }
+    Error CreateHostFSWhiteouts(const String& path, const Array<StaticString<cFilePathLen>>& hostBinds) override;
 
     /**
      * Prepares root FS for Aos service.
@@ -37,7 +31,7 @@ public:
      * @param layers layers to prepare.
      * @return Error.
      */
-    Error PrepareServiceRootFS(const String& rootfsPath, const String& mountPointDir, const Array<oci::Mount>& mounts,
+    Error PrepareServiceRootFS(const String& rootfsPath, const String& mountPointDir, const Array<Mount>& mounts,
         const Array<StaticString<cFilePathLen>>& layers) override
     {
         (void)rootfsPath;
@@ -91,6 +85,45 @@ public:
         (void)path;
         (void)uid;
         (void)gid;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
+     * Returns absolute path of FS item.
+     *
+     * @param path path to convert.
+     * @return RetWithError<StaticString<cFilePathLen>>.
+     */
+    RetWithError<StaticString<cFilePathLen>> GetAbsPath(const String& path) override
+    {
+        return {path, ErrorEnum::eNone};
+    }
+
+    /**
+     * Returns GID by group name.
+     *
+     * @param groupName group name.
+     * @return RetWithError<uint32_t>.
+     */
+    RetWithError<uint32_t> GetGIDByName(const String& groupName) override
+    {
+        (void)groupName;
+
+        return {0, ErrorEnum::eNone};
+    }
+
+    /**
+     * Populates host devices.
+     *
+     * @param devicePath device path.
+     * @param devices OCI devices.
+     * @return Error.
+     */
+    Error PopulateHostDevices(const String& devicePath, const Array<oci::LinuxDevice>& devices)
+    {
+        (void)devicePath;
+        (void)devices;
 
         return ErrorEnum::eNone;
     }

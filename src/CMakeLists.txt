@@ -22,12 +22,13 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(app)
 add_subdirectory(config)
-add_subdirectory(image)
 add_subdirectory(database)
-add_subdirectory(resourcemanager)
-add_subdirectory(smclient)
-add_subdirectory(runner)
+add_subdirectory(image)
+add_subdirectory(launcher)
 add_subdirectory(networkmanager)
+add_subdirectory(resourcemanager)
+add_subdirectory(runner)
+add_subdirectory(smclient)
 
 # ######################################################################################################################
 # Sources
