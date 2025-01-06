@@ -186,7 +186,7 @@ TEST_F(IamClientTest, RegisterUnregisterInstance)
     instanceIdent.mSubjectID = "subject_id";
     instanceIdent.mInstance  = 1;
 
-    aos::StaticArray<aos::iam::permhandler::FunctionalServicePermissions, 1> instancePermissions;
+    aos::StaticArray<aos::FunctionServicePermissions, 1> instancePermissions;
 
     EXPECT_CALL(mTLSCredentialsMock, GetMTLSClientCredentials(_))
         .Times(2)

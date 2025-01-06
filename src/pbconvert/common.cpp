@@ -37,8 +37,8 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-iamanager::v5::RegisterInstanceRequest ConvertToProto(const InstanceIdent& instanceIdent,
-    const Array<iam::permhandler::FunctionalServicePermissions>&           instancePermissions)
+iamanager::v5::RegisterInstanceRequest ConvertToProto(
+    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     iamanager::v5::RegisterInstanceRequest result;
 
@@ -48,7 +48,7 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(const InstanceIdent& insta
         auto& permissions = (*result.mutable_permissions())[servicePerm.mName.CStr()];
 
         for (const auto& perm : servicePerm.mPermissions) {
-            (*permissions.mutable_permissions())[perm.mKey.CStr()] = perm.mValue.CStr();
+            (*permissions.mutable_permissions())[perm.mFunction.CStr()] = perm.mPermissions.CStr();
         }
     }
 
