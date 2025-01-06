@@ -40,6 +40,7 @@ target_link_libraries(
            resourcemanager
            smclient
            aosdownloader
+           aosocispec
            aossm
            aosiamclient
            aosjsonprovider
