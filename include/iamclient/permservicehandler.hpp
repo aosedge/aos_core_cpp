@@ -39,8 +39,8 @@ public:
      * @param instancePermissions instance permissions.
      * @returns RetWithError<StaticString<cSecretLen>>.
      */
-    RetWithError<StaticString<iam::permhandler::cSecretLen>> RegisterInstance(const InstanceIdent& instanceIdent,
-        const Array<iam::permhandler::FunctionalServicePermissions>& instancePermissions) override;
+    RetWithError<StaticString<iam::permhandler::cSecretLen>> RegisterInstance(
+        const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions) override;
 
     /**
      * Unregisters instance deletes service instance with permissions from cache.
@@ -60,7 +60,7 @@ public:
      * @returns Error.
      */
     Error GetPermissions(const String& secret, const String& funcServerID, InstanceIdent& instanceIdent,
-        Array<iam::permhandler::PermKeyValue>& servicePermissions) override;
+        Array<FunctionPermissions>& servicePermissions) override;
 
 private:
     static constexpr auto cIAMPermissionsServiceTimeout = std::chrono::seconds(10);

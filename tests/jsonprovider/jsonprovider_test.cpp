@@ -254,7 +254,7 @@ TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnHostDevicesExceedsLimit)
 {
     sm::resourcemanager::NodeConfig parsedNodeConfig;
 
-    parsedNodeConfig.mNodeConfig.mDevices.Resize(cMaxNumDevices);
+    parsedNodeConfig.mNodeConfig.mDevices.Resize(cMaxNumNodeDevices);
 
     ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).Is(ErrorEnum::eNoMemory));
 }

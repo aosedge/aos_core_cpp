@@ -42,8 +42,8 @@ namespace aos::common::pbconvert {
  * @param instancePermissions instance permissions to convert.
  * @return iamanager::v5::RegisterInstanceRequest.
  */
-iamanager::v5::RegisterInstanceRequest ConvertToProto(const InstanceIdent& instanceIdent,
-    const Array<iam::permhandler::FunctionalServicePermissions>&           instancePermissions);
+iamanager::v5::RegisterInstanceRequest ConvertToProto(
+    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions);
 
 /**
  * Converts protobuf instance ident to aos.
