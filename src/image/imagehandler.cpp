@@ -262,6 +262,21 @@ RetWithError<StaticString<oci::cMaxDigestLen>> ImageHandler::CalculateDigest(con
  * Private
  **********************************************************************************************************************/
 
+Error ImageHandler::ValidateServiceConfig(const String& path, const String& digest) const
+{
+    const auto parsedDigest = common::utils::ParseDigest(digest.CStr());
+    const auto serviceConfigPath
+        = FS::JoinPath(path, cBlobsFolder, parsedDigest.first.c_str(), parsedDigest.second.c_str());
+
+    auto serviceConfig = std::make_unique<oci::ServiceConfig>();
+
+    if (auto err = mOCISpec->LoadServiceConfig(serviceConfigPath, *serviceConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(Error(err, "failed to load service config"));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ImageHandler::ValidateService(const String& path, const oci::ImageManifest& manifest) const
 {
     if (auto err = ValidateDigest(path, manifest.mConfig.mDigest); !err.IsNone()) {
@@ -270,6 +285,10 @@ Error ImageHandler::ValidateService(const String& path, const oci::ImageManifest
 
     if (manifest.mAosService.HasValue()) {
         if (auto err = ValidateDigest(path, manifest.mAosService->mDigest); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = ValidateServiceConfig(path, manifest.mAosService->mDigest); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }

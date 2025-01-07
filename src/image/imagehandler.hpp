@@ -77,6 +77,7 @@ public:
     ~ImageHandler() = default;
 
 private:
+    Error ValidateServiceConfig(const String& path, const String& digest) const;
     Error ValidateService(const String& path, const oci::ImageManifest& manifest) const;
     Error ValidateDigest(const String& path, const String& digest) const;
     RetWithError<StaticArray<uint8_t, cSHA256Size>> CalculateHash(const String& path, crypto::Hash algorithm) const;
@@ -88,7 +89,7 @@ private:
     crypto::HasherItf*                 mHasher                = nullptr;
     spaceallocator::SpaceAllocatorItf* mLayerSpaceAllocator   = nullptr;
     spaceallocator::SpaceAllocatorItf* mServiceSpaceAllocator = nullptr;
-    oci::OCISpecItf*                   mOCISpec               = nullptr;
+    mutable oci::OCISpecItf*           mOCISpec               = nullptr;
     uint32_t                           mUID                   = 0;
 };
 
