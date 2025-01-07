@@ -19,6 +19,7 @@ set(SOURCES
     json.cpp
     parser.cpp
     pkcs11helper.cpp
+    retry.cpp
     time.cpp
 )
 
