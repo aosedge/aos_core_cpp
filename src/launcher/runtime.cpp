@@ -33,6 +33,7 @@ constexpr auto cDirPermissions = fs::perms::owner_all | fs::perms::group_exec | 
     | fs::perms::others_exec | fs::perms::others_read;
 constexpr auto cFilePermissions
     = fs::perms::owner_read | fs::perms::owner_write | fs::perms::group_read | fs::perms::others_read;
+constexpr auto cStatePermissions = fs::perms::owner_read | fs::perms::owner_write;
 
 constexpr auto cMountRetryCount = 3;
 constexpr auto cMountretryDelay = std::chrono::seconds(1);
@@ -238,6 +239,53 @@ Error Runtime::UmountServiceRootFS(const String& rootfsPath)
 
         UmountDir(mountPoint);
         fs::remove_all(mountPoint);
+    } catch (const std::exception& e) {
+        return Error(ErrorEnum::eRuntime, e.what());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Runtime::PrepareServiceStorage(const String& path, uint32_t uid, uint32_t gid)
+{
+    try {
+        auto storagePath = fs::path(path.CStr());
+
+        if (fs::exists(storagePath)) {
+            return ErrorEnum::eNone;
+        }
+
+        fs::create_directories(storagePath);
+
+        auto ret = chown(storagePath.c_str(), uid, gid);
+        AOS_ERROR_CHECK_AND_THROW("can't chown storage", ret);
+
+    } catch (const std::exception& e) {
+        return Error(ErrorEnum::eRuntime, e.what());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Runtime::PrepareServiceState(const String& path, uint32_t uid, uint32_t gid)
+{
+    try {
+        auto statePath = fs::path(path.CStr());
+
+        if (fs::exists(statePath)) {
+            return ErrorEnum::eNone;
+        }
+
+        auto dirPath = statePath.parent_path();
+
+        fs::create_directories(dirPath);
+        fs::permissions(dirPath, cDirPermissions);
+
+        std::ofstream file(statePath);
+        fs::permissions(statePath, cStatePermissions);
+
+        auto ret = chown(statePath.c_str(), uid, gid);
+        AOS_ERROR_CHECK_AND_THROW("can't chown state", ret);
     } catch (const std::exception& e) {
         return Error(ErrorEnum::eRuntime, e.what());
     }

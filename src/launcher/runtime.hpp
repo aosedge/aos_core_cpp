@@ -57,14 +57,7 @@ public:
      * @param gid group ID.
      * @return Error.
      */
-    Error PrepareServiceStorage(const String& path, uint32_t uid, uint32_t gid) override
-    {
-        (void)path;
-        (void)uid;
-        (void)gid;
-
-        return ErrorEnum::eNone;
-    }
+    Error PrepareServiceStorage(const String& path, uint32_t uid, uint32_t gid) override;
 
     /**
      * Prepares Aos service state file.
@@ -74,14 +67,7 @@ public:
      * @param gid group ID.
      * @return Error.
      */
-    Error PrepareServiceState(const String& path, uint32_t uid, uint32_t gid) override
-    {
-        (void)path;
-        (void)uid;
-        (void)gid;
-
-        return ErrorEnum::eNone;
-    }
+    Error PrepareServiceState(const String& path, uint32_t uid, uint32_t gid) override;
 
     /**
      * Returns absolute path of FS item.
