@@ -55,26 +55,26 @@ void DevicesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<De
     }
 }
 
-FileSystemMount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+Mount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
-    FileSystemMount fsMount;
+    Mount mount;
 
     const auto destination = object.GetValue<std::string>("destination");
     const auto type        = object.GetValue<std::string>("type");
     const auto source      = object.GetValue<std::string>("source");
 
-    fsMount.mDestination = destination.c_str();
-    fsMount.mType        = type.c_str();
-    fsMount.mSource      = source.c_str();
+    mount.mDestination = destination.c_str();
+    mount.mType        = type.c_str();
+    mount.mSource      = source.c_str();
 
     const auto options = utils::GetArrayValue<std::string>(object, "options");
 
     for (const auto& option : options) {
-        auto err = fsMount.mOptions.PushBack(option.c_str());
+        auto err = mount.mOptions.PushBack(option.c_str());
         AOS_ERROR_CHECK_AND_THROW("parsed options count exceeds application limit", err);
     }
 
-    return fsMount;
+    return mount;
 }
 
 Host HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
@@ -97,7 +97,7 @@ ResourceInfo ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& obj
         AOS_ERROR_CHECK_AND_THROW("parsed groups count exceeds application limit", err);
     }
 
-    const auto mounts = utils::GetArrayValue<FileSystemMount>(object, "mounts",
+    const auto mounts = utils::GetArrayValue<Mount>(object, "mounts",
         [](const auto& value) { return FileSystemMountFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& mount : mounts) {
@@ -174,7 +174,7 @@ Poco::JSON::Array DevicesToJson(const Array<DeviceInfo>& devices)
     return array;
 }
 
-Poco::JSON::Array MountsToJson(const Array<FileSystemMount>& mounts)
+Poco::JSON::Array MountsToJson(const Array<Mount>& mounts)
 {
     Poco::JSON::Array array;
 
