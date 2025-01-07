@@ -426,7 +426,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
               << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
 
     // Convert permissions
-    aos::StaticArray<aos::iam::permhandler::FunctionalServicePermissions, aos::cMaxNumServices> aosPermissions;
+    aos::StaticArray<aos::FunctionServicePermissions, aos::cMaxNumServices> aosPermissions;
 
     for (const auto& [service, permissions] : request->permissions()) {
         if (err = aosPermissions.PushBack({}); !err.IsNone()) {
@@ -435,8 +435,8 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
             return utils::ConvertAosErrorToGrpcStatus(err);
         }
 
-        aos::iam::permhandler::FunctionalServicePermissions& servicePerm = aosPermissions.Back().mValue;
-        servicePerm.mName                                                = service.c_str();
+        aos::FunctionServicePermissions& servicePerm = aosPermissions.Back().mValue;
+        servicePerm.mName                            = service.c_str();
 
         for (const auto& [key, val] : permissions.permissions()) {
             if (err = servicePerm.mPermissions.PushBack({key.c_str(), val.c_str()}); !err.IsNone()) {
