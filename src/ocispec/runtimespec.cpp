@@ -735,7 +735,7 @@ aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrappe
     const auto deviceTree = object.GetValue<std::string>("deviceTree");
     const auto dtDevs     = utils::GetArrayValue<std::string>(object, "dtDevs");
     const auto irqs       = utils::GetArrayValue<uint32_t>(object, "irqs");
-    const auto iomens     = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems",
+    const auto iomems     = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems",
             [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     hwConfig.mDeviceTree = deviceTree.c_str();
@@ -752,7 +752,7 @@ aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrappe
         AOS_ERROR_CHECK_AND_THROW("irqs parsing error", err);
     }
 
-    for (const auto& iomem : iomens) {
+    for (const auto& iomem : iomems) {
         auto err = hwConfig.mIOMEMs.PushBack(iomem);
         AOS_ERROR_CHECK_AND_THROW("iomems parsing error", err);
     }
