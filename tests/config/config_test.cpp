@@ -141,7 +141,9 @@ TEST_F(ConfigTest, ParseConfig)
 
     ASSERT_EQ(error, aos::ErrorEnum::eNone);
 
-    EXPECT_STREQ(config.mCACert.c_str(), "CACert");
+    EXPECT_STREQ(config.mIAMClientConfig.mCACert.c_str(), "CACert");
+    EXPECT_STREQ(config.mIAMClientConfig.mIAMPublicServerURL.c_str(), "localhost:8090");
+
     EXPECT_STREQ(config.mCertStorage.c_str(), "sm");
     EXPECT_STREQ(config.mCMServerURL.c_str(), "aoscm:8093");
     EXPECT_STREQ(config.mDownloadDir.c_str(), "/var/aos/servicemanager/download");
@@ -159,7 +161,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_STREQ(config.mHosts[1].mIP.c_str(), "0.0.0.0");
 
     EXPECT_STREQ(config.mIAMProtectedServerURL.c_str(), "localhost:8089");
-    EXPECT_STREQ(config.mIAMPublicServerURL.c_str(), "localhost:8090");
 
     ASSERT_EQ(config.mJournalAlerts.mFilter.size(), 2);
     EXPECT_STREQ(config.mJournalAlerts.mFilter[0].c_str(), "test");

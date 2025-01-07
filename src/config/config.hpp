@@ -13,6 +13,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <aos/common/tools/error.hpp>
+#include <iamclient/publicservicehandler.hpp>
 #include <utils/time.hpp>
 
 namespace aos::sm::config {
@@ -67,10 +68,9 @@ struct MigrationConfig {
  * Config instance.
  */
 struct Config {
-    std::string                 mCACert;
+    common::iamclient::Config   mIAMClientConfig;
     std::string                 mCertStorage;
     std::string                 mCMServerURL;
-    std::string                 mIAMPublicServerURL;
     std::string                 mIAMProtectedServerURL;
     std::string                 mWorkingDir;
     std::string                 mStorageDir;

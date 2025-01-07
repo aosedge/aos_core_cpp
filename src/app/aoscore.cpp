@@ -46,12 +46,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize IAM client
 
-    auto iamConfig = std::make_unique<common::iamclient::Config>();
-
-    iamConfig->mCACert             = config->mCACert;
-    iamConfig->mIAMPublicServerURL = config->mIAMPublicServerURL;
-
-    err = mIAMClientPublic.Init(*iamConfig, mCertLoader, mCryptoProvider);
+    err = mIAMClientPublic.Init(config->mIAMClientConfig, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW("can't initialize public IAM client", err);
 
     auto nodeInfo = std::make_shared<NodeInfo>();

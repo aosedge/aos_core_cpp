@@ -114,6 +114,14 @@ MigrationConfig ParseMigrationConfig(
     };
 }
 
+common::iamclient::Config ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    return common::iamclient::Config {
+        object.GetValue<std::string>("iamPublicServerURL"),
+        object.GetValue<std::string>("caCert"),
+    };
+};
+
 std::filesystem::path JoinPath(const std::string& base, const std::string& entry)
 {
     auto path = std::filesystem::path(base);
@@ -144,10 +152,9 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                        result = parser.parse(file);
         common::utils::CaseInsensitiveObjectWrapper object(result);
 
-        config.mCACert             = object.GetValue<std::string>("caCert");
-        config.mCertStorage        = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
-        config.mCMServerURL        = object.GetValue<std::string>("cmServerURL");
-        config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
+        config.mIAMClientConfig = ParseIAMClientConfig(object);
+        config.mCertStorage     = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
+        config.mCMServerURL     = object.GetValue<std::string>("cmServerURL");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
         config.mWorkingDir            = object.GetValue<std::string>("workingDir");
 
