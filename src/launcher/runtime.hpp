@@ -23,6 +23,15 @@ public:
     Error CreateHostFSWhiteouts(const String& path, const Array<StaticString<cFilePathLen>>& hostBinds) override;
 
     /**
+     * Creates mount points.
+     *
+     * @param mountPointDir mount point directory.
+     * @param mounts mounts to create.
+     * @return Error.
+     */
+    virtual Error CreateMountPoints(const String& mountPointDir, const Array<Mount>& mounts) override;
+
+    /**
      * Prepares root FS for Aos service.
      *
      * @param rootfsPath path to service root FS.
