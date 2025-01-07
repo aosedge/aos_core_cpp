@@ -99,13 +99,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize service manager
 
-    auto serviceManagerConfig = std::make_shared<sm::servicemanager::Config>();
-
-    serviceManagerConfig->mServicesDir = config->mServicesDir.c_str();
-    serviceManagerConfig->mDownloadDir = config->mDownloadDir.c_str();
-    serviceManagerConfig->mTTL         = config->mServiceTTL.count();
-
-    err = mServiceManager.Init(*serviceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
+    err = mServiceManager.Init(config->mServiceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
         mDownloadSpaceAllocator, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize service manager", err);
 

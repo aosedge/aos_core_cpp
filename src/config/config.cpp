@@ -131,6 +131,23 @@ std::filesystem::path JoinPath(const std::string& base, const std::string& entry
     return path;
 }
 
+sm::servicemanager::Config ParseServiceManagerConfig(
+    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    const auto servicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services"));
+    const auto downloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads"));
+    const auto serviceTTL  = object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays);
+
+    const auto [ttl, err] = common::utils::ParseDuration(serviceTTL);
+    AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
+
+    return sm::servicemanager::Config {
+        servicesDir.c_str(),
+        downloadDir.c_str(),
+        ttl.count(),
+    };
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -152,20 +169,20 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                        result = parser.parse(file);
         common::utils::CaseInsensitiveObjectWrapper object(result);
 
-        config.mIAMClientConfig = ParseIAMClientConfig(object);
-        config.mCertStorage     = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
-        config.mCMServerURL     = object.GetValue<std::string>("cmServerURL");
+        config.mWorkingDir = object.GetValue<std::string>("workingDir");
+
+        config.mIAMClientConfig      = ParseIAMClientConfig(object);
+        config.mServiceManagerConfig = ParseServiceManagerConfig(config.mWorkingDir, object);
+
+        config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
+        config.mCMServerURL = object.GetValue<std::string>("cmServerURL");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
-        config.mWorkingDir            = object.GetValue<std::string>("workingDir");
 
         config.mStorageDir
             = object.GetOptionalValue<std::string>("storageDir").value_or(JoinPath(config.mWorkingDir, "storages"));
 
         config.mStateDir
             = object.GetOptionalValue<std::string>("stateDir").value_or(JoinPath(config.mWorkingDir, "states"));
-
-        config.mServicesDir
-            = object.GetOptionalValue<std::string>("servicesDir").value_or(JoinPath(config.mWorkingDir, "services"));
 
         config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
 
@@ -184,10 +201,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
         Error err = ErrorEnum::eNone;
-
-        Tie(config.mServiceTTL, err) = common::utils::ParseDuration(
-            object.GetOptionalValue<std::string>("serviceTTL").value_or(cDefaultServiceTTLDays));
-        AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
 
         Tie(config.mLayerTTL, err) = common::utils::ParseDuration(
             object.GetOptionalValue<std::string>("layerTTL").value_or(cDefaultLayerTTLDays));

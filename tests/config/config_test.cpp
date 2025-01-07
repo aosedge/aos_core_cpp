@@ -168,7 +168,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mJournalAlerts.mServiceAlertPriority, 7);
     EXPECT_EQ(config.mJournalAlerts.mSystemAlertPriority, 5);
 
-    EXPECT_EQ(config.mServiceTTL, std::chrono::hours(24 * 10)) << config.mServiceTTL.count();
+    EXPECT_EQ(config.mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
     EXPECT_EQ(config.mLayerTTL, std::chrono::hours(20)) << config.mLayerTTL.count();
 
     EXPECT_STREQ(config.mLayersDir.c_str(), "/var/aos/srvlib");
@@ -187,7 +187,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_STREQ(config.mNodeConfigFile.c_str(), "/var/aos/aos_node.cfg");
     EXPECT_EQ(config.mServiceHealthCheckTimeout, std::chrono::seconds(10)) << config.mServiceHealthCheckTimeout.count();
     EXPECT_EQ(config.mCMReconnectTimeout, std::chrono::minutes(1)) << config.mCMReconnectTimeout.count();
-    EXPECT_STREQ(config.mServicesDir.c_str(), "/var/aos/servicemanager/services");
+    EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "/var/aos/servicemanager/services");
     EXPECT_EQ(config.mServicesPartLimit, 10);
     EXPECT_STREQ(config.mStateDir.c_str(), "/var/aos/state");
     EXPECT_STREQ(config.mStorageDir.c_str(), "/var/aos/storage");
@@ -207,8 +207,8 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     EXPECT_EQ(config.mJournalAlerts.mServiceAlertPriority, cDefaultServiceAlertPriority);
     EXPECT_EQ(config.mJournalAlerts.mSystemAlertPriority, cDefaultSystemAlertPriority);
 
-    EXPECT_EQ(config.mServiceTTL, std::chrono::hours(24 * 30)) << config.mServiceTTL.count();
-    EXPECT_EQ(config.mLayerTTL, std::chrono::hours(24 * 30)) << config.mServiceTTL.count();
+    EXPECT_EQ(config.mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
+    EXPECT_EQ(config.mLayerTTL, std::chrono::hours(24 * 30)) << config.mLayerTTL.count();
     EXPECT_EQ(config.mServiceHealthCheckTimeout, std::chrono::seconds(35)) << config.mServiceHealthCheckTimeout.count();
     EXPECT_EQ(config.mCMReconnectTimeout, std::chrono::seconds(10)) << config.mCMReconnectTimeout.count();
 
@@ -221,7 +221,8 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     EXPECT_EQ(config.mStorageDir, "test/storages");
     EXPECT_EQ(config.mLayersDir, "test/layers");
-    EXPECT_EQ(config.mServicesDir, "test/services");
+    EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "test/services");
+    EXPECT_STREQ(config.mServiceManagerConfig.mDownloadDir.CStr(), "test/downloads");
     EXPECT_EQ(config.mDownloadDir, "test/downloads");
     EXPECT_EQ(config.mExtractDir, "test/extracts");
     EXPECT_EQ(config.mNodeConfigFile, "test/aos_node.cfg");

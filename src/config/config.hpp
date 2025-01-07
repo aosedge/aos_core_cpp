@@ -13,6 +13,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <aos/common/tools/error.hpp>
+#include <aos/sm/servicemanager.hpp>
 #include <iamclient/publicservicehandler.hpp>
 #include <utils/time.hpp>
 
@@ -69,20 +70,19 @@ struct MigrationConfig {
  */
 struct Config {
     common::iamclient::Config   mIAMClientConfig;
+    sm::servicemanager::Config  mServiceManagerConfig;
     std::string                 mCertStorage;
     std::string                 mCMServerURL;
     std::string                 mIAMProtectedServerURL;
     std::string                 mWorkingDir;
     std::string                 mStorageDir;
     std::string                 mStateDir;
-    std::string                 mServicesDir;
     uint32_t                    mServicesPartLimit;
     std::string                 mLayersDir;
     uint32_t                    mLayersPartLimit;
     std::string                 mDownloadDir;
     std::string                 mExtractDir;
     std::string                 mNodeConfigFile;
-    common::utils::Duration     mServiceTTL;
     common::utils::Duration     mLayerTTL;
     common::utils::Duration     mServiceHealthCheckTimeout;
     common::utils::Duration     mCMReconnectTimeout;
