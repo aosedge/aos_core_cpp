@@ -32,37 +32,22 @@ public:
     virtual Error CreateMountPoints(const String& mountPointDir, const Array<Mount>& mounts) override;
 
     /**
-     * Prepares root FS for Aos service.
+     * Mounts root FS for Aos service.
      *
      * @param rootfsPath path to service root FS.
-     * @param mountPointDir mount point directory.
-     * @param mounts mounts to prepare.
-     * @param layers layers to prepare.
+     * @param layers layers to mount.
      * @return Error.
      */
-    Error PrepareServiceRootFS(const String& rootfsPath, const String& mountPointDir, const Array<Mount>& mounts,
-        const Array<StaticString<cFilePathLen>>& layers) override
-    {
-        (void)rootfsPath;
-        (void)mountPointDir;
-        (void)mounts;
-        (void)layers;
-
-        return ErrorEnum::eNone;
-    }
+    virtual Error MountServiceRootFS(
+        const String& rootfsPath, const Array<StaticString<cFilePathLen>>& layers) override;
 
     /**
-     * Releases Aos service root FS.
+     * Umounts Aos service root FS.
      *
-     * @param runtimeDir service runtime directory.
+     * @param rootfsPath path to service root FS.
      * @return Error.
      */
-    Error ReleaseServiceRootFS(const String& runtimeDir) override
-    {
-        (void)runtimeDir;
-
-        return ErrorEnum::eNone;
-    }
+    virtual Error UmountServiceRootFS(const String& rootfsPath) override;
 
     /**
      * Prepares Aos service storage directory.
