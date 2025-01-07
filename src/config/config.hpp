@@ -13,6 +13,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <aos/common/tools/error.hpp>
+#include <aos/sm/launcher/config.hpp>
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
 #include <iamclient/publicservicehandler.hpp>
@@ -51,14 +52,6 @@ struct JournalAlertsConfig {
 };
 
 /*
- * Host info configuration.
- */
-struct HostInfoConfig {
-    std::string mIP;
-    std::string mHostname;
-};
-
-/*
  * Migration configuration.
  */
 struct MigrationConfig {
@@ -70,27 +63,24 @@ struct MigrationConfig {
  * Config instance.
  */
 struct Config {
-    common::iamclient::Config   mIAMClientConfig;
-    sm::layermanager::Config    mLayerManagerConfig;
-    sm::servicemanager::Config  mServiceManagerConfig;
-    std::string                 mCertStorage;
-    std::string                 mCMServerURL;
-    std::string                 mIAMProtectedServerURL;
-    std::string                 mWorkingDir;
-    std::string                 mStorageDir;
-    std::string                 mStateDir;
-    uint32_t                    mServicesPartLimit;
-    uint32_t                    mLayersPartLimit;
-    std::string                 mExtractDir;
-    std::string                 mNodeConfigFile;
-    common::utils::Duration     mServiceHealthCheckTimeout;
-    common::utils::Duration     mCMReconnectTimeout;
-    MonitoringConfig            mMonitoring;
-    LoggingConfig               mLogging;
-    JournalAlertsConfig         mJournalAlerts;
-    std::vector<std::string>    mHostBinds;
-    std::vector<HostInfoConfig> mHosts;
-    MigrationConfig             mMigration;
+    common::iamclient::Config  mIAMClientConfig;
+    sm::layermanager::Config   mLayerManagerConfig;
+    sm::servicemanager::Config mServiceManagerConfig;
+    sm::launcher::Config       mLauncherConfig;
+    std::string                mCertStorage;
+    std::string                mCMServerURL;
+    std::string                mIAMProtectedServerURL;
+    std::string                mWorkingDir;
+    uint32_t                   mServicesPartLimit;
+    uint32_t                   mLayersPartLimit;
+    std::string                mExtractDir;
+    std::string                mNodeConfigFile;
+    common::utils::Duration    mServiceHealthCheckTimeout;
+    common::utils::Duration    mCMReconnectTimeout;
+    MonitoringConfig           mMonitoring;
+    LoggingConfig              mLogging;
+    JournalAlertsConfig        mJournalAlerts;
+    MigrationConfig            mMigration;
 };
 
 /*******************************************************************************

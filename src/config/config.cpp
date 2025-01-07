@@ -92,16 +92,15 @@ JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseInsensitiv
     return config;
 }
 
-std::vector<HostInfoConfig> ParseHostsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    return common::utils::GetArrayValue<HostInfoConfig>(object, "hosts", [](const Poco::Dynamic::Var& value) {
-        common::utils::CaseInsensitiveObjectWrapper item(value);
+    const auto ip       = object.GetValue<std::string>("ip");
+    const auto hostname = object.GetValue<std::string>("hostname");
 
-        return HostInfoConfig {
-            item.GetValue<std::string>("ip"),
-            item.GetValue<std::string>("hostname"),
-        };
-    });
+    return Host {
+        ip.c_str(),
+        hostname.c_str(),
+    };
 }
 
 MigrationConfig ParseMigrationConfig(
@@ -165,6 +164,34 @@ sm::layermanager::Config ParseLayerManagerConfig(
     };
 }
 
+sm::launcher::Config ParseLauncherConfig(
+    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    const auto storageDir = object.GetValue<std::string>("storageDir", JoinPath(workingDir, "storages"));
+    const auto stateDir   = object.GetValue<std::string>("stateDir", JoinPath(workingDir, "states"));
+
+    sm::launcher::Config config {};
+
+    config.mStorageDir = storageDir.c_str();
+    config.mStateDir   = stateDir.c_str();
+    config.mWorkDir    = workingDir.c_str();
+
+    const auto hostBinds = common::utils::GetArrayValue<std::string>(object, "hostBinds");
+    for (const auto& hostBind : hostBinds) {
+        auto err = config.mHostBinds.EmplaceBack(hostBind.c_str());
+        AOS_ERROR_CHECK_AND_THROW("error parsing hostBinds tag", err);
+    }
+
+    const auto hosts = common::utils::GetArrayValue<Host>(object, "hosts",
+        [](const auto& val) { return ParseHostConfig(common::utils::CaseInsensitiveObjectWrapper(val)); });
+    for (const auto& host : hosts) {
+        auto err = config.mHosts.EmplaceBack(host);
+        AOS_ERROR_CHECK_AND_THROW("error parsing hosts tag", err);
+    }
+
+    return config;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -191,16 +218,11 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mIAMClientConfig      = ParseIAMClientConfig(object);
         config.mLayerManagerConfig   = ParseLayerManagerConfig(config.mWorkingDir, object);
         config.mServiceManagerConfig = ParseServiceManagerConfig(config.mWorkingDir, object);
+        config.mLauncherConfig       = ParseLauncherConfig(config.mWorkingDir, object);
 
         config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
         config.mCMServerURL = object.GetValue<std::string>("cmServerURL");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
-
-        config.mStorageDir
-            = object.GetOptionalValue<std::string>("storageDir").value_or(JoinPath(config.mWorkingDir, "storages"));
-
-        config.mStateDir
-            = object.GetOptionalValue<std::string>("stateDir").value_or(JoinPath(config.mWorkingDir, "states"));
 
         config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
 
@@ -231,14 +253,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         if (object.Has("journalAlerts")) {
             config.mJournalAlerts = ParseJournalAlertsConfig(object.GetObject("journalAlerts"));
-        }
-
-        if (object.Has("hostBinds")) {
-            config.mHostBinds = common::utils::GetArrayValue<std::string>(object, "hostBinds");
-        }
-
-        if (object.Has("hosts")) {
-            config.mHosts = ParseHostsConfig(object);
         }
 
         if (object.Has("migration")) {

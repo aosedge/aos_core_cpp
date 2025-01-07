@@ -105,7 +105,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize layer manager
 
-    err = mLayerManager.Init(mConfig->mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
+    err = mLayerManager.Init(config->mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
         mDownloader, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
 
@@ -116,23 +116,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize launcher
 
-    auto launcherConfig = std::make_shared<sm::launcher::Config>();
-
-    launcherConfig->mWorkDir    = config->mWorkingDir.c_str();
-    launcherConfig->mStorageDir = config->mStorageDir.c_str();
-    launcherConfig->mStateDir   = config->mStateDir.c_str();
-
-    for (const auto& bind : config->mHostBinds) {
-        err = launcherConfig->mHostBinds.EmplaceBack(bind.c_str());
-        AOS_ERROR_CHECK_AND_THROW("can't add host bind", err);
-    }
-
-    for (const auto& host : config->mHosts) {
-        err = launcherConfig->mHosts.EmplaceBack(Host {host.mIP.c_str(), host.mHostname.c_str()});
-        AOS_ERROR_CHECK_AND_THROW("can't add host", err);
-    }
-
-    err = mLauncher.Init(*launcherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
+    err = mLauncher.Init(config->mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
         mNetworkManager, mIAMClientPermissions, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient,
         mDatabase);
     AOS_ERROR_CHECK_AND_THROW("can't initialize launcher", err);

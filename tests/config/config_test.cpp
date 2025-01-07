@@ -148,16 +148,20 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_STREQ(config.mCMServerURL.c_str(), "aoscm:8093");
     EXPECT_STREQ(config.mExtractDir.c_str(), "/var/aos/servicemanager/extract");
 
-    ASSERT_EQ(config.mHostBinds.size(), 3);
-    EXPECT_STREQ(config.mHostBinds[0].c_str(), "dir0");
-    EXPECT_STREQ(config.mHostBinds[1].c_str(), "dir1");
-    EXPECT_STREQ(config.mHostBinds[2].c_str(), "dir2");
+    EXPECT_STREQ(config.mLauncherConfig.mWorkDir.CStr(), "workingDir");
+    EXPECT_STREQ(config.mLauncherConfig.mStorageDir.CStr(), "/var/aos/storage");
+    EXPECT_STREQ(config.mLauncherConfig.mStateDir.CStr(), "/var/aos/state");
 
-    ASSERT_EQ(config.mHosts.size(), 2);
-    EXPECT_STREQ(config.mHosts[0].mHostname.c_str(), "wwwivi");
-    EXPECT_STREQ(config.mHosts[0].mIP.c_str(), "127.0.0.1");
-    EXPECT_STREQ(config.mHosts[1].mHostname.c_str(), "wwwaosum");
-    EXPECT_STREQ(config.mHosts[1].mIP.c_str(), "0.0.0.0");
+    ASSERT_EQ(config.mLauncherConfig.mHostBinds.Size(), 3);
+    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[0].CStr(), "dir0");
+    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[1].CStr(), "dir1");
+    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[2].CStr(), "dir2");
+
+    ASSERT_EQ(config.mLauncherConfig.mHosts.Size(), 2);
+    EXPECT_STREQ(config.mLauncherConfig.mHosts[0].mHostname.CStr(), "wwwivi");
+    EXPECT_STREQ(config.mLauncherConfig.mHosts[0].mIP.CStr(), "127.0.0.1");
+    EXPECT_STREQ(config.mLauncherConfig.mHosts[1].mHostname.CStr(), "wwwaosum");
+    EXPECT_STREQ(config.mLauncherConfig.mHosts[1].mIP.CStr(), "0.0.0.0");
 
     EXPECT_STREQ(config.mIAMProtectedServerURL.c_str(), "localhost:8089");
 
@@ -191,8 +195,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mServiceHealthCheckTimeout, std::chrono::seconds(10)) << config.mServiceHealthCheckTimeout.count();
     EXPECT_EQ(config.mCMReconnectTimeout, std::chrono::minutes(1)) << config.mCMReconnectTimeout.count();
     EXPECT_EQ(config.mServicesPartLimit, 10);
-    EXPECT_STREQ(config.mStateDir.c_str(), "/var/aos/state");
-    EXPECT_STREQ(config.mStorageDir.c_str(), "/var/aos/storage");
     EXPECT_STREQ(config.mWorkingDir.c_str(), "workingDir");
 }
 
@@ -221,7 +223,9 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     ASSERT_EQ(config.mWorkingDir, "test");
 
-    EXPECT_EQ(config.mStorageDir, "test/storages");
+    EXPECT_STREQ(config.mLauncherConfig.mStorageDir.CStr(), "test/storages");
+    EXPECT_STREQ(config.mLauncherConfig.mStateDir.CStr(), "test/states");
+
     EXPECT_EQ(config.mLayerManagerConfig.mLayersDir, "test/layers");
     EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "test/services");
     EXPECT_STREQ(config.mServiceManagerConfig.mDownloadDir.CStr(), "test/downloads");
