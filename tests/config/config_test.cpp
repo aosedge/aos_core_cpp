@@ -151,8 +151,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mSMClientConfig.mCMReconnectTimeout, std::chrono::minutes(1))
         << config.mSMClientConfig.mCMReconnectTimeout.count();
 
-    EXPECT_STREQ(config.mExtractDir.c_str(), "/var/aos/servicemanager/extract");
-
     EXPECT_STREQ(config.mLauncherConfig.mWorkDir.CStr(), "workingDir");
     EXPECT_STREQ(config.mLauncherConfig.mStorageDir.CStr(), "/var/aos/storage");
     EXPECT_STREQ(config.mLauncherConfig.mStateDir.CStr(), "/var/aos/state");
@@ -197,7 +195,6 @@ TEST_F(ConfigTest, ParseConfig)
         << config.mMonitoring.mPollPeriod.count();
 
     EXPECT_STREQ(config.mNodeConfigFile.c_str(), "/var/aos/aos_node.cfg");
-    EXPECT_EQ(config.mServiceHealthCheckTimeout, std::chrono::seconds(10)) << config.mServiceHealthCheckTimeout.count();
     EXPECT_EQ(config.mServicesPartLimit, 10);
     EXPECT_STREQ(config.mWorkingDir.c_str(), "workingDir");
 }
@@ -217,7 +214,6 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     EXPECT_EQ(config.mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mLayerManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config.mServiceHealthCheckTimeout, std::chrono::seconds(35)) << config.mServiceHealthCheckTimeout.count();
     EXPECT_EQ(config.mSMClientConfig.mCMReconnectTimeout, std::chrono::seconds(10))
         << config.mSMClientConfig.mCMReconnectTimeout.count();
 
@@ -234,7 +230,6 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     EXPECT_EQ(config.mLayerManagerConfig.mLayersDir, "test/layers");
     EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "test/services");
     EXPECT_STREQ(config.mServiceManagerConfig.mDownloadDir.CStr(), "test/downloads");
-    EXPECT_EQ(config.mExtractDir, "test/extracts");
     EXPECT_EQ(config.mNodeConfigFile, "test/aos_node.cfg");
 }
 

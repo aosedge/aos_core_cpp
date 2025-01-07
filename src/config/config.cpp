@@ -245,17 +245,8 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         config.mLayersPartLimit = object.GetValue<uint32_t>("layersPartLimit");
 
-        config.mExtractDir
-            = object.GetOptionalValue<std::string>("extractDir").value_or(JoinPath(config.mWorkingDir, "extracts"));
-
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
-
-        Error err = ErrorEnum::eNone;
-
-        Tie(config.mServiceHealthCheckTimeout, err) = common::utils::ParseDuration(
-            object.GetOptionalValue<std::string>("serviceHealthCheckTimeout").value_or(cDefaultHealthCheckTimeout));
-        AOS_ERROR_CHECK_AND_THROW("error parsing serviceHealthCheckTimeout tag", err);
 
         if (object.Has("monitoring")) {
             config.mMonitoring = ParseMonitoringConfig(object.GetObject("monitoring"));

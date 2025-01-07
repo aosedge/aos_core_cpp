@@ -75,9 +75,7 @@ struct Config {
     std::string                mWorkingDir;
     uint32_t                   mServicesPartLimit;
     uint32_t                   mLayersPartLimit;
-    std::string                mExtractDir;
     std::string                mNodeConfigFile;
-    common::utils::Duration    mServiceHealthCheckTimeout;
     MonitoringConfig           mMonitoring;
     LoggingConfig              mLogging;
     JournalAlertsConfig        mJournalAlerts;
