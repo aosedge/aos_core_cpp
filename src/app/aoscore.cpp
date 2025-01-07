@@ -105,14 +105,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize layer manager
 
-    auto layerManagerConfig = std::make_shared<sm::layermanager::Config>();
-
-    layerManagerConfig->mLayersDir   = config->mLayersDir.c_str();
-    layerManagerConfig->mDownloadDir = config->mDownloadDir.c_str();
-    layerManagerConfig->mTTL         = config->mLayerTTL.count();
-
-    err = mLayerManager.Init(
-        *layerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase, mDownloader, mImageHandler);
+    err = mLayerManager.Init(mConfig->mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
+        mDownloader, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
 
     // Initialize runner

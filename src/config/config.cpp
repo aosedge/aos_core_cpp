@@ -148,6 +148,23 @@ sm::servicemanager::Config ParseServiceManagerConfig(
     };
 }
 
+sm::layermanager::Config ParseLayerManagerConfig(
+    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    const auto layersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers"));
+    const auto downloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads"));
+    const auto ttlStr      = object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays);
+
+    const auto [ttl, err] = common::utils::ParseDuration(ttlStr);
+    AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
+
+    return sm::layermanager::Config {
+        layersDir.c_str(),
+        downloadDir.c_str(),
+        ttl.count(),
+    };
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -172,6 +189,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
         config.mIAMClientConfig      = ParseIAMClientConfig(object);
+        config.mLayerManagerConfig   = ParseLayerManagerConfig(config.mWorkingDir, object);
         config.mServiceManagerConfig = ParseServiceManagerConfig(config.mWorkingDir, object);
 
         config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
@@ -186,13 +204,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
 
-        config.mLayersDir
-            = object.GetOptionalValue<std::string>("layersDir").value_or(JoinPath(config.mWorkingDir, "layers"));
-
         config.mLayersPartLimit = object.GetValue<uint32_t>("layersPartLimit");
-
-        config.mDownloadDir
-            = object.GetOptionalValue<std::string>("downloadDir").value_or(JoinPath(config.mWorkingDir, "downloads"));
 
         config.mExtractDir
             = object.GetOptionalValue<std::string>("extractDir").value_or(JoinPath(config.mWorkingDir, "extracts"));
@@ -201,10 +213,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
         Error err = ErrorEnum::eNone;
-
-        Tie(config.mLayerTTL, err) = common::utils::ParseDuration(
-            object.GetOptionalValue<std::string>("layerTTL").value_or(cDefaultLayerTTLDays));
-        AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
 
         Tie(config.mServiceHealthCheckTimeout, err) = common::utils::ParseDuration(
             object.GetOptionalValue<std::string>("serviceHealthCheckTimeout").value_or(cDefaultHealthCheckTimeout));
