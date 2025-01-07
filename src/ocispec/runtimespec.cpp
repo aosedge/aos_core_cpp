@@ -219,9 +219,9 @@ Poco::JSON::Object RootToJSON(const aos::oci::Root& root)
     return object;
 }
 
-aos::oci::Mount MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+Mount MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
-    aos::oci::Mount mount;
+    Mount mount;
 
     const auto destination = object.GetValue<std::string>("destination");
     const auto type        = object.GetValue<std::string>("type");
@@ -239,7 +239,7 @@ aos::oci::Mount MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
     return mount;
 }
 
-Poco::JSON::Object MountToJSON(const aos::oci::Mount& mount)
+Poco::JSON::Object MountToJSON(const Mount& mount)
 {
     Poco::JSON::Object object;
 
@@ -736,7 +736,7 @@ aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrappe
     const auto dtDevs     = utils::GetArrayValue<std::string>(object, "dtDevs");
     const auto irqs       = utils::GetArrayValue<uint32_t>(object, "irqs");
     const auto iomens     = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems",
-        [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+            [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     hwConfig.mDeviceTree = deviceTree.c_str();
     hwConfig.mVCPUs      = object.GetValue<uint32_t>("vCPUs");
@@ -840,7 +840,7 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         }
 
         if (wrapper.Has("mounts")) {
-            auto mounts = utils::GetArrayValue<aos::oci::Mount>(wrapper, "mounts",
+            auto mounts = utils::GetArrayValue<Mount>(wrapper, "mounts",
                 [](const auto& value) { return MountFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
             for (const auto& mount : mounts) {
