@@ -23,7 +23,7 @@ namespace aos::sm::smclient {
  * Public
  **********************************************************************************************************************/
 
-Error SMClient::Init(const config::Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
+Error SMClient::Init(const Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
     iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
     sm::logprovider::LogProviderItf& logProvider, monitoring::ResourceMonitorItf& resourceMonitor,

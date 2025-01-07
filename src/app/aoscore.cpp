@@ -121,8 +121,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize SM client
 
-    err = mSMClient.Init(mConfig, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager, mLogProvider,
-        mResourceMonitor, mLauncher);
+    err = mSMClient.Init(mConfig.mSMClientConfig, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager,
+        mLogProvider, mResourceMonitor, mLauncher);
     AOS_ERROR_CHECK_AND_THROW("can't initialize SM client", err);
 }
 

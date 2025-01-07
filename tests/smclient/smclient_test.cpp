@@ -361,9 +361,9 @@ class SMClientTest : public Test {
 protected:
     void SetUp() override { test::InitLog(); }
 
-    static aos::sm::config::Config GetConfig()
+    static sm::smclient::Config GetConfig()
     {
-        sm::config::Config config;
+        sm::smclient::Config config;
 
         config.mCMServerURL        = "localhost:5555";
         config.mCertStorage        = "sm";
@@ -373,7 +373,7 @@ protected:
     }
 
     std::unique_ptr<sm::smclient::SMClient> CreateClient(
-        const sm::config::Config& config = GetConfig(), bool secureConnection = false)
+        const sm::smclient::Config& config = GetConfig(), bool secureConnection = false)
     {
         auto client = std::make_unique<sm::smclient::SMClient>();
 
@@ -392,7 +392,7 @@ protected:
     std::unique_ptr<TestSMService> CreateServer(const std::string& url) { return std::make_unique<TestSMService>(url); }
 
     std::pair<std::unique_ptr<TestSMService>, std::unique_ptr<sm::smclient::SMClient>> InitTest(
-        const sm::config::Config& config = GetConfig(), bool provisionMode = true)
+        const sm::smclient::Config& config = GetConfig(), bool provisionMode = true)
     {
         auto server = CreateServer(config.mCMServerURL);
         auto client = CreateClient(config);

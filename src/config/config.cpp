@@ -192,6 +192,23 @@ sm::launcher::Config ParseLauncherConfig(
     return config;
 }
 
+smclient::Config ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    smclient::Config config;
+
+    config.mCertStorage = object.GetValue<std::string>("certStorage");
+    config.mCMServerURL = object.GetValue<std::string>("cmServerURL");
+
+    Error err = ErrorEnum::eNone;
+
+    const auto reconnectTimeout = object.GetValue<std::string>("cmReconnectTimeout", cDefaultCMReconnectTimeout);
+
+    Tie(config.mCMReconnectTimeout, err) = common::utils::ParseDuration(reconnectTimeout);
+    AOS_ERROR_CHECK_AND_THROW("error parsing cmReconnectTimeout tag", err);
+
+    return config;
+};
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -219,9 +236,9 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mLayerManagerConfig   = ParseLayerManagerConfig(config.mWorkingDir, object);
         config.mServiceManagerConfig = ParseServiceManagerConfig(config.mWorkingDir, object);
         config.mLauncherConfig       = ParseLauncherConfig(config.mWorkingDir, object);
+        config.mSMClientConfig       = ParseSMClientConfig(object);
 
         config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
-        config.mCMServerURL = object.GetValue<std::string>("cmServerURL");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
 
         config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
@@ -239,9 +256,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         Tie(config.mServiceHealthCheckTimeout, err) = common::utils::ParseDuration(
             object.GetOptionalValue<std::string>("serviceHealthCheckTimeout").value_or(cDefaultHealthCheckTimeout));
         AOS_ERROR_CHECK_AND_THROW("error parsing serviceHealthCheckTimeout tag", err);
-
-        Tie(config.mCMReconnectTimeout, err) = common::utils::ParseDuration(
-            object.GetOptionalValue<std::string>("cmReconnectTimeout").value_or(cDefaultCMReconnectTimeout));
 
         if (object.Has("monitoring")) {
             config.mMonitoring = ParseMonitoringConfig(object.GetObject("monitoring"));

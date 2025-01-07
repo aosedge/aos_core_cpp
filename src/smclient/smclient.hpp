@@ -32,7 +32,7 @@
 
 #include <iamclient/publicservicehandler.hpp>
 
-#include "config/config.hpp"
+#include "config.hpp"
 
 namespace smproto = servicemanager::v4;
 
@@ -65,7 +65,7 @@ public:
      * @param secureConnection flag indicating whether connection is secured.
      * @returns Error.
      */
-    Error Init(const config::Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
+    Error Init(const Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
         iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
         sm::logprovider::LogProviderItf& logProvider, aos::monitoring::ResourceMonitorItf& resourceMonitor,
@@ -177,7 +177,7 @@ private:
     bool ProcessGetAverageMonitoring();
     bool ProcessConnectionStatus(const smproto::ConnectionStatus& request);
 
-    config::Config                              mConfig           = {};
+    Config                                      mConfig           = {};
     common::iamclient::TLSCredentialsItf*       mTLSCredentials   = nullptr;
     iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     sm::resourcemanager::ResourceManagerItf*    mResourceManager  = nullptr;

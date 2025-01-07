@@ -19,6 +19,8 @@
 #include <iamclient/publicservicehandler.hpp>
 #include <utils/time.hpp>
 
+#include "smclient/config.hpp"
+
 namespace aos::sm::config {
 
 /***********************************************************************************************************************
@@ -67,8 +69,8 @@ struct Config {
     sm::layermanager::Config   mLayerManagerConfig;
     sm::servicemanager::Config mServiceManagerConfig;
     sm::launcher::Config       mLauncherConfig;
+    smclient::Config           mSMClientConfig;
     std::string                mCertStorage;
-    std::string                mCMServerURL;
     std::string                mIAMProtectedServerURL;
     std::string                mWorkingDir;
     uint32_t                   mServicesPartLimit;
@@ -76,7 +78,6 @@ struct Config {
     std::string                mExtractDir;
     std::string                mNodeConfigFile;
     common::utils::Duration    mServiceHealthCheckTimeout;
-    common::utils::Duration    mCMReconnectTimeout;
     MonitoringConfig           mMonitoring;
     LoggingConfig              mLogging;
     JournalAlertsConfig        mJournalAlerts;
