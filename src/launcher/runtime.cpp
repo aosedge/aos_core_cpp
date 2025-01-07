@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <grp.h>
 #include <iostream>
 #include <string>
 #include <sys/mount.h>
@@ -299,6 +300,18 @@ RetWithError<StaticString<cFilePathLen>> Runtime::GetAbsPath(const String& path)
         return {fs::absolute(path.CStr()).c_str(), ErrorEnum::eNone};
     } catch (const std::exception& e) {
         return {"", Error(ErrorEnum::eRuntime, e.what())};
+    }
+}
+
+RetWithError<uint32_t> Runtime::GetGIDByName(const String& groupName)
+{
+    try {
+        auto group = getgrnam(groupName.CStr());
+
+        return {group->gr_gid, ErrorEnum::eNone};
+
+    } catch (const std::exception& e) {
+        return {0, Error(ErrorEnum::eRuntime, e.what())};
     }
 }
 

@@ -83,12 +83,7 @@ public:
      * @param groupName group name.
      * @return RetWithError<uint32_t>.
      */
-    RetWithError<uint32_t> GetGIDByName(const String& groupName) override
-    {
-        (void)groupName;
-
-        return {0, ErrorEnum::eNone};
-    }
+    RetWithError<uint32_t> GetGIDByName(const String& groupName) override;
 
     /**
      * Populates host devices.
