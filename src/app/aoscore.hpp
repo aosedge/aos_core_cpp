@@ -74,6 +74,7 @@ public:
     void SetLogLevel(aos::LogLevel level);
 
 private:
+    config::Config                                                       mConfig = {};
     aos::crypto::CertLoader                                              mCertLoader;
     aos::crypto::MbedTLSCryptoProvider                                   mCryptoProvider;
     aos::monitoring::ResourceMonitor                                     mResourceMonitor;

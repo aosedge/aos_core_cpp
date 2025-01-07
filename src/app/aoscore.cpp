@@ -29,9 +29,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize Aos modules
 
-    auto config = std::make_shared<config::Config>();
-
-    Tie(*config, err) = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile);
+    Tie(mConfig, err) = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", err);
 
     // Initialize crypto provider
@@ -46,7 +44,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize IAM client
 
-    err = mIAMClientPublic.Init(config->mIAMClientConfig, mCertLoader, mCryptoProvider);
+    err = mIAMClientPublic.Init(mConfig.mIAMClientConfig, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW("can't initialize public IAM client", err);
 
     auto nodeInfo = std::make_shared<NodeInfo>();
@@ -54,7 +52,7 @@ void AosCore::Init(const std::string& configFile)
     err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
     AOS_ERROR_CHECK_AND_THROW("can't get node info", err);
 
-    err = mIAMClientPermissions.Init(config->mIAMProtectedServerURL, config->mCertStorage, mIAMClientPublic);
+    err = mIAMClientPermissions.Init(mConfig.mIAMProtectedServerURL, mConfig.mCertStorage, mIAMClientPublic);
     AOS_ERROR_CHECK_AND_THROW("can't initialize permissions IAM client", err);
 
     // Initialize host device manager
@@ -65,12 +63,12 @@ void AosCore::Init(const std::string& configFile)
     // Initialize resource manager
 
     err = mResourceManager.Init(
-        mJSONProvider, mHostDeviceManager, nodeInfo->mNodeType, config->mNodeConfigFile.c_str());
+        mJSONProvider, mHostDeviceManager, nodeInfo->mNodeType, mConfig.mNodeConfigFile.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize resource manager", err);
 
     // Initialize database
 
-    err = mDatabase.Init(config->mWorkingDir, config->mMigration);
+    err = mDatabase.Init(mConfig.mWorkingDir, mConfig.mMigration);
     AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
 
     // Initialize traffic monitor
@@ -84,7 +82,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW("can't initialize CNI", err);
 
     err = mNetworkManager.Init(
-        mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, config->mWorkingDir.c_str());
+        mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
 
     // Initialize resource monitor
@@ -99,13 +97,13 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize service manager
 
-    err = mServiceManager.Init(config->mServiceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
+    err = mServiceManager.Init(mConfig.mServiceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
         mDownloadSpaceAllocator, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize service manager", err);
 
     // Initialize layer manager
 
-    err = mLayerManager.Init(config->mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
+    err = mLayerManager.Init(mConfig.mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
         mDownloader, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
 
@@ -116,14 +114,14 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize launcher
 
-    err = mLauncher.Init(config->mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
+    err = mLauncher.Init(mConfig.mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
         mNetworkManager, mIAMClientPermissions, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient,
         mDatabase);
     AOS_ERROR_CHECK_AND_THROW("can't initialize launcher", err);
 
     // Initialize SM client
 
-    err = mSMClient.Init(*config, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager, mLogProvider,
+    err = mSMClient.Init(mConfig, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager, mLogProvider,
         mResourceMonitor, mLauncher);
     AOS_ERROR_CHECK_AND_THROW("can't initialize SM client", err);
 }
