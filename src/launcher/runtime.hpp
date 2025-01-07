@@ -75,10 +75,7 @@ public:
      * @param path path to convert.
      * @return RetWithError<StaticString<cFilePathLen>>.
      */
-    RetWithError<StaticString<cFilePathLen>> GetAbsPath(const String& path) override
-    {
-        return {path, ErrorEnum::eNone};
-    }
+    RetWithError<StaticString<cFilePathLen>> GetAbsPath(const String& path) override;
 
     /**
      * Returns GID by group name.

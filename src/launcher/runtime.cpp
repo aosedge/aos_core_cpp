@@ -293,4 +293,13 @@ Error Runtime::PrepareServiceState(const String& path, uint32_t uid, uint32_t gi
     return ErrorEnum::eNone;
 }
 
+RetWithError<StaticString<cFilePathLen>> Runtime::GetAbsPath(const String& path)
+{
+    try {
+        return {fs::absolute(path.CStr()).c_str(), ErrorEnum::eNone};
+    } catch (const std::exception& e) {
+        return {"", Error(ErrorEnum::eRuntime, e.what())};
+    }
+}
+
 } // namespace aos::sm::launcher
