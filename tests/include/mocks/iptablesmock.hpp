@@ -9,7 +9,6 @@
 
 #include <gmock/gmock.h>
 
-#include <mocks/networkmanagermock.hpp>
 #include <network/iptables.hpp>
 
 namespace aos::common::network {

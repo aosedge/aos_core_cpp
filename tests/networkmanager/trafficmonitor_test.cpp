@@ -13,7 +13,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "mocks/networkmanagermock.hpp"
+#include "mocks/iptablesmock.hpp"
 #include "mocks/storage.hpp"
 
 #include "networkmanager/trafficmonitor.hpp"
