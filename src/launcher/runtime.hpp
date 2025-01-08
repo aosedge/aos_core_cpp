@@ -89,16 +89,10 @@ public:
      * Populates host devices.
      *
      * @param devicePath device path.
-     * @param devices OCI devices.
+     * @param[out] devices OCI devices.
      * @return Error.
      */
-    Error PopulateHostDevices(const String& devicePath, const Array<oci::LinuxDevice>& devices)
-    {
-        (void)devicePath;
-        (void)devices;
-
-        return ErrorEnum::eNone;
-    }
+    virtual Error PopulateHostDevices(const String& devicePath, Array<oci::LinuxDevice>& devices) override;
 };
 
 } // namespace aos::sm::launcher

@@ -151,6 +151,42 @@ void UmountDir(const fs::path& mountPoint)
     AOS_ERROR_CHECK_AND_THROW("can't umount dir", err);
 }
 
+oci::LinuxDevice DeviceFromPath(const fs::path& path)
+{
+    auto devPath = path;
+
+    if (fs::is_symlink(path)) {
+        devPath = fs::read_symlink(path);
+    }
+
+    struct stat sb;
+
+    auto ret = lstat(devPath.c_str(), &sb);
+    AOS_ERROR_CHECK_AND_THROW("can't get device stat", ret);
+
+    StaticString<oci::cDeviceTypeLen> type;
+
+    switch (sb.st_mode & S_IFMT) {
+    case S_IFBLK:
+        type = "b";
+        break;
+
+    case S_IFCHR:
+        type = "c";
+        break;
+
+    case S_IFIFO:
+        type = "p";
+        break;
+
+    default:
+        AOS_ERROR_THROW("unsupported device type", ErrorEnum::eRuntime);
+    }
+
+    return oci::LinuxDevice {
+        devPath.c_str(), type, major(sb.st_rdev), minor(sb.st_rdev), sb.st_mode & ~S_IFMT, sb.st_uid, sb.st_gid};
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -313,6 +349,33 @@ RetWithError<uint32_t> Runtime::GetGIDByName(const String& groupName)
     } catch (const std::exception& e) {
         return {0, Error(ErrorEnum::eRuntime, e.what())};
     }
+}
+
+Error Runtime::PopulateHostDevices(const String& devicePath, Array<oci::LinuxDevice>& devices)
+{
+    try {
+        auto devPath = fs::path(devicePath.CStr());
+
+        if (!fs::is_directory(devPath)) {
+            auto err = devices.PushBack(DeviceFromPath(devPath));
+            AOS_ERROR_CHECK_AND_THROW("can't populate host devices", err);
+        } else {
+            for (const auto& entry : fs::recursive_directory_iterator(devPath,
+                     fs::directory_options::follow_directory_symlink | fs::directory_options::skip_permission_denied)) {
+
+                if (fs::is_directory(entry)) {
+                    continue;
+                }
+
+                auto err = devices.PushBack(DeviceFromPath(entry.path()));
+                LOG_ERR() << "Can't populate host devices: err=" << err;
+            }
+        }
+    } catch (const std::exception& e) {
+        return Error(ErrorEnum::eRuntime, e.what());
+    }
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::launcher
