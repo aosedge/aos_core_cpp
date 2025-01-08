@@ -110,7 +110,7 @@ Error UnpackTarImage(const std::string& archivePath, const std::string& destinat
     return ErrorEnum::eNone;
 }
 
-RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath)
+RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bool isTarGz)
 {
     constexpr auto cFilePermissionStrLen     = 10;
     constexpr auto cFilePermissionTokenIndex = 0;
@@ -121,21 +121,13 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath)
     }
 
     Poco::Process::Args args;
-    args.push_back("-tzvf");
+    args.push_back(isTarGz ? "-tzvf" : "-tvf");
     args.push_back(archivePath);
 
     Poco::Pipe          outPipe;
     Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
-    int                 rc = ph.wait();
 
     Poco::PipeInputStream istr(outPipe);
-
-    if (rc != 0) {
-        std::string output;
-        Poco::StreamCopier::copyToString(istr, output);
-
-        return {0, Error(ErrorEnum::eFailed, output.c_str())};
-    }
 
     uint64_t size = 0;
 
@@ -155,6 +147,13 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath)
         }
     } catch (const std::exception& e) {
         return {0, Error(ErrorEnum::eFailed, e.what())};
+    }
+
+    if (int rc = ph.wait(); rc != 0) {
+        std::string output;
+        Poco::StreamCopier::copyToString(istr, output);
+
+        return {0, Error(ErrorEnum::eFailed, output.c_str())};
     }
 
     return size;

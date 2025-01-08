@@ -29,9 +29,10 @@ Error UnpackTarImage(const std::string& archivePath, const std::string& destinat
  * Returns size of the unpacked archive.
  *
  * @param archivePath path to the archive.
+ * @param isTarGz flag to indicate if the archive is tar.gz.
  * @return RetWithError<uint64_t>.
  */
-RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath);
+RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bool isTarGz = true);
 
 /**
  * Parses the digest string.
