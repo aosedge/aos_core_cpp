@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <array>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <sys/xattr.h>
+#include <vector>
 
 #include <aos/sm/image/imageparts.hpp>
 #include <utils/filesystem.hpp>
@@ -375,7 +375,7 @@ RetWithError<StaticArray<uint8_t, cSHA256Size>> ImageHandler::CalculateHash(
         return {{}, AOS_ERROR_WRAP(err)};
     }
 
-    std::array<uint8_t, cBufferSize> buffer;
+    std::vector<uint8_t> buffer(cBufferSize, 0);
 
     while (file) {
         file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
