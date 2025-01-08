@@ -46,6 +46,47 @@ Poco::JSON::Object ContentDescriptorToJSON(const aos::oci::ContentDescriptor& de
  * Public
  **********************************************************************************************************************/
 
+Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescriptor& descriptor)
+{
+    try {
+        std::ifstream file(path.CStr());
+
+        if (!file.is_open()) {
+            AOS_ERROR_THROW("failed to open file", ErrorEnum::eNotFound);
+        }
+
+        auto [var, err] = utils::ParseJson(file);
+        AOS_ERROR_CHECK_AND_THROW("failed to parse json", err);
+
+        Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
+        utils::CaseInsensitiveObjectWrapper wrapper(object);
+
+        descriptor = ContentDescriptorFromJSON(wrapper);
+    } catch (const utils::AosException& e) {
+        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error OCISpec::SaveContentDescriptor(const String& path, const aos::oci::ContentDescriptor& descriptor)
+{
+    try {
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(ContentDescriptorToJSON(descriptor));
+
+        auto err = utils::WriteJsonToFile(object, path.CStr());
+        AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
+    } catch (const utils::AosException& e) {
+        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest)
 {
     try {

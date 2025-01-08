@@ -17,6 +17,24 @@ namespace aos::common::oci {
 class OCISpec : public aos::oci::OCISpecItf {
 public:
     /**
+     * Loads OCI content descriptor.
+     *
+     * @param path file path.
+     * @param descriptor[out]  content descriptor.
+     * @return Error.
+     */
+    Error LoadContentDescriptor(const String& path, aos::oci::ContentDescriptor& descriptor) override;
+
+    /**
+     * Saves OCI content descriptor.
+     *
+     * @param path file path.
+     * @param descriptor[out] content descriptor.
+     * @return Error.
+     */
+    Error SaveContentDescriptor(const String& path, const aos::oci::ContentDescriptor& descriptor) override;
+
+    /**
      * Loads OCI image manifest.
      *
      * @param path file path.
