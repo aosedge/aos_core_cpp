@@ -736,7 +736,7 @@ aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrappe
     const auto dtDevs     = utils::GetArrayValue<std::string>(object, "dtDevs");
     const auto irqs       = utils::GetArrayValue<uint32_t>(object, "irqs");
     const auto iomems     = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems",
-            [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+        [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     hwConfig.mDeviceTree = deviceTree.c_str();
     hwConfig.mVCPUs      = object.GetValue<uint32_t>("vCPUs");
