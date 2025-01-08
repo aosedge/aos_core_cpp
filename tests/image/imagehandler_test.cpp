@@ -343,14 +343,14 @@ TEST_F(ImageTest, InstallLayer)
 
     UniquePtr<aos::spaceallocator::SpaceItf> space;
 
-    EXPECT_CALL(mOCISpec, LoadImageManifest)
-        .WillOnce(Invoke([&archiveMetadata](const String&, oci::ImageManifest& manifest) {
-            manifest.mConfig.mDigest = "sha256:";
-            manifest.mConfig.mDigest.Append(archiveMetadata.mEmbeddedArchiveDigest.c_str());
+    EXPECT_CALL(mOCISpec, LoadContentDescriptor)
+        .WillOnce(Invoke([&archiveMetadata](const String&, oci::ContentDescriptor& descriptor) {
+            descriptor.mDigest = "sha256:";
+            descriptor.mDigest.Append(archiveMetadata.mEmbeddedArchiveDigest.c_str());
 
             return ErrorEnum::eNone;
         }));
-    EXPECT_CALL(mOCISpec, SaveImageManifest).Times(0);
+    EXPECT_CALL(mOCISpec, SaveContentDescriptor).Times(0);
 
     const auto installRoot = std::filesystem::path(cTestDirRoot) / "install" / "layers";
     const auto layerInfo   = CreateLayerInfo(archiveMetadata);
@@ -399,6 +399,8 @@ TEST_F(ImageTest, InstallService)
 
             return ErrorEnum::eNone;
         }));
+
+    EXPECT_CALL(mOCISpec, LoadServiceConfig).Times(1);
 
     const auto installRoot = std::filesystem::path(cTestDirRoot) / "install" / "services";
     const auto serviceInfo = CreateServiceInfo(archiveMetadata);

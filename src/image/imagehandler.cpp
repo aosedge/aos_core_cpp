@@ -25,13 +25,14 @@ namespace {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cSHA256Prefix      = "sha256:";
-constexpr auto cWhiteoutPrefix    = ".wh.";
-constexpr auto cWhiteoutOpaqueDir = ".wh..wh..opq";
-constexpr auto cBlobsFolder       = "blobs";
-constexpr auto cManifestFile      = "manifest.json";
-constexpr auto cTmpRootFSDir      = "tmprootfs";
-const int      cBufferSize        = 1024 * 1024;
+constexpr auto cSHA256Prefix        = "sha256:";
+constexpr auto cWhiteoutPrefix      = ".wh.";
+constexpr auto cWhiteoutOpaqueDir   = ".wh..wh..opq";
+constexpr auto cBlobsFolder         = "blobs";
+constexpr auto cLayerManifestFile   = "layer.json";
+constexpr auto cServiceManifestFile = "manifest.json";
+constexpr auto cTmpRootFSDir        = "tmprootfs";
+const int      cBufferSize          = 1024 * 1024;
 
 /***********************************************************************************************************************
  * Static
@@ -102,6 +103,8 @@ Error ImageHandler::Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocat
 RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String& archivePath,
     const String& installBasePath, const LayerInfo& layer, UniquePtr<aos::spaceallocator::SpaceItf>& space)
 {
+    LOG_DBG() << "Install layer: archive=" << archivePath << ", digest=" << layer.mLayerDigest;
+
     auto err = CheckFileInfo(archivePath, layer.mSize, layer.mSHA256);
 
     if (!err.IsNone()) {
@@ -138,17 +141,19 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String
         return {{}, err};
     }
 
-    auto manifest = std::make_unique<oci::ImageManifest>();
+    auto contentDescriptor = std::make_unique<oci::ContentDescriptor>();
 
-    if (err = mOCISpec->LoadImageManifest(FS::JoinPath(extractDir.c_str(), cManifestFile), *manifest); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to load image manifest"))};
+    if (err = mOCISpec->LoadContentDescriptor(FS::JoinPath(extractDir.c_str(), cLayerManifestFile), *contentDescriptor);
+        !err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(Error(err, "failed to load content descriptor"))};
     }
 
-    const auto parsedDigest = common::utils::ParseDigest(manifest->mConfig.mDigest.CStr());
+    const auto parsedDigest = common::utils::ParseDigest(contentDescriptor->mDigest.CStr());
     const auto installDir   = FS::JoinPath(installBasePath, parsedDigest.first.c_str(), parsedDigest.second.c_str());
     const auto embeddedArchivePath = FS::JoinPath(extractDir.c_str(), parsedDigest.second.c_str());
 
-    if (Tie(archiveSize, err) = common::utils::GetUnpackedArchiveSize(embeddedArchivePath.CStr()); !err.IsNone()) {
+    if (Tie(archiveSize, err) = common::utils::GetUnpackedArchiveSize(embeddedArchivePath.CStr(), false);
+        !err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};
     }
 
@@ -164,8 +169,7 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String
         return {{}, AOS_ERROR_WRAP(Error(err, "failed to convert OCI whiteouts to overlay"))};
     }
 
-    LOG_DBG() << "Layer has been successfully installed: src=" << archivePath << ", dst=" << installDir
-              << ", size=" << space->Size();
+    LOG_DBG() << "Layer has been successfully installed: path=" << installDir;
 
     return {installDir, ErrorEnum::eNone};
 }
@@ -478,7 +482,7 @@ Error ImageHandler::PrepareServiceFS(const String& baseDir, const ServiceInfo& s
 
     manifest.mLayers[0].mDigest = rootFSHash.c_str();
 
-    if (err = mOCISpec->SaveImageManifest(FS::JoinPath(baseDir, cManifestFile), manifest); !err.IsNone()) {
+    if (err = mOCISpec->SaveImageManifest(FS::JoinPath(baseDir, cServiceManifestFile), manifest); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to save image manifest"));
     }
 
