@@ -216,12 +216,18 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto            freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
-    sd_bus_message* msg      = nullptr;
+    auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
+
+    sd_bus_message* msg     = nullptr;
+    sd_bus_error    error   = SD_BUS_ERROR_NULL;
+    auto            freeErr = DeferRelease(&error, sd_bus_error_free);
 
     rv = sd_bus_call_method(
-        mBus, cDestination, cPath, cInterface, "StopUnit", nullptr, &msg, "ss", name.c_str(), mode.c_str());
+        mBus, cDestination, cPath, cInterface, "StopUnit", &error, &msg, "ss", name.c_str(), mode.c_str());
     if (rv < 0) {
+        if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
+            return ErrorEnum::eNotFound;
+        }
         return AOS_ERROR_WRAP(-rv);
     }
 
@@ -249,7 +255,7 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
         mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
 
     if (rv < 0) {
-        if (sd_bus_error_has_name(&error, "org.freedesktop.systemd1.NoSuchUnit")) {
+        if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
             return ErrorEnum::eNotFound;
         }
 

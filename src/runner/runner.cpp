@@ -71,6 +71,7 @@ Error Runner::Start()
 {
     LOG_DBG() << "Start runner";
 
+    mClosed           = false;
     mMonitoringThread = std::thread(&Runner::MonitorUnits, this);
 
     return ErrorEnum::eNone;
@@ -93,9 +94,9 @@ Error Runner::Stop()
 
     if (mMonitoringThread.joinable()) {
         mMonitoringThread.join();
-
-        mSystemd.reset();
     }
+
+    mSystemd.reset();
 
     return ErrorEnum::eNone;
 }
