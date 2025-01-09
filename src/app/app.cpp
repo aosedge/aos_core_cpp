@@ -72,6 +72,9 @@ void App::initialize(Application& self)
     mAosCore = std::make_unique<AosCore>();
 
     mAosCore->Init(mConfigFile);
+
+    mInitialized = true;
+
     mAosCore->Start();
 
     // Notify systemd
@@ -85,6 +88,10 @@ void App::initialize(Application& self)
 void App::uninitialize()
 {
     Application::uninitialize();
+
+    if (!mInitialized) {
+        return;
+    }
 
     mAosCore->Stop();
 }

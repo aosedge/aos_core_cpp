@@ -34,6 +34,7 @@ private:
     void HandleConfigFile(const std::string& name, const std::string& value);
 
     bool                     mStopProcessing = false;
+    bool                     mInitialized    = false;
     std::string              mConfigFile;
     std::unique_ptr<AosCore> mAosCore;
 };
