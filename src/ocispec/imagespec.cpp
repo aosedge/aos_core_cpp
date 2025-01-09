@@ -54,10 +54,21 @@ Poco::JSON::Object ImageConfigToJSON(const aos::oci::ImageConfig& config)
 {
     Poco::JSON::Object object;
 
-    object.set("env", utils::ToJsonArray(config.mEnv, ToStdString));
-    object.set("entrypoint", utils::ToJsonArray(config.mEntryPoint, ToStdString));
-    object.set("cmd", utils::ToJsonArray(config.mCmd, ToStdString));
-    object.set("workingDir", config.mWorkingDir.CStr());
+    if (!config.mEnv.IsEmpty()) {
+        object.set("env", utils::ToJsonArray(config.mEnv, ToStdString));
+    }
+
+    if (!config.mEntryPoint.IsEmpty()) {
+        object.set("entrypoint", utils::ToJsonArray(config.mEntryPoint, ToStdString));
+    }
+
+    if (!config.mCmd.IsEmpty()) {
+        object.set("cmd", utils::ToJsonArray(config.mCmd, ToStdString));
+    }
+
+    if (!config.mWorkingDir.IsEmpty()) {
+        object.set("workingDir", config.mWorkingDir.CStr());
+    }
 
     return object;
 }
@@ -83,11 +94,9 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        if (!wrapper.Has("config")) {
-            return Error(ErrorEnum::eNotFound, "config tag not found");
+        if (wrapper.Has("config")) {
+            imageSpec.mConfig = ImageConfigFromJSON(wrapper.GetObject("config"));
         }
-
-        imageSpec.mConfig = ImageConfigFromJSON(wrapper.GetObject("config"));
 
         const auto author       = wrapper.GetValue<std::string>("author");
         const auto architecture = wrapper.GetValue<std::string>("architecture");
@@ -120,18 +129,33 @@ Error OCISpec::SaveImageSpec(const String& path, const aos::oci::ImageSpec& imag
     try {
         Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
 
-        auto [created, err] = utils::ToUTCString(imageSpec.mCreated);
-        AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
+        if (!imageSpec.mCreated.IsZero()) {
+            auto [created, err] = utils::ToUTCString(imageSpec.mCreated);
+            AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
 
-        object->set("created", created);
-        object->set("config", ImageConfigToJSON(imageSpec.mConfig));
-        object->set("author", imageSpec.mAuthor.CStr());
+            object->set("created", created);
+        }
+
+        if (!imageSpec.mAuthor.IsEmpty()) {
+            object->set("author", imageSpec.mAuthor.CStr());
+        }
+
         object->set("architecture", imageSpec.mArchitecture.CStr());
         object->set("os", imageSpec.mOS.CStr());
-        object->set("osVersion", imageSpec.mOSVersion.CStr());
-        object->set("variant", imageSpec.mVariant.CStr());
 
-        err = utils::WriteJsonToFile(object, path.CStr());
+        if (!imageSpec.mOSVersion.IsEmpty()) {
+            object->set("osVersion", imageSpec.mOSVersion.CStr());
+        }
+
+        if (!imageSpec.mVariant.IsEmpty()) {
+            object->set("variant", imageSpec.mVariant.CStr());
+        }
+
+        if (auto configObject = ImageConfigToJSON(imageSpec.mConfig); configObject.size() > 0) {
+            object->set("config", configObject);
+        }
+
+        auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
     } catch (const utils::AosException& e) {
         return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));

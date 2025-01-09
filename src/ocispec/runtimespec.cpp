@@ -71,11 +71,25 @@ Poco::JSON::Object CapabilitiesToJSON(const aos::oci::LinuxCapabilities& capabil
 {
     Poco::JSON::Object object;
 
-    object.set("bounding", utils::ToJsonArray(capabilities.mBounding, ToStdString));
-    object.set("effective", utils::ToJsonArray(capabilities.mEffective, ToStdString));
-    object.set("inheritable", utils::ToJsonArray(capabilities.mInheritable, ToStdString));
-    object.set("permitted", utils::ToJsonArray(capabilities.mPermitted, ToStdString));
-    object.set("ambient", utils::ToJsonArray(capabilities.mAmbient, ToStdString));
+    if (!capabilities.mBounding.IsEmpty()) {
+        object.set("bounding", utils::ToJsonArray(capabilities.mBounding, ToStdString));
+    }
+
+    if (!capabilities.mEffective.IsEmpty()) {
+        object.set("effective", utils::ToJsonArray(capabilities.mEffective, ToStdString));
+    }
+
+    if (!capabilities.mInheritable.IsEmpty()) {
+        object.set("inheritable", utils::ToJsonArray(capabilities.mInheritable, ToStdString));
+    }
+
+    if (!capabilities.mPermitted.IsEmpty()) {
+        object.set("permitted", utils::ToJsonArray(capabilities.mPermitted, ToStdString));
+    }
+
+    if (!capabilities.mAmbient.IsEmpty()) {
+        object.set("ambient", utils::ToJsonArray(capabilities.mAmbient, ToStdString));
+    }
 
     return object;
 }
@@ -187,17 +201,29 @@ Poco::JSON::Object ProcessToJSON(const aos::oci::Process& process)
     Poco::JSON::Object object;
 
     object.set("terminal", process.mTerminal);
-    object.set("noNewPrivileges", process.mNoNewPrivileges);
     object.set("user", UserToJSON(process.mUser));
-    object.set("args", utils::ToJsonArray(process.mArgs, ToStdString));
-    object.set("env", utils::ToJsonArray(process.mEnv, ToStdString));
+
+    if (!process.mArgs.IsEmpty()) {
+        object.set("args", utils::ToJsonArray(process.mArgs, ToStdString));
+    }
+
+    if (!process.mEnv.IsEmpty()) {
+        object.set("env", utils::ToJsonArray(process.mEnv, ToStdString));
+    }
+
     object.set("cwd", process.mCwd.CStr());
 
     if (process.mCapabilities.HasValue()) {
-        object.set("capabilities", CapabilitiesToJSON(process.mCapabilities.GetValue()));
+        if (auto capabilities = CapabilitiesToJSON(process.mCapabilities.GetValue()); capabilities.size() > 0) {
+            object.set("capabilities", capabilities);
+        }
     }
 
-    object.set("rlimits", utils::ToJsonArray(process.mRlimits, POSIXRlimitToJSON));
+    if (!process.mRlimits.IsEmpty()) {
+        object.set("rlimits", utils::ToJsonArray(process.mRlimits, POSIXRlimitToJSON));
+    }
+
+    object.set("noNewPrivileges", process.mNoNewPrivileges);
 
     return object;
 }
@@ -244,9 +270,18 @@ Poco::JSON::Object MountToJSON(const Mount& mount)
     Poco::JSON::Object object;
 
     object.set("destination", mount.mDestination.CStr());
-    object.set("type", mount.mType.CStr());
-    object.set("source", mount.mSource.CStr());
-    object.set("options", utils::ToJsonArray(mount.mOptions, ToStdString));
+
+    if (!mount.mType.IsEmpty()) {
+        object.set("type", mount.mType.CStr());
+    }
+
+    if (!mount.mSource.IsEmpty()) {
+        object.set("source", mount.mSource.CStr());
+    }
+
+    if (!mount.mOptions.IsEmpty()) {
+        object.set("options", utils::ToJsonArray(mount.mOptions, ToStdString));
+    }
 
     return object;
 }
@@ -476,6 +511,33 @@ Poco::JSON::Object LinuxPidsToJSON(const aos::oci::LinuxPids& pids)
     return object;
 }
 
+decltype(aos::oci::Linux::mSysctl) SysctlFromJSON(const Poco::Dynamic::Var& var)
+{
+    auto object = var.extract<Poco::JSON::Object::Ptr>();
+
+    decltype(aos::oci::ServiceConfig::mSysctl) sysctl;
+
+    for (const auto& [key, value] : *object) {
+        const auto valueStr = value.convert<std::string>();
+
+        auto err = sysctl.TryEmplace(key.c_str(), valueStr.c_str());
+        AOS_ERROR_CHECK_AND_THROW("sysctl parsing error", err);
+    }
+
+    return sysctl;
+}
+
+Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::Linux::mSysctl)& sysctl)
+{
+    Poco::JSON::Object object;
+
+    for (const auto& [key, value] : sysctl) {
+        object.set(key.CStr(), value.CStr());
+    }
+
+    return object;
+}
+
 aos::oci::LinuxResources LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     aos::oci::LinuxResources resources;
@@ -542,7 +604,10 @@ Poco::JSON::Object LinuxNamespaceToJSON(const aos::oci::LinuxNamespace& ns)
     Poco::JSON::Object object;
 
     object.set("type", ns.mType.ToString().CStr());
-    object.set("path", ns.mPath.CStr());
+
+    if (!ns.mPath.IsEmpty()) {
+        object.set("path", ns.mPath.CStr());
+    }
 
     return object;
 }
@@ -602,8 +667,16 @@ aos::oci::Linux LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     aos::oci::Linux lnx;
 
+    if (object.Has("sysctl")) {
+        SysctlFromJSON(object.Get("sysctl"));
+    }
+
     if (object.Has("resources")) {
         lnx.mResources.SetValue(LinuxResourcesFromJSON(object.GetObject("resources")));
+    }
+
+    if (const auto cgroupsPath = object.GetValue<std::string>("cgroupsPath"); !cgroupsPath.empty()) {
+        lnx.mCgroupsPath = cgroupsPath.c_str();
     }
 
     const auto namespaces = utils::GetArrayValue<aos::oci::LinuxNamespace>(object, "namespaces",
@@ -639,14 +712,33 @@ Poco::JSON::Object LinuxToJSON(const aos::oci::Linux& lnx)
 {
     Poco::JSON::Object object;
 
+    if (!lnx.mSysctl.IsEmpty()) {
+        object.set("sysctl", SysctlToJSON(lnx.mSysctl));
+    }
+
     if (lnx.mResources.HasValue()) {
         object.set("resources", LinuxResourcesToJSON(lnx.mResources.GetValue()));
     }
 
-    object.set("namespaces", utils::ToJsonArray(lnx.mNamespaces, LinuxNamespaceToJSON));
-    object.set("devices", utils::ToJsonArray(lnx.mDevices, LinuxDeviceToJSON));
-    object.set("maskedPaths", utils::ToJsonArray(lnx.mMaskedPaths, ToStdString));
-    object.set("readonlyPaths", utils::ToJsonArray(lnx.mReadonlyPaths, ToStdString));
+    if (!lnx.mCgroupsPath.IsEmpty()) {
+        object.set("cgroupsPath", lnx.mCgroupsPath.CStr());
+    }
+
+    if (!lnx.mNamespaces.IsEmpty()) {
+        object.set("namespaces", utils::ToJsonArray(lnx.mNamespaces, LinuxNamespaceToJSON));
+    }
+
+    if (!lnx.mDevices.IsEmpty()) {
+        object.set("devices", utils::ToJsonArray(lnx.mDevices, LinuxDeviceToJSON));
+    }
+
+    if (!lnx.mMaskedPaths.IsEmpty()) {
+        object.set("maskedPaths", utils::ToJsonArray(lnx.mMaskedPaths, ToStdString));
+    }
+
+    if (!lnx.mReadonlyPaths.IsEmpty()) {
+        object.set("readonlyPaths", utils::ToJsonArray(lnx.mReadonlyPaths, ToStdString));
+    }
 
     return object;
 }
@@ -673,7 +765,10 @@ Poco::JSON::Object VMHypervisorToJSON(const aos::oci::VMHypervisor& hypervisor)
     Poco::JSON::Object object;
 
     object.set("path", hypervisor.mPath.CStr());
-    object.set("parameters", utils::ToJsonArray(hypervisor.mParameters, ToStdString));
+
+    if (!hypervisor.mParameters.IsEmpty()) {
+        object.set("parameters", utils::ToJsonArray(hypervisor.mParameters, ToStdString));
+    }
 
     return object;
 }
@@ -764,12 +859,29 @@ Poco::JSON::Object VMHWConfigToJSON(const aos::oci::VMHWConfig& hwConfig)
 {
     Poco::JSON::Object object;
 
-    object.set("deviceTree", hwConfig.mDeviceTree.CStr());
-    object.set("vCPUs", hwConfig.mVCPUs);
-    object.set("memKB", hwConfig.mMemKB);
-    object.set("dtDevs", utils::ToJsonArray(hwConfig.mDTDevs, ToStdString));
-    object.set("irqs", utils::ToJsonArray(hwConfig.mIRQs, [](const auto& v) { return v; }));
-    object.set("iomems", VMHWConfigIOMEMToJSON(hwConfig.mIOMEMs));
+    if (!hwConfig.mDeviceTree.IsEmpty()) {
+        object.set("deviceTree", hwConfig.mDeviceTree.CStr());
+    }
+
+    if (hwConfig.mVCPUs > 0) {
+        object.set("vCPUs", hwConfig.mVCPUs);
+    }
+
+    if (hwConfig.mMemKB > 0) {
+        object.set("memKB", hwConfig.mMemKB);
+    }
+
+    if (!hwConfig.mDTDevs.IsEmpty()) {
+        object.set("dtDevs", utils::ToJsonArray(hwConfig.mDTDevs, ToStdString));
+    }
+
+    if (!hwConfig.mIRQs.IsEmpty()) {
+        object.set("irqs", utils::ToJsonArray(hwConfig.mIRQs, [](const auto& v) { return v; }));
+    }
+
+    if (!hwConfig.mIOMEMs.IsEmpty()) {
+        object.set("iomems", VMHWConfigIOMEMToJSON(hwConfig.mIOMEMs));
+    }
 
     return object;
 }
@@ -797,9 +909,15 @@ Poco::JSON::Object VMToJSON(const aos::oci::VM& vm)
 {
     Poco::JSON::Object object;
 
-    object.set("hypervisor", VMHypervisorToJSON(vm.mHypervisor));
+    if (auto hypervisorObject = VMHypervisorToJSON(vm.mHypervisor); hypervisorObject.size() > 0) {
+        object.set("hypervisor", hypervisorObject);
+    }
+
     object.set("kernel", VMKernelToJSON(vm.mKernel));
-    object.set("hwConfig", VMHWConfigToJSON(vm.mHWConfig));
+
+    if (auto hwConfigObject = VMHWConfigToJSON(vm.mHWConfig); hwConfigObject.size() > 0) {
+        object.set("hwConfig", hwConfigObject);
+    }
 
     return object;
 }
@@ -871,8 +989,6 @@ Error OCISpec::SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& 
         Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
 
         object->set("ociVersion", runtimeSpec.mOCIVersion.CStr());
-        object->set("hostname", runtimeSpec.mHostname.CStr());
-        object->set("mounts", utils::ToJsonArray(runtimeSpec.mMounts, MountToJSON));
 
         if (runtimeSpec.mProcess.HasValue()) {
             object->set("process", ProcessToJSON(*runtimeSpec.mProcess));
@@ -880,6 +996,14 @@ Error OCISpec::SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& 
 
         if (runtimeSpec.mRoot.HasValue()) {
             object->set("root", RootToJSON(runtimeSpec.mRoot.GetValue()));
+        }
+
+        if (!runtimeSpec.mHostname.IsEmpty()) {
+            object->set("hostname", runtimeSpec.mHostname.CStr());
+        }
+
+        if (!runtimeSpec.mMounts.IsEmpty()) {
+            object->set("mounts", utils::ToJsonArray(runtimeSpec.mMounts, MountToJSON));
         }
 
         if (runtimeSpec.mLinux.HasValue()) {
