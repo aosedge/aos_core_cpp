@@ -812,7 +812,10 @@ Poco::JSON::Object VMKernelToJSON(const aos::oci::VMKernel& kernel)
     Poco::JSON::Object object;
 
     object.set("path", kernel.mPath.CStr());
-    object.set("parameters", utils::ToJsonArray(kernel.mParameters, ToStdString));
+
+    if (!kernel.mParameters.IsEmpty()) {
+        object.set("parameters", utils::ToJsonArray(kernel.mParameters, ToStdString));
+    }
 
     return object;
 }
