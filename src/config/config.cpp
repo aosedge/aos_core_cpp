@@ -154,7 +154,8 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mStorageDir
             = object.GetOptionalValue<std::string>("storageDir").value_or(JoinPath(config.mWorkingDir, "storages"));
 
-        config.mStateDir = object.GetValue<std::string>("stateDir");
+        config.mStateDir
+            = object.GetOptionalValue<std::string>("stateDir").value_or(JoinPath(config.mWorkingDir, "states"));
 
         config.mServicesDir
             = object.GetOptionalValue<std::string>("servicesDir").value_or(JoinPath(config.mWorkingDir, "services"));
