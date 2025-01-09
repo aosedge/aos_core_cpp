@@ -141,12 +141,17 @@ Poco::JSON::Object UserToJSON(const aos::oci::User& user)
     object.set("uid", user.mUID);
     object.set("gid", user.mGID);
 
-    if (user.mUmask.HasValue()) {
-        object.set("umask", user.mUmask.GetValue());
+    if (user.mUmask.HasValue() && *user.mUmask > 0) {
+        object.set("umask", *user.mUmask);
     }
 
-    object.set("additionalGids", utils::ToJsonArray(user.mAdditionalGIDs, [](const auto& gid) { return gid; }));
-    object.set("username", user.mUsername.CStr());
+    if (!user.mAdditionalGIDs.IsEmpty()) {
+        object.set("additionalGids", utils::ToJsonArray(user.mAdditionalGIDs, [](const auto& gid) { return gid; }));
+    }
+
+    if (!user.mUsername.IsEmpty()) {
+        object.set("username", user.mUsername.CStr());
+    }
 
     return object;
 }
