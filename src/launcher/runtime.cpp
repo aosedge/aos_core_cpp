@@ -57,7 +57,7 @@ unsigned GetMountPermissions(const Mount& mount)
             continue;
         }
 
-        return std::stoul(nameValue.substr(pos, std::string::npos), nullptr, 8);
+        return std::stoul(nameValue.substr(pos + 1, std::string::npos), nullptr, 8);
     }
 
     return 0;
