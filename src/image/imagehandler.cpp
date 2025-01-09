@@ -185,17 +185,25 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const Stri
     }
 
     size_t unpackedSize = 0;
-    Error  err;
 
-    if (err = FS::MakeDirAll(installBasePath); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to create installation base dir"))};
+    auto installDir = FS::JoinPath(installBasePath, service.mServiceID);
+    installDir.Append(":").Append(service.mVersion);
+
+    if (auto [exists, err] = FS::DirExist(installDir); !err.IsNone() || exists) {
+        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "service already exists"))};
     }
 
-    std::string installDir;
-
-    if (Tie(installDir, err) = common::utils::MkTmpDir(installBasePath.CStr()); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to create temporary installation dir"))};
+    if (auto err = FS::MakeDirAll(installDir.CStr()); !err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(Error(err, "failed to create service installation dir"))};
     }
+
+    Error err = ErrorEnum::eNone;
+
+    auto cleanInstallDir = DeferRelease(&err, [installDir](const Error* err) {
+        if (!err->IsNone()) {
+            FS::RemoveAll(installDir.CStr());
+        }
+    });
 
     if (Tie(unpackedSize, err) = common::utils::GetUnpackedArchiveSize(archivePath.CStr()); !err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};
@@ -205,29 +213,28 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const Stri
         return {{}, AOS_ERROR_WRAP(err)};
     }
 
-    if (err = UnpackArchive(archivePath, installDir.c_str()); !err.IsNone()) {
+    if (err = UnpackArchive(archivePath, installDir); !err.IsNone()) {
         return {{}, err};
     }
 
     auto manifest = std::make_unique<oci::ImageManifest>();
 
-    if (err = mOCISpec->LoadImageManifest(FS::JoinPath(installDir.c_str(), "manifest.json"), *manifest);
-        !err.IsNone()) {
+    if (err = mOCISpec->LoadImageManifest(FS::JoinPath(installDir, "manifest.json"), *manifest); !err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(Error(err, "failed to load image manifest"))};
     }
 
-    if (err = ValidateService(installDir.c_str(), *manifest); !err.IsNone()) {
+    if (err = ValidateService(installDir, *manifest); !err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};
     }
 
-    if (err = PrepareServiceFS(installDir.c_str(), service, *manifest, space); !err.IsNone()) {
+    if (err = PrepareServiceFS(installDir, service, *manifest, space); !err.IsNone()) {
         return {{}, err};
     }
 
-    LOG_DBG() << "Service has been successfully installed: src=" << archivePath << ", dst=" << installDir.c_str()
+    LOG_DBG() << "Service has been successfully installed: src=" << archivePath << ", dst=" << installDir
               << ", size=" << space->Size();
 
-    return {installDir.c_str(), ErrorEnum::eNone};
+    return {installDir, ErrorEnum::eNone};
 }
 
 Error ImageHandler::ValidateService(const String& path) const

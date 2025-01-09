@@ -295,6 +295,7 @@ ServiceInfo CreateServiceInfo(const ImageMetadata& metadata)
     serviceInfo.mGID       = getgid();
     serviceInfo.mSize      = std::filesystem::file_size(metadata.mArchivePath);
     serviceInfo.mServiceID = "test-service";
+    serviceInfo.mVersion   = "1.0.0";
 
     auto err = String(metadata.mImageDigest.c_str()).HexToByteArray(serviceInfo.mSHA256);
     if (!err.IsNone()) {
