@@ -488,6 +488,8 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
 
 bool SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& request)
 {
+    LOG_INF() << "Process update networks";
+
     StaticArray<NetworkParameters, cMaxNumNetworks> networkParams;
 
     for (const auto& network : request.networks()) {
@@ -509,7 +511,7 @@ bool SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& request)
 
 bool SMClient::ProcessGetSystemLogRequest(const smproto::SystemLogRequest& request)
 {
-    LOG_DBG() << "Process get system log request: logID=" << request.log_id().c_str();
+    LOG_INF() << "Process get system log request: logID=" << request.log_id().c_str();
 
     if (auto err = mLogProvider->GetSystemLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
         LOG_ERR() << "Get system log failed: err=" << err;
@@ -522,7 +524,7 @@ bool SMClient::ProcessGetSystemLogRequest(const smproto::SystemLogRequest& reque
 
 bool SMClient::ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& request)
 {
-    LOG_DBG() << "Process get instance log request: logID=" << request.log_id().c_str();
+    LOG_INF() << "Process get instance log request: logID=" << request.log_id().c_str();
 
     if (auto err = mLogProvider->GetInstanceLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
         LOG_ERR() << "Get instance log failed: err=" << err;
@@ -535,7 +537,7 @@ bool SMClient::ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& r
 
 bool SMClient::ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request)
 {
-    LOG_DBG() << "Process get instance crash log request: logID=" << request.log_id().c_str();
+    LOG_INF() << "Process get instance crash log request: logID=" << request.log_id().c_str();
 
     if (auto err = mLogProvider->GetInstanceCrashLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
         LOG_ERR() << "Get instance crash log failed: err=" << err;
@@ -548,7 +550,7 @@ bool SMClient::ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLog
 
 bool SMClient::ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request)
 {
-    LOG_DBG() << "Process override env vars";
+    LOG_INF() << "Process override env vars";
 
     cloudprotocol::EnvVarsInstanceInfoArray envVarsInstanceInfos;
     smproto::SMOutgoingMessages             outgoingMsg;
@@ -612,7 +614,7 @@ bool SMClient::ProcessGetAverageMonitoring()
 
 bool SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& request)
 {
-    LOG_DBG() << "Process connection status: cloudStatus=" << request.cloud_status();
+    LOG_INF() << "Process connection status: cloudStatus=" << request.cloud_status();
 
     for (auto* subscriber : mCloudConnectionSubscribers) {
         if (request.cloud_status() == smproto::ConnectionEnum::CONNECTED) {
