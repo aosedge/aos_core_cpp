@@ -330,6 +330,20 @@ Error Runtime::PrepareServiceState(const String& path, uint32_t uid, uint32_t gi
     return ErrorEnum::eNone;
 }
 
+Error Runtime::PrepareNetworkDir(const String& path)
+{
+    try {
+        auto dirPath = fs::path(path.CStr());
+
+        fs::create_directories(dirPath);
+        fs::permissions(dirPath, cDirPermissions);
+    } catch (const std::exception& e) {
+        return Error(ErrorEnum::eRuntime, e.what());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 RetWithError<StaticString<cFilePathLen>> Runtime::GetAbsPath(const String& path)
 {
     try {

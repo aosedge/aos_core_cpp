@@ -70,6 +70,14 @@ public:
     Error PrepareServiceState(const String& path, uint32_t uid, uint32_t gid) override;
 
     /**
+     * Prepares directory for network files.
+     *
+     * @param path network directory path.
+     * @return Error.
+     */
+    Error PrepareNetworkDir(const String& path) override;
+
+    /**
      * Returns absolute path of FS item.
      *
      * @param path path to convert.
