@@ -158,11 +158,11 @@ void AosCore::Stop()
         stopError = err;
     }
 
-    if (auto err = mRunner.Stop(); !err.IsNone() && stopError.IsNone()) {
+    if (auto err = mLauncher.Stop(); !err.IsNone() && stopError.IsNone()) {
         stopError = err;
     }
 
-    if (auto err = mLauncher.Stop(); !err.IsNone() && stopError.IsNone()) {
+    if (auto err = mRunner.Stop(); !err.IsNone() && stopError.IsNone()) {
         stopError = err;
     }
 
