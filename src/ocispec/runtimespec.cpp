@@ -310,8 +310,10 @@ Poco::JSON::Object DeviceCgroupToJSON(const aos::oci::LinuxDeviceCgroup& device)
     Poco::JSON::Object object;
 
     object.set("allow", device.mAllow);
-    object.set("type", device.mType.CStr());
-    object.set("access", device.mAccess.CStr());
+
+    if (!device.mType.IsEmpty()) {
+        object.set("type", device.mType.CStr());
+    }
 
     if (device.mMajor.HasValue()) {
         object.set("major", device.mMajor.GetValue());
@@ -319,6 +321,10 @@ Poco::JSON::Object DeviceCgroupToJSON(const aos::oci::LinuxDeviceCgroup& device)
 
     if (device.mMinor.HasValue()) {
         object.set("minor", device.mMinor.GetValue());
+    }
+
+    if (!device.mAccess.IsEmpty()) {
+        object.set("access", device.mAccess.CStr());
     }
 
     return object;
