@@ -453,7 +453,7 @@ TEST_F(SMClientTest, ClientNotStarted)
     server->WaitNodeConfigStatus(std::chrono::seconds(1));
 
     auto err = client->Stop();
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Stop should return failed if start wasn't called" << err.Message();
+    ASSERT_TRUE(err.IsNone()) << "Stop should return no error if start wasn't called" << err.Message();
 }
 
 TEST_F(SMClientTest, SecondStartReturnsError)

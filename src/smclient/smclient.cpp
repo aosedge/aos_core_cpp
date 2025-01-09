@@ -97,7 +97,7 @@ Error SMClient::Stop()
         LOG_DBG() << "Stop SM client";
 
         if (mStopped) {
-            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "client stopped"));
+            return ErrorEnum::eNone;
         }
 
         mStopped = true;
