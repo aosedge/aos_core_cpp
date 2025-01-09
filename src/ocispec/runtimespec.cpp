@@ -580,14 +580,20 @@ Poco::JSON::Object LinuxResourcesToJSON(const aos::oci::LinuxResources& resource
 {
     Poco::JSON::Object object;
 
-    object.set("devices", utils::ToJsonArray(resources.mDevices, DeviceCgroupToJSON));
+    if (!resources.mDevices.IsEmpty()) {
+        object.set("devices", utils::ToJsonArray(resources.mDevices, DeviceCgroupToJSON));
+    }
 
     if (resources.mMemory.HasValue()) {
-        object.set("memory", LinuxMemoryToJSON(resources.mMemory.GetValue()));
+        if (auto memoryObject = LinuxMemoryToJSON(*resources.mMemory); memoryObject.size() > 0) {
+            object.set("memory", memoryObject);
+        }
     }
 
     if (resources.mCPU.HasValue()) {
-        object.set("cpu", LinuxCPUToJSON(resources.mCPU.GetValue()));
+        if (auto cpuObject = LinuxCPUToJSON(resources.mCPU.GetValue()); cpuObject.size() > 0) {
+            object.set("cpu", cpuObject);
+        }
     }
 
     if (resources.mPids.HasValue()) {
