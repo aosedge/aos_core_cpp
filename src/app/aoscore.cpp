@@ -187,26 +187,39 @@ void AosCore::Start()
 
 void AosCore::Stop()
 {
-    auto err = mSMClient.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop SM client", err);
+    Error stopError;
 
-    err = mRunner.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop runner", err);
+    if (auto err = mSMClient.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
 
-    err = mLauncher.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop launcher", err);
+    if (auto err = mRunner.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
 
-    err = mLayerManager.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop layer manager", err);
+    if (auto err = mLauncher.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
 
-    err = mNetworkManager.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop network manager", err);
+    if (auto err = mLayerManager.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
 
-    err = mResourceMonitor.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop resource monitor", err);
+    if (auto err = mNetworkManager.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
 
-    err = mServiceManager.Stop();
-    AOS_ERROR_CHECK_AND_THROW("can't stop service manager", err);
+    if (auto err = mResourceMonitor.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
+
+    if (auto err = mServiceManager.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
+
+    if (!stopError.IsNone()) {
+        AOS_ERROR_THROW("can't stop Aos core", stopError);
+    }
 }
 
 void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
