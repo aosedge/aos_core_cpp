@@ -17,7 +17,7 @@ namespace aos::common::iamclient {
 Error PermissionsServiceHandler::Init(
     const std::string& IAMProtectedServerURL, const std::string& certStorage, TLSCredentialsItf& TLSCredentials)
 {
-    LOG_INF() << "Initializing permissions service handler: IAMProtectedServerURL=" << IAMProtectedServerURL.c_str()
+    LOG_DBG() << "Init permissions service handler: IAMProtectedServerURL=" << IAMProtectedServerURL.c_str()
               << ", certStorage=" << certStorage.c_str();
 
     mCertStorage           = certStorage;
@@ -87,7 +87,7 @@ Error PermissionsServiceHandler::GetPermissions([[maybe_unused]] const String& s
     [[maybe_unused]] const String& funcServerID, [[maybe_unused]] InstanceIdent& instanceIdent,
     [[maybe_unused]] Array<FunctionPermissions>& servicePermissions)
 {
-    LOG_DBG() << "Get permissions: serviceID=" << instanceIdent.mServiceID << ", subjectID=" << instanceIdent.mSubjectID
+    LOG_INF() << "Get permissions: serviceID=" << instanceIdent.mServiceID << ", subjectID=" << instanceIdent.mSubjectID
               << ", instance=" << instanceIdent.mInstance;
 
     return ErrorEnum::eNotSupported;
