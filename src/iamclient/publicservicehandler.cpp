@@ -18,7 +18,11 @@ namespace aos::common::iamclient {
 Error PublicServiceHandler::Init(const Config& cfg, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection, MTLSCredentialsFunc mtlsCredentialsFunc)
 {
-    LOG_INF() << "Initializing public service handler: insecureConnection=" << insecureConnection;
+    LOG_DBG() << "Init public service handler";
+
+    if (insecureConnection) {
+        LOG_WRN() << "Public service: insecure connection is used";
+    }
 
     mConfig              = cfg;
     mCertLoader          = &certLoader;
@@ -95,7 +99,7 @@ Error PublicServiceHandler::GetCert(const String& certType, const Array<uint8_t>
 
 Error PublicServiceHandler::GetNodeInfo(NodeInfo& nodeInfo) const
 {
-    LOG_DBG() << "Getting node info";
+    LOG_DBG() << "Get node info";
 
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cIAMPublicServiceTimeout);
@@ -169,7 +173,7 @@ Error PublicServiceHandler::SubscribeCertChanged(
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Subscribing to certificate changed: certType=" << certType;
+    LOG_INF() << "Subscribe to certificate changed: certType=" << certType;
 
     auto& subscription = mSubscriptions[certType.CStr()];
 
@@ -194,7 +198,7 @@ Error PublicServiceHandler::UnsubscribeCertChanged(iam::certhandler::CertReceive
             auto& subscription = it->second;
 
             if (subscription.mSubscribers.erase(&certReceiver) != 0) {
-                LOG_INF() << "Unsubscribing from certificate changed: certType=" << it->first.c_str();
+                LOG_INF() << "Unsubscribe from certificate changed: certType=" << it->first.c_str();
             }
 
             if (!subscription.mSubscribers.empty()) {
@@ -277,7 +281,7 @@ void PublicServiceHandler::RunTask(const std::string& certType, Subscription* su
             iamanager::v5::CertInfo certInfo;
 
             while (reader->Read(&certInfo)) {
-                LOG_DBG() << "Certificate changed: certURL=" << certInfo.cert_url().c_str()
+                LOG_INF() << "Certificate changed: certURL=" << certInfo.cert_url().c_str()
                           << ", keyURL=" << certInfo.key_url().c_str();
 
                 {
