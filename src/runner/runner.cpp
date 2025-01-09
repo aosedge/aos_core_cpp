@@ -3,9 +3,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <Poco/Format.h>
+
 #include <algorithm>
 #include <filesystem>
+
+#include <Poco/Format.h>
+#include <Poco/String.h>
 
 #include <aos/common/tools/fs.hpp>
 #include <logger/logmodule.hpp>
@@ -248,7 +251,9 @@ Array<RunStatus> Runner::GetRunningInstances() const
 
     std::transform(
         mRunningUnits.begin(), mRunningUnits.end(), std::back_inserter(mRunningInstances), [](const auto& unit) {
-            return RunStatus {unit.first.c_str(), unit.second, Error()};
+            const auto instanceID = CreateInstanceID(unit.first);
+
+            return RunStatus {instanceID.c_str(), unit.second, Error()};
         });
 
     return Array(mRunningInstances.data(), mRunningInstances.size());
@@ -291,6 +296,18 @@ Error Runner::RemoveRunParameters(const String& unitName)
 std::string Runner::CreateSystemdUnitName(const String& instance)
 {
     return Poco::format(cSystemdUnitNameTemplate, std::string(instance.CStr()));
+}
+
+std::string Runner::CreateInstanceID(const std::string& unitname)
+{
+    const std::string prefix = "aos-service@";
+    const std::string suffix = ".service";
+
+    if (Poco::startsWith(unitname, prefix) && Poco::endsWith(unitname, suffix)) {
+        return unitname.substr(prefix.length(), unitname.length() - prefix.length() - suffix.length());
+    } else {
+        AOS_ERROR_THROW("not a valid Aos service name", AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument)));
+    }
 }
 
 } // namespace aos::sm::runner

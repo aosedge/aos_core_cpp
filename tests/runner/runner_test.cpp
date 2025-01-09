@@ -76,7 +76,12 @@ TEST_F(RunnerTest, StartInstance)
     std::vector<UnitStatus> units = {status};
     EXPECT_CALL(*mRunner.mSystemd, ListUnits())
         .WillRepeatedly(Return(RetWithError<std::vector<UnitStatus>>(units, err)));
-    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(_)).Times(1);
+
+    StaticArray<RunStatus, 1> expectedInstances;
+
+    expectedInstances.PushBack(RunStatus {"service0", InstanceRunStateEnum::eActive, Error()});
+
+    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(expectedInstances)).Times(1);
 
     mRunner.Start();
 

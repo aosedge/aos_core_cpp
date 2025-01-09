@@ -91,7 +91,9 @@ private:
     Array<RunStatus> GetRunningInstances() const;
     Error            SetRunParameters(const String& unitName, const RunParameters& params);
     Error            RemoveRunParameters(const String& unitName);
-    std::string      CreateSystemdUnitName(const String& instance);
+
+    static std::string CreateSystemdUnitName(const String& instance);
+    static std::string CreateInstanceID(const std::string& unitname);
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
