@@ -70,7 +70,7 @@ constexpr auto cImageSpec         = R"(
         ],
         "workingDir": "/test-working-dir"
     },
-    "created": "1970-01-01T03:00:00Z",
+    "created": "2024-12-31T23:59:59Z",
     "os": "Linux",
     "osVersion": "6.0.8",
     "variant": "6"

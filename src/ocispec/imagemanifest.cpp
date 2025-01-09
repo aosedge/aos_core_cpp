@@ -143,13 +143,15 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
             object->set("aosService", ContentDescriptorToJSON(*manifest.mAosService));
         }
 
-        Poco::JSON::Array layers;
+        if (!manifest.mLayers.IsEmpty()) {
+            Poco::JSON::Array layers;
 
-        for (const auto& layer : manifest.mLayers) {
-            layers.add(ContentDescriptorToJSON(layer));
+            for (const auto& layer : manifest.mLayers) {
+                layers.add(ContentDescriptorToJSON(layer));
+            }
+
+            object->set("layers", std::move(layers));
         }
-
-        object->set("layers", std::move(layers));
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);

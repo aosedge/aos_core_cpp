@@ -66,14 +66,16 @@ Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
         object.set("startInterval", durationStr);
     }
 
+    if (params.mStartBurst > 0) {
+        object.set("startBurst", params.mStartBurst);
+    }
+
     if (params.mRestartInterval > 0) {
         Tie(durationStr, err) = utils::FormatISO8601Duration(utils::Duration(params.mRestartInterval));
         AOS_ERROR_CHECK_AND_THROW("restart interval formatting error", err);
 
         object.set("restartInterval", durationStr);
     }
-
-    object.set("startBurst", params.mStartBurst);
 
     return object;
 }
@@ -563,8 +565,20 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
         object->set("author", serviceConfig.mAuthor.CStr());
         object->set("skipResourceLimits", serviceConfig.mSkipResourceLimits);
 
-        if (serviceConfig.mHostname.HasValue()) {
-            object->set("hostname", serviceConfig.mHostname.GetValue().CStr());
+        if (serviceConfig.mHostname.HasValue() && !serviceConfig.mHostname->IsEmpty()) {
+            object->set("hostname", serviceConfig.mHostname->CStr());
+        }
+
+        object->set("balancingPolicy", serviceConfig.mBalancingPolicy.CStr());
+        object->set("runners", utils::ToJsonArray(serviceConfig.mRunners, ToStdString));
+
+        if (auto runParametersObject = RunParametersToJSON(serviceConfig.mRunParameters);
+            runParametersObject.size() > 0) {
+            object->set("runParameters", runParametersObject);
+        }
+
+        if (!serviceConfig.mSysctl.IsEmpty()) {
+            object->set("sysctl", SysctlToJSON(serviceConfig.mSysctl));
         }
 
         if (serviceConfig.mOfflineTTL > 0) {
@@ -576,17 +590,23 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
             object->set("offlineTTL", offlineTTLStr);
         }
 
-        object->set("balancingPolicy", serviceConfig.mBalancingPolicy.CStr());
-        object->set("runners", utils::ToJsonArray(serviceConfig.mRunners, ToStdString));
-        object->set("runParameters", RunParametersToJSON(serviceConfig.mRunParameters));
-        object->set("sysctl", SysctlToJSON(serviceConfig.mSysctl));
         object->set("quotas", ServiceQuotasToJSON(serviceConfig.mQuotas));
-        object->set("devices", utils::ToJsonArray(serviceConfig.mDevices, ServiceDeviceToJSON));
-        object->set("resources", utils::ToJsonArray(serviceConfig.mResources, ToStdString));
-        object->set("permissions", utils::ToJsonArray(serviceConfig.mPermissions, FunctionServicePermissionsToJSON));
 
         if (serviceConfig.mRequestedResources.HasValue()) {
             object->set("requestedResources", RequestedResourcesToJSON(serviceConfig.mRequestedResources.GetValue()));
+        }
+
+        if (!serviceConfig.mDevices.IsEmpty()) {
+            object->set("devices", utils::ToJsonArray(serviceConfig.mDevices, ServiceDeviceToJSON));
+        }
+
+        if (!serviceConfig.mResources.IsEmpty()) {
+            object->set("resources", utils::ToJsonArray(serviceConfig.mResources, ToStdString));
+        }
+
+        if (!serviceConfig.mPermissions.IsEmpty()) {
+            object->set(
+                "permissions", utils::ToJsonArray(serviceConfig.mPermissions, FunctionServicePermissionsToJSON));
         }
 
         if (serviceConfig.mAlertRules.HasValue()) {
