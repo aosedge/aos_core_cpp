@@ -168,7 +168,7 @@ void ParseBandwidthConfig(const aos::common::utils::CaseInsensitiveObjectWrapper
 
 Error CNI::Init(ExecItf& exec)
 {
-    LOG_INF() << "Initialize CNI";
+    LOG_DBG() << "Init CNI";
 
     mExec = &exec;
 
@@ -177,7 +177,7 @@ Error CNI::Init(ExecItf& exec)
 
 Error CNI::SetConfDir(const String& configDir)
 {
-    LOG_DBG() << "Set CNI configuration directory, configDir=" << configDir.CStr();
+    LOG_DBG() << "Set CNI configuration directory: configDir=" << configDir.CStr();
 
     mConfigDir = std::filesystem::path(configDir.CStr()) / "results";
 

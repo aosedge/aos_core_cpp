@@ -318,8 +318,6 @@ std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const c
         if (String(result) == "done") {
             return {true, ErrorEnum::eNone};
         } else {
-            LOG_ERR() << "Job failed: status=" << result;
-
             return {true, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
         }
     }

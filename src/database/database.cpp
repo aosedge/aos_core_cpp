@@ -404,7 +404,7 @@ Database::~Database()
 
 Error Database::Init(const std::string& workDir, const config::MigrationConfig& migrationConfig)
 {
-    LOG_DBG() << "Initializing database";
+    LOG_DBG() << "Init database: workDir=" << workDir.c_str();
 
     if (mSession && mSession->isConnected()) {
         return ErrorEnum::eNone;

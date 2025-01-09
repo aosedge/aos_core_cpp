@@ -89,7 +89,7 @@ Error OCIWhiteoutsToOverlay(const String& path, uint32_t uid, uint32_t gid)
 Error ImageHandler::Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocatorItf& layerSpaceAllocator,
     spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec, uint32_t uid)
 {
-    LOG_DBG() << "Initialize image handler";
+    LOG_DBG() << "Init image handler";
 
     mHasher                = &hasher;
     mLayerSpaceAllocator   = &layerSpaceAllocator;

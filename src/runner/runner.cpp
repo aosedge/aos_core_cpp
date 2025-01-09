@@ -111,10 +111,6 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     status.mInstanceID = instanceID;
     status.mState      = InstanceRunStateEnum::eFailed;
 
-    LOG_DBG() << "Start service instance: instanceID=" << instanceID
-              << ", StartInterval=" << ToSec(params.mStartInterval) << ", StartBurst=" << ToSec(params.mStartBurst)
-              << ", RestartInterval=" << ToSec(params.mRestartInterval);
-
     // Fix run parameters.
     RunParameters fixedParams = params;
 
@@ -129,6 +125,11 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     if (params.mRestartInterval == 0) {
         fixedParams.mRestartInterval = cDefaultRestartInterval;
     }
+
+    LOG_DBG() << "Start service instance: instanceID=" << instanceID
+              << ", startInterval=" << ToSec(fixedParams.mStartInterval)
+              << ", startBurst=" << ToSec(fixedParams.mStartBurst)
+              << ", restartInterval=" << ToSec(fixedParams.mRestartInterval);
 
     // Create systemd service file.
     if (status.mError = SetRunParameters(instanceID, fixedParams); !status.mError.IsNone()) {
