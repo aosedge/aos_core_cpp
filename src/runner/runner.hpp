@@ -89,8 +89,8 @@ private:
 
     void                           MonitorUnits();
     Array<RunStatus>               GetRunningInstances() const;
-    Error                          SetRunParameters(const String& unitName, const RunParameters& params);
-    Error                          RemoveRunParameters(const String& unitName);
+    Error                          SetRunParameters(const std::string& unitName, const RunParameters& params);
+    Error                          RemoveRunParameters(const std::string& unitName);
     RetWithError<InstanceRunState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
 
     static std::string CreateSystemdUnitName(const String& instance);

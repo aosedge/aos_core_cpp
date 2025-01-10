@@ -150,12 +150,13 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
               << ", restartInterval=" << ToSec(fixedParams.mRestartInterval);
 
     // Create systemd service file.
-    if (status.mError = SetRunParameters(instanceID, fixedParams); !status.mError.IsNone()) {
+    const auto unitName = CreateSystemdUnitName(instanceID);
+
+    if (status.mError = SetRunParameters(unitName, fixedParams); !status.mError.IsNone()) {
         return status;
     }
 
     // Start unit.
-    const auto unitName  = CreateSystemdUnitName(instanceID);
     const auto startTime = static_cast<Duration>(cStartTimeMultiplier * fixedParams.mStartInterval);
 
     if (status.mError = mSystemd->StartUnit(unitName, "replace", startTime); !status.mError.IsNone()) {
@@ -198,7 +199,7 @@ Error Runner::StopInstance(const String& instanceID)
         }
     }
 
-    return RemoveRunParameters(unitName.c_str());
+    return RemoveRunParameters(unitName);
 }
 
 std::shared_ptr<SystemdConnItf> Runner::CreateSystemdConn()
@@ -274,7 +275,7 @@ Array<RunStatus> Runner::GetRunningInstances() const
     return Array(mRunningInstances.data(), mRunningInstances.size());
 }
 
-Error Runner::SetRunParameters(const String& unitName, const RunParameters& params)
+Error Runner::SetRunParameters(const std::string& unitName, const RunParameters& params)
 {
     const std::string parametersFormat = "[Unit]\n"
                                          "StartLimitIntervalSec=%us\n"
@@ -290,7 +291,7 @@ Error Runner::SetRunParameters(const String& unitName, const RunParameters& para
     std::string formattedContent = Poco::format(
         parametersFormat, ToSec(params.mStartInterval), params.mStartBurst, ToSec(params.mRestartInterval));
 
-    const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName.CStr() + ".d";
+    const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName + ".d";
 
     if (auto err = CreateDir(parametersDir, 0755U); !err.IsNone()) {
         return err;
@@ -301,9 +302,9 @@ Error Runner::SetRunParameters(const String& unitName, const RunParameters& para
     return FS::WriteStringToFile(paramsFile.c_str(), formattedContent.c_str(), 0644U);
 }
 
-Error Runner::RemoveRunParameters(const String& unitName)
+Error Runner::RemoveRunParameters(const std::string& unitName)
 {
-    const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName.CStr() + ".d";
+    const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName + ".d";
 
     return FS::RemoveAll(parametersDir.c_str());
 }
