@@ -187,7 +187,7 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const Stri
     size_t unpackedSize = 0;
 
     auto installDir = FS::JoinPath(installBasePath, service.mServiceID);
-    installDir.Append(":").Append(service.mVersion);
+    installDir.Append("-v").Append(service.mVersion);
 
     if (auto [exists, err] = FS::DirExist(installDir); !err.IsNone() || exists) {
         return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "service already exists"))};
