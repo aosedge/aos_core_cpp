@@ -87,13 +87,19 @@ private:
     virtual std::shared_ptr<SystemdConnItf> CreateSystemdConn();
     virtual std::string                     GetSystemdDropInsDir() const;
 
-    void             MonitorUnits();
-    Array<RunStatus> GetRunningInstances() const;
-    Error            SetRunParameters(const String& unitName, const RunParameters& params);
-    Error            RemoveRunParameters(const String& unitName);
+    void                           MonitorUnits();
+    Array<RunStatus>               GetRunningInstances() const;
+    Error                          SetRunParameters(const String& unitName, const RunParameters& params);
+    Error                          RemoveRunParameters(const String& unitName);
+    RetWithError<InstanceRunState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
 
     static std::string CreateSystemdUnitName(const String& instance);
     static std::string CreateInstanceID(const std::string& unitname);
+
+    struct StartingUnitData {
+        std::condition_variable mCondVar;
+        UnitState               mRunState;
+    };
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
@@ -102,6 +108,7 @@ private:
     std::mutex                      mMutex;
     std::condition_variable         mCondVar;
 
+    std::map<std::string, StartingUnitData> mStartingUnits;
     std::map<std::string, InstanceRunState> mRunningUnits;
     mutable std::vector<RunStatus>          mRunningInstances;
 

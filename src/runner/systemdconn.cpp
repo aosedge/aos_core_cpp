@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <chrono>
 #include <systemd/sd-bus-protocol.h>
 #include <thread>
@@ -22,14 +23,13 @@ namespace aos::sm::runner {
 
 namespace {
 
-RetWithError<InstanceRunState> ConvertToInstanceState(const std::string& src)
+RetWithError<UnitState> ConvertToUnitState(const std::string& src)
 {
-    if (src == "active") {
-        return {InstanceRunStateEnum::eActive};
-    }
+    UnitState result;
 
-    // Treat all other statuses as failed: reloading, inactive, failed, activating, deactivating.
-    return {InstanceRunStateEnum::eFailed};
+    auto err = result.FromString(src.c_str());
+
+    return {result, err};
 }
 
 aos::Duration ToUSec(const Duration& val)
@@ -97,7 +97,7 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
 
         status.mName = name;
 
-        Tie(status.mActiveState, err) = ConvertToInstanceState(activeState);
+        Tie(status.mActiveState, err) = ConvertToUnitState(activeState);
         if (!err.IsNone()) {
             return {{}, AOS_ERROR_WRAP(err)};
         }
@@ -166,7 +166,7 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
 
     status.mName = name;
 
-    Tie(status.mActiveState, err) = ConvertToInstanceState(activeState);
+    Tie(status.mActiveState, err) = ConvertToUnitState(activeState);
     if (!err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};
     }
@@ -324,7 +324,9 @@ std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const c
         if (String(result) == "done") {
             return {true, ErrorEnum::eNone};
         } else {
-            return {true, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
+            auto errMsg = std::string("job finished with status=") + result;
+
+            return {true, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, errMsg.c_str()))};
         }
     }
 

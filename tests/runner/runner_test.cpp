@@ -66,8 +66,8 @@ protected:
 
 TEST_F(RunnerTest, StartInstance)
 {
-    RunParameters params = {};
-    UnitStatus    status = {"aos-service@service0.service", InstanceRunStateEnum::eActive};
+    RunParameters params = {500 * Time::cMilliseconds, 0, 0};
+    UnitStatus    status = {"aos-service@service0.service", UnitStateEnum::eActive};
     Error         err    = ErrorEnum::eNone;
 
     EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(err));
@@ -120,7 +120,7 @@ TEST_F(RunnerTest, GetUnitStatusFailed)
     mRunner.Start();
 
     RunParameters params = {};
-    UnitStatus    status = {"aos-service@service0.service", InstanceRunStateEnum::eFailed};
+    UnitStatus    status = {"aos-service@service0.service", UnitStateEnum::eFailed};
     Error         err    = ErrorEnum::eFailed;
 
     EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(Error()));
@@ -147,7 +147,7 @@ TEST_F(RunnerTest, ListUnitsFailed)
 
     EXPECT_EQ(mRunner.StartInstance("service0", cRuntimeDir.c_str(), params), expectedRes);
 
-    UnitStatus              status = {"aos-service@service0.service", InstanceRunStateEnum::eFailed};
+    UnitStatus              status = {"aos-service@service0.service", UnitStateEnum::eFailed};
     std::vector<UnitStatus> units  = {status};
 
     EXPECT_CALL(*mRunner.mSystemd, ListUnits())

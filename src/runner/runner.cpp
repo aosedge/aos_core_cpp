@@ -29,6 +29,20 @@ inline unsigned ToSec(Duration duration)
     return duration / Time::cSeconds;
 }
 
+inline unsigned ToMSec(Duration duration)
+{
+    return duration / Time::cMilliseconds;
+}
+
+inline InstanceRunState ToInstanceState(UnitState state)
+{
+    if (state.GetValue() == UnitStateEnum::eActive) {
+        return InstanceRunStateEnum::eActive;
+    } else {
+        return InstanceRunStateEnum::eFailed;
+    }
+}
+
 Error CreateDir(const std::string& path, unsigned perms)
 {
     std::error_code code;
@@ -149,19 +163,9 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     }
 
     // Get unit status.
-    UnitStatus unitStatus;
+    Tie(status.mState, status.mError) = GetStartingUnitState(unitName, startTime);
 
-    Tie(unitStatus, status.mError) = mSystemd->GetUnitStatus(unitName);
-
-    status.mState = unitStatus.mActiveState;
-
-    {
-        std::lock_guard lock {mMutex};
-
-        mRunningUnits[unitName] = status.mState;
-    }
-
-    LOG_DBG() << "Start instance: name=" << unitName.c_str() << ", unitStatus=" << unitStatus.mActiveState
+    LOG_DBG() << "Start instance: name=" << unitName.c_str() << ", unitStatus=" << status.mState
               << ", instanceID=" << instanceID << ", err=" << status.mError;
 
     return status;
@@ -227,16 +231,26 @@ void Runner::MonitorUnits()
         bool unitChanged = false;
 
         for (const auto& unit : units) {
-            auto runUnitIt = mRunningUnits.find(unit.mName);
-            if (runUnitIt == mRunningUnits.end()) {
-                continue;
+            // Update starting units
+            auto startUnitIt = mStartingUnits.find(unit.mName);
+            if (startUnitIt != mStartingUnits.end()) {
+                startUnitIt->second.mRunState = unit.mActiveState;
+                // systemd doesnt change the state of failed unit => notify listener about final state.
+                if (unit.mActiveState == UnitStateEnum::eFailed) {
+                    startUnitIt->second.mCondVar.notify_all();
+                }
             }
 
-            auto& unitStatus = runUnitIt->second;
+            // Update running units
+            auto runUnitIt = mRunningUnits.find(unit.mName);
+            if (runUnitIt != mRunningUnits.end()) {
+                auto& unitStatus    = runUnitIt->second;
+                auto  instanceState = ToInstanceState(unit.mActiveState);
 
-            if (unitStatus != unit.mActiveState) {
-                unitStatus  = unit.mActiveState;
-                unitChanged = true;
+                if (unitStatus != instanceState) {
+                    unitStatus  = instanceState;
+                    unitChanged = true;
+                }
             }
         }
 
@@ -292,6 +306,36 @@ Error Runner::RemoveRunParameters(const String& unitName)
     const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName.CStr() + ".d";
 
     return FS::RemoveAll(parametersDir.c_str());
+}
+
+RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& unitName, Duration startInterval)
+{
+    const auto timeout = std::chrono::milliseconds(ToMSec(startInterval));
+
+    auto [initialStatus, err] = mSystemd->GetUnitStatus(unitName);
+    if (!err.IsNone()) {
+        return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(err)};
+    }
+
+    {
+        std::unique_lock lock {mMutex};
+
+        mStartingUnits[unitName].mRunState = initialStatus.mActiveState;
+
+        // Wait specified duration for unit state updates.
+        std::ignore        = mStartingUnits[unitName].mCondVar.wait_for(lock, timeout);
+        UnitState runState = mStartingUnits[unitName].mRunState;
+
+        mStartingUnits.erase(unitName);
+
+        if (runState.GetValue() != UnitStateEnum::eActive) {
+            return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
+        }
+
+        mRunningUnits[unitName] = InstanceRunStateEnum::eActive;
+
+        return {InstanceRunStateEnum::eActive, ErrorEnum::eNone};
+    }
 }
 
 std::string Runner::CreateSystemdUnitName(const String& instance)

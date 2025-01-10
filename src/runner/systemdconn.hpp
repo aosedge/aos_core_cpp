@@ -19,11 +19,30 @@
 namespace aos::sm::runner {
 
 /**
+ * Unit state.
+ */
+class UnitStateType {
+public:
+    enum class Enum { eActive, eInactive, eFailed, eActivating, eDeactivating, eMaintenance, eReloading, eRefreshing };
+
+    static const Array<const char* const> GetStrings()
+    {
+        static const char* const sNames[]
+            = {"active", "inactive", "failed", "activating", "deactivating", "maintenance", "reloading", "refreshing"};
+
+        return Array<const char* const>(sNames, ArraySize(sNames));
+    };
+};
+
+using UnitStateEnum = UnitStateType::Enum;
+using UnitState     = EnumStringer<UnitStateType>;
+
+/**
  * Unit status.
  */
 struct UnitStatus {
-    std::string      mName;
-    InstanceRunState mActiveState;
+    std::string mName;
+    UnitState   mActiveState;
 };
 
 /**
