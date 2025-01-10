@@ -25,10 +25,8 @@ std::string ToStdString(const String& str)
     return str.CStr();
 }
 
-RunParameters RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
-    RunParameters params = {};
-
     params.mStartBurst = object.GetValue<long>("startBurst");
 
     Error           err;
@@ -48,8 +46,6 @@ RunParameters RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& o
 
         params.mRestartInterval = duration.count();
     }
-
-    return params;
 }
 
 Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
@@ -80,11 +76,9 @@ Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
     return object;
 }
 
-decltype(aos::oci::ServiceConfig::mSysctl) SysctlFromJSON(const Poco::Dynamic::Var& var)
+void SysctlFromJSON(const Poco::Dynamic::Var& var, decltype(aos::oci::ServiceConfig::mSysctl)& sysctl)
 {
     auto object = var.extract<Poco::JSON::Object::Ptr>();
-
-    decltype(aos::oci::ServiceConfig::mSysctl) sysctl;
 
     for (const auto& [key, value] : *object) {
         const auto valueStr = value.convert<std::string>();
@@ -92,8 +86,6 @@ decltype(aos::oci::ServiceConfig::mSysctl) SysctlFromJSON(const Poco::Dynamic::V
         auto err = sysctl.TryEmplace(key.c_str(), valueStr.c_str());
         AOS_ERROR_CHECK_AND_THROW("sysctl parsing error", err);
     }
-
-    return sysctl;
 }
 
 Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::ServiceConfig::mSysctl)& sysctl)
@@ -107,10 +99,8 @@ Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::ServiceConfig::mSysctl)
     return object;
 }
 
-aos::oci::ServiceQuotas ServiceQuotasFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ServiceQuotasFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ServiceQuotas& quotas)
 {
-    aos::oci::ServiceQuotas quotas = {};
-
     if (const auto cpuDMIPSLimit = object.GetOptionalValue<uint64_t>("cpuDMIPSLimit")) {
         quotas.mCPUDMIPSLimit.SetValue(*cpuDMIPSLimit);
     }
@@ -154,8 +144,6 @@ aos::oci::ServiceQuotas ServiceQuotasFromJSON(const utils::CaseInsensitiveObject
     if (const auto downloadLimit = object.GetOptionalValue<uint64_t>("downloadLimit")) {
         quotas.mDownloadLimit.SetValue(*downloadLimit);
     }
-
-    return quotas;
 }
 
 Poco::JSON::Object ServiceQuotasToJSON(const aos::oci::ServiceQuotas& quotas)
@@ -492,11 +480,11 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         }
 
         if (wrapper.Has("runParameters")) {
-            serviceConfig.mRunParameters = RunParametersFromJSON(wrapper.GetObject("runParameters"));
+            RunParametersFromJSON(wrapper.GetObject("runParameters"), serviceConfig.mRunParameters);
         }
 
         if (wrapper.Has("sysctl")) {
-            serviceConfig.mSysctl = SysctlFromJSON(wrapper.Get("sysctl"));
+            SysctlFromJSON(wrapper.Get("sysctl"), serviceConfig.mSysctl);
         }
 
         if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL"); offlineTTLStr.has_value()) {
@@ -509,7 +497,7 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         }
 
         if (wrapper.Has("quotas")) {
-            serviceConfig.mQuotas = ServiceQuotasFromJSON(wrapper.GetObject("quotas"));
+            ServiceQuotasFromJSON(wrapper.GetObject("quotas"), serviceConfig.mQuotas);
         }
 
         if (wrapper.Has("requestedResources")) {
