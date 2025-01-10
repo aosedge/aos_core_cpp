@@ -25,29 +25,25 @@ std::string ToStdString(const String& str)
     return str.CStr();
 }
 
-aos::oci::ImageConfig ImageConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ImageConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ImageConfig& config)
 {
-    aos::oci::ImageConfig config;
-
     for (const auto& env : utils::GetArrayValue<std::string>(object, "env")) {
-        auto err = config.mEnv.PushBack(env.c_str());
+        auto err = config.mEnv.EmplaceBack(env.c_str());
         AOS_ERROR_CHECK_AND_THROW("env parsing error", err);
     }
 
     for (const auto& entrypoint : utils::GetArrayValue<std::string>(object, "entrypoint")) {
-        auto err = config.mEntryPoint.PushBack(entrypoint.c_str());
+        auto err = config.mEntryPoint.EmplaceBack(entrypoint.c_str());
         AOS_ERROR_CHECK_AND_THROW("entrypoint parsing error", err);
     }
 
     for (const auto& cmd : utils::GetArrayValue<std::string>(object, "cmd")) {
-        auto err = config.mCmd.PushBack(cmd.c_str());
+        auto err = config.mCmd.EmplaceBack(cmd.c_str());
         AOS_ERROR_CHECK_AND_THROW("cmd parsing error", err);
     }
 
     const auto workingDir = object.GetValue<std::string>("workingDir");
     config.mWorkingDir    = workingDir.c_str();
-
-    return config;
 }
 
 Poco::JSON::Object ImageConfigToJSON(const aos::oci::ImageConfig& config)
@@ -95,7 +91,7 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
         if (wrapper.Has("config")) {
-            imageSpec.mConfig = ImageConfigFromJSON(wrapper.GetObject("config"));
+            ImageConfigFromJSON(wrapper.GetObject("config"), imageSpec.mConfig);
         }
 
         const auto author       = wrapper.GetValue<std::string>("author");
