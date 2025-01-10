@@ -145,8 +145,7 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     }
 
     LOG_DBG() << "Start service instance: instanceID=" << instanceID
-              << ", startInterval=" << ToSec(fixedParams.mStartInterval)
-              << ", startBurst=" << ToSec(fixedParams.mStartBurst)
+              << ", startInterval=" << ToSec(fixedParams.mStartInterval) << ", startBurst=" << fixedParams.mStartBurst
               << ", restartInterval=" << ToSec(fixedParams.mRestartInterval);
 
     // Create systemd service file.
