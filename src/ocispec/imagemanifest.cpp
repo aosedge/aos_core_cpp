@@ -20,21 +20,24 @@ namespace aos::common::oci {
 
 namespace {
 
-aos::oci::ContentDescriptor ContentDescriptorFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ContentDescriptorFromJSON(
+    const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ContentDescriptor& descriptor)
 {
-    const auto digest    = object.GetValue<std::string>("digest");
     const auto mediaType = object.GetValue<std::string>("mediaType");
+    const auto digest    = object.GetValue<std::string>("digest");
     const auto size      = object.GetValue<uint64_t>("size");
 
-    return {mediaType.c_str(), digest.c_str(), size};
+    descriptor.mMediaType = mediaType.c_str();
+    descriptor.mDigest    = digest.c_str();
+    descriptor.mSize      = size;
 }
 
 Poco::JSON::Object ContentDescriptorToJSON(const aos::oci::ContentDescriptor& descriptor)
 {
     Poco::JSON::Object object;
 
-    object.set("digest", descriptor.mDigest.CStr());
     object.set("mediaType", descriptor.mMediaType.CStr());
+    object.set("digest", descriptor.mDigest.CStr());
     object.set("size", descriptor.mSize);
 
     return object;
@@ -61,7 +64,7 @@ Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescri
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        descriptor = ContentDescriptorFromJSON(wrapper);
+        ContentDescriptorFromJSON(wrapper, descriptor);
     } catch (const utils::AosException& e) {
         return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
@@ -105,12 +108,16 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
         manifest.mSchemaVersion = wrapper.GetValue<int>("schemaVersion");
 
         if (wrapper.Has("config")) {
-            manifest.mConfig = ContentDescriptorFromJSON(wrapper.GetObject("config"));
+            ContentDescriptorFromJSON(wrapper.GetObject("config"), manifest.mConfig);
         }
 
         if (wrapper.Has("layers")) {
             auto layers = utils::GetArrayValue<aos::oci::ContentDescriptor>(wrapper, "layers", [](const auto& value) {
-                return ContentDescriptorFromJSON(utils::CaseInsensitiveObjectWrapper(value));
+                aos::oci::ContentDescriptor descriptor;
+
+                ContentDescriptorFromJSON(utils::CaseInsensitiveObjectWrapper(value), descriptor);
+
+                return descriptor;
             });
 
             for (const auto& layer : layers) {
@@ -120,7 +127,9 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
         }
 
         if (wrapper.Has("aosService")) {
-            manifest.mAosService.SetValue(ContentDescriptorFromJSON(wrapper.GetObject("aosService")));
+            manifest.mAosService.SetValue({});
+
+            ContentDescriptorFromJSON(wrapper.GetObject("aosService"), *manifest.mAosService);
         }
     } catch (const utils::AosException& e) {
         return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
