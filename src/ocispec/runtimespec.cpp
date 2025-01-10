@@ -25,46 +25,42 @@ std::string ToStdString(const String& str)
     return str.CStr();
 }
 
-aos::oci::LinuxCapabilities CapabilitiesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void CapabilitiesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxCapabilities& capabilities)
 {
-    aos::oci::LinuxCapabilities capabilities;
-
     if (object.Has("bounding")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "bounding")) {
-            auto err = capabilities.mBounding.PushBack(cap.c_str());
+            auto err = capabilities.mBounding.EmplaceBack(cap.c_str());
             AOS_ERROR_CHECK_AND_THROW("bounding capabilities parsing error", err);
         }
     }
 
     if (object.Has("effective")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "effective")) {
-            auto err = capabilities.mEffective.PushBack(cap.c_str());
+            auto err = capabilities.mEffective.EmplaceBack(cap.c_str());
             AOS_ERROR_CHECK_AND_THROW("effective capabilities parsing error", err);
         }
     }
 
     if (object.Has("inheritable")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "inheritable")) {
-            auto err = capabilities.mInheritable.PushBack(cap.c_str());
+            auto err = capabilities.mInheritable.EmplaceBack(cap.c_str());
             AOS_ERROR_CHECK_AND_THROW("inheritable capabilities parsing error", err);
         }
     }
 
     if (object.Has("permitted")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "permitted")) {
-            auto err = capabilities.mPermitted.PushBack(cap.c_str());
+            auto err = capabilities.mPermitted.EmplaceBack(cap.c_str());
             AOS_ERROR_CHECK_AND_THROW("permitted capabilities parsing error", err);
         }
     }
 
     if (object.Has("ambient")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "ambient")) {
-            auto err = capabilities.mAmbient.PushBack(cap.c_str());
+            auto err = capabilities.mAmbient.EmplaceBack(cap.c_str());
             AOS_ERROR_CHECK_AND_THROW("ambient capabilities parsing error", err);
         }
     }
-
-    return capabilities;
 }
 
 Poco::JSON::Object CapabilitiesToJSON(const aos::oci::LinuxCapabilities& capabilities)
@@ -94,11 +90,13 @@ Poco::JSON::Object CapabilitiesToJSON(const aos::oci::LinuxCapabilities& capabil
     return object;
 }
 
-aos::oci::POSIXRlimit POSIXRlimitFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void POSIXRlimitFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::POSIXRlimit& rlimit)
 {
     const auto type = object.GetValue<std::string>("type");
 
-    return {type.c_str(), object.GetValue<uint64_t>("hard"), object.GetValue<uint64_t>("soft")};
+    rlimit.mType = type.c_str();
+    rlimit.mHard = object.GetValue<uint64_t>("hard");
+    rlimit.mSoft = object.GetValue<uint64_t>("soft");
 }
 
 Poco::JSON::Object POSIXRlimitToJSON(const aos::oci::POSIXRlimit& rlimit)
@@ -112,10 +110,8 @@ Poco::JSON::Object POSIXRlimitToJSON(const aos::oci::POSIXRlimit& rlimit)
     return object;
 }
 
-aos::oci::User UserFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void UserFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::User& user)
 {
-    aos::oci::User user;
-
     user.mUID = object.GetValue<uint32_t>("uid");
     user.mGID = object.GetValue<uint32_t>("gid");
 
@@ -124,14 +120,12 @@ aos::oci::User UserFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
     }
 
     for (const auto gid : utils::GetArrayValue<uint32_t>(object, "additionalGids")) {
-        auto err = user.mAdditionalGIDs.PushBack(gid);
+        auto err = user.mAdditionalGIDs.EmplaceBack(gid);
         AOS_ERROR_CHECK_AND_THROW("additionalGids parsing error", err);
     }
 
     const auto username = object.GetValue<std::string>("username");
     user.mUsername      = username.c_str();
-
-    return user;
 }
 
 Poco::JSON::Object UserToJSON(const aos::oci::User& user)
@@ -156,27 +150,25 @@ Poco::JSON::Object UserToJSON(const aos::oci::User& user)
     return object;
 }
 
-aos::oci::Process ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::Process& process)
 {
-    aos::oci::Process process;
-
     process.mTerminal        = object.GetValue<bool>("terminal");
     process.mNoNewPrivileges = object.GetValue<bool>("noNewPrivileges");
 
     if (object.Has("user")) {
-        process.mUser = UserFromJSON(object.GetObject("user"));
+        UserFromJSON(object.GetObject("user"), process.mUser);
     }
 
     if (object.Has("args")) {
         for (const auto& arg : utils::GetArrayValue<std::string>(object, "args")) {
-            auto err = process.mArgs.PushBack(arg.c_str());
+            auto err = process.mArgs.EmplaceBack(arg.c_str());
             AOS_ERROR_CHECK_AND_THROW("args parsing error", err);
         }
     }
 
     if (object.Has("env")) {
         for (const auto& env : utils::GetArrayValue<std::string>(object, "env")) {
-            auto err = process.mEnv.PushBack(env.c_str());
+            auto err = process.mEnv.EmplaceBack(env.c_str());
             AOS_ERROR_CHECK_AND_THROW("env parsing error", err);
         }
     }
@@ -185,20 +177,27 @@ aos::oci::Process ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& obj
     process.mCwd   = cwd.c_str();
 
     if (object.Has("capabilities")) {
-        process.mCapabilities.SetValue(CapabilitiesFromJSON(object.GetObject("capabilities")));
+        auto capabilities = std::make_unique<aos::oci::LinuxCapabilities>();
+
+        CapabilitiesFromJSON(object.GetObject("capabilities"), *capabilities);
+
+        process.mCapabilities.SetValue(*capabilities);
     }
 
     if (object.Has("rlimits")) {
-        auto rlimits = utils::GetArrayValue<aos::oci::POSIXRlimit>(object, "rlimits",
-            [](const auto& value) { return POSIXRlimitFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+        auto rlimits = utils::GetArrayValue<aos::oci::POSIXRlimit>(object, "rlimits", [](const auto& value) {
+            aos::oci::POSIXRlimit rlimit;
+
+            POSIXRlimitFromJSON(utils::CaseInsensitiveObjectWrapper(value), rlimit);
+
+            return rlimit;
+        });
 
         for (const auto& rlimit : rlimits) {
-            auto err = process.mRlimits.PushBack(rlimit);
+            auto err = process.mRlimits.EmplaceBack(rlimit);
             AOS_ERROR_CHECK_AND_THROW("rlimits parsing error", err);
         }
     }
-
-    return process;
 }
 
 Poco::JSON::Object ProcessToJSON(const aos::oci::Process& process)
@@ -233,11 +232,12 @@ Poco::JSON::Object ProcessToJSON(const aos::oci::Process& process)
     return object;
 }
 
-aos::oci::Root RootFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void RootFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::Root& root)
 {
     const auto path = object.GetValue<std::string>("path");
 
-    return {path.c_str(), object.GetValue<bool>("readonly")};
+    root.mPath     = path.c_str();
+    root.mReadonly = object.GetValue<bool>("readonly");
 }
 
 Poco::JSON::Object RootToJSON(const aos::oci::Root& root)
@@ -250,9 +250,8 @@ Poco::JSON::Object RootToJSON(const aos::oci::Root& root)
     return object;
 }
 
-Mount MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Mount& mount)
 {
-    Mount mount;
 
     const auto destination = object.GetValue<std::string>("destination");
     const auto type        = object.GetValue<std::string>("type");
@@ -263,11 +262,9 @@ Mount MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
     mount.mSource      = source.c_str();
 
     for (const auto& option : utils::GetArrayValue<std::string>(object, "options")) {
-        auto err = mount.mOptions.PushBack(option.c_str());
+        auto err = mount.mOptions.EmplaceBack(option.c_str());
         AOS_ERROR_CHECK_AND_THROW("mount options parsing error", err);
     }
-
-    return mount;
 }
 
 Poco::JSON::Object MountToJSON(const Mount& mount)
@@ -291,13 +288,15 @@ Poco::JSON::Object MountToJSON(const Mount& mount)
     return object;
 }
 
-aos::oci::LinuxDeviceCgroup DeviceCgroupFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void DeviceCgroupFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxDeviceCgroup& device)
 {
     const auto allow  = object.GetValue<bool>("allow");
     const auto type   = object.GetValue<std::string>("type");
     const auto access = object.GetValue<std::string>("access");
 
-    aos::oci::LinuxDeviceCgroup device = {type.c_str(), access.c_str(), allow};
+    device.mType   = type.c_str();
+    device.mAccess = access.c_str();
+    device.mAllow  = allow;
 
     if (const auto major = object.GetOptionalValue<int64_t>("major"); major.has_value()) {
         device.mMajor.SetValue(*major);
@@ -306,8 +305,6 @@ aos::oci::LinuxDeviceCgroup DeviceCgroupFromJSON(const utils::CaseInsensitiveObj
     if (const auto minor = object.GetOptionalValue<int64_t>("minor"); minor.has_value()) {
         device.mMinor.SetValue(*minor);
     }
-
-    return device;
 }
 
 Poco::JSON::Object DeviceCgroupToJSON(const aos::oci::LinuxDeviceCgroup& device)
@@ -335,10 +332,8 @@ Poco::JSON::Object DeviceCgroupToJSON(const aos::oci::LinuxDeviceCgroup& device)
     return object;
 }
 
-aos::oci::LinuxMemory LinuxMemoryFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxMemoryFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxMemory& memory)
 {
-    aos::oci::LinuxMemory memory;
-
     if (const auto limit = object.GetOptionalValue<int64_t>("limit"); limit.has_value()) {
         memory.mLimit.SetValue(*limit);
     }
@@ -375,8 +370,6 @@ aos::oci::LinuxMemory LinuxMemoryFromJSON(const utils::CaseInsensitiveObjectWrap
         checkBeforeUpdate.has_value()) {
         memory.mCheckBeforeUpdate.SetValue(*checkBeforeUpdate);
     }
-
-    return memory;
 }
 
 Poco::JSON::Object LinuxMemoryToJSON(const aos::oci::LinuxMemory& lnxMemory)
@@ -422,10 +415,8 @@ Poco::JSON::Object LinuxMemoryToJSON(const aos::oci::LinuxMemory& lnxMemory)
     return object;
 }
 
-aos::oci::LinuxCPU LinuxCPUFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxCPUFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxCPU& cpu)
 {
-    aos::oci::LinuxCPU cpu;
-
     if (const auto shares = object.GetOptionalValue<uint64_t>("shares"); shares.has_value()) {
         cpu.mShares.SetValue(*shares);
     }
@@ -461,8 +452,6 @@ aos::oci::LinuxCPU LinuxCPUFromJSON(const utils::CaseInsensitiveObjectWrapper& o
     if (const auto idle = object.GetOptionalValue<int64_t>("idle"); idle.has_value()) {
         cpu.mIdle.SetValue(*idle);
     }
-
-    return cpu;
 }
 
 Poco::JSON::Object LinuxCPUToJSON(const aos::oci::LinuxCPU& cpu)
@@ -508,9 +497,9 @@ Poco::JSON::Object LinuxCPUToJSON(const aos::oci::LinuxCPU& cpu)
     return object;
 }
 
-aos::oci::LinuxPids LinuxPidsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxPidsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxPids& pids)
 {
-    return {object.GetValue<int64_t>("limit")};
+    pids.mLimit = object.GetValue<int64_t>("limit");
 }
 
 Poco::JSON::Object LinuxPidsToJSON(const aos::oci::LinuxPids& pids)
@@ -522,11 +511,9 @@ Poco::JSON::Object LinuxPidsToJSON(const aos::oci::LinuxPids& pids)
     return object;
 }
 
-decltype(aos::oci::Linux::mSysctl) SysctlFromJSON(const Poco::Dynamic::Var& var)
+void SysctlFromJSON(const Poco::Dynamic::Var& var, decltype(aos::oci::Linux::mSysctl)& sysctl)
 {
     auto object = var.extract<Poco::JSON::Object::Ptr>();
-
-    decltype(aos::oci::ServiceConfig::mSysctl) sysctl;
 
     for (const auto& [key, value] : *object) {
         const auto valueStr = value.convert<std::string>();
@@ -534,8 +521,6 @@ decltype(aos::oci::Linux::mSysctl) SysctlFromJSON(const Poco::Dynamic::Var& var)
         auto err = sysctl.TryEmplace(key.c_str(), valueStr.c_str());
         AOS_ERROR_CHECK_AND_THROW("sysctl parsing error", err);
     }
-
-    return sysctl;
 }
 
 Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::Linux::mSysctl)& sysctl)
@@ -549,12 +534,15 @@ Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::Linux::mSysctl)& sysctl
     return object;
 }
 
-aos::oci::LinuxResources LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxResources& resources)
 {
-    aos::oci::LinuxResources resources;
+    auto devices = utils::GetArrayValue<aos::oci::LinuxDeviceCgroup>(object, "devices", [](const auto& value) {
+        aos::oci::LinuxDeviceCgroup device;
 
-    auto devices = utils::GetArrayValue<aos::oci::LinuxDeviceCgroup>(object, "devices",
-        [](const auto& value) { return DeviceCgroupFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+        DeviceCgroupFromJSON(utils::CaseInsensitiveObjectWrapper(value), device);
+
+        return device;
+    });
 
     for (const auto& device : devices) {
         auto err = resources.mDevices.PushBack(device);
@@ -562,18 +550,22 @@ aos::oci::LinuxResources LinuxResourcesFromJSON(const utils::CaseInsensitiveObje
     }
 
     if (object.Has("memory")) {
-        resources.mMemory.SetValue(LinuxMemoryFromJSON(object.GetObject("memory")));
+        resources.mMemory.SetValue({});
+
+        LinuxMemoryFromJSON(object.GetObject("memory"), *resources.mMemory);
     }
 
     if (object.Has("cpu")) {
-        resources.mCPU.SetValue(LinuxCPUFromJSON(object.GetObject("cpu")));
+        resources.mCPU.SetValue({});
+
+        LinuxCPUFromJSON(object.GetObject("cpu"), *resources.mCPU);
     }
 
     if (object.Has("pids")) {
-        resources.mPids.SetValue(LinuxPidsFromJSON(object.GetObject("pids")));
-    }
+        resources.mPids.SetValue({});
 
-    return resources;
+        LinuxPidsFromJSON(object.GetObject("pids"), *resources.mPids);
+    }
 }
 
 Poco::JSON::Object LinuxResourcesToJSON(const aos::oci::LinuxResources& resources)
@@ -603,7 +595,7 @@ Poco::JSON::Object LinuxResourcesToJSON(const aos::oci::LinuxResources& resource
     return object;
 }
 
-aos::oci::LinuxNamespace LinuxNamespaceFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxNamespaceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxNamespace& ns)
 {
     const auto type = object.GetValue<std::string>("type");
     const auto path = object.GetValue<std::string>("path");
@@ -613,7 +605,8 @@ aos::oci::LinuxNamespace LinuxNamespaceFromJSON(const utils::CaseInsensitiveObje
     auto err = nsType.FromString(type.c_str());
     AOS_ERROR_CHECK_AND_THROW("linux namespace type parsing error", err);
 
-    return aos::oci::LinuxNamespace {nsType, path.c_str()};
+    ns.mPath = path.c_str();
+    ns.mType = nsType;
 }
 
 Poco::JSON::Object LinuxNamespaceToJSON(const aos::oci::LinuxNamespace& ns)
@@ -629,10 +622,8 @@ Poco::JSON::Object LinuxNamespaceToJSON(const aos::oci::LinuxNamespace& ns)
     return object;
 }
 
-aos::oci::LinuxDevice LinuxDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxDevice& device)
 {
-    aos::oci::LinuxDevice device;
-
     const auto path = object.GetValue<std::string>("path");
     const auto type = object.GetValue<std::string>("type");
 
@@ -652,8 +643,6 @@ aos::oci::LinuxDevice LinuxDeviceFromJSON(const utils::CaseInsensitiveObjectWrap
     if (const auto gid = object.GetOptionalValue<uint32_t>("gid"); gid.has_value()) {
         device.mGID.SetValue(*gid);
     }
-
-    return device;
 }
 
 Poco::JSON::Object LinuxDeviceToJSON(const aos::oci::LinuxDevice& device)
@@ -680,32 +669,42 @@ Poco::JSON::Object LinuxDeviceToJSON(const aos::oci::LinuxDevice& device)
     return object;
 }
 
-aos::oci::Linux LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::Linux& lnx)
 {
-    aos::oci::Linux lnx;
-
     if (object.Has("sysctl")) {
-        SysctlFromJSON(object.Get("sysctl"));
+        SysctlFromJSON(object.Get("sysctl"), lnx.mSysctl);
     }
 
     if (object.Has("resources")) {
-        lnx.mResources.SetValue(LinuxResourcesFromJSON(object.GetObject("resources")));
+        lnx.mResources.SetValue({});
+
+        LinuxResourcesFromJSON(object.GetObject("resources"), *lnx.mResources);
     }
 
     if (const auto cgroupsPath = object.GetValue<std::string>("cgroupsPath"); !cgroupsPath.empty()) {
         lnx.mCgroupsPath = cgroupsPath.c_str();
     }
 
-    const auto namespaces = utils::GetArrayValue<aos::oci::LinuxNamespace>(object, "namespaces",
-        [](const auto& value) { return LinuxNamespaceFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+    const auto namespaces = utils::GetArrayValue<aos::oci::LinuxNamespace>(object, "namespaces", [](const auto& value) {
+        aos::oci::LinuxNamespace ns;
+
+        LinuxNamespaceFromJSON(utils::CaseInsensitiveObjectWrapper(value), ns);
+
+        return ns;
+    });
 
     for (const auto& ns : namespaces) {
         auto err = lnx.mNamespaces.PushBack(ns);
         AOS_ERROR_CHECK_AND_THROW("linux namespaces parsing error", err);
     }
 
-    const auto devices = utils::GetArrayValue<aos::oci::LinuxDevice>(object, "devices",
-        [](const auto& value) { return LinuxDeviceFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+    const auto devices = utils::GetArrayValue<aos::oci::LinuxDevice>(object, "devices", [](const auto& value) {
+        aos::oci::LinuxDevice device;
+
+        LinuxDeviceFromJSON(utils::CaseInsensitiveObjectWrapper(value), device);
+
+        return device;
+    });
 
     for (const auto& device : devices) {
         auto err = lnx.mDevices.PushBack(device);
@@ -713,16 +712,14 @@ aos::oci::Linux LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
     }
 
     for (const auto& path : utils::GetArrayValue<std::string>(object, "maskedPaths")) {
-        auto err = lnx.mMaskedPaths.PushBack(path.c_str());
+        auto err = lnx.mMaskedPaths.EmplaceBack(path.c_str());
         AOS_ERROR_CHECK_AND_THROW("masked paths parsing error", err);
     }
 
     for (const auto& path : utils::GetArrayValue<std::string>(object, "readonlyPaths")) {
-        auto err = lnx.mReadonlyPaths.PushBack(path.c_str());
+        auto err = lnx.mReadonlyPaths.EmplaceBack(path.c_str());
         AOS_ERROR_CHECK_AND_THROW("readonly paths parsing error", err);
     }
-
-    return lnx;
 }
 
 Poco::JSON::Object LinuxToJSON(const aos::oci::Linux& lnx)
@@ -760,21 +757,17 @@ Poco::JSON::Object LinuxToJSON(const aos::oci::Linux& lnx)
     return object;
 }
 
-aos::oci::VMHypervisor VMHypervisorFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void VMHypervisorFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VMHypervisor& hypervisor)
 {
-    aos::oci::VMHypervisor hypervisor;
-
     const auto path       = object.GetValue<std::string>("path");
     const auto parameters = utils::GetArrayValue<std::string>(object, "parameters");
 
     hypervisor.mPath = path.c_str();
 
     for (const auto& param : parameters) {
-        auto err = hypervisor.mParameters.PushBack(param.c_str());
+        auto err = hypervisor.mParameters.EmplaceBack(param.c_str());
         AOS_ERROR_CHECK_AND_THROW("hypervisor parameters parsing error", err);
     }
-
-    return hypervisor;
 }
 
 Poco::JSON::Object VMHypervisorToJSON(const aos::oci::VMHypervisor& hypervisor)
@@ -790,21 +783,17 @@ Poco::JSON::Object VMHypervisorToJSON(const aos::oci::VMHypervisor& hypervisor)
     return object;
 }
 
-aos::oci::VMKernel VMKernelFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void VMKernelFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VMKernel& kernel)
 {
-    aos::oci::VMKernel kernel;
-
     const auto path       = object.GetValue<std::string>("path");
     const auto parameters = utils::GetArrayValue<std::string>(object, "parameters");
 
     kernel.mPath = path.c_str();
 
     for (const auto& param : parameters) {
-        auto err = kernel.mParameters.PushBack(param.c_str());
+        auto err = kernel.mParameters.EmplaceBack(param.c_str());
         AOS_ERROR_CHECK_AND_THROW("kernel parameters parsing error", err);
     }
-
-    return kernel;
 }
 
 Poco::JSON::Object VMKernelToJSON(const aos::oci::VMKernel& kernel)
@@ -820,10 +809,11 @@ Poco::JSON::Object VMKernelToJSON(const aos::oci::VMKernel& kernel)
     return object;
 }
 
-aos::oci::VMHWConfigIOMEM VMHWConfigIOMEMFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void VMHWConfigIOMEMFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VMHWConfigIOMEM& iomem)
 {
-    return {object.GetValue<uint64_t>("firstGFN"), object.GetValue<uint64_t>("firstMFN"),
-        object.GetValue<uint64_t>("nrMFNs")};
+    iomem.mFirstGFN = object.GetValue<uint64_t>("firstGFN");
+    iomem.mFirstMFN = object.GetValue<uint64_t>("firstMFN");
+    iomem.mNrMFNs   = object.GetValue<uint64_t>("nrMFNs");
 }
 
 Poco::JSON::Array VMHWConfigIOMEMToJSON(const Array<aos::oci::VMHWConfigIOMEM>& iomems)
@@ -843,22 +833,26 @@ Poco::JSON::Array VMHWConfigIOMEMToJSON(const Array<aos::oci::VMHWConfigIOMEM>& 
     return jsonArr;
 }
 
-aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VMHWConfig& hwConfig)
 {
-    aos::oci::VMHWConfig hwConfig;
-
     const auto deviceTree = object.GetValue<std::string>("deviceTree");
     const auto dtDevs     = utils::GetArrayValue<std::string>(object, "dtDevs");
     const auto irqs       = utils::GetArrayValue<uint32_t>(object, "irqs");
-    const auto iomems     = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems",
-        [](const auto& value) { return VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+
+    const auto iomems = utils::GetArrayValue<aos::oci::VMHWConfigIOMEM>(object, "iomems", [](const auto& value) {
+        aos::oci::VMHWConfigIOMEM iomem;
+
+        VMHWConfigIOMEMFromJSON(utils::CaseInsensitiveObjectWrapper(value), iomem);
+
+        return iomem;
+    });
 
     hwConfig.mDeviceTree = deviceTree.c_str();
     hwConfig.mVCPUs      = object.GetValue<uint32_t>("vCPUs");
     hwConfig.mMemKB      = object.GetValue<uint64_t>("memKB");
 
     for (const auto& dev : dtDevs) {
-        auto err = hwConfig.mDTDevs.PushBack(dev.c_str());
+        auto err = hwConfig.mDTDevs.EmplaceBack(dev.c_str());
         AOS_ERROR_CHECK_AND_THROW("dt devices parsing error", err);
     }
 
@@ -871,8 +865,6 @@ aos::oci::VMHWConfig VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrappe
         auto err = hwConfig.mIOMEMs.PushBack(iomem);
         AOS_ERROR_CHECK_AND_THROW("iomems parsing error", err);
     }
-
-    return hwConfig;
 }
 
 Poco::JSON::Object VMHWConfigToJSON(const aos::oci::VMHWConfig& hwConfig)
@@ -906,23 +898,19 @@ Poco::JSON::Object VMHWConfigToJSON(const aos::oci::VMHWConfig& hwConfig)
     return object;
 }
 
-aos::oci::VM VMFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void VMFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VM& vm)
 {
-    aos::oci::VM vm;
-
     if (object.Has("hypervisor")) {
-        vm.mHypervisor = VMHypervisorFromJSON(object.GetObject("hypervisor"));
+        VMHypervisorFromJSON(object.GetObject("hypervisor"), vm.mHypervisor);
     }
 
     if (object.Has("kernel")) {
-        vm.mKernel = VMKernelFromJSON(object.GetObject("kernel"));
+        VMKernelFromJSON(object.GetObject("kernel"), vm.mKernel);
     }
 
     if (object.Has("hwConfig")) {
-        vm.mHWConfig = VMHWConfigFromJSON(object.GetObject("hwConfig"));
+        VMHWConfigFromJSON(object.GetObject("hwConfig"), vm.mHWConfig);
     }
-
-    return vm;
 }
 
 Poco::JSON::Object VMToJSON(const aos::oci::VM& vm)
@@ -970,16 +958,27 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         runtimeSpec.mHostname = hostname.c_str();
 
         if (wrapper.Has("process")) {
-            runtimeSpec.mProcess.SetValue(ProcessFromJSON(wrapper.GetObject("process")));
+            auto process = std::make_unique<aos::oci::Process>();
+
+            ProcessFromJSON(wrapper.GetObject("process"), *process);
+
+            runtimeSpec.mProcess.SetValue(*process);
         }
 
         if (wrapper.Has("root")) {
-            runtimeSpec.mRoot.SetValue(RootFromJSON(wrapper.GetObject("root")));
+            runtimeSpec.mRoot.SetValue({});
+
+            RootFromJSON(wrapper.GetObject("root"), *runtimeSpec.mRoot);
         }
 
         if (wrapper.Has("mounts")) {
-            auto mounts = utils::GetArrayValue<Mount>(wrapper, "mounts",
-                [](const auto& value) { return MountFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+            auto mounts = utils::GetArrayValue<Mount>(wrapper, "mounts", [](const auto& value) {
+                Mount mount;
+
+                MountFromJSON(utils::CaseInsensitiveObjectWrapper(value), mount);
+
+                return mount;
+            });
 
             for (const auto& mount : mounts) {
                 err = runtimeSpec.mMounts.PushBack(mount);
@@ -988,11 +987,19 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         }
 
         if (wrapper.Has("linux")) {
-            runtimeSpec.mLinux.SetValue(LinuxFromJSON(wrapper.GetObject("linux")));
+            auto lnx = std::make_unique<aos::oci::Linux>();
+
+            LinuxFromJSON(wrapper.GetObject("linux"), *lnx);
+
+            runtimeSpec.mLinux.SetValue(*lnx);
         }
 
         if (wrapper.Has("vm")) {
-            runtimeSpec.mVM.SetValue(VMFromJSON(wrapper.GetObject("vm")));
+            auto vm = std::make_unique<aos::oci::VM>();
+
+            VMFromJSON(wrapper.GetObject("vm"), *vm);
+
+            runtimeSpec.mVM.SetValue(*vm);
         }
     } catch (const utils::AosException& e) {
         return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
