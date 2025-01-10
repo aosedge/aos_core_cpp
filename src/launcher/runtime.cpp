@@ -333,7 +333,7 @@ Error Runtime::PrepareServiceState(const String& path, uint32_t uid, uint32_t gi
 Error Runtime::PrepareNetworkDir(const String& path)
 {
     try {
-        auto dirPath = fs::path(path.CStr());
+        auto dirPath = fs::path(path.CStr()) / "etc";
 
         fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
