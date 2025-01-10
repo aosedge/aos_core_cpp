@@ -188,18 +188,24 @@ Error Runner::StopInstance(const String& instanceID)
     if (!err.IsNone()) {
         if (err.Is(ErrorEnum::eNotFound)) {
             LOG_DBG() << "Service not loaded: id=" << instanceID;
-        } else {
-            return err;
+
+            err = ErrorEnum::eNone;
         }
     }
 
-    if (err = mSystemd->ResetFailedUnit(unitName); !err.IsNone()) {
-        if (!err.Is(ErrorEnum::eNotFound)) {
-            return err;
+    if (auto releaseErr = mSystemd->ResetFailedUnit(unitName); !releaseErr.IsNone()) {
+        if (!releaseErr.Is(ErrorEnum::eNotFound) && err.IsNone()) {
+            err = releaseErr;
         }
     }
 
-    return RemoveRunParameters(unitName);
+    if (auto rmErr = RemoveRunParameters(unitName); !rmErr.IsNone()) {
+        if (err.IsNone()) {
+            err = rmErr;
+        }
+    }
+
+    return err;
 }
 
 std::shared_ptr<SystemdConnItf> Runner::CreateSystemdConn()
