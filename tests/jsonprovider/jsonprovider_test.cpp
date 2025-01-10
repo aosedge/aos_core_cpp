@@ -14,11 +14,13 @@ using namespace testing;
 
 namespace aos::common::jsonprovider {
 
+namespace {
+
 /***********************************************************************************************************************
  * Consts
  **********************************************************************************************************************/
 
-static constexpr auto cTestNodeConfigJSON = R"({
+constexpr auto cTestNodeConfigJSON = R"({
     "devices": [
         {
             "groups": [
@@ -108,6 +110,42 @@ static constexpr auto cTestNodeConfigJSON = R"({
     "labels": [
         "mainNode"
     ],
+    "alertRules": {
+        "ram": {
+            "minTimeout": "PT1S",
+            "minThreshold": 0.1,
+            "maxThreshold": 0.2
+        },
+        "cpu": {
+            "minTimeout": "PT2S",
+            "minThreshold": 0.3,
+            "maxThreshold": 0.4
+        },
+        "partitions": [
+            {
+                "name": "partition1",
+                "minTimeout": "PT3S",
+                "minThreshold": 0.5,
+                "maxThreshold": 0.6
+            },
+            {
+                "name": "partition2",
+                "minTimeout": "PT4S",
+                "minThreshold": 0.6,
+                "maxThreshold": 0.7
+            }
+        ],
+        "download": {
+            "minTimeout": "PT5S",
+            "minThreshold": 100,
+            "maxThreshold": 200
+        },
+        "upload": {
+            "minTimeout": "PT6S",
+            "minThreshold": 300,
+            "maxThreshold": 400
+        }
+    },
     "nodeType": "mainType",
     "priority": 1,
     "version": "1.0.0"
@@ -119,7 +157,21 @@ static constexpr auto cTestNodeConfigJSON = R"({
  * Static
  **********************************************************************************************************************/
 
-static sm::resourcemanager::NodeConfig CreateNodeConfig()
+AlertRules CreateAlerts()
+{
+    AlertRules alerts;
+
+    alerts.mRAM.SetValue(AlertRulePercents {aos::Time::cSeconds, 0.1, 0.2});
+    alerts.mCPU.SetValue(AlertRulePercents {2 * aos::Time::cSeconds, 0.3, 0.4});
+    alerts.mPartitions.EmplaceBack(PartitionAlertRule {3 * aos::Time::cSeconds, 0.5, 0.6, "partition1"});
+    alerts.mPartitions.EmplaceBack(PartitionAlertRule {4 * aos::Time::cSeconds, 0.6, 0.7, "partition2"});
+    alerts.mDownload.SetValue(AlertRulePoints {5 * aos::Time::cSeconds, 100, 200});
+    alerts.mUpload.SetValue(AlertRulePoints {6 * aos::Time::cSeconds, 300, 400});
+
+    return alerts;
+}
+
+sm::resourcemanager::NodeConfig CreateNodeConfig()
 {
     sm::resourcemanager::NodeConfig nodeConfig;
 
@@ -200,10 +252,12 @@ static sm::resourcemanager::NodeConfig CreateNodeConfig()
 
     nodeConfig.mNodeConfig.mLabels.PushBack("mainNode");
 
+    nodeConfig.mNodeConfig.mAlertRules.SetValue(CreateAlerts());
+
     return nodeConfig;
 }
 
-static void CompareNodeConfig(
+void CompareNodeConfig(
     const sm::resourcemanager::NodeConfig& nodeConfig, const sm::resourcemanager::NodeConfig& expectedNodeConfig)
 {
     EXPECT_EQ(nodeConfig.mVersion, expectedNodeConfig.mVersion) << "Version mismatch";
@@ -228,8 +282,29 @@ static void CompareNodeConfig(
         EXPECT_EQ(resource.mEnv, expectedResource.mEnv) << "Resource envs mismatch";
         EXPECT_EQ(resource.mHosts, expectedResource.mHosts) << "Resource hosts mismatch";
     }
+
+    // Compare alert rules
+
+    ASSERT_TRUE(nodeConfig.mNodeConfig.mAlertRules.HasValue()) << "Alert rules not set";
+    ASSERT_TRUE(expectedNodeConfig.mNodeConfig.mAlertRules.HasValue()) << "Expected alert rules not set";
+
+    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mRAM, expectedNodeConfig.mNodeConfig.mAlertRules->mRAM)
+        << "Alert rules ram mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mCPU, expectedNodeConfig.mNodeConfig.mAlertRules->mCPU)
+        << "Alert rules cpu mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mPartitions, expectedNodeConfig.mNodeConfig.mAlertRules->mPartitions)
+        << "Alert rules partitions mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mDownload, expectedNodeConfig.mNodeConfig.mAlertRules->mDownload)
+        << "Alert rules download mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mUpload, expectedNodeConfig.mNodeConfig.mAlertRules->mUpload)
+        << "Alert rules upload mismatch";
 }
 
+} // namespace
+
+/***********************************************************************************************************************
+ * Suite
+ **********************************************************************************************************************/
 class JSONProviderTest : public Test {
 public:
     void SetUp() override { test::InitLog(); }

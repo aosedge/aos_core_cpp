@@ -6,6 +6,7 @@
 
 #include <utils/exception.hpp>
 #include <utils/json.hpp>
+#include <utils/time.hpp>
 
 #include <Poco/JSON/Parser.h>
 
@@ -227,6 +228,133 @@ Poco::JSON::Array ResourcesToJson(const Array<ResourceInfo>& resources)
     return array;
 }
 
+AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+{
+    AlertRulePercents percents = {};
+
+    if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
+        auto [duration, err] = utils::ParseISO8601Duration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+
+        percents.mMinTimeout = duration.count();
+    }
+
+    percents.mMinThreshold = object.GetValue<double>("minThreshold");
+    percents.mMaxThreshold = object.GetValue<double>("maxThreshold");
+
+    return percents;
+}
+
+AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+{
+    AlertRulePoints points = {};
+
+    if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
+        auto [duration, err] = utils::ParseISO8601Duration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+
+        points.mMinTimeout = duration.count();
+    }
+
+    points.mMinThreshold = object.GetValue<uint64_t>("minThreshold");
+    points.mMaxThreshold = object.GetValue<uint64_t>("maxThreshold");
+
+    return points;
+}
+
+PartitionAlertRule PartitionAlertRuleFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+{
+    const auto name = object.GetValue<std::string>("name");
+
+    return {AlertRulePercentsFromJSON(object), name.c_str()};
+}
+
+AlertRules AlertRulesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+{
+    AlertRules rules = {};
+
+    if (object.Has("ram")) {
+        rules.mRAM.SetValue(AlertRulePercentsFromJSON(object.GetObject("ram")));
+    }
+
+    if (object.Has("cpu")) {
+        rules.mCPU.SetValue(AlertRulePercentsFromJSON(object.GetObject("cpu")));
+    }
+
+    if (object.Has("partitions")) {
+        auto partitions = utils::GetArrayValue<PartitionAlertRule>(object, "partitions",
+            [](const auto& value) { return PartitionAlertRuleFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+
+        for (const auto& partition : partitions) {
+            auto err = rules.mPartitions.PushBack(partition);
+            AOS_ERROR_CHECK_AND_THROW("partition alert rules parsing error", err);
+        }
+    }
+
+    if (object.Has("download")) {
+        rules.mDownload.SetValue(AlertRulePointsFromJSON(object.GetObject("download")));
+    }
+
+    if (object.Has("upload")) {
+        rules.mUpload.SetValue(AlertRulePointsFromJSON(object.GetObject("upload")));
+    }
+
+    return rules;
+}
+
+template <class T>
+Poco::JSON::Object AlertRuleToJSON(const T& rule)
+{
+    Poco::JSON::Object object;
+
+    if (rule.mMinTimeout > 0) {
+        auto [duration, err] = utils::FormatISO8601Duration(utils::Duration(rule.mMinTimeout));
+        AOS_ERROR_CHECK_AND_THROW("offlineTTL formatting error", err);
+
+        object.set("minTimeout", duration);
+    }
+
+    object.set("minThreshold", rule.mMinThreshold);
+    object.set("maxThreshold", rule.mMaxThreshold);
+
+    return object;
+}
+
+template <>
+Poco::JSON::Object AlertRuleToJSON(const PartitionAlertRule& rule)
+{
+    Poco::JSON::Object object = AlertRuleToJSON<AlertRulePercents>(rule);
+
+    object.set("name", rule.mName.CStr());
+
+    return object;
+}
+
+Poco::JSON::Object AlertRulesToJSON(const AlertRules& rules)
+{
+    Poco::JSON::Object object;
+
+    if (rules.mRAM.HasValue()) {
+        object.set("ram", AlertRuleToJSON(rules.mRAM.GetValue()));
+    }
+
+    if (rules.mCPU.HasValue()) {
+        object.set("cpu", AlertRuleToJSON(rules.mCPU.GetValue()));
+    }
+
+    if (rules.mDownload.HasValue()) {
+        object.set("download", AlertRuleToJSON(rules.mDownload.GetValue()));
+    }
+
+    if (rules.mUpload.HasValue()) {
+        object.set("upload", AlertRuleToJSON(rules.mUpload.GetValue()));
+    }
+
+    object.set("partitions", utils::ToJsonArray(rules.mPartitions, AlertRuleToJSON<PartitionAlertRule>));
+
+    return object;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -244,6 +372,10 @@ Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& node
         object.set("devices", DevicesToJson(nodeConfig.mNodeConfig.mDevices));
         object.set("resources", ResourcesToJson(nodeConfig.mNodeConfig.mResources));
         object.set("labels", ToJSONArray(nodeConfig.mNodeConfig.mLabels));
+
+        if (nodeConfig.mNodeConfig.mAlertRules.HasValue()) {
+            object.set("alertRules", AlertRulesToJSON(*nodeConfig.mNodeConfig.mAlertRules));
+        }
 
         json = utils::Stringify(object).c_str();
     } catch (const Poco::Exception& e) {
@@ -270,6 +402,10 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::
         DevicesFromJSON(object, nodeConfig.mNodeConfig.mDevices);
         ResourcesFromJSON(object, nodeConfig.mNodeConfig.mResources);
         LabelsFromJSON(object, nodeConfig.mNodeConfig.mLabels);
+
+        if (object.Has("alertRules")) {
+            nodeConfig.mNodeConfig.mAlertRules.SetValue(AlertRulesFromJSON(object.GetObject("alertRules")));
+        }
     } catch (const utils::AosException& e) {
         return Error(e.GetError(), e.message().c_str());
     } catch (const Poco::Exception& e) {
