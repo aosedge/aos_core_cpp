@@ -372,7 +372,7 @@ AlertRules AlertRulesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
         rules.mCPU.SetValue(AlertRulePercentsFromJSON(object.GetObject("cpu")));
     }
 
-    if (object.Has("partition")) {
+    if (object.Has("partitions")) {
         auto partitions = utils::GetArrayValue<PartitionAlertRule>(object, "partitions",
             [](const auto& value) { return PartitionAlertRuleFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
