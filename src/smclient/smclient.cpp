@@ -84,6 +84,10 @@ Error SMClient::Start()
         }
     }
 
+    if (auto err = mLogProvider->Subscribe(*this); !err.IsNone()) {
+        return AOS_ERROR_WRAP(Error(err, "can't subscribe to log updates"));
+    }
+
     mConnectionThread = std::thread(&SMClient::ConnectionLoop, this);
 
     return ErrorEnum::eNone;
@@ -102,6 +106,8 @@ Error SMClient::Stop()
 
         mStopped = true;
         mStoppedCV.notify_all();
+
+        mLogProvider->Unsubscribe(*this);
 
         if (mSecureConnection) {
             mTLSCredentials->UnsubscribeCertChanged(*this);

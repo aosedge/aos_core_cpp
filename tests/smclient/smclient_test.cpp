@@ -417,6 +417,8 @@ protected:
             EXPECT_CALL(mTLSCredentials, UnsubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
         }
 
+        EXPECT_CALL(mLogProvider, Subscribe(_)).WillOnce(Return(Error()));
+
         if (auto err = client->Start(); !err.IsNone()) {
             LOG_ERR() << "Can't start client: error=" << err.Message();
 
@@ -464,6 +466,7 @@ TEST_F(SMClientTest, SecondStartReturnsError)
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed))
         << "Start should return failed if client isn't closed" << err.Message();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -481,6 +484,8 @@ TEST_F(SMClientTest, ClientReconnectOnGettingUnhandlerMessage)
     // Client is expected to reconnect and send node config status
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
     server->WaitNodeConfigStatus(std::chrono::seconds(3));
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -512,6 +517,8 @@ TEST_F(SMClientTest, SendMonitoringDataSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -535,6 +542,8 @@ TEST_F(SMClientTest, SendAlertSucceeds)
     EXPECT_TRUE(err.IsNone()) << "Can't send alerts: error=" << err.Message();
 
     server->WaitMessage();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -560,6 +569,8 @@ TEST_F(SMClientTest, OnLogReceivedSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -584,6 +595,8 @@ TEST_F(SMClientTest, InstancesRunStatusSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -605,6 +618,8 @@ TEST_F(SMClientTest, InstancesUpdateStatusSucceeds)
     EXPECT_TRUE(err.IsNone()) << "Can't send instance update status: error=" << err.Message();
 
     server->WaitMessage(std::chrono::seconds(1));
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -629,6 +644,8 @@ TEST_F(SMClientTest, GetNodeConfigStatusSucceeds)
 
     server->WaitNodeConfigStatus();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -644,6 +661,8 @@ TEST_F(SMClientTest, CheckNodeConfigSucceeds)
 
     server->WaitNodeConfigStatus();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -658,6 +677,8 @@ TEST_F(SMClientTest, SetNodeConfigSucceeds)
     server->SetNodeConfig("1.0.1", "{}");
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -677,6 +698,8 @@ TEST_F(SMClientTest, RunInstancesSucceeds)
     server->RunInstances();
 
     server->WaitMessage();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -698,6 +721,8 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesServicesExceedsLimit)
     server->RunInstances(runInstances);
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -741,6 +766,8 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesInstancesExceedsLimit)
 
     server->WaitNodeConfigStatus();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -756,6 +783,8 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesLauncherError)
     server->RunInstances();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -778,6 +807,8 @@ TEST_F(SMClientTest, UpdateNetworkSucceeds)
     auto status = promise.get_future().wait_for(std::chrono::seconds(1));
     EXPECT_EQ(status, std::future_status::ready) << "network manager wasn't called";
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -799,6 +830,8 @@ TEST_F(SMClientTest, ClientReconnectsOnUpdateNetworkExceedsLimit)
 
     server->WaitNodeConfigStatus();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -813,6 +846,8 @@ TEST_F(SMClientTest, ClientReconnectsOnUpdateNetworkManagerError)
     server->UpdateNetwork();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -833,6 +868,8 @@ TEST_F(SMClientTest, GetSystemLogSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -848,6 +885,8 @@ TEST_F(SMClientTest, ClientReconnectsOnGetSystemLogProviderError)
     server->GetSystemLog();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -868,6 +907,8 @@ TEST_F(SMClientTest, GetInstanceLogSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -883,6 +924,8 @@ TEST_F(SMClientTest, ClientReconnectsOnGetInstanceLogProviderError)
     server->GetInstanceLog();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -903,6 +946,8 @@ TEST_F(SMClientTest, GetInstanceCrashLogSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -918,6 +963,8 @@ TEST_F(SMClientTest, ClientReconnectsOnGetInstanceCrashLogProviderError)
     server->GetInstanceCrashLog();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -957,6 +1004,8 @@ TEST_F(SMClientTest, OverrideEnvVarsSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -981,6 +1030,8 @@ TEST_F(SMClientTest, OverrideEnvVarsRequestExceedsApplicationLimit)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -998,6 +1049,8 @@ TEST_F(SMClientTest, OverrideEnvVarsLauncherFails)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -1013,6 +1066,8 @@ TEST_F(SMClientTest, GetAverageMonitoringSucceeds)
 
     server->WaitMessage();
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -1027,6 +1082,8 @@ TEST_F(SMClientTest, ClientReconnectsOnGetAverageMonitoringError)
     server->GetAverageMonitoring();
 
     server->WaitNodeConfigStatus();
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
@@ -1051,6 +1108,8 @@ TEST_F(SMClientTest, ConnectionStatusConnectedSucceeds)
 
     client->Unsubscribe(subscriber);
 
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
@@ -1073,6 +1132,8 @@ TEST_F(SMClientTest, ConnectionStatusDisconnectedSucceeds)
         << "didn't receive connection status connected";
 
     client->Unsubscribe(subscriber);
+
+    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
 
     auto err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
