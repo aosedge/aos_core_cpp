@@ -72,6 +72,19 @@ public:
 
         return ErrorEnum::eNone;
     }
+
+    /**
+     * Brings up interface.
+     *
+     * @param ifname interface name.
+     * @return Error.
+     */
+    Error BringUpInterface(const String& ifname) override
+    {
+        (void)ifname;
+
+        return ErrorEnum::eNone;
+    }
 };
 
 } // namespace aos::sm::networkmanager
