@@ -157,9 +157,9 @@ std::shared_ptr<Archivator> LogProvider::CreateArchivator()
     return std::make_shared<Archivator>(*mLogReceiver, mConfig);
 }
 
-std::shared_ptr<JournalItf> LogProvider::CreateJournal()
+std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
 {
-    return std::make_shared<Journal>();
+    return std::make_shared<utils::Journal>();
 }
 
 void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
@@ -315,7 +315,7 @@ void LogProvider::SendEmptyResponse(const String& logID, const std::string& erro
     }
 }
 
-void LogProvider::AddServiceCgroupFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs)
+void LogProvider::AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs)
 {
     for (const auto& instanceID : instanceIDs) {
         // for supporting cgroup v1
@@ -333,7 +333,7 @@ void LogProvider::AddServiceCgroupFilter(JournalItf& journal, const std::vector<
     }
 }
 
-void LogProvider::AddUnitFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs)
+void LogProvider::AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs)
 {
     for (const auto& instanceID : instanceIDs) {
         std::string unitName = std::string("aos-service@") + instanceID + ".service";
@@ -343,7 +343,7 @@ void LogProvider::AddUnitFilter(JournalItf& journal, const std::vector<std::stri
     }
 }
 
-void LogProvider::SeekToTime(JournalItf& journal, const Optional<Time>& from)
+void LogProvider::SeekToTime(utils::JournalItf& journal, const Optional<Time>& from)
 {
     if (from.HasValue()) {
         journal.SeekRealtime(from.GetValue());
@@ -353,7 +353,7 @@ void LogProvider::SeekToTime(JournalItf& journal, const Optional<Time>& from)
 }
 
 void LogProvider::ProcessJournalLogs(
-    JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator)
+    utils::JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();
@@ -369,7 +369,7 @@ void LogProvider::ProcessJournalLogs(
 }
 
 void LogProvider::ProcessJournalCrashLogs(
-    JournalItf& journal, Time crashTime, const std::vector<std::string>& instanceIDs, Archivator& archivator)
+    utils::JournalItf& journal, Time crashTime, const std::vector<std::string>& instanceIDs, Archivator& archivator)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();
@@ -392,7 +392,7 @@ void LogProvider::ProcessJournalCrashLogs(
     }
 }
 
-std::string LogProvider::FormatLogEntry(const JournalEntry& journalEntry, bool addUnit)
+std::string LogProvider::FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit)
 {
     auto [logEntryTimeStr, err] = journalEntry.mRealTime.ToString();
     AOS_ERROR_CHECK_AND_THROW("time formatting failed", err);
@@ -408,7 +408,7 @@ std::string LogProvider::FormatLogEntry(const JournalEntry& journalEntry, bool a
     return oss.str();
 }
 
-Time LogProvider::GetCrashTime(JournalItf& journal, const Optional<Time>& from)
+Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>& from)
 {
     Time crashTime;
 
@@ -431,7 +431,7 @@ Time LogProvider::GetCrashTime(JournalItf& journal, const Optional<Time>& from)
     return crashTime;
 }
 
-std::string LogProvider::GetUnitNameFromLog(const JournalEntry& journalEntry)
+std::string LogProvider::GetUnitNameFromLog(const utils::JournalEntry& journalEntry)
 {
     std::string unitName = std::filesystem::path(journalEntry.mSystemdCGroup).filename().string();
 

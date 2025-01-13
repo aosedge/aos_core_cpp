@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,9 +10,11 @@
 #include <logger/logmodule.hpp>
 #include <utils/exception.hpp>
 
+#include <Poco/NumberParser.h>
+
 #include "journal.hpp"
 
-namespace aos::sm::logprovider {
+namespace aos::sm::utils {
 
 /***********************************************************************************************************************
  * Statics
@@ -144,17 +146,25 @@ bool Journal::Previous()
 
 JournalEntry Journal::GetEntry()
 {
-    Error        err;
+    Error        err, ignore;
     JournalEntry entry;
 
     Tie(entry.mMessage, err) = ExtractJournalField(mJournal, "MESSAGE");
     AOS_ERROR_CHECK_AND_THROW("Failed getting message field", err);
 
-    Tie(entry.mSystemdUnit, err) = ExtractJournalField(mJournal, "_SYSTEMD_UNIT");
-    AOS_ERROR_CHECK_AND_THROW("Failed getting systemd unit field", err);
+    Tie(entry.mSystemdUnit, ignore)   = ExtractJournalField(mJournal, "_SYSTEMD_UNIT");
+    Tie(entry.mSystemdCGroup, ignore) = ExtractJournalField(mJournal, "_SYSTEMD_CGROUP");
 
-    Tie(entry.mSystemdCGroup, err) = ExtractJournalField(mJournal, "_SYSTEMD_CGROUP");
-    AOS_ERROR_CHECK_AND_THROW("Failed getting systemd cgroup field", err);
+    std::string priority;
+    Tie(priority, err) = ExtractJournalField(mJournal, "PRIORITY");
+    AOS_ERROR_CHECK_AND_THROW("Failed getting systemd priority field", err);
+    entry.mPriority = Poco::NumberParser::parse(priority);
+
+    std::string unit;
+    Tie(unit, err) = ExtractJournalField(mJournal, "UNIT");
+    if (!err.IsNone()) {
+        entry.mUnit = unit;
+    }
 
     uint64_t monotonicTime = 0;
     uint64_t realTime      = 0;
@@ -175,4 +185,22 @@ JournalEntry Journal::GetEntry()
     return entry;
 }
 
-} // namespace aos::sm::logprovider
+void Journal::SeekCursor(const std::string& cursor)
+{
+    if (auto ret = sd_journal_seek_cursor(mJournal, cursor.c_str()); ret < 0) {
+        AOS_ERROR_THROW(strerror(ret), ret);
+    }
+}
+
+std::string Journal::GetCursor()
+{
+    char* cursor = nullptr;
+
+    if (auto ret = sd_journal_get_cursor(mJournal, &cursor); ret < 0) {
+        AOS_ERROR_THROW(strerror(ret), ret);
+    }
+
+    return cursor;
+}
+
+} // namespace aos::sm::utils

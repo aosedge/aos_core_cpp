@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "archivator.hpp"
-#include "journal.hpp"
+#include "utils/journal.hpp"
 
 namespace aos::sm::logprovider {
 
@@ -124,7 +124,7 @@ private:
 
     std::shared_ptr<Archivator> CreateArchivator();
     // to be overridden in unit tests.
-    virtual std::shared_ptr<JournalItf> CreateJournal();
+    virtual std::shared_ptr<utils::JournalItf> CreateJournal();
 
     void ScheduleGetLog(const std::vector<std::string>& instanceIDs,
         const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
@@ -143,18 +143,19 @@ private:
     void SendErrorResponse(const String& logID, const std::string& errorMsg);
     void SendEmptyResponse(const String& logID, const std::string& errorMsg);
 
-    void AddServiceCgroupFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs);
-    void SeekToTime(JournalItf& journal, const Optional<Time>& from);
-    void AddUnitFilter(JournalItf& journal, const std::vector<std::string>& instanceIDs);
+    void AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
+    void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
+    void AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
 
-    void ProcessJournalLogs(JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator);
-    void ProcessJournalCrashLogs(
-        JournalItf& journal, Time crashTime, const std::vector<std::string>& instanceIDs, Archivator& archivator);
+    void ProcessJournalLogs(
+        utils::JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator);
+    void ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
+        const std::vector<std::string>& instanceIDs, Archivator& archivator);
 
-    std::string FormatLogEntry(const JournalEntry& journalEntry, bool addUnit);
+    std::string FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit);
 
-    Time        GetCrashTime(JournalItf& journal, const Optional<Time>& from);
-    std::string GetUnitNameFromLog(const JournalEntry& entry);
+    Time        GetCrashTime(utils::JournalItf& journal, const Optional<Time>& from);
+    std::string GetUnitNameFromLog(const utils::JournalEntry& entry);
     std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
 
     InstanceIDProviderItf* mInstanceProvider = nullptr;

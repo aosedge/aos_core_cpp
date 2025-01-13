@@ -31,6 +31,7 @@ add_subdirectory(resourcemanager)
 add_subdirectory(runner)
 add_subdirectory(smclient)
 add_subdirectory(logprovider)
+add_subdirectory(utils)
 
 # ######################################################################################################################
 # Sources

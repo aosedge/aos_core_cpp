@@ -7,10 +7,10 @@
 #ifndef JOURNAL_STUB_HPP_
 #define JOURNAL_STUB_HPP_
 
-#include "logprovider/journal.hpp"
+#include "utils/journal.hpp"
 #include <vector>
 
-namespace aos::sm::logprovider {
+namespace aos::sm::utils {
 
 class JournalStub : public JournalItf {
 public:
@@ -93,12 +93,16 @@ public:
         mJournal.emplace_back(entry);
     }
 
+    void SeekCursor(const std::string& cursor) override { (void)cursor; }
+
+    std::string GetCursor() override { return ""; }
+
 private:
     std::vector<JournalEntry>           mJournal;
     std::vector<JournalEntry>::iterator mCurrentEntry  = mJournal.end();
     bool                                mSearchStarted = false;
 };
 
-} // namespace aos::sm::logprovider
+} // namespace aos::sm::utils
 
 #endif // JOURNAL_STUB_HPP_

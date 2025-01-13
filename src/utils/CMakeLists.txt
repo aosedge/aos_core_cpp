@@ -1,22 +1,22 @@
 #
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET logprovider)
+set(TARGET utils)
 
 # ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="logprovider")
+add_definitions(-DLOG_MODULE="utils")
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES logprovider.cpp archivator.cpp)
+set(SOURCES journal.cpp)
 
 # ######################################################################################################################
 # Target
@@ -28,4 +28,4 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC utils aoscommon Poco::JSON Poco::Foundation)
+target_link_libraries(${TARGET} PUBLIC aosutils)

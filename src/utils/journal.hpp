@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,8 @@
 #define JOURNAL_HPP_
 
 #include <aos/common/tools/time.hpp>
-#include <memory>
+
+#include <optional>
 #include <string>
 
 /**
@@ -16,7 +17,7 @@
  */
 struct sd_journal;
 
-namespace aos::sm::logprovider {
+namespace aos::sm::utils {
 
 /**
  * Journal entry.
@@ -46,6 +47,16 @@ struct JournalEntry {
      * Systemd cgroup.
      */
     std::string mSystemdCGroup;
+
+    /**
+     * Priority level.
+     */
+    int mPriority;
+
+    /**
+     * Optional "UNIT" field (produced by init.scope unit).
+     */
+    std::optional<std::string> mUnit;
 };
 
 /**
@@ -82,6 +93,8 @@ public:
 
     /**
      * Adds a match to the journal filter.
+     *
+     * @param match match.
      */
     virtual void AddMatch(const std::string& match) = 0;
 
@@ -105,6 +118,20 @@ public:
      * @return JournalEntry.
      */
     virtual JournalEntry GetEntry() = 0;
+
+    /**
+     * Seek to a specific cursor in the journal.
+     *
+     * @param cursor journal cursor.
+     */
+    virtual void SeekCursor(const std::string& cursor) = 0;
+
+    /**
+     * Get the current cursor position.
+     *
+     * @return std::string.
+     */
+    virtual std::string GetCursor() = 0;
 };
 
 /**
@@ -146,16 +173,22 @@ public:
 
     /**
      * Adds a match to the journal filter.
+     *
+     * @param match journal match.
      */
     void AddMatch(const std::string& match) override;
 
     /**
      * Moves to the next journal entry.
+     *
+     * @return bool.
      */
     bool Next() override;
 
     /**
      * Moves to the previous journal entry.
+     *
+     * @return bool.
      */
     bool Previous() override;
 
@@ -166,10 +199,24 @@ public:
      */
     JournalEntry GetEntry() override;
 
+    /**
+     * Seek to a specific cursor in the journal.
+     *
+     * @param cursor journal cursor.
+     */
+    void SeekCursor(const std::string& cursor) override;
+
+    /**
+     * Get the current cursor position.
+     *
+     * @return std::string.
+     */
+    std::string GetCursor() override;
+
 private:
     sd_journal* mJournal = nullptr;
 };
 
-} // namespace aos::sm::logprovider
+} // namespace aos::sm::utils
 
 #endif // #define JOURNAL_HPP_

@@ -10,6 +10,7 @@
 #include <Poco/InflatingStream.h>
 #include <Poco/StreamCopier.h>
 
+#include <alerts/journalalerts.hpp>
 #include <aos/test/log.hpp>
 #include <logprovider/logprovider.hpp>
 
@@ -26,12 +27,12 @@ namespace aos::sm::logprovider {
 
 class TestLogProvider : public LogProvider {
 public:
-    std::shared_ptr<JournalItf> CreateJournal() override
+    std::shared_ptr<utils::JournalItf> CreateJournal() override
     {
-        return std::shared_ptr<JournalItf>(&mJournal, [](JournalItf*) {});
+        return std::shared_ptr<utils::JournalItf>(&mJournal, [](utils::JournalItf*) {});
     }
 
-    JournalStub mJournal;
+    utils::JournalStub mJournal;
 };
 
 class LogProviderTest : public Test {
