@@ -23,6 +23,7 @@
 #include <network/namespacemanager.hpp>
 #include <network/networkinterfacemanager.hpp>
 
+#include "alerts/journalalerts.hpp"
 #include "database/database.hpp"
 #include "downloader/downloader.hpp"
 #include "image/imagehandler.hpp"
@@ -107,6 +108,7 @@ private:
     sm::resourcemanager::ResourceManager                                 mResourceManager;
     sm::runner::Runner                                                   mRunner;
     sm::servicemanager::ServiceManager                                   mServiceManager;
+    sm::alerts::JournalAlerts                                            mJournalAlerts;
     sm::smclient::SMClient                                               mSMClient;
 
 private:

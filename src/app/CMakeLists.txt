@@ -43,6 +43,7 @@ target_link_libraries(
            runner
            smclient
            networkmanager
+           alerts
            aoscommon
            aosdownloader
            aosocispec

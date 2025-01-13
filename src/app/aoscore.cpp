@@ -138,6 +138,11 @@ void AosCore::Init(const std::string& configFile)
 
     err = mLogProvider.Init(mConfig.mLogging, mDatabase);
     AOS_ERROR_CHECK_AND_THROW("can't initialize logprovider", err);
+
+    // Initialize journalalerts
+
+    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mDatabase, mSMClient);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize journalalerts", err);
 }
 
 void AosCore::Start()
@@ -165,6 +170,9 @@ void AosCore::Start()
 
     err = mLogProvider.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start logprovider", err);
+
+    err = mJournalAlerts.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start journalalerts", err);
 }
 
 void AosCore::Stop()
@@ -200,6 +208,10 @@ void AosCore::Stop()
     }
 
     if (auto err = mLogProvider.Stop(); !err.IsNone() && stopError.IsNone()) {
+        stopError = err;
+    }
+
+    if (auto err = mJournalAlerts.Stop(); !err.IsNone() && stopError.IsNone()) {
         stopError = err;
     }
 
