@@ -226,7 +226,7 @@ TEST_F(CNITest, TestAddNetworkList)
 
     const std::string expectedArgs = "CNI_COMMAND=ADD "
                                      "CNI_ARGS=IgnoreUnknown=1;K8S_POD_NAME=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
-                                     "CNI_PATH=/tmp/cni_test_cache/results "
+                                     "CNI_PATH=/opt/cni/bin "
                                      "CNI_CONTAINERID=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
                                      "CNI_NETNS=/run/netns/testns "
                                      "CNI_IFNAME=eth0";
@@ -382,7 +382,7 @@ TEST_F(CNITest, TestExecuteDNSPlugin)
 
     const std::string expectedArgs = "CNI_COMMAND=ADD "
                                      "CNI_ARGS=IgnoreUnknown=1;K8S_POD_NAME=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
-                                     "CNI_PATH=/tmp/cni_test_cache/results "
+                                     "CNI_PATH=/opt/cni/bin "
                                      "CNI_CONTAINERID=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
                                      "CNI_NETNS=/run/netns/testns "
                                      "CNI_IFNAME=eth0";
@@ -502,7 +502,7 @@ TEST_F(CNITest, TestExecuteFirewallPlugin)
 
     const std::string expectedArgs = "CNI_COMMAND=ADD "
                                      "CNI_ARGS=IgnoreUnknown=1;K8S_POD_NAME=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
-                                     "CNI_PATH=/tmp/cni_test_cache/results "
+                                     "CNI_PATH=/opt/cni/bin "
                                      "CNI_CONTAINERID=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
                                      "CNI_NETNS=/run/netns/testns "
                                      "CNI_IFNAME=eth0";
@@ -612,7 +612,7 @@ TEST_F(CNITest, TestExecuteBandwidthPlugin)
 
     const std::string expectedArgs = "CNI_COMMAND=ADD "
                                      "CNI_ARGS=IgnoreUnknown=1;K8S_POD_NAME=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
-                                     "CNI_PATH=/tmp/cni_test_cache/results "
+                                     "CNI_PATH=/opt/cni/bin "
                                      "CNI_CONTAINERID=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
                                      "CNI_NETNS=/run/netns/testns "
                                      "CNI_IFNAME=eth0";
@@ -1194,7 +1194,7 @@ TEST_F(CNITest, TestNetworkListLifecycle)
 
     const std::string expectedArgs = "CNI_COMMAND=DEL "
                                      "CNI_ARGS=IgnoreUnknown=1;K8S_POD_NAME=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
-                                     "CNI_PATH=/tmp/cni_test_cache/results "
+                                     "CNI_PATH=/opt/cni/bin "
                                      "CNI_CONTAINERID=b8f745c9-9d8c-453e-8098-a29b0b4b9774 "
                                      "CNI_NETNS=/run/netns/testns "
                                      "CNI_IFNAME=eth0";

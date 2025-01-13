@@ -182,9 +182,7 @@ Error CNI::SetConfDir(const String& configDir)
     mConfigDir = std::filesystem::path(configDir.CStr()) / "results";
 
     try {
-        if (!std::filesystem::create_directories(mConfigDir)) {
-            return Error(ErrorEnum::eFailed, "can't create directory");
-        }
+        std::filesystem::create_directories(mConfigDir);
     } catch (const std::exception& e) {
         return Error(ErrorEnum::eFailed, e.what());
     }
@@ -796,7 +794,7 @@ std::string CNI::ArgsAsString(const RuntimeConf& rt, Action action) const
     std::string argsStr = argsStream.str();
 
     std::vector<std::string> envs = {"CNI_COMMAND=" + std::string(action.ToString().CStr()), "CNI_ARGS=" + argsStr,
-        "CNI_PATH=" + std::string(mConfigDir), "CNI_CONTAINERID=" + std::string(rt.mContainerID.CStr())};
+        "CNI_PATH=" + std::string(cBinaryPluginDir), "CNI_CONTAINERID=" + std::string(rt.mContainerID.CStr())};
 
     if (!rt.mNetNS.IsEmpty()) {
         envs.push_back("CNI_NETNS=" + std::string(rt.mNetNS.CStr()));

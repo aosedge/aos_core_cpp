@@ -20,6 +20,8 @@
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
 #include <network/iptables.hpp>
+#include <network/namespacemanager.hpp>
+#include <network/networkinterfacemanager.hpp>
 
 #include "database/database.hpp"
 #include "downloader/downloader.hpp"
@@ -30,7 +32,6 @@
 #include "monitoring/resourceusageprovider.hpp"
 #include "networkmanager/cni.hpp"
 #include "networkmanager/exec.hpp"
-#include "networkmanager/networkmanager.hpp"
 #include "networkmanager/trafficmonitor.hpp"
 #include "ocispec/ocispec.hpp"
 #include "resourcemanager/resourcemanager.hpp"
@@ -97,11 +98,11 @@ private:
     sm::layermanager::LayerManager                                       mLayerManager;
     sm::logprovider::LogProvider                                         mLogProvider;
     sm::monitoring::ResourceUsageProvider                                mResourceUsageProvider;
-    sm::networkmanager::NamespaceManager                                 mNamespaceManager;
-    sm::networkmanager::NetworkInterfaceManager                          mNetworkInterfaceManager;
     sm::networkmanager::NetworkManager                                   mNetworkManager;
     sm::networkmanager::TrafficMonitor                                   mTrafficMonitor;
     common::network::IPTables                                            mIPTables;
+    aos::common::network::NamespaceManager                               mNamespaceManager;
+    aos::common::network::NetworkInterfaceManager                        mNetworkInterfaceManager;
     sm::resourcemanager::HostDeviceManager                               mHostDeviceManager;
     sm::resourcemanager::ResourceManager                                 mResourceManager;
     sm::runner::Runner                                                   mRunner;

@@ -14,6 +14,7 @@
 #include <Poco/PipeStream.h>
 #include <Poco/Process.h>
 
+#include <utils/json.hpp>
 #include <utils/parser.hpp>
 
 #include "exec.hpp"
@@ -54,7 +55,17 @@ std::string PluginErr(
         }
     }
 
-    return "plugin failed: " + stderrContent;
+    auto [var, err] = common::utils::ParseJson(stdoutContent);
+    if (err.IsNone()) {
+        Poco::JSON::Object::Ptr                     object = var.extract<Poco::JSON::Object::Ptr>();
+        common::utils::CaseInsensitiveObjectWrapper wrapper(object);
+
+        if (wrapper.Has("msg")) {
+            return "plugin failed: " + wrapper.GetValue<std::string>("msg");
+        }
+    }
+
+    return "plugin failed: " + stdoutContent;
 }
 
 std::string LaunchPlugin(

@@ -469,7 +469,7 @@ Error TrafficMonitor::DeleteAllTrafficChains()
     }
 
     for (const auto& chain : chains) {
-        if (HasPrefix(chain, "AOS_")) {
+        if (!HasPrefix(chain, "AOS_")) {
             continue;
         }
 
