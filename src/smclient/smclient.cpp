@@ -157,11 +157,11 @@ Error SMClient::SendMonitoringData(const monitoring::NodeMonitoringData& monitor
     smproto::SMOutgoingMessages outgoingMessage;
     *outgoingMessage.mutable_instant_monitoring() = common::pbconvert::ConvertToProtoInstantMonitoring(monitoringData);
 
-    if (mStream && mStream->Write(outgoingMessage)) {
-        return ErrorEnum::eNone;
+    if (!mStream || !mStream->Write(outgoingMessage)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send monitoring data"));
     }
 
-    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send monitoring data"));
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::SendAlert(const cloudprotocol::AlertVariant& alert)
@@ -173,11 +173,11 @@ Error SMClient::SendAlert(const cloudprotocol::AlertVariant& alert)
     smproto::SMOutgoingMessages outgoingMessage;
     *outgoingMessage.mutable_alert() = common::pbconvert::ConvertToProto(alert);
 
-    if (mStream && mStream->Write(outgoingMessage)) {
-        return ErrorEnum::eNone;
+    if (!mStream || !mStream->Write(outgoingMessage)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send alerts"));
     }
 
-    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send alerts"));
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
@@ -189,11 +189,11 @@ Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
     smproto::SMOutgoingMessages outgoingMessage;
     *outgoingMessage.mutable_log() = common::pbconvert::ConvertToProto(log);
 
-    if (mStream && mStream->Write(outgoingMessage)) {
-        return ErrorEnum::eNone;
+    if (!mStream || !mStream->Write(outgoingMessage)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send log"));
     }
 
-    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send log"));
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::InstancesRunStatus(const Array<InstanceStatus>& instances)
@@ -209,11 +209,11 @@ Error SMClient::InstancesRunStatus(const Array<InstanceStatus>& instances)
         *response.add_instances() = common::pbconvert::ConvertToProto(instance);
     }
 
-    if (mStream && mStream->Write(outgoingMessage)) {
-        return ErrorEnum::eNone;
+    if (!mStream || !mStream->Write(outgoingMessage)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send run instances status"));
     }
 
-    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send run instances status"));
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::InstancesUpdateStatus(const Array<InstanceStatus>& instances)
@@ -229,11 +229,11 @@ Error SMClient::InstancesUpdateStatus(const Array<InstanceStatus>& instances)
         *response.add_instances() = common::pbconvert::ConvertToProto(instance);
     }
 
-    if (mStream && mStream->Write(outgoingMessage)) {
-        return ErrorEnum::eNone;
+    if (!mStream || !mStream->Write(outgoingMessage)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send update instances status"));
     }
 
-    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send update instances status"));
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::Subscribe(ConnectionSubscriberItf& subscriber)
