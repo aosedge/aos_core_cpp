@@ -34,7 +34,33 @@ constexpr auto cMonthDuration  = cYearDuration / 12;
  * Static
  **********************************************************************************************************************/
 
-aos::RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period)
+RetWithError<Duration> ParseStringDuration(const std::string& durationStr)
+{
+    static const std::map<std::string, std::chrono::nanoseconds> units
+        = {{"ns", std::chrono::nanoseconds(1)}, {"us", std::chrono::microseconds(1)},
+            {"µs", std::chrono::microseconds(1)}, {"ms", std::chrono::milliseconds(1)}, {"s", std::chrono::seconds(1)},
+            {"m", std::chrono::minutes(1)}, {"h", std::chrono::hours(1)}, {"d", std::chrono::hours(24)},
+            {"w", std::chrono::hours(24 * 7)}, {"y", std::chrono::hours(24 * 365)}};
+
+    std::chrono::nanoseconds totalDuration {};
+
+    std::regex           componentPattern(R"((\d+)(ns|us|µs|ms|s|m|h|d|w|y))");
+    auto                 begin = std::sregex_iterator(durationStr.begin(), durationStr.end(), componentPattern);
+    std::sregex_iterator end;
+
+    for (auto i = begin; i != end; ++i) {
+        std::smatch match = *i;
+        std::string unit  = match[2].str();
+
+        std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
+
+        totalDuration += units.at(unit) * std::stoll(match[1].str());
+    }
+
+    return totalDuration;
+}
+
+RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period)
 {
     Duration totalDuration {};
 
@@ -46,7 +72,7 @@ aos::RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period
     std::regex  iso8601DurationPattern(R"(P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)");
 
     if (!std::regex_match(period, match, iso8601DurationPattern) || match.size() != 5) {
-        return {{}, Error(aos::ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
+        return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
     if (match[1].matched) {
@@ -68,7 +94,7 @@ aos::RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period
     return totalDuration;
 }
 
-aos::RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
+RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
 {
     std::chrono::nanoseconds totalDuration {};
 
@@ -80,7 +106,7 @@ aos::RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
     std::regex  iso8601DurationPattern(R"(T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)");
 
     if (!std::regex_match(time, match, iso8601DurationPattern) || match.size() != 4) {
-        return {{}, Error(aos::ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
+        return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
     if (match[1].matched) {
@@ -94,6 +120,33 @@ aos::RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
     if (match[3].matched) {
         totalDuration += std::stoi(match[3].str()) * cSecondDuration;
     }
+
+    return totalDuration;
+}
+
+RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
+{
+    Duration    totalDuration {};
+    std::smatch match;
+    std::regex  iso8601DurationPattern(R"(^(P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
+
+    if (!std::regex_match(duration, match, iso8601DurationPattern) || match.size() != 3) {
+        return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
+    }
+
+    auto [delta, err] = ParseISO8601DurationPeriod(match[1].str());
+    if (!err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(err)};
+    }
+
+    totalDuration += delta;
+
+    Tie(delta, err) = ParseISO8601DurationTime(match[2].str());
+    if (!err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(err)};
+    }
+
+    totalDuration += delta;
 
     return totalDuration;
 }
@@ -165,65 +218,36 @@ std::string FormatISO8601DurationTime(int64_t& total)
 
 }; // namespace
 
-aos::RetWithError<Duration> ParseDuration(const std::string& durationStr)
+/***********************************************************************************************************************
+ * Public
+ **********************************************************************************************************************/
+
+RetWithError<Duration> ParseDuration(const std::string& durationStr)
 {
-    static const std::map<std::string, std::chrono::nanoseconds> units
-        = {{"ns", std::chrono::nanoseconds(1)}, {"us", std::chrono::microseconds(1)},
-            {"µs", std::chrono::microseconds(1)}, {"ms", std::chrono::milliseconds(1)}, {"s", std::chrono::seconds(1)},
-            {"m", std::chrono::minutes(1)}, {"h", std::chrono::hours(1)}, {"d", std::chrono::hours(24)},
-            {"w", std::chrono::hours(24 * 7)}, {"y", std::chrono::hours(24 * 365)}};
-
-    std::chrono::nanoseconds totalDuration {};
-    std::regex               wholeStringPattern(R"((\d+(ns|us|µs|ms|s|m|h|d|w|y))+$)");
-
-    if (!std::regex_match(durationStr, wholeStringPattern)) {
-        return {totalDuration, aos::ErrorEnum::eInvalidArgument};
+    if (durationStr.empty()) {
+        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "empty duration string"))};
     }
 
-    std::regex           componentPattern(R"((\d+)(ns|us|µs|ms|s|m|h|d|w|y))");
-    auto                 begin = std::sregex_iterator(durationStr.begin(), durationStr.end(), componentPattern);
-    std::sregex_iterator end;
-
-    for (auto i = begin; i != end; ++i) {
-        std::smatch match = *i;
-        std::string unit  = match[2].str();
-
-        std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
-
-        totalDuration += units.at(unit) * std::stoll(match[1].str());
+    if (durationStr[0] == 'P') {
+        return ParseISO8601Duration(durationStr);
     }
 
-    return totalDuration;
+    const std::regex floatPattern(R"(^-?\d*(\.\d+)?$)");
+
+    if (std::regex_match(durationStr, floatPattern)) {
+        return Duration(std::chrono::seconds(static_cast<int>(std::stod(durationStr) + 0.5)));
+    }
+
+    const std::regex durationStringPattern(R"((\d+(ns|us|µs|ms|s|m|h|d|w|y))+$)");
+
+    if (std::regex_match(durationStr, durationStringPattern)) {
+        return ParseStringDuration(durationStr);
+    }
+
+    return {{}, Error(ErrorEnum::eInvalidArgument, "invalid duration string")};
 }
 
-aos::RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
-{
-    Duration    totalDuration {};
-    std::smatch match;
-    std::regex  iso8601DurationPattern(R"(^(P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
-
-    if (!std::regex_match(duration, match, iso8601DurationPattern) || match.size() != 3) {
-        return {{}, Error(aos::ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
-    }
-
-    auto [delta, err] = ParseISO8601DurationPeriod(match[1].str());
-    if (!err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
-    }
-
-    totalDuration += delta;
-
-    Tie(delta, err) = ParseISO8601DurationTime(match[2].str());
-    if (!err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
-    }
-
-    totalDuration += delta;
-
-    return totalDuration;
-}
-
-aos::RetWithError<std::string> FormatISO8601Duration(const Duration& duration)
+RetWithError<std::string> FormatISO8601Duration(const Duration& duration)
 {
     auto total = duration.count();
 
@@ -235,7 +259,7 @@ aos::RetWithError<std::string> FormatISO8601Duration(const Duration& duration)
     return durationStr.append(FormatISO8601DurationTime(total));
 }
 
-aos::RetWithError<aos::Time> FromUTCString(const std::string& utcTimeStr)
+RetWithError<Time> FromUTCString(const std::string& utcTimeStr)
 {
     struct tm timeInfo = {};
 
@@ -243,10 +267,10 @@ aos::RetWithError<aos::Time> FromUTCString(const std::string& utcTimeStr)
         return {Time(), ErrorEnum::eInvalidArgument};
     }
 
-    return {aos::Time::Unix(mktime(&timeInfo)), ErrorEnum::eNone};
+    return {Time::Unix(mktime(&timeInfo)), ErrorEnum::eNone};
 }
 
-aos::RetWithError<std::string> ToUTCString(const aos::Time& time)
+RetWithError<std::string> ToUTCString(const Time& time)
 {
     tm   timeInfo {};
     auto timespec = time.UnixTime();
@@ -257,7 +281,7 @@ aos::RetWithError<std::string> ToUTCString(const aos::Time& time)
         return {"", ErrorEnum::eFailed};
     }
 
-    std::array<char, aos::cTimeStrLen> buffer;
+    std::array<char, cTimeStrLen> buffer;
 
     auto size = strftime(buffer.begin(), buffer.size(), "%Y-%m-%dT%H:%M:%SZ", &timeInfo);
 
