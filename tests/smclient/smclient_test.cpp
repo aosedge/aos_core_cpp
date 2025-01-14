@@ -148,8 +148,11 @@ public:
             while (stream->Read(&incomingMsg)) {
                 {
                     if (incomingMsg.has_node_config_status()) {
+                        std::lock_guard lock {mLock};
+
                         OnNodeConfigStatus(incomingMsg.node_config_status());
 
+                        mNodeConfigStatusReceived = true;
                         mNodeConfigStatusCV.notify_all();
                         continue;
                     } else if (incomingMsg.has_run_instances_status()) {
@@ -176,7 +179,12 @@ public:
                         continue;
                     }
 
-                    mResponseCV.notify_all();
+                    {
+                        std::lock_guard lock {mLock};
+
+                        mResponseCV.notify_all();
+                        mResponseReceived = true;
+                    }
                 }
             }
         } catch (const std::exception& e) {
@@ -312,14 +320,18 @@ public:
     {
         std::unique_lock lock {mLock};
 
-        mNodeConfigStatusCV.wait_for(lock, timeout);
+        mNodeConfigStatusCV.wait_for(lock, timeout, [this] { return mNodeConfigStatusReceived; });
+
+        mNodeConfigStatusReceived = false;
     }
 
     void WaitMessage(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
         std::unique_lock lock {mLock};
 
-        mResponseCV.wait_for(lock, timeout);
+        mResponseCV.wait_for(lock, timeout, [this] { return mResponseReceived; });
+
+        mResponseReceived = false;
     }
 
     aos::Error SendMessage(const smproto::SMIncomingMessages& msg)
@@ -353,6 +365,9 @@ private:
     std::mutex              mLock;
     std::condition_variable mNodeConfigStatusCV;
     std::condition_variable mResponseCV;
+
+    bool mNodeConfigStatusReceived = false;
+    bool mResponseReceived         = false;
 
     std::unique_ptr<grpc::Server> mServer;
 };
@@ -407,6 +422,7 @@ protected:
 
         EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
             .WillRepeatedly(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+        EXPECT_CALL(mLauncher, GetCurrentRunStatus).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials)
             .WillRepeatedly(Return(std::shared_ptr<grpc::ChannelCredentials>()));
         EXPECT_CALL(mResourceManager, GetNodeConfigVersion).WillRepeatedly(Return(nodeConfigVersion));
@@ -426,6 +442,7 @@ protected:
         }
 
         server->WaitNodeConfigStatus();
+        server->WaitMessage();
 
         return std::make_pair(std::move(server), std::move(client));
     }
@@ -710,7 +727,7 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesServicesExceedsLimit)
     auto [server, client] = InitTest();
 
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(0);
+    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
     EXPECT_CALL(mLauncher, RunInstances).Times(0);
 
     servicemanager::v4::RunInstances runInstances;
@@ -733,7 +750,7 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesLayersExceedsLimit)
     auto [server, client] = InitTest();
 
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(0);
+    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
     EXPECT_CALL(mLauncher, RunInstances).Times(0);
 
     servicemanager::v4::RunInstances runInstances;
@@ -754,7 +771,7 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesInstancesExceedsLimit)
     auto [server, client] = InitTest();
 
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(0);
+    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
     EXPECT_CALL(mLauncher, RunInstances).Times(0);
 
     servicemanager::v4::RunInstances runInstances;
@@ -777,7 +794,7 @@ TEST_F(SMClientTest, ClientReconnectsOnRunInstancesLauncherError)
     auto [server, client] = InitTest();
 
     EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(0);
+    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
     EXPECT_CALL(mLauncher, RunInstances).WillOnce(Return(aos::ErrorEnum::eFailed));
 
     server->RunInstances();
