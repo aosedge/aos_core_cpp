@@ -22,7 +22,7 @@ namespace aos::sm::logprovider {
 
 Error LogProvider::Init(const config::LoggingConfig& config, InstanceIDProviderItf& instanceProvider)
 {
-    LOG_INF() << "Init log provider";
+    LOG_DBG() << "Init log provider";
 
     if (config.mMaxPartSize > cloudprotocol::cLogContentLen) {
         return Error(ErrorEnum::eInvalidArgument, "Log part size exceeds allowed content length");
@@ -36,7 +36,7 @@ Error LogProvider::Init(const config::LoggingConfig& config, InstanceIDProviderI
 
 Error LogProvider::Start()
 {
-    LOG_INF() << "Start log provider";
+    LOG_DBG() << "Start log provider";
 
     mStopped      = false;
     mWorkerThread = std::thread(&LogProvider::ProcessLogs, this);
@@ -53,7 +53,7 @@ Error LogProvider::Stop()
             return ErrorEnum::eNone;
         }
 
-        LOG_INF() << "Stop log provider";
+        LOG_DBG() << "Stop log provider";
 
         mStopped = true;
         mCondVar.notify_all();
