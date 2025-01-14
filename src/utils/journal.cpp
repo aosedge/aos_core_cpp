@@ -157,8 +157,7 @@ JournalEntry Journal::GetEntry()
 
     std::string priority;
     Tie(priority, err) = ExtractJournalField(mJournal, "PRIORITY");
-    AOS_ERROR_CHECK_AND_THROW("Failed getting systemd priority field", err);
-    entry.mPriority = Poco::NumberParser::parse(priority);
+    entry.mPriority    = err.IsNone() ? Poco::NumberParser::parse(priority) : 0;
 
     std::string unit;
     Tie(unit, err) = ExtractJournalField(mJournal, "UNIT");
