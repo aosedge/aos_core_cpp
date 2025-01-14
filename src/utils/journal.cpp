@@ -78,7 +78,7 @@ Journal::Journal()
 {
     int ret = sd_journal_open(&mJournal, SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
@@ -90,42 +90,42 @@ Journal::~Journal()
 void Journal::SeekRealtime(Time time)
 {
     if (auto ret = sd_journal_seek_realtime_usec(mJournal, ToMicroSeconds(time)); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
 void Journal::SeekTail()
 {
     if (auto ret = sd_journal_seek_tail(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
 void Journal::SeekHead()
 {
     if (auto ret = sd_journal_seek_head(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
 void Journal::AddDisjunction()
 {
     if (auto ret = sd_journal_add_disjunction(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
 void Journal::AddMatch(const std::string& match)
 {
     if (auto ret = sd_journal_add_match(mJournal, match.c_str(), match.length()); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
 bool Journal::Next()
 {
     if (auto ret = sd_journal_next(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     } else if (ret > 0) {
         return true;
     }
@@ -136,7 +136,7 @@ bool Journal::Next()
 bool Journal::Previous()
 {
     if (auto ret = sd_journal_previous(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     } else if (ret > 0) {
         return true;
     }
@@ -156,6 +156,7 @@ JournalEntry Journal::GetEntry()
     Tie(entry.mSystemdCGroup, ignore) = ExtractJournalField(mJournal, "_SYSTEMD_CGROUP");
 
     std::string priority;
+
     Tie(priority, err) = ExtractJournalField(mJournal, "PRIORITY");
     entry.mPriority    = err.IsNone() ? Poco::NumberParser::parse(priority) : 0;
 
@@ -181,7 +182,7 @@ JournalEntry Journal::GetEntry()
 
     ret = sd_journal_get_realtime_usec(mJournal, &realTime);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 
     entry.mMonotonicTime = FromMicroSeconds(monotonicTime);
@@ -193,7 +194,7 @@ JournalEntry Journal::GetEntry()
 void Journal::SeekCursor(const std::string& cursor)
 {
     if (auto ret = sd_journal_seek_cursor(mJournal, cursor.c_str()); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 }
 
@@ -202,7 +203,7 @@ std::string Journal::GetCursor()
     char* cursor = nullptr;
 
     if (auto ret = sd_journal_get_cursor(mJournal, &cursor); ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 
     return cursor;
