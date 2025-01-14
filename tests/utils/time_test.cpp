@@ -123,39 +123,45 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(TimeTest, ParseDurationFromValidString)
+TEST_F(TimeTest, ParseDurationSucceeds)
 {
+    using namespace std::chrono_literals;
+
     struct Test {
         std::string              input;
         std::chrono::nanoseconds expected;
     };
 
     std::vector<Test> tests = {
-        {"1ns", std::chrono::nanoseconds(1)},
-        {"1us", std::chrono::microseconds(1)},
-        {"1µs", std::chrono::microseconds(1)},
-        {"1ms", std::chrono::milliseconds(1)},
-        {"1s", std::chrono::seconds(1)},
-        {"1m", std::chrono::minutes(1)},
-        {"1h", std::chrono::hours(1)},
-        {"1d", std::chrono::hours(24)},
-        {"1w", std::chrono::hours(24 * 7)},
-        {"1y", std::chrono::hours(24 * 365)},
-        {"200s", std::chrono::seconds(200)},
-        {"1h20m1s", std::chrono::hours(1) + std::chrono::minutes(20) + std::chrono::seconds(1)},
-        {"15h20m20s20ms",
-            std::chrono::hours(15) + std::chrono::minutes(20) + std::chrono::seconds(20)
-                + std::chrono::milliseconds(20)},
-        {"20h20m20s200ms100us",
-            std::chrono::hours(20) + std::chrono::minutes(20) + std::chrono::seconds(20)
-                + std::chrono::milliseconds(200) + std::chrono::microseconds(100)},
-        {"20h20m20s200ms100us100ns",
-            std::chrono::hours(20) + std::chrono::minutes(20) + std::chrono::seconds(20)
-                + std::chrono::milliseconds(200) + std::chrono::microseconds(100) + std::chrono::nanoseconds(100)},
-        {"1y1w1d1h1m1s1ms1us",
-            std::chrono::hours(24 * 365 + 24 * 7 + 24) + std::chrono::hours(1) + std::chrono::minutes(1)
-                + std::chrono::seconds(1) + std::chrono::milliseconds(1) + std::chrono::microseconds(1)},
-
+        // duration string
+        {"1ns", 1ns},
+        {"1us", 1us},
+        {"1µs", 1us},
+        {"1ms", 1ms},
+        {"1s", 1s},
+        {"1m", 1min},
+        {"1h", 1h},
+        {"1d", 24h},
+        {"1w", 24h * 7},
+        {"1y", 24h * 365},
+        {"200s", 200s},
+        {"1h20m1s", 1h + 20min + 1s},
+        {"15h20m20s20ms", 15h + 20min + 20s + 20ms},
+        {"20h20m20s200ms100us", 20h + 20min + 20s + 200ms + 100us},
+        {"20h20m20s200ms100us100ns", 20h + 20min + 20s + 200ms + 100us + 100ns},
+        {"1y1w1d1h1m1s1ms1us", 24h * 365 + 24h * 7 + 24h + 1h + 1min + 1s + 1ms + 1us},
+        // ISO 8601 duration string
+        {"P1Y", 24h * 365},
+        {"P1Y1D", 24h * 365 + 24h},
+        {"PT1S", 1s},
+        {"PT1M1S", 1min + 1s},
+        {"PT1H1M1S", 1h + 1min + 1s},
+        {"P1Y1M1W1DT1H1M1S", 24h * 365 + (24h * 365 / 12) + (24h * 7) + 24h + 1h + 1min + 1s},
+        // floating number string
+        {"10", 10s},
+        {"10.1", 10s},
+        {"10.5", 11s},
+        {"10.9", 11s},
     };
 
     for (const auto& test : tests) {
@@ -167,38 +173,11 @@ TEST_F(TimeTest, ParseDurationFromValidString)
 
 TEST_F(TimeTest, ParseDurationFromInvalidString)
 {
-    std::vector<std::string> tests = {"1", "1a", "1s1", "sss", "s111", "%12d", "y1y", "/12d"};
+    std::vector<std::string> tests = {"1#", "1a", "1s1", "sss", "s111", "%12d", "y1y", "/12d"};
 
     for (const auto& test : tests) {
         auto [duration, error] = ParseDuration(test);
         ASSERT_FALSE(error.IsNone());
-    }
-}
-
-TEST_F(TimeTest, ParseISO8601Duration)
-{
-    using namespace std::chrono_literals;
-
-    struct Test {
-        std::string              input;
-        std::chrono::nanoseconds expected;
-    };
-
-    std::vector<Test> tests = {
-        {"P1Y", 24h * 365},
-        {"P1Y1D", 24h * 365 + 24h},
-        {"PT1S", 1s},
-        {"PT1M1S", 1min + 1s},
-        {"PT1H1M1S", 1h + 1min + 1s},
-        {"P1Y1M1W1DT1H1M1S", 24h * 365 + (24h * 365 / 12) + (24h * 7) + 24h + 1h + 1min + 1s},
-    };
-
-    for (const auto& test : tests) {
-        auto [duration, err] = ParseISO8601Duration(test.input);
-
-        ASSERT_TRUE(err.IsNone()) << "input: " << test.input << ", err: " << err.Message();
-        ASSERT_EQ(duration, test.expected) << "input: " << test.input << ", expected: " << test.expected.count() << ", "
-                                           << "actual: " << duration.count();
     }
 }
 

@@ -33,7 +33,7 @@ void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Ru
     utils::Duration duration;
 
     if (const auto startInterval = object.GetOptionalValue<std::string>("startInterval"); startInterval.has_value()) {
-        Tie(duration, err) = utils::ParseISO8601Duration(*startInterval);
+        Tie(duration, err) = utils::ParseDuration(*startInterval);
         AOS_ERROR_CHECK_AND_THROW("start interval parsing error", err);
 
         params.mStartInterval = duration.count();
@@ -41,7 +41,7 @@ void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Ru
 
     if (const auto restartInterval = object.GetOptionalValue<std::string>("restartInterval");
         restartInterval.has_value()) {
-        Tie(duration, err) = utils::ParseISO8601Duration(*restartInterval);
+        Tie(duration, err) = utils::ParseDuration(*restartInterval);
         AOS_ERROR_CHECK_AND_THROW("restart interval parsing error", err);
 
         params.mRestartInterval = duration.count();
@@ -312,7 +312,7 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
     AlertRulePercents percents = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseISO8601Duration(minTimeout->c_str());
+        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
 
         percents.mMinTimeout = duration.count();
@@ -329,7 +329,7 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
     AlertRulePoints points = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseISO8601Duration(minTimeout->c_str());
+        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
 
         points.mMinTimeout = duration.count();
@@ -490,7 +490,7 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL"); offlineTTLStr.has_value()) {
             utils::Duration offlineTTL;
 
-            Tie(offlineTTL, err) = utils::ParseISO8601Duration(*offlineTTLStr);
+            Tie(offlineTTL, err) = utils::ParseDuration(*offlineTTLStr);
             AOS_ERROR_CHECK_AND_THROW("offlineTTL parsing error", err);
 
             serviceConfig.mOfflineTTL = offlineTTL.count();

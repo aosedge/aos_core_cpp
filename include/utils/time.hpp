@@ -39,14 +39,6 @@ using Duration = std::chrono::duration<int64_t, std::nano>;
 aos::RetWithError<Duration> ParseDuration(const std::string& duration);
 
 /**
- * Parses ISO8601 duration from string.
- *
- * @param duration duration string.
- * @return parsed duration.
- */
-aos::RetWithError<Duration> ParseISO8601Duration(const std::string& duration);
-
-/**
  * Formats ISO8601 duration string.
  *
  * @param duration duration.
