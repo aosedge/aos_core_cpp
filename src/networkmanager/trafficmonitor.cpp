@@ -46,7 +46,7 @@ std::vector<std::string> SplitFields(const std::string& str)
  **********************************************************************************************************************/
 
 Error TrafficMonitor::Init(
-    StorageItf& storage, common::network::IPTablesItf& iptables, std::chrono::milliseconds updatePeriod)
+    StorageItf& storage, common::network::IPTablesItf& iptables, common::utils::Duration updatePeriod)
 {
     LOG_DBG() << "Init traffic monitor";
 
@@ -81,7 +81,7 @@ Error TrafficMonitor::Start()
     }
 
     return mTimer.Create(
-        static_cast<unsigned int>(mUpdatePeriod.count()),
+        std::chrono::duration_cast<std::chrono::nanoseconds>(mUpdatePeriod).count(),
         [this](void*) {
             if (auto err = UpdateTrafficData(); err != ErrorEnum::eNone) {
                 LOG_ERR() << "Can't update traffic data: error=" << err;

@@ -14,14 +14,16 @@
 #include <aos/common/tools/error.hpp>
 #include <aos/common/tools/timer.hpp>
 #include <aos/sm/networkmanager.hpp>
+
 #include <network/iptables.hpp>
+#include <utils/time.hpp>
 
 namespace aos::sm::networkmanager {
 
 class TrafficMonitor : public TrafficMonitorItf {
 public:
     Error Init(StorageItf& storage, common::network::IPTablesItf& iptables,
-        std::chrono::milliseconds updatePeriod = std::chrono::minutes(1));
+        common::utils::Duration updatePeriod = std::chrono::minutes(1));
 
     /**
      * Starts traffic monitoring.
@@ -125,7 +127,7 @@ private:
     mutable std::shared_mutex                       mMutex {};
     aos::Timer                                      mTimer {};
     TrafficPeriod                                   mTrafficPeriod {};
-    std::chrono::milliseconds                       mUpdatePeriod {};
+    common::utils::Duration                         mUpdatePeriod {};
     bool                                            mStop {};
 };
 } // namespace aos::sm::networkmanager
