@@ -160,6 +160,7 @@ private:
     StubPtr CreateStub(const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
 
     bool SendNodeConfigStatus(const String& version, const Error& configErr);
+    bool SendRunStatus(const Array<InstanceStatus>& instances);
 
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;

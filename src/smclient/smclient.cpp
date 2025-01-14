@@ -200,16 +200,7 @@ Error SMClient::InstancesRunStatus(const Array<InstanceStatus>& instances)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Send run instances status";
-
-    smproto::SMOutgoingMessages outgoingMessage;
-    auto&                       response = *outgoingMessage.mutable_run_instances_status();
-
-    for (const auto& instance : instances) {
-        *response.add_instances() = common::pbconvert::ConvertToProto(instance);
-    }
-
-    if (!mStream || !mStream->Write(outgoingMessage)) {
+    if (!SendRunStatus(instances)) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send run instances status"));
     }
 
@@ -283,7 +274,11 @@ SMClient::StubPtr SMClient::CreateStub(
 
 bool SMClient::SendNodeConfigStatus(const String& version, const Error& configErr)
 {
-    LOG_DBG() << "Send node config status";
+    LOG_INF() << "Send node config status";
+
+    if (!mStream) {
+        return false;
+    }
 
     smproto::SMOutgoingMessages outgoingMsg;
     auto&                       nodeConfigStatus = *outgoingMsg.mutable_node_config_status();
@@ -295,6 +290,24 @@ bool SMClient::SendNodeConfigStatus(const String& version, const Error& configEr
     nodeConfigStatus.set_node_type(mNodeInfo.mNodeType.CStr());
 
     return mStream->Write(outgoingMsg);
+}
+
+bool SMClient::SendRunStatus(const Array<InstanceStatus>& instances)
+{
+    LOG_INF() << "Send run instances status";
+
+    if (!mStream) {
+        return false;
+    }
+
+    smproto::SMOutgoingMessages outgoingMessage;
+    auto&                       response = *outgoingMessage.mutable_run_instances_status();
+
+    for (const auto& instance : instances) {
+        *response.add_instances() = common::pbconvert::ConvertToProto(instance);
+    }
+
+    return mStream->Write(outgoingMessage);
 }
 
 bool SMClient::RegisterSM(const std::string& url)
@@ -329,7 +342,21 @@ bool SMClient::RegisterSM(const std::string& url)
             continue;
         }
 
-        LOG_DBG() << "Connection established";
+        auto lastRunStatus = std::make_unique<InstanceStatusStaticArray>();
+
+        if (auto err = mLauncher->GetCurrentRunStatus(*lastRunStatus); !err.IsNone()) {
+            LOG_ERR() << "Can't get current run status: err=" << err;
+
+            continue;
+        }
+
+        if (!SendRunStatus(*lastRunStatus)) {
+            LOG_ERR() << "Can't send current run status";
+
+            continue;
+        }
+
+        LOG_INF() << "Connection established";
 
         mCredentialListUpdated = false;
 
