@@ -27,16 +27,16 @@ Error Archivator::AddLog(const std::string& message)
         return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
     }
 
-    *mCompressionStream << message;
-
-    mPartSize += message.size();
-    if (mPartSize > mConfig.mMaxPartSize) {
+    if (mPartSize + message.size() > mConfig.mMaxPartSize) {
         if (!AddLogPart()) {
             return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
         LOG_DBG() << "Max part size reached: partCount=" << mPartCount;
     }
+
+    *mCompressionStream << message;
+    mPartSize += message.size();
 
     return ErrorEnum::eNone;
 }
@@ -55,15 +55,15 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
         LOG_DBG() << "Push log: "
                   << "part=" << part << ", size=0";
 
-        cloudprotocol::PushLog emptyLog;
+        auto emptyLog = std::make_unique<cloudprotocol::PushLog>();
 
-        emptyLog.mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-        emptyLog.mLogID       = logID;
-        emptyLog.mPartsCount  = part;
-        emptyLog.mPart        = part;
-        emptyLog.mStatus      = cloudprotocol::LogStatusEnum::eEmpty;
+        emptyLog->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
+        emptyLog->mLogID       = logID;
+        emptyLog->mPartsCount  = part;
+        emptyLog->mPart        = part;
+        emptyLog->mStatus      = cloudprotocol::LogStatusEnum::eEmpty;
 
-        mLogReceiver.OnLogReceived(emptyLog);
+        mLogReceiver.OnLogReceived(*emptyLog);
 
         return ErrorEnum::eNone;
     }
@@ -75,20 +75,20 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
         LOG_DBG() << "Push log: "
                   << "part=" << part << ", size=" << data.size();
 
-        cloudprotocol::PushLog logPart;
+        auto logPart = std::make_unique<cloudprotocol::PushLog>();
 
-        logPart.mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-        logPart.mLogID       = logID;
-        logPart.mPartsCount  = mLogStreams.size();
-        logPart.mPart        = part;
-        logPart.mStatus      = cloudprotocol::LogStatusEnum::eOk;
+        logPart->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
+        logPart->mLogID       = logID;
+        logPart->mPartsCount  = mLogStreams.size();
+        logPart->mPart        = part;
+        logPart->mStatus      = cloudprotocol::LogStatusEnum::eOk;
 
-        auto err = logPart.mContent.Insert(logPart.mContent.begin(), data.data(), data.data() + data.size());
+        auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        mLogReceiver.OnLogReceived(logPart);
+        mLogReceiver.OnLogReceived(*logPart);
     }
 
     return ErrorEnum::eNone;
@@ -96,6 +96,10 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
 void Archivator::CreateCompressionStream()
 {
     auto& stream = mLogStreams.emplace_back();
+
+    if (mCompressionStream) {
+        mCompressionStream->close();
+    }
 
     mCompressionStream = std::make_unique<Poco::DeflatingOutputStream>(
         stream, Poco::DeflatingStreamBuf::STREAM_GZIP, Z_BEST_COMPRESSION);

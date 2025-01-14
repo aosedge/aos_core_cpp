@@ -196,10 +196,10 @@ Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
 
     LOG_INF() << "Send log";
 
-    smproto::SMOutgoingMessages outgoingMessage;
-    *outgoingMessage.mutable_log() = common::pbconvert::ConvertToProto(log);
+    auto outgoingMessage            = std::make_unique<smproto::SMOutgoingMessages>();
+    *outgoingMessage->mutable_log() = common::pbconvert::ConvertToProto(log);
 
-    if (!mStream || !mStream->Write(outgoingMessage)) {
+    if (!mStream || !mStream->Write(*outgoingMessage)) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send log"));
     }
 

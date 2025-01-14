@@ -24,9 +24,6 @@ Error LogProvider::Init(const config::LoggingConfig& config, InstanceIDProviderI
 {
     LOG_DBG() << "Init log provider";
 
-    if (config.mMaxPartSize > cloudprotocol::cLogContentLen) {
-        return Error(ErrorEnum::eInvalidArgument, "Log part size exceeds allowed content length");
-    }
 
     mConfig           = config;
     mInstanceProvider = &instanceProvider;
@@ -285,33 +282,33 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
 
 void LogProvider::SendErrorResponse(const String& logID, const std::string& errorMsg)
 {
-    cloudprotocol::PushLog response;
+    auto response = std::make_unique<cloudprotocol::PushLog>();
 
-    response.mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-    response.mLogID       = logID;
-    response.mStatus      = cloudprotocol::LogStatusEnum::eError;
-    response.mErrorInfo   = Error(ErrorEnum::eFailed, errorMsg.c_str());
-    response.mPartsCount  = 0;
-    response.mPart        = 0;
+    response->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
+    response->mLogID       = logID;
+    response->mStatus      = cloudprotocol::LogStatusEnum::eError;
+    response->mErrorInfo   = Error(ErrorEnum::eFailed, errorMsg.c_str());
+    response->mPartsCount  = 0;
+    response->mPart        = 0;
 
     if (mLogReceiver) {
-        mLogReceiver->OnLogReceived(response);
+        mLogReceiver->OnLogReceived(*response);
     }
 }
 
 void LogProvider::SendEmptyResponse(const String& logID, const std::string& errorMsg)
 {
-    cloudprotocol::PushLog response;
+    auto response = std::make_unique<cloudprotocol::PushLog>();
 
-    response.mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-    response.mLogID       = logID;
-    response.mStatus      = cloudprotocol::LogStatusEnum::eAbsent;
-    response.mPartsCount  = 1;
-    response.mPart        = 1;
-    response.mErrorInfo   = Error(ErrorEnum::eNone, errorMsg.c_str());
+    response->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
+    response->mLogID       = logID;
+    response->mStatus      = cloudprotocol::LogStatusEnum::eAbsent;
+    response->mPartsCount  = 1;
+    response->mPart        = 1;
+    response->mErrorInfo   = Error(ErrorEnum::eNone, errorMsg.c_str());
 
     if (mLogReceiver) {
-        mLogReceiver->OnLogReceived(response);
+        mLogReceiver->OnLogReceived(*response);
     }
 }
 
