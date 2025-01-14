@@ -166,12 +166,18 @@ JournalEntry Journal::GetEntry()
         entry.mUnit = unit;
     }
 
-    uint64_t monotonicTime = 0;
-    uint64_t realTime      = 0;
+    uint64_t   monotonicTime = 0;
+    uint64_t   realTime      = 0;
+    sd_id128_t bootId;
 
-    auto ret = sd_journal_get_monotonic_usec(mJournal, &monotonicTime, nullptr);
+    auto ret = sd_id128_get_boot(&bootId);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(ret), ret);
+        AOS_ERROR_THROW(strerror(-ret), ret);
+    }
+
+    ret = sd_journal_get_monotonic_usec(mJournal, &monotonicTime, &bootId);
+    if (ret < 0) {
+        AOS_ERROR_THROW(strerror(-ret), ret);
     }
 
     ret = sd_journal_get_realtime_usec(mJournal, &realTime);
