@@ -169,6 +169,7 @@ Error SMClient::SendAlert(const cloudprotocol::AlertVariant& alert)
     std::lock_guard lock {mMutex};
 
     LOG_INF() << "Send alert";
+    LOG_DBG() << "Send alert: alert=" << alert;
 
     smproto::SMOutgoingMessages outgoingMessage;
     *outgoingMessage.mutable_alert() = common::pbconvert::ConvertToProto(alert);
