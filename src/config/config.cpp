@@ -9,6 +9,7 @@
 
 #include <Poco/JSON/Parser.h>
 
+#include <aos/common/cloudprotocol/log.hpp>
 #include <aos/common/tools/fs.hpp>
 
 #include <utils/exception.hpp>
@@ -71,8 +72,8 @@ monitoring::Config ParseMonitoringConfig(const common::utils::CaseInsensitiveObj
 LoggingConfig ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return LoggingConfig {
-        object.GetValue<uint64_t>("maxPartSize"),
-        object.GetValue<uint64_t>("maxPartCount"),
+        object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen),
+        object.GetValue<uint64_t>("maxPartCount", 80),
     };
 }
 
@@ -260,16 +261,24 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         config.mMonitoring = ParseMonitoringConfig(object);
 
+        auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
+
         if (object.Has("logging")) {
             config.mLogging = ParseLoggingConfig(object.GetObject("logging"));
+        } else {
+            config.mLogging = ParseLoggingConfig(empty);
         }
 
         if (object.Has("journalAlerts")) {
             config.mJournalAlerts = ParseJournalAlertsConfig(object.GetObject("journalAlerts"));
+        } else {
+            config.mJournalAlerts = ParseJournalAlertsConfig(empty);
         }
 
         if (object.Has("migration")) {
             config.mMigration = ParseMigrationConfig(config.mWorkingDir, object.GetObject("migration"));
+        } else {
+            config.mMigration = ParseMigrationConfig(config.mWorkingDir, empty);
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Error parsing config: " << e.what();
