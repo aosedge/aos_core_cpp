@@ -151,10 +151,17 @@ void JournalAlerts::OnTimer(Poco::Timer& timer)
 
 void JournalAlerts::StoreCurrentCursor()
 {
-    auto err = mStorage->SetJournalCursor(mJournal->GetCursor().c_str());
+    auto newCursor = mJournal->GetCursor();
+    if (newCursor == mCursor) {
+        return;
+    }
+
+    auto err = mStorage->SetJournalCursor(newCursor.c_str());
     if (!err.IsNone()) {
         AOS_ERROR_THROW("set journal cursor failed", err);
     }
+
+    mCursor = newCursor;
 }
 
 void JournalAlerts::MonitorJournal()
