@@ -134,10 +134,14 @@ Error SMClient::Stop()
 
 void SMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
 {
+    (void)info;
+
     LOG_INF() << "Certificate changed";
 
-    auto err = mCertChangedThreadPool.AddTask([this, info](void*) {
+    auto err = mCertChangedThreadPool.AddTask([this](void*) {
         std::lock_guard lock {mMutex};
+
+        LOG_DBG() << "Handle certificate change";
 
         auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
         if (!err.IsNone()) {
