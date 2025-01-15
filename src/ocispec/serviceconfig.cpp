@@ -50,7 +50,7 @@ void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Ru
 
 Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     Error       err;
     std::string durationStr;
@@ -90,7 +90,7 @@ void SysctlFromJSON(const Poco::Dynamic::Var& var, decltype(aos::oci::ServiceCon
 
 Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::ServiceConfig::mSysctl)& sysctl)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     for (const auto& [key, value] : sysctl) {
         object.set(key.CStr(), value.CStr());
@@ -148,7 +148,7 @@ void ServiceQuotasFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ao
 
 Poco::JSON::Object ServiceQuotasToJSON(const aos::oci::ServiceQuotas& quotas)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (quotas.mCPUDMIPSLimit.HasValue()) {
         object.set("cpuDMIPSLimit", quotas.mCPUDMIPSLimit.GetValue());
@@ -222,7 +222,7 @@ aos::oci::RequestedResources RequestedResourcesFromJSON(const utils::CaseInsensi
 
 Poco::JSON::Object RequestedResourcesToJSON(const aos::oci::RequestedResources& resources)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (resources.mCPU.HasValue()) {
         object.set("cpu", resources.mCPU.GetValue());
@@ -253,7 +253,7 @@ aos::oci::ServiceDevice ServiceDeviceFromJSON(const utils::CaseInsensitiveObject
 
 Poco::JSON::Object ServiceDeviceToJSON(const aos::oci::ServiceDevice& device)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("device", device.mDevice.CStr());
     object.set("permissions", device.mPermissions.CStr());
@@ -271,7 +271,7 @@ FunctionPermissions FunctionPermissionsFromJSON(const utils::CaseInsensitiveObje
 
 Poco::JSON::Object FunctionPermissionsToJSON(const FunctionPermissions& permissions)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("function", permissions.mFunction.CStr());
     object.set("permissions", permissions.mPermissions.CStr());
@@ -299,7 +299,7 @@ FunctionServicePermissions FunctionServicePermissionsFromJSON(const utils::CaseI
 
 Poco::JSON::Object FunctionServicePermissionsToJSON(const FunctionServicePermissions& permissions)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("name", permissions.mName.CStr());
     object.set("permissions", utils::ToJsonArray(permissions.mPermissions, FunctionPermissionsToJSON));
@@ -384,7 +384,7 @@ AlertRules AlertRulesFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 template <class T>
 Poco::JSON::Object AlertRuleToJSON(const T& rule)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (rule.mMinTimeout > 0) {
         auto [duration, err] = utils::FormatISO8601Duration(utils::Duration(rule.mMinTimeout));
@@ -402,7 +402,7 @@ Poco::JSON::Object AlertRuleToJSON(const T& rule)
 template <>
 Poco::JSON::Object AlertRuleToJSON(const PartitionAlertRule& rule)
 {
-    Poco::JSON::Object object = AlertRuleToJSON<AlertRulePercents>(rule);
+    auto object = AlertRuleToJSON<AlertRulePercents>(rule);
 
     object.set("name", rule.mName.CStr());
 
@@ -411,7 +411,7 @@ Poco::JSON::Object AlertRuleToJSON(const PartitionAlertRule& rule)
 
 Poco::JSON::Object AlertRulesToJSON(const AlertRules& rules)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (rules.mRAM.HasValue()) {
         object.set("ram", AlertRuleToJSON(rules.mRAM.GetValue()));
@@ -544,7 +544,7 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
 Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
 
         auto [created, err] = utils::ToUTCString(serviceConfig.mCreated);
         AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
