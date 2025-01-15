@@ -126,7 +126,7 @@ namespace aos::common::pbconvert {
     result.set_log_id(src.mLogID.CStr());
     result.set_part_count(src.mPartsCount);
     result.set_part(src.mPart);
-    result.set_data(src.mContent.CStr());
+    result.set_data(std::string(src.mContent.CStr(), src.mContent.Size()));
     result.set_status(src.mStatus.ToString().CStr());
 
     SetErrorInfo(src.mErrorInfo, result);
