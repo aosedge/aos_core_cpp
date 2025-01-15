@@ -24,7 +24,6 @@ Error LogProvider::Init(const config::LoggingConfig& config, InstanceIDProviderI
 {
     LOG_DBG() << "Init log provider";
 
-
     mConfig           = config;
     mInstanceProvider = &instanceProvider;
 
@@ -416,12 +415,16 @@ Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>&
             break;
         }
 
-        if (crashTime.IsZero() && entry.mMessage.find("process exited") != std::string::npos) {
-            crashTime = entry.mMonotonicTime;
+        if (crashTime.IsZero()) {
+            if (entry.mMessage.find("process exited") != std::string::npos) {
+                crashTime = entry.mMonotonicTime;
 
-            LOG_DBG() << "Crash detected: time=" << entry.mRealTime.ToString().mValue;
-        } else if (entry.mMessage.find("Started") == 0) {
-            break;
+                LOG_DBG() << "Crash detected: time=" << entry.mRealTime.ToString().mValue;
+            }
+        } else {
+            if (entry.mMessage.find("Started") == 0) {
+                break;
+            }
         }
     }
 
