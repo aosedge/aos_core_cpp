@@ -1021,7 +1021,7 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudproto
         }
 
         if (filter.mSubjectID.HasValue()) {
-            if (where.empty()) {
+            if (!where.empty()) {
                 where += " AND ";
             }
 
@@ -1029,11 +1029,11 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudproto
         }
 
         if (filter.mInstance.HasValue()) {
-            if (where.empty()) {
+            if (!where.empty()) {
                 where += " AND ";
             }
 
-            where += Poco::format("instance = \"%d\"", filter.mInstance.GetValue());
+            where += Poco::format("instance = %" PRIu64, filter.mInstance.GetValue());
         }
 
         if (!where.empty()) {

@@ -661,7 +661,7 @@ TEST_F(DatabaseTest, GetInstanceIDsOk)
     constexpr auto instanceID2 = "instance-2";
 
     auto instance1 = CreateInstanceData(instanceID, CreateInstanceIdent(serviceID, "subject", 0));
-    auto instance2 = CreateInstanceData(instanceID2, CreateInstanceIdent(serviceID, "subject", 0));
+    auto instance2 = CreateInstanceData(instanceID2, CreateInstanceIdent(serviceID, "subject", 1));
 
     EXPECT_TRUE(mDB.AddInstance(instance1).IsNone());
     EXPECT_TRUE(mDB.AddInstance(instance2).IsNone());
@@ -669,6 +669,7 @@ TEST_F(DatabaseTest, GetInstanceIDsOk)
     aos::cloudprotocol::InstanceFilter filter;
 
     filter.mServiceID.SetValue(serviceID);
+    filter.mSubjectID.SetValue("subject");
 
     auto [instanceIDs, err] = mDB.GetInstanceIDs(filter);
     EXPECT_TRUE(err.IsNone());
