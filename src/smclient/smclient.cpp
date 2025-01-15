@@ -60,6 +60,8 @@ Error SMClient::Start()
 
     mStopped = false;
 
+    mCertChangedThreadPool.Run();
+
     if (mSecureConnection) {
         auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
         if (!err.IsNone()) {
@@ -104,6 +106,9 @@ Error SMClient::Stop()
             return ErrorEnum::eNone;
         }
 
+        mCertChangedThreadPool.Wait();
+        mCertChangedThreadPool.Shutdown();
+
         mStopped = true;
         mStoppedCV.notify_all();
 
@@ -129,23 +134,27 @@ Error SMClient::Stop()
 
 void SMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_INF() << "Certificate changed";
 
-    (void)info;
+    auto err = mCertChangedThreadPool.AddTask([this, info](void*) {
+        std::lock_guard lock {mMutex};
 
-    auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
+        auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
+        if (!err.IsNone()) {
+            LOG_ERR() << "Can't get client credentials: err=" << err;
+
+            return;
+        }
+
+        mCredentialList.clear();
+        mCredentialList.push_back(creds);
+
+        mCredentialListUpdated = true;
+    });
+
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't get client credentials: err=" << err;
-
-        return;
+        LOG_ERR() << "Can't add cert changed task to thread pool: err=" << err;
     }
-
-    mCredentialList.clear();
-    mCredentialList.push_back(creds);
-
-    mCredentialListUpdated = true;
 }
 
 Error SMClient::SendMonitoringData(const monitoring::NodeMonitoringData& monitoringData)

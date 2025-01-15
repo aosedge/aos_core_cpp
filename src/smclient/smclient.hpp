@@ -20,6 +20,7 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/monitoring/monitoring.hpp>
 #include <aos/common/tools/error.hpp>
+#include <aos/common/tools/thread.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/provisionmanager.hpp>
@@ -152,6 +153,9 @@ public:
     ~SMClient() = default;
 
 private:
+    static constexpr auto cNumOnCertChangedThreads    = 1;
+    static constexpr auto cMaxNumOnCertChangedThreads = 1;
+
     using StubPtr = std::unique_ptr<smproto::SMService::StubInterface>;
     using StreamPtr
         = std::unique_ptr<grpc::ClientReaderWriterInterface<smproto::SMOutgoingMessages, smproto::SMIncomingMessages>>;
@@ -197,10 +201,11 @@ private:
     StreamPtr                            mStream;
     StubPtr                              mStub;
 
-    std::thread             mConnectionThread;
-    std::mutex              mMutex;
-    bool                    mStopped = true;
-    std::condition_variable mStoppedCV;
+    ThreadPool<cNumOnCertChangedThreads, cMaxNumOnCertChangedThreads> mCertChangedThreadPool;
+    std::thread                                                       mConnectionThread;
+    std::mutex                                                        mMutex;
+    bool                                                              mStopped = true;
+    std::condition_variable                                           mStoppedCV;
 };
 
 } // namespace aos::sm::smclient
