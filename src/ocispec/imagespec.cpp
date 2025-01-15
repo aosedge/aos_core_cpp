@@ -48,7 +48,7 @@ void ImageConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
 
 Poco::JSON::Object ImageConfigToJSON(const aos::oci::ImageConfig& config)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!config.mEnv.IsEmpty()) {
         object.set("env", utils::ToJsonArray(config.mEnv, ToStdString));
@@ -123,7 +123,7 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
 Error OCISpec::SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
 
         if (!imageSpec.mCreated.IsZero()) {
             auto [created, err] = utils::ToUTCString(imageSpec.mCreated);

@@ -34,7 +34,7 @@ void ContentDescriptorFromJSON(
 
 Poco::JSON::Object ContentDescriptorToJSON(const aos::oci::ContentDescriptor& descriptor)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("mediaType", descriptor.mMediaType.CStr());
     object.set("digest", descriptor.mDigest.CStr());
@@ -143,7 +143,7 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
 Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManifest& manifest)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
 
         object->set("schemaVersion", manifest.mSchemaVersion);
         object->set("config", ContentDescriptorToJSON(manifest.mConfig));

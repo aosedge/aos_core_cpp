@@ -65,7 +65,7 @@ void CapabilitiesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos
 
 Poco::JSON::Object CapabilitiesToJSON(const aos::oci::LinuxCapabilities& capabilities)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!capabilities.mBounding.IsEmpty()) {
         object.set("bounding", utils::ToJsonArray(capabilities.mBounding, ToStdString));
@@ -101,7 +101,7 @@ void POSIXRlimitFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
 
 Poco::JSON::Object POSIXRlimitToJSON(const aos::oci::POSIXRlimit& rlimit)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("type", rlimit.mType.CStr());
     object.set("hard", rlimit.mHard);
@@ -130,7 +130,7 @@ void UserFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::U
 
 Poco::JSON::Object UserToJSON(const aos::oci::User& user)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("uid", user.mUID);
     object.set("gid", user.mGID);
@@ -202,7 +202,7 @@ void ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci
 
 Poco::JSON::Object ProcessToJSON(const aos::oci::Process& process)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("terminal", process.mTerminal);
     object.set("user", UserToJSON(process.mUser));
@@ -242,7 +242,7 @@ void RootFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::R
 
 Poco::JSON::Object RootToJSON(const aos::oci::Root& root)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("path", root.mPath.CStr());
     object.set("readonly", root.mReadonly);
@@ -269,7 +269,7 @@ void MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Mount& mou
 
 Poco::JSON::Object MountToJSON(const Mount& mount)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("destination", mount.mDestination.CStr());
 
@@ -309,7 +309,7 @@ void DeviceCgroupFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos
 
 Poco::JSON::Object DeviceCgroupToJSON(const aos::oci::LinuxDeviceCgroup& device)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("allow", device.mAllow);
 
@@ -374,7 +374,7 @@ void LinuxMemoryFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
 
 Poco::JSON::Object LinuxMemoryToJSON(const aos::oci::LinuxMemory& lnxMemory)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (lnxMemory.mLimit.HasValue()) {
         object.set("limit", lnxMemory.mLimit.GetValue());
@@ -456,7 +456,7 @@ void LinuxCPUFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oc
 
 Poco::JSON::Object LinuxCPUToJSON(const aos::oci::LinuxCPU& cpu)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (cpu.mShares.HasValue()) {
         object.set("shares", cpu.mShares.GetValue());
@@ -504,7 +504,7 @@ void LinuxPidsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::o
 
 Poco::JSON::Object LinuxPidsToJSON(const aos::oci::LinuxPids& pids)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("limit", pids.mLimit);
 
@@ -525,7 +525,7 @@ void SysctlFromJSON(const Poco::Dynamic::Var& var, decltype(aos::oci::Linux::mSy
 
 Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::Linux::mSysctl)& sysctl)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     for (const auto& [key, value] : sysctl) {
         object.set(key.CStr(), value.CStr());
@@ -570,7 +570,7 @@ void LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, a
 
 Poco::JSON::Object LinuxResourcesToJSON(const aos::oci::LinuxResources& resources)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!resources.mDevices.IsEmpty()) {
         object.set("devices", utils::ToJsonArray(resources.mDevices, DeviceCgroupToJSON));
@@ -611,7 +611,7 @@ void LinuxNamespaceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, a
 
 Poco::JSON::Object LinuxNamespaceToJSON(const aos::oci::LinuxNamespace& ns)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("type", ns.mType.ToString().CStr());
 
@@ -647,7 +647,7 @@ void LinuxDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
 
 Poco::JSON::Object LinuxDeviceToJSON(const aos::oci::LinuxDevice& device)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("path", device.mPath.CStr());
     object.set("type", device.mType.CStr());
@@ -724,7 +724,7 @@ void LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::
 
 Poco::JSON::Object LinuxToJSON(const aos::oci::Linux& lnx)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!lnx.mSysctl.IsEmpty()) {
         object.set("sysctl", SysctlToJSON(lnx.mSysctl));
@@ -772,7 +772,7 @@ void VMHypervisorFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos
 
 Poco::JSON::Object VMHypervisorToJSON(const aos::oci::VMHypervisor& hypervisor)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("path", hypervisor.mPath.CStr());
 
@@ -798,7 +798,7 @@ void VMKernelFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oc
 
 Poco::JSON::Object VMKernelToJSON(const aos::oci::VMKernel& kernel)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     object.set("path", kernel.mPath.CStr());
 
@@ -821,7 +821,7 @@ Poco::JSON::Array VMHWConfigIOMEMToJSON(const Array<aos::oci::VMHWConfigIOMEM>& 
     Poco::JSON::Array jsonArr;
 
     for (const auto& iomem : iomems) {
-        Poco::JSON::Object object;
+        Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
         object.set("firstGFN", iomem.mFirstGFN);
         object.set("firstMFN", iomem.mFirstMFN);
@@ -869,7 +869,7 @@ void VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::
 
 Poco::JSON::Object VMHWConfigToJSON(const aos::oci::VMHWConfig& hwConfig)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!hwConfig.mDeviceTree.IsEmpty()) {
         object.set("deviceTree", hwConfig.mDeviceTree.CStr());
@@ -915,7 +915,7 @@ void VMFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::VM&
 
 Poco::JSON::Object VMToJSON(const aos::oci::VM& vm)
 {
-    Poco::JSON::Object object;
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (auto hypervisorObject = VMHypervisorToJSON(vm.mHypervisor); hypervisorObject.size() > 0) {
         object.set("hypervisor", hypervisorObject);
@@ -1013,7 +1013,7 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
 Error OCISpec::SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
 
         object->set("ociVersion", runtimeSpec.mOCIVersion.CStr());
 
