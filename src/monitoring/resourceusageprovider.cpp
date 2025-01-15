@@ -135,6 +135,9 @@ Error ResourceUsageProvider::GetNodeMonitoringData(
         if (err = mNetworkManager->GetSystemTraffic(monitoringData.mDownload, monitoringData.mUpload); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
+
+        LOG_DBG() << "Get node monitoring data: download(K)=" << monitoringData.mDownload / cKilobyte
+                  << ", upload(K)=" << monitoringData.mUpload / cKilobyte;
     }
 
     return ErrorEnum::eNone;
