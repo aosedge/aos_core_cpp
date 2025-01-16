@@ -56,6 +56,31 @@ TEST_F(PBConvertCommon, ConvertAosErrorToProto)
     }
 }
 
+TEST_F(PBConvertCommon, ConvertAosErrorToGrpcStatus)
+{
+    aos::Error params[] = {
+        {aos::ErrorEnum::eFailed, "failed error"},
+        {aos::ErrorEnum::eRuntime, "runtime error"},
+        {aos::ErrorEnum::eNone},
+    };
+
+    size_t iteration = 0;
+
+    for (const auto& err : params) {
+        LOG_INF() << "Test iteration: " << iteration++;
+
+        auto status = aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+
+        if (err.IsNone()) {
+            EXPECT_EQ(status.error_code(), grpc::StatusCode::OK);
+            EXPECT_TRUE(status.error_message().empty());
+        } else {
+            EXPECT_EQ(status.error_code(), grpc::StatusCode::INTERNAL);
+            EXPECT_STREQ(status.error_message().c_str(), err.Message());
+        }
+    }
+}
+
 TEST_F(PBConvertCommon, ConvertInstanceIdentToProto)
 {
     aos::InstanceIdent          param {"service-id", "subject-id", 1};

@@ -26,6 +26,19 @@ namespace aos::common::pbconvert {
     return result;
 }
 
+grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
+{
+    if (error.IsNone()) {
+        return grpc::Status::OK;
+    }
+
+    if (aos::StaticString<aos::cErrorMessageLen> message; message.Convert(error).IsNone()) {
+        return grpc::Status(grpc::StatusCode::INTERNAL, message.CStr());
+    }
+
+    return grpc::Status(grpc::StatusCode::INTERNAL, error.Message());
+}
+
 ::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src)
 {
     ::common::v1::InstanceIdent result;

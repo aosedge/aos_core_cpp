@@ -27,6 +27,14 @@ namespace aos::common::pbconvert {
 ::common::v1::ErrorInfo ConvertAosErrorToProto(const Error& error);
 
 /**
+ * Converts aos error to grpc status.
+ *
+ * @param error aos error.
+ * @return grpc::Status.
+ */
+grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error);
+
+/**
  * Converts aos instance ident to protobuf.
  *
  * @param src instance ident to convert.
