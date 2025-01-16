@@ -12,6 +12,10 @@ set(TARGET aospbconvert)
 
 set(SOURCES common.cpp)
 
+if(WITH_IAM_API)
+    list(APPEND SOURCES iam.cpp)
+endif()
+
 if(WITH_SM_API)
     list(APPEND SOURCES sm.cpp)
 endif()

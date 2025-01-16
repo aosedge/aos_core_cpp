@@ -12,6 +12,10 @@ set(TARGET pbconvert_test)
 
 set(SOURCES common_test.cpp)
 
+if(WITH_IAM_API)
+    list(APPEND SOURCES iam_test.cpp)
+endif()
+
 if(WITH_SM_API)
     list(APPEND SOURCES sm_test.cpp)
 endif()
