@@ -11,12 +11,12 @@
 #include <Poco/StreamCopier.h>
 
 #include <pbconvert/common.hpp>
+#include <pbconvert/iam.hpp>
 #include <utils/exception.hpp>
 #include <utils/grpchelper.hpp>
 
 #include "iamclient.hpp"
 #include "logger/logmodule.hpp"
-#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * Public
@@ -255,7 +255,7 @@ bool IAMClient::SendNodeInfo()
         return false;
     }
 
-    utils::ConvertToProto(*nodeInfo, *outgoingMsg.mutable_node_info());
+    *outgoingMsg.mutable_node_info() = aos::common::pbconvert::ConvertToProto(*nodeInfo);
 
     LOG_DBG() << "Send node info: status=" << nodeInfo->mStatus;
 
@@ -519,7 +519,7 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::Stri
     std::string protoSerial;
     aos::Error  resultError = error;
     if (error.IsNone()) {
-        Tie(protoSerial, resultError) = utils::ConvertSerialToProto(serial);
+        Tie(protoSerial, resultError) = aos::common::pbconvert::ConvertSerialToProto(serial);
         if (!resultError.IsNone()) {
             resultError = AOS_ERROR_WRAP(resultError);
 

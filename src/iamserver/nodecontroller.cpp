@@ -12,7 +12,6 @@
 
 #include "logger/logmodule.hpp"
 #include "nodecontroller.hpp"
-#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * NodeStreamHandler
@@ -102,7 +101,7 @@ grpc::Status NodeStreamHandler::GetCertTypes(const iamproto::GetCertTypesRequest
     incoming.mutable_get_cert_types_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_cert_types_response()) {
@@ -124,7 +123,7 @@ grpc::Status NodeStreamHandler::StartProvisioning(const iamproto::StartProvision
     incoming.mutable_start_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_start_provisioning_response()) {
@@ -146,7 +145,7 @@ grpc::Status NodeStreamHandler::FinishProvisioning(const iamproto::FinishProvisi
     incoming.mutable_finish_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_finish_provisioning_response()) {
@@ -168,7 +167,7 @@ grpc::Status NodeStreamHandler::Deprovision(const iamproto::DeprovisionRequest* 
     incoming.mutable_deprovision_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_deprovision_response()) {
@@ -190,7 +189,7 @@ grpc::Status NodeStreamHandler::PauseNode(const iamproto::PauseNodeRequest* requ
     incoming.mutable_pause_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_pause_node_response()) {
@@ -212,7 +211,7 @@ grpc::Status NodeStreamHandler::ResumeNode(const iamproto::ResumeNodeRequest* re
     incoming.mutable_resume_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_resume_node_response()) {
@@ -234,7 +233,7 @@ grpc::Status NodeStreamHandler::CreateKey(const iamproto::CreateKeyRequest* requ
     incoming.mutable_create_key_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_create_key_response()) {
@@ -256,7 +255,7 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
     incoming.mutable_apply_cert_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_apply_cert_response()) {
@@ -405,7 +404,7 @@ grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<aos::Nod
 
     Remove(handler);
 
-    return utils::ConvertAosErrorToGrpcStatus(ret);
+    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(ret);
 }
 
 NodeStreamHandler::Ptr NodeController::GetNodeStreamHandler(const std::string& nodeID)

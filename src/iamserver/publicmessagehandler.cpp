@@ -12,6 +12,7 @@
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
+#include <pbconvert/iam.hpp>
 
 #include "logger/logmodule.hpp"
 #include "publicmessagehandler.hpp"
@@ -63,8 +64,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 
 void PublicMessageHandler::OnNodeInfoChange(const aos::NodeInfo& info)
 {
-    iamproto::NodeInfo nodeInfo;
-    utils::ConvertToProto(info, nodeInfo);
+    iamproto::NodeInfo nodeInfo = aos::common::pbconvert::ConvertToProto(info);
 
     mNodeChangedController.WriteToStreams(nodeInfo);
 }
@@ -78,8 +78,7 @@ aos::Error PublicMessageHandler::SubjectsChanged(const aos::Array<aos::StaticStr
 {
     LOG_DBG() << "Process subjects changed";
 
-    iamproto::Subjects subjects;
-    utils::ConvertToProto(messages, subjects);
+    iamproto::Subjects subjects = aos::common::pbconvert::ConvertToProto(messages);
 
     mSubjectsChangedController.WriteToStreams(subjects);
 
@@ -170,7 +169,7 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get node info";
 
-    utils::ConvertToProto(mNodeInfo, *response);
+    *response = aos::common::pbconvert::ConvertToProto(mNodeInfo);
 
     return grpc::Status::OK;
 }
@@ -183,7 +182,8 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 
     response->set_type(request->type());
 
-    auto issuer = utils::ConvertByteArrayToAos(request->issuer());
+    auto issuer
+        = aos::Array<uint8_t> {reinterpret_cast<const uint8_t*>(request->issuer().c_str()), request->issuer().length()};
 
     aos::StaticArray<uint8_t, aos::crypto::cSerialNumSize> serial;
 
@@ -191,7 +191,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to convert serial number: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     aos::iam::certhandler::CertInfo certInfo;
@@ -200,7 +200,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get cert: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     response->set_key_url(certInfo.mKeyURL.CStr());
@@ -226,7 +226,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     auto status = certWriter->HandleStream(context, writer);
@@ -235,7 +235,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     {
@@ -264,7 +264,7 @@ grpc::Status PublicMessageHandler::GetSystemInfo([[maybe_unused]] grpc::ServerCo
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get system ID: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     aos::StaticString<aos::cUnitModelLen> boardModel;
@@ -273,7 +273,7 @@ grpc::Status PublicMessageHandler::GetSystemInfo([[maybe_unused]] grpc::ServerCo
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get unit model: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     response->set_system_id(systemID.CStr());
@@ -292,7 +292,7 @@ grpc::Status PublicMessageHandler::GetSubjects([[maybe_unused]] grpc::ServerCont
     if (auto err = GetIdentHandler()->GetSubjects(subjects); !err.IsNone()) {
         LOG_ERR() << "Failed to get subjects: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     for (const auto& subj : subjects) {
@@ -327,7 +327,7 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
         !err.IsNone()) {
         LOG_ERR() << "Failed to get permissions: " << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     common::v1::InstanceIdent instanceIdent;
@@ -361,7 +361,7 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
     if (auto err = mNodeManager->GetAllNodeIds(nodeIDs); !err.IsNone()) {
         LOG_ERR() << "Failed to get all node IDs: err=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     for (const auto& id : nodeIDs) {
@@ -381,10 +381,10 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
     if (auto err = mNodeManager->GetNodeInfo(request->node_id().c_str(), *nodeInfo); !err.IsNone()) {
         LOG_ERR() << "Failed to get node info: err=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    utils::ConvertToProto(*nodeInfo, *response);
+    *response = aos::common::pbconvert::ConvertToProto(*nodeInfo);
 
     return grpc::Status::OK;
 }

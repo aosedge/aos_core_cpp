@@ -34,13 +34,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC aoscommon
-           aosiam
-           aosutils
-           aospbconvert
-           aoscoreapi-gen-iam
-           Poco::Util
-           utils
-)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosiam aosutils aospbconvert aoscoreapi-gen-iam Poco::Util)

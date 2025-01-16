@@ -14,10 +14,10 @@
 #include <aos/iam/certhandler.hpp>
 
 #include <pbconvert/common.hpp>
+#include <pbconvert/iam.hpp>
 
 #include "logger/logmodule.hpp"
 #include "protectedmessagehandler.hpp"
-#include "utils/convert.hpp"
 
 /***********************************************************************************************************************
  * Constants
@@ -101,7 +101,7 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
         if (auto status = RequestWithRetry([&]() {
                 auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
                 if (!handler) {
-                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
                 }
 
                 return handler->PauseNode(request, response, cDefaultTimeout);
@@ -131,7 +131,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
         if (auto status = RequestWithRetry([&]() {
                 auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
                 if (!handler) {
-                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
                 }
 
                 return handler->ResumeNode(request, response, cDefaultTimeout);
@@ -165,7 +165,7 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
         return RequestWithRetry([&]() {
             auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
             if (!handler) {
-                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
             return handler->GetCertTypes(request, response, cDefaultTimeout);
@@ -179,10 +179,12 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types error: " << AOS_ERROR_WRAP(err);
 
-        return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
     }
 
-    utils::ConvertToProto(certTypes, *response->mutable_types());
+    for (const auto& type : certTypes) {
+        response->add_types(type.CStr());
+    }
 
     return grpc::Status::OK;
 }
@@ -198,7 +200,7 @@ grpc::Status ProtectedMessageHandler::StartProvisioning([[maybe_unused]] grpc::S
         return RequestWithRetry([&]() {
             auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
             if (!handler) {
-                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
             return handler->StartProvisioning(request, response, cProvisioningTimeout);
@@ -225,7 +227,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         if (auto status = RequestWithRetry([&]() {
                 auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
                 if (!handler) {
-                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
                 }
 
                 return handler->FinishProvisioning(request, response, cProvisioningTimeout);
@@ -263,7 +265,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         if (auto status = RequestWithRetry([&]() {
                 auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
                 if (!handler) {
-                    return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
                 }
 
                 return handler->Deprovision(request, response, cProvisioningTimeout);
@@ -331,7 +333,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
         return RequestWithRetry([&]() {
             auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
             if (!handler) {
-                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
             iamproto::CreateKeyRequest keyRequest = *request;
@@ -375,7 +377,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
         return RequestWithRetry([&]() {
             auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
             if (!handler) {
-                return utils::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
             return handler->ApplyCert(request, response, cDefaultTimeout);
@@ -397,7 +399,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     aos::Error  err;
     std::string serial;
 
-    Tie(serial, err) = utils::ConvertSerialToProto(certInfo.mSerial);
+    Tie(serial, err) = aos::common::pbconvert::ConvertSerialToProto(certInfo.mSerial);
     if (!err.IsNone()) {
         LOG_ERR() << "Convert serial failed: error=" << err;
 
@@ -432,7 +434,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
         if (err = aosPermissions->EmplaceBack(); !err.IsNone()) {
             LOG_ERR() << "Failed to push back permissions: error=" << err;
 
-            return utils::ConvertAosErrorToGrpcStatus(err);
+            return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
         }
 
         aos::FunctionServicePermissions& servicePerm = aosPermissions->Back();
@@ -442,7 +444,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
             if (err = servicePerm.mPermissions.PushBack({key.c_str(), val.c_str()}); !err.IsNone()) {
                 LOG_ERR() << "Failed to push back permissions: error=" << err;
 
-                return utils::ConvertAosErrorToGrpcStatus(err);
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
             }
         }
     }
@@ -453,7 +455,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     if (!err.IsNone()) {
         LOG_ERR() << "Register instance failed: error=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     response->set_secret(secret.CStr());
@@ -472,7 +474,7 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
     if (auto err = GetPermHandler()->UnregisterInstance(instance); !err.IsNone()) {
         LOG_ERR() << "Unregister instance failed: error=" << err;
 
-        return utils::ConvertAosErrorToGrpcStatus(err);
+        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     return grpc::Status::OK;

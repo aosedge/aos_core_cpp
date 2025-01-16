@@ -22,10 +22,9 @@
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/nodemanager.hpp>
 #include <aos/iam/permhandler.hpp>
+#include <pbconvert/common.hpp>
 
 #include <iamanager/version.grpc.pb.h>
-
-#include "utils/convert.hpp"
 
 #include "nodecontroller.hpp"
 #include "streamwriter.hpp"
@@ -118,7 +117,8 @@ protected:
 
         for (auto i = 0; i < cRequestRetryMaxTry; i++) {
             if (mClose) {
-                return utils::ConvertAosErrorToGrpcStatus({aos::ErrorEnum::eWrongState, "handler is closed"});
+                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(
+                    {aos::ErrorEnum::eWrongState, "handler is closed"});
             }
 
             if (status = request(); status.ok()) {
