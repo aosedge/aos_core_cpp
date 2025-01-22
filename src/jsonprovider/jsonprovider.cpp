@@ -378,8 +378,8 @@ Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& node
         }
 
         json = utils::Stringify(object).c_str();
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -406,10 +406,8 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::
         if (object.Has("alertRules")) {
             nodeConfig.mNodeConfig.mAlertRules.SetValue(AlertRulesFromJSON(object.GetObject("alertRules")));
         }
-    } catch (const utils::AosException& e) {
-        return Error(e.GetError(), e.message().c_str());
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;

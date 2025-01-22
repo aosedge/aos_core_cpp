@@ -531,11 +531,8 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         if (wrapper.Has("alertRules")) {
             serviceConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
         }
-
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -603,10 +600,8 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
 
         err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;

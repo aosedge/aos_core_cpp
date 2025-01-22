@@ -65,10 +65,8 @@ Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescri
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
         ContentDescriptorFromJSON(wrapper, descriptor);
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -81,10 +79,8 @@ Error OCISpec::SaveContentDescriptor(const String& path, const aos::oci::Content
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -131,10 +127,8 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
 
             ContentDescriptorFromJSON(wrapper.GetObject("aosService"), *manifest.mAosService);
         }
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -164,10 +158,8 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;

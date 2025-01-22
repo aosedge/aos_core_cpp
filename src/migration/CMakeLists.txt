@@ -27,7 +27,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon Poco::DataSQLite)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::DataSQLite)
 
 target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 

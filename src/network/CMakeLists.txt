@@ -32,7 +32,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosutils)
 
 target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 

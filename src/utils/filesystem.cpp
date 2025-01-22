@@ -16,6 +16,7 @@
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
 
+#include "utils/exception.hpp"
 #include "utils/filesystem.hpp"
 
 namespace fs = std::filesystem;
@@ -80,8 +81,8 @@ Error ChangeOwner(const std::string& path, uint32_t newUID, uint32_t newGID)
             return Error(ErrorEnum::eFailed, strerror(errno));
         }
 
-    } catch (const std::exception& ex) {
-        return Error(ErrorEnum::eFailed, ex.what());
+    } catch (const std::exception& e) {
+        return utils::ToAosError(e);
     }
 
     return ErrorEnum::eNone;
