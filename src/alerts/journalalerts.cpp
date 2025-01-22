@@ -41,10 +41,8 @@ Error JournalAlerts::Init(const config::JournalAlertsConfig& config, InstanceInf
 
     try {
         SetupJournal();
-    } catch (const common::utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -85,10 +83,8 @@ Error JournalAlerts::Stop()
         StoreCurrentCursor();
 
         mJournal.reset();
-    } catch (const common::utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -145,7 +141,7 @@ void JournalAlerts::OnTimer(Poco::Timer& timer)
 
         StoreCurrentCursor();
     } catch (const std::exception& e) {
-        LOG_ERR() << e.what();
+        LOG_ERR() << "Timer function failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
@@ -177,10 +173,8 @@ void JournalAlerts::MonitorJournal()
 
             ProcessJournal();
         }
-    } catch (const common::utils::AosException& e) {
-        LOG_ERR() << "Journal process error, err=" << AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        LOG_ERR() << "Journal process error, err=" << e.what();
+        LOG_ERR() << "Journal process failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
