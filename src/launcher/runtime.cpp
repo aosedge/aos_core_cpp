@@ -202,11 +202,10 @@ Error Runtime::CreateHostFSWhiteouts(const String& path, const Array<StaticStrin
         fs::permissions(destPath, cDirPermissions);
 
         for (const auto& entry : fs::directory_iterator("/")) {
-            if (hostBinds
-                    .FindIf([&entry](const StaticString<cFilePathLen>& bind) {
-                        return entry.path() == fs::path("/") / bind.CStr();
-                    })
-                    .mError.IsNone()) {
+            if (hostBinds.FindIf([&entry](const StaticString<cFilePathLen>& bind) {
+                    return entry.path() == fs::path("/") / bind.CStr();
+                })
+                != hostBinds.end()) {
                 continue;
             }
 

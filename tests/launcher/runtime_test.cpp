@@ -74,7 +74,7 @@ TEST_F(LauncherTest, CreateHostFSWhiteouts)
         EXPECT_TRUE(fs::is_character_file(status));
         EXPECT_EQ(status.permissions(), fs::perms::none);
 
-        EXPECT_FALSE(hostBinds.Find(item.c_str()).mError.IsNone());
+        EXPECT_EQ(hostBinds.Find(item.c_str()), hostBinds.end());
     }
 }
 
