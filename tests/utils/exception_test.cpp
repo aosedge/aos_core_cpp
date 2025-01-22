@@ -43,7 +43,14 @@ TEST_F(ExceptionTest, ThrowAosException)
         FunctionWithException();
         EXPECT_TRUE(false) << "AosException expected";
     } catch (const AosException& e) {
-        EXPECT_EQ(e.message(), std::string("oops: failed ") + GetFileAndLine());
+        const auto expectedMessage = std::string("oops: failed ") + GetFileAndLine();
+
+        EXPECT_EQ(e.what(), "Aos exception");
+        EXPECT_EQ(e.message(), expectedMessage);
+        EXPECT_EQ(e.displayText(), std::string("Aos exception: ") + expectedMessage);
+
+        EXPECT_TRUE(e.GetError().Is(ErrorEnum::eFailed));
+        EXPECT_STREQ(e.GetError().Message(), "oops");
     } catch (...) {
         EXPECT_TRUE(false) << "AosException expected";
     }

@@ -42,7 +42,7 @@ public:
      */
     explicit AosException(const std::string& message, const Error& err = ErrorEnum::eFailed)
         : Poco::Exception(message, err.Message(), err.Errno())
-        , mError(err)
+        , mError(err, message.c_str())
     {
         std::stringstream ss;
 
@@ -69,7 +69,7 @@ public:
      *
      * @return const char*
      */
-    const char* what() const noexcept override { return mError.Message(); }
+    const char* name() const noexcept override { return "Aos exception"; }
 
 private:
     Error mError;
