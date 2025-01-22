@@ -7,6 +7,7 @@
 #include "iamclient/publicservicehandler.hpp"
 #include "logger/logmodule.hpp"
 #include "pbconvert/common.hpp"
+#include "utils/exception.hpp"
 #include "utils/grpchelper.hpp"
 
 namespace aos::common::iamclient {
@@ -244,7 +245,7 @@ Error PublicServiceHandler::CreateCredentials(bool insecureConnection)
 
         mCredentials = common::utils::GetTLSClientCredentials(mConfig.mCACert.c_str());
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -298,7 +299,7 @@ void PublicServiceHandler::RunTask(const std::string& certType, Subscription* su
                 }
             }
         } catch (const std::exception& e) {
-            LOG_ERR() << "Subscription loop failed: error=" << e.what();
+            LOG_ERR() << "Subscription loop failed: err=" << utils::ToAosError(e);
         }
 
         {

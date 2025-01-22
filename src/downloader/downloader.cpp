@@ -12,6 +12,7 @@
 
 #include "downloader/downloader.hpp"
 #include "logger/logmodule.hpp"
+#include "utils/exception.hpp"
 
 namespace aos::common::downloader {
 
@@ -101,7 +102,7 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return utils::ToAosError(e);
     }
 }
 

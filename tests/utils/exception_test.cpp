@@ -23,7 +23,7 @@ protected:
     {
         mFileName = __FILENAME__;
         mLineNum  = __LINE__ + 1;
-        AOS_ERROR_THROW("oops", ErrorEnum::eFailed);
+        AOS_ERROR_THROW("oops", ErrorEnum::eRuntime);
     }
 
     std::string GetFileAndLine() const { return "(" + mFileName + ":" + std::to_string(mLineNum) + ")"; }
@@ -43,16 +43,48 @@ TEST_F(ExceptionTest, ThrowAosException)
         FunctionWithException();
         EXPECT_TRUE(false) << "AosException expected";
     } catch (const AosException& e) {
-        const auto expectedMessage = std::string("oops: failed ") + GetFileAndLine();
+        const auto expectedMessage = std::string("oops: runtime error ") + GetFileAndLine();
 
         EXPECT_EQ(e.what(), "Aos exception");
         EXPECT_EQ(e.message(), expectedMessage);
         EXPECT_EQ(e.displayText(), std::string("Aos exception: ") + expectedMessage);
 
-        EXPECT_TRUE(e.GetError().Is(ErrorEnum::eFailed));
+        EXPECT_TRUE(e.GetError().Is(ErrorEnum::eRuntime));
         EXPECT_STREQ(e.GetError().Message(), "oops");
     } catch (...) {
-        EXPECT_TRUE(false) << "AosException expected";
+        FAIL() << "AosException expected";
+    }
+}
+
+TEST_F(ExceptionTest, ThrowStdException)
+{
+    try {
+        throw std::runtime_error("oops");
+    } catch (const std::exception& e) {
+        EXPECT_STREQ(e.what(), "oops");
+
+        auto err = ToAosError(e);
+
+        EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
+        EXPECT_STREQ(err.Message(), "oops");
+    } catch (...) {
+        FAIL() << "std::exception expected";
+    }
+}
+
+TEST_F(ExceptionTest, ThrowPocoException)
+{
+    try {
+        throw Poco::Exception("oops");
+    } catch (const Poco::Exception& e) {
+        EXPECT_EQ(e.message(), "oops");
+
+        auto err = ToAosError(e);
+
+        EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
+        EXPECT_STREQ(err.Message(), e.displayText().c_str());
+    } catch (...) {
+        FAIL() << "Poco::Exception expected";
     }
 }
 

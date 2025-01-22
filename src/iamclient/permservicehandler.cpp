@@ -7,6 +7,7 @@
 #include "iamclient/permservicehandler.hpp"
 #include "logger/logmodule.hpp"
 #include "pbconvert/common.hpp"
+#include "utils/exception.hpp"
 
 namespace aos::common::iamclient {
 
@@ -49,9 +50,8 @@ RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandl
         }
 
         return {response.secret().c_str(), ErrorEnum::eNone};
-
     } catch (const std::exception& e) {
-        return {StaticString<iam::permhandler::cSecretLen>(), Error(ErrorEnum::eRuntime, e.what())};
+        return {{}, utils::ToAosError(e, ErrorEnum::eRuntime)};
     }
 }
 
@@ -79,7 +79,7 @@ Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanc
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 }
 

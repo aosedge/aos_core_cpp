@@ -49,8 +49,8 @@ RetWithError<std::string> CreatePKCS11URL(const String& keyURL)
 {
     try {
         return {CreateLibP11PKCS11URL(keyURL), ErrorEnum::eNone};
-    } catch (const std::exception& exc) {
-        return {"", Error(ErrorEnum::eFailed, exc.what())};
+    } catch (const std::exception& e) {
+        return {"", utils::ToAosError(e)};
     }
 }
 

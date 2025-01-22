@@ -13,6 +13,7 @@ set(TARGET aosutils)
 
 set(SOURCES
     cryptohelper.cpp
+    exception.cpp
     filesystem.cpp
     grpchelper.cpp
     image.cpp

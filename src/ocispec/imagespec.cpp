@@ -111,10 +111,8 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
             AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
         }
 
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -153,10 +151,8 @@ Error OCISpec::SaveImageSpec(const String& path, const aos::oci::ImageSpec& imag
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
-    } catch (const utils::AosException& e) {
-        return AOS_ERROR_WRAP(Error(e.GetError(), e.message().c_str()));
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;

@@ -12,6 +12,7 @@
 #include <Poco/JSON/JSONException.h>
 #include <Poco/JSON/Parser.h>
 
+#include "utils/exception.hpp"
 #include "utils/json.hpp"
 
 namespace aos::common::utils {
@@ -80,8 +81,8 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(const std::string& json) noexcep
         auto parser = Poco::JSON::Parser();
 
         return parser.parse(json);
-    } catch (const Poco::JSON::JSONException& e) {
-        return {{}, aos::ErrorEnum::eInvalidArgument};
+    } catch (const std::exception& e) {
+        return {{}, AOS_ERROR_WRAP(ToAosError(e, ErrorEnum::eInvalidArgument))};
     } catch (...) {
         return {{}, aos::ErrorEnum::eFailed};
     }
@@ -93,8 +94,8 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(std::istream& in) noexcept
         auto parser = Poco::JSON::Parser();
 
         return parser.parse(in);
-    } catch (const Poco::JSON::JSONException& e) {
-        return {{}, aos::ErrorEnum::eInvalidArgument};
+    } catch (const std::exception& e) {
+        return {{}, AOS_ERROR_WRAP(ToAosError(e, ErrorEnum::eInvalidArgument))};
     } catch (...) {
         return {{}, aos::ErrorEnum::eFailed};
     }
@@ -110,7 +111,7 @@ Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& pa
     try {
         Poco::JSON::Stringifier::stringify(json, file);
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return AOS_ERROR_WRAP(ToAosError(e, ErrorEnum::eInvalidArgument));
     }
 
     return ErrorEnum::eNone;

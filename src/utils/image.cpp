@@ -145,6 +145,8 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bo
 
             size += std::stoull(tokenizer[cFileSizeTokenIndex]);
         }
+    } catch (const Poco::Exception& e) {
+        return {0, Error(ErrorEnum::eFailed, e.displayText().c_str())};
     } catch (const std::exception& e) {
         return {0, Error(ErrorEnum::eFailed, e.what())};
     }
