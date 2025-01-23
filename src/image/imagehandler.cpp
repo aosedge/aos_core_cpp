@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <aos/sm/image/imageparts.hpp>
+#include <utils/exception.hpp>
 #include <utils/filesystem.hpp>
 #include <utils/image.hpp>
 
@@ -74,7 +75,7 @@ Error OCIWhiteoutsToOverlay(const String& path, uint32_t uid, uint32_t gid)
             }
         }
     } catch (const std::exception& e) {
-        throw Error(ErrorEnum::eFailed, e.what());
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
