@@ -335,6 +335,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
             }
 
             iamproto::CreateKeyRequest keyRequest = *request;
+
             keyRequest.set_subject(subject.CStr());
 
             return handler->CreateKey(&keyRequest, response, cDefaultTimeout);
@@ -342,10 +343,9 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     const auto password = aos::String(request->password().c_str());
+    auto       csr      = std::make_unique<aos::StaticString<aos::crypto::cCSRPEMLen>>();
 
-    aos::StaticString<aos::crypto::cCSRPEMLen> csr;
-
-    if (err = mProvisionManager->CreateKey(certType, subject, password, csr); !err.IsNone()) {
+    if (err = mProvisionManager->CreateKey(certType, subject, password, *csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
         aos::common::pbconvert::SetErrorInfo(err, *response);
@@ -355,7 +355,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     response->set_node_id(nodeID);
     response->set_type(certType.CStr());
-    response->set_csr(csr.CStr());
+    response->set_csr(csr->CStr());
 
     return grpc::Status::OK;
 }
@@ -426,16 +426,16 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
               << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
 
     // Convert permissions
-    aos::StaticArray<aos::FunctionServicePermissions, aos::cMaxNumServices> aosPermissions;
+    auto aosPermissions = std::make_unique<aos::StaticArray<aos::FunctionServicePermissions, aos::cMaxNumServices>>();
 
     for (const auto& [service, permissions] : request->permissions()) {
-        if (err = aosPermissions.PushBack({}); !err.IsNone()) {
+        if (err = aosPermissions->EmplaceBack(); !err.IsNone()) {
             LOG_ERR() << "Failed to push back permissions: error=" << err;
 
             return utils::ConvertAosErrorToGrpcStatus(err);
         }
 
-        aos::FunctionServicePermissions& servicePerm = aosPermissions.Back().mValue;
+        aos::FunctionServicePermissions& servicePerm = aosPermissions->Back().mValue;
         servicePerm.mName                            = service.c_str();
 
         for (const auto& [key, val] : permissions.permissions()) {
@@ -449,8 +449,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
 
     aos::StaticString<aos::uuid::cUUIDLen> secret;
 
-    Tie(secret, err) = GetPermHandler()->RegisterInstance(aosInstance, aosPermissions);
-
+    Tie(secret, err) = GetPermHandler()->RegisterInstance(aosInstance, *aosPermissions);
     if (!err.IsNone()) {
         LOG_ERR() << "Register instance failed: error=" << err;
 

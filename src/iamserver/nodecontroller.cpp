@@ -319,22 +319,22 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
     LOG_DBG() << "Received node info: nodeID=" << info.node_id().c_str() << ", status=" << info.status().c_str();
 
-    aos::NodeInfo nodeInfo;
+    auto nodeInfo = std::make_unique<aos::NodeInfo>();
 
-    if (auto err = aos::common::pbconvert::ConvertToAos(info, nodeInfo); !err.IsNone()) {
+    if (auto err = aos::common::pbconvert::ConvertToAos(info, *nodeInfo); !err.IsNone()) {
         return err;
     }
 
-    if (std::find(mAllowedStatuses.cbegin(), mAllowedStatuses.cend(), nodeInfo.mStatus) == mAllowedStatuses.cend()) {
-        LOG_WRN() << "Node status is not in allowed list: nodeID=" << nodeInfo.mNodeID
-                  << ", status=" << nodeInfo.mStatus;
+    if (std::find(mAllowedStatuses.cbegin(), mAllowedStatuses.cend(), nodeInfo->mStatus) == mAllowedStatuses.cend()) {
+        LOG_WRN() << "Node status is not in allowed list: nodeID=" << nodeInfo->mNodeID
+                  << ", status=" << nodeInfo->mStatus;
 
         mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
 
         return aos::ErrorEnum::eNone;
     }
 
-    if (auto err = mNodeManager->SetNodeInfo(nodeInfo); !err.IsNone()) {
+    if (auto err = mNodeManager->SetNodeInfo(*nodeInfo); !err.IsNone()) {
         return err;
     }
 

@@ -96,14 +96,14 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
     mCertLoader     = &certLoader;
     mCryptoProvider = &cryptoProvider;
 
-    aos::Error    err;
-    aos::NodeInfo nodeInfo;
+    aos::Error err;
+    auto       nodeInfo = std::make_unique<aos::NodeInfo>();
 
-    if (err = nodeInfoProvider.GetNodeInfo(nodeInfo); !err.IsNone()) {
+    if (err = nodeInfoProvider.GetNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = nodeManager.SetNodeInfo(nodeInfo); !err.IsNone()) {
+    if (err = nodeManager.SetNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

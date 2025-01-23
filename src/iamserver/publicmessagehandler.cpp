@@ -359,7 +359,7 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
     aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> nodeIDs;
 
     if (auto err = mNodeManager->GetAllNodeIds(nodeIDs); !err.IsNone()) {
-        LOG_ERR() << "Failed to get all node IDs: " << err;
+        LOG_ERR() << "Failed to get all node IDs: err=" << err;
 
         return utils::ConvertAosErrorToGrpcStatus(err);
     }
@@ -376,15 +376,15 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get node info: nodeID=" << request->node_id().c_str();
 
-    aos::NodeInfo nodeInfo;
+    auto nodeInfo = std::make_unique<aos::NodeInfo>();
 
-    if (auto err = mNodeManager->GetNodeInfo(request->node_id().c_str(), nodeInfo); !err.IsNone()) {
-        LOG_ERR() << "Failed to get node info: " << err;
+    if (auto err = mNodeManager->GetNodeInfo(request->node_id().c_str(), *nodeInfo); !err.IsNone()) {
+        LOG_ERR() << "Failed to get node info: err=" << err;
 
         return utils::ConvertAosErrorToGrpcStatus(err);
     }
 
-    utils::ConvertToProto(nodeInfo, *response);
+    utils::ConvertToProto(*nodeInfo, *response);
 
     return grpc::Status::OK;
 }

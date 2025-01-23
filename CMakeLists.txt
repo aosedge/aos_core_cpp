@@ -28,6 +28,14 @@ message(STATUS "WITH_DOC                      = ${WITH_DOC}")
 message(STATUS)
 
 # ######################################################################################################################
+# Config
+# ######################################################################################################################
+
+set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp/external/aos_core_lib_cpp)
+set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp)
+set(AOS_STACK_USAGE 4096)
+
+# ######################################################################################################################
 # External project options
 # ######################################################################################################################
 
@@ -40,9 +48,6 @@ set(WITH_IAM_API ON)
 
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
-
-set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp/external/aos_core_lib_cpp)
-set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_common_cpp)
 
 if(WITH_TEST)
     add_definitions(-include ${AOS_CORE_LIB_DIR}/include/aos/test/aoscoretestconfig.hpp)

@@ -246,26 +246,26 @@ void IAMClient::HandleIncomingMessages() noexcept
 
 bool IAMClient::SendNodeInfo()
 {
-    aos::NodeInfo                      nodeInfo;
+    auto                               nodeInfo = std::make_unique<aos::NodeInfo>();
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
 
-    auto err = mNodeInfoProvider->GetNodeInfo(nodeInfo);
+    auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't get node info: error=" << err.Message();
 
         return false;
     }
 
-    utils::ConvertToProto(nodeInfo, *outgoingMsg.mutable_node_info());
+    utils::ConvertToProto(*nodeInfo, *outgoingMsg.mutable_node_info());
 
-    LOG_DBG() << "Send node info: status=" << nodeInfo.mStatus;
+    LOG_DBG() << "Send node info: status=" << nodeInfo->mStatus;
 
-    bool isOk = mStream->Write(outgoingMsg);
-    if (!isOk) {
+    bool isOK = mStream->Write(outgoingMsg);
+    if (!isOK) {
         LOG_WRN() << "Stream closed before sending node info";
     }
 
-    return isOk;
+    return isOK;
 }
 
 bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningRequest& request)
@@ -446,11 +446,11 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
         }
     }
 
-    aos::StaticString<aos::crypto::cCSRPEMLen> csr;
+    auto csr = std::make_unique<aos::StaticString<aos::crypto::cCSRPEMLen>>();
 
-    err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, csr));
+    err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
 
-    return SendCreateKeyResponse(nodeID, certType, csr, err);
+    return SendCreateKeyResponse(nodeID, certType, *csr, err);
 }
 
 bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
@@ -483,15 +483,15 @@ bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& re
 
 aos::Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<aos::NodeStatus>& allowedStatuses)
 {
-    aos::NodeInfo nodeInfo;
+    auto nodeInfo = std::make_unique<aos::NodeInfo>();
 
-    auto err = mNodeInfoProvider->GetNodeInfo(nodeInfo);
+    auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     const bool isAllowed = std::any_of(allowedStatuses.begin(), allowedStatuses.end(),
-        [currentStatus = nodeInfo.mStatus](const aos::NodeStatus status) { return currentStatus == status; });
+        [currentStatus = nodeInfo->mStatus](const aos::NodeStatus status) { return currentStatus == status; });
 
     return !isAllowed ? AOS_ERROR_WRAP(aos::ErrorEnum::eWrongState) : aos::ErrorEnum::eNone;
 }
