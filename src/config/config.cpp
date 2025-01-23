@@ -12,6 +12,7 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
+#include <utils/exception.hpp>
 #include <utils/json.hpp>
 
 #include "config.hpp"
@@ -171,9 +172,7 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
             return {{}, AOS_ERROR_WRAP(err)};
         }
     } catch (const std::exception& e) {
-        LOG_ERR() << "Error parsing config: " << e.what();
-
-        return {Config {}, aos::ErrorEnum::eInvalidArgument};
+        return {{}, aos::common::utils::ToAosError(e, aos::ErrorEnum::eInvalidArgument)};
     }
 
     return config;
@@ -196,9 +195,7 @@ aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var
         moduleParams.mGID             = object.GetOptionalValue<uint32_t>("gid").value_or(0);
 
     } catch (const std::exception& e) {
-        LOG_ERR() << "Error parsing PKCS11 module params: " << e.what();
-
-        return {PKCS11ModuleParams {}, aos::ErrorEnum::eInvalidArgument};
+        return {{}, aos::common::utils::ToAosError(e, aos::ErrorEnum::eInvalidArgument)};
     }
 
     return moduleParams;
@@ -216,9 +213,7 @@ aos::RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco
         moduleParams.mWebSocketTimeout = object.GetValue<int>("webSocketTimeout");
 
     } catch (const std::exception& e) {
-        LOG_ERR() << "Error parsing VIS identifier module params: " << e.what();
-
-        return {VISIdentifierModuleParams {}, aos::ErrorEnum::eInvalidArgument};
+        return {{}, aos::common::utils::ToAosError(e, aos::ErrorEnum::eInvalidArgument)};
     }
 
     return moduleParams;
