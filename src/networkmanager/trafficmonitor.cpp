@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <utils/exception.hpp>
+
 #include "logger/logmodule.hpp"
 
 #include "trafficmonitor.hpp"
@@ -453,7 +455,7 @@ Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& b
 
                 return ErrorEnum::eNone;
             } catch (const std::exception& e) {
-                return Error(ErrorEnum::eInvalidArgument, e.what());
+                return common::utils::ToAosError(e, ErrorEnum::eInvalidArgument);
             }
         }
     }

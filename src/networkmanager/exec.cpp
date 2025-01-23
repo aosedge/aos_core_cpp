@@ -14,6 +14,7 @@
 #include <Poco/PipeStream.h>
 #include <Poco/Process.h>
 
+#include <utils/exception.hpp>
 #include <utils/json.hpp>
 #include <utils/parser.hpp>
 
@@ -127,10 +128,8 @@ RetWithError<std::string> Exec::ExecPlugin(
         Poco::Process::Env env = PrepareEnv(args);
 
         return LaunchPlugin(payload, pluginPath, env);
-    } catch (const Poco::Exception& e) {
-        return {"", Error(ErrorEnum::eFailed, e.message().c_str())};
     } catch (const std::exception& e) {
-        return {"", Error(ErrorEnum::eFailed, e.what())};
+        return {"", common::utils::ToAosError(e)};
     }
 }
 

@@ -184,7 +184,7 @@ Error CNI::SetConfDir(const String& configDir)
     try {
         std::filesystem::create_directories(mConfigDir);
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return common::utils::ToAosError(e);
     }
 
     return ErrorEnum::eNone;
@@ -210,7 +210,7 @@ RetWithError<Result> CNI::AddNetworkList(const NetworkConfigList& net, const Run
 
         return result;
     } catch (const std::exception& e) {
-        return {Result {}, Error(ErrorEnum::eFailed, e.what())};
+        return {{}, common::utils::ToAosError(e)};
     }
 }
 
@@ -234,7 +234,7 @@ Error CNI::DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return common::utils::ToAosError(e);
     }
 }
 
@@ -336,9 +336,8 @@ Error CNI::GetNetworkListCachedConfig(NetworkConfigList& net, RuntimeConf& rt)
         net.mPrevResult = ParsePrevResult(cacheObj.GetValue<std::string>("result"));
 
         return ErrorEnum::eNone;
-
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return common::utils::ToAosError(e);
     }
 }
 
