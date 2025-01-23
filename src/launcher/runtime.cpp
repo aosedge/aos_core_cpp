@@ -224,7 +224,7 @@ Error Runtime::CreateHostFSWhiteouts(const String& path, const Array<StaticStrin
     }
 
     catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -241,7 +241,7 @@ Error Runtime::CreateMountPoints(const String& mountPointDir, const Array<Mount>
             }
         }
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -262,7 +262,7 @@ Error Runtime::MountServiceRootFS(const String& rootfsPath, const Array<StaticSt
 
         MountOverlay(mountPoint, lowerDirs, "", "");
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -276,7 +276,7 @@ Error Runtime::UmountServiceRootFS(const String& rootfsPath)
         UmountDir(mountPoint);
         fs::remove_all(mountPoint);
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -297,7 +297,7 @@ Error Runtime::PrepareServiceStorage(const String& path, uint32_t uid, uint32_t 
         AOS_ERROR_CHECK_AND_THROW("can't chown storage", ret);
 
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -323,7 +323,7 @@ Error Runtime::PrepareServiceState(const String& path, uint32_t uid, uint32_t gi
         auto ret = chown(statePath.c_str(), uid, gid);
         AOS_ERROR_CHECK_AND_THROW("can't chown state", ret);
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -337,7 +337,7 @@ Error Runtime::PrepareNetworkDir(const String& path)
         fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
@@ -348,7 +348,7 @@ RetWithError<StaticString<cFilePathLen>> Runtime::GetAbsPath(const String& path)
     try {
         return {fs::absolute(path.CStr()).c_str(), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {"", Error(ErrorEnum::eRuntime, e.what())};
+        return {"", common::utils::ToAosError(e, ErrorEnum::eRuntime)};
     }
 }
 
@@ -360,7 +360,7 @@ RetWithError<uint32_t> Runtime::GetGIDByName(const String& groupName)
         return {group->gr_gid, ErrorEnum::eNone};
 
     } catch (const std::exception& e) {
-        return {0, Error(ErrorEnum::eRuntime, e.what())};
+        return {0, common::utils::ToAosError(e, ErrorEnum::eRuntime)};
     }
 }
 
@@ -385,7 +385,7 @@ Error Runtime::PopulateHostDevices(const String& devicePath, Array<oci::LinuxDev
             }
         }
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eRuntime, e.what());
+        return common::utils::ToAosError(e, ErrorEnum::eRuntime);
     }
 
     return ErrorEnum::eNone;
