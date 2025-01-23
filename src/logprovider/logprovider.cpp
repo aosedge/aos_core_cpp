@@ -9,6 +9,7 @@
 #include <systemd/sd-journal.h>
 #undef LOG_ERR
 
+#include <aos/common/crypto/crypto.hpp>
 #include <logger/logmodule.hpp>
 #include <utils/exception.hpp>
 
@@ -390,7 +391,7 @@ void LogProvider::ProcessJournalCrashLogs(
 
 std::string LogProvider::FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit)
 {
-    auto [logEntryTimeStr, err] = journalEntry.mRealTime.ToString();
+    auto [logEntryTimeStr, err] = crypto::asn1::ConvertTimeToASN1Str(journalEntry.mRealTime);
     AOS_ERROR_CHECK_AND_THROW("time formatting failed", err);
 
     std::ostringstream oss;
@@ -419,7 +420,7 @@ Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>&
             if (entry.mMessage.find("process exited") != std::string::npos) {
                 crashTime = entry.mMonotonicTime;
 
-                LOG_DBG() << "Crash detected: time=" << entry.mRealTime.ToString().mValue;
+                LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
             }
         } else {
             if (entry.mMessage.find("Started") == 0) {
