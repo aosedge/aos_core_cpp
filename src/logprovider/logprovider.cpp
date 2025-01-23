@@ -207,14 +207,12 @@ void LogProvider::ProcessLogs()
             } else {
                 GetLog(logRequest.mInstanceIDs, logRequest.mLogID, logRequest.mFrom, logRequest.mTill);
             }
-        } catch (const common::utils::AosException& e) {
-            LOG_ERR() << "PushLog failed: logID=" << logRequest.mLogID << ", err=" << e.GetError();
-
-            SendErrorResponse(logRequest.mLogID, e.what());
         } catch (const std::exception& e) {
-            LOG_ERR() << "PushLog failed: logID=" << logRequest.mLogID << ", err=" << e.what();
+            auto err = common::utils::ToAosError(e);
 
-            SendErrorResponse(logRequest.mLogID, e.what());
+            LOG_ERR() << "PushLog failed: logID=" << logRequest.mLogID << ", err=" << err;
+
+            SendErrorResponse(logRequest.mLogID, err.Message());
         }
     }
 }
