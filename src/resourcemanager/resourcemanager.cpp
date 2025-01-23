@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include <utils/exception.hpp>
+
 #include "logger/logmodule.hpp"
 #include "resourcemanager.hpp"
 
@@ -31,7 +33,7 @@ Error HostDeviceManager::Init()
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
