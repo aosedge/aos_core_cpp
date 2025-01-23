@@ -228,17 +228,18 @@ namespace aos::common::pbconvert {
     return src.ApplyVisitor(visitor);
 }
 
-NetworkParameters ConvertToAos(const ::servicemanager::v4::NetworkParameters& val)
+Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkParameters& dst)
 {
-    NetworkParameters result;
-
-    result.mNetworkID = String(val.network_id().c_str());
-    result.mSubnet    = String(val.subnet().c_str());
-    result.mIP        = String(val.ip().c_str());
-    result.mVlanID    = val.vlan_id();
+    dst.mNetworkID = String(val.network_id().c_str());
+    dst.mSubnet    = String(val.subnet().c_str());
+    dst.mIP        = String(val.ip().c_str());
+    dst.mVlanID    = val.vlan_id();
 
     for (const auto& dns : val.dns_servers()) {
-        result.mDNSServers.PushBack(String(dns.c_str()));
+        if (auto err = dst.mDNSServers.PushBack(String(dns.c_str())); !err.IsNone()) {
+            return AOS_ERROR_WRAP(
+                Error(err, "received network parameters dns servers count exceeds application limit"));
+        }
     }
 
     for (const auto& rule : val.rules()) {
@@ -249,25 +250,29 @@ NetworkParameters ConvertToAos(const ::servicemanager::v4::NetworkParameters& va
         firewallRule.mProto   = String(rule.proto().c_str());
         firewallRule.mSrcIP   = String(rule.src_ip().c_str());
 
-        result.mFirewallRules.PushBack(Move(firewallRule));
+        if (auto err = dst.mFirewallRules.PushBack(Move(firewallRule)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "received network parameters rules count exceeds application limit"));
+        }
     }
 
-    return result;
+    return ErrorEnum::eNone;
 }
 
 InstanceInfo ConvertToAos(const ::servicemanager::v4::InstanceInfo& val)
 {
-    InstanceInfo instanceInfo;
+    auto instanceInfo = std::make_unique<InstanceInfo>();
 
-    instanceInfo.mInstanceIdent = ConvertToAos(val.instance());
-    instanceInfo.mUID           = val.uid();
-    instanceInfo.mPriority      = val.priority();
-    instanceInfo.mStoragePath   = String(val.storage_path().c_str());
-    instanceInfo.mStatePath     = String(val.state_path().c_str());
+    instanceInfo->mInstanceIdent = ConvertToAos(val.instance());
+    instanceInfo->mUID           = val.uid();
+    instanceInfo->mPriority      = val.priority();
+    instanceInfo->mStoragePath   = String(val.storage_path().c_str());
+    instanceInfo->mStatePath     = String(val.state_path().c_str());
 
-    instanceInfo.mNetworkParameters = ConvertToAos(val.network_parameters());
+    if (auto err = ConvertToAos(val.network_parameters(), instanceInfo->mNetworkParameters); !err.IsNone()) {
+        return InstanceInfo();
+    }
 
-    return instanceInfo;
+    return *instanceInfo;
 }
 
 cloudprotocol::InstanceFilter ConvertToAos(const ::servicemanager::v4::InstanceFilter& val)
@@ -305,14 +310,15 @@ Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotoc
     for (const auto& envVar : src.env_vars()) {
         auto instanceFilter = ConvertToAos(envVar.instance_filter());
 
-        cloudprotocol::EnvVarInfoArray variables;
+        auto variables = std::make_unique<cloudprotocol::EnvVarInfoArray>();
+
         for (const auto& var : envVar.variables()) {
-            if (auto err = variables.PushBack(ConvertToAos(var)); !err.IsNone()) {
+            if (auto err = variables->PushBack(ConvertToAos(var)); !err.IsNone()) {
                 return AOS_ERROR_WRAP(Error(err, "received instance's env vars count exceeds application limit"));
             }
         }
 
-        if (auto err = dst.PushBack({instanceFilter, variables}); !err.IsNone()) {
+        if (auto err = dst.EmplaceBack(instanceFilter, *variables); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "received env vars instances count exceeds application limit"));
         }
     }

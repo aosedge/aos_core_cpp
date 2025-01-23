@@ -36,14 +36,19 @@ set(WITH_IAM_API ON)
 set(WITH_SM_API ON)
 
 # ######################################################################################################################
+# Config
+# ######################################################################################################################
+
+set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_lib_cpp)
+set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(AOS_STACK_USAGE 4096)
+
+# ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
 set(CMAKE_CXX_STANDARD 17)
-
-set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_lib_cpp)
-set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ######################################################################################################################
 # Dependencies
