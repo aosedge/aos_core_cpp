@@ -12,6 +12,8 @@
 #include <Poco/Path.h>
 #include <filesystem>
 
+#include <utils/exception.hpp>
+
 #include "database.hpp"
 #include "logger/logmodule.hpp"
 
@@ -58,9 +60,7 @@ aos::Error Database::Init(const std::string& workDir, const MigrationConfig& mig
         mMigration.emplace(*mSession, migration.mMigrationPath, migration.mMergedMigrationPath);
         mMigration->MigrateToVersion(cVersion);
     } catch (const std::exception& e) {
-        LOG_ERR() << "Failed to initialize database: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -76,10 +76,8 @@ aos::Error Database::AddCertInfo(const aos::String& certType, const aos::iam::ce
         *mSession
             << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) VALUES (?, ?, ?, ?, ?, ?);",
             bind(ToAosCertInfo(certType, certInfo)), now;
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << "Failed to add certificate info: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -90,10 +88,8 @@ aos::Error Database::RemoveCertInfo(const aos::String& certType, const aos::Stri
     try {
         *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(certType.CStr()),
             bind(certURL.CStr()), now;
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << "Failed to remove certificate info: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -103,10 +99,8 @@ aos::Error Database::RemoveAllCertsInfo(const aos::String& certType)
 {
     try {
         *mSession << "DELETE FROM certificates WHERE type = ?;", bind(certType.CStr()), now;
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << "Failed to remove all certificate info: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -128,10 +122,8 @@ aos::Error Database::GetCertInfo(
         }
 
         FromAosCertInfo(result, cert);
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << "Failed to get certificate info: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -153,10 +145,8 @@ aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::i
                 return AOS_ERROR_WRAP(err);
             }
         }
-    } catch (const Poco::Exception& e) {
-        LOG_ERR() << "Failed to get certificates info: " << e.what();
-
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -183,9 +173,8 @@ aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
 
         *mSession << "INSERT OR REPLACE INTO nodeinfo (id, info) VALUES (?, ?);", bind(info.mNodeID.CStr()),
             bind(nodeInfo), now;
-
-    } catch (const Poco::Exception&) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -218,8 +207,8 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeI
             }
         }
 
-    } catch (const Poco::Exception&) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;
@@ -243,8 +232,8 @@ aos::Error Database::GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>
         }
 
         return aos::ErrorEnum::eNone;
-    } catch (const Poco::Exception&) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 }
 
@@ -252,8 +241,8 @@ aos::Error Database::RemoveNodeInfo(const aos::String& nodeID)
 {
     try {
         *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), now;
-    } catch (const Poco::Exception&) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     return aos::ErrorEnum::eNone;

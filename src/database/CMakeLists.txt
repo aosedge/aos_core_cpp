@@ -34,4 +34,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosmigration Poco::DataSQLite Poco::JSON)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosmigration aosutils Poco::DataSQLite Poco::JSON)
