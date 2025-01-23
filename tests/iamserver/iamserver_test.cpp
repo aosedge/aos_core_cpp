@@ -158,8 +158,8 @@ void IAMServerTest::RegisterPKCS11Module(const aos::String& name, aos::crypto::K
 {
     ASSERT_TRUE(mPKCS11Modules.EmplaceBack().IsNone());
     ASSERT_TRUE(mCertModules.EmplaceBack().IsNone());
-    auto& pkcs11Module = mPKCS11Modules.Back().mValue;
-    auto& certModule   = mCertModules.Back().mValue;
+    auto& pkcs11Module = mPKCS11Modules.Back();
+    auto& certModule   = mCertModules.Back();
     ASSERT_TRUE(pkcs11Module.Init(name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider).IsNone());
     ASSERT_TRUE(certModule.Init(name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage).IsNone());
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());

@@ -15,7 +15,7 @@ Error StorageStub::AddCertInfo(const String& certType, const CertInfo& certInfo)
             return err;
         }
 
-        cell            = &mStorage.Back().mValue;
+        cell            = &mStorage.Back();
         cell->mCertType = certType;
     }
 

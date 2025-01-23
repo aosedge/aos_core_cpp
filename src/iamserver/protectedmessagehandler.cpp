@@ -435,7 +435,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
             return utils::ConvertAosErrorToGrpcStatus(err);
         }
 
-        aos::FunctionServicePermissions& servicePerm = aosPermissions->Back().mValue;
+        aos::FunctionServicePermissions& servicePerm = aosPermissions->Back();
         servicePerm.mName                            = service.c_str();
 
         for (const auto& [key, val] : permissions.permissions()) {
