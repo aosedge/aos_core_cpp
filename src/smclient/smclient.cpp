@@ -453,9 +453,8 @@ void SMClient::HandleIncomingMessages() noexcept
                 break;
             }
         }
-
     } catch (const std::exception& e) {
-        LOG_ERR() << e.what();
+        LOG_ERR() << "Handle incoming messages failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
