@@ -179,8 +179,8 @@ Error ConvertEnvVarsInstanceInfoArrayFromJSON(
                 envVarsInstanceInfos.PushBack(
                     ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr))));
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -226,8 +226,8 @@ Error ConvertNetworkParametersFromJSON(const Poco::JSON::Object& src, NetworkPar
         networkParameters.mSubnet    = src.getValue<std::string>("subnet").c_str();
         networkParameters.mIP        = src.getValue<std::string>("ip").c_str();
         networkParameters.mVlanID    = src.getValue<uint64_t>("vlanID");
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -427,8 +427,8 @@ Error Database::Init(const std::string& workDir, const config::MigrationConfig& 
 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
         mMigration->MigrateToVersion(sVersion);
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -452,8 +452,8 @@ Error Database::AddInstance(const sm::launcher::InstanceData& instance)
             bind(instanceInfo.mInstanceIdent.mInstance), bind(instanceInfo.mUID), bind(instanceInfo.mPriority),
             bind(instanceInfo.mStoragePath.CStr()), bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)),
             now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -482,8 +482,8 @@ Error Database::UpdateInstance(const sm::launcher::InstanceData& instance)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -501,8 +501,8 @@ Error Database::RemoveInstance(const String& instanceID)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -522,8 +522,8 @@ Error Database::GetAllInstances(Array<sm::launcher::InstanceData>& instances)
                 return AOS_ERROR_WRAP(Error(err, "db instances count exceeds application limit"));
             }
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -543,8 +543,8 @@ RetWithError<uint64_t> Database::GetOperationVersion() const
         }
 
         LOG_DBG() << "Get operation version: version=" << result.mValue;
-    } catch (const Poco::Exception& e) {
-        result.mError = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        result.mError = AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return result;
@@ -556,8 +556,8 @@ Error Database::SetOperationVersion(uint64_t version)
 
     try {
         *mSession << "UPDATE config SET operationVersion = ?;", use(version), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -573,8 +573,8 @@ Error Database::GetOverrideEnvVars(cloudprotocol::EnvVarsInstanceInfoArray& envV
         *mSession << "SELECT envvars FROM config;", into(envVarsJson), now;
 
         return ConvertEnvVarsInstanceInfoArrayFromJSON(envVarsJson, envVarsInstanceInfos);
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -595,8 +595,8 @@ Error Database::SetOverrideEnvVars(const cloudprotocol::EnvVarsInstanceInfoArray
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -620,8 +620,8 @@ RetWithError<Time> Database::GetOnlineTime() const
         result.mValue = ConvertTimestamp(onlineTime);
 
         LOG_DBG() << "Get online time: time=" << result.mValue;
-    } catch (const Poco::Exception& e) {
-        result.mError = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        result.mError = AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return result;
@@ -633,8 +633,8 @@ Error Database::SetOnlineTime(const Time& time)
 
     try {
         *mSession << "UPDATE config SET onlineTime = ?;", bind(time.UnixNano()), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -653,8 +653,8 @@ Error Database::AddService(const sm::servicemanager::ServiceData& service)
             bind(service.mVersion.CStr()), bind(service.mProviderID.CStr()), bind(service.mImagePath.CStr()),
             bind(ToBlob(service.mManifestDigest)), bind(static_cast<uint32_t>(service.mState.GetValue())),
             bind(service.mTimestamp.UnixNano()), bind(service.mSize), bind(service.mGID), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -680,8 +680,8 @@ Error Database::GetServiceVersions(const String& serviceID, Array<sm::serviceman
                 return AOS_ERROR_WRAP(Error(err, "db services count exceeds application limit"));
             }
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -705,8 +705,8 @@ Error Database::UpdateService(const sm::servicemanager::ServiceData& service)
         if (statement.execute() == 0) {
             return ErrorEnum::eNotFound;
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -719,8 +719,8 @@ Error Database::RemoveService(const String& serviceID, const String& version)
     try {
         *mSession << "DELETE FROM services WHERE id = ? AND version = ?;", bind(serviceID.CStr()), bind(version.CStr()),
             now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -740,8 +740,8 @@ Error Database::GetAllServices(Array<sm::servicemanager::ServiceData>& services)
                 return AOS_ERROR_WRAP(Error(err, "db services count exceeds application limit"));
             }
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -763,8 +763,8 @@ Error Database::RemoveNetworkInfo(const String& networkID)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -777,8 +777,8 @@ Error Database::AddNetworkInfo(const sm::networkmanager::NetworkParameters& info
     try {
         *mSession << "INSERT INTO network values(?, ?, ?, ?, ?);", bind(info.mNetworkID.CStr()), bind(info.mIP.CStr()),
             bind(info.mSubnet.CStr()), bind(info.mVlanID), bind(info.mVlanIfName.CStr()), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -798,8 +798,8 @@ Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkParameters>& ne
                 return AOS_ERROR_WRAP(Error(err, "db network count exceeds application limit"));
             }
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -812,8 +812,8 @@ Error Database::SetTrafficMonitorData(const String& chain, const Time& time, uin
     try {
         *mSession << "INSERT OR REPLACE INTO trafficmonitor values(?, ?, ?);", bind(chain.CStr()),
             bind(time.UnixNano()), bind(value), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -836,8 +836,8 @@ Error Database::GetTrafficMonitorData(const String& chain, Time& time, uint64_t&
         }
 
         time = ConvertTimestamp(dbTime);
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -855,8 +855,8 @@ Error Database::RemoveTrafficMonitorData(const String& chain)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -875,8 +875,8 @@ Error Database::AddLayer(const sm::layermanager::LayerData& layer)
             bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()), bind(layer.mOSVersion.CStr()),
             bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
             bind(static_cast<uint32_t>(layer.mState.GetValue())), bind(layer.mSize), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -894,8 +894,8 @@ Error Database::RemoveLayer(const String& digest)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -915,8 +915,8 @@ Error Database::GetAllLayers(Array<sm::layermanager::LayerData>& layers) const
                 return AOS_ERROR_WRAP(Error(err, "db layers count exceeds application limit"));
             }
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -938,8 +938,8 @@ Error Database::GetLayer(const String& digest, sm::layermanager::LayerData& laye
         }
 
         layer = DBLayerData::ToAos(result);
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -962,8 +962,8 @@ Error Database::UpdateLayer(const sm::layermanager::LayerData& layer)
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
         }
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -979,8 +979,8 @@ Error Database::SetJournalCursor(const String& cursor)
 
     try {
         *mSession << "UPDATE config SET cursor = ?;", bind(cursor.CStr()), now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -996,8 +996,8 @@ Error Database::GetJournalCursor(String& cursor) const
         cursor = dbCursor.c_str();
 
         LOG_DBG() << "Get journal cursor: cursor=" << cursor;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -1046,8 +1046,8 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudproto
 
         std::transform(result.begin(), result.end(), std::back_inserter(instanceIDs),
             [](const Poco::Tuple<std::string>& info) { return info.get<0>(); });
-    } catch (const Poco::Exception& e) {
-        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+    } catch (const std::exception& e) {
+        return {{}, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 
     if (instanceIDs.empty()) {
@@ -1093,8 +1093,8 @@ RetWithError<alerts::ServiceInstanceData> Database::GetInstanceInfoByID(const St
         result.mVersion = (*serviceVersions)[0].mVersion;
 
         return result;
-    } catch (const Poco::Exception& e) {
-        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+    } catch (const std::exception& e) {
+        return {{}, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 }
 
@@ -1114,8 +1114,8 @@ RetWithError<bool> Database::TableExist(const std::string& tableName)
         if (statement.execute() == 0) {
             return {false, ErrorEnum::eNotFound};
         }
-    } catch (const Poco::Exception& e) {
-        return {false, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+    } catch (const std::exception& e) {
+        return {false, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 
     return {count > 0, ErrorEnum::eNone};
@@ -1132,8 +1132,8 @@ Error Database::DropAllTables()
         *mSession << "DROP TABLE IF EXISTS trafficmonitor;", now;
         *mSession << "DROP TABLE IF EXISTS layers;", now;
         *mSession << "DROP TABLE IF EXISTS instances;", now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -1177,8 +1177,8 @@ Error Database::CreateConfigTable()
                      "onlineTime) values(?, ?);",
             bind(Poco::Tuple<uint32_t, uint64_t>(sm::launcher::Launcher::cOperationVersion, Time::Now().UnixNano())),
             now;
-    } catch (const Poco::Exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
