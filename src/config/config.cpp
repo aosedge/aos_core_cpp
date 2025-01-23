@@ -281,9 +281,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
             config.mMigration = ParseMigrationConfig(config.mWorkingDir, empty);
         }
     } catch (const std::exception& e) {
-        LOG_ERR() << "Error parsing config: " << e.what();
-
-        return {Config {}, ErrorEnum::eFailed};
+        return {{}, common::utils::ToAosError(e)};
     }
 
     return {config, ErrorEnum::eNone};
