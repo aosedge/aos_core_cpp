@@ -88,9 +88,8 @@ private:
 
     aos::Error ParseCPUInfoFile() noexcept
     {
-        std::string line;
-
         try {
+            std::string line;
 
             while (std::getline(mFile, line)) {
                 const auto keyValue = aos::common::utils::ParseKeyValue(line);
@@ -106,10 +105,8 @@ private:
 
             // populate last CPU info object
             PopulateCPUInfoObject();
-        } catch (...) {
-            LOG_ERR() << "Failed to parse CPU info file: line=" << line.c_str();
-
-            return aos::ErrorEnum::eFailed;
+        } catch (const std::exception& e) {
+            return aos::common::utils::ToAosError(e);
         }
 
         return aos::ErrorEnum::eNone;
@@ -135,7 +132,7 @@ aos::Error GetCPUInfo(const std::string& path, aos::Array<aos::CPUInfo>& cpuInfo
 
         return parser.GetCPUInfo(path, cpuInfoArray);
     } catch (const std::exception& e) {
-        return aos::Error(aos::ErrorEnum::eFailed, e.what());
+        return aos::common::utils::ToAosError(e);
     }
 }
 
@@ -163,8 +160,8 @@ aos::RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept
             return {memTotalKB * cBytesPerKB, aos::ErrorEnum::eNone};
         }
 
-    } catch (...) {
-        return {0, aos::ErrorEnum::eRuntime};
+    } catch (const std::exception& e) {
+        return {0, AOS_ERROR_WRAP(aos::common::utils::ToAosError(e))};
     }
 
     return {0, aos::ErrorEnum::eFailed};

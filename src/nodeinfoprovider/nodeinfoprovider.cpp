@@ -160,7 +160,7 @@ aos::Error NodeInfoProvider::SubscribeNodeStatusChanged(aos::iam::nodeinfoprovid
     try {
         mObservers.insert(&observer);
     } catch (const std::exception& e) {
-        return aos::Error(aos::ErrorEnum::eFailed, e.what());
+        return aos::common::utils::ToAosError(e);
     }
 
     return aos::ErrorEnum::eNone;
