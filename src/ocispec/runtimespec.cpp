@@ -676,7 +676,7 @@ void LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::
     }
 
     if (object.Has("resources")) {
-        lnx.mResources.SetValue({});
+        lnx.mResources.EmplaceValue();
 
         LinuxResourcesFromJSON(object.GetObject("resources"), *lnx.mResources);
     }

@@ -87,9 +87,10 @@ namespace aos::common::pbconvert {
  * Converts protobuf network parameters to aos.
  *
  * @param val protobuf network parameters.
- * @return NetworkParameters.
+ * @param dst[out] aos network parameters.
+ * @return Error.
  */
-NetworkParameters ConvertToAos(const ::servicemanager::v4::NetworkParameters& val);
+Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkParameters& dst);
 
 /**
  * Converts protobuf instance info to aos.

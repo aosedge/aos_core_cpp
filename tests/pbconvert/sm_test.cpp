@@ -279,7 +279,10 @@ TEST_F(PBConvertSMTest, ConvertNetworkParametersToAos)
         rule.set_src_ip(std::string("src-ip").append(ruleSfx));
     }
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::NetworkParameters result;
+
+    auto err = aos::common::pbconvert::ConvertToAos(param, result);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
 
     EXPECT_EQ(result.mNetworkID, aos::String(param.network_id().c_str()));
     EXPECT_EQ(result.mSubnet, aos::String(param.subnet().c_str()));
