@@ -21,6 +21,8 @@
 
 #include <Poco/StringTokenizer.h>
 
+#include <utils/exception.hpp>
+
 #include "logger/logmodule.hpp"
 #include "resourceusageprovider.hpp"
 
@@ -331,7 +333,7 @@ RetWithError<size_t> ResourceUsageProvider::GetInstanceRAMUsage(const String& in
     try {
         return {std::stoull(line), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {0, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()))};
+        return {0, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 
     return {0, ErrorEnum::eNotFound};
