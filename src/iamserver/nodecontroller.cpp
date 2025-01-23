@@ -8,6 +8,7 @@
 #include <thread>
 
 #include <pbconvert/common.hpp>
+#include <utils/exception.hpp>
 
 #include "logger/logmodule.hpp"
 #include "nodecontroller.hpp"
@@ -80,7 +81,7 @@ aos::Error NodeStreamHandler::HandleStream()
                 it->second.set_value(std::move(outgoing));
             }
         } catch (const std::exception& e) {
-            err = AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, e.what()));
+            err = AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
 
             break;
         }
@@ -309,7 +310,7 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
 
         response = responseFuture.get();
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eRuntime, e.what()));
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e, aos::ErrorEnum::eRuntime));
     }
 
     return aos::ErrorEnum::eNone;

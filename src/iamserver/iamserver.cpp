@@ -143,10 +143,8 @@ aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHand
 
         Start();
 
-    } catch (const aos::common::utils::AosException& e) {
-        return e.GetError();
     } catch (const std::exception& e) {
-        return {aos::ErrorEnum::eFailed, e.what()};
+        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
 
     if (err = nodeManager.SubscribeNodeInfoChange(static_cast<aos::iam::nodemanager::NodeInfoListenerItf&>(*this));
