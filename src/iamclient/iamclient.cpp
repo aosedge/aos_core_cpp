@@ -238,9 +238,8 @@ void IAMClient::HandleIncomingMessages() noexcept
                 }
             }
         }
-
     } catch (const std::exception& e) {
-        LOG_ERR() << e.what();
+        LOG_ERR() << "Failed to handle incoming message: err=" << aos::common::utils::ToAosError(e);
     }
 }
 

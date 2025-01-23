@@ -7,9 +7,12 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
+
+#include <aos/test/log.hpp>
+#include <utils/exception.hpp>
+
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
 #include "mocks/certhandlermock.hpp"
@@ -268,7 +271,7 @@ public:
                 }
             }
         } catch (const std::exception& e) {
-            LOG_ERR() << e.what();
+            LOG_ERR() << "Register node failed: err=" << aos::common::utils::ToAosError(e);
         }
 
         LOG_DBG() << "Test server message thread stoped";
