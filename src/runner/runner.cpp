@@ -75,7 +75,7 @@ Error Runner::Init(RunStatusReceiverItf& listener)
     try {
         mSystemd = CreateSystemdConn();
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, e.what()));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
