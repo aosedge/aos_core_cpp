@@ -278,7 +278,8 @@ TEST_F(CNITest, TestAddNetworkList)
         })),
             Return(RetWithError<std::string> {expectedPluginResult, ErrorEnum::eNone})));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+    auto   err = mCNI.AddNetworkList(netConfig, rtConfig, result);
 
     ASSERT_TRUE(err.IsNone());
     ValidateResult(result);
@@ -397,7 +398,9 @@ TEST_F(CNITest, TestExecuteDNSPlugin)
         })),
             Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone})));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto err = mCNI.AddNetworkList(netConfig, rtConfig, result);
 
     ASSERT_TRUE(err.IsNone());
     ValidateResult(result);
@@ -520,7 +523,9 @@ TEST_F(CNITest, TestExecuteFirewallPlugin)
     EXPECT_CALL(*mExec, ExecPlugin(_, "/opt/cni/bin/dnsname", _))
         .WillOnce(Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone}));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto err = mCNI.AddNetworkList(netConfig, rtConfig, result);
 
     ASSERT_TRUE(err.IsNone());
     ValidateResult(result);
@@ -633,7 +638,9 @@ TEST_F(CNITest, TestExecuteBandwidthPlugin)
     EXPECT_CALL(*mExec, ExecPlugin(_, "/opt/cni/bin/dnsname", _))
         .WillOnce(Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone}));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto err = mCNI.AddNetworkList(netConfig, rtConfig, result);
 
     ASSERT_TRUE(err.IsNone());
     ValidateResult(result);
@@ -774,7 +781,9 @@ TEST_F(CNITest, TestCacheFileContent)
     EXPECT_CALL(*mExec, ExecPlugin(_, "/opt/cni/bin/dnsname", _))
         .WillOnce(Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone}));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto err = mCNI.AddNetworkList(netConfig, rtConfig, result);
 
     ASSERT_TRUE(err.IsNone());
     ValidateResult(result);
@@ -842,7 +851,9 @@ TEST_F(CNITest, TestGetNetworkListCachedConfig)
     EXPECT_CALL(*mExec, ExecPlugin(_, "/opt/cni/bin/dnsname", _))
         .WillOnce(Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone}));
 
-    auto [result, err] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto err = mCNI.AddNetworkList(netConfig, rtConfig, result);
     ASSERT_TRUE(err.IsNone());
 
     NetworkConfigList readNetConfig;
@@ -952,7 +963,9 @@ TEST_F(CNITest, TestNetworkListLifecycle)
     EXPECT_CALL(*mExec, ExecPlugin(_, "/opt/cni/bin/dnsname", _))
         .WillOnce(Return(RetWithError<std::string> {prevResult, ErrorEnum::eNone}));
 
-    auto [addResult, addErr] = mCNI.AddNetworkList(netConfig, rtConfig);
+    Result result;
+
+    auto addErr = mCNI.AddNetworkList(netConfig, rtConfig, result);
     ASSERT_TRUE(addErr.IsNone());
 
     std::string cacheFilePath = mTestDir + "/results/" + netConfig.mName.CStr() + "-" + rtConfig.mContainerID.CStr();

@@ -43,9 +43,10 @@ public:
      *
      * @param net List of network configurations.
      * @param rt Runtime configuration parameters.
-     * @return RetWithError<Result>.
+     * @param[out] result Result of the operation.
+     * @return Error.
      */
-    RetWithError<Result> AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt) override;
+    Error AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt, Result& result) override;
 
     /**
      * Executes a sequence of plugins with the DEL command
@@ -104,7 +105,7 @@ private:
     std::string CreateBridgePluginConfig(const BridgePluginConf& bridge) const;
     std::string BridgeConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
 
-    Result ParsePrevResult(const std::string& prevResult) const;
+    void ParsePrevResult(const std::string& prevResult, Result& result) const;
 
     std::string CreateDNSPluginConfig(const DNSPluginConf& dns) const;
     std::string DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult);

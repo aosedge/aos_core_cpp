@@ -190,7 +190,7 @@ Error CNI::SetConfDir(const String& configDir)
     return ErrorEnum::eNone;
 }
 
-RetWithError<Result> CNI::AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt)
+Error CNI::AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt, Result& result)
 {
     LOG_DBG() << "Add network list: name=" << net.mName.CStr();
 
@@ -203,14 +203,14 @@ RetWithError<Result> CNI::AddNetworkList(const NetworkConfigList& net, const Run
         prevResult = ExecuteFirewallPlugin(net, prevResult, args);
         prevResult = ExecuteBandwidthPlugin(net, prevResult, args);
 
-        auto result = ParsePrevResult(prevResult);
+        ParsePrevResult(prevResult, result);
         auto path = std::filesystem::path(mConfigDir) / (net.mName.CStr() + std::string("-") + rt.mContainerID.CStr());
 
         WriteCacheEntryToFile(CreateCacheEntry(net, rt, prevResult), path);
 
-        return result;
+        return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return {{}, common::utils::ToAosError(e)};
+        return Error(ErrorEnum::eFailed, e.what());
     }
 }
 
@@ -333,7 +333,7 @@ Error CNI::GetNetworkListCachedConfig(NetworkConfigList& net, RuntimeConf& rt)
 
         rt.mIfName = cacheObj.GetOptionalValue<std::string>("ifName").value_or("").c_str();
 
-        net.mPrevResult = ParsePrevResult(cacheObj.GetValue<std::string>("result"));
+        ParsePrevResult(cacheObj.GetValue<std::string>("result"), net.mPrevResult);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -807,12 +807,10 @@ std::string CNI::ArgsAsString(const RuntimeConf& rt, Action action) const
         [](const std::string& acc, const std::string& env) { return acc.empty() ? env : acc + " " + env; });
 }
 
-Result CNI::ParsePrevResult(const std::string& prevResult) const
+void CNI::ParsePrevResult(const std::string& prevResult, Result& result) const
 {
-    Result result;
-
     if (prevResult.empty()) {
-        return result;
+        return;
     }
 
     auto [json, err] = common::utils::ParseJson(prevResult);
@@ -842,8 +840,6 @@ Result CNI::ParsePrevResult(const std::string& prevResult) const
 
         Copy(dns, result.mDNSServers);
     }
-
-    return result;
 }
 
 std::string CNI::CreatePluginsConfig(const NetworkConfigList& net) const

@@ -539,7 +539,13 @@ bool SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& request)
     StaticArray<NetworkParameters, cMaxNumNetworks> networkParams;
 
     for (const auto& network : request.networks()) {
-        if (auto err = networkParams.PushBack(common::pbconvert::ConvertToAos(network)); !err.IsNone()) {
+        if (auto err = networkParams.EmplaceBack(); !err.IsNone()) {
+            LOG_ERR() << "Failed processing received network parameter: err=" << err;
+
+            return false;
+        }
+
+        if (auto err = common::pbconvert::ConvertToAos(network, networkParams.Back()); !err.IsNone()) {
             LOG_ERR() << "Failed processing received network parameter: err=" << err;
 
             return false;
