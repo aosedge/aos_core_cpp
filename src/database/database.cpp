@@ -58,7 +58,10 @@ aos::Error Database::Init(const std::string& workDir, const MigrationConfig& mig
         CreateTables();
 
         mMigration.emplace(*mSession, migration.mMigrationPath, migration.mMergedMigrationPath);
-        mMigration->MigrateToVersion(cVersion);
+
+        CreateMigrationData(migration);
+        mMigration->MigrateToVersion(GetVersion());
+        DropMigrationData();
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
     }
@@ -251,6 +254,35 @@ aos::Error Database::RemoveNodeInfo(const aos::String& nodeID)
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+int Database::GetVersion() const
+{
+    return cVersion;
+}
+
+void Database::CreateMigrationData(const MigrationConfig& config)
+{
+    DropMigrationData();
+
+    *mSession << "CREATE TABLE IF NOT EXISTS pins (path TEXT NOT NULL, value TEXT NOT NULL);", now;
+
+    std::string           pin, path;
+    Poco::Data::Statement insert(*mSession);
+
+    insert << "INSERT INTO pins (path, value) VALUES(?, ?);", use(path), use(pin);
+
+    for (const auto& [key, value] : config.mPathToPin) {
+        path = key;
+        pin  = value;
+
+        insert.execute();
+    }
+}
+
+void Database::DropMigrationData()
+{
+    *mSession << "DROP TABLE IF EXISTS pins;", now;
+}
 
 void Database::CreateTables()
 {

@@ -98,8 +98,9 @@ struct NodeInfoConfig {
  * Migration configuration.
  */
 struct MigrationConfig {
-    std::string mMigrationPath;
-    std::string mMergedMigrationPath;
+    std::string                        mMigrationPath;
+    std::string                        mMergedMigrationPath;
+    std::map<std::string, std::string> mPathToPin;
 };
 
 /*

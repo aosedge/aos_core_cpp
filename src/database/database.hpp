@@ -133,8 +133,14 @@ private:
     enum CertColumns { eType = 0, eIssuer, eSerial, eCertURL, eKeyURL, eNotAfter };
     using CertInfo = Poco::Tuple<std::string, Poco::Data::BLOB, Poco::Data::BLOB, std::string, std::string, uint64_t>;
 
-    constexpr static int  cVersion    = 0;
+    constexpr static int  cVersion    = 1;
     constexpr static auto cDBFileName = "iamanager.db";
+
+    // to be used in unit tests
+    virtual int GetVersion() const;
+
+    void CreateMigrationData(const MigrationConfig& config);
+    void DropMigrationData();
 
     void     CreateTables();
     CertInfo ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo);

@@ -77,6 +77,61 @@ static aos::NodeInfo DefaultNodeInfo(const char* id = "node0")
     return nodeInfo;
 }
 
+static void CreateSessionTable(Poco::Data::Session& session)
+{
+    session << "CREATE TABLE IF NOT EXISTS certificates ("
+               "type TEXT NOT NULL,"
+               "issuer BLOB NOT NULL,"
+               "serial BLOB NOT NULL,"
+               "certURL TEXT,"
+               "keyURL TEXT,"
+               "notAfter TIMESTAMP,"
+               "PRIMARY KEY (issuer, serial));",
+        Poco::Data::Keywords::now;
+}
+
+void CreateVersionTable(Poco::Data::Session& session, int version)
+{
+    session << "CREATE TABLE IF NOT EXISTS SchemaVersion (version INTEGER);", Poco::Data::Keywords::now;
+    session << "INSERT INTO SchemaVersion (version) VALUES(?);", Poco::Data::Keywords::use(version),
+        Poco::Data::Keywords::now;
+}
+
+static void AddCertificate(Poco::Data::Session& session, const std::string& type, const std::vector<uint8_t>& issuer,
+    const std::vector<uint8_t>& serial, const std::string& certURL, const std::string& keyURL)
+{
+    using Poco::Data::Keywords::bind;
+    session << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) "
+               "VALUES (?, ?, ?, ?, ?, ?)",
+        bind(type), bind(Poco::Data::BLOB {issuer.data(), issuer.size()}),
+        bind(Poco::Data::BLOB {serial.data(), serial.size()}), bind(certURL), bind(keyURL), bind(uint64_t(1000)),
+        Poco::Data::Keywords::now;
+}
+
+std::string GetMigrationSourceDir()
+{
+    std::filesystem::path curFilePath(__FILE__);
+    std::filesystem::path migrationSourceDir = curFilePath.parent_path() / "../.." / "src/database/migration/";
+
+    return std::filesystem::canonical(migrationSourceDir).string();
+}
+
+template <typename T>
+const aos::Array<T> ToArray(std::vector<T>& src)
+{
+    return aos::Array<T>(src.data(), src.size());
+}
+
+class TestDatabase : public Database {
+public:
+    void SetVersion(int version) { mVersion = version; }
+
+private:
+    int GetVersion() const override { return mVersion; }
+
+    int mVersion = 1;
+};
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -85,10 +140,27 @@ class DatabaseTest : public Test {
 protected:
     void SetUp() override
     {
+        // Preliminary clean up.
+        TearDown();
+
+        namespace fs = std::filesystem;
+
+        auto migrationSrc = GetMigrationSourceDir();
+        auto migrationDst = fs::current_path() / cMigrationPath;
+        auto workingDir   = fs::current_path() / cWorkingDir;
+
         mMigrationConfig.mMigrationPath       = cMigrationPath;
         mMigrationConfig.mMergedMigrationPath = cMergedMigrationPath;
 
-        std::filesystem::create_directories(cMigrationPath);
+        fs::create_directories(cMigrationPath);
+
+        mCMPinPath = workingDir / "cm.path.txt";
+        mSMPinPath = (workingDir / "sm.path.txt");
+
+        mMigrationConfig.mPathToPin[mCMPinPath] = "ca3b303c3c3f572e87c97a753cc7f5";
+        mMigrationConfig.mPathToPin[mSMPinPath] = "ca3b303c3c3f572e87c97a753cc7f6";
+
+        fs::copy(migrationSrc, migrationDst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
     }
 
     void TearDown() override { std::filesystem::remove_all(cWorkingDir); }
@@ -103,8 +175,10 @@ protected:
     static constexpr auto cMigrationPath       = "database/migration";
     static constexpr auto cMergedMigrationPath = "database/merged-migration";
 
+    std::string mCMPinPath, mSMPinPath;
+
     MigrationConfig mMigrationConfig;
-    Database        mDB;
+    TestDatabase    mDB;
 };
 
 /***********************************************************************************************************************
@@ -252,10 +326,6 @@ TEST_F(DatabaseTest, GetCertsInfo)
     EXPECT_TRUE(certsInfoNotEnoughMemory[0] == certInfo || certsInfoNotEnoughMemory[0] == certInfo2);
 }
 
-/***********************************************************************************************************************
- * Tests
- **********************************************************************************************************************/
-
 TEST_F(DatabaseTest, GetNodeInfo)
 {
     const auto& nodeInfo = DefaultNodeInfo();
@@ -324,4 +394,96 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
     ASSERT_EQ(expectedNodeIds, resultNodeIds);
+}
+
+TEST_F(DatabaseTest, MigrateVer0To1)
+{
+    // Create Version 0 db
+    std::vector<unsigned char> cCM = {0x1};
+    std::vector<unsigned char> cSM = {0x2};
+
+    constexpr auto cCMVer0URL = "pkcs11:token=aoscore;object=sm;id=%2C%38%6B%2F%64%1D%6A%5E%92%2E%74%55%51%5D%93%4F?"
+                                "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-value=ca3b303c3c3f572e87c97a753cc7f5";
+    constexpr auto cSMVer0URL = "pkcs11:token=aoscore;object=cm;id=%2A%AD%9F%7E%2A%33%15%1F%22%39%F1%57%F4%E8%CF%3A?"
+                                "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-value=ca3b303c3c3f572e87c97a753cc7f6";
+
+    auto cDbPath = std::filesystem::path(cWorkingDir) / "iamanager.db";
+    auto session = std::make_unique<Poco::Data::Session>("SQLite", cDbPath.c_str());
+
+    CreateSessionTable(*session);
+    CreateVersionTable(*session, 0);
+
+    AddCertificate(*session, "sm", cSM, cSM, cSMVer0URL, cSMVer0URL);
+    AddCertificate(*session, "cm", cCM, cCM, cCMVer0URL, cCMVer0URL);
+
+    session.reset();
+
+    // Migrate to Version1
+    mDB.SetVersion(1);
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+
+    // Check certificates
+    const std::string cCMVer1URL = "pkcs11:token=aoscore;object=sm;id=%2C%38%6B%2F%64%1D%6A%5E%92%2E%74%55%51%5D%93%4F?"
+                                   "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source="
+        + mCMPinPath;
+    const std::string cSMVer1URL = "pkcs11:token=aoscore;object=cm;id=%2A%AD%9F%7E%2A%33%15%1F%22%39%F1%57%F4%E8%CF%3A?"
+                                   "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source="
+        + mSMPinPath;
+
+    aos::iam::certhandler::CertInfo certInfo {};
+
+    ASSERT_TRUE(mDB.GetCertInfo(ToArray(cCM), ToArray(cCM), certInfo).IsNone());
+    EXPECT_EQ(certInfo.mCertURL.CStr(), cCMVer1URL);
+    EXPECT_EQ(certInfo.mKeyURL.CStr(), cCMVer1URL);
+
+    ASSERT_TRUE(mDB.GetCertInfo(ToArray(cSM), ToArray(cSM), certInfo).IsNone());
+    EXPECT_EQ(certInfo.mCertURL.CStr(), cSMVer1URL);
+    EXPECT_EQ(certInfo.mKeyURL.CStr(), cSMVer1URL);
+}
+
+TEST_F(DatabaseTest, MigrateVer1To0)
+{
+    // Create Version 0 db
+    std::vector<unsigned char> cCM = {0x1};
+    std::vector<unsigned char> cSM = {0x2};
+
+    const std::string cCMVer1URL = "pkcs11:token=aoscore;object=sm;id=%2C%38%6B%2F%64%1D%6A%5E%92%2E%74%55%51%5D%93%4F?"
+                                   "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source="
+        + mCMPinPath;
+    const std::string cSMVer1URL = "pkcs11:token=aoscore;object=cm;id=%2A%AD%9F%7E%2A%33%15%1F%22%39%F1%57%F4%E8%CF%3A?"
+                                   "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source="
+        + mSMPinPath;
+
+    auto cDbPath = std::filesystem::path(cWorkingDir) / "iamanager.db";
+    auto session = std::make_unique<Poco::Data::Session>("SQLite", cDbPath.c_str());
+
+    CreateSessionTable(*session);
+    CreateVersionTable(*session, 1);
+
+    AddCertificate(*session, "sm", cSM, cSM, cSMVer1URL, cSMVer1URL);
+    AddCertificate(*session, "cm", cCM, cCM, cCMVer1URL, cCMVer1URL);
+
+    session.reset();
+
+    // Migrate to Version0
+    mDB.SetVersion(0);
+    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+
+    // Check certificates
+    const std::string cCMVer0URL
+        = "pkcs11:token=aoscore;object=sm;id=%2C%38%6B%2F%64%1D%6A%5E%92%2E%74%55%51%5D%93%4F?"
+          "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-value=ca3b303c3c3f572e87c97a753cc7f5";
+    const std::string cSMVer0URL
+        = "pkcs11:token=aoscore;object=cm;id=%2A%AD%9F%7E%2A%33%15%1F%22%39%F1%57%F4%E8%CF%3A?"
+          "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-value=ca3b303c3c3f572e87c97a753cc7f6";
+
+    aos::iam::certhandler::CertInfo certInfo {};
+
+    ASSERT_TRUE(mDB.GetCertInfo(ToArray(cCM), ToArray(cCM), certInfo).IsNone());
+    EXPECT_EQ(certInfo.mCertURL.CStr(), cCMVer0URL);
+    EXPECT_EQ(certInfo.mKeyURL.CStr(), cCMVer0URL);
+
+    ASSERT_TRUE(mDB.GetCertInfo(ToArray(cSM), ToArray(cSM), certInfo).IsNone());
+    EXPECT_EQ(certInfo.mCertURL.CStr(), cSMVer0URL);
+    EXPECT_EQ(certInfo.mKeyURL.CStr(), cSMVer0URL);
 }

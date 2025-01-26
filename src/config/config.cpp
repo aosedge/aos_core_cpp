@@ -12,6 +12,8 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
+#include <aos/common/pkcs11/pkcs11.hpp>
+#include <aos/common/tools/fs.hpp>
 #include <utils/exception.hpp>
 #include <utils/json.hpp>
 
@@ -31,12 +33,14 @@ constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
  * Static
  **********************************************************************************************************************/
 
-static Identifier ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+namespace {
+
+Identifier ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return Identifier {object.GetValue<std::string>("plugin"), object.Get("params")};
 }
 
-static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return ModuleConfig {
         object.GetValue<std::string>("id"),
@@ -54,7 +58,7 @@ static ModuleConfig ParseModuleConfig(const aos::common::utils::CaseInsensitiveO
     };
 }
 
-static PartitionInfoConfig ParsePartitionInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+PartitionInfoConfig ParsePartitionInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     PartitionInfoConfig partitionInfoConfig {};
 
@@ -71,7 +75,7 @@ static PartitionInfoConfig ParsePartitionInfoConfig(const aos::common::utils::Ca
     return partitionInfoConfig;
 }
 
-static NodeInfoConfig ParseNodeInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+NodeInfoConfig ParseNodeInfoConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     NodeInfoConfig nodeInfoConfig {};
 
@@ -102,15 +106,32 @@ static NodeInfoConfig ParseNodeInfoConfig(const aos::common::utils::CaseInsensit
     return nodeInfoConfig;
 }
 
-static MigrationConfig ParseMigrationConfig(const aos::common::utils::CaseInsensitiveObjectWrapper& migration)
+MigrationConfig ParseMigrationConfig(
+    const aos::common::utils::CaseInsensitiveObjectWrapper& migration, const std::vector<ModuleConfig>& moduleConfigs)
 {
     MigrationConfig config {};
 
     config.mMigrationPath       = migration.GetValue<std::string>("migrationPath");
     config.mMergedMigrationPath = migration.GetValue<std::string>("mergedMigrationPath");
 
+    for (const auto& moduleConfig : moduleConfigs) {
+        aos::common::utils::CaseInsensitiveObjectWrapper object(moduleConfig.mParams);
+
+        std::string                             pinPath = object.GetValue<std::string>("userPinPath");
+        aos::StaticString<aos::pkcs11::cPINLen> userPIN;
+
+        auto err = aos::FS::ReadFileToString(pinPath.c_str(), userPIN);
+        if (!err.IsNone()) {
+            continue;
+        }
+
+        config.mPathToPin[pinPath] = userPIN.CStr();
+    }
+
     return config;
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public functions
@@ -141,7 +162,6 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
         config.mCertStorage              = object.GetValue<std::string>("certStorage");
         config.mWorkingDir               = object.GetValue<std::string>("workingDir");
         config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
-        config.mMigration                = ParseMigrationConfig(object.GetObject("migration"));
 
         config.mStartProvisioningCmdArgs = aos::common::utils::GetArrayValue<std::string>(object,
             "startProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
@@ -160,6 +180,8 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename)
                 return ParseModuleConfig(
                     aos::common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
             });
+
+        config.mMigration = ParseMigrationConfig(object.GetObject("migration"), config.mCertModules);
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
