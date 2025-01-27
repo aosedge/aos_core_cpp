@@ -320,7 +320,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceInfoToAos)
 
     param.mutable_network_parameters()->set_network_id("network-id");
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::InstanceInfo result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mInstanceIdent.mServiceID, aos::String(param.instance().service_id().c_str()));
     EXPECT_EQ(result.mInstanceIdent.mSubjectID, aos::String(param.instance().subject_id().c_str()));
@@ -358,7 +360,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceFilterToAos)
         pbParam.set_subject_id(param.subjectID);
         pbParam.set_instance(param.instance);
 
-        auto result = aos::common::pbconvert::ConvertToAos(pbParam);
+        aos::cloudprotocol::InstanceFilter result;
+
+        EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(pbParam, result).IsNone());
 
         if (!param.serviceID.empty()) {
             EXPECT_EQ(result.mServiceID.GetValue(), aos::String(param.serviceID.c_str()));
@@ -388,7 +392,9 @@ TEST_F(PBConvertSMTest, ConvertEnvVarInfoToAos)
     param.set_value("value");
     param.mutable_ttl()->set_seconds(1);
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::cloudprotocol::EnvVarInfo result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mName, aos::String(param.name().c_str()));
     EXPECT_EQ(result.mValue, aos::String(param.value().c_str()));
@@ -480,7 +486,9 @@ TEST_F(PBConvertSMTest, ConvertServiceInfoToAos)
     param.set_sha256("sha256");
     param.set_size(100);
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::ServiceInfo result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mServiceID, aos::String(param.service_id().c_str()));
     EXPECT_EQ(result.mProviderID, aos::String(param.provider_id().c_str()));
@@ -502,7 +510,9 @@ TEST_F(PBConvertSMTest, ConvertLayerInfoToAos)
     param.set_sha256("sha256");
     param.set_size(100);
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::LayerInfo result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mLayerID, aos::String(param.layer_id().c_str()));
     EXPECT_EQ(result.mLayerDigest, aos::String(param.digest().c_str()));
@@ -520,7 +530,9 @@ TEST_F(PBConvertSMTest, ConvertSystemLogRequestToAos)
     param.mutable_from()->set_seconds(100);
     param.mutable_till()->set_seconds(200);
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::cloudprotocol::RequestLog result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mLogID, aos::String(param.log_id().c_str()));
     EXPECT_EQ(result.mFilter.mFrom, aos::Time::Unix(100, 0));
@@ -541,7 +553,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceLogRequestToAos)
     param.mutable_instance_filter()->set_service_id(instanceFilter.mServiceID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::cloudprotocol::RequestLog result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mLogID, aos::String(param.log_id().c_str()));
     EXPECT_EQ(result.mFilter.mFrom, aos::Time::Unix(100, 0));
@@ -564,7 +578,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
     param.mutable_instance_filter()->set_service_id(instanceFilter.mServiceID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
-    auto result = aos::common::pbconvert::ConvertToAos(param);
+    aos::cloudprotocol::RequestLog result;
+
+    EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
     EXPECT_EQ(result.mLogID, aos::String(param.log_id().c_str()));
     EXPECT_EQ(result.mFilter.mFrom, aos::Time::Unix(100, 0));
