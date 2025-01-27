@@ -61,13 +61,13 @@ Error OCIWhiteoutsToOverlay(const String& path, uint32_t uid, uint32_t gid)
             }
 
             if (baseName.find(cWhiteoutPrefix) == 0) {
-                auto fullPath = FS::JoinPath(dirName.c_str(), baseName.substr(strlen(cWhiteoutPrefix)).c_str());
+                auto fullPath = std::filesystem::path(dirName) / baseName.substr(strlen(cWhiteoutPrefix));
 
-                if (auto res = mknod(fullPath.CStr(), S_IFCHR, 0); res != 0) {
+                if (auto res = mknod(fullPath.c_str(), S_IFCHR, 0); res != 0) {
                     return AOS_ERROR_WRAP(res);
                 }
 
-                if (auto res = chown(fullPath.CStr(), uid, gid); res != 0) {
+                if (auto res = chown(fullPath.c_str(), uid, gid); res != 0) {
                     return AOS_ERROR_WRAP(res);
                 }
 
@@ -106,30 +106,35 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String
 {
     LOG_DBG() << "Install layer: archive=" << archivePath << ", digest=" << layer.mLayerDigest;
 
-    auto err = CheckFileInfo(archivePath, layer.mSize, layer.mSHA256);
+    RetWithError<StaticString<cFilePathLen>> result("");
 
+    auto err = CheckFileInfo(archivePath, layer.mSize, layer.mSHA256);
     if (!err.IsNone()) {
-        return {{}, err};
+        result.mError = err;
+        return result;
     }
 
     size_t      archiveSize = 0;
     std::string extractDir;
 
     if (Tie(extractDir, err) = common::utils::MkTmpDir(installBasePath.CStr()); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to create temporary extract dir"))};
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to create temporary extract dir"));
+        return result;
     }
 
     if (Tie(archiveSize, err) = common::utils::GetUnpackedArchiveSize(archivePath.CStr()); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
     if (Tie(space, err) = mLayerSpaceAllocator->AllocateSpace(archiveSize); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
     auto cleanExtractDir = DeferRelease(&err, [&, extractSize = space->Size()](Error*) {
         if (!extractDir.empty()) {
-            FS::RemoveAll(extractDir.c_str());
+            std::filesystem::remove_all(extractDir);
         }
 
         assert(space.Get() != nullptr);
@@ -139,40 +144,47 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String
     });
 
     if (err = UnpackArchive(archivePath, extractDir.c_str()); !err.IsNone()) {
-        return {{}, err};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
     auto contentDescriptor = std::make_unique<oci::ContentDescriptor>();
+    auto manifestPath      = std::filesystem::path(extractDir) / cLayerManifestFile;
 
-    if (err = mOCISpec->LoadContentDescriptor(FS::JoinPath(extractDir.c_str(), cLayerManifestFile), *contentDescriptor);
-        !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to load content descriptor"))};
+    if (err = mOCISpec->LoadContentDescriptor(manifestPath.c_str(), *contentDescriptor); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to load content descriptor"));
+        return result;
     }
 
     const auto parsedDigest = common::utils::ParseDigest(contentDescriptor->mDigest.CStr());
-    const auto installDir   = FS::JoinPath(installBasePath, parsedDigest.first.c_str(), parsedDigest.second.c_str());
-    const auto embeddedArchivePath = FS::JoinPath(extractDir.c_str(), parsedDigest.second.c_str());
+    const auto installDir   = std::filesystem::path(installBasePath.CStr()) / parsedDigest.first / parsedDigest.second;
+    const auto embeddedArchivePath = std::filesystem::path(extractDir) / parsedDigest.second;
 
-    if (Tie(archiveSize, err) = common::utils::GetUnpackedArchiveSize(embeddedArchivePath.CStr(), false);
-        !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+    if (Tie(archiveSize, err) = common::utils::GetUnpackedArchiveSize(embeddedArchivePath, false); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
     if (err = space->Resize(space->Size() + archiveSize); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
-    if (err = UnpackArchive(embeddedArchivePath, installDir); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to unpack layer's embedded archive"))};
+    if (err = UnpackArchive(embeddedArchivePath.c_str(), installDir.c_str()); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to unpack layer's embedded archive"));
+        return result;
     }
 
-    if (err = OCIWhiteoutsToOverlay(String(extractDir.c_str(), extractDir.size()), 0, 0); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to convert OCI whiteouts to overlay"))};
+    if (err = OCIWhiteoutsToOverlay(extractDir.c_str(), 0, 0); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to convert OCI whiteouts to overlay"));
+        return result;
     }
 
-    LOG_DBG() << "Layer has been successfully installed: path=" << installDir;
+    LOG_DBG() << "Layer has been successfully installed: path=" << installDir.c_str();
 
-    return {installDir, ErrorEnum::eNone};
+    result.mValue = installDir.c_str();
+
+    return result;
 }
 
 RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const String& archivePath,
@@ -181,68 +193,82 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const Stri
     LOG_DBG() << "Install service: archive=" << archivePath << ", installBasePath=" << installBasePath
               << ", serviceID=" << service.mServiceID;
 
+    RetWithError<StaticString<cFilePathLen>> result("");
+
     if (auto err = CheckFileInfo(archivePath, service.mSize, service.mSHA256); !err.IsNone()) {
-        return {{}, err};
+        result.mError = err;
+        return result;
     }
 
     size_t unpackedSize = 0;
 
-    auto installDir = FS::JoinPath(installBasePath, service.mServiceID);
-    installDir.Append("-v").Append(service.mVersion);
+    auto installDir = std::filesystem::path(installBasePath.CStr())
+        / (std::string(service.mServiceID.CStr()) + "-v" + service.mVersion.CStr());
 
-    if (auto [exists, err] = FS::DirExist(installDir); !err.IsNone() || exists) {
-        return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "service already exists"))};
+    if (auto [exists, err] = FS::DirExist(installDir.c_str()); !err.IsNone() || exists) {
+        result.mError = AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "service already exists"));
+        return result;
     }
 
-    if (auto err = FS::MakeDirAll(installDir.CStr()); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to create service installation dir"))};
+    if (auto err = FS::MakeDirAll(installDir.c_str()); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to create service installation dir"));
+        return result;
     }
 
     Error err = ErrorEnum::eNone;
 
     auto cleanInstallDir = DeferRelease(&err, [installDir](const Error* err) {
         if (!err->IsNone()) {
-            FS::RemoveAll(installDir.CStr());
+            std::filesystem::remove_all(installDir);
         }
     });
 
     if (Tie(unpackedSize, err) = common::utils::GetUnpackedArchiveSize(archivePath.CStr()); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
     if (Tie(space, err) = mServiceSpaceAllocator->AllocateSpace(unpackedSize); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
-    if (err = UnpackArchive(archivePath, installDir); !err.IsNone()) {
-        return {{}, err};
+    if (err = UnpackArchive(archivePath, installDir.c_str()); !err.IsNone()) {
+        result.mError = err;
+        return result;
     }
 
-    auto manifest = std::make_unique<oci::ImageManifest>();
+    auto manifest     = std::make_unique<oci::ImageManifest>();
+    auto manifestPath = std::filesystem::path(installDir) / cServiceManifestFile;
 
-    if (err = mOCISpec->LoadImageManifest(FS::JoinPath(installDir, "manifest.json"), *manifest); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to load image manifest"))};
+    if (err = mOCISpec->LoadImageManifest(manifestPath.c_str(), *manifest); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(Error(err, "failed to load image manifest"));
+        return result;
     }
 
-    if (err = ValidateService(installDir, *manifest); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
+    if (err = ValidateService(installDir.c_str(), *manifest); !err.IsNone()) {
+        result.mError = AOS_ERROR_WRAP(err);
+        return result;
     }
 
-    if (err = PrepareServiceFS(installDir, service, *manifest, space); !err.IsNone()) {
-        return {{}, err};
+    if (err = PrepareServiceFS(installDir.c_str(), service, *manifest, space); !err.IsNone()) {
+        result.mError = err;
+        return result;
     }
-
-    LOG_DBG() << "Service has been successfully installed: src=" << archivePath << ", dst=" << installDir
+    LOG_DBG() << "Service has been successfully installed: src=" << archivePath << ", dst=" << installDir.c_str()
               << ", size=" << space->Size();
 
-    return {installDir, ErrorEnum::eNone};
+    result.mValue = installDir.c_str();
+
+    return result;
 }
 
 Error ImageHandler::ValidateService(const String& path) const
 {
     auto imageManifest = std::make_unique<oci::ImageManifest>();
+    auto manifestPath  = std::filesystem::path(path.CStr()) / cServiceManifestFile;
 
-    if (auto err = mOCISpec->LoadImageManifest(FS::JoinPath(path, "manifest.json"), *imageManifest); !err.IsNone()) {
+    if (auto err = mOCISpec->LoadImageManifest(manifestPath.c_str(), *imageManifest); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to load image manifest"));
     }
 
@@ -278,11 +304,11 @@ Error ImageHandler::ValidateServiceConfig(const String& path, const String& dige
 {
     const auto parsedDigest = common::utils::ParseDigest(digest.CStr());
     const auto serviceConfigPath
-        = FS::JoinPath(path, cBlobsFolder, parsedDigest.first.c_str(), parsedDigest.second.c_str());
+        = std::filesystem::path(path.CStr()) / cBlobsFolder / parsedDigest.first / parsedDigest.second;
 
     auto serviceConfig = std::make_unique<oci::ServiceConfig>();
 
-    if (auto err = mOCISpec->LoadServiceConfig(serviceConfigPath, *serviceConfig); !err.IsNone()) {
+    if (auto err = mOCISpec->LoadServiceConfig(serviceConfigPath.c_str(), *serviceConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to load service config"));
     }
 
@@ -319,19 +345,19 @@ Error ImageHandler::ValidateService(const String& path, const oci::ImageManifest
 Error ImageHandler::ValidateDigest(const String& path, const String& digest) const
 {
     const auto parsedDigest = common::utils::ParseDigest(digest.CStr());
-    const auto fullPath     = FS::JoinPath(path, cBlobsFolder, parsedDigest.first.c_str(), parsedDigest.second.c_str());
+    const auto fullPath = std::filesystem::path(path.CStr()) / cBlobsFolder / parsedDigest.first / parsedDigest.second;
 
     std::error_code ec;
-    if (!std::filesystem::exists(fullPath.CStr()) || ec.value() != 0) {
-        LOG_ERR() << "Failed to validate digest: path=" << fullPath << ", err=" << ec.message().c_str();
+    if (!std::filesystem::exists(fullPath) || ec.value() != 0) {
+        LOG_ERR() << "Failed to validate digest: path=" << fullPath.c_str() << ", err=" << ec.message().c_str();
 
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, ec.message().c_str()));
     }
 
     StaticString<oci::cMaxDigestLen> calculatedDigest;
 
-    if (std::filesystem::is_directory(fullPath.CStr())) {
-        auto [hash, err] = common::utils::HashDir(fullPath.CStr());
+    if (std::filesystem::is_directory(fullPath)) {
+        auto [hash, err] = common::utils::HashDir(fullPath);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -341,7 +367,7 @@ Error ImageHandler::ValidateDigest(const String& path, const String& digest) con
         return (calculatedDigest == digest) ? ErrorEnum::eNone : ErrorEnum::eInvalidChecksum;
     }
 
-    auto [sha256, err] = CalculateHash(fullPath, crypto::HashEnum::eSHA256);
+    auto [sha256, err] = CalculateHash(fullPath.c_str(), crypto::HashEnum::eSHA256);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -436,16 +462,16 @@ Error ImageHandler::PrepareServiceFS(const String& baseDir, const ServiceInfo& s
         return AOS_ERROR_WRAP(Error(err, "failed to get image parts"));
     }
 
-    const auto rootFSArchive = FS::JoinPath(baseDir.CStr(), cBlobsFolder, imageParts->mServiceFSPath);
-    const auto tmpRootFS     = FS::JoinPath(baseDir, cTmpRootFSDir);
+    const auto rootFSArchive = std::filesystem::path(baseDir.CStr()) / cBlobsFolder / imageParts->mServiceFSPath.CStr();
+    const auto tmpRootFS     = std::filesystem::path(baseDir.CStr()) / cTmpRootFSDir;
     size_t     archiveSize   = 0;
     size_t     unpackedSize  = 0;
 
-    if (Tie(archiveSize, err) = common::utils::CalculateSize(rootFSArchive.CStr()); !err.IsNone()) {
+    if (Tie(archiveSize, err) = common::utils::CalculateSize(rootFSArchive); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (Tie(unpackedSize, err) = common::utils::GetUnpackedArchiveSize(rootFSArchive.CStr()); !err.IsNone()) {
+    if (Tie(unpackedSize, err) = common::utils::GetUnpackedArchiveSize(rootFSArchive); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -453,44 +479,43 @@ Error ImageHandler::PrepareServiceFS(const String& baseDir, const ServiceInfo& s
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = UnpackArchive(rootFSArchive, tmpRootFS.CStr()); !err.IsNone()) {
+    if (err = UnpackArchive(rootFSArchive.c_str(), tmpRootFS.c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = FS::RemoveAll(rootFSArchive); !err.IsNone()) {
-        return AOS_ERROR_WRAP(Error(err, "failed to remove origin rootfs"));
-    }
+    std::filesystem::remove_all(rootFSArchive);
 
     if (err = space->Resize(space->Size() - archiveSize); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = common::utils::ChangeOwner(tmpRootFS.CStr(), mUID, service.mGID); !err.IsNone()) {
+    if (err = common::utils::ChangeOwner(tmpRootFS, mUID, service.mGID); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to change service rootfs owner"));
     }
 
-    if (err = OCIWhiteoutsToOverlay(tmpRootFS, mUID, service.mGID); !err.IsNone()) {
+    if (err = OCIWhiteoutsToOverlay(tmpRootFS.c_str(), mUID, service.mGID); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to convert OCI whiteouts to overlay"));
     }
 
     std::string rootFSHash;
-    if (Tie(rootFSHash, err) = common::utils::HashDir(tmpRootFS.CStr()); !err.IsNone()) {
+    if (Tie(rootFSHash, err) = common::utils::HashDir(tmpRootFS.c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to hash service rootfs directory"));
     }
 
     const auto [algorithm, hash] = common::utils::ParseDigest(rootFSHash);
-    const auto installPath       = FS::JoinPath(baseDir, cBlobsFolder, algorithm.c_str(), hash.c_str());
+    const auto installPath       = std::filesystem::path(baseDir.CStr()) / cBlobsFolder / algorithm / hash;
 
     std::error_code ec;
 
-    std::filesystem::rename(tmpRootFS.CStr(), installPath.CStr(), ec);
+    std::filesystem::rename(tmpRootFS, installPath, ec);
     if (ec.value() != 0) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, ec.message().c_str()));
     }
 
     manifest.mLayers[0].mDigest = rootFSHash.c_str();
+    auto manifestPath           = std::filesystem::path(baseDir.CStr()) / cServiceManifestFile;
 
-    if (err = mOCISpec->SaveImageManifest(FS::JoinPath(baseDir, cServiceManifestFile), manifest); !err.IsNone()) {
+    if (err = mOCISpec->SaveImageManifest(manifestPath.c_str(), manifest); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to save image manifest"));
     }
 
