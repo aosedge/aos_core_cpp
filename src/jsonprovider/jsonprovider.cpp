@@ -20,10 +20,8 @@ namespace aos::common::jsonprovider {
 
 namespace {
 
-DeviceInfo DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
+void DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, DeviceInfo& deviceInfo)
 {
-    DeviceInfo deviceInfo;
-
     const auto name = object.GetValue<std::string>("name");
 
     deviceInfo.mName        = name.c_str();
@@ -42,18 +40,16 @@ DeviceInfo DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper&
         AOS_ERROR_CHECK_AND_THROW(
             "parsed host devices count exceeds application limit", deviceInfo.mHostDevices.PushBack(device.c_str()));
     }
-
-    return deviceInfo;
 }
 
 void DevicesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<DeviceInfo>& outDevices)
 {
-    const auto devices = utils::GetArrayValue<DeviceInfo>(object, "devices",
-        [](const auto& value) { return DeviceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+    utils::ForEach(object, "devices", [&outDevices](const auto& value) {
+        auto err = outDevices.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW("parsed devices count exceeds application limit", err);
 
-    for (const auto& device : devices) {
-        AOS_ERROR_CHECK_AND_THROW("parsed devices count exceeds application limit", outDevices.PushBack(device));
-    }
+        DeviceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value), outDevices.Back());
+    });
 }
 
 Mount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
@@ -83,10 +79,8 @@ Host HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
     return {object.GetValue<std::string>("ip").c_str(), object.GetValue<std::string>("hostName").c_str()};
 }
 
-ResourceInfo ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ResourceInfo& resourceInfo)
 {
-    ResourceInfo resourceInfo;
-
     const auto name = object.GetValue<std::string>("name");
 
     resourceInfo.mName = name.c_str();
@@ -120,19 +114,16 @@ ResourceInfo ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& obj
         auto err = resourceInfo.mHosts.PushBack(host);
         AOS_ERROR_CHECK_AND_THROW("parsed hosts count exceeds application limit", err);
     }
-
-    return resourceInfo;
 }
 
 void ResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<ResourceInfo>& outResources)
 {
-    const auto resources = utils::GetArrayValue<ResourceInfo>(object, "resources",
-        [](const auto& value) { return ResourceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
-
-    for (const auto& resource : resources) {
-        auto err = outResources.PushBack(resource);
+    utils::ForEach(object, "resources", [&outResources](const auto& value) {
+        auto err = outResources.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW("parsed resources count exceeds application limit", err);
-    }
+
+        ResourceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value), outResources.Back());
+    });
 }
 
 void LabelsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<StaticString<cLabelNameLen>>& outLabels)
