@@ -154,6 +154,26 @@ private:
 };
 
 /**
+ * Applies function to each element of the json object by the given key.
+ *
+ * @param object json object.
+ * @param key key.
+ * @param f function to apply.
+ * @return void.
+ */
+template <typename Func>
+void ForEach(const CaseInsensitiveObjectWrapper& object, const std::string& key, Func f)
+{
+    if (!object.Has(key)) {
+        return;
+    }
+
+    Poco::JSON::Array::Ptr array = object.GetArray(key);
+
+    std::for_each(array->begin(), array->end(), f);
+}
+
+/**
  * Gets value by key.
  *
  * @param object json object.
