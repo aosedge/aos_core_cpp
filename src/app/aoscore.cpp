@@ -24,12 +24,12 @@ void AosCore::Init(const std::string& configFile)
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
 
-    LOG_INF() << "Init SM: version = " << AOS_CORE_SM_VERSION;
+    LOG_INF() << "Init SM: version=" << AOS_CORE_SM_VERSION;
     LOG_DBG() << "Aos core size: size=" << sizeof(AosCore);
 
     // Initialize Aos modules
 
-    Tie(mConfig, err) = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile);
+    err = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile, mConfig);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", err);
 
     // Initialize crypto provider
