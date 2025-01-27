@@ -32,7 +32,7 @@ target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
 # Compiler flags
 # ######################################################################################################################
 
-target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
+target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE} -Wno-format-truncation)
 
 # ######################################################################################################################
 # Libraries
