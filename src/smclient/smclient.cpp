@@ -495,34 +495,56 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
 {
     LOG_INF() << "Process run instances";
 
-    ServiceInfoStaticArray aosServices;
-    for (const auto& service : request.services()) {
-        if (auto err = aosServices.PushBack(common::pbconvert::ConvertToAos(service)); !err.IsNone()) {
-            LOG_ERR() << "Failed processing received service info: err=" << err;
+    auto aosServices = std::make_unique<ServiceInfoStaticArray>();
 
+    for (const auto& service : request.services()) {
+        auto serviceInfo = std::make_unique<ServiceInfo>();
+
+        if (auto err = common::pbconvert::ConvertToAos(service, *serviceInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed converting service info: err=" << err;
+            return false;
+        }
+
+        if (auto err = aosServices->PushBack(*serviceInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed processing received service info: err=" << err;
             return false;
         }
     }
 
-    LayerInfoStaticArray aosLayers;
+    auto aosLayers = std::make_unique<LayerInfoStaticArray>();
+
     for (const auto& layer : request.layers()) {
-        if (auto err = aosLayers.PushBack(common::pbconvert::ConvertToAos(layer)); !err.IsNone()) {
+        auto layerInfo = std::make_unique<LayerInfo>();
+
+        if (auto err = common::pbconvert::ConvertToAos(layer, *layerInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed converting layer info: err=" << err;
+            return false;
+        }
+
+        if (auto err = aosLayers->PushBack(*layerInfo); !err.IsNone()) {
             LOG_ERR() << "Failed processing received layer info: err=" << err;
 
             return false;
         }
     }
 
-    InstanceInfoStaticArray aosInstances;
-    for (const auto& instance : request.instances()) {
-        if (auto err = aosInstances.PushBack(common::pbconvert::ConvertToAos(instance)); !err.IsNone()) {
-            LOG_ERR() << "Failed processing received instance info: err=" << err;
+    auto aosInstances = std::make_unique<InstanceInfoStaticArray>();
 
+    for (const auto& instance : request.instances()) {
+        auto instanceInfo = std::make_unique<InstanceInfo>();
+
+        if (auto err = common::pbconvert::ConvertToAos(instance, *instanceInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed converting instance info: err=" << err;
+            return false;
+        }
+
+        if (auto err = aosInstances->PushBack(*instanceInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed processing received instance info: err=" << err;
             return false;
         }
     }
 
-    auto err = mLauncher->RunInstances(aosServices, aosLayers, aosInstances, request.force_restart());
+    auto err = mLauncher->RunInstances(*aosServices, *aosLayers, *aosInstances, request.force_restart());
     if (!err.IsNone()) {
         LOG_ERR() << "Run instances failed: err=" << err;
 
@@ -536,23 +558,23 @@ bool SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& request)
 {
     LOG_INF() << "Process update networks";
 
-    StaticArray<NetworkParameters, cMaxNumNetworks> networkParams;
+    auto networkParams = std::make_unique<StaticArray<NetworkParameters, cMaxNumNetworks>>();
 
     for (const auto& network : request.networks()) {
-        if (auto err = networkParams.EmplaceBack(); !err.IsNone()) {
+        if (auto err = networkParams->EmplaceBack(); !err.IsNone()) {
             LOG_ERR() << "Failed processing received network parameter: err=" << err;
 
             return false;
         }
 
-        if (auto err = common::pbconvert::ConvertToAos(network, networkParams.Back()); !err.IsNone()) {
+        if (auto err = common::pbconvert::ConvertToAos(network, networkParams->Back()); !err.IsNone()) {
             LOG_ERR() << "Failed processing received network parameter: err=" << err;
 
             return false;
         }
     }
 
-    if (auto err = mNetworkManager->UpdateNetworks(networkParams); !err.IsNone()) {
+    if (auto err = mNetworkManager->UpdateNetworks(*networkParams); !err.IsNone()) {
         LOG_ERR() << "Update networks failed: err=" << err;
 
         return false;
@@ -565,9 +587,15 @@ bool SMClient::ProcessGetSystemLogRequest(const smproto::SystemLogRequest& reque
 {
     LOG_INF() << "Process get system log request: logID=" << request.log_id().c_str();
 
-    if (auto err = mLogProvider->GetSystemLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
-        LOG_ERR() << "Get system log failed: err=" << err;
+    aos::cloudprotocol::RequestLog logRequest;
 
+    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+        LOG_ERR() << "Failed converting system log request: err=" << err;
+        return false;
+    }
+
+    if (auto err = mLogProvider->GetSystemLog(logRequest); !err.IsNone()) {
+        LOG_ERR() << "Get system log failed: err=" << err;
         return false;
     }
 
@@ -578,9 +606,15 @@ bool SMClient::ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& r
 {
     LOG_INF() << "Process get instance log request: logID=" << request.log_id().c_str();
 
-    if (auto err = mLogProvider->GetInstanceLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
-        LOG_ERR() << "Get instance log failed: err=" << err;
+    aos::cloudprotocol::RequestLog logRequest;
 
+    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+        LOG_ERR() << "Failed converting instance log request: err=" << err;
+        return false;
+    }
+
+    if (auto err = mLogProvider->GetInstanceLog(logRequest); !err.IsNone()) {
+        LOG_ERR() << "Get instance log failed: err=" << err;
         return false;
     }
 
@@ -591,9 +625,15 @@ bool SMClient::ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLog
 {
     LOG_INF() << "Process get instance crash log request: logID=" << request.log_id().c_str();
 
-    if (auto err = mLogProvider->GetInstanceCrashLog(common::pbconvert::ConvertToAos(request)); !err.IsNone()) {
-        LOG_ERR() << "Get instance crash log failed: err=" << err;
+    aos::cloudprotocol::RequestLog logRequest;
 
+    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+        LOG_ERR() << "Failed converting instance crash log request: err=" << err;
+        return false;
+    }
+
+    if (auto err = mLogProvider->GetInstanceCrashLog(logRequest); !err.IsNone()) {
+        LOG_ERR() << "Get instance crash log failed: err=" << err;
         return false;
     }
 
@@ -604,30 +644,28 @@ bool SMClient::ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request)
 {
     LOG_INF() << "Process override env vars";
 
-    cloudprotocol::EnvVarsInstanceInfoArray envVarsInstanceInfos;
-    smproto::SMOutgoingMessages             outgoingMsg;
+    auto                        envVarsInstanceInfos = std::make_unique<cloudprotocol::EnvVarsInstanceInfoArray>();
+    smproto::SMOutgoingMessages outgoingMsg;
 
     auto& response = *outgoingMsg.mutable_override_env_var_status();
 
-    auto err = common::pbconvert::ConvertToAos(request, envVarsInstanceInfos);
-
+    auto err = common::pbconvert::ConvertToAos(request, *envVarsInstanceInfos);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    cloudprotocol::EnvVarsInstanceStatusArray envVarStatuses;
+    auto envVarStatuses = std::make_unique<cloudprotocol::EnvVarsInstanceStatusArray>();
 
-    err = mLauncher->OverrideEnvVars(envVarsInstanceInfos, envVarStatuses);
-
+    err = mLauncher->OverrideEnvVars(*envVarsInstanceInfos, *envVarStatuses);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    for (const auto& status : envVarStatuses) {
+    for (const auto& status : *envVarStatuses) {
         auto& envVarStatus = *response.add_env_vars_status();
 
         *envVarStatus.mutable_instance_filter() = common::pbconvert::ConvertToProto(status.mFilter);
@@ -650,16 +688,17 @@ bool SMClient::ProcessGetAverageMonitoring()
 {
     LOG_INF() << "Process get average monitoring";
 
-    monitoring::NodeMonitoringData monitoringData;
+    auto monitoringData = std::make_unique<monitoring::NodeMonitoringData>();
 
-    if (auto err = mResourceMonitor->GetAverageMonitoringData(monitoringData); !err.IsNone()) {
+    if (auto err = mResourceMonitor->GetAverageMonitoringData(*monitoringData); !err.IsNone()) {
         LOG_ERR() << "Get average monitoring data failed: err=" << err;
 
         return false;
     }
 
     smproto::SMOutgoingMessages outgoingMsg;
-    *outgoingMsg.mutable_average_monitoring() = common::pbconvert::ConvertToProtoAvarageMonitoring(monitoringData);
+
+    *outgoingMsg.mutable_average_monitoring() = common::pbconvert::ConvertToProtoAvarageMonitoring(*monitoringData);
 
     return mStream->Write(outgoingMsg);
 }
