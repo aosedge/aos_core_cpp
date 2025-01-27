@@ -19,7 +19,7 @@
 namespace aos::common::pbconvert {
 
 /**
- * Converts aos push log to protobuf.
+ * Converts Aos push log to protobuf.
  *
  * @param src push log to convert.
  * @return ::servicemanager::v4::LogData.
@@ -27,7 +27,7 @@ namespace aos::common::pbconvert {
 ::servicemanager::v4::LogData ConvertToProto(const cloudprotocol::PushLog& src);
 
 /**
- * Converts aos monitoring data to protobuf.
+ * Converts Aos monitoring data to protobuf.
  *
  * @param src monitoring data to convert.
  * @param timestamp monitoring data timestamp.
@@ -36,7 +36,7 @@ namespace aos::common::pbconvert {
 ::servicemanager::v4::MonitoringData ConvertToProto(const monitoring::MonitoringData& src, const Time& timestamp);
 
 /**
- * Converts aos node monitoring data to protobuf avarage monitoring.
+ * Converts Aos node monitoring data to protobuf avarage monitoring.
  *
  * @param src node monitoring data to convert.
  * @return ::servicemanager::v4::AverageMonitoring.
@@ -44,7 +44,7 @@ namespace aos::common::pbconvert {
 ::servicemanager::v4::AverageMonitoring ConvertToProtoAvarageMonitoring(const monitoring::NodeMonitoringData& src);
 
 /**
- * Converts aos node monitoring data to protobuf instant monitoring.
+ * Converts Aos node monitoring data to protobuf instant monitoring.
  *
  * @param src node monitoring data to convert.
  * @return ::servicemanager::v4::InstantMonitoring.
@@ -52,7 +52,7 @@ namespace aos::common::pbconvert {
 ::servicemanager::v4::InstantMonitoring ConvertToProtoInstantMonitoring(const monitoring::NodeMonitoringData& src);
 
 /**
- * Converts aos instance status to protobuf.
+ * Converts Aos instance status to protobuf.
  *
  * @param src instance status to convert.
  * @return ::servicemanager::v4::InstanceStatus.
@@ -60,110 +60,118 @@ namespace aos::common::pbconvert {
 ::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatus& src);
 
 /**
- * Converts aos instance filter to protobuf.
+ * Converts Aos instance filter to protobuf.
  *
- * @param src aos instance filter.
+ * @param src Aos instance filter.
  * @return ::servicemanager::v4::InstanceFilter.
  */
 ::servicemanager::v4::InstanceFilter ConvertToProto(const cloudprotocol::InstanceFilter& src);
 
 /**
- * Converts aos env var status to protobuf.
+ * Converts Aos env var status to protobuf.
  *
- * @param src aos env var status.
+ * @param src Aos env var status.
  * @return ::servicemanager::v4::EnvVarStatus.
  */
 ::servicemanager::v4::EnvVarStatus ConvertToProto(const cloudprotocol::EnvVarStatus& src);
 
 /**
- * Converts aos alerts to protobuf.
+ * Converts Aos alerts to protobuf.
  *
- * @param src aos alert.
+ * @param src Aos alert.
  * @return ::servicemanager::v4::Alert.
  */
 ::servicemanager::v4::Alert ConvertToProto(const cloudprotocol::AlertVariant& src);
 
 /**
- * Converts protobuf network parameters to aos.
+ * Converts protobuf network parameters to Aos.
  *
  * @param val protobuf network parameters.
- * @param dst[out] aos network parameters.
+ * @param dst[out] Aos network parameters.
  * @return Error.
  */
 Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkParameters& dst);
 
 /**
- * Converts protobuf instance info to aos.
+ * Converts protobuf instance info to Aos.
  *
  * @param val protobuf instance info.
- * @return InstanceInfo.
+ * @param dst[out] Aos instance info.
+ * @return Error.
  */
-InstanceInfo ConvertToAos(const ::servicemanager::v4::InstanceInfo& val);
+Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfo& dst);
 
 /**
- * Converts protobuf instance filter to aos.
+ * Converts protobuf instance filter to Aos.
  *
  * @param val protobuf instance filter.
- * @return cloudprotocol::InstanceFilter.
+ * @param dst[out] Aos instance filter.
+ * @return Error.
  */
-cloudprotocol::InstanceFilter ConvertToAos(const ::servicemanager::v4::InstanceFilter& val);
+Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, cloudprotocol::InstanceFilter& dst);
 
 /**
- * Converts protobuf env var info to aos.
+ * Converts protobuf env var info to Aos.
  *
  * @param val protobuf env var info.
- * @return cloudprotocol::EnvVarInfo.
+ * @param dst[out] Aos env var info.
+ * @return Error.
  */
-cloudprotocol::EnvVarInfo ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val);
+Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::EnvVarInfo& dst);
 
 /**
- * Converts protobuf env vars instance info to aos.
+ * Converts protobuf env vars instance info to Aos.
  *
  * @param src protobuf env vars instance info array.
- * @param dst[out] aos env vars instance info array.
+ * @param dst[out] Aos env vars instance info array.
  * @return Error.
  */
 Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotocol::EnvVarsInstanceInfoArray& dst);
 
 /**
- * Converts service info to aos.
+ * Converts service info to Aos.
  *
  * @param val protobuf service info.
- * @return ServiceInfo.
+ * @param dst[out] Aos service info.
+ * @return Error.
  */
-ServiceInfo ConvertToAos(const ::servicemanager::v4::ServiceInfo& val);
+Error ConvertToAos(const ::servicemanager::v4::ServiceInfo& val, ServiceInfo& dst);
 
 /**
- * Converts layer info to aos.
+ * Converts layer info to Aos.
  *
  * @param val protobuf layer info.
- * @return LayerInfo.
+ * @param dst[out] Aos layer info.
+ * @return Error.
  */
-LayerInfo ConvertToAos(const ::servicemanager::v4::LayerInfo& val);
+Error ConvertToAos(const ::servicemanager::v4::LayerInfo& val, LayerInfo& dst);
 
 /**
- * Converts system log request to aos.
+ * Converts system log request to Aos.
  *
  * @param val protobuf system log request.
- * @return cloudprotocol::RequestLog.
+ * @param dst[out] Aos log request.
+ * @return Error.
  */
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val);
+Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudprotocol::RequestLog& dst);
 
 /**
- * Converts instance log request to aos.
+ * Converts instance log request to Aos.
  *
  * @param val protobuf instance log request.
- * @return cloudprotocol::RequestLog.
+ * @param dst[out] Aos log request.
+ * @return Error.
  */
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val);
+Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, cloudprotocol::RequestLog& dst);
 
 /**
- * Converts instance crash log request to aos.
+ * Converts instance crash log request to Aos.
  *
  * @param val protobuf instance crash log request.
- * @return cloudprotocol::RequestLog.
+ * @param dst[out] Aos log request.
+ * @return Error.
  */
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val);
+Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, cloudprotocol::RequestLog& dst);
 
 } // namespace aos::common::pbconvert
 

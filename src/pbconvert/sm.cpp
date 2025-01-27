@@ -258,62 +258,66 @@ Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkPa
     return ErrorEnum::eNone;
 }
 
-InstanceInfo ConvertToAos(const ::servicemanager::v4::InstanceInfo& val)
+Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfo& dst)
 {
-    auto instanceInfo = std::make_unique<InstanceInfo>();
+    dst.mInstanceIdent = ConvertToAos(val.instance());
+    dst.mUID           = val.uid();
+    dst.mPriority      = val.priority();
+    dst.mStoragePath   = String(val.storage_path().c_str());
+    dst.mStatePath     = String(val.state_path().c_str());
 
-    instanceInfo->mInstanceIdent = ConvertToAos(val.instance());
-    instanceInfo->mUID           = val.uid();
-    instanceInfo->mPriority      = val.priority();
-    instanceInfo->mStoragePath   = String(val.storage_path().c_str());
-    instanceInfo->mStatePath     = String(val.state_path().c_str());
-
-    if (auto err = ConvertToAos(val.network_parameters(), instanceInfo->mNetworkParameters); !err.IsNone()) {
-        return InstanceInfo();
+    if (auto err = ConvertToAos(val.network_parameters(), dst.mNetworkParameters); !err.IsNone()) {
+        return err;
     }
 
-    return *instanceInfo;
+    return ErrorEnum::eNone;
 }
 
-cloudprotocol::InstanceFilter ConvertToAos(const ::servicemanager::v4::InstanceFilter& val)
+Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, cloudprotocol::InstanceFilter& dst)
 {
-    cloudprotocol::InstanceFilter instanceFilter;
-
     if (const auto& serviceID = val.service_id(); !serviceID.empty()) {
-        instanceFilter.mServiceID.SetValue(String(serviceID.c_str()));
+        dst.mServiceID.SetValue(String(serviceID.c_str()));
     }
 
     if (const auto& subjectID = val.subject_id(); !subjectID.empty()) {
-        instanceFilter.mSubjectID.SetValue(String(subjectID.c_str()));
+        dst.mSubjectID.SetValue(String(subjectID.c_str()));
     }
 
     if (const auto instanceID = val.instance(); instanceID != -1) {
-        instanceFilter.mInstance.SetValue(static_cast<uint64_t>(instanceID));
+        dst.mInstance.SetValue(static_cast<uint64_t>(instanceID));
     }
 
-    return instanceFilter;
+    return ErrorEnum::eNone;
 }
 
-cloudprotocol::EnvVarInfo ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val)
+Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::EnvVarInfo& dst)
 {
-    cloudprotocol::EnvVarInfo envVarInfo;
+    dst.mName  = String(val.name().c_str());
+    dst.mValue = String(val.value().c_str());
+    dst.mTTL   = ConvertToAos(val.ttl());
 
-    envVarInfo.mName  = String(val.name().c_str());
-    envVarInfo.mValue = String(val.value().c_str());
-    envVarInfo.mTTL   = ConvertToAos(val.ttl());
-
-    return envVarInfo;
+    return ErrorEnum::eNone;
 }
 
 Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotocol::EnvVarsInstanceInfoArray& dst)
 {
     for (const auto& envVar : src.env_vars()) {
-        auto instanceFilter = ConvertToAos(envVar.instance_filter());
+        cloudprotocol::InstanceFilter instanceFilter;
+
+        if (auto err = ConvertToAos(envVar.instance_filter(), instanceFilter); !err.IsNone()) {
+            return err;
+        }
 
         auto variables = std::make_unique<cloudprotocol::EnvVarInfoArray>();
 
         for (const auto& var : envVar.variables()) {
-            if (auto err = variables->PushBack(ConvertToAos(var)); !err.IsNone()) {
+            cloudprotocol::EnvVarInfo envVarInfo;
+
+            if (auto err = ConvertToAos(var, envVarInfo); !err.IsNone()) {
+                return err;
+            }
+
+            if (auto err = variables->PushBack(envVarInfo); !err.IsNone()) {
                 return AOS_ERROR_WRAP(Error(err, "received instance's env vars count exceeds application limit"));
             }
         }
@@ -326,68 +330,64 @@ Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotoc
     return ErrorEnum::eNone;
 }
 
-ServiceInfo ConvertToAos(const ::servicemanager::v4::ServiceInfo& val)
+Error ConvertToAos(const ::servicemanager::v4::ServiceInfo& val, ServiceInfo& dst)
 {
-    ServiceInfo result;
+    dst.mServiceID  = String(val.service_id().c_str());
+    dst.mProviderID = String(val.provider_id().c_str());
+    dst.mVersion    = String(val.version().c_str());
+    dst.mGID        = val.gid();
+    dst.mURL        = String(val.url().c_str());
+    dst.mSHA256     = {reinterpret_cast<const uint8_t*>(val.sha256().c_str()), val.sha256().length()};
+    dst.mSize       = val.size();
 
-    result.mServiceID  = String(val.service_id().c_str());
-    result.mProviderID = String(val.provider_id().c_str());
-    result.mVersion    = String(val.version().c_str());
-    result.mGID        = val.gid();
-    result.mURL        = String(val.url().c_str());
-    result.mSHA256     = {reinterpret_cast<const uint8_t*>(val.sha256().c_str()), val.sha256().length()};
-    result.mSize       = val.size();
-
-    return result;
+    return ErrorEnum::eNone;
 }
 
-LayerInfo ConvertToAos(const ::servicemanager::v4::LayerInfo& val)
+Error ConvertToAos(const ::servicemanager::v4::LayerInfo& val, LayerInfo& dst)
 {
-    LayerInfo result;
+    dst.mLayerID     = String(val.layer_id().c_str());
+    dst.mLayerDigest = String(val.digest().c_str());
+    dst.mVersion     = String(val.version().c_str());
+    dst.mURL         = String(val.url().c_str());
+    dst.mSHA256      = {reinterpret_cast<const uint8_t*>(val.sha256().c_str()), val.sha256().length()};
+    dst.mSize        = val.size();
 
-    result.mLayerID     = String(val.layer_id().c_str());
-    result.mLayerDigest = String(val.digest().c_str());
-    result.mVersion     = String(val.version().c_str());
-    result.mURL         = String(val.url().c_str());
-    result.mSHA256      = {reinterpret_cast<const uint8_t*>(val.sha256().c_str()), val.sha256().length()};
-    result.mSize        = val.size();
-
-    return result;
+    return ErrorEnum::eNone;
 }
 
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val)
+Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudprotocol::RequestLog& dst)
 {
-    cloudprotocol::RequestLog result;
+    dst.mLogID        = String(val.log_id().c_str());
+    dst.mFilter.mFrom = ConvertToAos(val.from());
+    dst.mFilter.mTill = ConvertToAos(val.till());
 
-    result.mLogID        = String(val.log_id().c_str());
-    result.mFilter.mFrom = ConvertToAos(val.from());
-    result.mFilter.mTill = ConvertToAos(val.till());
-
-    return result;
+    return ErrorEnum::eNone;
 }
 
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val)
+Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, cloudprotocol::RequestLog& dst)
 {
-    cloudprotocol::RequestLog result;
+    dst.mLogID        = String(val.log_id().c_str());
+    dst.mFilter.mFrom = ConvertToAos(val.from());
+    dst.mFilter.mTill = ConvertToAos(val.till());
 
-    result.mLogID                  = String(val.log_id().c_str());
-    result.mFilter.mFrom           = ConvertToAos(val.from());
-    result.mFilter.mTill           = ConvertToAos(val.till());
-    result.mFilter.mInstanceFilter = ConvertToAos(val.instance_filter());
+    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter.mInstanceFilter); !err.IsNone()) {
+        return err;
+    }
 
-    return result;
+    return ErrorEnum::eNone;
 }
 
-cloudprotocol::RequestLog ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val)
+Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, cloudprotocol::RequestLog& dst)
 {
-    cloudprotocol::RequestLog result;
+    dst.mLogID        = String(val.log_id().c_str());
+    dst.mFilter.mFrom = ConvertToAos(val.from());
+    dst.mFilter.mTill = ConvertToAos(val.till());
 
-    result.mLogID                  = String(val.log_id().c_str());
-    result.mFilter.mFrom           = ConvertToAos(val.from());
-    result.mFilter.mTill           = ConvertToAos(val.till());
-    result.mFilter.mInstanceFilter = ConvertToAos(val.instance_filter());
+    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter.mInstanceFilter); !err.IsNone()) {
+        return err;
+    }
 
-    return result;
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::common::pbconvert
