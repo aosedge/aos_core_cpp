@@ -243,12 +243,13 @@ Poco::JSON::Object RequestedResourcesToJSON(const aos::oci::RequestedResources& 
     return object;
 }
 
-aos::oci::ServiceDevice ServiceDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void ServiceDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ServiceDevice& serviceDevice)
 {
     const auto device      = object.GetValue<std::string>("device");
     const auto permissions = object.GetValue<std::string>("permissions");
 
-    return {device.c_str(), permissions.c_str()};
+    serviceDevice.mDevice      = device.c_str();
+    serviceDevice.mPermissions = permissions.c_str();
 }
 
 Poco::JSON::Object ServiceDeviceToJSON(const aos::oci::ServiceDevice& device)
@@ -279,13 +280,12 @@ Poco::JSON::Object FunctionPermissionsToJSON(const FunctionPermissions& permissi
     return object;
 }
 
-FunctionServicePermissions FunctionServicePermissionsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void FunctionServicePermissionsFromJSON(
+    const utils::CaseInsensitiveObjectWrapper& object, FunctionServicePermissions& functionServicePermissions)
 {
     const auto name        = object.GetValue<std::string>("name");
     const auto permissions = utils::GetArrayValue<FunctionPermissions>(object, "permissions",
         [](const auto& value) { return FunctionPermissionsFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
-
-    FunctionServicePermissions functionServicePermissions;
 
     functionServicePermissions.mName = name.c_str();
 
@@ -293,8 +293,6 @@ FunctionServicePermissions FunctionServicePermissionsFromJSON(const utils::CaseI
         auto err = functionServicePermissions.mPermissions.PushBack(permission);
         AOS_ERROR_CHECK_AND_THROW("function permissions parsing error", err);
     }
-
-    return functionServicePermissions;
 }
 
 Poco::JSON::Object FunctionServicePermissionsToJSON(const FunctionServicePermissions& permissions)
@@ -505,28 +503,25 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
                 RequestedResourcesFromJSON(wrapper.GetObject("requestedResources")));
         }
 
-        const auto devices = utils::GetArrayValue<aos::oci::ServiceDevice>(wrapper, "devices",
-            [](const auto& value) { return ServiceDeviceFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
-
-        for (const auto& device : devices) {
-            err = serviceConfig.mDevices.PushBack(device);
+        utils::ForEach(wrapper, "devices", [&serviceConfig](const auto& value) {
+            auto err = serviceConfig.mDevices.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW("devices parsing error", err);
-        }
+
+            ServiceDeviceFromJSON(utils::CaseInsensitiveObjectWrapper(value), serviceConfig.mDevices.Back());
+        });
 
         for (const auto& resource : utils::GetArrayValue<std::string>(wrapper, "resources")) {
             err = serviceConfig.mResources.PushBack(resource.c_str());
             AOS_ERROR_CHECK_AND_THROW("resources parsing error", err);
         }
 
-        const auto permissions
-            = utils::GetArrayValue<FunctionServicePermissions>(wrapper, "permissions", [](const auto& value) {
-                  return FunctionServicePermissionsFromJSON(utils::CaseInsensitiveObjectWrapper(value));
-              });
-
-        for (const auto& permission : permissions) {
-            err = serviceConfig.mPermissions.PushBack(permission);
+        utils::ForEach(wrapper, "permissions", [&serviceConfig](const auto& value) {
+            auto err = serviceConfig.mPermissions.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW("permissions parsing error", err);
-        }
+
+            return FunctionServicePermissionsFromJSON(
+                utils::CaseInsensitiveObjectWrapper(value), serviceConfig.mPermissions.Back());
+        });
 
         if (wrapper.Has("alertRules")) {
             serviceConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
