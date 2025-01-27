@@ -82,9 +82,10 @@ struct Config {
  * Parses config from file.
  *
  * @param filename config file name.
- * @return config instance.
+ * @param[out] config config instance.
+ * @return Error.
  */
-RetWithError<Config> ParseConfig(const std::string& filename);
+Error ParseConfig(const std::string& filename, Config& config);
 
 } // namespace aos::sm::config
 

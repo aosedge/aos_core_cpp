@@ -15,8 +15,9 @@
 #include <utils/exception.hpp>
 #include <utils/json.hpp>
 
-#include "config.hpp"
 #include "logger/logmodule.hpp"
+
+#include "config.hpp"
 
 /***********************************************************************************************************************
  * Constants
@@ -41,10 +42,17 @@ namespace aos::sm::config {
 
 namespace {
 
-monitoring::Config ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+std::filesystem::path JoinPath(const std::string& base, const std::string& entry)
 {
-    monitoring::Config config {};
+    auto path = std::filesystem::path(base);
 
+    path /= entry;
+
+    return path;
+}
+
+void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, monitoring::Config& config)
+{
     const auto pollPeriod = object.Has("monitoring")
         ? object.GetObject("monitoring").GetValue<std::string>("pollPeriod", cDefaultMonitoringPollPeriod)
         : cDefaultMonitoringPollPeriod;
@@ -65,22 +73,16 @@ monitoring::Config ParseMonitoringConfig(const common::utils::CaseInsensitiveObj
     AOS_ERROR_CHECK_AND_THROW("error parsing averageWindow tag", err);
 
     config.mAverageWindow = duration.count();
-
-    return config;
 }
 
-LoggingConfig ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, LoggingConfig& config)
 {
-    return LoggingConfig {
-        object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen),
-        object.GetValue<uint64_t>("maxPartCount", 80),
-    };
+    config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen);
+    config.mMaxPartCount = object.GetValue<uint64_t>("maxPartCount", 80);
 }
 
-JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, JournalAlertsConfig& config)
 {
-    JournalAlertsConfig config {};
-
     config.mFilter = common::utils::GetArrayValue<std::string>(object, "filter");
 
     config.mServiceAlertPriority
@@ -99,8 +101,6 @@ JournalAlertsConfig ParseJournalAlertsConfig(const common::utils::CaseInsensitiv
 
         LOG_WRN() << "Default value is set for system alert priority: value=" << cDefaultServiceAlertPriority;
     }
-
-    return config;
 }
 
 Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
@@ -114,80 +114,56 @@ Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
     };
 }
 
-MigrationConfig ParseMigrationConfig(
-    const std::string& workDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseMigrationConfig(
+    const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir, MigrationConfig& config)
 {
-    return MigrationConfig {
-        object.GetOptionalValue<std::string>("migrationPath").value_or("/usr/share/aos/servicemanager/migration"),
-        object.GetOptionalValue<std::string>("mergedMigrationPath")
-            .value_or(FS::JoinPath(workDir.c_str(), "mergedMigration").CStr()),
-    };
+    config.mMigrationPath
+        = object.GetOptionalValue<std::string>("migrationPath").value_or("/usr/share/aos/servicemanager/migration");
+    config.mMergedMigrationPath = object.GetOptionalValue<std::string>("mergedMigrationPath")
+                                      .value_or(JoinPath(workingDir, "mergedMigration").c_str());
 }
 
-common::iamclient::Config ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::iamclient::Config& config)
 {
-    return common::iamclient::Config {
-        object.GetValue<std::string>("iamPublicServerURL"),
-        object.GetValue<std::string>("caCert"),
-    };
-};
-
-std::filesystem::path JoinPath(const std::string& base, const std::string& entry)
-{
-    auto path = std::filesystem::path(base);
-
-    path /= entry;
-
-    return path;
+    config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
+    config.mCACert             = object.GetValue<std::string>("caCert");
 }
 
-sm::servicemanager::Config ParseServiceManagerConfig(
-    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseServiceManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+    sm::servicemanager::Config& config)
 {
-    const auto servicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services"));
-    const auto downloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads"));
-    const auto serviceTTL  = object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays);
+    config.mServicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services")).c_str();
+    config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    const auto [ttl, err] = common::utils::ParseDuration(serviceTTL);
+    const auto [ttl, err]
+        = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
     AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
 
-    return sm::servicemanager::Config {
-        servicesDir.c_str(),
-        downloadDir.c_str(),
-        ttl.count(),
-    };
+    config.mTTL = ttl.count();
 }
 
-sm::layermanager::Config ParseLayerManagerConfig(
-    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+    sm::layermanager::Config& config)
 {
-    const auto layersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers"));
-    const auto downloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads"));
-    const auto ttlStr      = object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays);
+    config.mLayersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers")).c_str();
+    config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    const auto [ttl, err] = common::utils::ParseDuration(ttlStr);
+    const auto [ttl, err]
+        = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
     AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
 
-    return sm::layermanager::Config {
-        layersDir.c_str(),
-        downloadDir.c_str(),
-        ttl.count(),
-    };
+    config.mTTL = ttl.count();
 }
 
-sm::launcher::Config ParseLauncherConfig(
-    const std::string& workingDir, const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+    sm::launcher::Config& config)
 {
-    const auto storageDir = object.GetValue<std::string>("storageDir", JoinPath(workingDir, "storages"));
-    const auto stateDir   = object.GetValue<std::string>("stateDir", JoinPath(workingDir, "states"));
-
-    sm::launcher::Config config {};
-
-    config.mStorageDir = storageDir.c_str();
-    config.mStateDir   = stateDir.c_str();
+    config.mStorageDir = object.GetValue<std::string>("storageDir", JoinPath(workingDir, "storages")).c_str();
+    config.mStateDir   = object.GetValue<std::string>("stateDir", JoinPath(workingDir, "states")).c_str();
     config.mWorkDir    = workingDir.c_str();
 
     const auto hostBinds = common::utils::GetArrayValue<std::string>(object, "hostBinds");
+
     for (const auto& hostBind : hostBinds) {
         auto err = config.mHostBinds.EmplaceBack(hostBind.c_str());
         AOS_ERROR_CHECK_AND_THROW("error parsing hostBinds tag", err);
@@ -199,25 +175,18 @@ sm::launcher::Config ParseLauncherConfig(
         auto err = config.mHosts.EmplaceBack(host);
         AOS_ERROR_CHECK_AND_THROW("error parsing hosts tag", err);
     }
-
-    return config;
 }
 
-smclient::Config ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, smclient::Config& config)
 {
-    smclient::Config config;
-
-    config.mCertStorage = object.GetValue<std::string>("certStorage");
+    config.mCertStorage = object.GetValue<std::string>("certStorage").c_str();
     config.mCMServerURL = object.GetValue<std::string>("cmServerURL");
 
     Error err = ErrorEnum::eNone;
 
-    const auto reconnectTimeout = object.GetValue<std::string>("cmReconnectTimeout", cDefaultCMReconnectTimeout);
-
-    Tie(config.mCMReconnectTimeout, err) = common::utils::ParseDuration(reconnectTimeout);
+    Tie(config.mCMReconnectTimeout, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("cmReconnectTimeout", cDefaultCMReconnectTimeout));
     AOS_ERROR_CHECK_AND_THROW("error parsing cmReconnectTimeout tag", err);
-
-    return config;
 };
 
 } // namespace
@@ -226,15 +195,13 @@ smclient::Config ParseSMClientConfig(const common::utils::CaseInsensitiveObjectW
  * Public functions
  **********************************************************************************************************************/
 
-RetWithError<Config> ParseConfig(const std::string& filename)
+Error ParseConfig(const std::string& filename, Config& config)
 {
     std::ifstream file(filename);
 
     if (!file.is_open()) {
-        return {Config {}, ErrorEnum::eNotFound};
+        return ErrorEnum::eNotFound;
     }
-
-    Config config {};
 
     try {
         Poco::JSON::Parser                          parser;
@@ -243,11 +210,11 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
-        config.mIAMClientConfig      = ParseIAMClientConfig(object);
-        config.mLayerManagerConfig   = ParseLayerManagerConfig(config.mWorkingDir, object);
-        config.mServiceManagerConfig = ParseServiceManagerConfig(config.mWorkingDir, object);
-        config.mLauncherConfig       = ParseLauncherConfig(config.mWorkingDir, object);
-        config.mSMClientConfig       = ParseSMClientConfig(object);
+        ParseIAMClientConfig(object, config.mIAMClientConfig);
+        ParseLayerManagerConfig(object, config.mWorkingDir, config.mLayerManagerConfig);
+        ParseServiceManagerConfig(object, config.mWorkingDir, config.mServiceManagerConfig);
+        ParseLauncherConfig(object, config.mWorkingDir, config.mLauncherConfig);
+        ParseSMClientConfig(object, config.mSMClientConfig);
 
         config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
@@ -259,32 +226,32 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
-        config.mMonitoring = ParseMonitoringConfig(object);
+        ParseMonitoringConfig(object, config.mMonitoring);
 
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
         if (object.Has("logging")) {
-            config.mLogging = ParseLoggingConfig(object.GetObject("logging"));
+            ParseLoggingConfig(object.GetObject("logging"), config.mLogging);
         } else {
-            config.mLogging = ParseLoggingConfig(empty);
+            ParseLoggingConfig(empty, config.mLogging);
         }
 
         if (object.Has("journalAlerts")) {
-            config.mJournalAlerts = ParseJournalAlertsConfig(object.GetObject("journalAlerts"));
+            ParseJournalAlertsConfig(object.GetObject("journalAlerts"), config.mJournalAlerts);
         } else {
-            config.mJournalAlerts = ParseJournalAlertsConfig(empty);
+            ParseJournalAlertsConfig(empty, config.mJournalAlerts);
         }
 
         if (object.Has("migration")) {
-            config.mMigration = ParseMigrationConfig(config.mWorkingDir, object.GetObject("migration"));
+            ParseMigrationConfig(object.GetObject("migration"), config.mWorkingDir, config.mMigration);
         } else {
-            config.mMigration = ParseMigrationConfig(config.mWorkingDir, empty);
+            ParseMigrationConfig(empty, config.mWorkingDir, config.mMigration);
         }
     } catch (const std::exception& e) {
-        return {{}, common::utils::ToAosError(e)};
+        return common::utils::ToAosError(e);
     }
 
-    return {config, ErrorEnum::eNone};
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::config

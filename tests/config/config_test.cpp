@@ -136,111 +136,113 @@ public:
 
 TEST_F(ConfigTest, ParseConfig)
 {
-    auto [config, error] = aos::sm::config::ParseConfig(cConfigFileName);
+    auto config = std::make_unique<aos::sm::config::Config>();
 
-    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+    ASSERT_TRUE(aos::sm::config::ParseConfig(cConfigFileName, *config).IsNone());
 
-    EXPECT_STREQ(config.mIAMClientConfig.mCACert.c_str(), "CACert");
-    EXPECT_STREQ(config.mIAMClientConfig.mIAMPublicServerURL.c_str(), "localhost:8090");
+    EXPECT_EQ(config->mIAMClientConfig.mCACert, "CACert");
+    EXPECT_EQ(config->mIAMClientConfig.mIAMPublicServerURL, "localhost:8090");
 
-    EXPECT_STREQ(config.mCertStorage.c_str(), "sm");
+    EXPECT_EQ(config->mCertStorage, "sm");
 
-    EXPECT_STREQ(config.mSMClientConfig.mCertStorage.c_str(), "sm");
-    EXPECT_STREQ(config.mSMClientConfig.mCMServerURL.c_str(), "aoscm:8093");
-    EXPECT_EQ(config.mSMClientConfig.mCMReconnectTimeout, std::chrono::minutes(1))
-        << config.mSMClientConfig.mCMReconnectTimeout.count();
+    EXPECT_EQ(config->mSMClientConfig.mCertStorage, "sm");
+    EXPECT_EQ(config->mSMClientConfig.mCMServerURL, "aoscm:8093");
+    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, std::chrono::minutes(1))
+        << config->mSMClientConfig.mCMReconnectTimeout.count();
 
-    EXPECT_STREQ(config.mLauncherConfig.mWorkDir.CStr(), "workingDir");
-    EXPECT_STREQ(config.mLauncherConfig.mStorageDir.CStr(), "/var/aos/storage");
-    EXPECT_STREQ(config.mLauncherConfig.mStateDir.CStr(), "/var/aos/state");
+    EXPECT_EQ(config->mLauncherConfig.mWorkDir, "workingDir");
+    EXPECT_EQ(config->mLauncherConfig.mStorageDir, "/var/aos/storage");
+    EXPECT_EQ(config->mLauncherConfig.mStateDir, "/var/aos/state");
 
-    ASSERT_EQ(config.mLauncherConfig.mHostBinds.Size(), 3);
-    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[0].CStr(), "dir0");
-    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[1].CStr(), "dir1");
-    EXPECT_STREQ(config.mLauncherConfig.mHostBinds[2].CStr(), "dir2");
+    ASSERT_EQ(config->mLauncherConfig.mHostBinds.Size(), 3);
+    EXPECT_EQ(config->mLauncherConfig.mHostBinds[0], "dir0");
+    EXPECT_EQ(config->mLauncherConfig.mHostBinds[1], "dir1");
+    EXPECT_EQ(config->mLauncherConfig.mHostBinds[2], "dir2");
 
-    ASSERT_EQ(config.mLauncherConfig.mHosts.Size(), 2);
-    EXPECT_STREQ(config.mLauncherConfig.mHosts[0].mHostname.CStr(), "wwwivi");
-    EXPECT_STREQ(config.mLauncherConfig.mHosts[0].mIP.CStr(), "127.0.0.1");
-    EXPECT_STREQ(config.mLauncherConfig.mHosts[1].mHostname.CStr(), "wwwaosum");
-    EXPECT_STREQ(config.mLauncherConfig.mHosts[1].mIP.CStr(), "0.0.0.0");
+    ASSERT_EQ(config->mLauncherConfig.mHosts.Size(), 2);
+    EXPECT_EQ(config->mLauncherConfig.mHosts[0].mHostname, "wwwivi");
+    EXPECT_EQ(config->mLauncherConfig.mHosts[0].mIP, "127.0.0.1");
+    EXPECT_EQ(config->mLauncherConfig.mHosts[1].mHostname, "wwwaosum");
+    EXPECT_EQ(config->mLauncherConfig.mHosts[1].mIP, "0.0.0.0");
 
-    EXPECT_STREQ(config.mIAMProtectedServerURL.c_str(), "localhost:8089");
+    EXPECT_EQ(config->mIAMProtectedServerURL, "localhost:8089");
 
-    ASSERT_EQ(config.mJournalAlerts.mFilter.size(), 2);
-    EXPECT_STREQ(config.mJournalAlerts.mFilter[0].c_str(), "test");
-    EXPECT_STREQ(config.mJournalAlerts.mFilter[1].c_str(), "regexp");
-    EXPECT_EQ(config.mJournalAlerts.mServiceAlertPriority, 7);
-    EXPECT_EQ(config.mJournalAlerts.mSystemAlertPriority, 5);
+    ASSERT_EQ(config->mJournalAlerts.mFilter.size(), 2);
+    EXPECT_EQ(config->mJournalAlerts.mFilter[0], "test");
+    EXPECT_EQ(config->mJournalAlerts.mFilter[1], "regexp");
+    EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, 7);
+    EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, 5);
 
-    EXPECT_EQ(config.mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
-    EXPECT_STREQ(config.mServiceManagerConfig.mDownloadDir.CStr(), "/var/aos/servicemanager/download");
-    EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "/var/aos/servicemanager/services");
+    EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
+    EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
+    EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "/var/aos/servicemanager/services");
 
-    EXPECT_EQ(config.mLayerManagerConfig.mTTL, aos::Time::cHours * 20);
-    EXPECT_STREQ(config.mLayerManagerConfig.mDownloadDir.CStr(), "/var/aos/servicemanager/download");
-    EXPECT_STREQ(config.mLayerManagerConfig.mLayersDir.CStr(), "/var/aos/srvlib");
+    EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 20);
+    EXPECT_EQ(config->mLayerManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
+    EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "/var/aos/srvlib");
 
-    EXPECT_EQ(config.mLayersPartLimit, 20);
+    EXPECT_EQ(config->mLayersPartLimit, 20);
 
-    EXPECT_EQ(config.mLogging.mMaxPartCount, 10);
-    EXPECT_EQ(config.mLogging.mMaxPartSize, 1024);
+    EXPECT_EQ(config->mLogging.mMaxPartCount, 10);
+    EXPECT_EQ(config->mLogging.mMaxPartSize, 1024);
 
-    EXPECT_STREQ(config.mMigration.mMigrationPath.c_str(), "/usr/share/aos_servicemanager/migration");
-    EXPECT_STREQ(config.mMigration.mMergedMigrationPath.c_str(), "/var/aos/servicemanager/mergedMigration");
+    EXPECT_EQ(config->mMigration.mMigrationPath, "/usr/share/aos_servicemanager/migration");
+    EXPECT_EQ(config->mMigration.mMergedMigrationPath, "/var/aos/servicemanager/mergedMigration");
 
-    EXPECT_EQ(config.mMonitoring.mAverageWindow, 5 * aos::Time::cMinutes);
-    EXPECT_EQ(config.mMonitoring.mPollPeriod, aos::Time::cHours + aos::Time::cMinutes + 5 * aos::Time::cSeconds);
+    EXPECT_EQ(config->mMonitoring.mAverageWindow, 5 * aos::Time::cMinutes);
+    EXPECT_EQ(config->mMonitoring.mPollPeriod, aos::Time::cHours + aos::Time::cMinutes + 5 * aos::Time::cSeconds);
 
-    EXPECT_STREQ(config.mNodeConfigFile.c_str(), "/var/aos/aos_node.cfg");
-    EXPECT_EQ(config.mServicesPartLimit, 10);
-    EXPECT_STREQ(config.mWorkingDir.c_str(), "workingDir");
+    EXPECT_EQ(config->mNodeConfigFile, "/var/aos/aos_node.cfg");
+    EXPECT_EQ(config->mServicesPartLimit, 10);
+    EXPECT_EQ(config->mWorkingDir, "workingDir");
 }
 
 TEST_F(ConfigTest, DefaultValuesAreUsed)
 {
-    auto [config, error] = aos::sm::config::ParseConfig(cTestDefaultValuesConfigFileName);
+    auto config = std::make_unique<aos::sm::config::Config>();
 
-    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+    ASSERT_TRUE(aos::sm::config::ParseConfig(cTestDefaultValuesConfigFileName, *config).IsNone());
 
-    ASSERT_EQ(config.mJournalAlerts.mFilter.size(), 2);
-    EXPECT_STREQ(config.mJournalAlerts.mFilter[0].c_str(), "test");
-    EXPECT_STREQ(config.mJournalAlerts.mFilter[1].c_str(), "regexp");
+    ASSERT_EQ(config->mJournalAlerts.mFilter.size(), 2);
+    EXPECT_EQ(config->mJournalAlerts.mFilter[0], "test");
+    EXPECT_EQ(config->mJournalAlerts.mFilter[1], "regexp");
 
-    EXPECT_EQ(config.mJournalAlerts.mServiceAlertPriority, cDefaultServiceAlertPriority);
-    EXPECT_EQ(config.mJournalAlerts.mSystemAlertPriority, cDefaultSystemAlertPriority);
+    EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, cDefaultServiceAlertPriority);
+    EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, cDefaultSystemAlertPriority);
 
-    EXPECT_EQ(config.mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config.mLayerManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config.mSMClientConfig.mCMReconnectTimeout, std::chrono::seconds(10))
-        << config.mSMClientConfig.mCMReconnectTimeout.count();
+    EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
+    EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
+    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, std::chrono::seconds(10))
+        << config->mSMClientConfig.mCMReconnectTimeout.count();
 
-    EXPECT_EQ(config.mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
-    EXPECT_EQ(config.mMonitoring.mAverageWindow, 35 * aos::Time::cSeconds);
+    EXPECT_EQ(config->mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
+    EXPECT_EQ(config->mMonitoring.mAverageWindow, 35 * aos::Time::cSeconds);
 
-    EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/sm/");
+    EXPECT_EQ(config->mCertStorage, "/var/aos/crypt/sm/");
 
-    ASSERT_EQ(config.mWorkingDir, "test");
+    ASSERT_EQ(config->mWorkingDir, "test");
 
-    EXPECT_STREQ(config.mLauncherConfig.mStorageDir.CStr(), "test/storages");
-    EXPECT_STREQ(config.mLauncherConfig.mStateDir.CStr(), "test/states");
+    EXPECT_EQ(config->mLauncherConfig.mStorageDir, "test/storages");
+    EXPECT_EQ(config->mLauncherConfig.mStateDir, "test/states");
 
-    EXPECT_EQ(config.mLayerManagerConfig.mLayersDir, "test/layers");
-    EXPECT_STREQ(config.mServiceManagerConfig.mServicesDir.CStr(), "test/services");
-    EXPECT_STREQ(config.mServiceManagerConfig.mDownloadDir.CStr(), "test/downloads");
-    EXPECT_EQ(config.mNodeConfigFile, "test/aos_node.cfg");
+    EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "test/layers");
+    EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "test/services");
+    EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "test/downloads");
+    EXPECT_EQ(config->mNodeConfigFile, "test/aos_node.cfg");
 }
 
 TEST_F(ConfigTest, ErrorReturnedOnFileMissing)
 {
-    auto [config, error] = aos::sm::config::ParseConfig(cNotExistsFileName);
+    auto config = std::make_unique<aos::sm::config::Config>();
 
-    ASSERT_EQ(error, aos::ErrorEnum::eNotFound) << "not found error expected";
+    ASSERT_EQ(aos::sm::config::ParseConfig(cNotExistsFileName, *config), aos::ErrorEnum::eNotFound)
+        << "not found error expected";
 }
 
 TEST_F(ConfigTest, ErrorReturnedOnInvalidJSONData)
 {
-    auto [config, error] = aos::sm::config::ParseConfig(cInvalidConfigFileName);
+    auto config = std::make_unique<aos::sm::config::Config>();
 
-    ASSERT_EQ(error, aos::ErrorEnum::eFailed) << "failed error expected";
+    ASSERT_EQ(aos::sm::config::ParseConfig(cInvalidConfigFileName, *config), aos::ErrorEnum::eFailed)
+        << "failed error expected";
 }
