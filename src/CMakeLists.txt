@@ -13,7 +13,7 @@
 find_package(gRPC REQUIRED)
 
 # Poco lib
-find_package(Poco REQUIRED JSON DataSQLite Foundation)
+find_package(Poco REQUIRED JSON DataSQLite Foundation Util)
 
 # Find the libcurl package
 find_package(CURL REQUIRED)
