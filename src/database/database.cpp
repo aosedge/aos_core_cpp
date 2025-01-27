@@ -114,10 +114,9 @@ Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
     return result;
 }
 
-cloudprotocol::EnvVarsInstanceInfo ConvertEnvVarsInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
+void ConvertEnvVarsInfoFromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& object, cloudprotocol::EnvVarsInstanceInfo& result)
 {
-    cloudprotocol::EnvVarsInstanceInfo result;
-
     if (object.Has("instanceFilter")) {
         const auto filter = object.GetObject("instanceFilter");
 
@@ -141,11 +140,9 @@ cloudprotocol::EnvVarsInstanceInfo ConvertEnvVarsInfoFromJSON(const common::util
         });
 
     for (auto& envVar : envVars) {
-        AOS_ERROR_CHECK_AND_THROW(
-            "DB instance's envVar count exceeds application limit", result.mVariables.PushBack(Move(envVar)));
+        auto err = result.mVariables.PushBack(Move(envVar));
+        AOS_ERROR_CHECK_AND_THROW("DB instance's envVar count exceeds application limit", err);
     }
-
-    return result;
 }
 
 Error ConvertEnvVarsInstanceInfoArrayFromJSON(
@@ -175,9 +172,12 @@ Error ConvertEnvVarsInstanceInfoArrayFromJSON(
                 continue;
             }
 
-            AOS_ERROR_CHECK_AND_THROW("DB instance's envvars count exceeds application limit",
-                envVarsInstanceInfos.PushBack(
-                    ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr))));
+            auto envVarsInfo = std::make_unique<cloudprotocol::EnvVarsInstanceInfo>();
+
+            ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr), *envVarsInfo);
+
+            err = envVarsInstanceInfos.PushBack(*envVarsInfo);
+            AOS_ERROR_CHECK_AND_THROW("DB instance's envvars count exceeds application limit", err);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -238,10 +238,8 @@ public:
     using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, uint32_t, uint64_t, std::string,
         std::string, Poco::Nullable<std::string>>;
 
-    static sm::launcher::InstanceData ToAos(const Fields& dbFields)
+    static void ToAos(const Fields& dbFields, sm::launcher::InstanceData& result)
     {
-        sm::launcher::InstanceData result;
-
         result.mInstanceID = dbFields.get<Columns::eInstanceID>().c_str();
 
         result.mInstanceInfo.mInstanceIdent.mServiceID = dbFields.get<Columns::eServiceID>().c_str();
@@ -256,7 +254,7 @@ public:
 
         const auto networkJson = dbFields.get<Columns::eNetwork>();
         if (networkJson.isNull()) {
-            return result;
+            return;
         }
 
         Poco::JSON::Parser parser;
@@ -267,8 +265,6 @@ public:
         }
 
         ConvertNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);
-
-        return result;
     }
 
 private:
@@ -518,7 +514,11 @@ Error Database::GetAllInstances(Array<sm::launcher::InstanceData>& instances)
         *mSession << "SELECT * FROM instances;", into(result), now;
 
         for (const auto& info : result) {
-            if (auto err = instances.PushBack(DBInstanceData::ToAos(info)); !err.IsNone()) {
+            auto instanceData = std::make_unique<sm::launcher::InstanceData>();
+
+            DBInstanceData::ToAos(info, *instanceData);
+
+            if (auto err = instances.PushBack(*instanceData); !err.IsNone()) {
                 return AOS_ERROR_WRAP(Error(err, "db instances count exceeds application limit"));
             }
         }
