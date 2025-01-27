@@ -10,6 +10,7 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "utils/grpchelper.hpp"
@@ -182,6 +183,35 @@ TEST_F(JsonTest, CaseInsensitiveObjectWrapperFromPocoVarFails)
         auto               result = parser.parse({R"(["value1","value2"])"});
 
         ASSERT_THROW(CaseInsensitiveObjectWrapper {result}, Poco::BadCastException);
+    } catch (const Poco::Exception& e) {
+        FAIL() << e.displayText();
+    }
+}
+
+TEST_F(JsonTest, ForEach)
+{
+    try {
+        MockFunction<void(const Poco::Dynamic::Var&)> mockFunction;
+
+        Poco::JSON::Object::Ptr object      = new Poco::JSON::Object();
+        Poco::JSON::Array::Ptr  stringArray = new Poco::JSON::Array();
+
+        const std::vector<std::string> expectedStrings = {"value1", "value2", "value3"};
+
+        for (const auto& string : expectedStrings) {
+            stringArray->add(string);
+        }
+
+        object->set("exists", stringArray);
+
+        EXPECT_CALL(mockFunction, Call(_)).Times(expectedStrings.size());
+        ForEach(CaseInsensitiveObjectWrapper(object), "exists",
+            [&mockFunction](const auto& value) { mockFunction.Call(value); });
+
+        EXPECT_CALL(mockFunction, Call(_)).Times(0);
+        ForEach(CaseInsensitiveObjectWrapper(object), "doesnot-exist",
+            [&mockFunction](const auto& value) { mockFunction.Call(value); });
+
     } catch (const Poco::Exception& e) {
         FAIL() << e.displayText();
     }
