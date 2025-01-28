@@ -319,11 +319,11 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
 {
     LOG_DBG() << "Process get permissions: funcServerID=" << request->functional_server_id().c_str();
 
-    aos::InstanceIdent                                                    aosInstanceIdent;
-    aos::StaticArray<aos::FunctionPermissions, aos::cFuncServiceMaxCount> aosInstancePerm;
+    aos::InstanceIdent aosInstanceIdent;
+    auto aosInstancePerm = std::make_unique<aos::StaticArray<aos::FunctionPermissions, aos::cFuncServiceMaxCount>>();
 
     if (auto err = GetPermHandler()->GetPermissions(
-            request->secret().c_str(), request->functional_server_id().c_str(), aosInstanceIdent, aosInstancePerm);
+            request->secret().c_str(), request->functional_server_id().c_str(), aosInstanceIdent, *aosInstancePerm);
         !err.IsNone()) {
         LOG_ERR() << "Failed to get permissions: " << err;
 
@@ -337,7 +337,7 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
     instanceIdent.set_subject_id(aosInstanceIdent.mSubjectID.CStr());
     instanceIdent.set_instance(aosInstanceIdent.mInstance);
 
-    for (const auto& [key, val] : aosInstancePerm) {
+    for (const auto& [key, val] : *aosInstancePerm) {
         (*permissions.mutable_permissions())[key.CStr()] = val.CStr();
     }
 
