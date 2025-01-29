@@ -346,21 +346,22 @@ private:
 
 class DBLayerData {
 public:
-    using Fields
-        = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t, uint32_t, uint32_t>;
+    using Fields = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, std::string, uint64_t,
+        uint32_t, uint32_t>;
 
     static sm::layermanager::LayerData ToAos(const Fields& dbFields)
     {
         sm::layermanager::LayerData layer;
 
-        layer.mLayerDigest = dbFields.get<Columns::eDigest>().c_str();
-        layer.mLayerID     = dbFields.get<Columns::eLayerId>().c_str();
-        layer.mPath        = dbFields.get<Columns::ePath>().c_str();
-        layer.mOSVersion   = dbFields.get<Columns::eOSVersion>().c_str();
-        layer.mVersion     = dbFields.get<Columns::eVersion>().c_str();
-        layer.mSize        = dbFields.get<Columns::eSize>();
-        layer.mState       = static_cast<sm::layermanager::LayerStateEnum>(dbFields.get<Columns::eState>());
-        layer.mTimestamp   = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
+        layer.mLayerDigest         = dbFields.get<Columns::eDigest>().c_str();
+        layer.mUnpackedLayerDigest = dbFields.get<Columns::eUnpackedDigest>().c_str();
+        layer.mLayerID             = dbFields.get<Columns::eLayerId>().c_str();
+        layer.mPath                = dbFields.get<Columns::ePath>().c_str();
+        layer.mOSVersion           = dbFields.get<Columns::eOSVersion>().c_str();
+        layer.mVersion             = dbFields.get<Columns::eVersion>().c_str();
+        layer.mSize                = dbFields.get<Columns::eSize>();
+        layer.mState               = static_cast<sm::layermanager::LayerStateEnum>(dbFields.get<Columns::eState>());
+        layer.mTimestamp           = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
 
         return layer;
     }
@@ -368,6 +369,7 @@ public:
 private:
     enum Columns {
         eDigest = 0,
+        eUnpackedDigest,
         eLayerId,
         ePath,
         eOSVersion,
@@ -416,6 +418,8 @@ Error Database::Init(const std::string& workDir, const config::MigrationConfig& 
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
 
         if (auto err = CreateConfigTable(); !err.IsNone()) {
+            LOG_ERR() << "Failed to create config table: err=" << err.StrValue();
+
             return err;
         }
 
@@ -424,7 +428,11 @@ Error Database::Init(const std::string& workDir, const config::MigrationConfig& 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
         mMigration->MigrateToVersion(sVersion);
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+        auto err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
+
+        LOG_ERR() << "Failed to init database: err=" << err;
+
+        return err;
     }
 
     return ErrorEnum::eNone;
@@ -871,9 +879,9 @@ Error Database::AddLayer(const sm::layermanager::LayerData& layer)
     LOG_DBG() << "Add layer: digest=" << layer.mLayerDigest;
 
     try {
-        *mSession << "INSERT INTO layers values(?, ?, ?, ?, ?, ?, ?, ?);", bind(layer.mLayerDigest.CStr()),
-            bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()), bind(layer.mOSVersion.CStr()),
-            bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
+        *mSession << "INSERT INTO layers values(?, ?, ?, ?, ?, ?, ?, ?, ?);", bind(layer.mLayerDigest.CStr()),
+            bind(layer.mUnpackedLayerDigest.CStr()), bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()),
+            bind(layer.mOSVersion.CStr()), bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
             bind(static_cast<uint32_t>(layer.mState.GetValue())), bind(layer.mSize), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -953,10 +961,11 @@ Error Database::UpdateLayer(const sm::layermanager::LayerData& layer)
         Poco::Data::Statement statement {*mSession};
 
         statement << "UPDATE layers SET "
-                     "layerId = ?, path = ?, osVersion = ?, version = ?, timestamp = ?, state = ?, size = ? "
+                     "unpackedDigest = ?, layerId = ?, path = ?, osVersion = ?, version = ?, timestamp = ?, state = ?, "
+                     "size = ? "
                      "WHERE digest = ?;",
-            bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()), bind(layer.mOSVersion.CStr()),
-            bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
+            bind(layer.mUnpackedLayerDigest.CStr()), bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()),
+            bind(layer.mOSVersion.CStr()), bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
             bind(static_cast<uint32_t>(layer.mState.GetValue())), bind(layer.mSize), bind(layer.mLayerDigest.CStr());
 
         if (statement.execute() == 0) {
@@ -1215,6 +1224,7 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS layers ("
                  "digest TEXT NOT NULL PRIMARY KEY, "
+                 "unpackedDigest TEXT, "
                  "layerId TEXT, "
                  "path TEXT, "
                  "osVersion TEXT, "

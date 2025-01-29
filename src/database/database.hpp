@@ -311,7 +311,7 @@ public:
     RetWithError<alerts::ServiceInstanceData> GetInstanceInfoByID(const String& id) override;
 
 private:
-    static constexpr int  sVersion    = 0;
+    static constexpr int  sVersion    = 1;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     RetWithError<bool> TableExist(const std::string& tableName);
