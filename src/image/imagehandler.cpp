@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <sys/xattr.h>
 #include <vector>
 
@@ -79,6 +80,25 @@ Error OCIWhiteoutsToOverlay(const String& path, uint32_t uid, uint32_t gid)
     }
 
     return ErrorEnum::eNone;
+}
+
+std::set<std::filesystem::path> GetAllFilesByPath(const std::filesystem::path& path)
+{
+    std::set<std::filesystem::path> files;
+
+    if (std::filesystem::is_regular_file(path)) {
+        files.insert(path);
+
+        return files;
+    }
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+        if (entry.is_regular_file()) {
+            files.insert(entry.path());
+        }
+    }
+
+    return files;
 }
 
 } // namespace
@@ -403,32 +423,39 @@ Error ImageHandler::CheckFileInfo(const String& path, uint64_t size, const Array
 RetWithError<StaticArray<uint8_t, cSHA256Size>> ImageHandler::CalculateHash(
     const String& path, crypto::Hash algorithm) const
 {
-    std::ifstream file(path.CStr(), std::ios::binary);
-    if (!file.is_open()) {
-        return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
-    }
-
-    auto [hasher, err] = mHasher->CreateHash(algorithm);
-    if (!err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(err)};
-    }
-
-    std::vector<uint8_t> buffer(cBufferSize, 0);
-
-    while (file) {
-        file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-
-        if (const auto bytesRead = file.gcount(); bytesRead > 0) {
-            if (err = hasher->Update(Array<uint8_t>(buffer.data(), static_cast<size_t>(bytesRead))); !err.IsNone()) {
-                return {{}, AOS_ERROR_WRAP(Error(err, "failed to calculate hash"))};
-            }
-        }
-    }
-
     StaticArray<uint8_t, cSHA256Size> hash;
 
-    if (err = hasher->Finalize(hash); !err.IsNone()) {
-        return {{}, AOS_ERROR_WRAP(Error(err, "failed to calculate hash"))};
+    try {
+        auto [hasher, err] = mHasher->CreateHash(algorithm);
+        if (!err.IsNone()) {
+            return {{}, AOS_ERROR_WRAP(err)};
+        }
+
+        for (const auto& file : GetAllFilesByPath(path.CStr())) {
+            std::ifstream ifile(file, std::ios::binary);
+            if (!ifile.is_open()) {
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+            }
+
+            std::vector<uint8_t> buffer(cBufferSize, 0);
+
+            while (ifile) {
+                ifile.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+
+                if (const auto bytesRead = ifile.gcount(); bytesRead > 0) {
+                    if (err = hasher->Update(Array<uint8_t>(buffer.data(), static_cast<size_t>(bytesRead)));
+                        !err.IsNone()) {
+                        return {{}, AOS_ERROR_WRAP(Error(err, "failed to calculate hash"))};
+                    }
+                }
+            }
+        }
+
+        if (err = hasher->Finalize(hash); !err.IsNone()) {
+            return {{}, AOS_ERROR_WRAP(Error(err, "failed to calculate hash"))};
+        }
+    } catch (const std::exception& e) {
+        return {{}, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 
     return {hash, ErrorEnum::eNone};
