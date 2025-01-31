@@ -465,7 +465,7 @@ TEST_F(DatabaseTest, AddNetworkInfoSucceeds)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
-    aos::sm::networkmanager::NetworkParameters networkParams {"networkID", "subnet", "ip", 1, "vlanIfName"};
+    aos::sm::networkmanager::NetworkInfo networkParams {"networkID", "subnet", "ip", 1, "vlanIfName"};
 
     ASSERT_TRUE(mDB.AddNetworkInfo(networkParams).IsNone());
     ASSERT_TRUE(mDB.AddNetworkInfo(networkParams).Is(aos::ErrorEnum::eFailed));
@@ -484,8 +484,8 @@ TEST_F(DatabaseTest, GetNetworksInfoSucceeds)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
-    aos::StaticArray<aos::sm::networkmanager::NetworkParameters, 2> networks;
-    aos::StaticArray<aos::sm::networkmanager::NetworkParameters, 2> expectedNetworks;
+    aos::StaticArray<aos::sm::networkmanager::NetworkInfo, 2> networks;
+    aos::StaticArray<aos::sm::networkmanager::NetworkInfo, 2> expectedNetworks;
 
     networks.PushBack({"networkID-1", "subnet", "ip", 1, "vlanIfName"});
     networks.PushBack({"networkID-2", "subnet", "ip", 1, "vlanIfName"});

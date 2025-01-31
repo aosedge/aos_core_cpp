@@ -191,7 +191,7 @@ public:
      * @param info network info.
      * @return Error.
      */
-    Error AddNetworkInfo(const sm::networkmanager::NetworkParameters& info) override;
+    Error AddNetworkInfo(const sm::networkmanager::NetworkInfo& info) override;
 
     /**
      * Returns network information.
@@ -199,7 +199,7 @@ public:
      * @param networks[out] network information result.
      * @return Error.
      */
-    Error GetNetworksInfo(Array<sm::networkmanager::NetworkParameters>& networks) const override;
+    Error GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks) const override;
 
     /**
      * Sets traffic monitor data.

@@ -321,9 +321,9 @@ class DBNetworkInfo {
 public:
     using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string>;
 
-    static sm::networkmanager::NetworkParameters ToAos(const Fields& dbFields)
+    static sm::networkmanager::NetworkInfo ToAos(const Fields& dbFields)
     {
-        sm::networkmanager::NetworkParameters networkParameters;
+        sm::networkmanager::NetworkInfo networkParameters;
 
         networkParameters.mNetworkID  = dbFields.get<Columns::eNetworkID>().c_str();
         networkParameters.mSubnet     = dbFields.get<Columns::eSubnet>().c_str();
@@ -770,7 +770,7 @@ Error Database::RemoveNetworkInfo(const String& networkID)
     return ErrorEnum::eNone;
 }
 
-Error Database::AddNetworkInfo(const sm::networkmanager::NetworkParameters& info)
+Error Database::AddNetworkInfo(const sm::networkmanager::NetworkInfo& info)
 {
     LOG_DBG() << "Add network info: networkID=" << info.mNetworkID;
 
@@ -784,7 +784,7 @@ Error Database::AddNetworkInfo(const sm::networkmanager::NetworkParameters& info
     return ErrorEnum::eNone;
 }
 
-Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkParameters>& networks) const
+Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks) const
 {
     LOG_DBG() << "Get all networks";
 
