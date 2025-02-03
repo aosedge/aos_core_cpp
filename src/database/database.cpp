@@ -69,7 +69,7 @@ cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseIns
 }
 
 Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
-    const cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
+    const Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     Poco::JSON::Array result;
 
@@ -146,7 +146,7 @@ void ConvertEnvVarsInfoFromJSON(
 }
 
 Error ConvertEnvVarsInstanceInfoArrayFromJSON(
-    const std::string& src, cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
+    const std::string& src, Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     if (src.empty()) {
         return ErrorEnum::eNone;
@@ -563,7 +563,7 @@ Error Database::SetOperationVersion(uint64_t version)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetOverrideEnvVars(cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos) const
+Error Database::GetOverrideEnvVars(Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos) const
 {
     LOG_DBG() << "Get override env vars";
 
@@ -580,7 +580,7 @@ Error Database::GetOverrideEnvVars(cloudprotocol::EnvVarsInstanceInfoArray& envV
     return ErrorEnum::eNone;
 }
 
-Error Database::SetOverrideEnvVars(const cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos)
+Error Database::SetOverrideEnvVars(const Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     LOG_DBG() << "Set override env vars";
 

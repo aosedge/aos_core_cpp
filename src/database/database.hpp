@@ -106,7 +106,7 @@ public:
      * @param envVarsInstanceInfos[out] instances's override environment variables array.
      * @return Error.
      */
-    Error GetOverrideEnvVars(cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos) const override;
+    Error GetOverrideEnvVars(Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos) const override;
 
     /**
      * Sets instances's override environment variables array.
@@ -114,7 +114,7 @@ public:
      * @param envVarsInstanceInfos instances's override environment variables array.
      * @return Error.
      */
-    Error SetOverrideEnvVars(const cloudprotocol::EnvVarsInstanceInfoArray& envVarsInstanceInfos) override;
+    Error SetOverrideEnvVars(const Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos) override;
 
     /**
      * Returns online time.
