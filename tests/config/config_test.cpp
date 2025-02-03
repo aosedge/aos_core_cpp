@@ -80,7 +80,8 @@ static constexpr auto cTestServiceManagerJSON          = R"({
     "servicesPartLimit": 10,
     "stateDir": "/var/aos/state",
     "storageDir": "/var/aos/storage",
-    "workingDir": "workingDir"
+    "workingDir": "workingDir",
+    "removeOutdatedPeriod": "1d"
 })";
 static constexpr auto cTestDefaultValuesJSON           = R"({
     "workingDir": "test",
@@ -165,6 +166,9 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mLauncherConfig.mHosts[1].mHostname, "wwwaosum");
     EXPECT_EQ(config->mLauncherConfig.mHosts[1].mIP, "0.0.0.0");
 
+    EXPECT_EQ(
+        config->mLauncherConfig.mRemoveOutdatedPeriod, aos::common::utils::Duration(std::chrono::hours(24)).count());
+
     EXPECT_EQ(config->mIAMProtectedServerURL, "localhost:8089");
 
     ASSERT_EQ(config->mJournalAlerts.mFilter.size(), 2);
@@ -176,10 +180,14 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
     EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
     EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "/var/aos/servicemanager/services");
+    EXPECT_EQ(config->mServiceManagerConfig.mRemoveOutdatedPeriod,
+        aos::common::utils::Duration(std::chrono::hours(24)).count());
 
     EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 20);
     EXPECT_EQ(config->mLayerManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
     EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "/var/aos/srvlib");
+    EXPECT_EQ(config->mLayerManagerConfig.mRemoveOutdatedPeriod,
+        aos::common::utils::Duration(std::chrono::hours(24)).count());
 
     EXPECT_EQ(config->mLayersPartLimit, 20);
 

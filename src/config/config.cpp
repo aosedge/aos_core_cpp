@@ -135,11 +135,20 @@ void ParseServiceManagerConfig(const common::utils::CaseInsensitiveObjectWrapper
     config.mServicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    const auto [ttl, err]
-        = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
+    auto [ttl, err] = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
     AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
 
     config.mTTL = ttl.count();
+
+    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
+    if (removeOutdatedPeriod.has_value()) {
+        common::utils::Duration period;
+
+        Tie(period, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
+
+        config.mRemoveOutdatedPeriod = period.count();
+    }
 }
 
 void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
@@ -148,11 +157,20 @@ void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     config.mLayersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    const auto [ttl, err]
-        = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
+    auto [ttl, err] = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
     AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
 
     config.mTTL = ttl.count();
+
+    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
+    if (removeOutdatedPeriod.has_value()) {
+        common::utils::Duration period;
+
+        Tie(period, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
+
+        config.mRemoveOutdatedPeriod = period.count();
+    }
 }
 
 void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
@@ -174,6 +192,14 @@ void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
     for (const auto& host : hosts) {
         auto err = config.mHosts.EmplaceBack(host);
         AOS_ERROR_CHECK_AND_THROW("error parsing hosts tag", err);
+    }
+
+    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
+    if (removeOutdatedPeriod.has_value()) {
+        auto [period, err] = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
+
+        config.mRemoveOutdatedPeriod = period.count();
     }
 }
 
