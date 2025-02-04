@@ -198,15 +198,17 @@ Error CNI::AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt, R
         auto prevResult = ResultToJSON(net.mPrevResult);
         auto args       = ArgsAsString(rt, ActionEnum::eAdd);
 
-        prevResult = ExecuteBridgePlugin(net, prevResult, args);
-        prevResult = ExecuteDNSPlugin(net, rt, prevResult, args);
-        prevResult = ExecuteFirewallPlugin(net, prevResult, args);
-        prevResult = ExecuteBandwidthPlugin(net, prevResult, args);
+        std::vector<std::string> plugins;
+
+        prevResult = ExecuteBridgePlugin(net, prevResult, args, plugins);
+        prevResult = ExecuteDNSPlugin(net, rt, prevResult, args, plugins);
+        prevResult = ExecuteFirewallPlugin(net, prevResult, args, plugins);
+        prevResult = ExecuteBandwidthPlugin(net, prevResult, args, plugins);
 
         ParsePrevResult(prevResult, result);
         auto path = std::filesystem::path(mConfigDir) / (net.mName.CStr() + std::string("-") + rt.mContainerID.CStr());
 
-        WriteCacheEntryToFile(CreateCacheEntry(net, rt, prevResult), path);
+        WriteCacheEntryToFile(CreateCacheEntry(net, rt, prevResult, plugins), path);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -222,10 +224,12 @@ Error CNI::DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt
         auto prevResult = ResultToJSON(net.mPrevResult);
         auto args       = ArgsAsString(rt, ActionEnum::eDel);
 
-        ExecuteBridgePlugin(net, prevResult, args);
-        ExecuteDNSPlugin(net, rt, prevResult, args);
-        ExecuteFirewallPlugin(net, prevResult, args);
-        ExecuteBandwidthPlugin(net, prevResult, args);
+        std::vector<std::string> plugins;
+
+        ExecuteBridgePlugin(net, prevResult, args, plugins);
+        ExecuteDNSPlugin(net, rt, prevResult, args, plugins);
+        ExecuteFirewallPlugin(net, prevResult, args, plugins);
+        ExecuteBandwidthPlugin(net, prevResult, args, plugins);
 
         if (!std::filesystem::remove(
                 std::filesystem::path(mConfigDir) / (net.mName.CStr() + std::string("-") + rt.mContainerID.CStr()))) {
@@ -441,8 +445,8 @@ std::string CNI::ResultToJSON(const Result& result) const
     return oss.str();
 }
 
-std::string CNI::ExecuteBridgePlugin(
-    const NetworkConfigList& net, const std::string& prevResult, const std::string& args)
+std::string CNI::ExecuteBridgePlugin(const NetworkConfigList& net, const std::string& prevResult,
+    const std::string& args, std::vector<std::string>& plugins)
 {
     if (net.mBridge.mType.IsEmpty()) {
         return std::string {};
@@ -450,7 +454,7 @@ std::string CNI::ExecuteBridgePlugin(
 
     LOG_DBG() << "Execute bridge plugin: name=" << net.mName.CStr();
 
-    auto bridgeConfig = BridgeConfigToJSON(net, prevResult);
+    auto bridgeConfig = BridgeConfigToJSON(net, prevResult, plugins);
     auto pluginPath   = std::filesystem::path(cBinaryPluginDir) / net.mBridge.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(bridgeConfig, pluginPath, args);
@@ -459,8 +463,8 @@ std::string CNI::ExecuteBridgePlugin(
     return result;
 }
 
-std::string CNI::ExecuteDNSPlugin(
-    const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult, const std::string& args)
+std::string CNI::ExecuteDNSPlugin(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+    const std::string& args, std::vector<std::string>& plugins)
 {
     if (net.mDNS.mType.IsEmpty()) {
         return prevResult;
@@ -468,7 +472,7 @@ std::string CNI::ExecuteDNSPlugin(
 
     LOG_DBG() << "Execute DNS plugin: name=" << net.mName.CStr();
 
-    auto dnsConfig  = DNSConfigToJSON(net, rt, prevResult);
+    auto dnsConfig  = DNSConfigToJSON(net, rt, prevResult, plugins);
     auto pluginPath = std::filesystem::path(cBinaryPluginDir) / net.mDNS.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(dnsConfig, pluginPath, args);
@@ -477,8 +481,8 @@ std::string CNI::ExecuteDNSPlugin(
     return result;
 }
 
-std::string CNI::ExecuteFirewallPlugin(
-    const NetworkConfigList& net, const std::string& prevResult, const std::string& args)
+std::string CNI::ExecuteFirewallPlugin(const NetworkConfigList& net, const std::string& prevResult,
+    const std::string& args, std::vector<std::string>& plugins)
 {
     if (net.mFirewall.mType.IsEmpty()) {
         return prevResult;
@@ -486,7 +490,7 @@ std::string CNI::ExecuteFirewallPlugin(
 
     LOG_DBG() << "Execute firewall plugin: name=" << net.mName.CStr();
 
-    auto firewallConfig = FirewallConfigToJSON(net, prevResult);
+    auto firewallConfig = FirewallConfigToJSON(net, prevResult, plugins);
     auto pluginPath     = std::filesystem::path(cBinaryPluginDir) / net.mFirewall.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(firewallConfig, pluginPath, args);
@@ -552,11 +556,12 @@ std::string CNI::CreateBridgePluginConfig(const BridgePluginConf& bridge) const
     return oss.str();
 }
 
-std::string CNI::BridgeConfigToJSON(const NetworkConfigList& net, const std::string& prevResult)
+std::string CNI::BridgeConfigToJSON(
+    const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins)
 {
     auto pluginConfig = CreateBridgePluginConfig(net.mBridge);
 
-    mPlugins.push_back(pluginConfig);
+    plugins.push_back(pluginConfig);
 
     return AddCNIData(pluginConfig, net.mVersion.CStr(), net.mName.CStr(), prevResult);
 }
@@ -624,11 +629,12 @@ std::string CNI::CreateFirewallPluginConfig(const FirewallPluginConf& firewall) 
     return oss.str();
 }
 
-std::string CNI::FirewallConfigToJSON(const NetworkConfigList& net, const std::string& prevResult)
+std::string CNI::FirewallConfigToJSON(
+    const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins)
 {
     auto pluginConfig = CreateFirewallPluginConfig(net.mFirewall);
 
-    mPlugins.push_back(pluginConfig);
+    plugins.push_back(pluginConfig);
 
     return AddCNIData(pluginConfig, net.mVersion.CStr(), net.mName.CStr(), prevResult);
 }
@@ -650,23 +656,24 @@ std::string CNI::CreateBandwidthPluginConfig(const BandwidthNetConf& bandwidth) 
     return oss.str();
 }
 
-std::string CNI::BandwidthConfigToJSON(const NetworkConfigList& net, const std::string& prevResult)
+std::string CNI::BandwidthConfigToJSON(
+    const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins)
 {
     auto pluginConfig = CreateBandwidthPluginConfig(net.mBandwidth);
 
-    mPlugins.push_back(pluginConfig);
+    plugins.push_back(pluginConfig);
 
     return AddCNIData(pluginConfig, net.mVersion.CStr(), net.mName.CStr(), prevResult);
 }
 
-std::string CNI::ExecuteBandwidthPlugin(
-    const NetworkConfigList& net, const std::string& prevResult, const std::string& args)
+std::string CNI::ExecuteBandwidthPlugin(const NetworkConfigList& net, const std::string& prevResult,
+    const std::string& args, std::vector<std::string>& plugins)
 {
     if (net.mBandwidth.mType.IsEmpty()) {
         return prevResult;
     }
 
-    auto bandwidthConfig = BandwidthConfigToJSON(net, prevResult);
+    auto bandwidthConfig = BandwidthConfigToJSON(net, prevResult, plugins);
     auto pluginPath      = std::string(cBinaryPluginDir) + "/" + net.mBandwidth.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(bandwidthConfig, pluginPath, args);
@@ -765,14 +772,14 @@ std::string CNI::AddCNIData(const std::string& pluginConfig, const std::string& 
     return oss.str();
 }
 
-std::string CNI::DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult)
+std::string CNI::DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+    std::vector<std::string>& plugins)
 {
     auto pluginConfig = CreateDNSPluginConfig(net.mDNS);
 
-    mPlugins.push_back(pluginConfig);
+    plugins.push_back(pluginConfig);
 
     auto configWithRuntime = AddDNSRuntimeConfig(pluginConfig, net.mName.CStr(), rt);
-
     return AddCNIData(configWithRuntime, net.mVersion.CStr(), net.mName.CStr(), prevResult);
 }
 
@@ -842,7 +849,7 @@ void CNI::ParsePrevResult(const std::string& prevResult, Result& result) const
     }
 }
 
-std::string CNI::CreatePluginsConfig(const NetworkConfigList& net) const
+std::string CNI::CreatePluginsConfig(const NetworkConfigList& net, const std::vector<std::string>& plugins) const
 {
     Poco::JSON::Object jsonRoot;
 
@@ -851,7 +858,7 @@ std::string CNI::CreatePluginsConfig(const NetworkConfigList& net) const
 
     Poco::JSON::Array pluginsArray;
 
-    for (const auto& pluginConfig : mPlugins) {
+    for (const auto& pluginConfig : plugins) {
         if (!pluginConfig.empty()) {
             auto [json, err] = common::utils::ParseJson(pluginConfig);
             AOS_ERROR_CHECK_AND_THROW("failed to parse plugin config", err);
@@ -911,8 +918,8 @@ Poco::JSON::Object CNI::CreateCapabilityArgsObject(const RuntimeConf& rt, const 
     return capabilityArgs;
 }
 
-std::string CNI::CreateCacheEntry(
-    const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult) const
+std::string CNI::CreateCacheEntry(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+    const std::vector<std::string>& plugins) const
 {
     Poco::JSON::Object cacheEntry;
 
@@ -921,7 +928,7 @@ std::string CNI::CreateCacheEntry(
     cacheEntry.set("ifName", rt.mIfName.CStr());
     cacheEntry.set("networkName", net.mName.CStr());
 
-    std::string         configStr = CreatePluginsConfig(net);
+    std::string         configStr = CreatePluginsConfig(net, plugins);
     std::ostringstream  encodedStream;
     Poco::Base64Encoder encoder(encodedStream);
     encoder << configStr;

@@ -9,6 +9,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <Poco/JSON/Array.h>
 #include <Poco/JSON/Object.h>
@@ -92,23 +93,25 @@ private:
 
     static constexpr auto cBinaryPluginDir = "/opt/cni/bin";
 
-    std::string ExecuteBridgePlugin(
-        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
-    std::string ExecuteFirewallPlugin(
-        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
-    std::string ExecuteBandwidthPlugin(
-        const NetworkConfigList& net, const std::string& prevResult, const std::string& args);
-    std::string ExecuteDNSPlugin(
-        const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult, const std::string& args);
+    std::string ExecuteBridgePlugin(const NetworkConfigList& net, const std::string& prevResult,
+        const std::string& args, std::vector<std::string>& plugins);
+    std::string ExecuteFirewallPlugin(const NetworkConfigList& net, const std::string& prevResult,
+        const std::string& args, std::vector<std::string>& plugins);
+    std::string ExecuteBandwidthPlugin(const NetworkConfigList& net, const std::string& prevResult,
+        const std::string& args, std::vector<std::string>& plugins);
+    std::string ExecuteDNSPlugin(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+        const std::string& args, std::vector<std::string>& plugins);
     std::string ArgsAsString(const RuntimeConf& rt, Action action) const;
 
     std::string CreateBridgePluginConfig(const BridgePluginConf& bridge) const;
-    std::string BridgeConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+    std::string BridgeConfigToJSON(
+        const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins);
 
     void ParsePrevResult(const std::string& prevResult, Result& result) const;
 
     std::string CreateDNSPluginConfig(const DNSPluginConf& dns) const;
-    std::string DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult);
+    std::string DNSConfigToJSON(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+        std::vector<std::string>& plugins);
     std::string AddDNSRuntimeConfig(
         const std::string& pluginConfig, const std::string& name, const RuntimeConf& rt) const;
 
@@ -116,24 +119,25 @@ private:
         const std::string& prevResult) const;
 
     std::string CreateFirewallPluginConfig(const FirewallPluginConf& firewall) const;
-    std::string FirewallConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+    std::string FirewallConfigToJSON(
+        const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins);
 
     std::string CreateBandwidthPluginConfig(const BandwidthNetConf& bandwidth) const;
-    std::string BandwidthConfigToJSON(const NetworkConfigList& net, const std::string& prevResult);
+    std::string BandwidthConfigToJSON(
+        const NetworkConfigList& net, const std::string& prevResult, std::vector<std::string>& plugins);
 
-    std::string        CreatePluginsConfig(const NetworkConfigList& net) const;
+    std::string        CreatePluginsConfig(const NetworkConfigList& net, const std::vector<std::string>& plugins) const;
     Poco::JSON::Array  CreateCNIArgsArray(const RuntimeConf& rt) const;
     Poco::JSON::Object CreateCapabilityArgsObject(const RuntimeConf& rt, const std::string& networkName) const;
-    std::string        CreateCacheEntry(
-               const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult) const;
+    std::string CreateCacheEntry(const NetworkConfigList& net, const RuntimeConf& rt, const std::string& prevResult,
+        const std::vector<std::string>& plugins) const;
 
     void WriteCacheEntryToFile(const std::string& cacheEntry, const std::string& cachePath) const;
 
     std::string ResultToJSON(const Result& result) const;
 
-    std::string              mConfigDir;
-    ExecItf*                 mExec {};
-    std::vector<std::string> mPlugins;
+    std::string mConfigDir;
+    ExecItf*    mExec {};
 };
 } // namespace aos::sm::cni
 
