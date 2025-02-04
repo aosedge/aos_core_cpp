@@ -147,10 +147,7 @@ void AosCore::Init(const std::string& configFile)
 
 void AosCore::Start()
 {
-    auto err = mSMClient.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
-
-    err = mRunner.Start();
+    auto err = mRunner.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start runner", err);
 
     err = mLauncher.Start();
@@ -173,6 +170,9 @@ void AosCore::Start()
 
     err = mJournalAlerts.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start journalalerts", err);
+
+    err = mSMClient.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
 }
 
 void AosCore::Stop()
