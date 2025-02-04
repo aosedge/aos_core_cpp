@@ -102,7 +102,7 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 }
 

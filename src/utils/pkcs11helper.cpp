@@ -34,8 +34,8 @@ static std::string CreateLibP11PKCS11URL(const String& url)
         std::regex modulePathRegex {"module\\-path=[^&?;]*[&?;]?"};
 
         result = std::regex_replace(result, modulePathRegex, "");
-    } catch (const std::exception& exc) {
-        AOS_ERROR_THROW(exc.what(), aos::ErrorEnum::eFailed);
+    } catch (const std::exception& e) {
+        AOS_ERROR_THROW(e.what(), aos::ErrorEnum::eFailed);
     }
 
     return result;
@@ -50,7 +50,7 @@ RetWithError<std::string> CreatePKCS11URL(const String& keyURL)
     try {
         return {CreateLibP11PKCS11URL(keyURL), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {"", utils::ToAosError(e)};
+        return {"", AOS_ERROR_WRAP(utils::ToAosError(e))};
     }
 }
 

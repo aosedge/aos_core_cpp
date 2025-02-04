@@ -20,6 +20,7 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/StringTokenizer.h>
 
+#include "utils/exception.hpp"
 #include "utils/image.hpp"
 
 namespace fs = std::filesystem;
@@ -145,10 +146,8 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bo
 
             size += std::stoull(tokenizer[cFileSizeTokenIndex]);
         }
-    } catch (const Poco::Exception& e) {
-        return {0, Error(ErrorEnum::eFailed, e.displayText().c_str())};
     } catch (const std::exception& e) {
-        return {0, Error(ErrorEnum::eFailed, e.what())};
+        return {0, AOS_ERROR_WRAP(ToAosError(e))};
     }
 
     if (int rc = ph.wait(); rc != 0) {
@@ -173,8 +172,8 @@ Error ValidateDigest(const Digest& digest)
 
     try {
         ValidateEncoded(algorithm, hex);
-    } catch (const std::runtime_error& e) {
-        return Error(ErrorEnum::eInvalidArgument, e.what());
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(ToAosError(e, ErrorEnum::eInvalidArgument));
     }
 
     return ErrorEnum::eNone;

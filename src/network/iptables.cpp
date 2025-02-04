@@ -107,7 +107,7 @@ Error IPTables::Append(const std::string& chain, const RuleBuilder& builder)
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -127,7 +127,7 @@ RetWithError<std::vector<std::string>> IPTables::ListAllRulesWithCounters(const 
         rules = ExecuteCommandWithOutput(command.str());
 
     } catch (const std::exception& e) {
-        return {{}, utils::ToAosError(e)};
+        return {{}, AOS_ERROR_WRAP(utils::ToAosError(e))};
     }
 
     return rules;
@@ -145,7 +145,7 @@ Error IPTables::Insert(const std::string& chain, unsigned int position, const Ru
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -163,7 +163,7 @@ Error IPTables::DeleteRule(const std::string& chain, const RuleBuilder& builder)
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -180,7 +180,7 @@ Error IPTables::NewChain(const std::string& chain)
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -197,7 +197,7 @@ Error IPTables::ClearChain(const std::string& chain)
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -214,7 +214,7 @@ Error IPTables::DeleteChain(const std::string& chain)
 
         ExecuteCommand(command.str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -243,7 +243,7 @@ RetWithError<std::vector<std::string>> IPTables::ListChains()
             }
         }
     } catch (const std::exception& e) {
-        return {{}, utils::ToAosError(e)};
+        return {{}, AOS_ERROR_WRAP(utils::ToAosError(e))};
     }
 
     return chains;

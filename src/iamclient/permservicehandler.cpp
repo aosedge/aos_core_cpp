@@ -51,7 +51,7 @@ RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandl
 
         return {response.secret().c_str(), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {{}, utils::ToAosError(e, ErrorEnum::eRuntime)};
+        return {{}, AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime))};
     }
 }
 
@@ -79,7 +79,7 @@ Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanc
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return utils::ToAosError(e, ErrorEnum::eRuntime);
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
     }
 }
 

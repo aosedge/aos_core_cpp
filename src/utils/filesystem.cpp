@@ -82,7 +82,7 @@ Error ChangeOwner(const std::string& path, uint32_t newUID, uint32_t newGID)
         }
 
     } catch (const std::exception& e) {
-        return utils::ToAosError(e);
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
