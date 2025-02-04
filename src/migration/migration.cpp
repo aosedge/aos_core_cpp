@@ -50,7 +50,7 @@ void Migration::ApplyMigration(const std::string& migrationScript)
     std::ifstream file(path);
 
     if (!file.is_open()) {
-        AOS_ERROR_THROW("Failed to open migration script: " + migrationScript, aos::ErrorEnum::eRuntime);
+        AOS_ERROR_THROW("failed to open migration script: " + migrationScript, aos::ErrorEnum::eRuntime);
     }
 
     std::string script((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

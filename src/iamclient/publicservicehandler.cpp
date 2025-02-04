@@ -245,7 +245,7 @@ Error PublicServiceHandler::CreateCredentials(bool insecureConnection)
 
         mCredentials = common::utils::GetTLSClientCredentials(mConfig.mCACert.c_str());
     } catch (const std::exception& e) {
-        return utils::ToAosError(e, ErrorEnum::eRuntime);
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
     }
 
     return ErrorEnum::eNone;
@@ -299,7 +299,7 @@ void PublicServiceHandler::RunTask(const std::string& certType, Subscription* su
                 }
             }
         } catch (const std::exception& e) {
-            LOG_ERR() << "Subscription loop failed: err=" << utils::ToAosError(e);
+            LOG_ERR() << "Subscription loop failed: err=" << AOS_ERROR_WRAP(utils::ToAosError(e));
         }
 
         {

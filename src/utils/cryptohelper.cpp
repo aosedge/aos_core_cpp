@@ -56,7 +56,7 @@ RetWithError<std::string> LoadPEMCertificates(
 
         return {ConvertCertificatesToPEM(chain, cryptoProvider), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {"", utils::ToAosError(e)};
+        return {"", AOS_ERROR_WRAP(utils::ToAosError(e))};
     }
 }
 
