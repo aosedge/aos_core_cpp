@@ -29,11 +29,11 @@ Error Retry(const std::function<Error()>& retryFunc, const std::function<void(in
             retryCbk(attempt, delay, err);
         }
 
-        std::this_thread::sleep_for(delay);
+        std::this_thread::sleep_for(std::chrono::duration<int64_t, std::nano>(delay.Nanoseconds()));
 
         delay *= 2;
 
-        if (maxDelay != Duration::zero() && delay > maxDelay) {
+        if (maxDelay && delay > maxDelay) {
             delay = maxDelay;
         }
 

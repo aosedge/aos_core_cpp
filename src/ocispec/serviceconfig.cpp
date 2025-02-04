@@ -29,22 +29,17 @@ void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Ru
 {
     params.mStartBurst = object.GetValue<long>("startBurst");
 
-    Error           err;
-    utils::Duration duration;
+    Error err;
 
     if (const auto startInterval = object.GetOptionalValue<std::string>("startInterval"); startInterval.has_value()) {
-        Tie(duration, err) = utils::ParseDuration(*startInterval);
+        Tie(params.mStartInterval, err) = utils::ParseDuration(*startInterval);
         AOS_ERROR_CHECK_AND_THROW("start interval parsing error", err);
-
-        params.mStartInterval = duration.count();
     }
 
     if (const auto restartInterval = object.GetOptionalValue<std::string>("restartInterval");
         restartInterval.has_value()) {
-        Tie(duration, err) = utils::ParseDuration(*restartInterval);
+        Tie(params.mRestartInterval, err) = utils::ParseDuration(*restartInterval);
         AOS_ERROR_CHECK_AND_THROW("restart interval parsing error", err);
-
-        params.mRestartInterval = duration.count();
     }
 }
 
@@ -52,14 +47,9 @@ Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
-    Error       err;
-    std::string durationStr;
-
     if (params.mStartInterval > 0) {
-        Tie(durationStr, err) = utils::FormatISO8601Duration(utils::Duration(params.mStartInterval));
-        AOS_ERROR_CHECK_AND_THROW("start interval formatting error", err);
-
-        object.set("startInterval", durationStr);
+        auto durationStr = params.mStartInterval.ToISO8601String();
+        object.set("startInterval", durationStr.CStr());
     }
 
     if (params.mStartBurst > 0) {
@@ -67,10 +57,8 @@ Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
     }
 
     if (params.mRestartInterval > 0) {
-        Tie(durationStr, err) = utils::FormatISO8601Duration(utils::Duration(params.mRestartInterval));
-        AOS_ERROR_CHECK_AND_THROW("restart interval formatting error", err);
-
-        object.set("restartInterval", durationStr);
+        auto durationStr = params.mRestartInterval.ToISO8601String();
+        object.set("restartInterval", durationStr.CStr());
     }
 
     return object;
@@ -310,10 +298,10 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
     AlertRulePercents percents = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
-        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+        Error err;
 
-        percents.mMinTimeout = duration.count();
+        Tie(percents.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
     }
 
     percents.mMinThreshold = object.GetValue<double>("minThreshold");
@@ -327,10 +315,10 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
     AlertRulePoints points = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
-        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+        Error err;
 
-        points.mMinTimeout = duration.count();
+        Tie(points.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
     }
 
     points.mMinThreshold = object.GetValue<uint64_t>("minThreshold");
@@ -385,10 +373,8 @@ Poco::JSON::Object AlertRuleToJSON(const T& rule)
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (rule.mMinTimeout > 0) {
-        auto [duration, err] = utils::FormatISO8601Duration(utils::Duration(rule.mMinTimeout));
-        AOS_ERROR_CHECK_AND_THROW("offlineTTL formatting error", err);
-
-        object.set("minTimeout", duration);
+        auto duration = rule.mMinTimeout.ToISO8601String();
+        object.set("minTimeout", duration.CStr());
     }
 
     object.set("minThreshold", rule.mMinThreshold);
@@ -486,12 +472,8 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         }
 
         if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL"); offlineTTLStr.has_value()) {
-            utils::Duration offlineTTL;
-
-            Tie(offlineTTL, err) = utils::ParseDuration(*offlineTTLStr);
+            Tie(serviceConfig.mOfflineTTL, err) = utils::ParseDuration(*offlineTTLStr);
             AOS_ERROR_CHECK_AND_THROW("offlineTTL parsing error", err);
-
-            serviceConfig.mOfflineTTL = offlineTTL.count();
         }
 
         if (wrapper.Has("quotas")) {
@@ -562,12 +544,8 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
         }
 
         if (serviceConfig.mOfflineTTL > 0) {
-            std::string offlineTTLStr;
-
-            Tie(offlineTTLStr, err) = utils::FormatISO8601Duration(utils::Duration(serviceConfig.mOfflineTTL));
-            AOS_ERROR_CHECK_AND_THROW("offlineTTL formatting error", err);
-
-            object->set("offlineTTL", offlineTTLStr);
+            auto offlineTTLStr = serviceConfig.mOfflineTTL.ToISO8601String();
+            object->set("offlineTTL", offlineTTLStr.CStr());
         }
 
         object->set("quotas", ServiceQuotasToJSON(serviceConfig.mQuotas));

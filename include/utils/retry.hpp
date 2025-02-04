@@ -27,7 +27,7 @@ namespace aos::common::utils {
  * @return Error
  */
 Error Retry(const std::function<Error()>& retryFunc, const std::function<void(int, Duration, Error)> retryCbk = nullptr,
-    int maxTry = 3, Duration delay = std::chrono::seconds(1), Duration maxDelay = std::chrono::minutes(1));
+    int maxTry = 3, Duration delay = Time::cSeconds, Duration maxDelay = Time::cMinutes);
 
 } // namespace aos::common::utils
 

@@ -125,49 +125,55 @@ protected:
 
 TEST_F(TimeTest, ParseDurationSucceeds)
 {
-    using namespace std::chrono_literals;
-
     struct Test {
-        std::string              input;
-        std::chrono::nanoseconds expected;
+        std::string mInput;
+        Duration    mExpected;
     };
 
     std::vector<Test> tests = {
         // duration string
-        {"1ns", 1ns},
-        {"1us", 1us},
-        {"1µs", 1us},
-        {"1ms", 1ms},
-        {"1s", 1s},
-        {"1m", 1min},
-        {"1h", 1h},
-        {"1d", 24h},
-        {"1w", 24h * 7},
-        {"1y", 24h * 365},
-        {"200s", 200s},
-        {"1h20m1s", 1h + 20min + 1s},
-        {"15h20m20s20ms", 15h + 20min + 20s + 20ms},
-        {"20h20m20s200ms100us", 20h + 20min + 20s + 200ms + 100us},
-        {"20h20m20s200ms100us100ns", 20h + 20min + 20s + 200ms + 100us + 100ns},
-        {"1y1w1d1h1m1s1ms1us", 24h * 365 + 24h * 7 + 24h + 1h + 1min + 1s + 1ms + 1us},
+        {"1ns", Time::cNanoseconds},
+        {"1us", Time::cMicroseconds},
+        {"1µs", Time::cMicroseconds},
+        {"1ms", Time::cMilliseconds},
+        {"1s", Time::cSeconds},
+        {"1m", Time::cMinutes},
+        {"1h", Time::cHours},
+        {"1d", Time::cDay},
+        {"1w", Time::cWeek},
+        {"1y", Time::cYear},
+        {"200s", Time::cSeconds * 200},
+        {"1h20m1s", Time::cHours + Time::cMinutes * 20 + Time::cSeconds},
+        {"15h20m20s20ms", Time::cHours * 15 + Time::cMinutes * 20 + Time::cSeconds * 20 + Time::cMilliseconds * 20},
+        {"20h20m20s200ms100us",
+            Time::cHours * 20 + Time::cMinutes * 20 + Time::cSeconds * 20 + Time::cMilliseconds * 200
+                + Time::cMicroseconds * 100},
+        {"20h20m20s200ms100us100ns",
+            Time::cHours * 20 + Time::cMinutes * 20 + Time::cSeconds * 20 + Time::cMilliseconds * 200
+                + Time::cMicroseconds * 100 + Time::cNanoseconds * 100},
+        {"1y1w1d1h1m1s1ms1us",
+            Time::cYear + Time::cWeek + Time::cDay + Time::cHours + Time::cMinutes + Time::cSeconds
+                + Time::cMilliseconds + Time::cMicroseconds},
         // ISO 8601 duration string
-        {"P1Y", 24h * 365},
-        {"P1Y1D", 24h * 365 + 24h},
-        {"PT1S", 1s},
-        {"PT1M1S", 1min + 1s},
-        {"PT1H1M1S", 1h + 1min + 1s},
-        {"P1Y1M1W1DT1H1M1S", 24h * 365 + (24h * 365 / 12) + (24h * 7) + 24h + 1h + 1min + 1s},
+        {"P1Y", Time::cYear},
+        {"-P1Y", -Time::cYear},
+        {"P1Y1D", Time::cYear + Time::cDay},
+        {"PT1S", Time::cSeconds},
+        {"PT1M1S", Time::cMinutes + Time::cSeconds},
+        {"PT1H1M1S", Time::cHours + Time::cMinutes + Time::cSeconds},
+        {"P1Y1M1W1DT1H1M1S",
+            Time::cYear + Time::cMonth + Time::cWeek + Time::cDay + Time::cHours + Time::cMinutes + Time::cSeconds},
         // floating number string
-        {"10", 10s},
-        {"10.1", 10s},
-        {"10.5", 11s},
-        {"10.9", 11s},
+        {"10", Time::cSeconds * 10},
+        {"10.1", Time::cSeconds * 10},
+        {"10.5", Time::cSeconds * 11},
+        {"10.9", Time::cSeconds * 11},
     };
 
     for (const auto& test : tests) {
-        auto [duration, error] = ParseDuration(test.input);
-        ASSERT_TRUE(error.IsNone());
-        ASSERT_EQ(duration, test.expected);
+        auto [duration, error] = ParseDuration(test.mInput);
+        ASSERT_TRUE(error.IsNone()) << "input= " << test.mInput << ", err=" << error.Message();
+        ASSERT_EQ(duration.Nanoseconds(), test.mExpected.Nanoseconds()) << "input= " << test.mInput;
     }
 }
 
@@ -178,35 +184,6 @@ TEST_F(TimeTest, ParseDurationFromInvalidString)
     for (const auto& test : tests) {
         auto [duration, error] = ParseDuration(test);
         ASSERT_FALSE(error.IsNone());
-    }
-}
-
-TEST_F(TimeTest, FormatISO8601Duration)
-{
-    using namespace std::chrono_literals;
-
-    struct Test {
-        std::string              expected;
-        std::chrono::nanoseconds Duration;
-    };
-
-    std::vector<Test> tests = {
-        {"PT1S", 1s},
-        {"PT1M", 1min},
-        {"PT1H", 1h},
-        {"PT1H1M1S", 1h + 1min + 1s},
-        {"P1D", 24h},
-        {"P1W", 24h * 7},
-        {"P1M", 24h * 365 / 12},
-        {"P1Y", 24h * 365},
-        {"P1Y1M1W1DT1H1M1S", 24h * 365 + (24h * 365 / 12) + (24h * 7) + 24h + 1h + 1min + 1s},
-    };
-
-    for (const auto& test : tests) {
-        auto [durationStr, error] = FormatISO8601Duration(test.Duration);
-
-        ASSERT_TRUE(error.IsNone()) << "expected: " << test.expected << ", err: " << error.Message();
-        ASSERT_EQ(durationStr, test.expected);
     }
 }
 

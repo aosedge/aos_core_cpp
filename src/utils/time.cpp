@@ -19,30 +19,16 @@ namespace aos::common::utils {
 namespace {
 
 /***********************************************************************************************************************
- * Constants
- **********************************************************************************************************************/
-
-constexpr auto cSecondDuration = Duration(std::chrono::seconds(1));
-constexpr auto cMinuteDuration = Duration(std::chrono::minutes(1));
-constexpr auto cHourDuration   = Duration(std::chrono::hours(1));
-constexpr auto cDayDuration    = cHourDuration * 24;
-constexpr auto cWeekDuration   = 7 * cDayDuration;
-constexpr auto cYearDuration   = 365 * cDayDuration;
-constexpr auto cMonthDuration  = cYearDuration / 12;
-
-/***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
 RetWithError<Duration> ParseStringDuration(const std::string& durationStr)
 {
-    static const std::map<std::string, std::chrono::nanoseconds> units
-        = {{"ns", std::chrono::nanoseconds(1)}, {"us", std::chrono::microseconds(1)},
-            {"µs", std::chrono::microseconds(1)}, {"ms", std::chrono::milliseconds(1)}, {"s", std::chrono::seconds(1)},
-            {"m", std::chrono::minutes(1)}, {"h", std::chrono::hours(1)}, {"d", std::chrono::hours(24)},
-            {"w", std::chrono::hours(24 * 7)}, {"y", std::chrono::hours(24 * 365)}};
+    static const std::map<std::string, Duration> units = {{"ns", Time::cNanoseconds}, {"us", Time::cMicroseconds},
+        {"µs", Time::cMicroseconds}, {"ms", Time::cMilliseconds}, {"s", Time::cSeconds}, {"m", Time::cMinutes},
+        {"h", Time::cHours}, {"d", Time::cDay}, {"w", Time::cWeek}, {"y", Time::cYear}};
 
-    std::chrono::nanoseconds totalDuration {};
+    Duration totalDuration {};
 
     std::regex           componentPattern(R"((\d+)(ns|us|µs|ms|s|m|h|d|w|y))");
     auto                 begin = std::sregex_iterator(durationStr.begin(), durationStr.end(), componentPattern);
@@ -69,26 +55,26 @@ RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period)
     }
 
     std::smatch match;
-    std::regex  iso8601DurationPattern(R"(P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)");
+    std::regex  iso8601DurationPattern(R"(-?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)");
 
     if (!std::regex_match(period, match, iso8601DurationPattern) || match.size() != 5) {
         return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
     if (match[1].matched) {
-        totalDuration += std::stoi(match[1].str()) * cYearDuration;
+        totalDuration += Time::cYear * std::stoi(match[1].str());
     }
 
     if (match[2].matched) {
-        totalDuration += std::stoi(match[2].str()) * cMonthDuration;
+        totalDuration += Time::cMonth * std::stoi(match[2].str());
     }
 
     if (match[3].matched) {
-        totalDuration += std::stoi(match[3].str()) * cWeekDuration;
+        totalDuration += Time::cWeek * std::stoi(match[3].str());
     }
 
     if (match[4].matched) {
-        totalDuration += std::stoi(match[4].str()) * cDayDuration;
+        totalDuration += Time::cDay * std::stoi(match[4].str());
     }
 
     return totalDuration;
@@ -96,10 +82,10 @@ RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period)
 
 RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
 {
-    std::chrono::nanoseconds totalDuration {};
+    Duration totalDuration {};
 
     if (time.empty()) {
-        return {totalDuration};
+        return totalDuration;
     }
 
     std::smatch match;
@@ -110,15 +96,15 @@ RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
     }
 
     if (match[1].matched) {
-        totalDuration += std::stoi(match[1].str()) * cHourDuration;
+        totalDuration += Time::cHours * std::stoi(match[1].str());
     }
 
     if (match[2].matched) {
-        totalDuration += std::stoi(match[2].str()) * cMinuteDuration;
+        totalDuration += Time::cMinutes * std::stoi(match[2].str());
     }
 
     if (match[3].matched) {
-        totalDuration += std::stoi(match[3].str()) * cSecondDuration;
+        totalDuration += Time::cSeconds * std::stoi(match[3].str());
     }
 
     return totalDuration;
@@ -128,7 +114,7 @@ RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
 {
     Duration    totalDuration {};
     std::smatch match;
-    std::regex  iso8601DurationPattern(R"(^(P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
+    std::regex iso8601DurationPattern(R"(^(-?P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
 
     if (!std::regex_match(duration, match, iso8601DurationPattern) || match.size() != 3) {
         return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
@@ -148,72 +134,11 @@ RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
 
     totalDuration += delta;
 
+    if (duration[0] == '-') {
+        totalDuration = -totalDuration;
+    }
+
     return totalDuration;
-}
-
-std::string FormatISO8601DurationPeriod(int64_t& total)
-{
-    std::ostringstream oss;
-
-    oss << "P";
-
-    if (auto years = total / cYearDuration.count(); years > 0) {
-        oss << years << "Y";
-
-        total %= cYearDuration.count();
-    }
-
-    if (auto months = total / cMonthDuration.count(); months > 0) {
-        oss << months << "M";
-
-        total %= cMonthDuration.count();
-    }
-
-    if (auto weeks = total / cWeekDuration.count(); weeks > 0) {
-        oss << weeks << "W";
-
-        total %= cWeekDuration.count();
-    }
-
-    if (auto days = total / cDayDuration.count(); days > 0) {
-        oss << days << "D";
-
-        total %= cDayDuration.count();
-    }
-
-    return oss.str();
-}
-
-std::string FormatISO8601DurationTime(int64_t& total)
-{
-    std::ostringstream oss;
-
-    auto hours = total / cHourDuration.count();
-    total %= cHourDuration.count();
-
-    auto minutes = total / cMinuteDuration.count();
-    total %= cMinuteDuration.count();
-
-    auto seconds = total / cSecondDuration.count();
-    total %= cSecondDuration.count();
-
-    if (hours || minutes || seconds) {
-        oss << "T";
-
-        if (hours) {
-            oss << hours << "H";
-        }
-
-        if (minutes) {
-            oss << minutes << "M";
-        }
-
-        if (seconds) {
-            oss << seconds << "S";
-        }
-    }
-
-    return oss.str();
 }
 
 }; // namespace
@@ -228,14 +153,14 @@ RetWithError<Duration> ParseDuration(const std::string& durationStr)
         return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "empty duration string"))};
     }
 
-    if (durationStr[0] == 'P') {
+    if (durationStr[0] == 'P' || durationStr.find("-P") != std::string::npos) {
         return ParseISO8601Duration(durationStr);
     }
 
     const std::regex floatPattern(R"(^-?\d*(\.\d+)?$)");
 
     if (std::regex_match(durationStr, floatPattern)) {
-        return Duration(std::chrono::seconds(static_cast<int>(std::stod(durationStr) + 0.5)));
+        return Time::cSeconds * static_cast<int>(std::stod(durationStr) + 0.5);
     }
 
     const std::regex durationStringPattern(R"((\d+(ns|us|µs|ms|s|m|h|d|w|y))+$)");
@@ -245,18 +170,6 @@ RetWithError<Duration> ParseDuration(const std::string& durationStr)
     }
 
     return {{}, Error(ErrorEnum::eInvalidArgument, "invalid duration string")};
-}
-
-RetWithError<std::string> FormatISO8601Duration(const Duration& duration)
-{
-    auto total = duration.count();
-
-    auto durationStr = FormatISO8601DurationPeriod(total);
-    if (durationStr.empty()) {
-        return {"", Error(ErrorEnum::eFailed, "failed to format ISO8601 duration")};
-    }
-
-    return durationStr.append(FormatISO8601DurationTime(total));
 }
 
 RetWithError<Time> FromUTCString(const std::string& utcTimeStr)
