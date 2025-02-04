@@ -78,7 +78,7 @@ Journal::Journal()
 {
     int ret = sd_journal_open(&mJournal, SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't open journal", ret);
     }
 }
 
@@ -90,42 +90,42 @@ Journal::~Journal()
 void Journal::SeekRealtime(Time time)
 {
     if (auto ret = sd_journal_seek_realtime_usec(mJournal, ToMicroSeconds(time)); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't seek journal", ret);
     }
 }
 
 void Journal::SeekTail()
 {
     if (auto ret = sd_journal_seek_tail(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't seek journal", ret);
     }
 }
 
 void Journal::SeekHead()
 {
     if (auto ret = sd_journal_seek_head(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't seek journal", ret);
     }
 }
 
 void Journal::AddDisjunction()
 {
     if (auto ret = sd_journal_add_disjunction(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't add journal disjunction", ret);
     }
 }
 
 void Journal::AddMatch(const std::string& match)
 {
     if (auto ret = sd_journal_add_match(mJournal, match.c_str(), match.length()); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't add journal match", ret);
     }
 }
 
 bool Journal::Next()
 {
     if (auto ret = sd_journal_next(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal next", ret);
     } else if (ret > 0) {
         return true;
     }
@@ -136,7 +136,7 @@ bool Journal::Next()
 bool Journal::Previous()
 {
     if (auto ret = sd_journal_previous(mJournal); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal previous", ret);
     } else if (ret > 0) {
         return true;
     }
@@ -150,7 +150,7 @@ JournalEntry Journal::GetEntry()
     JournalEntry entry;
 
     Tie(entry.mMessage, err) = ExtractJournalField(mJournal, "MESSAGE");
-    AOS_ERROR_CHECK_AND_THROW("Failed getting message field", err);
+    AOS_ERROR_CHECK_AND_THROW("failed getting message field", err);
 
     Tie(entry.mSystemdUnit, ignore)   = ExtractJournalField(mJournal, "_SYSTEMD_UNIT");
     Tie(entry.mSystemdCGroup, ignore) = ExtractJournalField(mJournal, "_SYSTEMD_CGROUP");
@@ -172,17 +172,17 @@ JournalEntry Journal::GetEntry()
 
     auto ret = sd_id128_get_boot(&bootId);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal boot", ret);
     }
 
     ret = sd_journal_get_monotonic_usec(mJournal, &monotonicTime, &bootId);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal monotonic time", ret);
     }
 
     ret = sd_journal_get_realtime_usec(mJournal, &realTime);
     if (ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal real time", ret);
     }
 
     entry.mMonotonicTime = FromMicroSeconds(monotonicTime);
@@ -194,7 +194,7 @@ JournalEntry Journal::GetEntry()
 void Journal::SeekCursor(const std::string& cursor)
 {
     if (auto ret = sd_journal_seek_cursor(mJournal, cursor.c_str()); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't seek journal", ret);
     }
 }
 
@@ -203,7 +203,7 @@ std::string Journal::GetCursor()
     char* cursor = nullptr;
 
     if (auto ret = sd_journal_get_cursor(mJournal, &cursor); ret < 0) {
-        AOS_ERROR_THROW(strerror(-ret), ret);
+        AOS_ERROR_THROW("can't get journal cursor", ret);
     }
 
     return cursor;

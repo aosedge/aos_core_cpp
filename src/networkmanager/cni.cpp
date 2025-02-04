@@ -184,7 +184,7 @@ Error CNI::SetConfDir(const String& configDir)
     try {
         std::filesystem::create_directories(mConfigDir);
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -212,7 +212,7 @@ Error CNI::AddNetworkList(const NetworkConfigList& net, const RuntimeConf& rt, R
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return Error(ErrorEnum::eFailed, e.what());
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
@@ -238,7 +238,7 @@ Error CNI::DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
@@ -341,7 +341,7 @@ Error CNI::GetNetworkListCachedConfig(NetworkConfigList& net, RuntimeConf& rt)
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 

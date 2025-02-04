@@ -455,7 +455,7 @@ Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& b
 
                 return ErrorEnum::eNone;
             } catch (const std::exception& e) {
-                return common::utils::ToAosError(e, ErrorEnum::eInvalidArgument);
+                return AOS_ERROR_WRAP(common::utils::ToAosError(e, ErrorEnum::eInvalidArgument));
             }
         }
     }

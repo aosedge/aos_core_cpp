@@ -129,7 +129,7 @@ RetWithError<std::string> Exec::ExecPlugin(
 
         return LaunchPlugin(payload, pluginPath, env);
     } catch (const std::exception& e) {
-        return {"", common::utils::ToAosError(e)};
+        return {"", AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 }
 

@@ -208,7 +208,7 @@ void LogProvider::ProcessLogs()
                 GetLog(logRequest.mInstanceIDs, logRequest.mLogID, logRequest.mFrom, logRequest.mTill);
             }
         } catch (const std::exception& e) {
-            auto err = common::utils::ToAosError(e);
+            auto err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
 
             LOG_ERR() << "PushLog failed: logID=" << logRequest.mLogID << ", err=" << err;
 

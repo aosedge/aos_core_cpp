@@ -261,7 +261,7 @@ public:
 
         const auto ptr = parser.parse(networkJson.value()).extract<Poco::JSON::Object::Ptr>();
         if (ptr == nullptr) {
-            AOS_ERROR_CHECK_AND_THROW("Failed to parse network json", AOS_ERROR_WRAP(ErrorEnum::eFailed));
+            AOS_ERROR_CHECK_AND_THROW("failed to parse network json", AOS_ERROR_WRAP(ErrorEnum::eFailed));
         }
 
         ConvertNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);

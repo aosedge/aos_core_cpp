@@ -51,7 +51,7 @@ SystemdConn::SystemdConn()
     // Still leave the current approach as no problems observed yet.
     auto rv = sd_bus_open_system(&mBus);
     if (rv < 0) {
-        AOS_ERROR_THROW(strerror(-rv), Error(-rv));
+        AOS_ERROR_THROW("can't open systemd", Error(-rv));
     }
 }
 
