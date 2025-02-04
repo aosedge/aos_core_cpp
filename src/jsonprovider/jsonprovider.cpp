@@ -252,10 +252,10 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
     AlertRulePercents percents = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
-        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+        Error err;
 
-        percents.mMinTimeout = duration.count();
+        Tie(percents.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
     }
 
     percents.mMinThreshold = object.GetValue<double>("minThreshold");
@@ -269,10 +269,10 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
     AlertRulePoints points = {};
 
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
-        auto [duration, err] = utils::ParseDuration(minTimeout->c_str());
-        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
+        Error err;
 
-        points.mMinTimeout = duration.count();
+        Tie(points.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        AOS_ERROR_CHECK_AND_THROW("min timeout parsing error", err);
     }
 
     points.mMinThreshold = object.GetValue<uint64_t>("minThreshold");
@@ -327,10 +327,9 @@ Poco::JSON::Object AlertRuleToJSON(const T& rule)
     Poco::JSON::Object object;
 
     if (rule.mMinTimeout > 0) {
-        auto [duration, err] = utils::FormatISO8601Duration(utils::Duration(rule.mMinTimeout));
-        AOS_ERROR_CHECK_AND_THROW("offlineTTL formatting error", err);
+        auto duration = rule.mMinTimeout.ToISO8601String();
 
-        object.set("minTimeout", duration);
+        object.set("minTimeout", duration.CStr());
     }
 
     object.set("minThreshold", rule.mMinThreshold);

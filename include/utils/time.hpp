@@ -18,15 +18,6 @@
 namespace aos::common::utils {
 
 /***********************************************************************************************************************
- * Types
- **********************************************************************************************************************/
-
-/**
- * Duration type.
- */
-using Duration = std::chrono::duration<int64_t, std::nano>;
-
-/***********************************************************************************************************************
  * Functions
  **********************************************************************************************************************/
 
@@ -36,31 +27,23 @@ using Duration = std::chrono::duration<int64_t, std::nano>;
  * @param duration duration string.
  * @return parsed duration.
  */
-aos::RetWithError<Duration> ParseDuration(const std::string& duration);
-
-/**
- * Formats ISO8601 duration string.
- *
- * @param duration duration.
- * @return aos::RetWithError<std::string>.
- */
-aos::RetWithError<std::string> FormatISO8601Duration(const Duration& duration);
+RetWithError<Duration> ParseDuration(const std::string& duration);
 
 /**
  * Creates time object from a UTC formatted string.
  *
  * @param utcTimeStr UTC formatted time string.
- * @return aos::RetWithError<aos::Time>.
+ * @return RetWithError<Time>.
  */
-aos::RetWithError<aos::Time> FromUTCString(const std::string& utcTimeStr);
+RetWithError<Time> FromUTCString(const std::string& utcTimeStr);
 
 /**
  * Converts time into a UTC string.
  *
  * @param time time object.
- * @return aos::RetWithError<std::string>.
+ * @return RetWithError<std::string>.
  */
-aos::RetWithError<std::string> ToUTCString(const aos::Time& time);
+RetWithError<std::string> ToUTCString(const Time& time);
 
 } // namespace aos::common::utils
 
