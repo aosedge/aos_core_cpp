@@ -363,6 +363,13 @@ RetWithError<uint64_t> ResourceUsageProvider::GetInstanceDiskUsage(const String&
 Error ResourceUsageProvider::SetInstanceMonitoringData(
     const String& instanceID, aos::monitoring::MonitoringData& monitoringData)
 {
+    auto it = mInstanceMonitoringCache.find(instanceID.CStr());
+    if (it == mInstanceMonitoringCache.end()) {
+        it = mInstanceMonitoringCache.emplace(instanceID.CStr(), CPUUsage()).first;
+    }
+
+    auto& cachedInstanceMonitoring = it->second;
+
     Error  err      = ErrorEnum::eNone;
     size_t cpuUsage = 0;
 
@@ -373,13 +380,6 @@ Error ResourceUsageProvider::SetInstanceMonitoringData(
     if (Tie(cpuUsage, err) = GetInstanceCPUUsage(instanceID); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    auto it = mInstanceMonitoringCache.find(instanceID.CStr());
-    if (it == mInstanceMonitoringCache.end()) {
-        it = mInstanceMonitoringCache.emplace(instanceID.CStr(), CPUUsage()).first;
-    }
-
-    auto& cachedInstanceMonitoring = it->second;
 
     if (cachedInstanceMonitoring.mTotal > cpuUsage) {
         cachedInstanceMonitoring.mTotal = 0;
