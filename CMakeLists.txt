@@ -69,7 +69,7 @@ if(WITH_COVERAGE)
 
     append_coverage_compiler_flags()
 
-    set(COVERAGE_EXCLUDES "build/*" "/usr/*" "*_test.cpp")
+    set(COVERAGE_EXCLUDES "build/*" "tests/*" "/usr/*")
 
     setup_target_for_coverage_lcov(
         NAME
