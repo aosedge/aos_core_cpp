@@ -28,14 +28,34 @@
  * Static
  **********************************************************************************************************************/
 
-static void SegmentationHandler(int sig)
+static void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
     void*  array[cBacktraceSize];
     size_t size;
 
-    LOG_ERR() << "Segmentation fault";
+    switch (sig) {
+    case SIGILL:
+        std::cerr << "Illegal instruction" << std::endl;
+        break;
+
+    case SIGABRT:
+        std::cerr << "Aborted" << std::endl;
+        break;
+
+    case SIGFPE:
+        std::cerr << "Floating point exception" << std::endl;
+        break;
+
+    case SIGSEGV:
+        std::cerr << "Segmentation fault" << std::endl;
+        break;
+
+    default:
+        std::cerr << "Unknown signal" << std::endl;
+        break;
+    }
 
     size = backtrace(array, cBacktraceSize);
 
@@ -44,13 +64,16 @@ static void SegmentationHandler(int sig)
     raise(sig);
 }
 
-static void RegisterSegfaultSignal()
+static void RegisterErrorSignals()
 {
     struct sigaction act { };
 
-    act.sa_handler = SegmentationHandler;
+    act.sa_handler = ErrorHandler;
     act.sa_flags   = SA_RESETHAND;
 
+    sigaction(SIGILL, &act, nullptr);
+    sigaction(SIGABRT, &act, nullptr);
+    sigaction(SIGFPE, &act, nullptr);
     sigaction(SIGSEGV, &act, nullptr);
 }
 
@@ -127,7 +150,7 @@ void App::initialize(Application& self)
         return;
     }
 
-    RegisterSegfaultSignal();
+    RegisterErrorSignals();
 
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
