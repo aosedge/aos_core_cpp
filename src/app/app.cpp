@@ -28,14 +28,34 @@ namespace aos::sm::app {
 
 namespace {
 
-void SegmentationHandler(int sig)
+void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
     void*  array[cBacktraceSize];
     size_t size;
 
-    std::cerr << "Segmentation fault" << std::endl;
+    switch (sig) {
+    case SIGILL:
+        std::cerr << "Illegal instruction" << std::endl;
+        break;
+
+    case SIGABRT:
+        std::cerr << "Aborted" << std::endl;
+        break;
+
+    case SIGFPE:
+        std::cerr << "Floating point exception" << std::endl;
+        break;
+
+    case SIGSEGV:
+        std::cerr << "Segmentation fault" << std::endl;
+        break;
+
+    default:
+        std::cerr << "Unknown signal" << std::endl;
+        break;
+    }
 
     size = backtrace(array, cBacktraceSize);
 
@@ -44,13 +64,16 @@ void SegmentationHandler(int sig)
     raise(sig);
 }
 
-void RegisterSegfaultSignal()
+void RegisterErrorSignals()
 {
     struct sigaction act { };
 
-    act.sa_handler = SegmentationHandler;
+    act.sa_handler = ErrorHandler;
     act.sa_flags   = SA_RESETHAND;
 
+    sigaction(SIGILL, &act, nullptr);
+    sigaction(SIGABRT, &act, nullptr);
+    sigaction(SIGFPE, &act, nullptr);
     sigaction(SIGSEGV, &act, nullptr);
 }
 
@@ -66,8 +89,9 @@ void App::initialize(Application& self)
         return;
     }
 
+    RegisterErrorSignals();
+
     Application::initialize(self);
-    RegisterSegfaultSignal();
 
     mAosCore = std::make_unique<AosCore>();
 
