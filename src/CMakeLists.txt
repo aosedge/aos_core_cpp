@@ -56,6 +56,7 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} aoscommon app)
+target_link_options(${TARGET} PRIVATE -rdynamic)
 
 # ######################################################################################################################
 # Install
