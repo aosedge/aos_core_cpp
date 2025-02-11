@@ -15,7 +15,7 @@ project("aos_core_iam_cpp")
 
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
-option(WITH_DOC "build with documenation" OFF)
+option(WITH_DOC "build with documentation" OFF)
 
 message(STATUS)
 message(STATUS "${CMAKE_PROJECT_NAME} configuration:")
