@@ -24,21 +24,29 @@ void DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& objec
 {
     const auto name = object.GetValue<std::string>("name");
 
-    deviceInfo.mName        = name.c_str();
-    deviceInfo.mSharedCount = object.GetValue<int>("sharedCount");
+    auto err = deviceInfo.mName.Assign(name.c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed name length exceeds application limit", err);
+
+    deviceInfo.mSharedCount = object.GetValue<size_t>("sharedCount");
 
     const auto groups = utils::GetArrayValue<std::string>(object, "groups");
 
     for (const auto& group : groups) {
-        AOS_ERROR_CHECK_AND_THROW(
-            "parsed groups count exceeds application limit", deviceInfo.mGroups.PushBack(group.c_str()));
+        err = deviceInfo.mGroups.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW("parsed groups count exceeds application limit", err);
+
+        err = deviceInfo.mGroups.Back().Assign(group.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed group length exceeds application limit", err);
     }
 
     const auto hostDevices = utils::GetArrayValue<std::string>(object, "hostDevices");
 
     for (const auto& device : hostDevices) {
-        AOS_ERROR_CHECK_AND_THROW(
-            "parsed host devices count exceeds application limit", deviceInfo.mHostDevices.PushBack(device.c_str()));
+        err = deviceInfo.mHostDevices.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW("parsed host devices count exceeds application limit", err);
+
+        err = deviceInfo.mHostDevices.Back().Assign(device.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed host device length exceeds application limit", err);
     }
 }
 
@@ -56,19 +64,23 @@ Mount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     Mount mount;
 
-    const auto destination = object.GetValue<std::string>("destination");
-    const auto type        = object.GetValue<std::string>("type");
-    const auto source      = object.GetValue<std::string>("source");
+    auto err = mount.mDestination.Assign(object.GetValue<std::string>("destination").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed destination length exceeds application limit", err);
 
-    mount.mDestination = destination.c_str();
-    mount.mType        = type.c_str();
-    mount.mSource      = source.c_str();
+    err = mount.mType.Assign(object.GetValue<std::string>("type").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed type length exceeds application limit", err);
+
+    err = mount.mSource.Assign(object.GetValue<std::string>("source").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed source length exceeds application limit", err);
 
     const auto options = utils::GetArrayValue<std::string>(object, "options");
 
     for (const auto& option : options) {
-        auto err = mount.mOptions.PushBack(option.c_str());
+        err = mount.mOptions.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW("parsed options count exceeds application limit", err);
+
+        err = mount.mOptions.Back().Assign(option.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed option length exceeds application limit", err);
     }
 
     return mount;
@@ -76,42 +88,55 @@ Mount FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 
 Host HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
-    return {object.GetValue<std::string>("ip").c_str(), object.GetValue<std::string>("hostName").c_str()};
+    Host host;
+
+    auto err = host.mIP.Assign(object.GetValue<std::string>("ip").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed ip length exceeds application limit", err);
+
+    err = host.mHostname.Assign(object.GetValue<std::string>("hostName").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed hostName length exceeds application limit", err);
+
+    return host;
 }
 
 void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ResourceInfo& resourceInfo)
 {
-    const auto name = object.GetValue<std::string>("name");
-
-    resourceInfo.mName = name.c_str();
+    auto err = resourceInfo.mName.Assign(object.GetValue<std::string>("name").c_str());
+    AOS_ERROR_CHECK_AND_THROW("parsed name length exceeds application limit", err);
 
     const auto groups = utils::GetArrayValue<std::string>(object, "groups");
 
     for (const auto& group : groups) {
-        auto err = resourceInfo.mGroups.PushBack(group.c_str());
+        err = resourceInfo.mGroups.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW("parsed groups count exceeds application limit", err);
+
+        err = resourceInfo.mGroups.Back().Assign(group.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed group length exceeds application limit", err);
     }
 
     const auto mounts = utils::GetArrayValue<Mount>(object, "mounts",
         [](const auto& value) { return FileSystemMountFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& mount : mounts) {
-        auto err = resourceInfo.mMounts.PushBack(mount);
+        err = resourceInfo.mMounts.PushBack(mount);
         AOS_ERROR_CHECK_AND_THROW("parsed mounts count exceeds application limit", err);
     }
 
     const auto envs = utils::GetArrayValue<std::string>(object, "env");
 
     for (const auto& env : envs) {
-        auto err = resourceInfo.mEnv.PushBack(env.c_str());
+        err = resourceInfo.mEnv.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW("parsed envs count exceeds application limit", err);
+
+        err = resourceInfo.mEnv.Back().Assign(env.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed env length exceeds application limit", err);
     }
 
     const auto hosts = utils::GetArrayValue<Host>(
         object, "hosts", [](const auto& value) { return HostFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
 
     for (const auto& host : hosts) {
-        auto err = resourceInfo.mHosts.PushBack(host);
+        err = resourceInfo.mHosts.PushBack(host);
         AOS_ERROR_CHECK_AND_THROW("parsed hosts count exceeds application limit", err);
     }
 }
@@ -131,8 +156,11 @@ void LabelsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<Sta
     const auto labels = utils::GetArrayValue<std::string>(object, "labels");
 
     for (const auto& label : labels) {
-        auto err = outLabels.PushBack(label.c_str());
+        auto err = outLabels.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW("parsed labels count exceeds application limit", err);
+
+        err = outLabels.Back().Assign(label.c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed label length exceeds application limit", err);
     }
 }
 
@@ -383,11 +411,12 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::
         auto                                result = parser.parse(json.CStr());
         utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
-        const auto version  = object.GetValue<std::string>("version");
-        const auto nodeType = object.GetValue<std::string>("nodeType");
+        auto err = nodeConfig.mVersion.Assign(object.GetValue<std::string>("version").c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed version length exceeds application limit", err);
 
-        nodeConfig.mVersion              = version.c_str();
-        nodeConfig.mNodeConfig.mNodeType = nodeType.c_str();
+        err = nodeConfig.mNodeConfig.mNodeType.Assign(object.GetValue<std::string>("nodeType").c_str());
+        AOS_ERROR_CHECK_AND_THROW("parsed nodeType length exceeds application limit", err);
+
         nodeConfig.mNodeConfig.mPriority = object.GetValue<uint32_t>("priority");
 
         DevicesFromJSON(object, nodeConfig.mNodeConfig.mDevices);
