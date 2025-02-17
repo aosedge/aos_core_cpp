@@ -153,6 +153,16 @@ constexpr auto cTestNodeConfigJSON = R"({
 
 )";
 
+constexpr auto cNodeConfigLabelOverflowBuffer = R"({
+    "labels": [
+        "label that is expected to trigger no memory error due to its length"
+    ],
+    "nodeType": "mainType",
+    "priority": 1,
+    "version": "1.0.0"
+}
+)";
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -318,52 +328,55 @@ public:
 
 TEST_F(JSONProviderTest, NodeConfigFromJSONSucceeds)
 {
-    sm::resourcemanager::NodeConfig parsedNodeConfig;
+    auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).IsNone());
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNone);
 
-    CompareNodeConfig(parsedNodeConfig, CreateNodeConfig());
+    CompareNodeConfig(*parsedNodeConfig, CreateNodeConfig());
 }
 
 TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnHostDevicesExceedsLimit)
 {
-    sm::resourcemanager::NodeConfig parsedNodeConfig;
+    auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig.mNodeConfig.mDevices.Resize(cMaxNumNodeDevices);
+    parsedNodeConfig->mNodeConfig.mDevices.Resize(cMaxNumNodeDevices);
 
-    ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).Is(ErrorEnum::eNoMemory));
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
 }
 
 TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnResourcesExceedsLimit)
 {
-    sm::resourcemanager::NodeConfig parsedNodeConfig;
+    auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig.mNodeConfig.mResources.Resize(cMaxNumNodeResources);
+    parsedNodeConfig->mNodeConfig.mResources.Resize(cMaxNumNodeResources);
 
-    ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).Is(ErrorEnum::eNoMemory));
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
 }
 
 TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnLabelsExceedsLimit)
 {
-    sm::resourcemanager::NodeConfig parsedNodeConfig;
+    auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig.mNodeConfig.mLabels.Resize(cMaxNumNodeLabels);
+    parsedNodeConfig->mNodeConfig.mLabels.Resize(cMaxNumNodeLabels);
 
-    ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).Is(ErrorEnum::eNoMemory));
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
+
+    parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
+
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cNodeConfigLabelOverflowBuffer, *parsedNodeConfig), ErrorEnum::eNoMemory);
 }
 
 TEST_F(JSONProviderTest, NodeConfigToJSON)
 {
-    const sm::resourcemanager::NodeConfig                 nodeConfig = CreateNodeConfig();
-    StaticString<sm::resourcemanager::cNodeConfigJSONLen> nodeConfigJSON;
+    const sm::resourcemanager::NodeConfig nodeConfig = CreateNodeConfig();
+    auto nodeConfigJSON   = std::make_unique<StaticString<sm::resourcemanager::cNodeConfigJSONLen>>();
+    auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    ASSERT_TRUE(mProvider.NodeConfigToJSON(nodeConfig, nodeConfigJSON).IsNone());
+    ASSERT_EQ(mProvider.NodeConfigToJSON(nodeConfig, *nodeConfigJSON), ErrorEnum::eNone);
 
-    sm::resourcemanager::NodeConfig parsedNodeConfig;
+    ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNone);
 
-    ASSERT_TRUE(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, parsedNodeConfig).IsNone());
-
-    CompareNodeConfig(parsedNodeConfig, nodeConfig);
+    CompareNodeConfig(*parsedNodeConfig, nodeConfig);
 }
 
 } // namespace aos::common::jsonprovider
