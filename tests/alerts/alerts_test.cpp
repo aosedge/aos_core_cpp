@@ -74,7 +74,9 @@ public:
             = config::JournalAlertsConfig {{"50-udev-default.rules", "getty@tty1.service", "quotaon.service"}, 4, 4};
     }
 
-    void Init();
+    void Init(const std::string& cursor = "cursor");
+    void SetupJournal(const std::string& cursor = "cursor");
+
     void Stop();
 
     config::JournalAlertsConfig mConfig;
@@ -85,7 +87,14 @@ public:
     TestJournalAlerts mJournalAlerts;
 };
 
-void JournalAlertsTest::Init()
+void JournalAlertsTest::Init(const std::string& cursor)
+{
+    SetupJournal(cursor);
+
+    ASSERT_TRUE(mJournalAlerts.Init(mConfig, mInstanceInfoProvider, mStorage, mSender).IsNone());
+}
+
+void JournalAlertsTest::SetupJournal(const std::string& cursor)
 {
     EXPECT_CALL(mJournalAlerts.mJournal, AddMatch(StartsWith("PRIORITY="))).Times(mConfig.mSystemAlertPriority + 1);
     EXPECT_CALL(mJournalAlerts.mJournal, AddDisjunction());
@@ -93,12 +102,12 @@ void JournalAlertsTest::Init()
     EXPECT_CALL(mJournalAlerts.mJournal, SeekTail());
     EXPECT_CALL(mJournalAlerts.mJournal, Previous());
 
-    EXPECT_CALL(mStorage, GetJournalCursor(_)).WillOnce(DoAll(SetArgReferee<0>("cursor"), Return(Error())));
+    EXPECT_CALL(mStorage, GetJournalCursor(_)).WillOnce(DoAll(SetArgReferee<0>(cursor.c_str()), Return(Error())));
 
-    EXPECT_CALL(mJournalAlerts.mJournal, SeekCursor("cursor"));
-    EXPECT_CALL(mJournalAlerts.mJournal, Next());
-
-    ASSERT_TRUE(mJournalAlerts.Init(mConfig, mInstanceInfoProvider, mStorage, mSender).IsNone());
+    if (!cursor.empty()) {
+        EXPECT_CALL(mJournalAlerts.mJournal, SeekCursor(cursor.c_str())).RetiresOnSaturation();
+        EXPECT_CALL(mJournalAlerts.mJournal, Next());
+    }
 }
 
 void JournalAlertsTest::Stop()
@@ -119,7 +128,7 @@ TEST_F(JournalAlertsTest, SetupJournal)
     Stop();
 }
 
-TEST_F(JournalAlertsTest, FailSaveCoursor)
+TEST_F(JournalAlertsTest, FailSaveCursor)
 {
     Init();
 
@@ -133,7 +142,8 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry entry = {};
 
@@ -163,7 +173,8 @@ TEST_F(JournalAlertsTest, SendCoreAlert)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry      entry = {};
     cloudprotocol::CoreAlert alert;
@@ -187,7 +198,8 @@ TEST_F(JournalAlertsTest, SendSystemAlertFiltered)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry entry = {};
 
@@ -207,7 +219,8 @@ TEST_F(JournalAlertsTest, SendSystemAlert)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry        entry = {};
     cloudprotocol::SystemAlert alert;
@@ -230,7 +243,8 @@ TEST_F(JournalAlertsTest, InitScopeTest)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry      entry = {};
     cloudprotocol::CoreAlert alert;
@@ -255,7 +269,8 @@ TEST_F(JournalAlertsTest, EmptySystemdUnit)
 {
     Init();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
     utils::JournalEntry      entry = {};
     cloudprotocol::CoreAlert alert;
@@ -273,6 +288,54 @@ TEST_F(JournalAlertsTest, EmptySystemdUnit)
     mJournalAlerts.Start();
 
     sleep(2);
+    Stop();
+}
+
+TEST_F(JournalAlertsTest, RecoverJournalErrorOk)
+{
+    Init();
+
+    // GetCursor failed
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillRepeatedly(Return(false));
+
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor())
+        .WillOnce(Throw(std::runtime_error("can't get journal cursor [Bad message]")))
+        .WillRepeatedly(Return(std::string("cursor")));
+
+    // Restore journal
+    EXPECT_CALL(mStorage, SetJournalCursor(String(""))).WillOnce(Return(ErrorEnum::eNone));
+
+    SetupJournal("");
+
+    mJournalAlerts.Start();
+    sleep(2);
+    Stop();
+}
+
+TEST_F(JournalAlertsTest, RecoverJournalErrorFailed)
+{
+    Init();
+
+    // GetCursor failed
+    EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillRepeatedly(Return(false));
+
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor())
+        .WillRepeatedly(Throw(std::runtime_error("can't get journal cursor [Bad message]")));
+
+    // Restore journal
+    EXPECT_CALL(mStorage, SetJournalCursor(String(""))).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(mJournalAlerts.mJournal, AddMatch(StartsWith("PRIORITY="))).Times(AnyNumber());
+    EXPECT_CALL(mJournalAlerts.mJournal, AddDisjunction()).Times(AnyNumber());
+    EXPECT_CALL(mJournalAlerts.mJournal, AddMatch("_SYSTEMD_UNIT=init.scope")).Times(AnyNumber());
+    EXPECT_CALL(mJournalAlerts.mJournal, SeekTail()).Times(AnyNumber());
+    EXPECT_CALL(mJournalAlerts.mJournal, Previous()).Times(AnyNumber());
+
+    EXPECT_CALL(mStorage, GetJournalCursor(_)).WillRepeatedly(DoAll(SetArgReferee<0>(""), Return(Error())));
+
+    // Start journal alerts
+    mJournalAlerts.Start();
+    sleep(4);
     Stop();
 }
 

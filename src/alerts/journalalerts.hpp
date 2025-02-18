@@ -67,6 +67,7 @@ private:
     void StoreCurrentCursor();
     void MonitorJournal();
     void ProcessJournal();
+    void RecoverJournalError();
 
     std::optional<cloudprotocol::ServiceInstanceAlert> GetServiceInstanceAlert(
         const utils::JournalEntry& entry, const std::string& unit);

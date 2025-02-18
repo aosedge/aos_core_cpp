@@ -55,6 +55,13 @@ Error JournalAlerts::Start()
     mStopped       = false;
     mMonitorThread = std::thread(&JournalAlerts::MonitorJournal, this);
 
+    // Start cursor persist thread.
+    Poco::TimerCallback<JournalAlerts> callback(*this, &JournalAlerts::OnTimer);
+
+    mCursorSaveTimer.setStartInterval(cCursorSavePeriod);
+    mCursorSaveTimer.setPeriodicInterval(cCursorSavePeriod);
+    mCursorSaveTimer.start(callback);
+
     return ErrorEnum::eNone;
 }
 
@@ -122,13 +129,6 @@ void JournalAlerts::SetupJournal()
         mJournal->SeekCursor(cursor.CStr());
         mJournal->Next();
     }
-
-    // Set timer.
-    Poco::TimerCallback<JournalAlerts> callback(*this, &JournalAlerts::OnTimer);
-
-    mCursorSaveTimer.setStartInterval(cCursorSavePeriod);
-    mCursorSaveTimer.setPeriodicInterval(cCursorSavePeriod);
-    mCursorSaveTimer.start(callback);
 }
 
 // cppcheck-suppress constParameterCallback
@@ -141,7 +141,7 @@ void JournalAlerts::OnTimer(Poco::Timer& timer)
 
         StoreCurrentCursor();
     } catch (const std::exception& e) {
-        LOG_ERR() << "Timer function failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
+        LOG_ERR() << "Store cursor failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
@@ -153,28 +153,33 @@ void JournalAlerts::StoreCurrentCursor()
     }
 
     auto err = mStorage->SetJournalCursor(newCursor.c_str());
-    if (!err.IsNone()) {
-        AOS_ERROR_THROW("set journal cursor failed", err);
-    }
+    AOS_ERROR_CHECK_AND_THROW("set journal cursor failed", err)
 
     mCursor = newCursor;
 }
 
 void JournalAlerts::MonitorJournal()
 {
-    try {
-        while (true) {
-            std::unique_lock lock {mMutex};
+    static constexpr auto cMaxWaitJournalTimeout = 10 * cWaitJournalTimeout;
+    auto                  journalWaitTimeout     = cWaitJournalTimeout;
 
-            auto stopped = mCondVar.wait_for(lock, cWaitJournalTimeout, [this] { return mStopped; });
-            if (stopped) {
-                break;
-            }
+    while (true) {
+        std::unique_lock lock {mMutex};
 
-            ProcessJournal();
+        auto stopped = mCondVar.wait_for(lock, journalWaitTimeout, [this] { return mStopped; });
+        if (stopped) {
+            return;
         }
-    } catch (const std::exception& e) {
-        LOG_ERR() << "Journal process failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
+
+        try {
+            ProcessJournal();
+            journalWaitTimeout = cWaitJournalTimeout;
+        } catch (const std::exception& e) {
+            LOG_ERR() << "Journal process error: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
+
+            RecoverJournalError();
+            journalWaitTimeout = std::min(journalWaitTimeout * 2, cMaxWaitJournalTimeout);
+        }
     }
 }
 
@@ -182,6 +187,9 @@ void JournalAlerts::ProcessJournal()
 {
     while (true) {
         if (!mJournal->Next()) {
+            // get cursor to ensure the journal ctx is valid.
+            std::ignore = mJournal->GetCursor();
+
             return;
         }
         auto entry = mJournal->GetEntry();
@@ -217,6 +225,19 @@ void JournalAlerts::ProcessJournal()
             item.SetValue<cloudprotocol::SystemAlert>(*systemAlert);
             mSender->SendAlert(item);
         }
+    }
+}
+
+void JournalAlerts::RecoverJournalError()
+{
+    try {
+        auto err = mStorage->SetJournalCursor("");
+        AOS_ERROR_CHECK_AND_THROW("get journal cursor failed", err);
+
+        mJournal.reset();
+        SetupJournal();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Journal monitor recovery failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
