@@ -951,33 +951,28 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        const auto ociVersion   = wrapper.GetValue<std::string>("ociVersion");
-        runtimeSpec.mOCIVersion = ociVersion.c_str();
-
-        const auto hostname   = wrapper.GetValue<std::string>("hostname");
-        runtimeSpec.mHostname = hostname.c_str();
+        runtimeSpec.mOCIVersion = wrapper.GetValue<std::string>("ociVersion").c_str();
+        runtimeSpec.mHostname   = wrapper.GetValue<std::string>("hostname").c_str();
 
         if (wrapper.Has("process")) {
-            auto process = std::make_unique<aos::oci::Process>();
+            runtimeSpec.mProcess.EmplaceValue();
 
-            ProcessFromJSON(wrapper.GetObject("process"), *process);
-
-            runtimeSpec.mProcess.SetValue(*process);
+            ProcessFromJSON(wrapper.GetObject("process"), *runtimeSpec.mProcess);
         }
 
         if (wrapper.Has("root")) {
-            runtimeSpec.mRoot.SetValue({});
+            runtimeSpec.mRoot.EmplaceValue();
 
             RootFromJSON(wrapper.GetObject("root"), *runtimeSpec.mRoot);
         }
 
         if (wrapper.Has("mounts")) {
             auto mounts = utils::GetArrayValue<Mount>(wrapper, "mounts", [](const auto& value) {
-                Mount mount;
+                auto mount = std::make_unique<Mount>();
 
-                MountFromJSON(utils::CaseInsensitiveObjectWrapper(value), mount);
+                MountFromJSON(utils::CaseInsensitiveObjectWrapper(value), *mount);
 
-                return mount;
+                return *mount;
             });
 
             for (const auto& mount : mounts) {
@@ -987,19 +982,15 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         }
 
         if (wrapper.Has("linux")) {
-            auto lnx = std::make_unique<aos::oci::Linux>();
+            runtimeSpec.mLinux.EmplaceValue();
 
-            LinuxFromJSON(wrapper.GetObject("linux"), *lnx);
-
-            runtimeSpec.mLinux.SetValue(*lnx);
+            LinuxFromJSON(wrapper.GetObject("linux"), *runtimeSpec.mLinux);
         }
 
         if (wrapper.Has("vm")) {
-            auto vm = std::make_unique<aos::oci::VM>();
+            runtimeSpec.mVM.EmplaceValue();
 
-            VMFromJSON(wrapper.GetObject("vm"), *vm);
-
-            runtimeSpec.mVM.SetValue(*vm);
+            VMFromJSON(wrapper.GetObject("vm"), *runtimeSpec.mVM);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
