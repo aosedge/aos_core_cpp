@@ -17,10 +17,13 @@ jobs:
     permissions: read-all
     container:
       image: ghcr.io/aosedge/aos-core-build-base:latest
-      options: '--entrypoint /usr/bin/bash'
+      options: "--entrypoint /usr/bin/bash"
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
+
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
     steps:
       # Apply solution to "HOME is overridden for containers" problem: https://github.com/actions/runner/issues/863
@@ -31,19 +34,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: 'recursive'
+          submodules: "recursive"
 
-      - name: Build and test
+      - name: Install Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4
+
+      - name: Build using SonarQube Build Wrapper
         run: |
           mkdir build
 
           conan profile detect --force
 
           conan install ./conan/ --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing
-          cmake ./ -B./build/ -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DWITH_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake -S . -B build  -DCMAKE_BUILD_TYPE=Debug -DWITH_TEST=ON -DWITH_COVERAGE=ON -G "Unix Makefiles" \
+                -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ./build/ --config Debug --parallel
 
-          cd build
-          make; make tests; make coverage
+      - name: Run Tests
+        run: |
+          (cd build && make coverage)
 
       - name: Static analysis
         run: |
@@ -55,3 +64,31 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.total
+
+      - name: SonarCloud Scan on push
+        if: github.event_name == 'push'
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+        with:
+          args: >
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.coverageReportPaths=build/coverage_sonarqube.xml
+
+      - name: SonarCloud Scan on pull request
+        if: github.event_name == 'pull_request_target'
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          projectBaseDir: "."
+          args: >
+            --define sonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            --define sonar.pullrequest.key=${{ github.event.pull_request.number }}
+            --define sonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+            --define sonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
+            --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.coverageReportPaths=build/coverage_sonarqube.xml
