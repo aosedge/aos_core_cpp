@@ -19,9 +19,9 @@
 #include <iamclient/permservicehandler.hpp>
 #include <iamclient/publicservicehandler.hpp>
 #include <jsonprovider/jsonprovider.hpp>
+#include <network/interfacemanager.hpp>
 #include <network/iptables.hpp>
 #include <network/namespacemanager.hpp>
-#include <network/networkinterfacemanager.hpp>
 
 #include "alerts/journalalerts.hpp"
 #include "database/database.hpp"
@@ -103,7 +103,7 @@ private:
     sm::networkmanager::TrafficMonitor                                   mTrafficMonitor;
     common::network::IPTables                                            mIPTables;
     aos::common::network::NamespaceManager                               mNamespaceManager;
-    aos::common::network::NetworkInterfaceManager                        mNetworkInterfaceManager;
+    aos::common::network::InterfaceManager                               mNetworkInterfaceManager;
     sm::resourcemanager::HostDeviceManager                               mHostDeviceManager;
     sm::resourcemanager::ResourceManager                                 mResourceManager;
     sm::runner::Runner                                                   mRunner;

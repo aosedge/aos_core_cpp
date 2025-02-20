@@ -84,8 +84,8 @@ void AosCore::Init(const std::string& configFile)
     err = mCNI.Init(mExec);
     AOS_ERROR_CHECK_AND_THROW("can't initialize CNI", err);
 
-    err = mNetworkManager.Init(
-        mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
+    err = mNetworkManager.Init(mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager,
+        mCryptoProvider, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
     AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
 
     // Initialize resource usage provider
