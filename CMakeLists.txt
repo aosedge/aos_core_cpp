@@ -113,6 +113,7 @@ if(WITH_COVERAGE)
         coverage
         EXECUTABLE
         ctest
+        SONARQUBE
         LCOV_ARGS
         --ignore-errors
         mismatch,negative
