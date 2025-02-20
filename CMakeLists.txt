@@ -107,6 +107,7 @@ if(WITH_COVERAGE)
     set(COVERAGE_EXCLUDES "${CMAKE_CURRENT_BINARY_DIR}/*" "${PROJECT_SOURCE_DIR}/external/*"
                           "${PROJECT_SOURCE_DIR}/tests/*" "/usr/*"
     )
+    set(GCOVR_ADDITIONAL_ARGS --gcov-ignore-parse-errors=negative_hits.warn_once_per_file)
 
     setup_target_for_coverage_lcov(
         NAME
