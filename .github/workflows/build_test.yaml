@@ -6,10 +6,17 @@ on:
       - main
       - develop
 
-  pull_request:
+  pull_request_target:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
     branches:
+      - main
       - develop
-      - feature_*
+      - feature*
 
 jobs:
   build:
