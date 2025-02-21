@@ -255,7 +255,9 @@ RetWithError<std::vector<std::string>> IPTables::ListChains()
 
 void IPTables::ExecuteCommand(const std::string& command) const
 {
-    if (int result = std::system(command.c_str()); result != 0) {
+    std::string cmdWithWait = command + " --wait";
+
+    if (int result = std::system(cmdWithWait.c_str()); result != 0) {
         throw std::runtime_error("failed to execute iptables command: " + command);
     }
 }
@@ -264,10 +266,10 @@ std::vector<std::string> IPTables::ExecuteCommandWithOutput(const std::string& c
 {
     std::vector<std::string> output;
 
-    // this lambda is used to suppress the warning about ignoring the return value
-    auto closePipe = [](FILE* pipe) { pclose(pipe); };
+    std::string cmdWithWait = command + " --wait";
 
-    std::unique_ptr<FILE, decltype(closePipe)> pipe(popen(command.c_str(), "r"), closePipe);
+    auto                                       closePipe = [](FILE* pipe) { pclose(pipe); };
+    std::unique_ptr<FILE, decltype(closePipe)> pipe(popen(cmdWithWait.c_str(), "r"), closePipe);
 
     if (!pipe) {
         throw std::runtime_error("failed to execute command: " + command);
