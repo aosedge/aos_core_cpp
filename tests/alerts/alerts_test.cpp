@@ -125,12 +125,14 @@ void JournalAlertsTest::Stop()
 TEST_F(JournalAlertsTest, SetupJournal)
 {
     Init();
+    mJournalAlerts.Start();
     Stop();
 }
 
 TEST_F(JournalAlertsTest, FailSaveCursor)
 {
     Init();
+    mJournalAlerts.Start();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillOnce(Return("cursor"));
     EXPECT_CALL(mStorage, SetJournalCursor(String("cursor"))).WillOnce(Return(Error(ErrorEnum::eFailed)));

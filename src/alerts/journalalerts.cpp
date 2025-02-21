@@ -147,6 +147,10 @@ void JournalAlerts::OnTimer(Poco::Timer& timer)
 
 void JournalAlerts::StoreCurrentCursor()
 {
+    if (!mJournal) {
+        return;
+    }
+
     auto newCursor = mJournal->GetCursor();
     if (newCursor == mCursor) {
         return;

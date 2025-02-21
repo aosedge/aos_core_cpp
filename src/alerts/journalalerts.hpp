@@ -87,7 +87,7 @@ private:
     std::thread              mMonitorThread;
     std::mutex               mMutex;
     std::condition_variable  mCondVar;
-    bool                     mStopped = false;
+    bool                     mStopped = true;
     std::string              mCursor;
 
     std::shared_ptr<utils::JournalItf> mJournal;
