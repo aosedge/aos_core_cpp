@@ -121,6 +121,7 @@ if(WITH_COVERAGE)
     append_coverage_compiler_flags()
 
     set(COVERAGE_EXCLUDES "build/*" "/usr/*" "tests/*" "external/*")
+    set(GCOVR_ADDITIONAL_ARGS --gcov-ignore-parse-errors=negative_hits.warn_once_per_file)
 
     setup_target_for_coverage_lcov(
         NAME
