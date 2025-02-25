@@ -25,7 +25,7 @@ namespace aos::mp::communication {
  **********************************************************************************************************************/
 
 SecureChannel::SecureChannel(const config::Config& cfg, CommChannelItf& channel,
-    common::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    common::iamclient::TLSCredentialsItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, int port, const std::string& certStorage)
     : mChannel(&channel)
     , mCertProvider(&certProvider)
@@ -237,8 +237,7 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
 
     iam::certhandler::CertInfo certInfo;
 
-    auto err = mCertProvider->GetCertificate(mCertStorage, certInfo);
-    if (!err.IsNone()) {
+    if (auto err = mCertProvider->GetCert(mCertStorage.c_str(), {}, {}, certInfo); !err.IsNone()) {
         return err;
     }
 

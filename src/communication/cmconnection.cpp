@@ -26,7 +26,7 @@ CMConnection::CMConnection()
 }
 
 Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-    common::iamclient::CertProviderItf* certProvider)
+    common::iamclient::TLSCredentialsItf* certProvider)
 {
     LOG_DBG() << "Init CM connection";
 

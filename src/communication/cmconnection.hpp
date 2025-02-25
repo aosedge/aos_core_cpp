@@ -50,7 +50,7 @@ public:
      * @return Error.
      */
     Error Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-        common::iamclient::CertProviderItf* certProvider = nullptr);
+        common::iamclient::TLSCredentialsItf* certProvider = nullptr);
 
     /**
      * Closes connection.

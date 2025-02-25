@@ -135,16 +135,16 @@ void App::initialize(Application& self)
     // Subscribe to certificate changed
 
     if (!mProvisioning) {
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage, mCMClient);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage.c_str(), mCMClient);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage, mProtectedNodeClient);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage, mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage, mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
     }
 
@@ -162,7 +162,6 @@ void App::uninitialize()
 
     mTransport.Shutdown();
     mCommunicationManager.Close();
-    mPublicServiceHandler.Close();
 
     mCMConnection.Close();
     if (!mProvisioning) {

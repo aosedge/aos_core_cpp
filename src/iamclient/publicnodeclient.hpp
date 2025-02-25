@@ -51,7 +51,7 @@ public:
      * @return Error error code.
      */
     Error Init(
-        const config::IAMConfig& cfg, common::iamclient::CertProviderItf& certProvider, bool publicServer = true);
+        const config::IAMConfig& cfg, common::iamclient::TLSCredentialsItf& certProvider, bool publicServer = true);
 
     /**
      * Notifies that connection is established.
@@ -125,7 +125,7 @@ private:
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     std::string                                            mCertStorage;
-    common::iamclient::CertProviderItf*                    mCertProvider {};
+    common::iamclient::TLSCredentialsItf*                  mCertProvider {};
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     StreamPtr                            mStream;

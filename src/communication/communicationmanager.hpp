@@ -55,7 +55,7 @@ public:
      * @return std::unique_ptr<CommChannelItf>
      */
     std::shared_ptr<CommChannelItf> CreateChannel(
-        int port, common::iamclient::CertProviderItf* certProvider, const std::string& certStorage) override;
+        int port, common::iamclient::TLSCredentialsItf* certProvider, const std::string& certStorage) override;
 
     /**
      * Connects to the communication manager.

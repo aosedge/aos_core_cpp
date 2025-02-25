@@ -123,7 +123,7 @@ public:
      * @return std::unique_ptr<CommChannelItf>.
      */
     virtual std::shared_ptr<CommChannelItf> CreateChannel(
-        int port, common::iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "")
+        int port, common::iamclient::TLSCredentialsItf* certProvider = nullptr, const std::string& certStorage = "")
         = 0;
 };
 

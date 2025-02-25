@@ -30,7 +30,7 @@ class CommunicationOpenManagerTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         mConfig.mIAMConfig.mOpenPort = 8080;
         mConfig.mCMConfig.mOpenPort  = 30001;
@@ -63,15 +63,15 @@ protected:
     std::shared_ptr<CommChannelItf> mCMClientChannel;
     std::optional<CommManager>      mCommManagerClient;
 
-    aos::mp::config::Config                  mConfig;
-    aos::common::iamclient::CertProviderItf* mCertProvider {};
-    aos::crypto::CertLoaderItf*              mCertLoader {};
-    aos::crypto::x509::ProviderItf*          mCryptoProvider {};
-    Handler                                  IAMHandler {};
-    Handler                                  CMHandler {};
-    IAMConnection                            mIAMConnection {};
-    CMConnection                             mCMConnection {};
-    std::optional<CommunicationManager>      mCommManager;
+    aos::mp::config::Config                    mConfig;
+    aos::common::iamclient::TLSCredentialsItf* mCertProvider {};
+    aos::crypto::CertLoaderItf*                mCertLoader {};
+    aos::crypto::x509::ProviderItf*            mCryptoProvider {};
+    Handler                                    IAMHandler {};
+    Handler                                    CMHandler {};
+    IAMConnection                              mIAMConnection {};
+    CMConnection                               mCMConnection {};
+    std::optional<CommunicationManager>        mCommManager;
 };
 
 /***********************************************************************************************************************

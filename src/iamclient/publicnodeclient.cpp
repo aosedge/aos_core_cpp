@@ -16,7 +16,7 @@ namespace aos::mp::iamclient {
  **********************************************************************************************************************/
 
 Error PublicNodeClient::Init(
-    const config::IAMConfig& cfg, common::iamclient::CertProviderItf& certProvider, bool publicServer)
+    const config::IAMConfig& cfg, common::iamclient::TLSCredentialsItf& certProvider, bool publicServer)
 {
     LOG_INF() << "Initializing public node client: publicServer=" << publicServer;
 
@@ -86,7 +86,7 @@ void PublicNodeClient::OnCertChanged([[maybe_unused]] const iam::certhandler::Ce
         }
 
         while (!mShutdown) {
-            auto res = mCertProvider->GetMTLSConfig(mCertStorage);
+            auto res = mCertProvider->GetMTLSClientCredentials(mCertStorage.c_str());
             if (!res.mError.IsNone()) {
                 std::unique_lock lock {mMutex};
 
@@ -166,14 +166,17 @@ Error PublicNodeClient::CreateCredentials()
     if (mPublicServer) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
 
-        if (auto tlsCredentials = mCertProvider->GetTLSCredentials(); tlsCredentials) {
-            mCredentialList.push_back(tlsCredentials);
+        auto res = mCertProvider->GetTLSClientCredentials();
+        if (!res.mError.IsNone()) {
+            return AOS_ERROR_WRAP(res.mError);
         }
+
+        mCredentialList.push_back(res.mValue);
 
         return ErrorEnum::eNone;
     }
 
-    auto res = mCertProvider->GetMTLSConfig(mCertStorage);
+    auto res = mCertProvider->GetMTLSClientCredentials(mCertStorage.c_str());
     if (!res.mError.IsNone()) {
         return AOS_ERROR_WRAP(res.mError);
     }
