@@ -42,39 +42,45 @@ using namespace aos::mp::communication;
  * Suite
  **********************************************************************************************************************/
 
-class CertProvider : public CertProviderItf {
+class CertProvider : public TLSCredentialsItf {
 public:
     CertProvider(aos::iam::certhandler::CertHandler& certHandler)
         : mCertHandler(certHandler)
     {
     }
-    aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSConfig(
-        [[maybe_unused]] const std::string& certStorage) override
+
+    aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(
+        [[maybe_unused]] const aos::String& certStorage) override
     {
         return {nullptr, aos::ErrorEnum::eNone};
     }
 
-    std::shared_ptr<grpc::ChannelCredentials> GetTLSCredentials() override { return nullptr; }
+    aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() override
+    {
+        return {nullptr, aos::ErrorEnum::eNone};
+    }
 
-    aos::Error GetCertificate(const std::string& certType, aos::iam::certhandler::CertInfo& certInfo) override
+    // aos::Error GetCertificate(const std::string& certType, aos::iam::certhandler::CertInfo& certInfo) override
+    aos::Error GetCert(const aos::String& certType, [[maybe_unused]] const aos::Array<uint8_t>& issuer,
+        [[maybe_unused]] const aos::Array<uint8_t>& serial, aos::iam::certhandler::CertInfo& resCert) const
     {
         mCertCalled = true;
         mCondVar.notify_all();
 
-        mCertHandler.GetCertificate(certType.c_str(), {}, {}, certInfo);
+        mCertHandler.GetCertificate(certType, {}, {}, resCert);
 
         return aos::ErrorEnum::eNone;
     }
 
-    aos::Error SubscribeCertChanged([[maybe_unused]] const std::string& certType,
+    aos::Error SubscribeCertChanged([[maybe_unused]] const aos::String& certType,
         [[maybe_unused]] aos::iam::certhandler::CertReceiverItf&        subscriber) override
     {
         return aos::ErrorEnum::eNone;
     }
 
-    void UnsubscribeCertChanged([[maybe_unused]] const std::string& certType,
-        [[maybe_unused]] aos::iam::certhandler::CertReceiverItf&    subscriber) override
+    aos::Error UnsubscribeCertChanged([[maybe_unused]] aos::iam::certhandler::CertReceiverItf& subscriber) override
     {
+        return aos::ErrorEnum::eNone;
     }
 
     bool IsCertCalled()
@@ -90,9 +96,9 @@ public:
 
 private:
     aos::iam::certhandler::CertHandler& mCertHandler;
-    std::atomic_bool                    mCertCalled {};
+    mutable std::atomic_bool            mCertCalled {};
     std::mutex                          mMutex;
-    std::condition_variable             mCondVar;
+    mutable std::condition_variable     mCondVar;
     constexpr static auto               cWaitTimeout = std::chrono::seconds(3);
 };
 
@@ -103,7 +109,7 @@ protected:
 
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         std::filesystem::create_directories(mTmpDir);
 
@@ -167,8 +173,8 @@ protected:
     {
         ASSERT_TRUE(mPKCS11Modules.EmplaceBack().IsNone());
         ASSERT_TRUE(mCertModules.EmplaceBack().IsNone());
-        auto& pkcs11Module = mPKCS11Modules.Back().mValue;
-        auto& certModule   = mCertModules.Back().mValue;
+        auto& pkcs11Module = mPKCS11Modules.Back();
+        auto& certModule   = mCertModules.Back();
         ASSERT_TRUE(
             pkcs11Module.Init(name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider).IsNone());
         ASSERT_TRUE(

@@ -15,7 +15,7 @@ namespace aos::mp::cmclient {
  * Public
  **********************************************************************************************************************/
 
-Error CMClient::Init(const config::Config& config, common::iamclient::CertProviderItf& certProvider,
+Error CMClient::Init(const config::Config& config, common::iamclient::TLSCredentialsItf& certProvider,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection)
 {
     LOG_INF() << "Initializing CM client";
@@ -166,7 +166,7 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CMClient::CreateCredenti
 
     iam::certhandler::CertInfo certInfo;
 
-    return mCertProvider->GetMTLSConfig(mCertStorage);
+    return mCertProvider->GetMTLSClientCredentials(mCertStorage.c_str());
 }
 
 SMServiceStubPtr CMClient::CreateSMStub(const std::string& url)

@@ -12,7 +12,7 @@
 namespace aos::mp::communication {
 
 Error IAMConnection::Init(int port, HandlerItf& handler, CommunicationManagerItf& comManager,
-    common::iamclient::CertProviderItf* certProvider, const std::string& certStorage)
+    common::iamclient::TLSCredentialsItf* certProvider, const std::string& certStorage)
 {
     LOG_DBG() << "Init IAM connection";
 

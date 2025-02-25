@@ -273,7 +273,7 @@ public:
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         mSMService.emplace(mCfg.mCMConfig.mCMServerURL);
 
@@ -758,9 +758,9 @@ TEST_F(CMClientTest, SendIncomingMessages)
 TEST_F(CMClientTest, CertChanged)
 {
     MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetMTLSConfig(_))
+    EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
         .Times(2)
-        .WillRepeatedly(testing::Return(grpc::InsecureChannelCredentials()));
+        .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
 
     auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, false);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);

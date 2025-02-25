@@ -47,7 +47,7 @@ public:
      * @param insecureConnection insecure connection.
      * @return Error.
      */
-    Error Init(const config::Config& config, common::iamclient::CertProviderItf& certProvider,
+    Error Init(const config::Config& config, common::iamclient::TLSCredentialsItf& certProvider,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection = false);
 
     /**
@@ -137,7 +137,7 @@ private:
     std::unique_ptr<grpc::ClientContext>      mCtx;
     std::string                               mUrl;
 
-    common::iamclient::CertProviderItf*                mCertProvider {};
+    common::iamclient::TLSCredentialsItf*              mCertProvider {};
     crypto::CertLoaderItf*                             mCertLoader {};
     crypto::x509::ProviderItf*                         mCryptoProvider {};
     common::utils::Channel<std::vector<uint8_t>>       mOutgoingMsgChannel;

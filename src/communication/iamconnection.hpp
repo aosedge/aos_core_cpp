@@ -34,7 +34,7 @@ public:
      * @return Error.
      */
     Error Init(int port, HandlerItf& handler, CommunicationManagerItf& comManager,
-        common::iamclient::CertProviderItf* certProvider = nullptr, const std::string& certStorage = "");
+        common::iamclient::TLSCredentialsItf* certProvider = nullptr, const std::string& certStorage = "");
 
     /**
      * Closes connection.

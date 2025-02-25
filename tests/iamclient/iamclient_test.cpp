@@ -33,7 +33,7 @@ public:
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         mIAMServerStub.emplace();
         mClient.emplace();
@@ -53,7 +53,7 @@ protected:
 TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 {
     MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetTLSCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
+    EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
 
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
@@ -141,7 +141,7 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 {
     MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetTLSCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
+    EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
 
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
@@ -221,10 +221,9 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 TEST_F(IamClientTest, CertChanged)
 {
     MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetMTLSConfig(_))
+    EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
         .Times(2)
-        .WillRepeatedly(testing::Return(grpc::InsecureChannelCredentials()));
-
+        .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider, false);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
 

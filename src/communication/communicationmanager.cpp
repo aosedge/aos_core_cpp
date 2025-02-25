@@ -46,7 +46,7 @@ Error CommunicationManager::Init(const config::Config& cfg, TransportItf& transp
 }
 
 std::shared_ptr<CommChannelItf> CommunicationManager::CreateChannel(
-    int port, common::iamclient::CertProviderItf* certProvider, const std::string& certStorage)
+    int port, common::iamclient::TLSCredentialsItf* certProvider, const std::string& certStorage)
 {
     auto chan = std::make_shared<CommunicationChannel>(port, this);
 

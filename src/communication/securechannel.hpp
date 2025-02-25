@@ -37,9 +37,9 @@ public:
      * @param port Port.
      * @param certStorage Certificate storage path.
      */
-    SecureChannel(const config::Config& cfg, CommChannelItf& channel, common::iamclient::CertProviderItf& certProvider,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, int port,
-        const std::string& certStorage);
+    SecureChannel(const config::Config& cfg, CommChannelItf& channel,
+        common::iamclient::TLSCredentialsItf& certProvider, crypto::CertLoaderItf& certLoader,
+        crypto::x509::ProviderItf& cryptoProvider, int port, const std::string& certStorage);
 
     /**
      * Destructor.
@@ -94,13 +94,13 @@ private:
     Error       ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng);
     std::string GetOpensslErrorString();
 
-    CommChannelItf*                     mChannel {};
-    common::iamclient::CertProviderItf* mCertProvider {};
-    crypto::CertLoaderItf*              mCertLoader {};
-    crypto::x509::ProviderItf*          mCryptoProvider {};
-    const config::Config*               mCfg {};
-    int                                 mPort {};
-    std::string                         mCertStorage;
+    CommChannelItf*                       mChannel {};
+    common::iamclient::TLSCredentialsItf* mCertProvider {};
+    crypto::CertLoaderItf*                mCertLoader {};
+    crypto::x509::ProviderItf*            mCryptoProvider {};
+    const config::Config*                 mCfg {};
+    int                                   mPort {};
+    std::string                           mCertStorage;
 
     SSL_CTX*                                              mCtx {};
     SSL*                                                  mSSL {};

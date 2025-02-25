@@ -38,7 +38,7 @@ class ConfigTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::InitLog();
+        aos::test::InitLog();
 
         tempConfigFile = "temp_config.json";
 
