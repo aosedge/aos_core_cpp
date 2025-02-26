@@ -35,6 +35,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 target_link_libraries(
     ${TARGET}
     PUBLIC aoscommon
+           aosdownloader
            aoslogger
            aosutils
            cmclient

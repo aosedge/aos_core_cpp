@@ -65,6 +65,7 @@ target_link_libraries(
     OpenSSL::Crypto
     OpenSSL::SSL
     aoscommon
+    aosdownloader
     aostestutils
     aosiam
     aosutils

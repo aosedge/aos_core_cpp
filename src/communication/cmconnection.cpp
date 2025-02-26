@@ -16,6 +16,29 @@
 
 namespace aos::mp::communication {
 
+namespace {
+
+std::string GetFileNameFromURL(const std::string& url)
+{
+    Poco::URI   uri(url);
+    std::string path = uri.getPath();
+
+    if (uri.getScheme() == "file") {
+        if (path.empty() && !uri.getHost().empty()) {
+            path = "/" + uri.getHost();
+        }
+    }
+
+    size_t pos = path.find_last_of('/');
+    if (pos != std::string::npos) {
+        return path.substr(pos + 1);
+    }
+
+    return path;
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -26,7 +49,7 @@ CMConnection::CMConnection()
 }
 
 Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-    common::iamclient::TLSCredentialsItf* certProvider)
+    downloader::DownloaderItf* downloader, common::iamclient::TLSCredentialsItf* certProvider)
 {
     LOG_DBG() << "Init CM connection";
 
@@ -40,7 +63,13 @@ Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, Communi
 
             mCMCommSecureChannel
                 = comManager.CreateChannel(cfg.mCMConfig.mSecurePort, certProvider, cfg.mVChan.mSMCertStorage);
-            mDownloader.emplace(cfg.mDownload.mDownloadDir);
+            mDownloader  = downloader;
+            mDownloadDir = cfg.mDownload.mDownloadDir;
+
+            if (!std::filesystem::exists(mDownloadDir)) {
+                std::filesystem::create_directories(mDownloadDir);
+            }
+
             mImageUnpacker.emplace(cfg.mImageStoreDir);
         }
     } catch (const std::exception& e) {
@@ -218,8 +247,10 @@ Error CMConnection::Download(const std::string& url, uint64_t requestID, const s
     LOG_DBG() << "Download: url=" << url.c_str() << ", requestID=" << requestID
               << ", contentType=" << contentType.c_str();
 
-    auto [fileName, err] = mDownloader->Download(url);
-    if (!err.IsNone()) {
+    auto outfileName = std::filesystem::path(mDownloadDir).append(GetFileNameFromURL(url)).string();
+
+    if (auto err = mDownloader->Download(url.c_str(), outfileName.c_str(), downloader::DownloadContentEnum::eService);
+        !err.IsNone()) {
         if (auto errSend = SendFailedImageContentResponse(requestID, err); !errSend.IsNone()) {
             return errSend;
         }
@@ -227,7 +258,7 @@ Error CMConnection::Download(const std::string& url, uint64_t requestID, const s
         return err;
     }
 
-    auto [contentInfo, errContent] = GetFileContent(fileName, requestID, contentType);
+    auto [contentInfo, errContent] = GetFileContent(outfileName, requestID, contentType);
     if (!errContent.IsNone()) {
         if (auto errSend = SendFailedImageContentResponse(requestID, errContent); !errSend.IsNone()) {
             return errSend;
@@ -236,7 +267,7 @@ Error CMConnection::Download(const std::string& url, uint64_t requestID, const s
         return errContent;
     }
 
-    if (err = SendImageContentInfo(contentInfo); !err.IsNone()) {
+    if (auto err = SendImageContentInfo(contentInfo); !err.IsNone()) {
         if (auto errSend = SendFailedImageContentResponse(requestID, err); !errSend.IsNone()) {
             return errSend;
         }

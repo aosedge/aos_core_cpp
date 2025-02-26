@@ -51,7 +51,6 @@ target_link_libraries(
            iamclient
            aosprotocol
            aosutils
-           downloader
            filechunker
            imageunpacker
 )
