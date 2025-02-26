@@ -116,7 +116,7 @@ void App::initialize(Application& self)
         err = mCommunicationManager.Init(mConfig, mTransport, &mCertLoader, &mCryptoProvider);
         AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
 
-        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mPublicServiceHandler);
+        err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mDownloader, &mPublicServiceHandler);
         AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
 
         err = mProtectedNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, false);

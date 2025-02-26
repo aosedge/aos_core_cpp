@@ -18,6 +18,7 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <downloader/downloader.hpp>
 #include <utils/cryptohelper.hpp>
 #include <utils/pkcs11helper.hpp>
 
@@ -254,14 +255,15 @@ protected:
         std::filesystem::remove_all(SOFTHSM_BASE_MP_DIR "/tokens");
     }
 
-    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::crypto::CertLoader            mCertLoader;
-    aos::iam::certhandler::CertHandler mCertHandler;
-    aos::iam::certhandler::CertInfo    mClientInfo;
-    aos::iam::certhandler::CertInfo    mServerInfo;
-    std::optional<CertProvider>        mCertProvider;
-    std::string                        mKeyURI;
-    std::string                        mCertPEM;
+    aos::crypto::MbedTLSCryptoProvider  mCryptoProvider;
+    aos::crypto::CertLoader             mCertLoader;
+    aos::iam::certhandler::CertHandler  mCertHandler;
+    aos::iam::certhandler::CertInfo     mClientInfo;
+    aos::iam::certhandler::CertInfo     mServerInfo;
+    aos::common::downloader::Downloader mDownloader;
+    std::optional<CertProvider>         mCertProvider;
+    std::string                         mKeyURI;
+    std::string                         mCertPEM;
 
     std::optional<aos::mp::communication::Socket> mServer;
     std::optional<SocketClient>                   mClient;
@@ -317,7 +319,7 @@ TEST_F(CommunicationSecureManagerTest, TestSecureChannel)
         &mCertProvider.value(), mConfig.mVChan.mIAMCertStorage);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
+    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     // connect to IAM
@@ -434,7 +436,7 @@ TEST_F(CommunicationSecureManagerTest, TestSendCMFlow)
     auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
+    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     // connect to CM
@@ -490,7 +492,7 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
     auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mCertProvider.value());
+    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     // connect to CM

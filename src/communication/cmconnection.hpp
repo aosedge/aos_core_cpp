@@ -20,6 +20,7 @@
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
 
+#include <aos/common/downloader/downloader.hpp>
 #include <aos/common/tools/error.hpp>
 
 #include "config/config.hpp"
@@ -50,7 +51,7 @@ public:
      * @return Error.
      */
     Error Init(const config::Config& cfg, HandlerItf& handler, CommunicationManagerItf& comManager,
-        common::iamclient::TLSCredentialsItf* certProvider = nullptr);
+        downloader::DownloaderItf* downloader = nullptr, common::iamclient::TLSCredentialsItf* certProvider = nullptr);
 
     /**
      * Closes connection.
@@ -124,7 +125,8 @@ private:
 
     Poco::TaskManager mTaskManager;
 
-    std::optional<downloader::Downloader>       mDownloader;
+    downloader::DownloaderItf*                  mDownloader {};
+    std::string                                 mDownloadDir;
     std::optional<imageunpacker::ImageUnpacker> mImageUnpacker;
 
     std::atomic<bool>       mShutdown {};

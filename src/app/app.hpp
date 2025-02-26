@@ -15,6 +15,7 @@
 
 #include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <downloader/downloader.hpp>
 #include <iamclient/publicservicehandler.hpp>
 
 #include "cmclient/cmclient.hpp"
@@ -83,6 +84,7 @@ private:
     aos::mp::communication::IAMConnection        mIAMPublicConnection;
     aos::mp::communication::IAMConnection        mIAMProtectedConnection;
     aos::mp::communication::CMConnection         mCMConnection;
+    aos::common::downloader::Downloader          mDownloader;
 };
 
 #endif
