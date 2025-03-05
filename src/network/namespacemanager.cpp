@@ -23,7 +23,7 @@ namespace aos::common::network {
  * Public
  **********************************************************************************************************************/
 
-Error NamespaceManager::Init(sm::networkmanager::NetworkInterfaceManagerItf& netIf)
+Error NamespaceManager::Init(sm::networkmanager::InterfaceManagerItf& netIf)
 {
     LOG_DBG() << "Init namespace manager";
 
@@ -101,7 +101,7 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
         return Error(ErrorEnum::eFailed, strerror(errno));
     }
 
-    if (err = mNetIf->BringUpInterface("lo"); !err.IsNone()) {
+    if (err = mNetIf->SetupLink("lo"); !err.IsNone()) {
         return err;
     }
 

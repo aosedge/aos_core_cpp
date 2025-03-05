@@ -24,7 +24,7 @@ public:
      * @param netIf network interface manager.
      * @return Error.
      */
-    Error Init(sm::networkmanager::NetworkInterfaceManagerItf& netIf);
+    Error Init(sm::networkmanager::InterfaceManagerItf& netIf);
 
     /**
      * Creates network namespace.
@@ -54,7 +54,7 @@ private:
     static constexpr auto cNSLen        = 64;
     static constexpr auto cNSPathFormat = "/proc/%d/task/%d/ns/net";
 
-    sm::networkmanager::NetworkInterfaceManagerItf* mNetIf = nullptr;
+    sm::networkmanager::InterfaceManagerItf* mNetIf = nullptr;
 };
 
 } // namespace aos::common::network
