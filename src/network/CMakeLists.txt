@@ -10,7 +10,7 @@ set(TARGET aosnetwork)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iptables.cpp namespacemanager.cpp networkinterfacemanager.cpp)
+set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp)
 
 # ######################################################################################################################
 # Target
@@ -22,7 +22,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Includes
 # ######################################################################################################################
 
-target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include)
+target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include ${Libnl_INCLUDE_DIRS})
 
 # ######################################################################################################################
 # Compiler flags
@@ -35,7 +35,7 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils)
+target_link_libraries(${TARGET} PUBLIC aoscommon aosutils ${Libnl_LIBRARIES})
 
 # ######################################################################################################################
 # Install

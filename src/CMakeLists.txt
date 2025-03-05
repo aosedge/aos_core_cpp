@@ -22,6 +22,10 @@ find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(Systemd libsystemd REQUIRED)
 
+# Add libnl dependencies
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
+
 # ######################################################################################################################
 # Defines
 # ######################################################################################################################
