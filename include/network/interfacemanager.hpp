@@ -159,6 +159,25 @@ public:
     Error SetMasterLink(const String& ifname, const String& master) override;
 
     /**
+     * Creates bridge.
+     *
+     * @param name bridge name.
+     * @param ip ip.
+     * @param subnet subnet.
+     * @return Error.
+     */
+    Error CreateBridge(const String& name, const String& ip, const String& subnet) override;
+
+    /**
+     * Creates vlan.
+     *
+     * @param name vlan name.
+     * @param vlanId vlan id.
+     * @return Error.
+     */
+    Error CreateVlan(const String& name, uint64_t vlanId) override;
+
+    /**
      * Gets route list.
      *
      * @param[out] routes routes.

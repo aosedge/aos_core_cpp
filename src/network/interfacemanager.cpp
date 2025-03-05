@@ -425,6 +425,85 @@ Error InterfaceManager::GetRouteList(Array<RouteInfo>& routes) const
     return ErrorEnum::eNone;
 }
 
+Error InterfaceManager::CreateBridge(const String& name, const String& ip, const String& subnet)
+{
+    LOG_DBG() << "Create bridge: name=" << name << ", ip=" << ip << ", subnet=" << subnet;
+
+    LinkAttrs bridgeAttrs;
+    bridgeAttrs.mName   = name.CStr();
+    bridgeAttrs.mTxQLen = -1;
+
+    Bridge bridge(bridgeAttrs);
+
+    if (auto err = AddLink(&bridge); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = SetupLink(name); !err.IsNone()) {
+        return err;
+    }
+
+    StaticArray<IPAddr, 1> addrs;
+
+    if (auto err = GetAddrList(name, AF_INET, addrs); !err.IsNone()) {
+        return err;
+    }
+
+    if (!addrs.IsEmpty()) {
+        if (addrs.Size() > 1) {
+            return Error(
+                ErrorEnum::eFailed, ("bridge " + std::string(name.CStr()) + " has more than one address").c_str());
+        }
+
+        if (String(addrs[0].mIP.c_str()) == ip) {
+            return ErrorEnum::eNone;
+        }
+
+        IPAddr ipAddr;
+        ipAddr.mIP = addrs[0].mIP;
+
+        if (auto err = DeleteAddr(name, ipAddr); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    IPAddr ipAddr;
+    ipAddr.mIP     = ip.CStr();
+    ipAddr.mSubnet = subnet.CStr();
+
+    if (auto err = AddAddr(name, ipAddr); !err.IsNone()) {
+        return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
+{
+    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId;
+
+    auto [masterIndex, err] = GetMasterInterfaceIndex();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    LinkAttrs vlanAttrs;
+    vlanAttrs.mName        = name.CStr();
+    vlanAttrs.mParentIndex = masterIndex;
+
+    Vlan vlan(vlanAttrs, vlanId);
+
+    if (err = AddLink(&vlan); !err.IsNone()) {
+        return err;
+    }
+
+    if (err = SetupLink(name); !err.IsNone()) {
+        return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
