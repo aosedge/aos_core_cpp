@@ -57,7 +57,7 @@ private:
         std::pair<std::unique_ptr<aos::iam::certhandler::HSMItf>, std::unique_ptr<aos::iam::certhandler::CertModule>>>
                                                              mCertModules;
     Database                                                 mDatabase;
-    NodeInfoProvider                                         mNodeInfoProvider;
+    aos::iam::nodeinfoprovider::NodeInfoProvider             mNodeInfoProvider;
     aos::iam::nodemanager::NodeManager                       mNodeManager;
     aos::iam::certprovider::CertProvider                     mCertProvider;
     aos::iam::provisionmanager::ProvisionManager             mProvisionManager;

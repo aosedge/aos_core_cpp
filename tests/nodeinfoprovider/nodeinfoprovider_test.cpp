@@ -20,19 +20,23 @@
 
 using namespace testing;
 
+namespace aos::iam::nodeinfoprovider {
+
+namespace {
+
 /***********************************************************************************************************************
  * Consts
  **********************************************************************************************************************/
 
 #define TEST_TMP_DIR "test-tmp"
 
-static const std::string     cNodeIDPath             = TEST_TMP_DIR "/node-id";
-static const std::string     cProvisioningStatusPath = TEST_TMP_DIR "/provisioning-status";
-static const std::string     cCPUInfoPath            = TEST_TMP_DIR "/cpuinfo";
-static const std::string     cMemInfoPath            = TEST_TMP_DIR "/meminfo";
-static const std::array      cPartitionsInfoConfig {aos::iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
-static constexpr auto        cNodeIDFileContent           = "node-id";
-static constexpr auto        cCPUInfoFileContent          = R"(processor	: 0
+const std::string cNodeIDPath             = TEST_TMP_DIR "/node-id";
+const std::string cProvisioningStatusPath = TEST_TMP_DIR "/provisioning-status";
+const std::string cCPUInfoPath            = TEST_TMP_DIR "/cpuinfo";
+const std::string cMemInfoPath            = TEST_TMP_DIR "/meminfo";
+const std::array  cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
+constexpr auto    cNodeIDFileContent           = "node-id";
+constexpr auto    cCPUInfoFileContent          = R"(processor	: 0
 cpu family	: 6
 model		: 141
 model name	: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
@@ -65,19 +69,19 @@ siblings	: 1
 core id		: 0
 cpu cores	: 1
 )";
-static constexpr auto        cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
-static constexpr auto        cMemInfoFileContent          = "MemTotal:       16384 kB";
-static constexpr auto        cExpectedMemSizeBytes        = 16384 * 1024;
-static const aos::NodeStatus cProvisionedStatus           = aos::NodeStatusEnum::eProvisioned;
-static const aos::NodeStatus cUnprovisionedStatus         = aos::NodeStatusEnum::eUnprovisioned;
+constexpr auto    cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
+constexpr auto    cMemInfoFileContent          = "MemTotal:       16384 kB";
+constexpr auto    cExpectedMemSizeBytes        = 16384 * 1024;
+const NodeStatus  cProvisionedStatus           = NodeStatusEnum::eProvisioned;
+const NodeStatus  cUnprovisionedStatus         = NodeStatusEnum::eUnprovisioned;
 
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
-static aos::iam::config::NodeInfoConfig CreateConfig()
+iam::config::NodeInfoConfig CreateConfig()
 {
-    aos::iam::config::NodeInfoConfig config;
+    iam::config::NodeInfoConfig config;
 
     config.mProvisioningStatePath = cProvisioningStatusPath;
     config.mCPUInfoPath           = cCPUInfoPath;
@@ -92,6 +96,8 @@ static aos::iam::config::NodeInfoConfig CreateConfig()
     return config;
 }
 
+} // namespace
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -100,7 +106,7 @@ class NodeInfoProviderTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         std::filesystem::create_directory(TEST_TMP_DIR);
 
@@ -131,13 +137,13 @@ TEST_F(NodeInfoProviderTest, InitFailsWithEmptyNodeConfigStruct)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.Init(aos::iam::config::NodeInfoConfig {});
+    auto err = provider.Init(iam::config::NodeInfoConfig {});
     EXPECT_FALSE(err.IsNone()) << "Init should fail with empty config";
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileNotFound)
 {
-    aos::iam::config::NodeInfoConfig config = CreateConfig();
+    iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
 
@@ -145,7 +151,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileNotFound)
     std::filesystem::remove(cMemInfoPath);
 
     auto err = provider.Init(config);
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileIsEmpty)
@@ -160,7 +166,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileIsEmpty)
     NodeInfoProvider provider;
 
     auto err = provider.Init(CreateConfig());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoFileNotFound)
@@ -171,7 +177,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoFileNotFound)
     std::filesystem::remove(cCPUInfoPath);
 
     auto err = provider.Init(CreateConfig());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoCorrupted)
@@ -188,29 +194,29 @@ TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoCorrupted)
     cpuInfoFile.close();
 
     auto err = provider.Init(CreateConfig());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
 {
-    aos::iam::config::NodeInfoConfig config = CreateConfig();
+    iam::config::NodeInfoConfig config = CreateConfig();
 
-    for (size_t i = 0; i < aos::cMaxNumNodeAttributes + 1; ++i) {
+    for (size_t i = 0; i < cMaxNumNodeAttributes + 1; ++i) {
         config.mAttrs[std::to_string(i).append("-name")] = std::to_string(i).append("-value");
     }
 
     NodeInfoProvider provider;
 
     auto err = provider.Init(config);
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << "Init should return no memory error, err = " << err.Message();
+    EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << "Init should return no memory error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
 {
-    const aos::iam::config::NodeInfoConfig config = CreateConfig();
+    const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    aos::NodeInfo    nodeInfo;
+    NodeInfo         nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -252,10 +258,10 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStatusFromFile)
 {
-    const aos::iam::config::NodeInfoConfig config = CreateConfig();
+    const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    aos::NodeInfo    nodeInfo;
+    NodeInfo         nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -283,17 +289,16 @@ TEST_F(NodeInfoProviderTest, SetNodeStatusFailsIfProvisioningStatusFileNotFound)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound))
-        << "SetNodeStatus should return not found error, err = " << err.Message();
+    auto err = provider.SetNodeStatus(NodeStatusEnum::eProvisioned);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "SetNodeStatus should return not found error, err = " << err.Message();
 }
 
 TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
 {
     NodeInfoProvider provider;
 
-    aos::iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
+    iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
@@ -314,12 +319,12 @@ TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
 
 TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
 {
-    aos::iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
+    iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 
-    aos::iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
+    iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
@@ -341,12 +346,12 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
 
 TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
 {
-    aos::iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
+    iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 
-    aos::iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
+    iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
@@ -359,10 +364,10 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
     err = provider.SubscribeNodeStatusChanged(observer2);
     ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
 
-    EXPECT_CALL(observer1, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cProvisionedStatus))
-        .WillOnce(Return(aos::ErrorEnum::eNone));
-    EXPECT_CALL(observer2, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cProvisionedStatus))
-        .WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(observer1, OnNodeStatusChanged(String(cNodeIDFileContent), cProvisionedStatus))
+        .WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(observer2, OnNodeStatusChanged(String(cNodeIDFileContent), cProvisionedStatus))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     err = provider.SetNodeStatus(cProvisionedStatus);
     EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
@@ -372,9 +377,11 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
     ASSERT_TRUE(err.IsNone()) << "UnsubscribeNodeStatusChanged should succeed, err=" << err.Message();
 
     EXPECT_CALL(observer1, OnNodeStatusChanged(_, _)).Times(0);
-    EXPECT_CALL(observer2, OnNodeStatusChanged(aos::String(cNodeIDFileContent), cUnprovisionedStatus))
-        .WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(observer2, OnNodeStatusChanged(String(cNodeIDFileContent), cUnprovisionedStatus))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     err = provider.SetNodeStatus(cUnprovisionedStatus);
     EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
 }
+
+} // namespace aos::iam::nodeinfoprovider

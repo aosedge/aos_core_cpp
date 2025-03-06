@@ -12,33 +12,33 @@
 
 #include <aos/common/types.hpp>
 
-namespace UtilsSystemInfo {
+namespace aos::iam::nodeinfoprovider::utils {
 
 /**
  * Gets CPU information from the specified file.
  *
  * @param path Path to the file with CPU information.
  * @param[out] cpuInfoArray Array to store CPU information.
- * @return aos::Error.
+ * @return Error.
  */
-aos::Error GetCPUInfo(const std::string& path, aos::Array<aos::CPUInfo>& cpuInfoArray) noexcept;
+Error GetCPUInfo(const std::string& path, Array<CPUInfo>& cpuInfoArray) noexcept;
 
 /**
  * Gets the total memory size.
  *
  * @param path Path to the memory information file.
- * @return aos::RetWithError<uint64_t>.
+ * @return RetWithError<uint64_t>.
  */
-aos::RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept;
+RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept;
 
 /**
  * Gets the total size of the specified mount point.
  *
  * @param path Path to the mount point.
- * @return aos::RetWithError<uint64_t>.
+ * @return RetWithError<uint64_t>.
  */
-aos::RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept;
+RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept;
 
-} // namespace UtilsSystemInfo
+} // namespace aos::iam::nodeinfoprovider::utils
 
 #endif

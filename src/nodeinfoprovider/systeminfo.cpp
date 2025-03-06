@@ -16,24 +16,26 @@
 #include "logger/logmodule.hpp"
 #include "systeminfo.hpp"
 
+namespace aos::iam::nodeinfoprovider::utils {
+
+namespace {
+
 /***********************************************************************************************************************
  * Constants
  **********************************************************************************************************************/
 
-const uint64_t cBytesPerKB = 1024;
+constexpr auto cBytesPerKB = 1024;
 
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
-namespace {
-
 class CPUInfoParser {
 public:
-    aos::Error GetCPUInfo(const std::string& path, aos::Array<aos::CPUInfo>& cpuInfoArray)
+    Error GetCPUInfo(const std::string& path, Array<CPUInfo>& cpuInfoArray)
     {
         if (mFile.open(path); !mFile.is_open()) {
-            return aos::ErrorEnum::eNotFound;
+            return ErrorEnum::eNotFound;
         }
 
         if (const auto err = ParseCPUInfoFile(); !err.IsNone()) {
@@ -46,7 +48,7 @@ public:
             }
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
 private:
@@ -56,8 +58,8 @@ private:
             return;
         }
 
-        size_t       physicalId = 0;
-        aos::CPUInfo cpuInfo;
+        size_t  physicalId = 0;
+        CPUInfo cpuInfo;
 
         for (const auto& keyValue : mCurrentEntryKeyValues) {
             try {
@@ -76,7 +78,7 @@ private:
                 LOG_DBG() << "CPU info parsing failed: key=" << keyValue.mKey.c_str()
                           << ", value=" << keyValue.mValue.c_str();
 
-                throw aos::common::utils::AosException("Failed to parse CPU info", aos::ErrorEnum::eFailed);
+                throw common::utils::AosException("Failed to parse CPU info", ErrorEnum::eFailed);
             }
         }
 
@@ -86,13 +88,13 @@ private:
         mCurrentEntryKeyValues.clear();
     }
 
-    aos::Error ParseCPUInfoFile() noexcept
+    Error ParseCPUInfoFile() noexcept
     {
         try {
             std::string line;
 
             while (std::getline(mFile, line)) {
-                const auto keyValue = aos::common::utils::ParseKeyValue(line);
+                const auto keyValue = common::utils::ParseKeyValue(line);
 
                 if (!keyValue.has_value() || keyValue->mKey == "processor") {
                     PopulateCPUInfoObject();
@@ -106,15 +108,15 @@ private:
             // populate last CPU info object
             PopulateCPUInfoObject();
         } catch (const std::exception& e) {
-            return aos::common::utils::ToAosError(e);
+            return common::utils::ToAosError(e);
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    std::ifstream                             mFile;
-    std::unordered_map<size_t, aos::CPUInfo>  mCPUInfos;
-    std::vector<aos::common::utils::KeyValue> mCurrentEntryKeyValues;
+    std::ifstream                        mFile;
+    std::unordered_map<size_t, CPUInfo>  mCPUInfos;
+    std::vector<common::utils::KeyValue> mCurrentEntryKeyValues;
 };
 
 } // namespace
@@ -123,32 +125,30 @@ private:
  * Public
  **********************************************************************************************************************/
 
-namespace UtilsSystemInfo {
-
-aos::Error GetCPUInfo(const std::string& path, aos::Array<aos::CPUInfo>& cpuInfoArray) noexcept
+Error GetCPUInfo(const std::string& path, Array<CPUInfo>& cpuInfoArray) noexcept
 {
     try {
         CPUInfoParser parser;
 
         return parser.GetCPUInfo(path, cpuInfoArray);
     } catch (const std::exception& e) {
-        return aos::common::utils::ToAosError(e);
+        return common::utils::ToAosError(e);
     }
 }
 
-aos::RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept
+RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept
 {
     try {
         std::ifstream file;
 
         if (file.open(path); !file.is_open()) {
-            return {0, aos::ErrorEnum::eNotFound};
+            return {0, ErrorEnum::eNotFound};
         }
 
         std::string line;
 
         while (std::getline(file, line)) {
-            const auto keyValue = aos::common::utils::ParseKeyValue(line);
+            const auto keyValue = common::utils::ParseKeyValue(line);
 
             if (!keyValue.has_value() || keyValue->mKey != "MemTotal") {
                 continue;
@@ -157,25 +157,25 @@ aos::RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept
             const auto memTotalKB = std::stoull(keyValue->mValue.substr(0, keyValue->mValue.find(" ")));
 
             // convert KB to bytes
-            return {memTotalKB * cBytesPerKB, aos::ErrorEnum::eNone};
+            return {memTotalKB * cBytesPerKB, ErrorEnum::eNone};
         }
 
     } catch (const std::exception& e) {
-        return {0, AOS_ERROR_WRAP(aos::common::utils::ToAosError(e))};
+        return {0, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
     }
 
-    return {0, aos::ErrorEnum::eFailed};
+    return {0, ErrorEnum::eFailed};
 }
 
-aos::RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept
+RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept
 {
     struct statfs stat { };
 
     if (statfs(path.c_str(), &stat) == -1) {
-        return {0, aos::ErrorEnum::eFailed};
+        return {0, ErrorEnum::eFailed};
     }
 
-    return {stat.f_blocks * stat.f_bsize, aos::ErrorEnum::eNone};
+    return {stat.f_blocks * stat.f_bsize, ErrorEnum::eNone};
 }
 
-} // namespace UtilsSystemInfo
+} // namespace aos::iam::nodeinfoprovider::utils

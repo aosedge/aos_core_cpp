@@ -16,10 +16,12 @@
 
 #include "config/config.hpp"
 
+namespace aos::iam::nodeinfoprovider {
+
 /**
  * Node info provider.
  */
-class NodeInfoProvider : public aos::iam::nodeinfoprovider::NodeInfoProviderItf {
+class NodeInfoProvider : public iam::nodeinfoprovider::NodeInfoProviderItf {
 public:
     /**
      * Initializes the node info provider.
@@ -27,7 +29,7 @@ public:
      * @param config node configuration
      * @return Error
      */
-    aos::Error Init(const aos::iam::config::NodeInfoConfig& config);
+    Error Init(const iam::config::NodeInfoConfig& config);
 
     /**
      * Gets the node info object.
@@ -35,7 +37,7 @@ public:
      * @param[out] nodeInfo node info
      * @return Error
      */
-    aos::Error GetNodeInfo(aos::NodeInfo& nodeInfo) const override;
+    Error GetNodeInfo(NodeInfo& nodeInfo) const override;
 
     /**
      * Sets the node status.
@@ -43,7 +45,7 @@ public:
      * @param status node status
      * @return Error
      */
-    aos::Error SetNodeStatus(const aos::NodeStatus& status) override;
+    Error SetNodeStatus(const NodeStatus& status) override;
 
     /**
      * Subscribes on node status changed event.
@@ -51,7 +53,7 @@ public:
      * @param observer node status changed observer
      * @return Error
      */
-    aos::Error SubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+    Error SubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
 
     /**
      * Unsubscribes from node status changed event.
@@ -59,18 +61,20 @@ public:
      * @param observer node status changed observer
      * @return Error
      */
-    aos::Error UnsubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+    Error UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
 
 private:
-    aos::Error InitAtrributesInfo(const aos::iam::config::NodeInfoConfig& config);
-    aos::Error InitPartitionInfo(const aos::iam::config::NodeInfoConfig& config);
-    aos::Error NotifyNodeStatusChanged();
+    Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
+    Error InitPartitionInfo(const iam::config::NodeInfoConfig& config);
+    Error NotifyNodeStatusChanged();
 
-    mutable std::mutex                                                     mMutex;
-    std::unordered_set<aos::iam::nodeinfoprovider::NodeStatusObserverItf*> mObservers;
-    std::string                                                            mMemInfoPath;
-    std::string                                                            mProvisioningStatusPath;
-    aos::NodeInfo                                                          mNodeInfo;
+    mutable std::mutex                                                mMutex;
+    std::unordered_set<iam::nodeinfoprovider::NodeStatusObserverItf*> mObservers;
+    std::string                                                       mMemInfoPath;
+    std::string                                                       mProvisioningStatusPath;
+    NodeInfo                                                          mNodeInfo;
 };
+
+} // namespace aos::iam::nodeinfoprovider
 
 #endif
