@@ -26,16 +26,20 @@
 
 using namespace testing;
 
+namespace aos::iam::iamserver {
+
+namespace {
+
 /***********************************************************************************************************************
- * static
+ * Static
  **********************************************************************************************************************/
 
-static constexpr auto cServerURL = "0.0.0.0:4456";
-static constexpr auto cSystemID  = "system-id";
-static constexpr auto cUnitModel = "unit-model";
+constexpr auto cServerURL = "0.0.0.0:4456";
+constexpr auto cSystemID  = "system-id";
+constexpr auto cUnitModel = "unit-model";
 
 template <typename T>
-static std::unique_ptr<typename T::Stub> CreateClientStub()
+std::unique_ptr<typename T::Stub> CreateClientStub()
 {
     auto tlsChannelCreds = grpc::InsecureChannelCredentials();
 
@@ -51,6 +55,8 @@ static std::unique_ptr<typename T::Stub> CreateClientStub()
     return T::NewStub(channel);
 }
 
+} // namespace
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -64,12 +70,12 @@ protected:
     std::unique_ptr<grpc::Server> mServer;
 
     // mocks
-    aos::iam::identhandler::IdentHandlerMock         mIdentHandler;
-    aos::iam::permhandler::PermHandlerMock           mPermHandler;
-    aos::iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    aos::iam::nodemanager::NodeManagerMock           mNodeManager;
-    aos::iam::provisionmanager::ProvisionManagerMock mProvisionManager;
-    aos::iam::certprovider::CertProviderMock         mCertProvider;
+    iam::identhandler::IdentHandlerMock         mIdentHandler;
+    iam::permhandler::PermHandlerMock           mPermHandler;
+    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    iam::nodemanager::NodeManagerMock           mNodeManager;
+    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    iam::certprovider::CertProviderMock         mCertProvider;
 
 private:
     void SetUp() override;
@@ -88,16 +94,16 @@ void ProtectedMessageHandlerTest::InitServer()
 
 void ProtectedMessageHandlerTest::SetUp()
 {
-    aos::test::InitLog();
+    test::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
 
         LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     auto err = mServerHandler.Init(mNodeController, mIdentHandler, mPermHandler, mNodeInfoProvider, mNodeManager,
@@ -133,11 +139,11 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::ePaused);
+        EXPECT_EQ(status.GetValue(), NodeStatusEnum::ePaused);
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
@@ -145,7 +151,7 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
     ASSERT_TRUE(status.ok()) << "PauseNode failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -160,11 +166,11 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::ePaused);
+        EXPECT_EQ(status.GetValue(), NodeStatusEnum::ePaused);
 
-        return aos::ErrorEnum::eFailed;
+        return ErrorEnum::eFailed;
     }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
@@ -172,7 +178,7 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
     ASSERT_TRUE(status.ok()) << "PauseNode failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -187,11 +193,11 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::eProvisioned);
+        EXPECT_EQ(status.GetValue(), NodeStatusEnum::eProvisioned);
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
@@ -199,7 +205,7 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
     ASSERT_TRUE(status.ok()) << "ResumeNode failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -214,11 +220,11 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), aos::NodeStatusEnum::eProvisioned);
+        EXPECT_EQ(status.GetValue(), NodeStatusEnum::eProvisioned);
 
-        return aos::ErrorEnum::eFailed;
+        return ErrorEnum::eFailed;
     }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
@@ -226,7 +232,7 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
     ASSERT_TRUE(status.ok()) << "ResumeNode failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -245,12 +251,12 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesSucceeds)
 
     request.set_node_id("node0");
 
-    aos::iam::provisionmanager::CertTypes certTypes;
+    iam::provisionmanager::CertTypes certTypes;
     certTypes.PushBack("type1");
     certTypes.PushBack("type2");
 
     EXPECT_CALL(mProvisionManager, GetCertTypes)
-        .WillOnce(Return(aos::RetWithError<aos::iam::provisionmanager::CertTypes>(certTypes, aos::ErrorEnum::eNone)));
+        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>(certTypes, ErrorEnum::eNone)));
 
     auto status = clientStub->GetCertTypes(&context, request, &response);
 
@@ -259,7 +265,7 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesSucceeds)
 
     ASSERT_EQ(response.types_size(), certTypes.Size());
     for (size_t i = 0; i < certTypes.Size(); i++) {
-        EXPECT_EQ(aos::String(response.types(i).c_str()), certTypes[i]);
+        EXPECT_EQ(String(response.types(i).c_str()), certTypes[i]);
     }
 }
 
@@ -275,7 +281,7 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesFails)
     request.set_node_id("node0");
 
     EXPECT_CALL(mProvisionManager, GetCertTypes)
-        .WillOnce(Return(aos::RetWithError<aos::iam::provisionmanager::CertTypes>({}, aos::ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>({}, ErrorEnum::eFailed)));
 
     auto status = clientStub->GetCertTypes(&context, request, &response);
 
@@ -293,14 +299,14 @@ TEST_F(ProtectedMessageHandlerTest, StartProvisioningSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, StartProvisioning).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mProvisionManager, StartProvisioning).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->StartProvisioning(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "StartProvisioning failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -315,14 +321,14 @@ TEST_F(ProtectedMessageHandlerTest, StartProvisioningFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, StartProvisioning).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mProvisionManager, StartProvisioning).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->StartProvisioning(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "StartProvisioning failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -337,14 +343,14 @@ TEST_F(ProtectedMessageHandlerTest, FinishProvisioningSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, FinishProvisioning).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mProvisionManager, FinishProvisioning).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->FinishProvisioning(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "FinishProvisioning failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -359,14 +365,14 @@ TEST_F(ProtectedMessageHandlerTest, FinishProvisioningFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, FinishProvisioning).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mProvisionManager, FinishProvisioning).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->FinishProvisioning(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "FinishProvisioning failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -381,14 +387,14 @@ TEST_F(ProtectedMessageHandlerTest, DeprovisionSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, Deprovision).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mProvisionManager, Deprovision).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->Deprovision(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "Deprovision failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -403,14 +409,14 @@ TEST_F(ProtectedMessageHandlerTest, DeprovisionFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, Deprovision).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mProvisionManager, Deprovision).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->Deprovision(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "Deprovision failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -429,16 +435,15 @@ TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(aos::ErrorEnum::eNone));
-    EXPECT_CALL(mIdentHandler, GetSystemID)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
 
     auto status = clientStub->CreateKey(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "CreateKey failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -454,7 +459,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertSucceeds)
     request.set_node_id("node0");
     request.set_type("cert-type");
 
-    EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->ApplyCert(&context, request, &response);
 
@@ -464,7 +469,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertSucceeds)
     EXPECT_EQ(response.node_id(), "node0");
     EXPECT_EQ(response.type(), "cert-type");
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eNone));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
 }
 
@@ -480,7 +485,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertFails)
     request.set_node_id("node0");
     request.set_type("cert-type");
 
-    EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->ApplyCert(&context, request, &response);
 
@@ -490,7 +495,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertFails)
     EXPECT_EQ(response.node_id(), "node0");
     EXPECT_EQ(response.type(), "cert-type");
 
-    EXPECT_EQ(response.error().aos_code(), static_cast<int>(aos::ErrorEnum::eFailed));
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
 }
 
@@ -512,7 +517,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceSucceeds)
     request.mutable_permissions()->operator[]("permission-1").mutable_permissions()->insert({"key", "value"});
 
     EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::iam::permhandler::cSecretLen>>("test-secret")));
+        .WillOnce(Return(RetWithError<StaticString<iam::permhandler::cSecretLen>>("test-secret")));
 
     const auto status = clientStub->RegisterInstance(&context, request, &response);
 
@@ -535,7 +540,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceFailsNoMemory)
     request.mutable_instance()->set_subject_id("subject-id-1");
 
     // fill permissions with more items than allowed
-    for (size_t i = 0; i < aos::cMaxNumServices + 1; i++) {
+    for (size_t i = 0; i < cMaxNumServices + 1; i++) {
         (*request.mutable_permissions())[std::to_string(i)].mutable_permissions()->insert({"key", "value"});
     }
 
@@ -556,8 +561,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceFailsOnPermHandler)
     iamproto::RegisterInstanceResponse response;
 
     EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(
-            aos::RetWithError<aos::StaticString<aos::iam::permhandler::cSecretLen>>("", aos::ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<iam::permhandler::cSecretLen>>("", ErrorEnum::eFailed)));
 
     auto status = clientStub->RegisterInstance(&context, request, &response);
 
@@ -573,7 +577,7 @@ TEST_F(ProtectedMessageHandlerTest, UnregisterInstanceSucceeds)
     iamproto::UnregisterInstanceRequest request;
     google::protobuf::Empty             response;
 
-    EXPECT_CALL(mPermHandler, UnregisterInstance).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mPermHandler, UnregisterInstance).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->UnregisterInstance(&context, request, &response);
 
@@ -590,9 +594,11 @@ TEST_F(ProtectedMessageHandlerTest, UnregisterInstanceFails)
     iamproto::UnregisterInstanceRequest request;
     google::protobuf::Empty             response;
 
-    EXPECT_CALL(mPermHandler, UnregisterInstance).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mPermHandler, UnregisterInstance).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->UnregisterInstance(&context, request, &response);
 
     ASSERT_FALSE(status.ok());
 }
+
+} // namespace aos::iam::iamserver

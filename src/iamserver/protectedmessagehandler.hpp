@@ -27,6 +27,8 @@
 #include "nodecontroller.hpp"
 #include "publicmessagehandler.hpp"
 
+namespace aos::iam::iamserver {
+
 /**
  * Protected message handler. Responsible for handling protected IAM services.
  */
@@ -50,11 +52,10 @@ public:
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      */
-    aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
-        aos::iam::permhandler::PermHandlerItf&           permHandler,
-        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
-        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager);
+    Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+        iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+        iam::nodemanager::NodeManagerItf& nodeManager, iam::certprovider::CertProviderItf& certProvider,
+        iam::provisionmanager::ProvisionManagerItf& provisionManager);
 
     /**
      * Registers grpc services.
@@ -79,11 +80,11 @@ public:
 private:
     static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
     static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
-    static constexpr std::array cAllowedStatuses = {aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused};
+    static constexpr std::array cAllowedStatuses     = {NodeStatusEnum::eProvisioned, NodeStatusEnum::ePaused};
 
     // IAMPublicNodesService interface
-    grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
-        grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
+    grpc::Status RegisterNode(grpc::ServerContext*                                              context,
+        grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override;
 
     // IAMNodesService interface
     grpc::Status PauseNode(grpc::ServerContext* context, const iamproto::PauseNodeRequest* request,
@@ -113,7 +114,9 @@ private:
     grpc::Status UnregisterInstance(grpc::ServerContext* context, const iamproto::UnregisterInstanceRequest* request,
         google::protobuf::Empty* response) override;
 
-    aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
 };
+
+} // namespace aos::iam::iamserver
 
 #endif

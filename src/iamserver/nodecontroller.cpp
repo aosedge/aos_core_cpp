@@ -13,6 +13,8 @@
 #include "logger/logmodule.hpp"
 #include "nodecontroller.hpp"
 
+namespace aos::iam::iamserver {
+
 /***********************************************************************************************************************
  * NodeStreamHandler
  **********************************************************************************************************************/
@@ -21,8 +23,8 @@
  * Public
  **********************************************************************************************************************/
 
-NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<aos::NodeStatus>& allowedStatuses,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
+NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<NodeStatus>& allowedStatuses,
+    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
     StreamRegistryItf* streamRegistry)
 {
     return NodeStreamHandler::Ptr(new NodeStreamHandler(allowedStatuses, stream, context, nodeManager, streamRegistry));
@@ -48,11 +50,11 @@ void NodeStreamHandler::Close()
     mPendingMessages.clear();
 }
 
-aos::Error NodeStreamHandler::HandleStream()
+Error NodeStreamHandler::HandleStream()
 {
     LOG_DBG() << "Process stream handler";
 
-    aos::Error                    err = aos::ErrorEnum::eNone;
+    Error                         err = ErrorEnum::eNone;
     iamproto::IAMOutgoingMessages outgoing;
 
     while (mStream->Read(&outgoing)) {
@@ -80,7 +82,7 @@ aos::Error NodeStreamHandler::HandleStream()
                 it->second.set_value(std::move(outgoing));
             }
         } catch (const std::exception& e) {
-            err = AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+            err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
 
             break;
         }
@@ -101,7 +103,7 @@ grpc::Status NodeStreamHandler::GetCertTypes(const iamproto::GetCertTypesRequest
     incoming.mutable_get_cert_types_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_cert_types_response()) {
@@ -123,7 +125,7 @@ grpc::Status NodeStreamHandler::StartProvisioning(const iamproto::StartProvision
     incoming.mutable_start_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_start_provisioning_response()) {
@@ -145,7 +147,7 @@ grpc::Status NodeStreamHandler::FinishProvisioning(const iamproto::FinishProvisi
     incoming.mutable_finish_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_finish_provisioning_response()) {
@@ -167,7 +169,7 @@ grpc::Status NodeStreamHandler::Deprovision(const iamproto::DeprovisionRequest* 
     incoming.mutable_deprovision_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_deprovision_response()) {
@@ -189,7 +191,7 @@ grpc::Status NodeStreamHandler::PauseNode(const iamproto::PauseNodeRequest* requ
     incoming.mutable_pause_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_pause_node_response()) {
@@ -211,7 +213,7 @@ grpc::Status NodeStreamHandler::ResumeNode(const iamproto::ResumeNodeRequest* re
     incoming.mutable_resume_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_resume_node_response()) {
@@ -233,7 +235,7 @@ grpc::Status NodeStreamHandler::CreateKey(const iamproto::CreateKeyRequest* requ
     incoming.mutable_create_key_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_create_key_response()) {
@@ -255,7 +257,7 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
     incoming.mutable_apply_cert_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
-        return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
     if (!outgoing.has_apply_cert_response()) {
@@ -271,9 +273,8 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
  * Private
  **********************************************************************************************************************/
 
-NodeStreamHandler::NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
-    StreamRegistryItf* streamRegistry)
+NodeStreamHandler::NodeStreamHandler(const std::vector<NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
     : mAllowedStatuses(allowedStatuses)
     , mStream(stream)
     , mContext(context)
@@ -282,15 +283,15 @@ NodeStreamHandler::NodeStreamHandler(const std::vector<aos::NodeStatus>& allowed
 {
 }
 
-aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& request,
+Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& request,
     iamproto::IAMOutgoingMessages& response, const std::chrono::seconds responseTimeout)
 {
     if (mIsClosed) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "stream is closed"));
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "stream is closed"));
     }
 
     if (!mStream->Write(request)) {
-        return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eFailed, "failed to send message"));
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to send message"));
     }
 
     try {
@@ -304,24 +305,24 @@ aos::Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& r
         }
 
         if (responseFuture.wait_for(responseTimeout) != std::future_status::ready) {
-            return AOS_ERROR_WRAP(aos::Error(aos::ErrorEnum::eTimeout, "response timeout"));
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "response timeout"));
         }
 
         response = responseFuture.get();
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e, aos::ErrorEnum::eRuntime));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e, ErrorEnum::eRuntime));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
+Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
     LOG_DBG() << "Received node info: nodeID=" << info.node_id().c_str() << ", status=" << info.status().c_str();
 
-    auto nodeInfo = std::make_unique<aos::NodeInfo>();
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
-    if (auto err = aos::common::pbconvert::ConvertToAos(info, *nodeInfo); !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertToAos(info, *nodeInfo); !err.IsNone()) {
         return err;
     }
 
@@ -331,7 +332,7 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 
         mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     if (auto err = mNodeManager->SetNodeInfo(*nodeInfo); !err.IsNone()) {
@@ -340,7 +341,7 @@ aos::Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 
     mStreamRegistry->LinkNodeIDToHandler(info.node_id(), shared_from_this());
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************
@@ -380,8 +381,8 @@ void NodeController::Close()
     mHandlers.clear();
 }
 
-grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<aos::NodeStatus>& allowedStatuses,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager)
+grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<NodeStatus>& allowedStatuses,
+    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager)
 {
     {
         std::lock_guard lock {mMutex};
@@ -404,7 +405,7 @@ grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<aos::Nod
 
     Remove(handler);
 
-    return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(ret);
+    return common::pbconvert::ConvertAosErrorToGrpcStatus(ret);
 }
 
 NodeStreamHandler::Ptr NodeController::GetNodeStreamHandler(const std::string& nodeID)
@@ -474,3 +475,5 @@ void NodeController::Remove(NodeStreamHandler::Ptr handler)
 
     mHandlers.erase(handler);
 }
+
+} // namespace aos::iam::iamserver

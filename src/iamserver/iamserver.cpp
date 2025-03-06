@@ -26,14 +26,18 @@
 #include "iamserver.hpp"
 #include "logger/logmodule.hpp"
 
+namespace aos::iam::iamserver {
+
+namespace {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
 
-static const std::string CorrectAddress(const std::string& addr)
+std::string CorrectAddress(const std::string& addr)
 {
     if (addr.empty()) {
-        throw aos::common::utils::AosException("bad address");
+        throw common::utils::AosException("bad address");
     }
 
     if (addr[0] == ':') {
@@ -43,7 +47,7 @@ static const std::string CorrectAddress(const std::string& addr)
     return addr;
 }
 
-static aos::Error ExecProcess(const std::string& cmd, const std::vector<std::string>& args, std::string& output)
+Error ExecProcess(const std::string& cmd, const std::vector<std::string>& args, std::string& output)
 {
     Poco::Pipe            outPipe;
     Poco::ProcessHandle   ph = Poco::Process::launch(cmd, args, nullptr, &outPipe, &outPipe);
@@ -53,17 +57,17 @@ static aos::Error ExecProcess(const std::string& cmd, const std::vector<std::str
     Poco::trimRightInPlace(output);
 
     if (int exitCode = ph.wait(); exitCode != 0) {
-        aos::StaticString<aos::cMaxErrorStrLen> errStr;
+        StaticString<cMaxErrorStrLen> errStr;
 
         errStr.Format("Process failed: cmd=%s, code=%d", cmd.c_str(), exitCode);
 
-        return {aos::ErrorEnum::eFailed, errStr.CStr()};
+        return {ErrorEnum::eFailed, errStr.CStr()};
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cmdArgs)
+Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cmdArgs)
 {
     if (!cmdArgs.empty()) {
         std::string                    output;
@@ -76,19 +80,21 @@ static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std:
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-aos::Error IAMServer::Init(const aos::iam::config::Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
-    aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-    aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
-    aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
-    aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode)
+Error IAMServer::Init(const iam::config::Config& config, iam::certhandler::CertHandlerItf& certHandler,
+    iam::identhandler::IdentHandlerItf& identHandler, iam::permhandler::PermHandlerItf& permHandler,
+    crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, iam::nodemanager::NodeManagerItf& nodeManager,
+    iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+    bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";
 
@@ -96,8 +102,8 @@ aos::Error IAMServer::Init(const aos::iam::config::Config& config, aos::iam::cer
     mCertLoader     = &certLoader;
     mCryptoProvider = &cryptoProvider;
 
-    aos::Error err;
-    auto       nodeInfo = std::make_unique<aos::NodeInfo>();
+    Error err;
+    auto  nodeInfo = std::make_unique<NodeInfo>();
 
     if (err = nodeInfoProvider.GetNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -121,20 +127,20 @@ aos::Error IAMServer::Init(const aos::iam::config::Config& config, aos::iam::cer
 
     try {
         if (!provisioningMode) {
-            aos::iam::certhandler::CertInfo certInfo;
+            iam::certhandler::CertInfo certInfo;
 
-            err = certHandler.GetCertificate(aos::String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
+            err = certHandler.GetCertificate(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
             if (!err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
-            err = certHandler.SubscribeCertChanged(aos::String(mConfig.mCertStorage.c_str()), *this);
+            err = certHandler.SubscribeCertChanged(String(mConfig.mCertStorage.c_str()), *this);
             if (!err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
-            mPublicCred    = aos::common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
-            mProtectedCred = aos::common::utils::GetMTLSServerCredentials(
+            mPublicCred    = common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
+            mProtectedCred = common::utils::GetMTLSServerCredentials(
                 certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
             mPublicCred    = grpc::InsecureServerCredentials();
@@ -144,18 +150,18 @@ aos::Error IAMServer::Init(const aos::iam::config::Config& config, aos::iam::cer
         Start();
 
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    if (err = nodeManager.SubscribeNodeInfoChange(static_cast<aos::iam::nodemanager::NodeInfoListenerItf&>(*this));
+    if (err = nodeManager.SubscribeNodeInfoChange(static_cast<iam::nodemanager::NodeInfoListenerItf&>(*this));
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error IAMServer::OnStartProvisioning(const aos::String& password)
+Error IAMServer::OnStartProvisioning(const String& password)
 {
     (void)password;
 
@@ -164,7 +170,7 @@ aos::Error IAMServer::OnStartProvisioning(const aos::String& password)
     return ExecCommand("Start provisioning", mConfig.mStartProvisioningCmdArgs);
 }
 
-aos::Error IAMServer::OnFinishProvisioning(const aos::String& password)
+Error IAMServer::OnFinishProvisioning(const String& password)
 {
     (void)password;
 
@@ -173,7 +179,7 @@ aos::Error IAMServer::OnFinishProvisioning(const aos::String& password)
     return ExecCommand("Finish provisioning", mConfig.mFinishProvisioningCmdArgs);
 }
 
-aos::Error IAMServer::OnDeprovision(const aos::String& password)
+Error IAMServer::OnDeprovision(const String& password)
 {
     (void)password;
 
@@ -182,7 +188,7 @@ aos::Error IAMServer::OnDeprovision(const aos::String& password)
     return ExecCommand("Deprovision", mConfig.mDeprovisionCmdArgs);
 }
 
-aos::Error IAMServer::OnEncryptDisk(const aos::String& password)
+Error IAMServer::OnEncryptDisk(const String& password)
 {
     (void)password;
 
@@ -191,7 +197,7 @@ aos::Error IAMServer::OnEncryptDisk(const aos::String& password)
     return ExecCommand("Encrypt disk", mConfig.mDiskEncryptionCmdArgs);
 }
 
-void IAMServer::OnNodeInfoChange(const aos::NodeInfo& info)
+void IAMServer::OnNodeInfoChange(const NodeInfo& info)
 {
     LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", status=" << info.mStatus;
 
@@ -199,7 +205,7 @@ void IAMServer::OnNodeInfoChange(const aos::NodeInfo& info)
     mProtectedMessageHandler.OnNodeInfoChange(info);
 }
 
-void IAMServer::OnNodeRemoved(const aos::String& id)
+void IAMServer::OnNodeRemoved(const String& id)
 {
     LOG_DBG() << "Process on node removed: nodeID=" << id;
 
@@ -216,7 +222,7 @@ IAMServer::~IAMServer()
  * Private
  **********************************************************************************************************************/
 
-aos::Error IAMServer::SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages)
+Error IAMServer::SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages)
 {
     auto err = mPublicMessageHandler.SubjectsChanged(messages);
     if (!err.IsNone()) {
@@ -227,14 +233,14 @@ aos::Error IAMServer::SubjectsChanged(const aos::Array<aos::StaticString<aos::cS
         return AOS_ERROR_WRAP(err);
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-void IAMServer::OnCertChanged(const aos::iam::certhandler::CertInfo& info)
+void IAMServer::OnCertChanged(const iam::certhandler::CertInfo& info)
 {
-    mPublicCred = aos::common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
+    mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
     mProtectedCred
-        = aos::common::utils::GetMTLSServerCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+        = common::utils::GetMTLSServerCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
 
     // postpone restart so it didn't block ApplyCert
     mCertChangedResult = std::async(std::launch::async, [this]() {
@@ -315,3 +321,5 @@ void IAMServer::CreateProtectedServer(
 
     mProtectedServer = builder.BuildAndStart();
 }
+
+} // namespace aos::iam::iamserver

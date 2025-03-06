@@ -28,13 +28,15 @@
 #include "protectedmessagehandler.hpp"
 #include "publicmessagehandler.hpp"
 
+namespace aos::iam::iamserver {
+
 /**
  * IAM GRPC server
  */
-class IAMServer : public aos::iam::nodemanager::NodeInfoListenerItf,
-                  public aos::iam::identhandler::SubjectsObserverItf,
-                  public aos::iam::provisionmanager::ProvisionManagerCallbackItf,
-                  private aos::iam::certhandler::CertReceiverItf {
+class IAMServer : public iam::nodemanager::NodeInfoListenerItf,
+                  public iam::identhandler::SubjectsObserverItf,
+                  public iam::provisionmanager::ProvisionManagerCallbackItf,
+                  private iam::certhandler::CertReceiverItf {
 public:
     /**
      * Constructor.
@@ -56,12 +58,12 @@ public:
      * @param provisionManager provision manager.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
-    aos::Error Init(const aos::iam::config::Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
-        aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
-        aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
-        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider,
-        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, bool provisioningMode);
+    Error Init(const iam::config::Config& config, iam::certhandler::CertHandlerItf& certHandler,
+        iam::identhandler::IdentHandlerItf& identHandler, iam::permhandler::PermHandlerItf& permHandler,
+        crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+        iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, iam::nodemanager::NodeManagerItf& nodeManager,
+        iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+        bool provisioningMode);
 
     /**
      * Called when provisioning starts.
@@ -69,7 +71,7 @@ public:
      * @param password password.
      * @returns Error.
      */
-    aos::Error OnStartProvisioning(const aos::String& password) override;
+    Error OnStartProvisioning(const String& password) override;
 
     /**
      * Called when provisioning finishes.
@@ -77,7 +79,7 @@ public:
      * @param password password.
      * @returns Error.
      */
-    aos::Error OnFinishProvisioning(const aos::String& password) override;
+    Error OnFinishProvisioning(const String& password) override;
 
     /**
      * Called on deprovisioning.
@@ -85,7 +87,7 @@ public:
      * @param password password.
      * @returns Error.
      */
-    aos::Error OnDeprovision(const aos::String& password) override;
+    Error OnDeprovision(const String& password) override;
 
     /**
      * Called on disk encryption.
@@ -93,21 +95,21 @@ public:
      * @param password password.
      * @returns Error.
      */
-    aos::Error OnEncryptDisk(const aos::String& password) override;
+    Error OnEncryptDisk(const String& password) override;
 
     /**
      * Node info change notification.
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const aos::NodeInfo& info) override;
+    void OnNodeInfoChange(const NodeInfo& info) override;
 
     /**
      * Node info removed notification.
      *
      * @param id id of the node been removed.
      */
-    void OnNodeRemoved(const aos::String& id) override;
+    void OnNodeRemoved(const String& id) override;
 
     /**
      * Destroys IAM server.
@@ -116,10 +118,10 @@ public:
 
 private:
     // identhandler::SubjectsObserverItf interface
-    aos::Error SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages) override;
+    Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) override;
 
     // certhandler::CertReceiverItf interface
-    void OnCertChanged(const aos::iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
 
     // lifecycle routines
     void Start();
@@ -129,9 +131,9 @@ private:
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
-    aos::iam::config::Config        mConfig         = {};
-    aos::crypto::CertLoader*        mCertLoader     = nullptr;
-    aos::crypto::x509::ProviderItf* mCryptoProvider = nullptr;
+    iam::config::Config        mConfig         = {};
+    crypto::CertLoader*        mCertLoader     = nullptr;
+    crypto::x509::ProviderItf* mCryptoProvider = nullptr;
 
     NodeController                           mNodeController;
     PublicMessageHandler                     mPublicMessageHandler;
@@ -142,5 +144,7 @@ private:
     bool              mIsStarted = false;
     std::future<void> mCertChangedResult;
 };
+
+} // namespace aos::iam::iamserver
 
 #endif

@@ -19,6 +19,8 @@
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
+namespace aos::iam::iamserver {
+
 namespace iamproto = iamanager::v5;
 
 using NodeServerReaderWriter = grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>;
@@ -67,9 +69,8 @@ public:
      * @param nodeManager node manager.
      * @param streamRegistry stream registry.
      */
-    static NodeStreamHandler::Ptr Create(const std::vector<aos::NodeStatus>& allowedStatuses,
-        NodeServerReaderWriter* stream, grpc::ServerContext* context,
-        aos::iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
+    static NodeStreamHandler::Ptr Create(const std::vector<NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     /**
      * Destructor.
@@ -81,7 +82,7 @@ public:
      */
     void Close();
 
-    aos::Error HandleStream();
+    Error HandleStream();
     /**
      * Sends get cert types request and waits for response with timeout.
      *
@@ -171,22 +172,21 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
-    NodeStreamHandler(const std::vector<aos::NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, aos::iam::nodemanager::NodeManagerItf* nodeManager,
-        StreamRegistryItf* streamRegistry);
+    NodeStreamHandler(const std::vector<NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
-    aos::Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
+    Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
-    aos::Error HandleNodeInfo(const iamproto::NodeInfo& info);
+    Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
-    std::vector<aos::NodeStatus>           mAllowedStatuses;
-    NodeServerReaderWriter*                mStream         = nullptr;
-    grpc::ServerContext*                   mContext        = nullptr;
-    aos::iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
-    StreamRegistryItf*                     mStreamRegistry = nullptr;
-    std::mutex                             mMutex;
-    std::atomic_bool                       mIsClosed = false;
-    PendingMessagesMap                     mPendingMessages;
+    std::vector<NodeStatus>           mAllowedStatuses;
+    NodeServerReaderWriter*           mStream         = nullptr;
+    grpc::ServerContext*              mContext        = nullptr;
+    iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
+    StreamRegistryItf*                mStreamRegistry = nullptr;
+    std::mutex                        mMutex;
+    std::atomic_bool                  mIsClosed = false;
+    PendingMessagesMap                mPendingMessages;
 };
 
 /**
@@ -219,9 +219,8 @@ public:
      * @param nodeManager node manager.
      * @return grpc::Status.
      */
-    grpc::Status HandleRegisterNodeStream(const std::vector<aos::NodeStatus>& allowedStatuses,
-        NodeServerReaderWriter* stream, grpc::ServerContext* context,
-        aos::iam::nodemanager::NodeManagerItf* nodeManager);
+    grpc::Status HandleRegisterNodeStream(const std::vector<NodeStatus>& allowedStatuses,
+        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
 
     /**
      * Gets node stream handler by node id.
@@ -241,5 +240,7 @@ private:
     std::mutex                                    mMutex;
     std::map<NodeStreamHandler::Ptr, std::string> mHandlers;
 };
+
+} // namespace aos::iam::iamserver
 
 #endif

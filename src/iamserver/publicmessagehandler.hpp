@@ -29,6 +29,8 @@
 #include "nodecontroller.hpp"
 #include "streamwriter.hpp"
 
+namespace aos::iam::iamserver {
+
 /**
  * Public message handler. Responsible for handling public IAM services.
  */
@@ -40,9 +42,9 @@ class PublicMessageHandler :
     protected iamproto::IAMPublicPermissionsService::Service,
     protected iamproto::IAMPublicNodesService::Service,
     // NodeInfo listener interface.
-    public aos::iam::nodemanager::NodeInfoListenerItf,
+    public iam::nodemanager::NodeInfoListenerItf,
     // identhandler subject observer interface
-    public aos::iam::identhandler::SubjectsObserverItf {
+    public iam::identhandler::SubjectsObserverItf {
 public:
     /**
      * Initializes public message handler instance.
@@ -54,10 +56,9 @@ public:
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      */
-    aos::Error Init(NodeController& nodeController, aos::iam::identhandler::IdentHandlerItf& identHandler,
-        aos::iam::permhandler::PermHandlerItf&           permHandler,
-        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        aos::iam::nodemanager::NodeManagerItf& nodeManager, aos::iam::certprovider::CertProviderItf& certProvider);
+    Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+        iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+        iam::nodemanager::NodeManagerItf& nodeManager, iam::certprovider::CertProviderItf& certProvider);
 
     /**
      * Registers grpc services.
@@ -71,14 +72,14 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const aos::NodeInfo& info) override;
+    void OnNodeInfoChange(const NodeInfo& info) override;
 
     /**
      * Node info removed notification.
      *
      * @param id id of the node been removed.
      */
-    void OnNodeRemoved(const aos::String& id) override;
+    void OnNodeRemoved(const String& id) override;
 
     /**
      * Subjects observer interface implementation.
@@ -86,7 +87,7 @@ public:
      * @param[in] messages subject changed messages.
      * @returns Error.
      */
-    aos::Error SubjectsChanged(const aos::Array<aos::StaticString<aos::cSubjectIDLen>>& messages) override;
+    Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) override;
 
     /**
      * Start public message handler.
@@ -99,14 +100,14 @@ public:
     void Close();
 
 protected:
-    aos::iam::identhandler::IdentHandlerItf*         GetIdentHandler() { return mIdentHandler; }
-    aos::iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
-    aos::iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
-    NodeController*                                  GetNodeController() { return mNodeController; }
-    aos::NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
-    aos::iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
-    aos::Error SetNodeStatus(const std::string& nodeID, const aos::NodeStatus& status);
-    bool       ProcessOnThisNode(const std::string& nodeID);
+    iam::identhandler::IdentHandlerItf*         GetIdentHandler() { return mIdentHandler; }
+    iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
+    iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
+    NodeController*                             GetNodeController() { return mNodeController; }
+    NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
+    iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
+    Error                                       SetNodeStatus(const std::string& nodeID, const NodeStatus& status);
+    bool                                        ProcessOnThisNode(const std::string& nodeID);
 
     template <typename R>
     grpc::Status RequestWithRetry(R request)
@@ -117,8 +118,7 @@ protected:
 
         for (auto i = 0; i < cRequestRetryMaxTry; i++) {
             if (mClose) {
-                return aos::common::pbconvert::ConvertAosErrorToGrpcStatus(
-                    {aos::ErrorEnum::eWrongState, "handler is closed"});
+                return common::pbconvert::ConvertAosErrorToGrpcStatus({ErrorEnum::eWrongState, "handler is closed"});
             }
 
             if (status = request(); status.ok()) {
@@ -133,7 +133,7 @@ protected:
 
 private:
     static constexpr auto       cIamAPIVersion       = 5;
-    static constexpr std::array cAllowedStatuses     = {aos::NodeStatusEnum::eUnprovisioned};
+    static constexpr std::array cAllowedStatuses     = {NodeStatusEnum::eUnprovisioned};
     static constexpr auto       cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto       cRequestRetryMaxTry  = 3;
 
@@ -169,18 +169,18 @@ private:
         iamproto::NodeInfo* response) override;
     grpc::Status SubscribeNodeChanged(grpc::ServerContext* context, const google::protobuf::Empty* request,
         grpc::ServerWriter<iamproto::NodeInfo>* writer) override;
-    grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
-        grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override;
+    grpc::Status RegisterNode(grpc::ServerContext*                                              context,
+        grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override;
 
-    aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
-    aos::iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
-    aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
-    aos::iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
-    aos::iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
-    NodeController*                                  mNodeController   = nullptr;
-    StreamWriter<iamproto::NodeInfo>                 mNodeChangedController;
-    StreamWriter<iamproto::Subjects>                 mSubjectsChangedController;
-    aos::NodeInfo                                    mNodeInfo;
+    iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
+    iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
+    iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
+    iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
+    NodeController*                             mNodeController   = nullptr;
+    StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
+    StreamWriter<iamproto::Subjects>            mSubjectsChangedController;
+    NodeInfo                                    mNodeInfo;
 
     std::vector<std::shared_ptr<CertWriter>> mCertWriters;
     std::mutex                               mCertWritersLock;
@@ -188,5 +188,7 @@ private:
     std::mutex                               mMutex;
     bool                                     mClose = false;
 };
+
+} // namespace aos::iam::iamserver
 
 #endif

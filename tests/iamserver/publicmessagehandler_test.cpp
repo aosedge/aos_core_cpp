@@ -29,16 +29,20 @@
 
 using namespace testing;
 
+namespace aos::iam::iamserver {
+
+namespace {
+
 /***********************************************************************************************************************
- * static
+ * Static
  **********************************************************************************************************************/
 
-static constexpr auto cServerURL = "0.0.0.0:4456";
-static constexpr auto cSystemID  = "system-id";
-static constexpr auto cUnitModel = "unit-model";
+constexpr auto cServerURL = "0.0.0.0:4456";
+constexpr auto cSystemID  = "system-id";
+constexpr auto cUnitModel = "unit-model";
 
 template <typename T>
-static std::unique_ptr<typename T::Stub> CreateClientStub()
+std::unique_ptr<typename T::Stub> CreateClientStub()
 {
     auto tlsChannelCreds = grpc::InsecureChannelCredentials();
 
@@ -54,6 +58,8 @@ static std::unique_ptr<typename T::Stub> CreateClientStub()
     return T::NewStub(channel);
 }
 
+} // namespace
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -65,12 +71,12 @@ protected:
     std::unique_ptr<grpc::Server> mPublicServer;
 
     // mocks
-    aos::iam::identhandler::IdentHandlerMock         mIdentHandler;
-    aos::iam::permhandler::PermHandlerMock           mPermHandler;
-    aos::iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    aos::iam::nodemanager::NodeManagerMock           mNodeManager;
-    aos::iam::certprovider::CertProviderMock         mCertProvider;
-    aos::iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    iam::identhandler::IdentHandlerMock         mIdentHandler;
+    iam::permhandler::PermHandlerMock           mPermHandler;
+    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    iam::nodemanager::NodeManagerMock           mNodeManager;
+    iam::certprovider::CertProviderMock         mCertProvider;
+    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
 
 private:
     void SetUp() override;
@@ -79,16 +85,16 @@ private:
 
 void PublicMessageHandlerTest::SetUp()
 {
-    aos::test::InitLog();
+    test::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](aos::NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
 
         LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     auto err = mPublicMessageHandler.Init(
@@ -168,17 +174,16 @@ TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
     request.set_serial("58bdb46d06865f7f");
     request.set_type("test-type");
 
-    aos::iam::certhandler::CertInfo certInfo;
+    iam::certhandler::CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
     EXPECT_CALL(mCertProvider, GetCert)
-        .WillOnce(
-            Invoke([&certInfo](const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, auto& out) {
-                out = certInfo;
+        .WillOnce(Invoke([&certInfo](const String&, const Array<uint8_t>&, const Array<uint8_t>&, auto& out) {
+            out = certInfo;
 
-                return aos::ErrorEnum::eNone;
-            }));
+            return ErrorEnum::eNone;
+        }));
 
     auto status = clientStub->GetCert(&context, request, &response);
 
@@ -203,17 +208,16 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
     request.set_serial("58bdb46d06865f7f");
     request.set_type("test-type");
 
-    aos::iam::certhandler::CertInfo certInfo;
+    iam::certhandler::CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
     EXPECT_CALL(mCertProvider, GetCert)
-        .WillOnce(
-            Invoke([&certInfo](const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, auto& out) {
-                out = certInfo;
+        .WillOnce(Invoke([&certInfo](const String&, const Array<uint8_t>&, const Array<uint8_t>&, auto& out) {
+            out = certInfo;
 
-                return aos::ErrorEnum::eFailed;
-            }));
+            return ErrorEnum::eFailed;
+        }));
 
     auto status = clientStub->GetCert(&context, request, &response);
 
@@ -231,15 +235,15 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
 
     request.set_type("test-type");
 
-    aos::iam::certhandler::CertInfo certInfo;
+    iam::certhandler::CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
     EXPECT_CALL(mCertProvider, SubscribeCertChanged)
-        .WillOnce(Invoke([&certInfo](const aos::String&, aos::iam::certhandler::CertReceiverItf& receiver) {
+        .WillOnce(Invoke([&certInfo](const String&, iam::certhandler::CertReceiverItf& receiver) {
             receiver.OnCertChanged(certInfo);
 
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         }));
 
     auto reader = clientStub->SubscribeCertChanged(&context, request);
@@ -270,8 +274,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
     request.set_type("test-type");
 
     EXPECT_CALL(mCertProvider, SubscribeCertChanged)
-        .WillOnce(Invoke(
-            [](const aos::String&, aos::iam::certhandler::CertReceiverItf&) { return aos::ErrorEnum::eFailed; }));
+        .WillOnce(Invoke([](const String&, iam::certhandler::CertReceiverItf&) { return ErrorEnum::eFailed; }));
 
     auto reader = clientStub->SubscribeCertChanged(&context, request);
 
@@ -299,10 +302,8 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoSucceeds)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cSystemIDLen>>(cSystemID)));
-    EXPECT_CALL(mIdentHandler, GetUnitModel)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cUnitModelLen>>(cUnitModel)));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentHandler, GetUnitModel).WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>(cUnitModel)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -323,7 +324,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnSystemId)
     iamproto::SystemInfo    response;
 
     EXPECT_CALL(mIdentHandler, GetSystemID)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cSystemIDLen>>("", aos::ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>("", ErrorEnum::eFailed)));
     EXPECT_CALL(mIdentHandler, GetUnitModel).Times(0);
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
@@ -340,10 +341,9 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
     EXPECT_CALL(mIdentHandler, GetUnitModel)
-        .WillOnce(Return(aos::RetWithError<aos::StaticString<aos::cUnitModelLen>>("", aos::ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>("", ErrorEnum::eFailed)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -352,7 +352,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
 
 TEST_F(PublicMessageHandlerTest, GetSubjectsSucceeds)
 {
-    aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, 10> subjects;
+    StaticArray<StaticString<cSubjectIDLen>, 10> subjects;
 
     auto clientStub = CreateClientStub<iamproto::IAMPublicIdentityService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
@@ -364,7 +364,7 @@ TEST_F(PublicMessageHandlerTest, GetSubjectsSucceeds)
     EXPECT_CALL(mIdentHandler, GetSubjects).WillOnce(Invoke([&subjects](auto& out) {
         out = subjects;
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     const auto status = clientStub->GetSubjects(&context, request, &response);
@@ -384,7 +384,7 @@ TEST_F(PublicMessageHandlerTest, GetSubjectsFails)
     google::protobuf::Empty request;
     iamproto::Subjects      response;
 
-    EXPECT_CALL(mIdentHandler, GetSubjects).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mIdentHandler, GetSubjects).WillOnce(Return(ErrorEnum::eFailed));
 
     const auto status = clientStub->GetSubjects(&context, request, &response);
 
@@ -405,7 +405,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeSubjectsChanged)
     const auto clientReader = clientStub->SubscribeSubjectsChanged(&context, request);
     ASSERT_NE(clientReader, nullptr) << "Failed to create client reader";
 
-    aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, 3> newSubjects;
+    StaticArray<StaticString<cSubjectIDLen>, 3> newSubjects;
     for (const auto& subject : cSubjects) {
         EXPECT_TRUE(newSubjects.PushBack(subject.c_str()).IsNone());
     }
@@ -445,7 +445,7 @@ TEST_F(PublicMessageHandlerTest, GetPermissionsSucceeds)
     iamproto::PermissionsRequest  request;
     iamproto::PermissionsResponse response;
 
-    EXPECT_CALL(mPermHandler, GetPermissions).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mPermHandler, GetPermissions).WillOnce(Return(ErrorEnum::eNone));
 
     const auto status = clientStub->GetPermissions(&context, request, &response);
 
@@ -462,7 +462,7 @@ TEST_F(PublicMessageHandlerTest, GetPermissionsFails)
     iamproto::PermissionsRequest  request;
     iamproto::PermissionsResponse response;
 
-    EXPECT_CALL(mPermHandler, GetPermissions).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mPermHandler, GetPermissions).WillOnce(Return(ErrorEnum::eFailed));
 
     const auto status = clientStub->GetPermissions(&context, request, &response);
 
@@ -482,7 +482,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
     iamproto::NodesID       response;
     grpc::ClientContext     context;
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(aos::ErrorEnum::eNone));
+    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->GetAllNodeIDs(&context, request, &response);
 
@@ -491,16 +491,15 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
 
     EXPECT_EQ(response.ids_size(), 0);
 
-    aos::StaticArray<aos::StaticString<aos::cNodeIDLen>, aos::cMaxNumNodes> nodeIDs;
+    StaticArray<StaticString<cNodeIDLen>, cMaxNumNodes> nodeIDs;
     nodeIDs.PushBack("node0");
     nodeIDs.PushBack("node1");
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds)
-        .WillOnce(Invoke([&nodeIDs](aos::Array<aos::StaticString<aos::cNodeIDLen>>& out) {
-            out = nodeIDs;
+    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Invoke([&nodeIDs](Array<StaticString<cNodeIDLen>>& out) {
+        out = nodeIDs;
 
-            return aos::ErrorEnum::eNone;
-        }));
+        return ErrorEnum::eNone;
+    }));
 
     grpc::ClientContext context2;
     status = clientStub->GetAllNodeIDs(&context2, request, &response);
@@ -510,7 +509,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
 
     ASSERT_EQ(response.ids_size(), nodeIDs.Size());
     for (size_t i = 0; i < nodeIDs.Size(); i++) {
-        EXPECT_EQ(aos::String(response.ids(i).c_str()), nodeIDs[i]);
+        EXPECT_EQ(String(response.ids(i).c_str()), nodeIDs[i]);
     }
 }
 
@@ -523,7 +522,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsFails)
     iamproto::NodesID       response;
     grpc::ClientContext     context;
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->GetAllNodeIDs(&context, request, &response);
 
@@ -541,11 +540,11 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
 
     request.set_node_id("test-node-id");
 
-    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const aos::String& nodeID, aos::NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const String& nodeID, NodeInfo& nodeInfo) {
         nodeInfo.mNodeID = nodeID;
         nodeInfo.mName   = "test-name";
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }));
 
     auto status = clientStub->GetNodeInfo(&context, request, &response);
@@ -566,7 +565,7 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoFails)
     iamproto::NodeInfo           response;
     grpc::ClientContext          context;
 
-    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->GetNodeInfo(&context, request, &response);
 
@@ -586,7 +585,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    aos::NodeInfo nodeInfo;
+    NodeInfo nodeInfo;
     nodeInfo.mNodeID = "test-node-id";
     nodeInfo.mName   = "test-name";
 
@@ -607,3 +606,5 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
 
     LOG_DBG() << "SubscribeNodeChanged test finished";
 }
+
+} // namespace aos::iam::iamserver

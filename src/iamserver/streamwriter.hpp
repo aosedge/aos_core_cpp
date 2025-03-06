@@ -10,6 +10,8 @@
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
+namespace aos::iam::iamserver {
+
 /**
  * Controls writes to streams.
  */
@@ -135,5 +137,7 @@ private:
 
     std::string mCertType;
 };
+
+} // namespace aos::iam::iamserver
 
 #endif

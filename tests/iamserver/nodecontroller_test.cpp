@@ -19,17 +19,19 @@
 #include "iamserver/nodecontroller.hpp"
 #include "mocks/nodemanagermock.hpp"
 
-using namespace aos;
 using namespace testing;
+
+namespace aos::iam::iamserver {
+
+namespace {
 
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
-static constexpr auto cServerURL         = "0.0.0.0:50051";
-static const auto     cProvisionedStatus = aos::NodeStatus(aos::NodeStatusEnum::eProvisioned);
+constexpr auto cServerURL         = "0.0.0.0:50051";
+const auto     cProvisionedStatus = NodeStatus(NodeStatusEnum::eProvisioned);
 
-namespace {
 class TestServer : public iamproto::IAMPublicNodesService::Service {
 public:
     MOCK_METHOD(grpc::Status, GetAllNodeIDs, (grpc::ServerContext*, const google::protobuf::Empty*, iamproto::NodesID*),
@@ -41,12 +43,11 @@ public:
     MOCK_METHOD(grpc::Status, SubscribeNodeChanged,
         (grpc::ServerContext*, const google::protobuf::Empty*, grpc::ServerWriter<iamproto::NodeInfo>*), (override));
 
-    grpc::Status RegisterNode(grpc::ServerContext*                                                  context,
-        grpc::ServerReaderWriter<::iamproto::IAMIncomingMessages, ::iamproto::IAMOutgoingMessages>* stream) override
+    grpc::Status RegisterNode(grpc::ServerContext*                                              context,
+        grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override
     {
 
-        return mNodeController.HandleRegisterNodeStream(
-            {aos::NodeStatusEnum::eProvisioned}, stream, context, &mNodeManager);
+        return mNodeController.HandleRegisterNodeStream({NodeStatusEnum::eProvisioned}, stream, context, &mNodeManager);
     }
 
     void Start()
@@ -107,7 +108,7 @@ protected:
 private:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         mServer.Start();
 
@@ -592,3 +593,5 @@ TEST_F(NodeControllerTest, ApplyCertSucceeds)
 
     ASSERT_TRUE(status.ok()) << status.error_message();
 }
+
+} // namespace aos::iam::iamserver

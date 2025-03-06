@@ -61,7 +61,7 @@ private:
     aos::iam::nodemanager::NodeManager                       mNodeManager;
     aos::iam::certprovider::CertProvider                     mCertProvider;
     aos::iam::provisionmanager::ProvisionManager             mProvisionManager;
-    IAMServer                                                mIAMServer;
+    aos::iam::iamserver::IAMServer                           mIAMServer;
     aos::common::logger::Logger                              mLogger;
     std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
     std::unique_ptr<aos::iam::iamclient::IAMClient>          mIAMClient;
