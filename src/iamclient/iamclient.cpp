@@ -22,8 +22,8 @@
  * Public
  **********************************************************************************************************************/
 
-aos::Error IAMClient::Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
-    aos::iam::certprovider::CertProviderItf&         certProvider,
+aos::Error IAMClient::Init(const aos::iam::config::Config& config,
+    aos::iam::identhandler::IdentHandlerItf* identHandler, aos::iam::certprovider::CertProviderItf& certProvider,
     aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     bool provisioningMode)

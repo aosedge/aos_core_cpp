@@ -30,7 +30,7 @@ static const std::string     cNodeIDPath             = TEST_TMP_DIR "/node-id";
 static const std::string     cProvisioningStatusPath = TEST_TMP_DIR "/provisioning-status";
 static const std::string     cCPUInfoPath            = TEST_TMP_DIR "/cpuinfo";
 static const std::string     cMemInfoPath            = TEST_TMP_DIR "/meminfo";
-static const std::array      cPartitionsInfoConfig {PartitionInfoConfig {"Name1", {"Type1"}, ""}};
+static const std::array      cPartitionsInfoConfig {aos::iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
 static constexpr auto        cNodeIDFileContent           = "node-id";
 static constexpr auto        cCPUInfoFileContent          = R"(processor	: 0
 cpu family	: 6
@@ -75,9 +75,9 @@ static const aos::NodeStatus cUnprovisionedStatus         = aos::NodeStatusEnum:
  * Static
  **********************************************************************************************************************/
 
-static NodeInfoConfig CreateConfig()
+static aos::iam::config::NodeInfoConfig CreateConfig()
 {
-    NodeInfoConfig config;
+    aos::iam::config::NodeInfoConfig config;
 
     config.mProvisioningStatePath = cProvisioningStatusPath;
     config.mCPUInfoPath           = cCPUInfoPath;
@@ -131,13 +131,13 @@ TEST_F(NodeInfoProviderTest, InitFailsWithEmptyNodeConfigStruct)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.Init(NodeInfoConfig {});
+    auto err = provider.Init(aos::iam::config::NodeInfoConfig {});
     EXPECT_FALSE(err.IsNone()) << "Init should fail with empty config";
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileNotFound)
 {
-    NodeInfoConfig config = CreateConfig();
+    aos::iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
 
@@ -193,7 +193,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoCorrupted)
 
 TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
 {
-    NodeInfoConfig config = CreateConfig();
+    aos::iam::config::NodeInfoConfig config = CreateConfig();
 
     for (size_t i = 0; i < aos::cMaxNumNodeAttributes + 1; ++i) {
         config.mAttrs[std::to_string(i).append("-name")] = std::to_string(i).append("-value");
@@ -207,7 +207,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
 {
-    const NodeInfoConfig config = CreateConfig();
+    const aos::iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
     aos::NodeInfo    nodeInfo;
@@ -252,7 +252,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStatusFromFile)
 {
-    const NodeInfoConfig config = CreateConfig();
+    const aos::iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
     aos::NodeInfo    nodeInfo;
@@ -292,8 +292,8 @@ TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
 {
     NodeInfoProvider provider;
 
-    NodeInfoConfig config         = CreateConfig();
-    config.mProvisioningStatePath = "test-tmp/test-provisioning-status";
+    aos::iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
@@ -318,8 +318,8 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
 
     NodeInfoProvider provider;
 
-    NodeInfoConfig config         = CreateConfig();
-    config.mProvisioningStatePath = "test-tmp/test-provisioning-status";
+    aos::iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
@@ -345,8 +345,8 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
 
     NodeInfoProvider provider;
 
-    NodeInfoConfig config         = CreateConfig();
-    config.mProvisioningStatePath = "test-tmp/test-provisioning-status";
+    aos::iam::config::NodeInfoConfig config = CreateConfig();
+    config.mProvisioningStatePath           = "test-tmp/test-provisioning-status";
 
     std::remove(config.mProvisioningStatePath.c_str());
 

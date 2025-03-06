@@ -41,7 +41,7 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-aos::Error Database::Init(const std::string& workDir, const MigrationConfig& migration)
+aos::Error Database::Init(const std::string& workDir, const aos::iam::config::MigrationConfig& migration)
 {
     if (mSession && mSession->isConnected()) {
         return aos::ErrorEnum::eNone;
@@ -260,7 +260,7 @@ int Database::GetVersion() const
     return cVersion;
 }
 
-void Database::CreateMigrationData(const MigrationConfig& config)
+void Database::CreateMigrationData(const aos::iam::config::MigrationConfig& config)
 {
     DropMigrationData();
 

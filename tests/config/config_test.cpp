@@ -15,6 +15,8 @@
 
 using namespace testing;
 
+namespace aos::iam::config {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -132,7 +134,7 @@ protected:
 TEST_F(ConfigTest, ParseConfig)
 {
     auto [config, error] = ParseConfig(mFileName);
-    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+    ASSERT_EQ(error, ErrorEnum::eNone);
 
     EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
@@ -229,7 +231,7 @@ TEST_F(ConfigTest, ParsePKCS11ModuleParams)
     params->set("gid", 43);
 
     auto [pkcs11Params, error] = ParsePKCS11ModuleParams(params);
-    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+    ASSERT_EQ(error, ErrorEnum::eNone);
 
     EXPECT_EQ(pkcs11Params.mUserPINPath, "/var/aos/pin");
     EXPECT_EQ(pkcs11Params.mModulePathInURL, true);
@@ -249,9 +251,11 @@ TEST_F(ConfigTest, ParseVISIdentifierModuleParams)
     params->set("webSocketTimeout", 100);
 
     auto [visParams, error] = ParseVISIdentifierModuleParams(params);
-    ASSERT_EQ(error, aos::ErrorEnum::eNone);
+    ASSERT_EQ(error, ErrorEnum::eNone);
 
     EXPECT_EQ(visParams.mVISServer, "localhost:8089");
     EXPECT_EQ(visParams.mCaCertFile, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(visParams.mWebSocketTimeout, 100);
 }
+
+} // namespace aos::iam::config

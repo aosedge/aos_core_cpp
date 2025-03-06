@@ -29,7 +29,7 @@ public:
     void           HandleSubscription(const std::string& message) { return VISIdentifier::HandleSubscription(message); }
     void           WaitUntilConnected() { VISIdentifier::WaitUntilConnected(); }
 
-    MOCK_METHOD(aos::Error, InitWSClient, (const Config&), (override));
+    MOCK_METHOD(aos::Error, InitWSClient, (const aos::iam::config::Config&), (override));
 };
 
 /***********************************************************************************************************************
@@ -38,14 +38,14 @@ public:
 
 class VisidentifierTest : public testing::Test {
 protected:
-    const std::string               cTestSubscriptionId {"1234-4321"};
-    const VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
+    const std::string                                 cTestSubscriptionId {"1234-4321"};
+    const aos::iam::config::VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
     WSClientEvent                                mWSClientEvent;
     aos::iam::identhandler::SubjectsObserverMock mVISSubjectsObserverMock;
     WSClientMockPtr                              mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
     TestVISIdentifier                            mVisIdentifier;
-    Config                                       mConfig;
+    aos::iam::config::Config                     mConfig;
 
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()
@@ -148,7 +148,7 @@ TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
 
-    const auto err = identifier.Init(Config {}, mVISSubjectsObserverMock);
+    const auto err = identifier.Init(aos::iam::config::Config {}, mVISSubjectsObserverMock);
     ASSERT_FALSE(err.IsNone()) << err.Message();
 }
 

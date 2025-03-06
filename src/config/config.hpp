@@ -18,6 +18,8 @@
 #include <aos/common/tools/error.hpp>
 #include <utils/time.hpp>
 
+namespace aos::iam::config {
+
 /***********************************************************************************************************************
  * Types
  **********************************************************************************************************************/
@@ -107,23 +109,23 @@ struct MigrationConfig {
  * Config instance.
  */
 struct Config {
-    NodeInfoConfig               mNodeInfo;
-    std::string                  mIAMPublicServerURL;
-    std::string                  mIAMProtectedServerURL;
-    std::string                  mMainIAMPublicServerURL;
-    std::string                  mMainIAMProtectedServerURL;
-    aos::common::utils::Duration mNodeReconnectInterval;
-    std::string                  mCACert;
-    std::string                  mCertStorage;
-    std::string                  mWorkingDir;
-    MigrationConfig              mMigration;
-    std::vector<ModuleConfig>    mCertModules;
-    std::vector<std::string>     mStartProvisioningCmdArgs;
-    std::vector<std::string>     mDiskEncryptionCmdArgs;
-    std::vector<std::string>     mFinishProvisioningCmdArgs;
-    std::vector<std::string>     mDeprovisionCmdArgs;
-    bool                         mEnablePermissionsHandler;
-    Identifier                   mIdentifier;
+    NodeInfoConfig            mNodeInfo;
+    std::string               mIAMPublicServerURL;
+    std::string               mIAMProtectedServerURL;
+    std::string               mMainIAMPublicServerURL;
+    std::string               mMainIAMProtectedServerURL;
+    common::utils::Duration   mNodeReconnectInterval;
+    std::string               mCACert;
+    std::string               mCertStorage;
+    std::string               mWorkingDir;
+    MigrationConfig           mMigration;
+    std::vector<ModuleConfig> mCertModules;
+    std::vector<std::string>  mStartProvisioningCmdArgs;
+    std::vector<std::string>  mDiskEncryptionCmdArgs;
+    std::vector<std::string>  mFinishProvisioningCmdArgs;
+    std::vector<std::string>  mDeprovisionCmdArgs;
+    bool                      mEnablePermissionsHandler;
+    Identifier                mIdentifier;
 };
 
 /*******************************************************************************
@@ -136,7 +138,7 @@ struct Config {
  * @param filename config file name.
  * @return config instance.
  */
-aos::RetWithError<Config> ParseConfig(const std::string& filename);
+RetWithError<Config> ParseConfig(const std::string& filename);
 
 /*
  * Parses identifier plugin parameters.
@@ -144,7 +146,7 @@ aos::RetWithError<Config> ParseConfig(const std::string& filename);
  * @param var Poco::Dynamic::Var instance.
  * @return Identifier instance.
  */
-aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params);
+RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params);
 
 /*
  * Parses VIS identifier plugin parameters.
@@ -152,6 +154,8 @@ aos::RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var
  * @param var Poco::Dynamic::Var instance.
  * @return VISIdentifierModuleParams instance.
  */
-aos::RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params);
+RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params);
+
+} // namespace aos::iam::config
 
 #endif

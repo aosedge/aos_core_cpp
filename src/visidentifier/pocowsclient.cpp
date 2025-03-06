@@ -31,7 +31,7 @@ static auto OnScopeExit(F&& f)
  * Public
  **********************************************************************************************************************/
 
-PocoWSClient::PocoWSClient(const VISIdentifierModuleParams& config, MessageHandlerFunc handler)
+PocoWSClient::PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, MessageHandlerFunc handler)
     : mConfig(config)
     , mHandleSubscription(std::move(handler))
 {

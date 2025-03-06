@@ -48,7 +48,7 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns aos::Error.
      */
-    aos::Error Init(const Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
+    aos::Error Init(const aos::iam::config::Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
         aos::iam::certprovider::CertProviderItf&         certProvider,
         aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
         aos::crypto::x509::ProviderItf&                  cryptoProvider,

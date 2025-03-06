@@ -27,7 +27,7 @@ public:
      * @param config node configuration
      * @return Error
      */
-    aos::Error Init(const NodeInfoConfig& config);
+    aos::Error Init(const aos::iam::config::NodeInfoConfig& config);
 
     /**
      * Gets the node info object.
@@ -62,8 +62,8 @@ public:
     aos::Error UnsubscribeNodeStatusChanged(aos::iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
 
 private:
-    aos::Error InitAtrributesInfo(const NodeInfoConfig& config);
-    aos::Error InitPartitionInfo(const NodeInfoConfig& config);
+    aos::Error InitAtrributesInfo(const aos::iam::config::NodeInfoConfig& config);
+    aos::Error InitPartitionInfo(const aos::iam::config::NodeInfoConfig& config);
     aos::Error NotifyNodeStatusChanged();
 
     mutable std::mutex                                                     mMutex;

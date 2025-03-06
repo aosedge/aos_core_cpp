@@ -34,7 +34,7 @@ public:
      * @param migrationConf migration configuration.
      * @return Error.
      */
-    aos::Error Init(const std::string& workDir, const MigrationConfig& migrationConf);
+    aos::Error Init(const std::string& workDir, const aos::iam::config::MigrationConfig& migrationConf);
 
     //
     // certhandler::StorageItf interface
@@ -139,7 +139,7 @@ private:
     // to be used in unit tests
     virtual int GetVersion() const;
 
-    void CreateMigrationData(const MigrationConfig& config);
+    void CreateMigrationData(const aos::iam::config::MigrationConfig& config);
     void DropMigrationData();
 
     void     CreateTables();

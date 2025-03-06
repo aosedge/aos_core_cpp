@@ -27,7 +27,7 @@ static const std::string cServerCertPath("certificates/ca.pem");
 static const std::string cServerKeyPath("certificates/ca.key");
 static const std::string cClientCertPath {"certificates/client.cer"};
 
-static Config CreateConfigWithVisParams(const VISIdentifierModuleParams& config)
+static aos::iam::config::Config CreateConfigWithVisParams(const aos::iam::config::VISIdentifierModuleParams& config)
 {
     Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
 
@@ -35,7 +35,7 @@ static Config CreateConfigWithVisParams(const VISIdentifierModuleParams& config)
     object->set("caCertFile", config.mCaCertFile);
     object->set("webSocketTimeout", config.mWebSocketTimeout);
 
-    Config cfg;
+    aos::iam::config::Config cfg;
     cfg.mIdentifier.mParams = object;
 
     return cfg;
@@ -47,7 +47,7 @@ static Config CreateConfigWithVisParams(const VISIdentifierModuleParams& config)
 
 class PocoWSClientTests : public Test {
 protected:
-    static const VISIdentifierModuleParams cConfig;
+    static const aos::iam::config::VISIdentifierModuleParams cConfig;
 
     void SetUp() override
     {
@@ -80,7 +80,7 @@ protected:
     std::shared_ptr<PocoWSClient> mWsClientPtr;
 };
 
-const VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5};
+const aos::iam::config::VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5};
 
 /***********************************************************************************************************************
  * Tests
@@ -158,7 +158,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 {
     VISIdentifier visIdentifier;
 
-    Config config = CreateConfigWithVisParams(cConfig);
+    aos::iam::config::Config config = CreateConfigWithVisParams(cConfig);
 
     aos::iam::identhandler::SubjectsObserverMock observer;
 
@@ -177,7 +177,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 {
     VISIdentifier visIdentifier;
 
-    Config config = CreateConfigWithVisParams(cConfig);
+    aos::iam::config::Config config = CreateConfigWithVisParams(cConfig);
 
     aos::iam::identhandler::SubjectsObserverMock observer;
 
@@ -196,7 +196,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 {
     VISIdentifier visIdentifier;
 
-    Config config = CreateConfigWithVisParams(cConfig);
+    aos::iam::config::Config config = CreateConfigWithVisParams(cConfig);
 
     aos::iam::identhandler::SubjectsObserverMock observer;
 

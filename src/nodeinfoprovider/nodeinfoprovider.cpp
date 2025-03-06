@@ -59,7 +59,7 @@ static aos::Error GetNodeID(const std::string& path, aos::String& nodeID)
  * Public
  **********************************************************************************************************************/
 
-aos::Error NodeInfoProvider::Init(const NodeInfoConfig& config)
+aos::Error NodeInfoProvider::Init(const aos::iam::config::NodeInfoConfig& config)
 {
     aos::Error err;
 
@@ -181,7 +181,7 @@ aos::Error NodeInfoProvider::UnsubscribeNodeStatusChanged(aos::iam::nodeinfoprov
  * Private
  **********************************************************************************************************************/
 
-aos::Error NodeInfoProvider::InitAtrributesInfo(const NodeInfoConfig& config)
+aos::Error NodeInfoProvider::InitAtrributesInfo(const aos::iam::config::NodeInfoConfig& config)
 {
     for (const auto& [name, value] : config.mAttrs) {
         if (auto err = mNodeInfo.mAttrs.PushBack(aos::NodeAttribute {name.c_str(), value.c_str()}); !err.IsNone()) {
@@ -192,7 +192,7 @@ aos::Error NodeInfoProvider::InitAtrributesInfo(const NodeInfoConfig& config)
     return aos::ErrorEnum::eNone;
 }
 
-aos::Error NodeInfoProvider::InitPartitionInfo(const NodeInfoConfig& config)
+aos::Error NodeInfoProvider::InitPartitionInfo(const aos::iam::config::NodeInfoConfig& config)
 {
     for (const auto& partition : config.mPartitions) {
         aos::PartitionInfo partitionInfo;

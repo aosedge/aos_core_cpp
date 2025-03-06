@@ -73,8 +73,8 @@ protected:
     IAMServer                       mServer;
     aos::iam::certhandler::CertInfo mClientInfo;
     aos::iam::certhandler::CertInfo mServerInfo;
-    Config                          mServerConfig;
-    Config                          mClientConfig;
+    aos::iam::config::Config        mServerConfig;
+    aos::iam::config::Config        mClientConfig;
 
     aos::iam::certhandler::CertHandler mCertHandler;
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
@@ -98,8 +98,8 @@ private:
     void ApplyCertificate(const aos::String& certType, const aos::String& subject, const aos::String& intermKeyPath,
         const aos::String& intermCertPath, uint64_t serial, aos::iam::certhandler::CertInfo& certInfo);
 
-    Config GetServerConfig();
-    Config GetClientConfig();
+    aos::iam::config::Config GetServerConfig();
+    aos::iam::config::Config GetClientConfig();
 
     aos::test::SoftHSMEnv                                                   mSOFTHSMEnv;
     aos::iam::certhandler::StorageStub                                      mStorage;
@@ -165,9 +165,9 @@ void IAMServerTest::RegisterPKCS11Module(const aos::String& name, aos::crypto::K
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
 }
 
-Config IAMServerTest::GetServerConfig()
+aos::iam::config::Config IAMServerTest::GetServerConfig()
 {
-    Config config;
+    aos::iam::config::Config config;
 
     config.mCertStorage               = "server";
     config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
@@ -180,9 +180,9 @@ Config IAMServerTest::GetServerConfig()
     return config;
 }
 
-Config IAMServerTest::GetClientConfig()
+aos::iam::config::Config IAMServerTest::GetClientConfig()
 {
-    Config config;
+    aos::iam::config::Config config;
 
     config.mCertStorage               = "client";
     config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";

@@ -77,7 +77,8 @@ static void RegisterErrorSignals()
     sigaction(SIGSEGV, &act, nullptr);
 }
 
-static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::certhandler::ModuleConfig& aosConfig)
+static aos::Error ConvertCertModuleConfig(
+    const aos::iam::config::ModuleConfig& config, aos::iam::certhandler::ModuleConfig& aosConfig)
 {
     if (config.mAlgorithm == "ecc") {
         aosConfig.mKeyType = aos::crypto::KeyTypeEnum::eECDSA;
@@ -119,7 +120,7 @@ static aos::Error ConvertCertModuleConfig(const ModuleConfig& config, aos::iam::
 }
 
 static aos::Error ConvertPKCS11ModuleParams(
-    const PKCS11ModuleParams& params, aos::iam::certhandler::PKCS11ModuleConfig& aosParams)
+    const aos::iam::config::PKCS11ModuleParams& params, aos::iam::certhandler::PKCS11ModuleConfig& aosParams)
 {
     aosParams.mLibrary = params.mLibrary.c_str();
 
@@ -161,7 +162,7 @@ void App::initialize(Application& self)
 
     // Initialize Aos modules
 
-    auto config = ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
+    auto config = aos::iam::config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
 
     err = mDatabase.Init(config.mValue.mWorkingDir, config.mValue.mMigration);
@@ -335,7 +336,7 @@ void App::HandleConfigFile(const std::string& name, const std::string& value)
     mConfigFile = value;
 }
 
-aos::Error App::InitCertModules(const Config& config)
+aos::Error App::InitCertModules(const aos::iam::config::Config& config)
 {
     LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
 
@@ -349,7 +350,7 @@ aos::Error App::InitCertModules(const Config& config)
             continue;
         }
 
-        auto pkcs11Params = ParsePKCS11ModuleParams(moduleConfig.mParams);
+        auto pkcs11Params = aos::iam::config::ParsePKCS11ModuleParams(moduleConfig.mParams);
         if (!pkcs11Params.mError.IsNone()) {
             return AOS_ERROR_WRAP(pkcs11Params.mError);
         }

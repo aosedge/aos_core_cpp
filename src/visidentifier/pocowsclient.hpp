@@ -36,7 +36,7 @@ public:
      * @param config VIS config.
      * @param handler handler functor.
      */
-    PocoWSClient(const VISIdentifierModuleParams& config, MessageHandlerFunc handler);
+    PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, MessageHandlerFunc handler);
 
     /**
      * Connects to Web Socket server.
@@ -97,7 +97,7 @@ private:
     void                 StopReceiveFramesThread();
     std::chrono::seconds GetWebSocketTimeout();
 
-    VISIdentifierModuleParams                      mConfig;
+    aos::iam::config::VISIdentifierModuleParams    mConfig;
     std::recursive_mutex                           mMutex;
     std::thread                                    mReceivedFramesThread;
     std::unique_ptr<Poco::Net::HTTPSClientSession> mClientSession;

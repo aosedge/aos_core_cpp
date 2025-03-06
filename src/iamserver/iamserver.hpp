@@ -56,7 +56,7 @@ public:
      * @param provisionManager provision manager.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
-    aos::Error Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
+    aos::Error Init(const aos::iam::config::Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
         aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
         aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
         aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
@@ -129,7 +129,7 @@ private:
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
-    Config                          mConfig         = {};
+    aos::iam::config::Config        mConfig         = {};
     aos::crypto::CertLoader*        mCertLoader     = nullptr;
     aos::crypto::x509::ProviderItf* mCryptoProvider = nullptr;
 

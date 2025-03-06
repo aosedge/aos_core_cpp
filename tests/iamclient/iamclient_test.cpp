@@ -415,9 +415,9 @@ class IAMClientTest : public Test {
 protected:
     void SetUp() override { test::InitLog(); }
 
-    static Config GetConfig()
+    static aos::iam::config::Config GetConfig()
     {
-        Config config;
+        aos::iam::config::Config config;
 
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
@@ -434,7 +434,7 @@ protected:
         return config;
     }
 
-    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const Config& config = GetConfig())
+    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const aos::iam::config::Config& config = GetConfig())
     {
         auto client = std::make_unique<IAMClient>();
 
@@ -452,7 +452,7 @@ protected:
     }
 
     std::pair<std::unique_ptr<TestPublicNodeService>, std::unique_ptr<IAMClient>> InitTest(
-        const NodeStatus& status, const Config& config = GetConfig())
+        const NodeStatus& status, const aos::iam::config::Config& config = GetConfig())
     {
         auto server = CreateServer(config.mMainIAMPublicServerURL);
 

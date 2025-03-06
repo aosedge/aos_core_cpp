@@ -177,8 +177,8 @@ protected:
 
     std::string mCMPinPath, mSMPinPath;
 
-    MigrationConfig mMigrationConfig;
-    TestDatabase    mDB;
+    aos::iam::config::MigrationConfig mMigrationConfig;
+    TestDatabase                      mDB;
 };
 
 /***********************************************************************************************************************

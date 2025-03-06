@@ -69,7 +69,8 @@ public:
      * @param subjectsObserver subject observer.
      * @return Error.
      */
-    aos::Error Init(const Config& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver);
+    aos::Error Init(
+        const aos::iam::config::Config& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver);
 
     /**
      * Returns System ID.
@@ -99,7 +100,7 @@ public:
     ~VISIdentifier() override;
 
 protected:
-    virtual aos::Error InitWSClient(const Config& config);
+    virtual aos::Error InitWSClient(const aos::iam::config::Config& config);
     void               SetWSClient(WSClientItfPtr wsClient);
     WSClientItfPtr     GetWSClient();
     void               HandleSubscription(const std::string& message);

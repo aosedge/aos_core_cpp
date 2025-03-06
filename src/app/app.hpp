@@ -47,7 +47,7 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    aos::Error InitCertModules(const Config& config);
+    aos::Error InitCertModules(const aos::iam::config::Config& config);
 
     aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
     aos::crypto::CertLoader            mCertLoader;

@@ -83,7 +83,7 @@ static aos::Error ExecCommand(const std::string& cmdName, const std::vector<std:
  * Public
  **********************************************************************************************************************/
 
-aos::Error IAMServer::Init(const Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
+aos::Error IAMServer::Init(const aos::iam::config::Config& config, aos::iam::certhandler::CertHandlerItf& certHandler,
     aos::iam::identhandler::IdentHandlerItf& identHandler, aos::iam::permhandler::PermHandlerItf& permHandler,
     aos::crypto::CertLoader& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider,
     aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
