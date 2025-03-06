@@ -19,6 +19,8 @@
 
 using namespace Poco::Data::Keywords;
 
+namespace aos::iam::database {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
@@ -41,10 +43,10 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-aos::Error Database::Init(const std::string& workDir, const aos::iam::config::MigrationConfig& migration)
+Error Database::Init(const std::string& workDir, const iam::config::MigrationConfig& migration)
 {
     if (mSession && mSession->isConnected()) {
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     try {
@@ -63,54 +65,54 @@ aos::Error Database::Init(const std::string& workDir, const aos::iam::config::Mi
         mMigration->MigrateToVersion(GetVersion());
         DropMigrationData();
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************
  * certhandler::StorageItf implementation
  **********************************************************************************************************************/
 
-aos::Error Database::AddCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo)
+Error Database::AddCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo)
 {
     try {
         *mSession
             << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) VALUES (?, ?, ?, ?, ?, ?);",
             bind(ToAosCertInfo(certType, certInfo)), now;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::RemoveCertInfo(const aos::String& certType, const aos::String& certURL)
+Error Database::RemoveCertInfo(const String& certType, const String& certURL)
 {
     try {
         *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(certType.CStr()),
             bind(certURL.CStr()), now;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::RemoveAllCertsInfo(const aos::String& certType)
+Error Database::RemoveAllCertsInfo(const String& certType)
 {
     try {
         *mSession << "DELETE FROM certificates WHERE type = ?;", bind(certType.CStr()), now;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::GetCertInfo(
-    const aos::Array<uint8_t>& issuer, const aos::Array<uint8_t>& serial, aos::iam::certhandler::CertInfo& cert)
+Error Database::GetCertInfo(
+    const Array<uint8_t>& issuer, const Array<uint8_t>& serial, iam::certhandler::CertInfo& cert)
 {
     try {
         CertInfo              result;
@@ -121,18 +123,18 @@ aos::Error Database::GetCertInfo(
             into(result);
 
         if (statement.execute() == 0) {
-            return aos::ErrorEnum::eNotFound;
+            return ErrorEnum::eNotFound;
         }
 
         FromAosCertInfo(result, cert);
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::iam::certhandler::CertInfo>& certsInfo)
+Error Database::GetCertsInfo(const String& certType, Array<iam::certhandler::CertInfo>& certsInfo)
 {
     try {
         std::vector<CertInfo> result;
@@ -140,7 +142,7 @@ aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::i
         *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(certType.CStr()), into(result), now;
 
         for (const auto& cert : result) {
-            aos::iam::certhandler::CertInfo certInfo {};
+            iam::certhandler::CertInfo certInfo {};
 
             FromAosCertInfo(cert, certInfo);
 
@@ -149,10 +151,10 @@ aos::Error Database::GetCertsInfo(const aos::String& certType, aos::Array<aos::i
             }
         }
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 Database::~Database()
@@ -168,7 +170,7 @@ Database::~Database()
  * nodemanager::NodeInfoStorageItf implementation
  **********************************************************************************************************************/
 
-aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
+Error Database::SetNodeInfo(const NodeInfo& info)
 {
     try {
         Poco::JSON::Object pocoNodeInfo;
@@ -177,13 +179,13 @@ aos::Error Database::SetNodeInfo(const aos::NodeInfo& info)
         *mSession << "INSERT OR REPLACE INTO nodeinfo (id, info) VALUES (?, ?);", bind(info.mNodeID.CStr()),
             bind(nodeInfo), now;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const
+Error Database::GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) const
 {
     try {
         Poco::Data::Statement       statement {*mSession};
@@ -191,7 +193,7 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeI
 
         statement << "SELECT info FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), into(pocoInfo);
         if (statement.execute() == 0) {
-            return aos::ErrorEnum::eNotFound;
+            return ErrorEnum::eNotFound;
         }
 
         nodeInfo.mNodeID = nodeID;
@@ -201,7 +203,7 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeI
 
             const auto ptr = parser.parse(pocoInfo.value()).extract<Poco::JSON::Object::Ptr>();
             if (ptr == nullptr) {
-                return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+                return AOS_ERROR_WRAP(ErrorEnum::eFailed);
             }
 
             auto err = ConvertNodeInfoFromJSON(*ptr, nodeInfo);
@@ -211,13 +213,13 @@ aos::Error Database::GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeI
         }
 
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::Error Database::GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>>& ids) const
+Error Database::GetAllNodeIds(Array<StaticString<cNodeIDLen>>& ids) const
 {
     try {
         Poco::Data::Statement    statement {*mSession};
@@ -234,21 +236,21 @@ aos::Error Database::GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>
             }
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
-aos::Error Database::RemoveNodeInfo(const aos::String& nodeID)
+Error Database::RemoveNodeInfo(const String& nodeID)
 {
     try {
         *mSession << "DELETE FROM nodeinfo WHERE id = ?;", bind(nodeID.CStr()), now;
     } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(aos::common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************
@@ -260,7 +262,7 @@ int Database::GetVersion() const
     return cVersion;
 }
 
-void Database::CreateMigrationData(const aos::iam::config::MigrationConfig& config)
+void Database::CreateMigrationData(const iam::config::MigrationConfig& config)
 {
     DropMigrationData();
 
@@ -303,7 +305,7 @@ void Database::CreateTables()
         now;
 }
 
-Database::CertInfo Database::ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo)
+Database::CertInfo Database::ToAosCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo)
 {
     CertInfo result;
 
@@ -317,23 +319,21 @@ Database::CertInfo Database::ToAosCertInfo(const aos::String& certType, const ao
     return result;
 }
 
-void Database::FromAosCertInfo(const CertInfo& certInfo, aos::iam::certhandler::CertInfo& result)
+void Database::FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertInfo& result)
 {
-    result.mIssuer
-        = aos::Array<uint8_t>(reinterpret_cast<const uint8_t*>(certInfo.get<CertColumns::eIssuer>().rawContent()),
-            certInfo.get<CertColumns::eIssuer>().size());
-    result.mSerial
-        = aos::Array<uint8_t>(reinterpret_cast<const uint8_t*>(certInfo.get<CertColumns::eSerial>().rawContent()),
-            certInfo.get<CertColumns::eSerial>().size());
+    result.mIssuer = Array<uint8_t>(reinterpret_cast<const uint8_t*>(certInfo.get<CertColumns::eIssuer>().rawContent()),
+        certInfo.get<CertColumns::eIssuer>().size());
+    result.mSerial = Array<uint8_t>(reinterpret_cast<const uint8_t*>(certInfo.get<CertColumns::eSerial>().rawContent()),
+        certInfo.get<CertColumns::eSerial>().size());
 
     result.mCertURL = certInfo.get<CertColumns::eCertURL>().c_str();
     result.mKeyURL  = certInfo.get<CertColumns::eKeyURL>().c_str();
 
-    result.mNotAfter = aos::Time::Unix(certInfo.get<CertColumns::eNotAfter>() / aos::Time::cSeconds,
-        certInfo.get<CertColumns::eNotAfter>() % aos::Time::cSeconds);
+    result.mNotAfter = Time::Unix(certInfo.get<CertColumns::eNotAfter>() / Time::cSeconds,
+        certInfo.get<CertColumns::eNotAfter>() % Time::cSeconds);
 }
 
-Poco::JSON::Object Database::ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo)
+Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)
 {
     Poco::JSON::Object object;
 
@@ -350,9 +350,9 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo
     return object;
 }
 
-aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, aos::NodeInfo& dst)
+Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, NodeInfo& dst)
 {
-    dst.mStatus   = static_cast<aos::NodeStatusEnum>(object.getValue<int>("status"));
+    dst.mStatus   = static_cast<NodeStatusEnum>(object.getValue<int>("status"));
     dst.mNodeType = object.getValue<std::string>("type").c_str();
     dst.mName     = object.getValue<std::string>("name").c_str();
     dst.mOSType   = object.getValue<std::string>("osType").c_str();
@@ -361,7 +361,7 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
 
     const auto cpuInfo = object.get("cpuInfo").extract<Poco::JSON::Array::Ptr>();
     if (cpuInfo == nullptr) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
     }
 
     auto err = ConvertCpuInfoFromJSON(*cpuInfo, dst.mCPUs);
@@ -371,7 +371,7 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
 
     const auto partitions = object.get("partitions").extract<Poco::JSON::Array::Ptr>();
     if (partitions == nullptr) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
     }
 
     err = ConvertPartitionInfoFromJSON(*partitions, dst.mPartitions);
@@ -381,13 +381,13 @@ aos::Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, a
 
     const auto attributes = object.get("attrs").extract<Poco::JSON::Array::Ptr>();
     if (attributes == nullptr) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
     }
 
     return ConvertAttributesFromJSON(*attributes, dst.mAttrs);
 }
 
-Poco::JSON::Array Database::ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>& cpuInfo)
+Poco::JSON::Array Database::ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo)
 {
     Poco::JSON::Array dst;
 
@@ -407,14 +407,14 @@ Poco::JSON::Array Database::ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>&
     return dst;
 }
 
-aos::Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::CPUInfo>& dst)
+Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUInfo>& dst)
 {
     for (const auto& srcItem : src) {
-        aos::CPUInfo dstItem;
+        CPUInfo dstItem;
 
         const auto cpuInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (cpuInfo == nullptr) {
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
         dstItem.mModelName  = cpuInfo->getValue<std::string>("modelName").c_str();
@@ -430,10 +430,10 @@ aos::Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::A
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const aos::Array<aos::PartitionInfo>& partitionInfo)
+Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const Array<PartitionInfo>& partitionInfo)
 {
     Poco::JSON::Array dst;
 
@@ -456,19 +456,19 @@ Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const aos::Array<aos::Par
     return dst;
 }
 
-aos::Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::PartitionInfo>& dst)
+Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfo>& dst)
 {
     for (const auto& srcItem : src) {
-        aos::PartitionInfo dstItem;
+        PartitionInfo dstItem;
 
         const auto partitionInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (partitionInfo == nullptr) {
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
         const auto types = partitionInfo->get("types").extract<Poco::JSON::Array::Ptr>();
         if (types == nullptr) {
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
         for (const auto& type : *types) {
@@ -489,10 +489,10 @@ aos::Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, 
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-Poco::JSON::Array Database::ConvertAttributesToJSON(const aos::Array<aos::NodeAttribute>& attributes)
+Poco::JSON::Array Database::ConvertAttributesToJSON(const Array<NodeAttribute>& attributes)
 {
     Poco::JSON::Array dst;
 
@@ -508,14 +508,14 @@ Poco::JSON::Array Database::ConvertAttributesToJSON(const aos::Array<aos::NodeAt
     return dst;
 }
 
-aos::Error Database::ConvertAttributesFromJSON(const Poco::JSON::Array& src, aos::Array<aos::NodeAttribute>& dst)
+Error Database::ConvertAttributesFromJSON(const Poco::JSON::Array& src, Array<NodeAttribute>& dst)
 {
     for (const auto& srcItem : src) {
-        aos::NodeAttribute dstItem;
+        NodeAttribute dstItem;
 
         const auto attribute = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (attribute == nullptr) {
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
         dstItem.mName  = attribute->getValue<std::string>("name").c_str();
@@ -527,5 +527,7 @@ aos::Error Database::ConvertAttributesFromJSON(const Poco::JSON::Array& src, aos
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
+
+} // namespace aos::iam::database

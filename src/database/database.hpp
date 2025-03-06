@@ -20,7 +20,9 @@
 #include <config/config.hpp>
 #include <migration/migration.hpp>
 
-class Database : public aos::iam::certhandler::StorageItf, public aos::iam::nodemanager::NodeInfoStorageItf {
+namespace aos::iam::database {
+
+class Database : public iam::certhandler::StorageItf, public iam::nodemanager::NodeInfoStorageItf {
 public:
     /**
      * Creates database instance.
@@ -34,7 +36,7 @@ public:
      * @param migrationConf migration configuration.
      * @return Error.
      */
-    aos::Error Init(const std::string& workDir, const aos::iam::config::MigrationConfig& migrationConf);
+    Error Init(const std::string& workDir, const iam::config::MigrationConfig& migrationConf);
 
     //
     // certhandler::StorageItf interface
@@ -47,7 +49,7 @@ public:
      * @param certInfo certificate information.
      * @return Error.
      */
-    aos::Error AddCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo) override;
+    Error AddCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo) override;
 
     /**
      * Returns information about certificate with specified issuer and serial number.
@@ -57,8 +59,8 @@ public:
      * @param cert result certificate.
      * @return Error.
      */
-    aos::Error GetCertInfo(const aos::Array<uint8_t>& issuer, const aos::Array<uint8_t>& serial,
-        aos::iam::certhandler::CertInfo& cert) override;
+    Error GetCertInfo(
+        const Array<uint8_t>& issuer, const Array<uint8_t>& serial, iam::certhandler::CertInfo& cert) override;
 
     /**
      * Returns info for all certificates with specified certificate type.
@@ -67,8 +69,7 @@ public:
      * @param certsInfo result certificates info.
      * @return Error.
      */
-    aos::Error GetCertsInfo(
-        const aos::String& certType, aos::Array<aos::iam::certhandler::CertInfo>& certsInfo) override;
+    Error GetCertsInfo(const String& certType, Array<iam::certhandler::CertInfo>& certsInfo) override;
 
     /**
      * Removes certificate with specified certificate type and url.
@@ -77,7 +78,7 @@ public:
      * @param certURL certificate URL.
      * @return Error.
      */
-    aos::Error RemoveCertInfo(const aos::String& certType, const aos::String& certURL) override;
+    Error RemoveCertInfo(const String& certType, const String& certURL) override;
 
     /**
      * Removes all certificates with specified certificate type.
@@ -85,7 +86,7 @@ public:
      * @param certType certificate type.
      * @return Error.
      */
-    aos::Error RemoveAllCertsInfo(const aos::String& certType) override;
+    Error RemoveAllCertsInfo(const String& certType) override;
 
     //
     // nodemanager::NodeInfoStorageItf interface
@@ -97,7 +98,7 @@ public:
      * @param info node info.
      * @return Error.
      */
-    aos::Error SetNodeInfo(const aos::NodeInfo& info) override;
+    Error SetNodeInfo(const NodeInfo& info) override;
 
     /**
      * Returns node info.
@@ -106,7 +107,7 @@ public:
      * @param[out] nodeInfo result node identifier.
      * @return Error.
      */
-    aos::Error GetNodeInfo(const aos::String& nodeID, aos::NodeInfo& nodeInfo) const override;
+    Error GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) const override;
 
     /**
      * Returns ids for all the node in the manager.
@@ -114,7 +115,7 @@ public:
      * @param ids result node identifiers.
      * @return Error.
      */
-    aos::Error GetAllNodeIds(aos::Array<aos::StaticString<aos::cNodeIDLen>>& ids) const override;
+    Error GetAllNodeIds(Array<StaticString<cNodeIDLen>>& ids) const override;
 
     /**
      * Removes node info by its id.
@@ -122,7 +123,7 @@ public:
      * @param nodeID node identifier.
      * @return Error.
      */
-    aos::Error RemoveNodeInfo(const aos::String& nodeID) override;
+    Error RemoveNodeInfo(const String& nodeID) override;
 
     /**
      * Destroys certificate info storage.
@@ -139,27 +140,29 @@ private:
     // to be used in unit tests
     virtual int GetVersion() const;
 
-    void CreateMigrationData(const aos::iam::config::MigrationConfig& config);
+    void CreateMigrationData(const iam::config::MigrationConfig& config);
     void DropMigrationData();
 
     void     CreateTables();
-    CertInfo ToAosCertInfo(const aos::String& certType, const aos::iam::certhandler::CertInfo& certInfo);
-    void     FromAosCertInfo(const CertInfo& certInfo, aos::iam::certhandler::CertInfo& result);
+    CertInfo ToAosCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo);
+    void     FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertInfo& result);
 
-    static Poco::JSON::Object ConvertNodeInfoToJSON(const aos::NodeInfo& nodeInfo);
-    static aos::Error         ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, aos::NodeInfo& dst);
+    static Poco::JSON::Object ConvertNodeInfoToJSON(const NodeInfo& nodeInfo);
+    static Error              ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, NodeInfo& dst);
 
-    static Poco::JSON::Array ConvertCpuInfoToJSON(const aos::Array<aos::CPUInfo>& cpuInfo);
-    static aos::Error        ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::CPUInfo>& dst);
+    static Poco::JSON::Array ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo);
+    static Error             ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUInfo>& dst);
 
-    static Poco::JSON::Array ConvertPartitionInfoToJSON(const aos::Array<aos::PartitionInfo>& partitionInfo);
-    static aos::Error ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, aos::Array<aos::PartitionInfo>& dst);
+    static Poco::JSON::Array ConvertPartitionInfoToJSON(const Array<PartitionInfo>& partitionInfo);
+    static Error             ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfo>& dst);
 
-    static Poco::JSON::Array ConvertAttributesToJSON(const aos::Array<aos::NodeAttribute>& attributes);
-    static aos::Error ConvertAttributesFromJSON(const Poco::JSON::Array& src, aos::Array<aos::NodeAttribute>& dst);
+    static Poco::JSON::Array ConvertAttributesToJSON(const Array<NodeAttribute>& attributes);
+    static Error             ConvertAttributesFromJSON(const Poco::JSON::Array& src, Array<NodeAttribute>& dst);
 
-    std::unique_ptr<Poco::Data::Session>             mSession;
-    std::optional<aos::common::migration::Migration> mMigration;
+    std::unique_ptr<Poco::Data::Session>        mSession;
+    std::optional<common::migration::Migration> mMigration;
 };
+
+} // namespace aos::iam::database
 
 #endif
