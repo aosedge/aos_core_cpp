@@ -24,6 +24,8 @@
 #include "nodeinfoprovider/nodeinfoprovider.hpp"
 #include "visidentifier/visidentifier.hpp"
 
+namespace aos::iam::app {
+
 /**
  * Aos IAM application.
  */
@@ -47,29 +49,29 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    aos::Error InitCertModules(const aos::iam::config::Config& config);
+    Error InitCertModules(const config::Config& config);
 
-    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
-    aos::crypto::CertLoader            mCertLoader;
-    aos::iam::certhandler::CertHandler mCertHandler;
-    aos::pkcs11::PKCS11Manager         mPKCS11Manager;
-    std::vector<
-        std::pair<std::unique_ptr<aos::iam::certhandler::HSMItf>, std::unique_ptr<aos::iam::certhandler::CertModule>>>
-                                                             mCertModules;
-    aos::iam::database::Database                             mDatabase;
-    aos::iam::nodeinfoprovider::NodeInfoProvider             mNodeInfoProvider;
-    aos::iam::nodemanager::NodeManager                       mNodeManager;
-    aos::iam::certprovider::CertProvider                     mCertProvider;
-    aos::iam::provisionmanager::ProvisionManager             mProvisionManager;
-    aos::iam::iamserver::IAMServer                           mIAMServer;
-    aos::common::logger::Logger                              mLogger;
-    std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
-    std::unique_ptr<aos::iam::iamclient::IAMClient>          mIAMClient;
-    std::unique_ptr<aos::iam::identhandler::IdentHandlerItf> mIdentifier;
+    crypto::MbedTLSCryptoProvider mCryptoProvider;
+    crypto::CertLoader            mCertLoader;
+    certhandler::CertHandler      mCertHandler;
+    pkcs11::PKCS11Manager         mPKCS11Manager;
+    std::vector<std::pair<std::unique_ptr<certhandler::HSMItf>, std::unique_ptr<certhandler::CertModule>>> mCertModules;
+    database::Database                                                                                     mDatabase;
+    nodeinfoprovider::NodeInfoProvider             mNodeInfoProvider;
+    nodemanager::NodeManager                       mNodeManager;
+    certprovider::CertProvider                     mCertProvider;
+    provisionmanager::ProvisionManager             mProvisionManager;
+    iamserver::IAMServer                           mIAMServer;
+    common::logger::Logger                         mLogger;
+    std::unique_ptr<permhandler::PermHandler>      mPermHandler;
+    std::unique_ptr<iamclient::IAMClient>          mIAMClient;
+    std::unique_ptr<identhandler::IdentHandlerItf> mIdentifier;
 
     bool        mStopProcessing = false;
     bool        mProvisioning   = false;
     std::string mConfigFile;
 };
+
+} // namespace aos::iam::app
 
 #endif

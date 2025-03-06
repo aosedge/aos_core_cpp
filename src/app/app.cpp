@@ -24,11 +24,15 @@
 // cppcheck-suppress missingInclude
 #include "version.hpp"
 
+namespace aos::iam::app {
+
+namespace {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
-static void ErrorHandler(int sig)
+void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
@@ -64,7 +68,7 @@ static void ErrorHandler(int sig)
     raise(sig);
 }
 
-static void RegisterErrorSignals()
+void RegisterErrorSignals()
 {
     struct sigaction act { };
 
@@ -77,13 +81,12 @@ static void RegisterErrorSignals()
     sigaction(SIGSEGV, &act, nullptr);
 }
 
-static aos::Error ConvertCertModuleConfig(
-    const aos::iam::config::ModuleConfig& config, aos::iam::certhandler::ModuleConfig& aosConfig)
+Error ConvertCertModuleConfig(const config::ModuleConfig& config, certhandler::ModuleConfig& aosConfig)
 {
     if (config.mAlgorithm == "ecc") {
-        aosConfig.mKeyType = aos::crypto::KeyTypeEnum::eECDSA;
+        aosConfig.mKeyType = crypto::KeyTypeEnum::eECDSA;
     } else if (config.mAlgorithm == "rsa") {
-        aosConfig.mKeyType = aos::crypto::KeyTypeEnum::eRSA;
+        aosConfig.mKeyType = crypto::KeyTypeEnum::eRSA;
     } else {
         auto err = aosConfig.mKeyType.FromString(config.mAlgorithm.c_str());
         if (!err.IsNone()) {
@@ -96,7 +99,7 @@ static aos::Error ConvertCertModuleConfig(
     aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
-        aos::iam::certhandler::ExtendedKeyUsage keyUsage;
+        certhandler::ExtendedKeyUsage keyUsage;
 
         auto err = keyUsage.FromString(keyUsageStr.c_str());
         if (!err.IsNone()) {
@@ -116,11 +119,10 @@ static aos::Error ConvertCertModuleConfig(
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-static aos::Error ConvertPKCS11ModuleParams(
-    const aos::iam::config::PKCS11ModuleParams& params, aos::iam::certhandler::PKCS11ModuleConfig& aosParams)
+Error ConvertPKCS11ModuleParams(const config::PKCS11ModuleParams& params, certhandler::PKCS11ModuleConfig& aosParams)
 {
     aosParams.mLibrary = params.mLibrary.c_str();
 
@@ -138,8 +140,10 @@ static aos::Error ConvertPKCS11ModuleParams(
     aosParams.mUID             = params.mUID;
     aosParams.mGID             = params.mGID;
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Protected
@@ -162,7 +166,7 @@ void App::initialize(Application& self)
 
     // Initialize Aos modules
 
-    auto config = aos::iam::config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
+    auto config = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
     AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
 
     err = mDatabase.Init(config.mValue.mWorkingDir, config.mValue.mMigration);
@@ -172,7 +176,7 @@ void App::initialize(Application& self)
     AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
 
     if (!config.mValue.mIdentifier.mPlugin.empty()) {
-        auto visIdentifier = std::make_unique<aos::iam::visidentifier::VISIdentifier>();
+        auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
 
         err = visIdentifier->Init(config.mValue, mIAMServer);
         AOS_ERROR_CHECK_AND_THROW("can't initialize VIS identifier", err);
@@ -181,7 +185,7 @@ void App::initialize(Application& self)
     }
 
     if (config.mValue.mEnablePermissionsHandler) {
-        mPermHandler = std::make_unique<aos::iam::permhandler::PermHandler>();
+        mPermHandler = std::make_unique<permhandler::PermHandler>();
     }
 
     err = mCryptoProvider.Init();
@@ -207,7 +211,7 @@ void App::initialize(Application& self)
     AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     if (!config.mValue.mMainIAMPublicServerURL.empty() && !config.mValue.mMainIAMProtectedServerURL.empty()) {
-        mIAMClient = std::make_unique<aos::iam::iamclient::IAMClient>();
+        mIAMClient = std::make_unique<iamclient::IAMClient>();
 
         err = mIAMClient->Init(config.mValue, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
             mCryptoProvider, mNodeInfoProvider, mProvisioning);
@@ -312,16 +316,16 @@ void App::HandleJournal(const std::string& name, const std::string& value)
     (void)name;
     (void)value;
 
-    mLogger.SetBackend(aos::common::logger::Logger::Backend::eJournald);
+    mLogger.SetBackend(common::logger::Logger::Backend::eJournald);
 }
 
 void App::HandleLogLevel(const std::string& name, const std::string& value)
 {
     (void)name;
 
-    aos::LogLevel level;
+    LogLevel level;
 
-    auto err = level.FromString(aos::String(value.c_str()));
+    auto err = level.FromString(String(value.c_str()));
     if (!err.IsNone()) {
         throw Poco::Exception("unsupported log level", value);
     }
@@ -336,13 +340,13 @@ void App::HandleConfigFile(const std::string& name, const std::string& value)
     mConfigFile = value;
 }
 
-aos::Error App::InitCertModules(const aos::iam::config::Config& config)
+Error App::InitCertModules(const config::Config& config)
 {
     LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
 
     for (const auto& moduleConfig : config.mCertModules) {
         if (moduleConfig.mPlugin != cPKCS11CertModule) {
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
+            return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
         }
 
         if (moduleConfig.mDisabled) {
@@ -350,27 +354,27 @@ aos::Error App::InitCertModules(const aos::iam::config::Config& config)
             continue;
         }
 
-        auto pkcs11Params = aos::iam::config::ParsePKCS11ModuleParams(moduleConfig.mParams);
+        auto pkcs11Params = config::ParsePKCS11ModuleParams(moduleConfig.mParams);
         if (!pkcs11Params.mError.IsNone()) {
             return AOS_ERROR_WRAP(pkcs11Params.mError);
         }
 
-        aos::iam::certhandler::ModuleConfig aosConfig {};
+        certhandler::ModuleConfig aosConfig {};
 
         auto err = ConvertCertModuleConfig(moduleConfig, aosConfig);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        aos::iam::certhandler::PKCS11ModuleConfig aosParams {};
+        certhandler::PKCS11ModuleConfig aosParams {};
 
         err = ConvertPKCS11ModuleParams(pkcs11Params.mValue, aosParams);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        auto pkcs11Module = std::make_unique<aos::iam::certhandler::PKCS11Module>();
-        auto certModule   = std::make_unique<aos::iam::certhandler::CertModule>();
+        auto pkcs11Module = std::make_unique<certhandler::PKCS11Module>();
+        auto certModule   = std::make_unique<certhandler::CertModule>();
 
         err = pkcs11Module->Init(moduleConfig.mID.c_str(), aosParams, mPKCS11Manager, mCryptoProvider);
         if (!err.IsNone()) {
@@ -392,5 +396,7 @@ aos::Error App::InitCertModules(const aos::iam::config::Config& config)
         mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
+
+} // namespace aos::iam::app
