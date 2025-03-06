@@ -25,6 +25,8 @@
 #include "wsclientevent.hpp"
 #include "wspendingrequests.hpp"
 
+namespace aos::iam::visidentifier {
+
 /**
  * Poco web socket client.
  */
@@ -109,5 +111,7 @@ private:
     MessageHandlerFunc                             mHandleSubscription;
     WSClientEvent                                  mWSClientErrorEvent;
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

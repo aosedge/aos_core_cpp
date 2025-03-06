@@ -14,6 +14,8 @@
 
 #include "visidentifier/wsclient.hpp"
 
+namespace aos::iam::visidentifier {
+
 /**
  * Subjects observer mock.
  */
@@ -29,5 +31,7 @@ public:
 };
 
 using WSClientMockPtr = std::shared_ptr<WSClientMock>;
+
+} // namespace aos::iam::visidentifier
 
 #endif

@@ -172,7 +172,7 @@ void App::initialize(Application& self)
     AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
 
     if (!config.mValue.mIdentifier.mPlugin.empty()) {
-        auto visIdentifier = std::make_unique<VISIdentifier>();
+        auto visIdentifier = std::make_unique<aos::iam::visidentifier::VISIdentifier>();
 
         err = visIdentifier->Init(config.mValue, mIAMServer);
         AOS_ERROR_CHECK_AND_THROW("can't initialize VIS identifier", err);

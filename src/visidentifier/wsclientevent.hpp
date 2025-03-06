@@ -12,6 +12,8 @@
 
 #include <Poco/Event.h>
 
+namespace aos::iam::visidentifier {
+
 /**
  * Web socket client event.
  */
@@ -52,5 +54,7 @@ private:
     Poco::Event mEvent;
     Details     mDetails;
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

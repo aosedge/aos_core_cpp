@@ -7,6 +7,8 @@
 
 #include "wsclientevent.hpp"
 
+namespace aos::iam::visidentifier {
+
 WSClientEvent::Details WSClientEvent::Wait()
 {
     // blocking wait
@@ -27,3 +29,5 @@ void WSClientEvent::Reset()
 {
     mEvent.reset();
 }
+
+} // namespace aos::iam::visidentifier

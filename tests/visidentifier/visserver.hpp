@@ -19,6 +19,8 @@
 
 #include "visidentifier/vismessage.hpp"
 
+namespace aos::iam::visidentifier {
+
 class VISParams {
 public:
     void                     Set(const std::string& key, const std::string& value);
@@ -65,5 +67,7 @@ private:
     Poco::Event          mStopEvent;
     Poco::Event          mStartEvent;
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

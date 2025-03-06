@@ -9,6 +9,8 @@
 
 #include "visidentifier/vismessage.hpp"
 
+namespace aos::iam::visidentifier {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -92,3 +94,5 @@ TEST_F(VISMessageTest, GetValueThrowsOnInvalidGetType)
 
     ASSERT_THROW(message.GetValue<int>("key"), Poco::Exception);
 }
+
+} // namespace aos::iam::visidentifier

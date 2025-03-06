@@ -10,6 +10,8 @@
 
 #include <utils/exception.hpp>
 
+namespace aos::iam::visidentifier {
+
 /**
  * Web socket exception.
  */
@@ -24,5 +26,7 @@ public:
     explicit WSException(const std::string& message, const aos::Error& err = aos::ErrorEnum::eFailed)
         : aos::common::utils::AosException(message, err) {};
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

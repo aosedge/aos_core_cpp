@@ -12,6 +12,8 @@
 
 #include "vismessage.hpp"
 
+namespace aos::iam::visidentifier {
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -75,3 +77,5 @@ std::vector<uint8_t> VISMessage::ToByteArray() const
 
     return {str.cbegin(), str.cend()};
 }
+
+} // namespace aos::iam::visidentifier

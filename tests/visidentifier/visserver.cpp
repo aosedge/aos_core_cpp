@@ -22,6 +22,8 @@
 #include "visidentifier/vismessage.hpp"
 #include "visserver.hpp"
 
+namespace aos::iam::visidentifier {
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -266,3 +268,5 @@ void VISWebSocketServer::RunServiceThreadF(
         LOG_ERR() << "VIS Web Socket service failed: error = " << e.what();
     }
 }
+
+} // namespace aos::iam::visidentifier

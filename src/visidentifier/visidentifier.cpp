@@ -15,6 +15,8 @@
 #include "vismessage.hpp"
 #include "wsexception.hpp"
 
+namespace aos::iam::visidentifier {
+
 /***********************************************************************************************************************
  * VISSubscriptions
  **********************************************************************************************************************/
@@ -32,7 +34,7 @@ void VISSubscriptions::RegisterSubscription(const std::string& subscriptionId, H
     mSubscriptionMap[subscriptionId] = std::move(subscriptionHandler);
 }
 
-aos::Error VISSubscriptions::ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var value)
+Error VISSubscriptions::ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var value)
 {
     std::lock_guard lock(mMutex);
 
@@ -41,7 +43,7 @@ aos::Error VISSubscriptions::ProcessSubscription(const std::string& subscription
     if (it == mSubscriptionMap.cend()) {
         LOG_ERR() << "Subscription id not found: id = " << subscriptionId.c_str();
 
-        return aos::ErrorEnum::eNotFound;
+        return ErrorEnum::eNotFound;
     }
 
     return it->second(value);
@@ -61,8 +63,7 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-aos::Error VISIdentifier::Init(
-    const aos::iam::config::Config& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver)
+Error VISIdentifier::Init(const config::Config& config, iam::identhandler::SubjectsObserverItf& subjectsObserver)
 {
     std::lock_guard lock(mMutex);
 
@@ -74,10 +75,10 @@ aos::Error VISIdentifier::Init(
 
     mHandleConnectionThread = std::thread(&VISIdentifier::HandleConnection, this);
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
-aos::RetWithError<aos::StaticString<aos::cSystemIDLen>> VISIdentifier::GetSystemID()
+RetWithError<StaticString<cSystemIDLen>> VISIdentifier::GetSystemID()
 {
     std::lock_guard lock(mMutex);
 
@@ -86,30 +87,30 @@ aos::RetWithError<aos::StaticString<aos::cSystemIDLen>> VISIdentifier::GetSystem
             const VISMessage responseMessage(SendGetRequest(cVinVISPath));
 
             if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
             }
 
             const auto systemId = GetValueByPath(responseMessage.GetJSON(), cVinVISPath);
             if (systemId.empty()) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
             }
 
             if (systemId.size() > mSystemId.MaxSize()) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eNoMemory)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eNoMemory)};
             }
 
             mSystemId = systemId.c_str();
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to get system ID: error = " << e.what();
 
-            return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+            return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
         }
     }
 
     return mSystemId;
 }
 
-aos::RetWithError<aos::StaticString<aos::cUnitModelLen>> VISIdentifier::GetUnitModel()
+RetWithError<StaticString<cUnitModelLen>> VISIdentifier::GetUnitModel()
 {
     std::lock_guard lock(mMutex);
 
@@ -118,30 +119,30 @@ aos::RetWithError<aos::StaticString<aos::cUnitModelLen>> VISIdentifier::GetUnitM
             const VISMessage responseMessage(SendGetRequest(cUnitModelPath));
 
             if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
             }
 
             const auto unitModel = GetValueByPath(responseMessage.GetJSON(), cUnitModelPath);
             if (unitModel.empty()) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
             }
 
             if (unitModel.size() > mUnitModel.MaxSize()) {
-                return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eNoMemory)};
+                return {{}, AOS_ERROR_WRAP(ErrorEnum::eNoMemory)};
             }
 
             mUnitModel = unitModel.c_str();
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to get unit model: error = " << e.what();
 
-            return {{}, AOS_ERROR_WRAP(aos::ErrorEnum::eFailed)};
+            return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
         }
     }
 
     return mUnitModel;
 }
 
-aos::Error VISIdentifier::GetSubjects(aos::Array<aos::StaticString<aos::cSubjectIDLen>>& subjects)
+Error VISIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
 {
     std::lock_guard lock(mMutex);
 
@@ -150,7 +151,7 @@ aos::Error VISIdentifier::GetSubjects(aos::Array<aos::StaticString<aos::cSubject
             const VISMessage responseMessage(SendGetRequest(cSubjectsVISPath));
 
             if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+                return AOS_ERROR_WRAP(ErrorEnum::eFailed);
             }
 
             const auto responseSubjects = GetValueArrayByPath(responseMessage.GetJSON(), cSubjectsVISPath);
@@ -165,17 +166,17 @@ aos::Error VISIdentifier::GetSubjects(aos::Array<aos::StaticString<aos::cSubject
         } catch (const Poco::Exception& e) {
             LOG_ERR() << "Failed to get subjects: error = " << e.message().c_str();
 
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
     }
 
     if (mSubjects.Size() > subjects.MaxSize()) {
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eNoMemory);
+        return AOS_ERROR_WRAP(ErrorEnum::eNoMemory);
     }
 
     subjects = mSubjects;
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 VISIdentifier::~VISIdentifier()
@@ -187,13 +188,13 @@ VISIdentifier::~VISIdentifier()
  * Protected
  **********************************************************************************************************************/
 
-aos::Error VISIdentifier::InitWSClient(const aos::iam::config::Config& config)
+Error VISIdentifier::InitWSClient(const config::Config& config)
 {
     try {
-        aos::iam::config::VISIdentifierModuleParams visParams;
-        aos::Error                                  err;
+        config::VISIdentifierModuleParams visParams;
+        Error                             err;
 
-        aos::Tie(visParams, err) = aos::iam::config::ParseVISIdentifierModuleParams(config.mIdentifier.mParams);
+        Tie(visParams, err) = config::ParseVISIdentifierModuleParams(config.mIdentifier.mParams);
         if (!err.IsNone()) {
             LOG_ERR() << "Failed to parse VIS identifier module params: error = " << err.Message();
 
@@ -205,10 +206,10 @@ aos::Error VISIdentifier::InitWSClient(const aos::iam::config::Config& config)
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to create WS client: error = " << e.what();
 
-        return AOS_ERROR_WRAP(aos::ErrorEnum::eFailed);
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 void VISIdentifier::SetWSClient(WSClientItfPtr wsClient)
@@ -319,10 +320,10 @@ void VISIdentifier::HandleConnection()
     } while (!mStopHandleSubjectsChangedThread.tryWait(cWSClientReconnectMilliseconds));
 }
 
-aos::Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
+Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 {
     try {
-        aos::StaticArray<aos::StaticString<aos::cSubjectIDLen>, aos::cMaxSubjectIDSize> newSubjects;
+        StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> newSubjects;
 
         const auto responseSubjects = GetValueArrayByPath(value, cSubjectsVISPath);
 
@@ -341,10 +342,10 @@ aos::Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to handle subjects subscription: error = " << e.what();
 
-        return aos::ErrorEnum::eFailed;
+        return ErrorEnum::eFailed;
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 std::string VISIdentifier::SendGetRequest(const std::string& path)
@@ -385,13 +386,13 @@ void VISIdentifier::Subscribe(const std::string& path, VISSubscriptions::Handler
 
 std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName)
 {
-    auto var = aos::common::utils::FindByPath(object, {VISMessage::cValueTagName});
+    auto var = common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
     if (var.isString()) {
         return var.extract<std::string>();
     }
 
-    var = aos::common::utils::FindByPath(var, {valueChildTagName});
+    var = common::utils::FindByPath(var, {valueChildTagName});
 
     return var.extract<std::string>();
 }
@@ -399,14 +400,14 @@ std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::
 std::vector<std::string> VISIdentifier::GetValueArrayByPath(
     Poco::Dynamic::Var object, const std::string& valueChildTagName)
 {
-    auto var = aos::common::utils::FindByPath(object, {VISMessage::cValueTagName});
+    auto var = common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
     const auto isArray = [](const Poco::Dynamic::Var var) {
         return var.type() == typeid(Poco::JSON::Array) || var.type() == typeid(Poco::JSON::Array::Ptr);
     };
 
     if (!isArray(var)) {
-        var = aos::common::utils::FindByPath(var, {valueChildTagName});
+        var = common::utils::FindByPath(var, {valueChildTagName});
     }
 
     Poco::JSON::Array::Ptr array;
@@ -426,3 +427,5 @@ std::vector<std::string> VISIdentifier::GetValueArrayByPath(
 
     return valueArray;
 }
+
+} // namespace aos::iam::visidentifier

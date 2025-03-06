@@ -16,6 +16,8 @@
 
 #include <utils/time.hpp>
 
+namespace aos::iam::visidentifier {
+
 /**
  * Request Params.
  */
@@ -99,5 +101,7 @@ private:
     std::mutex                    mMutex;
     std::vector<RequestParamsPtr> mRequests;
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

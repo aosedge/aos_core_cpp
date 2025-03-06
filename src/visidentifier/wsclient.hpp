@@ -16,6 +16,8 @@
 #include "utils/time.hpp"
 #include "wsclientevent.hpp"
 
+namespace aos::iam::visidentifier {
+
 /**
  * Web socket client interface.
  */
@@ -76,5 +78,7 @@ public:
 };
 
 using WSClientItfPtr = std::shared_ptr<WSClientItf>;
+
+} // namespace aos::iam::visidentifier
 
 #endif

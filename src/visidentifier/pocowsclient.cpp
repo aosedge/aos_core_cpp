@@ -18,14 +18,21 @@
 #include "vismessage.hpp"
 #include "wsexception.hpp"
 
+namespace aos::iam::visidentifier {
+
+namespace {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
+
 template <class F>
-static auto OnScopeExit(F&& f)
+auto OnScopeExit(F&& f)
 {
     return std::unique_ptr<void, typename std::decay<F>::type>(reinterpret_cast<void*>(1), std::forward<F>(f));
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -289,3 +296,5 @@ std::chrono::seconds PocoWSClient::GetWebSocketTimeout()
 
     return cDefaultTimeout;
 }
+
+} // namespace aos::iam::visidentifier

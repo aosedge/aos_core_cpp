@@ -16,6 +16,8 @@
 #include <aos/common/tools/array.hpp>
 #include <aos/common/tools/enum.hpp>
 
+namespace aos::iam::visidentifier {
+
 /**
  * Supported Vehicle Information Service actions.
  */
@@ -157,5 +159,7 @@ private:
     VISAction  mAction;
     JsonObject mJsonObject;
 };
+
+} // namespace aos::iam::visidentifier
 
 #endif

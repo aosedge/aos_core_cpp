@@ -9,6 +9,8 @@
 
 #include "wspendingrequests.hpp"
 
+namespace aos::iam::visidentifier {
+
 /***********************************************************************************************************************
  * RequestParams
  **********************************************************************************************************************/
@@ -88,3 +90,5 @@ bool PendingRequests::SetResponse(const std::string& requestId, const std::strin
 
     return true;
 }
+
+} // namespace aos::iam::visidentifier
