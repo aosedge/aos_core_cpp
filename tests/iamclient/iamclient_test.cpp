@@ -26,7 +26,6 @@
 #include "iamclient/iamclient.hpp"
 
 using namespace testing;
-using namespace aos;
 
 /***********************************************************************************************************************
  * Test utils
@@ -50,8 +49,12 @@ inline bool operator==(const iamanager::v5::NodeInfo& left, const iamanager::v5:
 
 } // namespace iamanager::v5
 
+namespace aos::iam::iamclient {
+
+namespace {
+
 template <typename T1, typename T2>
-void FillArray(const std::initializer_list<T1>& src, aos::Array<T2>& dst)
+void FillArray(const std::initializer_list<T1>& src, Array<T2>& dst)
 {
     for (const auto& val : src) {
         ASSERT_TRUE(dst.PushBack(val).IsNone());
@@ -78,7 +81,7 @@ std::vector<T> ConvertFromProtoArray(const google::protobuf::RepeatedPtrField<T>
     return dst;
 }
 
-static CPUInfo CreateCPUInfo()
+CPUInfo CreateCPUInfo()
 {
     CPUInfo cpuInfo;
 
@@ -91,7 +94,7 @@ static CPUInfo CreateCPUInfo()
     return cpuInfo;
 }
 
-static PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
+PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
 {
     PartitionInfo partitionInfo;
 
@@ -104,7 +107,7 @@ static PartitionInfo CreatePartitionInfo(const char* name, const std::initialize
     return partitionInfo;
 }
 
-static NodeAttribute CreateAttribute(const char* name, const char* value)
+NodeAttribute CreateAttribute(const char* name, const char* value)
 {
     NodeAttribute attribute;
 
@@ -114,7 +117,7 @@ static NodeAttribute CreateAttribute(const char* name, const char* value)
     return attribute;
 }
 
-static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned)
+NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned)
 {
     NodeInfo nodeInfo;
 
@@ -132,9 +135,7 @@ static NodeInfo DefaultNodeInfo(NodeStatus status = NodeStatusEnum::eProvisioned
     return nodeInfo;
 }
 
-//
-
-static iamanager::v5::CPUInfo CreateCPUInfoProto()
+iamanager::v5::CPUInfo CreateCPUInfoProto()
 {
     iamanager::v5::CPUInfo cpuInfo;
 
@@ -147,8 +148,7 @@ static iamanager::v5::CPUInfo CreateCPUInfoProto()
     return cpuInfo;
 }
 
-static iamanager::v5::PartitionInfo CreatePartitionInfoProto(
-    const char* name, const std::initializer_list<const char*> types)
+iamanager::v5::PartitionInfo CreatePartitionInfoProto(const char* name, const std::initializer_list<const char*> types)
 {
     iamanager::v5::PartitionInfo partitionInfo;
 
@@ -160,7 +160,7 @@ static iamanager::v5::PartitionInfo CreatePartitionInfoProto(
     return partitionInfo;
 }
 
-static iamanager::v5::NodeAttribute CreateAttributeProto(const char* name, const char* value)
+iamanager::v5::NodeAttribute CreateAttributeProto(const char* name, const char* value)
 {
     iamanager::v5::NodeAttribute attribute;
 
@@ -170,7 +170,7 @@ static iamanager::v5::NodeAttribute CreateAttributeProto(const char* name, const
     return attribute;
 }
 
-static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = "provisioned")
+iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = "provisioned")
 {
     iamanager::v5::NodeInfo nodeInfo;
 
@@ -189,6 +189,8 @@ static iamanager::v5::NodeInfo DefaultNodeInfoProto(const std::string& status = 
 
     return nodeInfo;
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Suite
@@ -271,7 +273,7 @@ public:
                 }
             }
         } catch (const std::exception& e) {
-            LOG_ERR() << "Register node failed: err=" << aos::common::utils::ToAosError(e);
+            LOG_ERR() << "Register node failed: err=" << common::utils::ToAosError(e);
         }
 
         LOG_DBG() << "Test server message thread stoped";
@@ -415,9 +417,9 @@ class IAMClientTest : public Test {
 protected:
     void SetUp() override { test::InitLog(); }
 
-    static aos::iam::config::Config GetConfig()
+    static iam::config::Config GetConfig()
     {
-        aos::iam::config::Config config;
+        iam::config::Config config;
 
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
@@ -434,7 +436,7 @@ protected:
         return config;
     }
 
-    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const aos::iam::config::Config& config = GetConfig())
+    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const iam::config::Config& config = GetConfig())
     {
         auto client = std::make_unique<IAMClient>();
 
@@ -452,7 +454,7 @@ protected:
     }
 
     std::pair<std::unique_ptr<TestPublicNodeService>, std::unique_ptr<IAMClient>> InitTest(
-        const NodeStatus& status, const aos::iam::config::Config& config = GetConfig())
+        const NodeStatus& status, const iam::config::Config& config = GetConfig())
     {
         auto server = CreateServer(config.mMainIAMPublicServerURL);
 
@@ -763,13 +765,15 @@ TEST_F(IAMClientTest, GetCertTypes)
     NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
     // GetCertTypes
-    aos::iam::provisionmanager::CertTypes types;
+    iam::provisionmanager::CertTypes types;
     FillArray({"iam", "online", "offline"}, types);
 
     EXPECT_CALL(mProvisionManager, GetCertTypes())
-        .WillOnce(Return(aos::RetWithError<aos::iam::provisionmanager::CertTypes>(types)));
+        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>(types)));
     EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
 
     server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
 }
+
+} // namespace aos::iam::iamclient

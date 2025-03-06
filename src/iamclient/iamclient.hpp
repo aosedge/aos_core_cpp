@@ -27,13 +27,15 @@
 
 #include "config/config.hpp"
 
+namespace aos::iam::iamclient {
+
 using PublicNodeService        = iamanager::v5::IAMPublicNodesService;
 using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterface>;
 
 /**
  * GRPC IAM client.
  */
-class IAMClient : private aos::iam::certhandler::CertReceiverItf {
+class IAMClient : private iam::certhandler::CertReceiverItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -46,13 +48,12 @@ public:
      * @param cryptoProvider crypto provider.
      * @param nodeInfoProvider node info provider.
      * @param provisioningMode flag indicating whether provisioning mode is active.
-     * @returns aos::Error.
+     * @returns Error.
      */
-    aos::Error Init(const aos::iam::config::Config& config, aos::iam::identhandler::IdentHandlerItf* identHandler,
-        aos::iam::certprovider::CertProviderItf&         certProvider,
-        aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
-        aos::crypto::x509::ProviderItf&                  cryptoProvider,
-        aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
+    Error Init(const iam::config::Config& config, iam::identhandler::IdentHandlerItf* identHandler,
+        iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+        iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
     /**
      * Destroys object instance.
@@ -60,7 +61,7 @@ public:
     ~IAMClient();
 
 private:
-    void OnCertChanged(const aos::iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
 
     using StreamPtr = std::unique_ptr<
         grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
@@ -84,31 +85,30 @@ private:
     bool ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request);
     bool ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request);
 
-    aos::Error CheckCurrentNodeStatus(const std::initializer_list<aos::NodeStatus>& allowedStatuses);
+    Error CheckCurrentNodeStatus(const std::initializer_list<NodeStatus>& allowedStatuses);
 
-    bool SendCreateKeyResponse(
-        const aos::String& nodeID, const aos::String& type, const aos::String& csr, const aos::Error& error);
-    bool SendApplyCertResponse(const aos::String& nodeID, const aos::String& type, const aos::String& certURL,
-        const aos::Array<uint8_t>& serial, const aos::Error& error);
-    bool SendGetCertTypesResponse(const aos::iam::provisionmanager::CertTypes& types, const aos::Error& error);
+    bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
+    bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
+        const Array<uint8_t>& serial, const Error& error);
+    bool SendGetCertTypesResponse(const iam::provisionmanager::CertTypes& types, const Error& error);
 
-    aos::iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
-    aos::iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    aos::iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
-    aos::crypto::CertLoaderItf*                      mCertLoader       = nullptr;
-    aos::crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
-    aos::iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
+    iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
+    crypto::CertLoaderItf*                      mCertLoader       = nullptr;
+    crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
+    iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;
 
-    std::vector<std::string>     mStartProvisioningCmdArgs;
-    std::vector<std::string>     mDiskEncryptionCmdArgs;
-    std::vector<std::string>     mFinishProvisioningCmdArgs;
-    std::vector<std::string>     mDeprovisionCmdArgs;
-    aos::common::utils::Duration mReconnectInterval;
-    std::string                  mServerURL;
-    std::string                  mCACert;
+    std::vector<std::string> mStartProvisioningCmdArgs;
+    std::vector<std::string> mDiskEncryptionCmdArgs;
+    std::vector<std::string> mFinishProvisioningCmdArgs;
+    std::vector<std::string> mDeprovisionCmdArgs;
+    common::utils::Duration  mReconnectInterval;
+    std::string              mServerURL;
+    std::string              mCACert;
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     StreamPtr                            mStream;
@@ -119,5 +119,7 @@ private:
     bool                    mShutdown = false;
     std::mutex              mShutdownLock;
 };
+
+} // namespace aos::iam::iamclient
 
 #endif

@@ -18,15 +18,16 @@
 #include "iamclient.hpp"
 #include "logger/logmodule.hpp"
 
+namespace aos::iam::iamclient {
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-aos::Error IAMClient::Init(const aos::iam::config::Config& config,
-    aos::iam::identhandler::IdentHandlerItf* identHandler, aos::iam::certprovider::CertProviderItf& certProvider,
-    aos::iam::provisionmanager::ProvisionManagerItf& provisionManager, aos::crypto::CertLoaderItf& certLoader,
-    aos::crypto::x509::ProviderItf& cryptoProvider, aos::iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    bool provisioningMode)
+Error IAMClient::Init(const iam::config::Config& config, iam::identhandler::IdentHandlerItf* identHandler,
+    iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {
     mIdentHandler     = identHandler;
     mNodeInfoProvider = &nodeInfoProvider;
@@ -45,36 +46,36 @@ aos::Error IAMClient::Init(const aos::iam::config::Config& config,
     if (provisioningMode) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
         if (!config.mCACert.empty()) {
-            mCredentialList.push_back(aos::common::utils::GetTLSClientCredentials(config.mCACert.c_str()));
+            mCredentialList.push_back(common::utils::GetTLSClientCredentials(config.mCACert.c_str()));
         }
 
         mServerURL = config.mMainIAMPublicServerURL;
     } else {
-        aos::iam::certhandler::CertInfo certInfo;
+        iam::certhandler::CertInfo certInfo;
 
-        auto err = mCertProvider->GetCert(aos::String(config.mCertStorage.c_str()), {}, {}, certInfo);
+        auto err = mCertProvider->GetCert(String(config.mCertStorage.c_str()), {}, {}, certInfo);
         if (!err.IsNone()) {
             LOG_ERR() << "Get certificates failed: error=" << err.Message();
 
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
+            return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
         }
 
-        err = mCertProvider->SubscribeCertChanged(aos::String(config.mCertStorage.c_str()), *this);
+        err = mCertProvider->SubscribeCertChanged(String(config.mCertStorage.c_str()), *this);
         if (!err.IsNone()) {
             LOG_ERR() << "Subscribe certificate receiver failed: error=" << err.Message();
 
-            return AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument);
+            return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
         }
 
         mCredentialList.push_back(
-            aos::common::utils::GetMTLSClientCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider));
+            common::utils::GetMTLSClientCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider));
 
         mServerURL = config.mMainIAMProtectedServerURL;
     }
 
     mConnectionThread = std::thread(&IAMClient::ConnectionLoop, this);
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 IAMClient::~IAMClient()
@@ -101,13 +102,13 @@ IAMClient::~IAMClient()
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::OnCertChanged(const aos::iam::certhandler::CertInfo& info)
+void IAMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
 {
     std::unique_lock lock {mShutdownLock};
 
     mCredentialList.clear();
     mCredentialList.push_back(
-        aos::common::utils::GetMTLSClientCredentials(info, mCACert.c_str(), *mCertLoader, *mCryptoProvider));
+        common::utils::GetMTLSClientCredentials(info, mCACert.c_str(), *mCertLoader, *mCryptoProvider));
 
     mCredentialListUpdated = true;
 }
@@ -219,7 +220,7 @@ void IAMClient::HandleIncomingMessages() noexcept
             } else if (incomingMsg.has_get_cert_types_request()) {
                 ok = ProcessGetCertTypes(incomingMsg.get_cert_types_request());
             } else {
-                AOS_ERROR_CHECK_AND_THROW("Not supported request type", aos::ErrorEnum::eNotSupported);
+                AOS_ERROR_CHECK_AND_THROW("Not supported request type", ErrorEnum::eNotSupported);
             }
 
             if (!ok) {
@@ -239,13 +240,13 @@ void IAMClient::HandleIncomingMessages() noexcept
             }
         }
     } catch (const std::exception& e) {
-        LOG_ERR() << "Failed to handle incoming message: err=" << aos::common::utils::ToAosError(e);
+        LOG_ERR() << "Failed to handle incoming message: err=" << common::utils::ToAosError(e);
     }
 }
 
 bool IAMClient::SendNodeInfo()
 {
-    auto                               nodeInfo = std::make_unique<aos::NodeInfo>();
+    auto                               nodeInfo = std::make_unique<NodeInfo>();
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
 
     auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
@@ -255,7 +256,7 @@ bool IAMClient::SendNodeInfo()
         return false;
     }
 
-    *outgoingMsg.mutable_node_info() = aos::common::pbconvert::ConvertToProto(*nodeInfo);
+    *outgoingMsg.mutable_node_info() = common::pbconvert::ConvertToProto(*nodeInfo);
 
     LOG_DBG() << "Send node info: status=" << nodeInfo->mStatus;
 
@@ -274,17 +275,17 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningR
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
-    auto err = CheckCurrentNodeStatus({aos::NodeStatusEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eUnprovisioned});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't start provisioning: wrong node status";
 
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->StartProvisioning(request.password().c_str());
-    aos::common::pbconvert::SetErrorInfo(err, response);
+    common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -296,30 +297,30 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
-    auto err = CheckCurrentNodeStatus({aos::NodeStatusEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eUnprovisioned});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't finish provisioning: wrong node status";
 
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->FinishProvisioning(request.password().c_str());
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    aos::common::pbconvert::SetErrorInfo(err, response);
+    common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -331,30 +332,30 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
-    auto err = CheckCurrentNodeStatus({aos::NodeStatusEnum::eProvisioned, aos::NodeStatusEnum::ePaused});
+    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eProvisioned, NodeStatusEnum::ePaused});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't deprovision: wrong node status";
 
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
     err = mProvisionManager->Deprovision(request.password().c_str());
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eUnprovisioned);
+    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eUnprovisioned);
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    aos::common::pbconvert::SetErrorInfo(err, response);
+    common::pbconvert::SetErrorInfo(err, response);
 
     return mStream->Write(outgoingMsg);
 }
@@ -368,23 +369,23 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
-    auto err = CheckCurrentNodeStatus({aos::NodeStatusEnum::eProvisioned});
+    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eProvisioned});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't pause node: wrong node status";
 
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::ePaused);
+    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::ePaused);
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    aos::common::pbconvert::SetErrorInfo(err, response);
+    common::pbconvert::SetErrorInfo(err, response);
 
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
@@ -398,43 +399,43 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
-    auto err = CheckCurrentNodeStatus({aos::NodeStatusEnum::ePaused});
+    auto err = CheckCurrentNodeStatus({NodeStatusEnum::ePaused});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't resume node: wrong node status";
 
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(aos::NodeStatusEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eProvisioned);
     if (!err.IsNone()) {
-        aos::common::pbconvert::SetErrorInfo(err, response);
+        common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    aos::common::pbconvert::SetErrorInfo(err, response);
+    common::pbconvert::SetErrorInfo(err, response);
 
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
 
 bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 {
-    const aos::String                    nodeID   = request.node_id().c_str();
-    const aos::String                    certType = request.type().c_str();
-    aos::StaticString<aos::cSystemIDLen> subject  = request.subject().c_str();
-    const aos::String                    password = request.password().c_str();
+    const String               nodeID   = request.node_id().c_str();
+    const String               certType = request.type().c_str();
+    StaticString<cSystemIDLen> subject  = request.subject().c_str();
+    const String               password = request.password().c_str();
 
     LOG_DBG() << "Process create key request: type=" << certType << ", subject=" << subject;
 
     if (subject.IsEmpty() && !mIdentHandler) {
         LOG_ERR() << "Subject can't be empty";
 
-        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(aos::ErrorEnum::eInvalidArgument));
+        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument));
     }
 
-    aos::Error err = aos::ErrorEnum::eNone;
+    Error err = ErrorEnum::eNone;
 
     if (subject.IsEmpty() && mIdentHandler) {
         Tie(subject, err) = mIdentHandler->GetSystemID();
@@ -445,7 +446,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
         }
     }
 
-    auto csr = std::make_unique<aos::StaticString<aos::crypto::cCSRPEMLen>>();
+    auto csr = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
     err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
 
@@ -454,21 +455,21 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 
 bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
 {
-    const aos::String nodeID   = request.node_id().c_str();
-    const aos::String certType = request.type().c_str();
-    const aos::String pemCert  = request.cert().c_str();
+    const String nodeID   = request.node_id().c_str();
+    const String certType = request.type().c_str();
+    const String pemCert  = request.cert().c_str();
 
     LOG_DBG() << "Process apply cert request: type=" << certType;
 
-    aos::iam::certhandler::CertInfo certInfo;
-    aos::Error                      err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
+    iam::certhandler::CertInfo certInfo;
+    Error                      err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
 
     return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
 
 bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request)
 {
-    const aos::String nodeID = request.node_id().c_str();
+    const String nodeID = request.node_id().c_str();
 
     LOG_DBG() << "Process get cert types: nodeID=" << nodeID;
 
@@ -480,9 +481,9 @@ bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& re
     return SendGetCertTypesResponse(certTypes, err);
 }
 
-aos::Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<aos::NodeStatus>& allowedStatuses)
+Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<NodeStatus>& allowedStatuses)
 {
-    auto nodeInfo = std::make_unique<aos::NodeInfo>();
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
     auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
@@ -490,13 +491,12 @@ aos::Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<aos::No
     }
 
     const bool isAllowed = std::any_of(allowedStatuses.begin(), allowedStatuses.end(),
-        [currentStatus = nodeInfo->mStatus](const aos::NodeStatus status) { return currentStatus == status; });
+        [currentStatus = nodeInfo->mStatus](const NodeStatus status) { return currentStatus == status; });
 
-    return !isAllowed ? AOS_ERROR_WRAP(aos::ErrorEnum::eWrongState) : aos::ErrorEnum::eNone;
+    return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }
 
-bool IAMClient::SendCreateKeyResponse(
-    const aos::String& nodeID, const aos::String& type, const aos::String& csr, const aos::Error& error)
+bool IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
@@ -505,21 +505,21 @@ bool IAMClient::SendCreateKeyResponse(
     response.set_type(type.CStr());
     response.set_csr(csr.CStr());
 
-    aos::common::pbconvert::SetErrorInfo(error, response);
+    common::pbconvert::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::String& type, const aos::String& certURL,
-    const aos::Array<uint8_t>& serial, const aos::Error& error)
+bool IAMClient::SendApplyCertResponse(
+    const String& nodeID, const String& type, const String& certURL, const Array<uint8_t>& serial, const Error& error)
 {
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_apply_cert_response();
 
     std::string protoSerial;
-    aos::Error  resultError = error;
+    Error       resultError = error;
     if (error.IsNone()) {
-        Tie(protoSerial, resultError) = aos::common::pbconvert::ConvertSerialToProto(serial);
+        Tie(protoSerial, resultError) = common::pbconvert::ConvertSerialToProto(serial);
         if (!resultError.IsNone()) {
             resultError = AOS_ERROR_WRAP(resultError);
 
@@ -532,12 +532,12 @@ bool IAMClient::SendApplyCertResponse(const aos::String& nodeID, const aos::Stri
     response.set_cert_url(certURL.CStr());
     response.set_serial(protoSerial);
 
-    aos::common::pbconvert::SetErrorInfo(error, response);
+    common::pbconvert::SetErrorInfo(error, response);
 
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::SendGetCertTypesResponse(const aos::iam::provisionmanager::CertTypes& types, const aos::Error& error)
+bool IAMClient::SendGetCertTypesResponse(const iam::provisionmanager::CertTypes& types, const Error& error)
 {
     (void)error;
 
@@ -550,3 +550,5 @@ bool IAMClient::SendGetCertTypesResponse(const aos::iam::provisionmanager::CertT
 
     return mStream->Write(outgoingMsg);
 }
+
+} // namespace aos::iam::iamclient

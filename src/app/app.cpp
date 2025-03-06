@@ -207,7 +207,7 @@ void App::initialize(Application& self)
     AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
 
     if (!config.mValue.mMainIAMPublicServerURL.empty() && !config.mValue.mMainIAMProtectedServerURL.empty()) {
-        mIAMClient = std::make_unique<IAMClient>();
+        mIAMClient = std::make_unique<aos::iam::iamclient::IAMClient>();
 
         err = mIAMClient->Init(config.mValue, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
             mCryptoProvider, mNodeInfoProvider, mProvisioning);

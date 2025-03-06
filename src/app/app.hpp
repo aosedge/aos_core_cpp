@@ -64,7 +64,7 @@ private:
     IAMServer                                                mIAMServer;
     aos::common::logger::Logger                              mLogger;
     std::unique_ptr<aos::iam::permhandler::PermHandler>      mPermHandler;
-    std::unique_ptr<IAMClient>                               mIAMClient;
+    std::unique_ptr<aos::iam::iamclient::IAMClient>          mIAMClient;
     std::unique_ptr<aos::iam::identhandler::IdentHandlerItf> mIdentifier;
 
     bool        mStopProcessing = false;
