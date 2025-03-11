@@ -17,9 +17,9 @@
 #include <aos/iam/certmodules/certmodule.hpp>
 #include <utils/exception.hpp>
 
-#include "config/config.hpp"
-
 #include "app.hpp"
+#include "config/config.hpp"
+#include "fileidentifier/fileidentifier.hpp"
 #include "logger/logmodule.hpp"
 // cppcheck-suppress missingInclude
 #include "version.hpp"
@@ -175,14 +175,8 @@ void App::initialize(Application& self)
     err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
     AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
 
-    if (!config.mValue.mIdentifier.mPlugin.empty()) {
-        auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
-
-        err = visIdentifier->Init(config.mValue, mIAMServer);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize VIS identifier", err);
-
-        mIdentifier = std::move(visIdentifier);
-    }
+    err = InitIdentifierModule(config.mValue);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize identifier module", err);
 
     if (config.mValue.mEnablePermissionsHandler) {
         mPermHandler = std::make_unique<permhandler::PermHandler>();
@@ -394,6 +388,29 @@ Error App::InitCertModules(const config::Config& config)
         }
 
         mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error App::InitIdentifierModule(const config::Config& config)
+{
+    if (config.mIdentifier.mPlugin == "fileidentifier") {
+        auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
+
+        if (auto err = fileIdentifier->Init(config.mIdentifier, mIAMServer); err.IsNone()) {
+            return err;
+        }
+
+        mIdentifier = std::move(fileIdentifier);
+    } else if (config.mIdentifier.mPlugin == "visidentifier") {
+        auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
+
+        if (auto err = visIdentifier->Init(config, mIAMServer); !err.IsNone()) {
+            return err;
+        }
+
+        mIdentifier = std::move(visIdentifier);
     }
 
     return ErrorEnum::eNone;

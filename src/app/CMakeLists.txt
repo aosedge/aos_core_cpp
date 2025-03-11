@@ -38,6 +38,7 @@ target_link_libraries(
     ${TARGET}
     PUBLIC config
            database
+           fileidentifier
            iamclient
            iamserver
            nodeinfoprovider
