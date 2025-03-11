@@ -18,6 +18,7 @@ include_directories(include)
 
 add_subdirectory(config)
 add_subdirectory(database)
+add_subdirectory(fileidentifier)
 add_subdirectory(iamclient)
 add_subdirectory(iamserver)
 add_subdirectory(nodeinfoprovider)
