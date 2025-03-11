@@ -56,6 +56,15 @@ struct VISIdentifierModuleParams {
 };
 
 /*
+ * File Identifier module parameters.
+ */
+struct FileIdentifierModuleParams {
+    std::string mSystemIDPath;
+    std::string mUnitModelPath;
+    std::string mSubjectsPath;
+};
+
+/*
  * Module configuration.
  */
 struct ModuleConfig {
@@ -155,6 +164,14 @@ RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var para
  * @return VISIdentifierModuleParams instance.
  */
 RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params);
+
+/*
+ * Parses file identifier plugin parameters.
+ *
+ * @param var Poco::Dynamic::Var instance.
+ * @return FileIdentifierModuleParams instance.
+ */
+RetWithError<FileIdentifierModuleParams> ParseFileIdentifierModuleParams(Poco::Dynamic::Var params);
 
 } // namespace aos::iam::config
 

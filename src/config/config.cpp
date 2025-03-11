@@ -243,4 +243,21 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
     return moduleParams;
 }
 
+RetWithError<FileIdentifierModuleParams> ParseFileIdentifierModuleParams(Poco::Dynamic::Var params)
+{
+    FileIdentifierModuleParams moduleParams;
+
+    try {
+        common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+        moduleParams.mSystemIDPath  = object.GetValue<std::string>("systemIDPath");
+        moduleParams.mUnitModelPath = object.GetValue<std::string>("unitModelPath");
+        moduleParams.mSubjectsPath  = object.GetValue<std::string>("subjectsPath");
+    } catch (const std::exception& e) {
+        return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
+    }
+
+    return moduleParams;
+}
+
 } // namespace aos::iam::config

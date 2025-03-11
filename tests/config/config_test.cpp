@@ -258,4 +258,19 @@ TEST_F(ConfigTest, ParseVISIdentifierModuleParams)
     EXPECT_EQ(visParams.mWebSocketTimeout, 100);
 }
 
+TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("systemIDPath", "test-system-id-path");
+    params->set("unitModelPath", "test-unit-model-path");
+    params->set("subjectsPath", "test-subjects-path");
+
+    auto [fileIdentifierParams, error] = ParseFileIdentifierModuleParams(params);
+    ASSERT_EQ(error, ErrorEnum::eNone);
+
+    EXPECT_EQ(fileIdentifierParams.mSystemIDPath, "test-system-id-path");
+    EXPECT_EQ(fileIdentifierParams.mUnitModelPath, "test-unit-model-path");
+    EXPECT_EQ(fileIdentifierParams.mSubjectsPath, "test-subjects-path");
+}
+
 } // namespace aos::iam::config
