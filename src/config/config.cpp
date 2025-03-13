@@ -243,25 +243,14 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         ParseMonitoringConfig(object, config.mMonitoring);
 
-        auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
+        auto empty         = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
+        auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
+        auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
+        auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
-        if (object.Has("logging")) {
-            ParseLoggingConfig(object.GetObject("logging"), config.mLogging);
-        } else {
-            ParseLoggingConfig(empty, config.mLogging);
-        }
-
-        if (object.Has("journalAlerts")) {
-            ParseJournalAlertsConfig(object.GetObject("journalAlerts"), config.mJournalAlerts);
-        } else {
-            ParseJournalAlertsConfig(empty, config.mJournalAlerts);
-        }
-
-        if (object.Has("migration")) {
-            ParseMigrationConfig(object.GetObject("migration"), config.mWorkingDir, config.mMigration);
-        } else {
-            ParseMigrationConfig(empty, config.mWorkingDir, config.mMigration);
-        }
+        ParseLoggingConfig(logging, config.mLogging);
+        ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
+        ParseMigrationConfig(migration, config.mWorkingDir, config.mMigration);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
