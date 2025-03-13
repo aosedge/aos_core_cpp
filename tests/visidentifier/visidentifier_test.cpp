@@ -33,7 +33,7 @@ public:
     void           HandleSubscription(const std::string& message) { return VISIdentifier::HandleSubscription(message); }
     void           WaitUntilConnected() { VISIdentifier::WaitUntilConnected(); }
 
-    MOCK_METHOD(Error, InitWSClient, (const config::Config&), (override));
+    MOCK_METHOD(Error, InitWSClient, (const config::IdentifierConfig&), (override));
 };
 
 } // namespace
@@ -51,7 +51,7 @@ protected:
     iam::identhandler::SubjectsObserverMock mVISSubjectsObserverMock;
     WSClientMockPtr                         mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
     TestVISIdentifier                       mVisIdentifier;
-    config::Config                          mConfig;
+    config::IdentifierConfig                mConfig;
 
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()
@@ -71,7 +71,7 @@ protected:
         object->set("caCertFile", cVISConfig.mCaCertFile);
         object->set("webSocketTimeout", std::to_string(cVISConfig.mWebSocketTimeout.Seconds()));
 
-        mConfig.mIdentifier.mParams = object;
+        mConfig.mParams = object;
 
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
     }
@@ -154,7 +154,7 @@ TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
 
-    const auto err = identifier.Init(config::Config {}, mVISSubjectsObserverMock);
+    const auto err = identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock);
     ASSERT_FALSE(err.IsNone()) << err.Message();
 }
 

@@ -32,7 +32,7 @@ public:
      * @param subjectsObserver subject observer.
      * @return Error.
      */
-    Error Init(const config::Identifier& config, identhandler::SubjectsObserverItf& subjectsObserver);
+    Error Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver);
 
     /**
      * Returns System ID.

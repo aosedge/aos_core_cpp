@@ -68,7 +68,7 @@ protected:
     }
 
     identhandler::SubjectsObserverMock mSubjectsObserverMock;
-    config::Identifier                 mConfig;
+    config::IdentifierConfig           mConfig;
 };
 
 /***********************************************************************************************************************
@@ -79,7 +79,7 @@ TEST_F(FileIdentifierTest, InitFailsOnEmptyConfig)
 {
     FileIdentifier identifier;
 
-    const auto err = identifier.Init(config::Identifier {}, mSubjectsObserverMock);
+    const auto err = identifier.Init(config::IdentifierConfig {}, mSubjectsObserverMock);
     ASSERT_FALSE(err.IsNone()) << err.Message();
 }
 

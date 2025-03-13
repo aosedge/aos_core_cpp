@@ -50,7 +50,7 @@ private:
     void HandleConfigFile(const std::string& name, const std::string& value);
 
     Error InitCertModules(const config::Config& config);
-    Error InitIdentifierModule(const config::Config& config);
+    Error InitIdentifierModule(const config::IdentifierConfig& config);
 
     crypto::MbedTLSCryptoProvider mCryptoProvider;
     crypto::CertLoader            mCertLoader;

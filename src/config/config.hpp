@@ -27,7 +27,7 @@ namespace aos::iam::config {
 /*
  * Identifier plugin parameters.
  */
-struct Identifier {
+struct IdentifierConfig {
     std::string        mPlugin;
     Poco::Dynamic::Var mParams;
 };
@@ -152,9 +152,9 @@ struct Config {
     IAMClientConfig           mIAMClient;
     IAMServerConfig           mIAMServer;
     DatabaseConfig            mDatabase;
+    IdentifierConfig          mIdentifier;
     std::vector<ModuleConfig> mCertModules;
     bool                      mEnablePermissionsHandler;
-    Identifier                mIdentifier;
 };
 
 /*******************************************************************************

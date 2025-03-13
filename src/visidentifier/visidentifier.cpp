@@ -63,7 +63,8 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-Error VISIdentifier::Init(const config::Config& config, iam::identhandler::SubjectsObserverItf& subjectsObserver)
+Error VISIdentifier::Init(
+    const config::IdentifierConfig& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver)
 {
     std::lock_guard lock(mMutex);
 
@@ -188,13 +189,13 @@ VISIdentifier::~VISIdentifier()
  * Protected
  **********************************************************************************************************************/
 
-Error VISIdentifier::InitWSClient(const config::Config& config)
+Error VISIdentifier::InitWSClient(const config::IdentifierConfig& config)
 {
     try {
         config::VISIdentifierModuleParams visParams;
         Error                             err;
 
-        Tie(visParams, err) = config::ParseVISIdentifierModuleParams(config.mIdentifier.mParams);
+        Tie(visParams, err) = config::ParseVISIdentifierModuleParams(config.mParams);
         if (!err.IsNone()) {
             LOG_ERR() << "Failed to parse VIS identifier module params: error = " << err.Message();
 

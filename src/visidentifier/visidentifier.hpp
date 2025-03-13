@@ -67,11 +67,11 @@ public:
     /**
      * Initializes vis identifier.
      *
-     * @param config config object.
+     * @param config identifier config.
      * @param subjectsObserver subject observer.
      * @return Error.
      */
-    Error Init(const config::Config& config, iam::identhandler::SubjectsObserverItf& subjectsObserver);
+    Error Init(const config::IdentifierConfig& config, iam::identhandler::SubjectsObserverItf& subjectsObserver);
 
     /**
      * Returns System ID.
@@ -101,7 +101,7 @@ public:
     ~VISIdentifier() override;
 
 protected:
-    virtual Error  InitWSClient(const config::Config& config);
+    virtual Error  InitWSClient(const config::IdentifierConfig& config);
     void           SetWSClient(WSClientItfPtr wsClient);
     WSClientItfPtr GetWSClient();
     void           HandleSubscription(const std::string& message);

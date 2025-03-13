@@ -17,7 +17,7 @@ namespace aos::iam::fileidentifier {
  * Public
  **********************************************************************************************************************/
 
-Error FileIdentifier::Init(const config::Identifier& config, identhandler::SubjectsObserverItf& subjectsObserver)
+Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver)
 {
     LOG_DBG() << "Initialize file identifier";
 

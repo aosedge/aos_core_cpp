@@ -31,16 +31,16 @@ const std::string cServerCertPath("certificates/ca.pem");
 const std::string cServerKeyPath("certificates/ca.key");
 const std::string cClientCertPath {"certificates/client.cer"};
 
-config::Config CreateConfigWithVisParams(const config::VISIdentifierModuleParams& config)
+config::IdentifierConfig CreateConfigWithVisParams(const config::VISIdentifierModuleParams& params)
 {
     Poco::JSON::Object::Ptr object = new Poco::JSON::Object();
 
-    object->set("VISServer", config.mVISServer);
-    object->set("caCertFile", config.mCaCertFile);
-    object->set("webSocketTimeout", std::to_string(config.mWebSocketTimeout.Seconds()));
+    object->set("VISServer", params.mVISServer);
+    object->set("caCertFile", params.mCaCertFile);
+    object->set("webSocketTimeout", std::to_string(params.mWebSocketTimeout.Seconds()));
 
-    config::Config cfg;
-    cfg.mIdentifier.mParams = object;
+    config::IdentifierConfig cfg;
+    cfg.mParams = object;
 
     return cfg;
 }
@@ -164,7 +164,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 {
     VISIdentifier visIdentifier;
 
-    config::Config config = CreateConfigWithVisParams(cConfig);
+    auto config = CreateConfigWithVisParams(cConfig);
 
     iam::identhandler::SubjectsObserverMock observer;
 
@@ -183,7 +183,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 {
     VISIdentifier visIdentifier;
 
-    config::Config config = CreateConfigWithVisParams(cConfig);
+    auto config = CreateConfigWithVisParams(cConfig);
 
     iam::identhandler::SubjectsObserverMock observer;
 
@@ -202,7 +202,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 {
     VISIdentifier visIdentifier;
 
-    config::Config config = CreateConfigWithVisParams(cConfig);
+    auto config = CreateConfigWithVisParams(cConfig);
 
     iam::identhandler::SubjectsObserverMock observer;
 

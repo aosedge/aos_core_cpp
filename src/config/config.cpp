@@ -37,9 +37,9 @@ constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
  * Static
  **********************************************************************************************************************/
 
-Identifier ParseIdentifier(const common::utils::CaseInsensitiveObjectWrapper& object)
+IdentifierConfig ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    return Identifier {object.GetValue<std::string>("plugin"), object.Get("params")};
+    return IdentifierConfig {object.GetValue<std::string>("plugin"), object.Get("params")};
 }
 
 ModuleConfig ParseModuleConfig(const common::utils::CaseInsensitiveObjectWrapper& object)

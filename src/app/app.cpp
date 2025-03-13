@@ -175,7 +175,7 @@ void App::initialize(Application& self)
     err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
     AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
 
-    err = InitIdentifierModule(config.mValue);
+    err = InitIdentifierModule(config.mValue.mIdentifier);
     AOS_ERROR_CHECK_AND_THROW("can't initialize identifier module", err);
 
     if (config.mValue.mEnablePermissionsHandler) {
@@ -394,17 +394,17 @@ Error App::InitCertModules(const config::Config& config)
     return ErrorEnum::eNone;
 }
 
-Error App::InitIdentifierModule(const config::Config& config)
+Error App::InitIdentifierModule(const config::IdentifierConfig& config)
 {
-    if (config.mIdentifier.mPlugin == "fileidentifier") {
+    if (config.mPlugin == "fileidentifier") {
         auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
 
-        if (auto err = fileIdentifier->Init(config.mIdentifier, mIAMServer); !err.IsNone()) {
+        if (auto err = fileIdentifier->Init(config, mIAMServer); !err.IsNone()) {
             return err;
         }
 
         mIdentifier = std::move(fileIdentifier);
-    } else if (config.mIdentifier.mPlugin == "visidentifier") {
+    } else if (config.mPlugin == "visidentifier") {
         auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
 
         if (auto err = visIdentifier->Init(config, mIAMServer); !err.IsNone()) {
