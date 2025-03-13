@@ -71,41 +71,44 @@ protected:
         return T::NewStub(channel);
     }
 
-    IAMServer                  mServer;
-    iam::certhandler::CertInfo mClientInfo;
-    iam::certhandler::CertInfo mServerInfo;
-    iam::config::Config        mServerConfig;
-    iam::config::Config        mClientConfig;
+    IAMServer               mServer;
+    certhandler::CertInfo   mClientInfo;
+    certhandler::CertInfo   mServerInfo;
+    config::IAMServerConfig mServerConfig;
+    config::IAMClientConfig mClientConfig;
 
-    iam::certhandler::CertHandler mCertHandler;
+    certhandler::CertHandler      mCertHandler;
     crypto::MbedTLSCryptoProvider mCryptoProvider;
     crypto::CertLoader            mCertLoader;
 
     // mocks
-    iam::identhandler::IdentHandlerMock         mIdentHandler;
-    iam::permhandler::PermHandlerMock           mPermHandler;
-    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    iam::nodemanager::NodeManagerMock           mNodeManager;
-    iam::certprovider::CertProviderMock         mCertProvider;
-    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    identhandler::IdentHandlerMock         mIdentHandler;
+    permhandler::PermHandlerMock           mPermHandler;
+    nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    nodemanager::NodeManagerMock           mNodeManager;
+    certprovider::CertProviderMock         mCertProvider;
+    provisionmanager::ProvisionManagerMock mProvisionManager;
+
+protected:
+    static aos::NodeInfo GetNodeInfo();
 
 private:
     void SetUp() override;
     void TearDown() override;
 
     // CertHandler function
-    iam::certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType);
-    iam::certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig();
+    certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType);
+    certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig();
     void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
-        const String& intermCertPath, uint64_t serial, iam::certhandler::CertInfo& certInfo);
+        const String& intermCertPath, uint64_t serial, certhandler::CertInfo& certInfo);
 
-    iam::config::Config GetServerConfig();
-    iam::config::Config GetClientConfig();
+    config::IAMServerConfig GetServerConfig();
+    config::IAMClientConfig GetClientConfig();
 
-    test::SoftHSMEnv                                              mSOFTHSMEnv;
-    iam::certhandler::StorageStub                                 mStorage;
-    StaticArray<iam::certhandler::PKCS11Module, cMaxModulesCount> mPKCS11Modules;
-    StaticArray<iam::certhandler::CertModule, cMaxModulesCount>   mCertModules;
+    test::SoftHSMEnv                                         mSOFTHSMEnv;
+    certhandler::StorageStub                                 mStorage;
+    StaticArray<certhandler::PKCS11Module, cMaxModulesCount> mPKCS11Modules;
+    StaticArray<certhandler::CertModule, cMaxModulesCount>   mCertModules;
 };
 
 void IAMServerTest::SetUp()
@@ -134,9 +137,7 @@ void IAMServerTest::SetUp()
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
-
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
 
         LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
@@ -166,42 +167,48 @@ void IAMServerTest::RegisterPKCS11Module(const String& name, crypto::KeyType key
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
 }
 
-iam::config::Config IAMServerTest::GetServerConfig()
+config::IAMServerConfig IAMServerTest::GetServerConfig()
 {
-    iam::config::Config config;
+    config::IAMServerConfig config;
 
     config.mCertStorage               = "server";
     config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
-    config.mNodeInfo.mNodeIDPath      = "nodeid";
-    config.mNodeInfo.mNodeType        = "iam-node-type";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
 
     return config;
 }
 
-iam::config::Config IAMServerTest::GetClientConfig()
+config::IAMClientConfig IAMServerTest::GetClientConfig()
 {
-    iam::config::Config config;
+    config::IAMClientConfig config;
 
     config.mCertStorage               = "client";
     config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
-    config.mIAMPublicServerURL        = "localhost:8088";
-    config.mIAMProtectedServerURL     = "localhost:8089";
-    config.mNodeInfo.mNodeType        = "iam-node-type";
+    config.mMainIAMPublicServerURL    = "localhost:8088";
+    config.mMainIAMProtectedServerURL = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
 
     return config;
 }
 
-iam::certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyType keyType)
+NodeInfo IAMServerTest::GetNodeInfo()
 {
-    iam::certhandler::ModuleConfig config;
+    NodeInfo nodeInfo;
+
+    nodeInfo.mNodeType = "iam-node-type";
+
+    return nodeInfo;
+}
+
+certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyType keyType)
+{
+    certhandler::ModuleConfig config;
 
     config.mKeyType         = keyType;
     config.mMaxCertificates = 2;
-    config.mExtendedKeyUsage.EmplaceBack(iam::certhandler::ExtendedKeyUsageEnum::eClientAuth);
+    config.mExtendedKeyUsage.EmplaceBack(certhandler::ExtendedKeyUsageEnum::eClientAuth);
     config.mAlternativeNames.EmplaceBack("epam.com");
     config.mAlternativeNames.EmplaceBack("www.epam.com");
     config.mSkipValidation = false;
@@ -209,9 +216,9 @@ iam::certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyTyp
     return config;
 }
 
-iam::certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
+certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
 {
-    iam::certhandler::PKCS11ModuleConfig config;
+    certhandler::PKCS11ModuleConfig config;
 
     config.mLibrary         = SOFTHSM2_LIB;
     config.mSlotID          = mSOFTHSMEnv.GetSlotID();
@@ -222,7 +229,7 @@ iam::certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
 }
 
 void IAMServerTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
-    const String& intermCertPath, uint64_t serial, iam::certhandler::CertInfo& certInfo)
+    const String& intermCertPath, uint64_t serial, certhandler::CertInfo& certInfo)
 {
     StaticString<crypto::cCSRPEMLen> csr;
     ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
@@ -307,7 +314,7 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
         return ErrorEnum::eNone;
     }));
@@ -336,7 +343,7 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
         return ErrorEnum::eNone;
     }));
@@ -365,7 +372,7 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
         return ErrorEnum::eNone;
     }));
@@ -395,7 +402,7 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
         return ErrorEnum::eNone;
     }));
@@ -425,7 +432,7 @@ TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
 {
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
-        nodeInfo.mNodeType = mServerConfig.mNodeInfo.mNodeType.c_str();
+        nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
         return ErrorEnum::eNone;
     }));

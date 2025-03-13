@@ -161,17 +161,22 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mPartitions[2].mPath, "path3");
     ASSERT_TRUE(config.mNodeInfo.mPartitions[2].mTypes.empty());
 
-    EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
-    EXPECT_EQ(config.mIAMProtectedServerURL, "localhost:8089");
-    EXPECT_EQ(config.mCACert, "/etc/ssl/certs/rootCA.crt");
-    EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/iam/");
+    EXPECT_EQ(config.mIAMServer.mIAMPublicServerURL, "localhost:8090");
+    EXPECT_EQ(config.mIAMServer.mIAMProtectedServerURL, "localhost:8089");
+    EXPECT_EQ(config.mIAMServer.mCACert, "/etc/ssl/certs/rootCA.crt");
+    EXPECT_EQ(config.mIAMServer.mCertStorage, "/var/aos/crypt/iam/");
+    EXPECT_EQ(config.mIAMServer.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
+    EXPECT_EQ(config.mIAMServer.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
+
+    EXPECT_EQ(config.mIAMClient.mCACert, "/etc/ssl/certs/rootCA.crt");
+    EXPECT_EQ(config.mIAMClient.mCertStorage, "/var/aos/crypt/iam/");
+    EXPECT_EQ(config.mIAMClient.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
+    EXPECT_EQ(config.mIAMClient.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
+
     EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/iam/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/workdirs/iam/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);
-
-    EXPECT_EQ(config.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
-    EXPECT_EQ(config.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
 
     EXPECT_EQ(config.mCertModules.size(), 3);
 

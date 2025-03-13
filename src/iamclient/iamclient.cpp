@@ -24,10 +24,10 @@ namespace aos::iam::iamclient {
  * Public
  **********************************************************************************************************************/
 
-Error IAMClient::Init(const iam::config::Config& config, iam::identhandler::IdentHandlerItf* identHandler,
-    iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
+    certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
+    nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {
     mIdentHandler     = identHandler;
     mNodeInfoProvider = &nodeInfoProvider;
@@ -51,7 +51,7 @@ Error IAMClient::Init(const iam::config::Config& config, iam::identhandler::Iden
 
         mServerURL = config.mMainIAMPublicServerURL;
     } else {
-        iam::certhandler::CertInfo certInfo;
+        certhandler::CertInfo certInfo;
 
         auto err = mCertProvider->GetCert(String(config.mCertStorage.c_str()), {}, {}, certInfo);
         if (!err.IsNone()) {
@@ -102,7 +102,7 @@ IAMClient::~IAMClient()
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
+void IAMClient::OnCertChanged(const certhandler::CertInfo& info)
 {
     std::unique_lock lock {mShutdownLock};
 
@@ -462,8 +462,8 @@ bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
 
     LOG_DBG() << "Process apply cert request: type=" << certType;
 
-    iam::certhandler::CertInfo certInfo;
-    Error                      err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
+    certhandler::CertInfo certInfo;
+    Error                 err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
 
     return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
@@ -538,7 +538,7 @@ bool IAMClient::SendApplyCertResponse(
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::SendGetCertTypesResponse(const iam::provisionmanager::CertTypes& types, const Error& error)
+bool IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error)
 {
     (void)error;
 

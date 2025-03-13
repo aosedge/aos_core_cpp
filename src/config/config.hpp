@@ -114,25 +114,45 @@ struct MigrationConfig {
     std::map<std::string, std::string> mPathToPin;
 };
 
+/**
+ * Common config params for IAM client/server.
+ */
+struct IAMConfig {
+    std::string              mCACert;
+    std::string              mCertStorage;
+    std::vector<std::string> mStartProvisioningCmdArgs;
+    std::vector<std::string> mDiskEncryptionCmdArgs;
+    std::vector<std::string> mFinishProvisioningCmdArgs;
+    std::vector<std::string> mDeprovisionCmdArgs;
+};
+
+/**
+ * Configuration for IAM client.
+ */
+struct IAMClientConfig : IAMConfig {
+    std::string mMainIAMPublicServerURL;
+    std::string mMainIAMProtectedServerURL;
+    Duration    mNodeReconnectInterval;
+};
+
+/**
+ * Configuration for IAM client.
+ */
+struct IAMServerConfig : IAMConfig {
+    std::string mIAMPublicServerURL;
+    std::string mIAMProtectedServerURL;
+};
+
 /*
  * Config instance.
  */
 struct Config {
     NodeInfoConfig            mNodeInfo;
-    std::string               mIAMPublicServerURL;
-    std::string               mIAMProtectedServerURL;
-    std::string               mMainIAMPublicServerURL;
-    std::string               mMainIAMProtectedServerURL;
-    Duration                  mNodeReconnectInterval;
-    std::string               mCACert;
-    std::string               mCertStorage;
+    IAMClientConfig           mIAMClient;
+    IAMServerConfig           mIAMServer;
     std::string               mWorkingDir;
     MigrationConfig           mMigration;
     std::vector<ModuleConfig> mCertModules;
-    std::vector<std::string>  mStartProvisioningCmdArgs;
-    std::vector<std::string>  mDiskEncryptionCmdArgs;
-    std::vector<std::string>  mFinishProvisioningCmdArgs;
-    std::vector<std::string>  mDeprovisionCmdArgs;
     bool                      mEnablePermissionsHandler;
     Identifier                mIdentifier;
 };

@@ -89,11 +89,11 @@ Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cm
  * Public
  **********************************************************************************************************************/
 
-Error IAMServer::Init(const iam::config::Config& config, iam::certhandler::CertHandlerItf& certHandler,
-    iam::identhandler::IdentHandlerItf& identHandler, iam::permhandler::PermHandlerItf& permHandler,
+Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
+    identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
     crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, iam::nodemanager::NodeManagerItf& nodeManager,
-    iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+    nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
+    certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";
@@ -127,7 +127,7 @@ Error IAMServer::Init(const iam::config::Config& config, iam::certhandler::CertH
 
     try {
         if (!provisioningMode) {
-            iam::certhandler::CertInfo certInfo;
+            certhandler::CertInfo certInfo;
 
             err = certHandler.GetCertificate(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
             if (!err.IsNone()) {
@@ -153,7 +153,7 @@ Error IAMServer::Init(const iam::config::Config& config, iam::certhandler::CertH
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    if (err = nodeManager.SubscribeNodeInfoChange(static_cast<iam::nodemanager::NodeInfoListenerItf&>(*this));
+    if (err = nodeManager.SubscribeNodeInfoChange(static_cast<nodemanager::NodeInfoListenerItf&>(*this));
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -236,7 +236,7 @@ Error IAMServer::SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messa
     return ErrorEnum::eNone;
 }
 
-void IAMServer::OnCertChanged(const iam::certhandler::CertInfo& info)
+void IAMServer::OnCertChanged(const certhandler::CertInfo& info)
 {
     mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
     mProtectedCred

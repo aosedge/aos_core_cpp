@@ -417,9 +417,9 @@ class IAMClientTest : public Test {
 protected:
     void SetUp() override { test::InitLog(); }
 
-    static iam::config::Config GetConfig()
+    static config::IAMClientConfig GetConfig()
     {
-        iam::config::Config config;
+        config::IAMClientConfig config;
 
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
@@ -436,7 +436,7 @@ protected:
         return config;
     }
 
-    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const iam::config::Config& config = GetConfig())
+    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const config::IAMClientConfig& config = GetConfig())
     {
         auto client = std::make_unique<IAMClient>();
 
@@ -454,7 +454,7 @@ protected:
     }
 
     std::pair<std::unique_ptr<TestPublicNodeService>, std::unique_ptr<IAMClient>> InitTest(
-        const NodeStatus& status, const iam::config::Config& config = GetConfig())
+        const NodeStatus& status, const config::IAMClientConfig& config = GetConfig())
     {
         auto server = CreateServer(config.mMainIAMPublicServerURL);
 
@@ -765,11 +765,10 @@ TEST_F(IAMClientTest, GetCertTypes)
     NodeInfo nodeInfo     = DefaultNodeInfo(NodeStatusEnum::eUnprovisioned);
 
     // GetCertTypes
-    iam::provisionmanager::CertTypes types;
+    provisionmanager::CertTypes types;
     FillArray({"iam", "online", "offline"}, types);
 
-    EXPECT_CALL(mProvisionManager, GetCertTypes())
-        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>(types)));
+    EXPECT_CALL(mProvisionManager, GetCertTypes()).WillOnce(Return(RetWithError<provisionmanager::CertTypes>(types)));
     EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
 
     server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());

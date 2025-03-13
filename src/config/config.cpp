@@ -108,6 +108,51 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
     return nodeInfoConfig;
 }
 
+IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    IAMConfig config;
+
+    config.mCACert                   = object.GetValue<std::string>("caCert");
+    config.mCertStorage              = object.GetValue<std::string>("certStorage");
+    config.mStartProvisioningCmdArgs = common::utils::GetArrayValue<std::string>(object, "startProvisioningCmdArgs",
+        [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+    config.mDiskEncryptionCmdArgs    = common::utils::GetArrayValue<std::string>(
+        object, "diskEncryptionCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+    config.mFinishProvisioningCmdArgs = common::utils::GetArrayValue<std::string>(object, "finishProvisioningCmdArgs",
+        [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+    config.mDeprovisionCmdArgs        = common::utils::GetArrayValue<std::string>(
+        object, "deprovisionCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
+
+    return config;
+}
+
+IAMClientConfig ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    IAMClientConfig config;
+    static_cast<IAMConfig&>(config) = ParseIAMConfig(object);
+
+    config.mMainIAMPublicServerURL    = object.GetValue<std::string>("mainIAMPublicServerURL");
+    config.mMainIAMProtectedServerURL = object.GetValue<std::string>("mainIAMProtectedServerURL");
+    auto nodeReconnectInterval        = object.GetOptionalValue<std::string>("nodeReconnectInterval").value_or("10s");
+
+    Error err                               = ErrorEnum::eNone;
+    Tie(config.mNodeReconnectInterval, err) = common::utils::ParseDuration(nodeReconnectInterval);
+    AOS_ERROR_CHECK_AND_THROW("nodeReconnectInterval parse error", err);
+
+    return config;
+}
+
+IAMServerConfig ParseIAMServerConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    IAMServerConfig config;
+    static_cast<IAMConfig&>(config) = ParseIAMConfig(object);
+
+    config.mIAMPublicServerURL    = object.GetValue<std::string>("iamPublicServerURL");
+    config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
+
+    return config;
+}
+
 MigrationConfig ParseMigrationConfig(
     const common::utils::CaseInsensitiveObjectWrapper& migration, const std::vector<ModuleConfig>& moduleConfigs)
 {
@@ -154,28 +199,11 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                        result = parser.parse(file);
         common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
-        config.mNodeInfo                  = ParseNodeInfoConfig(object.GetObject("nodeInfo"));
-        config.mIAMPublicServerURL        = object.GetValue<std::string>("iamPublicServerURL");
-        config.mIAMProtectedServerURL     = object.GetValue<std::string>("iamProtectedServerURL");
-        config.mMainIAMPublicServerURL    = object.GetValue<std::string>("mainIAMPublicServerURL");
-        config.mMainIAMProtectedServerURL = object.GetValue<std::string>("mainIAMProtectedServerURL");
-
-        config.mCACert                   = object.GetValue<std::string>("caCert");
-        config.mCertStorage              = object.GetValue<std::string>("certStorage");
+        config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfo"));
+        config.mIAMClient                = ParseIAMClientConfig(object);
+        config.mIAMServer                = ParseIAMServerConfig(object);
         config.mWorkingDir               = object.GetValue<std::string>("workingDir");
         config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
-
-        config.mStartProvisioningCmdArgs = common::utils::GetArrayValue<std::string>(object, "startProvisioningCmdArgs",
-            [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
-
-        config.mDiskEncryptionCmdArgs = common::utils::GetArrayValue<std::string>(object, "diskEncryptionCmdArgs",
-            [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
-
-        config.mFinishProvisioningCmdArgs = common::utils::GetArrayValue<std::string>(object,
-            "finishProvisioningCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
-
-        config.mDeprovisionCmdArgs = common::utils::GetArrayValue<std::string>(
-            object, "deprovisionCmdArgs", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
 
         config.mCertModules
             = common::utils::GetArrayValue<ModuleConfig>(object, "certModules", [](const Poco::Dynamic::Var& value) {
@@ -187,13 +215,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
-        }
-
-        Error err                               = ErrorEnum::eNone;
-        Tie(config.mNodeReconnectInterval, err) = common::utils::ParseDuration(
-            object.GetOptionalValue<std::string>("nodeReconnectInterval").value_or("10s"));
-        if (!err.IsNone()) {
-            return {{}, AOS_ERROR_WRAP(err)};
         }
     } catch (const std::exception& e) {
         return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};

@@ -35,7 +35,7 @@ using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterfac
 /**
  * GRPC IAM client.
  */
-class IAMClient : private iam::certhandler::CertReceiverItf {
+class IAMClient : private certhandler::CertReceiverItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -50,10 +50,10 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns Error.
      */
-    Error Init(const iam::config::Config& config, iam::identhandler::IdentHandlerItf* identHandler,
-        iam::certprovider::CertProviderItf& certProvider, iam::provisionmanager::ProvisionManagerItf& provisionManager,
+    Error Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
+        certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-        iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
+        nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
     /**
      * Destroys object instance.
@@ -61,7 +61,7 @@ public:
     ~IAMClient();
 
 private:
-    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const certhandler::CertInfo& info) override;
 
     using StreamPtr = std::unique_ptr<
         grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
@@ -90,14 +90,14 @@ private:
     bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
-    bool SendGetCertTypesResponse(const iam::provisionmanager::CertTypes& types, const Error& error);
+    bool SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
 
-    iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
-    iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
-    crypto::CertLoaderItf*                      mCertLoader       = nullptr;
-    crypto::x509::ProviderItf*                  mCryptoProvider   = nullptr;
-    iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
+    identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    certprovider::CertProviderItf*         mCertProvider     = nullptr;
+    crypto::CertLoaderItf*                 mCertLoader       = nullptr;
+    crypto::x509::ProviderItf*             mCryptoProvider   = nullptr;
+    nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;
