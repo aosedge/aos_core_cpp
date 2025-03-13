@@ -155,16 +155,17 @@ protected:
         auto migrationDst = fs::current_path() / cMigrationPath;
         auto workingDir   = fs::current_path() / cWorkingDir;
 
-        mMigrationConfig.mMigrationPath       = cMigrationPath;
-        mMigrationConfig.mMergedMigrationPath = cMergedMigrationPath;
+        mDatabaseConfig.mWorkingDir          = workingDir;
+        mDatabaseConfig.mMigrationPath       = cMigrationPath;
+        mDatabaseConfig.mMergedMigrationPath = cMergedMigrationPath;
 
         fs::create_directories(cMigrationPath);
 
         mCMPinPath = workingDir / "cm.path.txt";
         mSMPinPath = (workingDir / "sm.path.txt");
 
-        mMigrationConfig.mPathToPin[mCMPinPath] = "ca3b303c3c3f572e87c97a753cc7f5";
-        mMigrationConfig.mPathToPin[mSMPinPath] = "ca3b303c3c3f572e87c97a753cc7f6";
+        mDatabaseConfig.mPathToPin[mCMPinPath] = "ca3b303c3c3f572e87c97a753cc7f5";
+        mDatabaseConfig.mPathToPin[mSMPinPath] = "ca3b303c3c3f572e87c97a753cc7f6";
 
         fs::copy(migrationSrc, migrationDst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
     }
@@ -183,8 +184,8 @@ protected:
 
     std::string mCMPinPath, mSMPinPath;
 
-    iam::config::MigrationConfig mMigrationConfig;
-    TestDatabase                 mDB;
+    config::DatabaseConfig mDatabaseConfig;
+    TestDatabase           mDB;
 };
 
 /***********************************************************************************************************************
@@ -201,7 +202,7 @@ TEST_F(DatabaseTest, AddCertInfo)
     certInfo.mKeyURL   = "keyURL";
     certInfo.mNotAfter = Time::Now();
 
-    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), ErrorEnum::eNone);
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), ErrorEnum::eFailed);
@@ -216,7 +217,7 @@ TEST_F(DatabaseTest, AddCertInfo)
 
 TEST_F(DatabaseTest, RemoveCertInfo)
 {
-    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
     iam::certhandler::CertInfo certInfo;
 
@@ -233,7 +234,7 @@ TEST_F(DatabaseTest, RemoveCertInfo)
 
 TEST_F(DatabaseTest, RemoveAllCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
     iam::certhandler::CertInfo certInfo;
 
@@ -257,7 +258,7 @@ TEST_F(DatabaseTest, RemoveAllCertsInfo)
 
 TEST_F(DatabaseTest, GetCertInfo)
 {
-    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
     iam::certhandler::CertInfo certInfo {};
 
@@ -292,7 +293,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 
 TEST_F(DatabaseTest, GetCertsInfo)
 {
-    EXPECT_EQ(mDB.Init(cWorkingDir, mMigrationConfig), ErrorEnum::eNone);
+    EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
     StaticArray<iam::certhandler::CertInfo, 2> certsInfo;
 
@@ -336,7 +337,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
 {
     const auto& nodeInfo = DefaultNodeInfo();
 
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
 
@@ -351,7 +352,7 @@ TEST_F(DatabaseTest, GetAllNodeIds)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
@@ -370,7 +371,7 @@ TEST_F(DatabaseTest, GetAllNodeIdsNotEnoughMemory)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
@@ -387,7 +388,7 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
     const auto& node1 = DefaultNodeInfo("node1");
     const auto& node2 = DefaultNodeInfo("node2");
 
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     ASSERT_TRUE(mDB.SetNodeInfo(node0).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
@@ -426,7 +427,7 @@ TEST_F(DatabaseTest, MigrateVer0To1)
 
     // Migrate to Version1
     mDB.SetVersion(1);
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     // Check certificates
     const std::string cCMVer1URL = "pkcs11:token=aoscore;object=sm;id=%2C%38%6B%2F%64%1D%6A%5E%92%2E%74%55%51%5D%93%4F?"
@@ -473,7 +474,7 @@ TEST_F(DatabaseTest, MigrateVer1To0)
 
     // Migrate to Version0
     mDB.SetVersion(0);
-    ASSERT_TRUE(mDB.Init(cWorkingDir, mMigrationConfig).IsNone());
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     // Check certificates
     const std::string cCMVer0URL

@@ -173,9 +173,9 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mIAMClient.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
     EXPECT_EQ(config.mIAMClient.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
 
-    EXPECT_EQ(config.mWorkingDir, "/var/aos/iamanager");
-    EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/iam/migration");
-    EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/workdirs/iam/migration");
+    EXPECT_EQ(config.mDatabase.mWorkingDir, "/var/aos/iamanager");
+    EXPECT_EQ(config.mDatabase.mMigrationPath, "/usr/share/aos/iam/migration");
+    EXPECT_EQ(config.mDatabase.mMergedMigrationPath, "/var/aos/workdirs/iam/migration");
     EXPECT_EQ(config.mEnablePermissionsHandler, true);
 
     EXPECT_EQ(config.mCertModules.size(), 3);

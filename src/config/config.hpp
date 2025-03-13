@@ -106,9 +106,10 @@ struct NodeInfoConfig {
 };
 
 /**
- * Migration configuration.
+ * Database configuration.
  */
-struct MigrationConfig {
+struct DatabaseConfig {
+    std::string                        mWorkingDir;
     std::string                        mMigrationPath;
     std::string                        mMergedMigrationPath;
     std::map<std::string, std::string> mPathToPin;
@@ -150,8 +151,7 @@ struct Config {
     NodeInfoConfig            mNodeInfo;
     IAMClientConfig           mIAMClient;
     IAMServerConfig           mIAMServer;
-    std::string               mWorkingDir;
-    MigrationConfig           mMigration;
+    DatabaseConfig            mDatabase;
     std::vector<ModuleConfig> mCertModules;
     bool                      mEnablePermissionsHandler;
     Identifier                mIdentifier;

@@ -153,18 +153,21 @@ IAMServerConfig ParseIAMServerConfig(const common::utils::CaseInsensitiveObjectW
     return config;
 }
 
-MigrationConfig ParseMigrationConfig(
-    const common::utils::CaseInsensitiveObjectWrapper& migration, const std::vector<ModuleConfig>& moduleConfigs)
+DatabaseConfig ParseDatabaseConfig(
+    const common::utils::CaseInsensitiveObjectWrapper& object, const std::vector<ModuleConfig>& moduleConfigs)
 {
-    MigrationConfig config {};
+    auto migration = object.GetObject("migration");
 
+    DatabaseConfig config {};
+
+    config.mWorkingDir          = object.GetValue<std::string>("workingDir");
     config.mMigrationPath       = migration.GetValue<std::string>("migrationPath");
     config.mMergedMigrationPath = migration.GetValue<std::string>("mergedMigrationPath");
 
     for (const auto& moduleConfig : moduleConfigs) {
-        common::utils::CaseInsensitiveObjectWrapper object(moduleConfig.mParams);
+        common::utils::CaseInsensitiveObjectWrapper params(moduleConfig.mParams);
 
-        std::string                   pinPath = object.GetValue<std::string>("userPinPath");
+        std::string                   pinPath = params.GetValue<std::string>("userPinPath");
         StaticString<pkcs11::cPINLen> userPIN;
 
         auto err = fs::ReadFileToString(pinPath.c_str(), userPIN);
@@ -199,23 +202,22 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         auto                                        result = parser.parse(file);
         common::utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
 
-        config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfo"));
-        config.mIAMClient                = ParseIAMClientConfig(object);
-        config.mIAMServer                = ParseIAMServerConfig(object);
-        config.mWorkingDir               = object.GetValue<std::string>("workingDir");
-        config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
-
         config.mCertModules
             = common::utils::GetArrayValue<ModuleConfig>(object, "certModules", [](const Poco::Dynamic::Var& value) {
                   return ParseModuleConfig(
                       common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
               });
 
-        config.mMigration = ParseMigrationConfig(object.GetObject("migration"), config.mCertModules);
+        config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfo"));
+        config.mIAMClient                = ParseIAMClientConfig(object);
+        config.mIAMServer                = ParseIAMServerConfig(object);
+        config.mDatabase                 = ParseDatabaseConfig(object, config.mCertModules);
+        config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
         }
+
     } catch (const std::exception& e) {
         return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
     }

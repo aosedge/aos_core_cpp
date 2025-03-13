@@ -32,11 +32,10 @@ public:
     /**
      * Initializes certificate info storage.
      *
-     * @param workDir working directory.
-     * @param migrationConf migration configuration.
+     * @param config database configuration.
      * @return Error.
      */
-    Error Init(const std::string& workDir, const iam::config::MigrationConfig& migrationConf);
+    Error Init(const config::DatabaseConfig& config);
 
     //
     // certhandler::StorageItf interface
@@ -140,7 +139,7 @@ private:
     // to be used in unit tests
     virtual int GetVersion() const;
 
-    void CreateMigrationData(const iam::config::MigrationConfig& config);
+    void CreateMigrationData(const config::DatabaseConfig& config);
     void DropMigrationData();
 
     void     CreateTables();
@@ -160,7 +159,7 @@ private:
     static Error             ConvertAttributesFromJSON(const Poco::JSON::Array& src, Array<NodeAttribute>& dst);
 
     std::unique_ptr<Poco::Data::Session>        mSession;
-    std::optional<common::migration::Migration> mMigration;
+    std::optional<common::migration::Migration> mDatabase;
 };
 
 } // namespace aos::iam::database

@@ -43,26 +43,26 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-Error Database::Init(const std::string& workDir, const iam::config::MigrationConfig& migration)
+Error Database::Init(const config::DatabaseConfig& config)
 {
     if (mSession && mSession->isConnected()) {
         return ErrorEnum::eNone;
     }
 
     try {
-        auto dirPath = std::filesystem::path(workDir);
+        auto dirPath = std::filesystem::path(config.mWorkingDir);
         if (!std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 
-        const auto dbPath = Poco::Path(workDir, cDBFileName);
+        const auto dbPath = Poco::Path(config.mWorkingDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
         CreateTables();
 
-        mMigration.emplace(*mSession, migration.mMigrationPath, migration.mMergedMigrationPath);
+        mDatabase.emplace(*mSession, config.mMigrationPath, config.mMergedMigrationPath);
 
-        CreateMigrationData(migration);
-        mMigration->MigrateToVersion(GetVersion());
+        CreateMigrationData(config);
+        mDatabase->MigrateToVersion(GetVersion());
         DropMigrationData();
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -262,7 +262,7 @@ int Database::GetVersion() const
     return cVersion;
 }
 
-void Database::CreateMigrationData(const iam::config::MigrationConfig& config)
+void Database::CreateMigrationData(const config::DatabaseConfig& config)
 {
     DropMigrationData();
 
