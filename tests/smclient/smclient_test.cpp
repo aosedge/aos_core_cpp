@@ -830,29 +830,6 @@ TEST_F(SMClientTest, UpdateNetworkSucceeds)
     ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
 }
 
-TEST_F(SMClientTest, ClientReconnectsOnUpdateNetworkExceedsLimit)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(mNetworkManager, UpdateNetworks).Times(0);
-
-    servicemanager::v4::UpdateNetworks updateNetworks;
-
-    for (size_t i = 0; i < aos::cMaxNumNetworks + 1; ++i) {
-        updateNetworks.add_networks();
-    }
-
-    server->UpdateNetwork(updateNetworks);
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
 TEST_F(SMClientTest, ClientReconnectsOnUpdateNetworkManagerError)
 {
     auto [server, client] = InitTest();

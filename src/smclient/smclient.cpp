@@ -558,23 +558,19 @@ bool SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& request)
 {
     LOG_INF() << "Process update networks";
 
-    auto networkParams = std::make_unique<StaticArray<NetworkParameters, cMaxNumNetworks>>();
+    std::vector<NetworkParameters> networkParams(request.networks_size());
 
-    for (const auto& network : request.networks()) {
-        if (auto err = networkParams->EmplaceBack(); !err.IsNone()) {
-            LOG_ERR() << "Failed processing received network parameter: err=" << err;
-
-            return false;
-        }
-
-        if (auto err = common::pbconvert::ConvertToAos(network, networkParams->Back()); !err.IsNone()) {
+    for (auto i = 0; i < request.networks_size(); ++i) {
+        if (auto err = common::pbconvert::ConvertToAos(request.networks(i), networkParams[i]); !err.IsNone()) {
             LOG_ERR() << "Failed processing received network parameter: err=" << err;
 
             return false;
         }
     }
 
-    if (auto err = mNetworkManager->UpdateNetworks(*networkParams); !err.IsNone()) {
+    if (auto err
+        = mNetworkManager->UpdateNetworks(Array<aos::NetworkParameters>(networkParams.data(), networkParams.size()));
+        !err.IsNone()) {
         LOG_ERR() << "Update networks failed: err=" << err;
 
         return false;
