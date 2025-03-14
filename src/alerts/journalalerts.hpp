@@ -68,6 +68,7 @@ private:
     void MonitorJournal();
     void ProcessJournal();
     void RecoverJournalError();
+    bool ShouldFilterOutAlert(const std::string& msg) const;
 
     std::optional<cloudprotocol::ServiceInstanceAlert> GetServiceInstanceAlert(
         const utils::JournalEntry& entry, const std::string& unit);

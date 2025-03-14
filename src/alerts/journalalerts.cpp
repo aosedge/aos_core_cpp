@@ -196,9 +196,13 @@ void JournalAlerts::ProcessJournal()
 
             return;
         }
-        auto entry = mJournal->GetEntry();
 
-        auto unit = entry.mSystemdUnit;
+        auto entry = mJournal->GetEntry();
+        auto unit  = entry.mSystemdUnit;
+
+        if (ShouldFilterOutAlert(entry.mMessage)) {
+            continue;
+        }
 
         if (entry.mSystemdUnit == "init.scope") {
             if (entry.mPriority > mConfig.mServiceAlertPriority) {
@@ -245,6 +249,16 @@ void JournalAlerts::RecoverJournalError()
     }
 }
 
+bool JournalAlerts::ShouldFilterOutAlert(const std::string& msg) const
+{
+    return std::any_of(mAlertFilters.begin(), mAlertFilters.end(), [&msg](const std::string& filter) {
+        auto                           regex = Poco::RegularExpression(filter);
+        Poco::RegularExpression::Match match;
+
+        return regex.match(msg, match);
+    });
+}
+
 std::optional<cloudprotocol::ServiceInstanceAlert> JournalAlerts::GetServiceInstanceAlert(
     const utils::JournalEntry& entry, const std::string& unit)
 {
@@ -289,15 +303,6 @@ std::optional<cloudprotocol::CoreAlert> JournalAlerts::GetCoreComponentAlert(
 
 std::optional<cloudprotocol::SystemAlert> JournalAlerts::GetSystemAlert(const utils::JournalEntry& entry)
 {
-    for (const auto& filter : mAlertFilters) {
-        auto                           regex = Poco::RegularExpression(filter);
-        Poco::RegularExpression::Match match;
-
-        if (regex.match(entry.mMessage, match)) {
-            return std::nullopt;
-        }
-    }
-
     auto alert = cloudprotocol::SystemAlert(entry.mRealTime);
     WriteAlertMsg(entry.mMessage, alert.mMessage);
 
