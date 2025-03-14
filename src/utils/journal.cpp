@@ -162,7 +162,7 @@ JournalEntry Journal::GetEntry()
 
     std::string unit;
     Tie(unit, err) = ExtractJournalField(mJournal, "UNIT");
-    if (!err.IsNone()) {
+    if (err.IsNone()) {
         entry.mUnit = unit;
     }
 
