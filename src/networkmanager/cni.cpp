@@ -528,6 +528,10 @@ std::string CNI::CreateBridgePluginConfig(const BridgePluginConf& bridge) const
         ipamObj.set("rangeEnd", range.mRangeEnd.CStr());
     }
 
+    if (!range.mGateway.IsEmpty()) {
+        ipamObj.set("gateway", range.mGateway.CStr());
+    }
+
     Poco::JSON::Array routesArray;
 
     for (const auto& router : bridge.mIPAM.mRouters) {
