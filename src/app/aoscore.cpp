@@ -78,6 +78,9 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize network manager
 
+    err = mNetworkInterfaceManager.Init(mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW("can't initialize network interface manager", err);
+
     err = mNamespaceManager.Init(mNetworkInterfaceManager);
     AOS_ERROR_CHECK_AND_THROW("can't initialize namespace manager", err);
 
