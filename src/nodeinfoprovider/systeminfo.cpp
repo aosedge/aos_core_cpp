@@ -59,7 +59,7 @@ private:
         }
 
         size_t  physicalId = 0;
-        CPUInfo cpuInfo;
+        CPUInfo cpuInfo {};
 
         for (const auto& keyValue : mCurrentEntryKeyValues) {
             try {
@@ -78,7 +78,7 @@ private:
                 LOG_DBG() << "CPU info parsing failed: key=" << keyValue.mKey.c_str()
                           << ", value=" << keyValue.mValue.c_str();
 
-                throw common::utils::AosException("Failed to parse CPU info", ErrorEnum::eFailed);
+                throw common::utils::AosException("failed to parse CPU info", ErrorEnum::eFailed);
             }
         }
 
