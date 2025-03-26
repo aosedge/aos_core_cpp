@@ -8,6 +8,10 @@
 #include <memory>
 #include <string>
 
+#include <iomanip>
+#include <random>
+#include <sstream>
+
 #include <arpa/inet.h>
 #include <linux/if.h>
 #include <linux/rtnetlink.h>
@@ -23,6 +27,34 @@
 #include "network/interfacemanager.hpp"
 
 namespace aos::common::network {
+
+namespace {
+
+RetWithError<std::string> GenerateMACAddress(crypto::RandomItf& random)
+{
+    StaticArray<uint8_t, 6> mac;
+
+    if (auto err = random.RandBuffer(mac, mac.Size()); !err.IsNone()) {
+        return {std::string(), AOS_ERROR_WRAP(err)};
+    }
+
+    // Set the local bit
+    mac[0] = (mac[0] & 0xFE) | 0x02;
+
+    std::stringstream ss;
+
+    for (size_t i = 0; i < mac.Size(); ++i) {
+        if (i > 0) {
+            ss << ":";
+        }
+
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(mac[i]);
+    }
+
+    return ss.str();
+}
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -62,6 +94,13 @@ const char* Vlan::GetType() const
 int Vlan::GetVlanId() const
 {
     return mVlanId;
+}
+
+Error InterfaceManager::Init(crypto::RandomItf& random)
+{
+    mRandom = &random;
+
+    return ErrorEnum::eNone;
 }
 
 Error InterfaceManager::DeleteLink(const String& ifname)
@@ -147,6 +186,17 @@ Error InterfaceManager::AddLink(const LinkItf* link)
 
         rtnl_link_set_ifindex(parent.get(), attrs.mParentIndex);
         rtnl_link_set_link(linkObj.get(), attrs.mParentIndex);
+    }
+
+    if (!attrs.mMac.empty()) {
+        struct nl_addr* macAddr = nullptr;
+
+        if (nl_addr_parse(attrs.mMac.c_str(), AF_UNSPEC, &macAddr) < 0) {
+            return NLToAosErr(-1, "failed to parse MAC address");
+        }
+
+        rtnl_link_set_addr(linkObj.get(), macAddr);
+        nl_addr_put(macAddr);
     }
 
     if (auto errLinkAdd = rtnl_link_add(sock.get(), linkObj.get(), NLM_F_CREATE); errLinkAdd < 0) {
@@ -490,6 +540,10 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
     LinkAttrs vlanAttrs;
     vlanAttrs.mName        = name.CStr();
     vlanAttrs.mParentIndex = masterIndex;
+
+    if (Tie(vlanAttrs.mMac, err) = GenerateMACAddress(*mRandom); !err.IsNone()) {
+        return err;
+    }
 
     Vlan vlan(vlanAttrs, vlanId);
 

@@ -13,6 +13,7 @@
 
 #include <sys/socket.h>
 
+#include <aos/common/crypto/crypto.hpp>
 #include <aos/sm/networkmanager.hpp>
 
 // Forward declarations
@@ -28,6 +29,7 @@ struct LinkAttrs {
     std::string mName;
     int         mParentIndex {};
     int         mTxQLen {};
+    std::string mMac;
 };
 
 /**
@@ -134,6 +136,14 @@ class InterfaceManager : public sm::networkmanager::InterfaceManagerItf,
                          public sm::networkmanager::InterfaceFactoryItf {
 public:
     /**
+     * Initializes interface manager.
+     *
+     * @param random random.
+     * @return Error.
+     */
+    Error Init(crypto::RandomItf& random);
+
+    /**
      * Removes interface.
      *
      * @param ifname interface name.
@@ -234,6 +244,8 @@ private:
     RetWithError<UniqueNetlinkSocket> CreateNetlinkSocket() const;
     RetWithError<UniqueLink>          CreateLink() const;
     Error                             NLToAosErr(int nlError, const std::string& message) const;
+
+    crypto::RandomItf* mRandom {};
 };
 
 } // namespace aos::common::network
