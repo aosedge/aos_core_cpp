@@ -62,7 +62,7 @@ public:
     ~FileIdentifier() override = default;
 
 private:
-    Error ReadSubjectsFromFile();
+    void ReadSubjectsFromFile();
 
     config::FileIdentifierModuleParams                          mConfig;
     identhandler::SubjectsObserverItf*                          mSubjectsObserver = nullptr;

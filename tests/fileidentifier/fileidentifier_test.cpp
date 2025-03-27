@@ -103,14 +103,14 @@ TEST_F(FileIdentifierTest, InitFailsOnUnitModelFileMissing)
     ASSERT_EQ(err.Value(), ErrorEnum::eRuntime);
 }
 
-TEST_F(FileIdentifierTest, InitFailsOnSubjectsFileMissing)
+TEST_F(FileIdentifierTest, InitSucceedsOnSubjectsFileMissing)
 {
     FileIdentifier identifier;
 
     FS::Remove(cSubjectsPath);
 
     auto err = identifier.Init(mConfig, mSubjectsObserverMock);
-    ASSERT_EQ(err.Value(), ErrorEnum::eRuntime);
+    ASSERT_EQ(err.Value(), ErrorEnum::eNone);
 }
 
 TEST_F(FileIdentifierTest, InitFailsOnSubjectsCountExceedsAppLimit)

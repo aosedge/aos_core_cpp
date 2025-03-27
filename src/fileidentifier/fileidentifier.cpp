@@ -6,6 +6,8 @@
 
 #include <fstream>
 
+#include <utils/exception.hpp>
+
 #include "fileidentifier.hpp"
 #include "logger/logmodule.hpp"
 
@@ -17,28 +19,31 @@ namespace aos::iam::fileidentifier {
 
 Error FileIdentifier::Init(const config::Identifier& config, identhandler::SubjectsObserverItf& subjectsObserver)
 {
-    Error err;
+    LOG_DBG() << "Initialize file identifier";
 
-    Tie(mConfig, err) = config::ParseFileIdentifierModuleParams(config.mParams);
-    if (!err.IsNone()) {
-        return err;
-    }
+    try {
+        Error err;
 
-    mSubjectsObserver = &subjectsObserver;
+        Tie(mConfig, err) = config::ParseFileIdentifierModuleParams(config.mParams);
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    err = FS::ReadFileToString(mConfig.mSystemIDPath.c_str(), mSystemId);
-    if (!err.IsNone()) {
-        return err;
-    }
+        mSubjectsObserver = &subjectsObserver;
 
-    err = FS::ReadFileToString(mConfig.mUnitModelPath.c_str(), mUnitModel);
-    if (!err.IsNone()) {
-        return err;
-    }
+        err = FS::ReadFileToString(mConfig.mSystemIDPath.c_str(), mSystemId);
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    err = ReadSubjectsFromFile();
-    if (!err.IsNone()) {
-        return err;
+        err = FS::ReadFileToString(mConfig.mUnitModelPath.c_str(), mUnitModel);
+        if (!err.IsNone()) {
+            return err;
+        }
+
+        ReadSubjectsFromFile();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -67,26 +72,26 @@ Error FileIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
  * Private
  **********************************************************************************************************************/
 
-Error FileIdentifier::ReadSubjectsFromFile()
+void FileIdentifier::ReadSubjectsFromFile()
 {
     std::ifstream file(mConfig.mSubjectsPath);
     if (!file.is_open()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "file not found"));
+        LOG_WRN() << "Can't open subjects file, empty subjects will be used";
+
+        return;
     }
 
     std::string subject;
 
     while (std::getline(file, subject)) {
-        if (auto err = mSubjects.EmplaceBack(); !err.IsNone()) {
-            return err;
-        }
+        auto err = mSubjects.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW("can't set subject", err);
 
-        if (auto err = mSubjects.Back().Assign(subject.c_str()); !err.IsNone()) {
-            return err;
-        }
+        err = mSubjects.Back().Assign(subject.c_str());
+        AOS_ERROR_CHECK_AND_THROW("can't set subject", err);
+
+        LOG_DBG() << "Read subject: subject=" << mSubjects.Back();
     }
-
-    return ErrorEnum::eNone;
 }
 
 } // namespace aos::iam::fileidentifier
