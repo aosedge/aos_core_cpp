@@ -51,11 +51,15 @@ Error FileIdentifier::Init(const config::Identifier& config, identhandler::Subje
 
 RetWithError<StaticString<cSystemIDLen>> FileIdentifier::GetSystemID()
 {
+    LOG_DBG() << "Get system ID: id=" << mSystemId.CStr();
+
     return {mSystemId};
 }
 
 RetWithError<StaticString<cUnitModelLen>> FileIdentifier::GetUnitModel()
 {
+    LOG_DBG() << "Get unit model: model=" << mUnitModel.CStr();
+
     return {mUnitModel};
 }
 
@@ -64,6 +68,8 @@ Error FileIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
     if (auto err = subjects.Assign(mSubjects); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
+
+    LOG_DBG() << "Get subjects: count=" << subjects.Size();
 
     return ErrorEnum::eNone;
 }
