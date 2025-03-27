@@ -398,7 +398,7 @@ Error App::InitIdentifierModule(const config::Config& config)
     if (config.mIdentifier.mPlugin == "fileidentifier") {
         auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
 
-        if (auto err = fileIdentifier->Init(config.mIdentifier, mIAMServer); err.IsNone()) {
+        if (auto err = fileIdentifier->Init(config.mIdentifier, mIAMServer); !err.IsNone()) {
             return err;
         }
 
