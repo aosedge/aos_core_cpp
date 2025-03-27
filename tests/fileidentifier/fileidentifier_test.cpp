@@ -90,7 +90,7 @@ TEST_F(FileIdentifierTest, InitFailsOnSystemIDFileMissing)
     FS::Remove(cSystemIDPath);
 
     auto err = identifier.Init(mConfig, mSubjectsObserverMock);
-    ASSERT_EQ(err.Value(), ErrorEnum::eRuntime);
+    ASSERT_EQ(err.Value(), ErrorEnum::eNotFound);
 }
 
 TEST_F(FileIdentifierTest, InitFailsOnUnitModelFileMissing)
@@ -100,7 +100,7 @@ TEST_F(FileIdentifierTest, InitFailsOnUnitModelFileMissing)
     FS::Remove(cUnitModelPath);
 
     auto err = identifier.Init(mConfig, mSubjectsObserverMock);
-    ASSERT_EQ(err.Value(), ErrorEnum::eRuntime);
+    ASSERT_EQ(err.Value(), ErrorEnum::eNotFound);
 }
 
 TEST_F(FileIdentifierTest, InitSucceedsOnSubjectsFileMissing)

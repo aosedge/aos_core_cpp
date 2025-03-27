@@ -31,15 +31,11 @@ Error FileIdentifier::Init(const config::Identifier& config, identhandler::Subje
 
         mSubjectsObserver = &subjectsObserver;
 
-        err = FS::ReadFileToString(mConfig.mSystemIDPath.c_str(), mSystemId);
-        if (!err.IsNone()) {
-            return err;
-        }
+        err = ReadLineFromFile(mConfig.mSystemIDPath, mSystemId);
+        AOS_ERROR_CHECK_AND_THROW("can't set system id", err);
 
-        err = FS::ReadFileToString(mConfig.mUnitModelPath.c_str(), mUnitModel);
-        if (!err.IsNone()) {
-            return err;
-        }
+        err = ReadLineFromFile(mConfig.mUnitModelPath, mUnitModel);
+        AOS_ERROR_CHECK_AND_THROW("can't set unit model", err);
 
         ReadSubjectsFromFile();
     } catch (const std::exception& e) {
@@ -98,6 +94,22 @@ void FileIdentifier::ReadSubjectsFromFile()
 
         LOG_DBG() << "Read subject: subject=" << mSubjects.Back();
     }
+}
+
+Error FileIdentifier::ReadLineFromFile(const std::string& path, String& result) const
+{
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    std::string line;
+
+    if (!std::getline(file, line)) {
+        return ErrorEnum::eFailed;
+    }
+
+    return result.Assign(line.c_str());
 }
 
 } // namespace aos::iam::fileidentifier

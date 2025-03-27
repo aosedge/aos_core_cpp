@@ -62,7 +62,8 @@ public:
     ~FileIdentifier() override = default;
 
 private:
-    void ReadSubjectsFromFile();
+    void  ReadSubjectsFromFile();
+    Error ReadLineFromFile(const std::string& path, String& result) const;
 
     config::FileIdentifierModuleParams                          mConfig;
     identhandler::SubjectsObserverItf*                          mSubjectsObserver = nullptr;
