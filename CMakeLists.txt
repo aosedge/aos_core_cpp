@@ -46,7 +46,7 @@ set(WITH_IAM_API ON)
 # Compiler flags
 # ######################################################################################################################
 
-add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
+add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic -Wno-format-truncation)
 set(CMAKE_CXX_STANDARD 17)
 
 if(WITH_TEST)
