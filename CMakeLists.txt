@@ -45,7 +45,15 @@ set(WITH_SM_API ON)
 # Compiler flags
 # ######################################################################################################################
 
-add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic -Wno-cpp)
+add_compile_options(
+    -fPIC
+    -Wall
+    -Werror
+    -Wextra
+    -Wpedantic
+    -Wno-cpp
+    -Wno-format-truncation
+)
 set(CMAKE_CXX_STANDARD 17)
 
 if(WITH_TEST)
