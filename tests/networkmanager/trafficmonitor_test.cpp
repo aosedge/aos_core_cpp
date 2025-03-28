@@ -121,7 +121,7 @@ TEST_F(TrafficMonitorTest, GetSystemData)
     EXPECT_CALL(*mStorage, GetTrafficMonitorData(inChain, _, _)).WillOnce(Return(aos::ErrorEnum::eNotFound));
     EXPECT_CALL(*mStorage, GetTrafficMonitorData(outChain, _, _)).WillOnce(Return(aos::ErrorEnum::eNotFound));
 
-    ASSERT_EQ(mMonitor->Init(*mStorage, *mIPTables, std::chrono::seconds(1)), aos::ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mIPTables, aos::Time::cSeconds), aos::ErrorEnum::eNone);
 
     EXPECT_CALL(*mIPTables, ListAllRulesWithCounters("AOS_SYSTEM_IN"))
         .WillOnce(Return(std::vector<std::string> {"-c 100 200"}))
@@ -214,7 +214,7 @@ TEST_F(TrafficMonitorTest, GetInstanceTraffic)
     EXPECT_CALL(*mStorage, GetTrafficMonitorData(inChain, _, _)).WillOnce(Return(aos::ErrorEnum::eNotFound));
     EXPECT_CALL(*mStorage, GetTrafficMonitorData(outChain, _, _)).WillOnce(Return(aos::ErrorEnum::eNotFound));
 
-    ASSERT_EQ(mMonitor->Init(*mStorage, *mIPTables, std::chrono::seconds(1)), aos::ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mIPTables, aos::Time::cSeconds), aos::ErrorEnum::eNone);
 
     std::stringstream ss;
     ss << std::hex << std::hash<std::string> {}("test-instance");

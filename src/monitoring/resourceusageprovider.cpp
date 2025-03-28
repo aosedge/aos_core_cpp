@@ -385,9 +385,8 @@ Error ResourceUsageProvider::SetInstanceMonitoringData(
         cachedInstanceMonitoring.mTotal = 0;
     }
 
-    const auto now = Time::Now();
-    const auto timeDeltaMicroseconds
-        = static_cast<double>(now.Sub(cachedInstanceMonitoring.mTimestamp) / Time::cMicroseconds);
+    const auto now                   = Time::Now();
+    const auto timeDeltaMicroseconds = static_cast<double>(now.Sub(cachedInstanceMonitoring.mTimestamp).Microseconds());
 
     if (timeDeltaMicroseconds > 0 && mCPUCount > 0) {
         monitoringData.mCPU = static_cast<double>(cpuUsage - cachedInstanceMonitoring.mTotal) * 100.0

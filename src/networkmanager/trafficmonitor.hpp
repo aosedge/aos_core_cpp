@@ -22,8 +22,7 @@ namespace aos::sm::networkmanager {
 
 class TrafficMonitor : public TrafficMonitorItf {
 public:
-    Error Init(StorageItf& storage, common::network::IPTablesItf& iptables,
-        common::utils::Duration updatePeriod = std::chrono::minutes(1));
+    Error Init(StorageItf& storage, common::network::IPTablesItf& iptables, Duration updatePeriod = Time::cMinutes);
 
     /**
      * Starts traffic monitoring.
@@ -127,7 +126,7 @@ private:
     mutable std::shared_mutex                       mMutex {};
     aos::Timer                                      mTimer {};
     TrafficPeriod                                   mTrafficPeriod {};
-    common::utils::Duration                         mUpdatePeriod {};
+    Duration                                        mUpdatePeriod {};
     bool                                            mStop {};
 };
 } // namespace aos::sm::networkmanager

@@ -148,8 +148,7 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(config->mSMClientConfig.mCertStorage, "sm");
     EXPECT_EQ(config->mSMClientConfig.mCMServerURL, "aoscm:8093");
-    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, std::chrono::minutes(1))
-        << config->mSMClientConfig.mCMReconnectTimeout.count();
+    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, aos::Time::cMinutes);
 
     EXPECT_EQ(config->mLauncherConfig.mWorkDir, "workingDir");
     EXPECT_EQ(config->mLauncherConfig.mStorageDir, "/var/aos/storage");
@@ -166,8 +165,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mLauncherConfig.mHosts[1].mHostname, "wwwaosum");
     EXPECT_EQ(config->mLauncherConfig.mHosts[1].mIP, "0.0.0.0");
 
-    EXPECT_EQ(
-        config->mLauncherConfig.mRemoveOutdatedPeriod, aos::common::utils::Duration(std::chrono::hours(24)).count());
+    EXPECT_EQ(config->mLauncherConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
 
     EXPECT_EQ(config->mIAMProtectedServerURL, "localhost:8089");
 
@@ -180,14 +178,12 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
     EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
     EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "/var/aos/servicemanager/services");
-    EXPECT_EQ(config->mServiceManagerConfig.mRemoveOutdatedPeriod,
-        aos::common::utils::Duration(std::chrono::hours(24)).count());
+    EXPECT_EQ(config->mServiceManagerConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
 
     EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 20);
     EXPECT_EQ(config->mLayerManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
     EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "/var/aos/srvlib");
-    EXPECT_EQ(config->mLayerManagerConfig.mRemoveOutdatedPeriod,
-        aos::common::utils::Duration(std::chrono::hours(24)).count());
+    EXPECT_EQ(config->mLayerManagerConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
 
     EXPECT_EQ(config->mLayersPartLimit, 20);
 
@@ -220,8 +216,7 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, std::chrono::seconds(10))
-        << config->mSMClientConfig.mCMReconnectTimeout.count();
+    EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, 10 * aos::Time::cSeconds);
 
     EXPECT_EQ(config->mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
     EXPECT_EQ(config->mMonitoring.mAverageWindow, 35 * aos::Time::cSeconds);

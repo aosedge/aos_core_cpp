@@ -382,7 +382,7 @@ protected:
 
         config.mCMServerURL        = "localhost:5555";
         config.mCertStorage        = "sm";
-        config.mCMReconnectTimeout = std::chrono::milliseconds(100);
+        config.mCMReconnectTimeout = 100 * Time::cMilliseconds;
 
         return config;
     }
@@ -492,7 +492,7 @@ TEST_F(SMClientTest, ClientReconnectOnGettingUnhandlerMessage)
 {
     auto config = GetConfig();
 
-    config.mCMReconnectTimeout = std::chrono::milliseconds(10);
+    config.mCMReconnectTimeout = 10 * Time::cMilliseconds;
 
     auto [server, client] = InitTest(config);
 

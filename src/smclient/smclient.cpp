@@ -395,7 +395,8 @@ void SMClient::ConnectionLoop() noexcept
 
         std::unique_lock lock {mMutex};
 
-        mStoppedCV.wait_for(lock, mConfig.mCMReconnectTimeout, [this] { return mStopped; });
+        mStoppedCV.wait_for(
+            lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()), [this] { return mStopped; });
 
         if (mStopped) {
             break;

@@ -37,7 +37,7 @@ constexpr auto cFilePermissions
 constexpr auto cStatePermissions = fs::perms::owner_read | fs::perms::owner_write;
 
 constexpr auto cMountRetryCount = 3;
-constexpr auto cMountretryDelay = std::chrono::seconds(1);
+constexpr auto cMountretryDelay = Time::cSeconds;
 
 /***********************************************************************************************************************
  * Static
@@ -94,13 +94,13 @@ void MountDir(const fs::path& source, const fs::path& mountPoint, const std::str
 
     auto err = common::utils::Retry(
         [&]() { return mount(source.c_str(), mountPoint.c_str(), fsType.c_str(), flags, opts.c_str()); },
-        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] common::utils::Duration delay, const aos::Error& err) {
+        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
             LOG_WRN() << "Mount error: err=" << err << ", try remount...";
 
             sync();
             umount2(mountPoint.c_str(), MNT_FORCE);
         },
-        cMountRetryCount, cMountretryDelay, std::chrono::seconds::zero());
+        cMountRetryCount, cMountretryDelay, Duration(0));
     AOS_ERROR_CHECK_AND_THROW("can't mount dir", err);
 }
 
@@ -142,12 +142,12 @@ void UmountDir(const fs::path& mountPoint)
             sync();
             return umount(mountPoint.c_str());
         },
-        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] common::utils::Duration delay, const aos::Error& err) {
+        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
             LOG_WRN() << "Umount error: err=" << err << ", retry...";
 
             umount2(mountPoint.c_str(), MNT_FORCE);
         },
-        cMountRetryCount, cMountretryDelay, std::chrono::seconds::zero());
+        cMountRetryCount, cMountretryDelay, Duration(0));
     AOS_ERROR_CHECK_AND_THROW("can't umount dir", err);
 }
 

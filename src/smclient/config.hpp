@@ -17,9 +17,9 @@ namespace aos::sm::smclient {
  * Service manager client configuration.
  */
 struct Config {
-    std::string             mCertStorage;
-    std::string             mCMServerURL;
-    common::utils::Duration mCMReconnectTimeout;
+    std::string mCertStorage;
+    std::string mCMServerURL;
+    Duration    mCMReconnectTimeout;
 };
 
 } // namespace aos::sm::smclient

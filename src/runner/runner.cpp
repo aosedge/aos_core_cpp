@@ -24,16 +24,6 @@ namespace aos::sm::runner {
 
 namespace {
 
-inline unsigned ToSec(Duration duration)
-{
-    return duration / Time::cSeconds;
-}
-
-inline unsigned ToMSec(Duration duration)
-{
-    return duration / Time::cMilliseconds;
-}
-
 inline InstanceRunState ToInstanceState(UnitState state)
 {
     if (state.GetValue() == UnitStateEnum::eActive) {
@@ -144,9 +134,8 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
         fixedParams.mRestartInterval = cDefaultRestartInterval;
     }
 
-    LOG_DBG() << "Start service instance: instanceID=" << instanceID
-              << ", startInterval=" << ToSec(fixedParams.mStartInterval) << ", startBurst=" << fixedParams.mStartBurst
-              << ", restartInterval=" << ToSec(fixedParams.mRestartInterval);
+    LOG_DBG() << "Start service instance: instanceID=" << instanceID << ", startInterval=" << fixedParams.mStartInterval
+              << ", startBurst=" << fixedParams.mStartBurst << ", restartInterval=" << fixedParams.mRestartInterval;
 
     // Create systemd service file.
     const auto unitName = CreateSystemdUnitName(instanceID);
@@ -293,8 +282,9 @@ Error Runner::SetRunParameters(const std::string& unitName, const RunParameters&
         return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
     }
 
-    std::string formattedContent = Poco::format(
-        parametersFormat, ToSec(params.mStartInterval), params.mStartBurst, ToSec(params.mRestartInterval));
+    std::string formattedContent
+        = Poco::format(parametersFormat, static_cast<uint32_t>(params.mStartInterval.Seconds()), params.mStartBurst,
+            static_cast<uint32_t>(params.mRestartInterval.Seconds()));
 
     const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName + ".d";
 
@@ -316,7 +306,7 @@ Error Runner::RemoveRunParameters(const std::string& unitName)
 
 RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& unitName, Duration startInterval)
 {
-    const auto timeout = std::chrono::milliseconds(ToMSec(startInterval));
+    const auto timeout = std::chrono::milliseconds(startInterval.Milliseconds());
 
     auto [initialStatus, err] = mSystemd->GetUnitStatus(unitName);
     if (!err.IsNone()) {

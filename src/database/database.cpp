@@ -41,8 +41,8 @@ Poco::Data::BLOB ToBlob(const String& str)
 
 Time ConvertTimestamp(uint64_t timestamp)
 {
-    const auto seconds = static_cast<int64_t>(timestamp / Time::cSeconds);
-    const auto nanos   = static_cast<int64_t>(timestamp % Time::cSeconds);
+    const auto seconds = timestamp / Time::cSeconds.Nanoseconds();
+    const auto nanos   = static_cast<int64_t>(timestamp % Time::cSeconds.Nanoseconds());
 
     return Time::Unix(seconds, nanos);
 }

@@ -61,18 +61,13 @@ void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& ob
         ? object.GetObject("monitoring").GetValue<std::string>("averageWindow", cDefaultMonitoringAverageWindow)
         : cDefaultMonitoringAverageWindow;
 
-    Error                   err = ErrorEnum::eNone;
-    common::utils::Duration duration;
+    Error err = ErrorEnum::eNone;
 
-    Tie(duration, err) = common::utils::ParseDuration(pollPeriod);
+    Tie(config.mPollPeriod, err) = common::utils::ParseDuration(pollPeriod);
     AOS_ERROR_CHECK_AND_THROW("error parsing pollPeriod tag", err);
 
-    config.mPollPeriod = duration.count();
-
-    Tie(duration, err) = common::utils::ParseDuration(averageWindow);
+    Tie(config.mAverageWindow, err) = common::utils::ParseDuration(averageWindow);
     AOS_ERROR_CHECK_AND_THROW("error parsing averageWindow tag", err);
-
-    config.mAverageWindow = duration.count();
 }
 
 void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, LoggingConfig& config)
@@ -135,19 +130,16 @@ void ParseServiceManagerConfig(const common::utils::CaseInsensitiveObjectWrapper
     config.mServicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    auto [ttl, err] = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
-    AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
+    Error err = ErrorEnum::eNone;
 
-    config.mTTL = ttl.count();
+    Tie(config.mTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
+    AOS_ERROR_CHECK_AND_THROW("error parsing serviceTTL tag", err);
 
     auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
     if (removeOutdatedPeriod.has_value()) {
-        common::utils::Duration period;
-
-        Tie(period, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
         AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
-
-        config.mRemoveOutdatedPeriod = period.count();
     }
 }
 
@@ -157,19 +149,16 @@ void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     config.mLayersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
 
-    auto [ttl, err] = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
-    AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
+    Error err = ErrorEnum::eNone;
 
-    config.mTTL = ttl.count();
+    Tie(config.mTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
+    AOS_ERROR_CHECK_AND_THROW("error parsing layerTTL tag", err);
 
     auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
     if (removeOutdatedPeriod.has_value()) {
-        common::utils::Duration period;
-
-        Tie(period, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
         AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
-
-        config.mRemoveOutdatedPeriod = period.count();
     }
 }
 
@@ -196,10 +185,10 @@ void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
 
     auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
     if (removeOutdatedPeriod.has_value()) {
-        auto [period, err] = common::utils::ParseDuration(removeOutdatedPeriod.value());
-        AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
+        Error err = ErrorEnum::eNone;
 
-        config.mRemoveOutdatedPeriod = period.count();
+        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
+        AOS_ERROR_CHECK_AND_THROW("error parsing removeOutdatedPeriod tag", err);
     }
 }
 

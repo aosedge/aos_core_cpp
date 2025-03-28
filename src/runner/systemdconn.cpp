@@ -32,11 +32,6 @@ RetWithError<UnitState> ConvertToUnitState(const std::string& src)
     return {result, err};
 }
 
-aos::Duration ToUSec(const Duration& val)
-{
-    return val / Time::cMicroseconds;
-}
-
 } // namespace
 
 /***********************************************************************************************************************
@@ -283,7 +278,7 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
 
         auto rv = sd_bus_process(mBus, &msg);
         if (rv == 0) {
-            rv = sd_bus_wait(mBus, ToUSec(endTime.Sub(now)));
+            rv = sd_bus_wait(mBus, endTime.Sub(now).Microseconds());
             if (rv < 0) {
                 return AOS_ERROR_WRAP(-rv);
             } else if (rv == 0) {
