@@ -431,7 +431,7 @@ protected:
         config.mFinishProvisioningCmdArgs = {"/bin/sh", "-c", "echo 'Hello World'"};
         config.mDeprovisionCmdArgs        = {"/bin/sh", "-c", "echo 'Hello World'"};
 
-        config.mNodeReconnectInterval = std::chrono::seconds(2);
+        config.mNodeReconnectInterval = 2 * Time::cSeconds;
 
         return config;
     }

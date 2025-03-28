@@ -91,13 +91,13 @@ public:
     ~PocoWSClient() override;
 
 private:
-    static constexpr std::chrono::seconds cDefaultTimeout = std::chrono::seconds(120);
+    static constexpr Duration cDefaultTimeout = 120 * Time::cSeconds;
 
-    void                 HandleResponse(const std::string& frame);
-    void                 ReceiveFrames() noexcept;
-    void                 StartReceiveFramesThread();
-    void                 StopReceiveFramesThread();
-    std::chrono::seconds GetWebSocketTimeout();
+    void     HandleResponse(const std::string& frame);
+    void     ReceiveFrames() noexcept;
+    void     StartReceiveFramesThread();
+    void     StopReceiveFramesThread();
+    Duration GetWebSocketTimeout();
 
     aos::iam::config::VISIdentifierModuleParams    mConfig;
     std::recursive_mutex                           mMutex;

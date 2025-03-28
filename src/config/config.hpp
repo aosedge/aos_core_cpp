@@ -52,7 +52,7 @@ struct PKCS11ModuleParams {
 struct VISIdentifierModuleParams {
     std::string mVISServer;
     std::string mCaCertFile;
-    int         mWebSocketTimeout;
+    Duration    mWebSocketTimeout;
 };
 
 /*
@@ -123,7 +123,7 @@ struct Config {
     std::string               mIAMProtectedServerURL;
     std::string               mMainIAMPublicServerURL;
     std::string               mMainIAMProtectedServerURL;
-    common::utils::Duration   mNodeReconnectInterval;
+    Duration                  mNodeReconnectInterval;
     std::string               mCACert;
     std::string               mCertStorage;
     std::string               mWorkingDir;

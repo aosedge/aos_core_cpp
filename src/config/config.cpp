@@ -232,10 +232,14 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
     try {
         common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
 
-        moduleParams.mVISServer        = object.GetValue<std::string>("visServer");
-        moduleParams.mCaCertFile       = object.GetValue<std::string>("caCertFile");
-        moduleParams.mWebSocketTimeout = object.GetValue<int>("webSocketTimeout");
+        moduleParams.mVISServer  = object.GetValue<std::string>("visServer");
+        moduleParams.mCaCertFile = object.GetValue<std::string>("caCertFile");
 
+        Error err;
+
+        Tie(moduleParams.mWebSocketTimeout, err)
+            = common::utils::ParseDuration(object.GetValue<std::string>("webSocketTimeout", "120s"));
+        AOS_ERROR_CHECK_AND_THROW("failed to parse webSocketTimeout", err);
     } catch (const std::exception& e) {
         return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
     }

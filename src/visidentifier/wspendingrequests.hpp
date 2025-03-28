@@ -52,7 +52,7 @@ public:
      *
      * @return bool - true if response was set within specified timeout.
      */
-    bool TryWaitForResponse(std::string& result, const aos::common::utils::Duration timeout);
+    bool TryWaitForResponse(std::string& result, const Duration timeout);
 
     /**
      * Compares request params.

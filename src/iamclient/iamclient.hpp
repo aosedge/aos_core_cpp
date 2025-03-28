@@ -106,7 +106,7 @@ private:
     std::vector<std::string> mDiskEncryptionCmdArgs;
     std::vector<std::string> mFinishProvisioningCmdArgs;
     std::vector<std::string> mDeprovisionCmdArgs;
-    common::utils::Duration  mReconnectInterval;
+    Duration                 mReconnectInterval;
     std::string              mServerURL;
     std::string              mCACert;
 

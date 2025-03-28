@@ -329,8 +329,8 @@ void Database::FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertI
     result.mCertURL = certInfo.get<CertColumns::eCertURL>().c_str();
     result.mKeyURL  = certInfo.get<CertColumns::eKeyURL>().c_str();
 
-    result.mNotAfter = Time::Unix(certInfo.get<CertColumns::eNotAfter>() / Time::cSeconds,
-        certInfo.get<CertColumns::eNotAfter>() % Time::cSeconds);
+    result.mNotAfter = Time::Unix(certInfo.get<CertColumns::eNotAfter>() / Time::cSeconds.Nanoseconds(),
+        certInfo.get<CertColumns::eNotAfter>() % Time::cSeconds.Nanoseconds());
 }
 
 Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)

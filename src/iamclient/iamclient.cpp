@@ -186,7 +186,8 @@ void IAMClient::ConnectionLoop() noexcept
 
         std::unique_lock lock {mShutdownLock};
 
-        mShutdownCV.wait_for(lock, mReconnectInterval, [this]() { return mShutdown; });
+        mShutdownCV.wait_for(
+            lock, std::chrono::nanoseconds(mReconnectInterval.Nanoseconds()), [this]() { return mShutdown; });
         if (mShutdown) {
             break;
         }

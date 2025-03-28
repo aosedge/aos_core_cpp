@@ -37,7 +37,7 @@ config::Config CreateConfigWithVisParams(const config::VISIdentifierModuleParams
 
     object->set("VISServer", config.mVISServer);
     object->set("caCertFile", config.mCaCertFile);
-    object->set("webSocketTimeout", config.mWebSocketTimeout);
+    object->set("webSocketTimeout", std::to_string(config.mWebSocketTimeout.Seconds()));
 
     config::Config cfg;
     cfg.mIdentifier.mParams = object;
@@ -86,7 +86,7 @@ protected:
     std::shared_ptr<PocoWSClient> mWsClientPtr;
 };
 
-const config::VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5};
+const config::VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5 * Time::cSeconds};
 
 /***********************************************************************************************************************
  * Tests

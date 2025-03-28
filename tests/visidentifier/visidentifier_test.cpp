@@ -69,7 +69,7 @@ protected:
 
         object->set("VISServer", cVISConfig.mVISServer);
         object->set("caCertFile", cVISConfig.mCaCertFile);
-        object->set("webSocketTimeout", cVISConfig.mWebSocketTimeout);
+        object->set("webSocketTimeout", std::to_string(cVISConfig.mWebSocketTimeout.Seconds()));
 
         mConfig.mIdentifier.mParams = object;
 

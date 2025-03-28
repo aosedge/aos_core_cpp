@@ -248,14 +248,14 @@ TEST_F(ConfigTest, ParseVISIdentifierModuleParams)
     Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
     params->set("visServer", "localhost:8089");
     params->set("caCertFile", "/etc/ssl/certs/rootCA.crt");
-    params->set("webSocketTimeout", 100);
+    params->set("webSocketTimeout", "100s");
 
     auto [visParams, error] = ParseVISIdentifierModuleParams(params);
     ASSERT_EQ(error, ErrorEnum::eNone);
 
     EXPECT_EQ(visParams.mVISServer, "localhost:8089");
     EXPECT_EQ(visParams.mCaCertFile, "/etc/ssl/certs/rootCA.crt");
-    EXPECT_EQ(visParams.mWebSocketTimeout, 100);
+    EXPECT_EQ(visParams.mWebSocketTimeout, 100 * Time::cSeconds);
 }
 
 TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
