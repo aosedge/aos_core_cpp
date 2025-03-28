@@ -1,6 +1,6 @@
 [![ci](https://github.com/aosedge/aos_core_iam_cpp/actions/workflows/build_test.yaml/badge.svg)](https://github.com/aosedge/aos_core_iam_cpp/actions/workflows/build_test.yaml)
 [![codecov](https://codecov.io/gh/aosedge/aos_core_iam_cpp/graph/badge.svg?token=MknkthRkpf)](https://codecov.io/gh/aosedge/aos_core_iam_cpp)
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=aosedge_aos_core_iam_cpp)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_iam_cpp)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_iam_cpp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_iam_cpp)
 
 # Identity and Access Manager(IAM)
 
