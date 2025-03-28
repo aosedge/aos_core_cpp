@@ -47,7 +47,7 @@ set(AOS_STACK_USAGE 4096)
 # Compiler flags
 # ######################################################################################################################
 
-add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic)
+add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic -Wno-format-truncation)
 set(CMAKE_CXX_STANDARD 17)
 
 # ######################################################################################################################
