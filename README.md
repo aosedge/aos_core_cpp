@@ -1,4 +1,4 @@
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=aosedge_aos_core_mp_cpp)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_mp_cpp)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_mp_cpp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_mp_cpp)
 
 # Aos core message proxy
 
