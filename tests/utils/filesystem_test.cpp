@@ -17,8 +17,6 @@
 
 using namespace testing;
 
-namespace fs = std::filesystem;
-
 namespace aos::common::utils {
 
 /***********************************************************************************************************************
@@ -41,7 +39,7 @@ class FSTest : public Test {
 protected:
     void SetUp() override
     {
-        FS::ClearDir(cTestDir);
+        fs::ClearDir(cTestDir);
         test::InitLog();
     }
 };
@@ -123,13 +121,13 @@ TEST_F(FSTest, CalculateSize)
 {
     std::array<char, 1024> buffer;
 
-    const auto root = fs::path(cTestDir) / "size-test";
+    const auto root = std::filesystem::path(cTestDir) / "size-test";
     const auto f1   = root / "f1";
     const auto f1s1 = f1 / "s1";
     const auto f2   = root / "f2";
 
-    fs::create_directories(f1s1);
-    fs::create_directories(f2);
+    std::filesystem::create_directories(f1s1);
+    std::filesystem::create_directories(f2);
 
     if (auto file = std::ofstream(root / "root.txt", std::ios::binary); file.good()) {
         file.write(buffer.data(), buffer.size());
@@ -155,9 +153,9 @@ TEST_F(FSTest, CalculateSize)
 
 TEST_F(FSTest, ChangeOwner)
 {
-    const auto root = fs::path(cTestDir) / "change-owner-test";
+    const auto root = std::filesystem::path(cTestDir) / "change-owner-test";
 
-    fs::create_directories(root);
+    std::filesystem::create_directories(root);
 
     if (getuid() != 0 && getgid() != 0) {
         ASSERT_EQ(ChangeOwner(root.string(), 0, 0), aos::ErrorEnum::eFailed);
