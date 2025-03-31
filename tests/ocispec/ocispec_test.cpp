@@ -22,7 +22,7 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cTestBaseDir       = "ocispec_test_dir";
-const auto     cImageManifestPath = FS::JoinPath(cTestBaseDir, "image_manifest.json");
+const auto     cImageManifestPath = fs::JoinPath(cTestBaseDir, "image_manifest.json");
 constexpr auto cImageManifest     = R"({
     "schemaVersion": 2,
     "config": {
@@ -44,7 +44,7 @@ constexpr auto cImageManifest     = R"({
     ]
 }
 )";
-const auto     cImageSpecPath     = FS::JoinPath(cTestBaseDir, "image_spec.json");
+const auto     cImageSpecPath     = fs::JoinPath(cTestBaseDir, "image_spec.json");
 constexpr auto cImageSpec         = R"(
 {
     "architecture": "x86_64",
@@ -76,7 +76,7 @@ constexpr auto cImageSpec         = R"(
     "variant": "6"
 }
 )";
-const auto     cServiceSpecPath   = FS::JoinPath(cTestBaseDir, "service_spec.json");
+const auto     cServiceSpecPath   = fs::JoinPath(cTestBaseDir, "service_spec.json");
 constexpr auto cServiceSpec       = R"(
 {
     "created": "2024-12-31T23:59:59Z",
@@ -239,11 +239,11 @@ public:
     {
         test::InitLog();
 
-        FS::ClearDir(cTestBaseDir);
+        fs::ClearDir(cTestBaseDir);
 
-        FS::WriteStringToFile(cImageManifestPath, cImageManifest, S_IRUSR | S_IWUSR);
-        FS::WriteStringToFile(cImageSpecPath, cImageSpec, S_IRUSR | S_IWUSR);
-        FS::WriteStringToFile(cServiceSpecPath, cServiceSpec, S_IRUSR | S_IWUSR);
+        fs::WriteStringToFile(cImageManifestPath, cImageManifest, S_IRUSR | S_IWUSR);
+        fs::WriteStringToFile(cImageSpecPath, cImageSpec, S_IRUSR | S_IWUSR);
+        fs::WriteStringToFile(cServiceSpecPath, cServiceSpec, S_IRUSR | S_IWUSR);
     }
 
     oci::OCISpec mOCISpec;
@@ -258,7 +258,7 @@ TEST_F(OCISpecTest, LoadAndSaveImageManifest)
     auto lhsManifest = std::make_unique<aos::oci::ImageManifest>();
     auto rhsManifest = std::make_unique<aos::oci::ImageManifest>();
 
-    const auto savePath = FS::JoinPath(cTestBaseDir, "image-manifest-save.json");
+    const auto savePath = fs::JoinPath(cTestBaseDir, "image-manifest-save.json");
 
     ASSERT_TRUE(mOCISpec.LoadImageManifest(cImageManifestPath, *lhsManifest).IsNone());
     ASSERT_TRUE(mOCISpec.SaveImageManifest(savePath, *lhsManifest).IsNone());
@@ -273,7 +273,7 @@ TEST_F(OCISpecTest, LoadAndSaveImageSpec)
     auto lhsImageSpec = std::make_unique<aos::oci::ImageSpec>();
     auto rhsImageSpec = std::make_unique<aos::oci::ImageSpec>();
 
-    const auto savePath = FS::JoinPath(cTestBaseDir, "image-spec-save.json");
+    const auto savePath = fs::JoinPath(cTestBaseDir, "image-spec-save.json");
 
     ASSERT_TRUE(mOCISpec.LoadImageSpec(cImageSpecPath, *lhsImageSpec).IsNone());
     ASSERT_TRUE(mOCISpec.SaveImageSpec(savePath, *lhsImageSpec).IsNone());
@@ -289,9 +289,9 @@ TEST_F(OCISpecTest, LoadAndSaveRuntimeSpec)
     auto rhsRuntimeSpec = std::make_unique<aos::oci::RuntimeSpec>();
 
     ASSERT_TRUE(
-        mOCISpec.SaveRuntimeSpec(FS::JoinPath(cTestBaseDir, "runtime_spec_save.json"), *lhsRuntimeSpec).IsNone());
+        mOCISpec.SaveRuntimeSpec(fs::JoinPath(cTestBaseDir, "runtime_spec_save.json"), *lhsRuntimeSpec).IsNone());
     ASSERT_TRUE(
-        mOCISpec.LoadRuntimeSpec(FS::JoinPath(cTestBaseDir, "runtime_spec_save.json"), *rhsRuntimeSpec).IsNone());
+        mOCISpec.LoadRuntimeSpec(fs::JoinPath(cTestBaseDir, "runtime_spec_save.json"), *rhsRuntimeSpec).IsNone());
 
     ASSERT_EQ(*lhsRuntimeSpec, *rhsRuntimeSpec);
 }
@@ -301,7 +301,7 @@ TEST_F(OCISpecTest, LoadAndSaveServiceSpec)
     auto lhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
     auto rhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
 
-    const auto savePath = FS::JoinPath(cTestBaseDir, "service-config-save.json");
+    const auto savePath = fs::JoinPath(cTestBaseDir, "service-config-save.json");
 
     ASSERT_TRUE(mOCISpec.LoadServiceConfig(cServiceSpecPath, *lhsServiceConfig).IsNone());
     ASSERT_TRUE(mOCISpec.SaveServiceConfig(savePath, *lhsServiceConfig).IsNone());
