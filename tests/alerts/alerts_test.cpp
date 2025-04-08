@@ -76,8 +76,14 @@ public:
 
     void Init(const std::string& cursor = "cursor");
     void SetupJournal(const std::string& cursor = "cursor");
-
     void Stop();
+
+    Error NotifyAlertSent();
+    void  WaitForAlert(std::chrono::milliseconds timeout = std::chrono::seconds(2));
+
+    std::mutex              mAlertMutex;
+    std::condition_variable mAlertCV;
+    bool                    mAlertSent = false;
 
     config::JournalAlertsConfig mConfig;
     InstanceInfoProviderMock    mInstanceInfoProvider;
@@ -112,10 +118,27 @@ void JournalAlertsTest::SetupJournal(const std::string& cursor)
 
 void JournalAlertsTest::Stop()
 {
-    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillOnce(Return("cursor"));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
     EXPECT_CALL(mStorage, SetJournalCursor(String("cursor")));
 
     EXPECT_TRUE(mJournalAlerts.Stop().IsNone());
+}
+
+Error JournalAlertsTest::NotifyAlertSent()
+{
+    std::lock_guard<std::mutex> lock(mAlertMutex);
+
+    mAlertSent = true;
+    mAlertCV.notify_one();
+
+    return ErrorEnum::eNone;
+}
+
+void JournalAlertsTest::WaitForAlert(std::chrono::milliseconds timeout)
+{
+    std::unique_lock<std::mutex> lock(mAlertMutex);
+
+    mAlertCV.wait_for(lock, timeout, [&] { return mAlertSent; });
 }
 
 /***********************************************************************************************************************
@@ -163,11 +186,13 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
     EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"))).WillOnce(Return(serviceInfo));
 
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
 
     mJournalAlerts.Start();
 
-    sleep(2);
+    WaitForAlert();
+
     Stop();
 }
 
@@ -188,11 +213,12 @@ TEST_F(JournalAlertsTest, SendCoreAlert)
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
 
     mJournalAlerts.Start();
 
-    sleep(2);
+    WaitForAlert();
     Stop();
 }
 
@@ -233,11 +259,12 @@ TEST_F(JournalAlertsTest, SendSystemAlert)
     alert.mMessage = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
 
     mJournalAlerts.Start();
 
-    sleep(2);
+    WaitForAlert();
     Stop();
 }
 
@@ -259,11 +286,12 @@ TEST_F(JournalAlertsTest, InitScopeTest)
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
 
     mJournalAlerts.Start();
 
-    sleep(2);
+    WaitForAlert();
     Stop();
 }
 
@@ -285,11 +313,12 @@ TEST_F(JournalAlertsTest, EmptySystemdUnit)
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
 
     mJournalAlerts.Start();
 
-    sleep(2);
+    WaitForAlert();
     Stop();
 }
 
@@ -337,6 +366,7 @@ TEST_F(JournalAlertsTest, RecoverJournalErrorFailed)
 
     // Start journal alerts
     mJournalAlerts.Start();
+
     sleep(4);
     Stop();
 }
