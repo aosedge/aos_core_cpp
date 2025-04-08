@@ -217,10 +217,10 @@ protected:
 
         // create certificate from CSR, CA priv key, CA cert
         aos::StaticString<aos::crypto::cPrivKeyPEMLen> intermKey;
-        ASSERT_TRUE(aos::FS::ReadFileToString(intermKeyPath, intermKey).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(intermKeyPath, intermKey).IsNone());
 
         aos::StaticString<aos::crypto::cCertPEMLen> intermCert;
-        ASSERT_TRUE(aos::FS::ReadFileToString(intermCertPath, intermCert).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(intermCertPath, intermCert).IsNone());
 
         auto serialArr = aos::Array<uint8_t>(reinterpret_cast<uint8_t*>(&serial), sizeof(serial));
         aos::StaticString<aos::crypto::cCertPEMLen> clientCertChain;
@@ -233,7 +233,7 @@ protected:
         // add CA certificate to the chain
         aos::StaticString<aos::crypto::cCertPEMLen> caCert;
 
-        ASSERT_TRUE(aos::FS::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
+        ASSERT_TRUE(aos::fs::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
         clientCertChain.Append(caCert);
 
         // apply client certificate
