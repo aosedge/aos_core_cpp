@@ -4,11 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <set>
+#include <sys/stat.h>
 #include <sys/xattr.h>
+#include <unistd.h>
 #include <vector>
 
 #include <aos/sm/image/imageparts.hpp>
@@ -225,12 +228,12 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallService(const Stri
     auto installDir = std::filesystem::path(installBasePath.CStr())
         / (std::string(service.mServiceID.CStr()) + "-v" + service.mVersion.CStr());
 
-    if (auto [exists, err] = FS::DirExist(installDir.c_str()); !err.IsNone() || exists) {
+    if (auto [exists, err] = fs::DirExist(installDir.c_str()); !err.IsNone() || exists) {
         result.mError = AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "service already exists"));
         return result;
     }
 
-    if (auto err = FS::MakeDirAll(installDir.c_str()); !err.IsNone()) {
+    if (auto err = fs::MakeDirAll(installDir.c_str()); !err.IsNone()) {
         result.mError = AOS_ERROR_WRAP(Error(err, "failed to create service installation dir"));
         return result;
     }
@@ -465,7 +468,7 @@ Error ImageHandler::UnpackArchive(const String& source, const String& destinatio
 {
     LOG_DBG() << "Unpack archive: source=" << source << ", destination=" << destination;
 
-    if (auto err = FS::MakeDirAll(destination); !err.IsNone()) {
+    if (auto err = fs::MakeDirAll(destination); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

@@ -367,7 +367,7 @@ TEST_F(ImageTest, InstallLayer)
     ASSERT_NE(space.Get(), nullptr);
     EXPECT_EQ(space->Size(), cExpectedLayerSize);
 
-    ASSERT_TRUE(FS::DirExist(path).mValue);
+    ASSERT_TRUE(fs::DirExist(path).mValue);
 }
 
 TEST_F(ImageTest, InstallService)
@@ -417,7 +417,7 @@ TEST_F(ImageTest, InstallService)
     ASSERT_NE(space.Get(), nullptr);
     EXPECT_EQ(space->Size(), cExpectedServiceSize);
 
-    ASSERT_TRUE(FS::DirExist(path).mValue);
+    ASSERT_TRUE(fs::DirExist(path).mValue);
 }
 
 } // namespace aos::sm::image

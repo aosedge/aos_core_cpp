@@ -290,7 +290,7 @@ RetWithError<uint64_t> ResourceUsageProvider::GetSystemDiskUsage(const String& p
 
 RetWithError<size_t> ResourceUsageProvider::GetInstanceCPUUsage(const String& instanceID)
 {
-    const auto cpuUsageFile = FS::JoinPath(cCgroupsPath, instanceID, cCpuUsageFile);
+    const auto cpuUsageFile = fs::JoinPath(cCgroupsPath, instanceID, cCpuUsageFile);
 
     std::ifstream file(cpuUsageFile.CStr());
     if (!file.is_open()) {
@@ -317,7 +317,7 @@ RetWithError<size_t> ResourceUsageProvider::GetInstanceCPUUsage(const String& in
 
 RetWithError<size_t> ResourceUsageProvider::GetInstanceRAMUsage(const String& instanceID)
 {
-    const auto memUsageFile = FS::JoinPath(cCgroupsPath, instanceID, cMemUsageFile);
+    const auto memUsageFile = fs::JoinPath(cCgroupsPath, instanceID, cMemUsageFile);
 
     std::ifstream file(memUsageFile.CStr());
     if (!file.is_open()) {

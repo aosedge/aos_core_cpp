@@ -294,14 +294,14 @@ Error Runner::SetRunParameters(const std::string& unitName, const RunParameters&
 
     const auto paramsFile = parametersDir + "/" + cParametersFileName;
 
-    return FS::WriteStringToFile(paramsFile.c_str(), formattedContent.c_str(), 0644U);
+    return fs::WriteStringToFile(paramsFile.c_str(), formattedContent.c_str(), 0644U);
 }
 
 Error Runner::RemoveRunParameters(const std::string& unitName)
 {
     const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName + ".d";
 
-    return FS::RemoveAll(parametersDir.c_str());
+    return fs::RemoveAll(parametersDir.c_str());
 }
 
 RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& unitName, Duration startInterval)
