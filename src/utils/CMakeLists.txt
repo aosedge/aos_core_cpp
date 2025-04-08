@@ -12,6 +12,7 @@ set(TARGET aosutils)
 # ######################################################################################################################
 
 set(SOURCES
+    cleanupmanager.cpp
     cryptohelper.cpp
     exception.cpp
     filesystem.cpp
