@@ -81,7 +81,7 @@ Error TrafficMonitor::Start()
         mStop = false;
     }
 
-    return mTimer.Create(
+    return mTimer.Start(
         mUpdatePeriod,
         [this](void*) {
             if (auto err = UpdateTrafficData(); err != ErrorEnum::eNone) {
