@@ -122,7 +122,7 @@ MigrationConfig ParseMigrationConfig(
         std::string                   pinPath = object.GetValue<std::string>("userPinPath");
         StaticString<pkcs11::cPINLen> userPIN;
 
-        auto err = FS::ReadFileToString(pinPath.c_str(), userPIN);
+        auto err = fs::ReadFileToString(pinPath.c_str(), userPIN);
         if (!err.IsNone()) {
             continue;
         }
