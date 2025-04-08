@@ -13,6 +13,7 @@ set(TARGET utils_test)
 
 set(SOURCES
     channel_test.cpp
+    cleanupmanager_test.cpp
     exception_test.cpp
     filesystem_test.cpp
     image_test.cpp
