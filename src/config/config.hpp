@@ -22,10 +22,10 @@ namespace aos::mp::config {
  * Downloader configuration.
  */
 struct Download {
-    std::string                  mDownloadDir;
-    int                          mMaxConcurrentDownloads;
-    aos::common::utils::Duration mRetryDelay;
-    aos::common::utils::Duration mMaxRetryDelay;
+    std::string mDownloadDir;
+    int         mMaxConcurrentDownloads;
+    Duration    mRetryDelay;
+    Duration    mMaxRetryDelay;
 };
 
 /*

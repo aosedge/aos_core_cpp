@@ -17,8 +17,7 @@ namespace aos::mp::config {
  * Static
  **********************************************************************************************************************/
 
-static common::utils::Duration GetDuration(
-    const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key)
+static Duration GetDuration(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key)
 {
     auto value = object.GetValue<std::string>(key);
 
