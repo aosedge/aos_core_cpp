@@ -69,10 +69,17 @@ void App::initialize(Application& self)
 
     RegisterSegfaultSignal();
 
+    Application::initialize(self);
+
+    Init();
+
+    Start();
+}
+
+void App::Init()
+{
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
-
-    Application::initialize(self);
 
     LOG_INF() << "Initialize message-proxy: version = " << AOS_MESSAGE_PROXY_VERSION;
 
@@ -80,6 +87,8 @@ void App::initialize(Application& self)
     if (result != CURLE_OK) {
         AOS_ERROR_THROW("can't initialize curl", aos::ErrorEnum::eFailed);
     }
+
+    mCleanupManager.AddCleanup([this]() { curl_global_cleanup(); });
 
     err = mCryptoProvider.Init();
     AOS_ERROR_CHECK_AND_THROW("can't initialize crypto provider", err);
@@ -156,21 +165,52 @@ void App::initialize(Application& self)
     }
 }
 
+void App::Start()
+{
+    auto err = mCommunicationManager.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start communication manager", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mCommunicationManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop communication manager: err=" << err;
+        }
+    });
+
+    err = mCMConnection.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start CM connection", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mCMConnection.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop CM connection: err=" << err;
+        }
+    });
+
+    if (!mProvisioning) {
+        err = mIAMProtectedConnection.Start();
+        AOS_ERROR_CHECK_AND_THROW("can't start IAM protected connection", err);
+
+        mCleanupManager.AddCleanup([this]() {
+            if (auto err = mIAMProtectedConnection.Stop(); !err.IsNone()) {
+                LOG_ERR() << "Can't stop IAM protected connection: err=" << err;
+            }
+        });
+    }
+
+    err = mIAMPublicConnection.Start();
+    AOS_ERROR_CHECK_AND_THROW("can't start IAM public connection", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mIAMPublicConnection.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop IAM public connection: err=" << err;
+        }
+    });
+}
+
 void App::uninitialize()
 {
     LOG_INF() << "Uninitialize message-proxy";
 
-    mTransport.Shutdown();
-    mCommunicationManager.Close();
-
-    mCMConnection.Close();
-    if (!mProvisioning) {
-        mIAMProtectedConnection.Close();
-    }
-
-    mIAMPublicConnection.Close();
-
-    curl_global_cleanup();
+    mCleanupManager.ExecuteCleanups();
 
     Application::uninitialize();
 }

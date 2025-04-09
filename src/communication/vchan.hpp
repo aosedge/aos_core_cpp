@@ -61,8 +61,10 @@ public:
 
     /**
      * Shuts down virtual channel.
+     *
+     * @return Error
      */
-    void Shutdown();
+    Error Shutdown() override;
 
 private:
     Error ConnectToVChan(struct libxenvchan*& vchan, const std::string& path, int domain);

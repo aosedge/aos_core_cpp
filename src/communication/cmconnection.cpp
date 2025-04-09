@@ -76,19 +76,26 @@ Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, Communi
         return Error(ErrorEnum::eFailed, e.what());
     }
 
+    return ErrorEnum::eNone;
+}
+
+Error CMConnection::Start()
+{
+    LOG_DBG() << "Start CM connection";
+
     StartTask([this] { RunOpenChannel(); });
     StartTask([this] { RunSecureChannel(); });
 
     return ErrorEnum::eNone;
 }
 
-void CMConnection::Close()
+Error CMConnection::Stop()
 {
     {
         std::lock_guard lock {mMutex};
 
         if (mShutdown) {
-            return;
+            return ErrorEnum::eNone;
         }
 
         LOG_DBG() << "Close CM connection";
@@ -107,6 +114,8 @@ void CMConnection::Close()
 
     mTaskManager.cancelAll();
     mTaskManager.joinAll();
+
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************

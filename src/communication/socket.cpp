@@ -73,9 +73,18 @@ Error Socket::Close()
     {
         std::lock_guard lock {mMutex};
 
+        if (mClose) {
+            return ErrorEnum::eNone;
+        }
+
         LOG_DBG() << "Closing all connections";
 
         mClose = true;
+
+        if (!mReactor.has_value()) {
+            return ErrorEnum::eNone;
+        }
+
         mReactor->stop();
 
         if (mReactorThread.joinable()) {
@@ -144,14 +153,18 @@ Error Socket::Write(std::vector<uint8_t> message)
     return ErrorEnum::eNone;
 }
 
-void Socket::Shutdown()
+Error Socket::Shutdown()
 {
-    std::lock_guard lock {mMutex};
+    {
+        std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Shutting down socket";
+        LOG_DBG() << "Shutting down socket";
 
-    mShutdown = true;
-    mCV.notify_all();
+        mShutdown = true;
+        mCV.notify_all();
+    }
+
+    return Close();
 }
 
 /***********************************************************************************************************************

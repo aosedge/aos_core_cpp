@@ -54,9 +54,18 @@ public:
         downloader::DownloaderItf* downloader = nullptr, common::iamclient::TLSCredentialsItf* certProvider = nullptr);
 
     /**
-     * Closes connection.
+     * Starts the connection.
+     *
+     * @return Error.
      */
-    void Close();
+    Error Start();
+
+    /**
+     * Stops the connection.
+     *
+     * @return Error.
+     */
+    Error Stop();
 
 private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);

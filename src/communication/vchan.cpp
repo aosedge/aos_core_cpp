@@ -100,7 +100,7 @@ aos::Error VChan::Close()
     return ErrorEnum::eNone;
 }
 
-void VChan::Shutdown()
+Error VChan::Shutdown()
 {
     std::lock_guard lock {mMutex};
 
@@ -112,6 +112,8 @@ void VChan::Shutdown()
         libxenvchan_close(mVChanRead);
         libxenvchan_close(mVChanWrite);
     }
+
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************

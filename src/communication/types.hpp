@@ -102,6 +102,13 @@ public:
      * @return Error.
      */
     virtual Error Close() = 0;
+
+    /**
+     * Shuts down the transport.
+     *
+     * @return Error.
+     */
+    virtual Error Shutdown() = 0;
 };
 
 /**

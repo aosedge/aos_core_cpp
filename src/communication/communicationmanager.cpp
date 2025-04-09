@@ -40,9 +40,41 @@ Error CommunicationManager::Init(const config::Config& cfg, TransportItf& transp
     mCryptoProvider = cryptoProvider;
     mCfg            = &cfg;
 
+    return ErrorEnum::eNone;
+}
+
+Error CommunicationManager::Start()
+{
     mThread = std::thread(&CommunicationManager::Run, this);
 
     return ErrorEnum::eNone;
+}
+
+Error CommunicationManager::Stop()
+{
+    Error err;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mShutdown) {
+            return ErrorEnum::eNone;
+        }
+
+        LOG_DBG() << "Close communication manager";
+
+        mShutdown = true;
+        err       = mTransport->Shutdown();
+        mCondVar.notify_all();
+
+        mIsConnected = false;
+    }
+
+    if (mThread.joinable()) {
+        mThread.join();
+    }
+
+    return err;
 }
 
 std::shared_ptr<CommChannelItf> CommunicationManager::CreateChannel(
@@ -120,28 +152,17 @@ Error CommunicationManager::Write(std::vector<uint8_t> message)
 
 Error CommunicationManager::Close()
 {
-    Error err;
+    std::lock_guard lock {mMutex};
 
-    {
-        std::lock_guard lock {mMutex};
-
-        if (mShutdown) {
-            return ErrorEnum::eNone;
-        }
-
-        LOG_DBG() << "Close communication manager";
-
-        mShutdown = true;
-
-        err = mTransport->Close();
-        mCondVar.notify_all();
-
-        mIsConnected = false;
+    if (!mIsConnected) {
+        return ErrorEnum::eNone;
     }
 
-    if (mThread.joinable()) {
-        mThread.join();
-    }
+    auto err = mTransport->Close();
+
+    mCondVar.notify_all();
+
+    mIsConnected = false;
 
     return err;
 }
