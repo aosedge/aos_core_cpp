@@ -26,21 +26,28 @@ Error IAMConnection::Init(int port, HandlerItf& handler, CommunicationManagerItf
         return Error(ErrorEnum::eFailed, e.what());
     }
 
+    return ErrorEnum::eNone;
+}
+
+Error IAMConnection::Start()
+{
+    LOG_DBG() << "Start IAM connection";
+
     mConnectThread = std::thread(&IAMConnection::Run, this);
 
     return ErrorEnum::eNone;
 }
 
-void IAMConnection::Close()
+Error IAMConnection::Stop()
 {
+    LOG_DBG() << "Stop IAM connection";
+
     {
         std::lock_guard lock {mMutex};
 
         if (mShutdown) {
-            return;
+            return ErrorEnum::eNone;
         }
-
-        LOG_DBG() << "Close IAM connection";
 
         mShutdown = true;
 
@@ -54,7 +61,9 @@ void IAMConnection::Close()
         mConnectThread.join();
     }
 
-    LOG_DBG() << "Close IAM connection finished";
+    LOG_DBG() << "Stop IAM connection finished";
+
+    return ErrorEnum::eNone;
 }
 
 void IAMConnection::Run()

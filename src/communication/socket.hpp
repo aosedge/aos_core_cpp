@@ -68,8 +68,10 @@ public:
 
     /**
      * Shuts down socket.
+     *
+     * @return Error
      */
-    void Shutdown();
+    Error Shutdown() override;
 
 private:
     void OnAccept(Poco::Net::ReadableNotification* pNf);

@@ -48,6 +48,20 @@ public:
         crypto::x509::ProviderItf* cryptoProvider = nullptr);
 
     /**
+     * Starts the communication manager.
+     *
+     * @return Error
+     */
+    Error Start();
+
+    /**
+     * Stops the communication manager.
+     *
+     * @return Error
+     */
+    Error Stop();
+
+    /**
      * Creates communication channel.
      *
      * @param port Port

@@ -50,9 +50,9 @@ protected:
     void TearDown() override
     {
         mClient->Close();
-        mCommManager->Close();
-        mIAMConnection.Close();
-        mCMConnection.Close();
+        mCommManager->Stop();
+        mIAMConnection.Stop();
+        mCMConnection.Stop();
         mCommManagerClient->Close();
     }
 
@@ -87,6 +87,10 @@ TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
 
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_response();
@@ -130,6 +134,10 @@ TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+
     servicemanager::v4::SMOutgoingMessages outgoingMessages;
     outgoingMessages.mutable_clock_sync_request();
 
@@ -167,6 +175,10 @@ TEST_F(CommunicationOpenManagerTest, TestSendIAMIncomingMessages)
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+
     iamanager::v5::IAMIncomingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_request();
     std::vector<uint8_t> messageData(outgoingMsg.ByteSizeLong());
@@ -195,6 +207,10 @@ TEST_F(CommunicationOpenManagerTest, TestIAMFlow)
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
 
     iamanager::v5::IAMIncomingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_request();
