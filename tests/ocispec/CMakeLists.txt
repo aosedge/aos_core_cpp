@@ -24,4 +24,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aosocispec GTest::gmock_main)
+target_link_libraries(${TARGET} aosocispec aosutils GTest::gmock_main)

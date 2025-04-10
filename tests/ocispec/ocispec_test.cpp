@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <Poco/JSON/Object.h>
 #include <gtest/gtest.h>
 
 #include <aos/common/tools/fs.hpp>
 #include <aos/test/log.hpp>
 
 #include "ocispec/ocispec.hpp"
+#include "utils/json.hpp"
 
 using namespace testing;
 
@@ -227,6 +229,29 @@ std::unique_ptr<aos::oci::RuntimeSpec> CreateRuntimeSpec()
     return res;
 }
 
+Poco::JSON::Object::Ptr ToJSON(const aos::RunParameters& params)
+{
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    if (params.mStartInterval.HasValue()) {
+        object.set("startInterval", params.mStartInterval->ToISO8601String().CStr());
+    }
+
+    if (params.mStartBurst.HasValue()) {
+        object.set("startBurst", *params.mStartBurst);
+    }
+
+    if (params.mRestartInterval.HasValue()) {
+        object.set("restartInterval", params.mRestartInterval->ToISO8601String().CStr());
+    }
+
+    auto runParams = Poco::makeShared<Poco::JSON::Object>(object);
+
+    runParams->set("runParameters", object);
+
+    return runParams;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -309,6 +334,35 @@ TEST_F(OCISpecTest, LoadAndSaveServiceSpec)
     ASSERT_TRUE(mOCISpec.LoadServiceConfig(savePath, *rhsServiceConfig).IsNone());
 
     ASSERT_EQ(*lhsServiceConfig, *rhsServiceConfig);
+}
+
+TEST_F(OCISpecTest, LoadServiceConfigRunParams)
+{
+    const std::vector<aos::RunParameters> runParams = {
+        {{0}, {}, {}},
+        {{}, {0}, {}},
+        {{}, {}, {0}},
+        {{}, {}, {}},
+        {{1 * aos::Time::cSeconds}, {1 * aos::Time::cSeconds}, {1}},
+    };
+
+    for (size_t i = 0; i < runParams.size(); ++i) {
+        LOG_DBG() << "Running test case #" << i;
+
+        auto configPath = fs::JoinPath(cTestBaseDir, "run-params-config-");
+        configPath.Append(std::to_string(i).c_str()).Append(".json");
+
+        EXPECT_EQ(common::utils::WriteJsonToFile(ToJSON(runParams[i]), configPath.CStr()), ErrorEnum::eNone);
+
+        auto expectedServiceConfig            = std::make_unique<aos::oci::ServiceConfig>();
+        expectedServiceConfig->mRunParameters = runParams[i];
+
+        auto parsedServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
+
+        ASSERT_EQ(mOCISpec.LoadServiceConfig(configPath, *parsedServiceConfig), ErrorEnum::eNone);
+
+        ASSERT_EQ(expectedServiceConfig->mRunParameters, parsedServiceConfig->mRunParameters);
+    }
 }
 
 } // namespace aos::common::jsonprovider

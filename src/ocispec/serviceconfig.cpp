@@ -27,7 +27,9 @@ std::string ToStdString(const String& str)
 
 void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
-    params.mStartBurst = object.GetValue<long>("startBurst");
+    if (const auto startBurst = object.GetOptionalValue<long>("startBurst")) {
+        params.mStartBurst.SetValue(*startBurst);
+    }
 
     Error err;
 
@@ -47,17 +49,17 @@ Poco::JSON::Object RunParametersToJSON(const RunParameters& params)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
-    if (params.mStartInterval > 0) {
-        auto durationStr = params.mStartInterval.ToISO8601String();
+    if (params.mStartInterval.HasValue()) {
+        auto durationStr = params.mStartInterval->ToISO8601String();
         object.set("startInterval", durationStr.CStr());
     }
 
-    if (params.mStartBurst > 0) {
-        object.set("startBurst", params.mStartBurst);
+    if (params.mStartBurst.HasValue()) {
+        object.set("startBurst", *params.mStartBurst);
     }
 
-    if (params.mRestartInterval > 0) {
-        auto durationStr = params.mRestartInterval.ToISO8601String();
+    if (params.mRestartInterval.HasValue()) {
+        auto durationStr = params.mRestartInterval->ToISO8601String();
         object.set("restartInterval", durationStr.CStr());
     }
 
