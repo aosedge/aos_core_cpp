@@ -122,15 +122,15 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     // Fix run parameters.
     RunParameters fixedParams = params;
 
-    if (params.mStartInterval == 0) {
+    if (!params.mStartInterval.HasValue()) {
         fixedParams.mStartInterval = cDefaultStartInterval;
     }
 
-    if (params.mStartBurst == 0) {
+    if (!params.mStartBurst.HasValue()) {
         fixedParams.mStartBurst = cDefaultStartBurst;
     }
 
-    if (params.mRestartInterval == 0) {
+    if (!params.mRestartInterval.HasValue()) {
         fixedParams.mRestartInterval = cDefaultRestartInterval;
     }
 
@@ -145,7 +145,7 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     }
 
     // Start unit.
-    const auto startTime = static_cast<Duration>(cStartTimeMultiplier * fixedParams.mStartInterval);
+    const auto startTime = static_cast<Duration>(cStartTimeMultiplier * fixedParams.mStartInterval.GetValue());
 
     if (status.mError = mSystemd->StartUnit(unitName, "replace", startTime); !status.mError.IsNone()) {
         return status;
@@ -277,14 +277,9 @@ Error Runner::SetRunParameters(const std::string& unitName, const RunParameters&
                                          "[Service]\n"
                                          "RestartSec=%us\n";
 
-    if (params.mStartInterval < aos::Time::cMicroseconds * 1
-        || params.mRestartInterval < aos::Time::cMicroseconds * 1) {
-        return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
-    }
-
     std::string formattedContent
-        = Poco::format(parametersFormat, static_cast<uint32_t>(params.mStartInterval.Seconds()), params.mStartBurst,
-            static_cast<uint32_t>(params.mRestartInterval.Seconds()));
+        = Poco::format(parametersFormat, static_cast<uint32_t>(params.mStartInterval->Seconds()), *params.mStartBurst,
+            static_cast<uint32_t>(params.mRestartInterval->Seconds()));
 
     const std::string parametersDir = GetSystemdDropInsDir() + "/" + unitName + ".d";
 

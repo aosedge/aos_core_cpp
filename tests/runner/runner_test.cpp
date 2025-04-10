@@ -66,7 +66,7 @@ protected:
 
 TEST_F(RunnerTest, StartInstance)
 {
-    RunParameters params = {500 * Time::cMilliseconds, 0, 0};
+    RunParameters params = {{500 * Time::cMilliseconds}, {0}, {0}};
     UnitStatus    status = {"aos-service@service0.service", UnitStateEnum::eActive};
     Error         err    = ErrorEnum::eNone;
 
