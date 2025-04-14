@@ -21,12 +21,15 @@ using namespace aos;
  * Statics
  **********************************************************************************************************************/
 
-static std::string CreateGRPCPKCS11URL(const String& keyURL)
+static std::string CreateGRPCPKCS11PrivKeyURL(const String& keyURL)
 {
-    auto [libP11URL, err] = aos::common::utils::CreatePKCS11URL(keyURL);
-    AOS_ERROR_CHECK_AND_THROW(err, "failed to create PKCS11 URL");
+    auto [libP11URL, createErr] = aos::common::utils::CreatePKCS11URL(keyURL);
+    AOS_ERROR_CHECK_AND_THROW(createErr, "failed to create PKCS11 URL");
 
-    return "engine:pkcs11:" + libP11URL;
+    auto [pem, encodeErr] = aos::common::utils::PEMEncodePKCS11URL(libP11URL);
+    AOS_ERROR_CHECK_AND_THROW(encodeErr, "failed to encode PKCS11 URL");
+
+    return pem;
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
@@ -39,7 +42,8 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     std::ifstream file {rootCertPath.CStr()};
     std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11URL(certInfo.mKeyURL), certificates};
+    auto keyCertPair
+        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -53,7 +57,8 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
     auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "Load certificate by URL failed");
 
-    auto keyCertPair = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11URL(certInfo.mKeyURL), certificates};
+    auto keyCertPair
+        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 

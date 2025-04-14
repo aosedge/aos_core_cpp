@@ -20,6 +20,7 @@ set(SOURCES
     image.cpp
     json.cpp
     parser.cpp
+    pk11uri.cpp
     pkcs11helper.cpp
     retry.cpp
     time.cpp
