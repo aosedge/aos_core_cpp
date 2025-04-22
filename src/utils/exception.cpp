@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <sstream>
-
 #include <iostream>
 
 #include "utils/exception.hpp"
@@ -16,21 +14,27 @@ namespace aos::common::utils {
  * Public
  **********************************************************************************************************************/
 
-AosException::AosException(const std::string& message, const Error& err)
+AosException::AosException(const Error& err, const std::string& message)
     : Poco::Exception(message, err.Message(), err.Errno())
-    , mError(err, message.c_str())
+    , mError(err, message.empty() ? nullptr : message.c_str())
 {
-    std::stringstream ss;
+    std::string finalMessage;
 
-    ss << message;
+    if (!message.empty()) {
+        finalMessage = message;
 
-    StaticString<cMaxErrorStrLen> errStr;
-
-    if (errStr.Convert(err).IsNone()) {
-        ss << ": " << errStr.CStr();
+        StaticString<cMaxErrorStrLen> errStr;
+        if (errStr.Convert(err).IsNone()) {
+            finalMessage += ": " + std::string(errStr.CStr());
+        }
+    } else {
+        StaticString<cMaxErrorStrLen> errStr;
+        if (errStr.Convert(err).IsNone()) {
+            finalMessage = errStr.CStr();
+        }
     }
 
-    Poco::Exception::message(ss.str());
+    Poco::Exception::message(finalMessage);
 }
 
 Error ToAosError(const std::exception& e, ErrorEnum err)

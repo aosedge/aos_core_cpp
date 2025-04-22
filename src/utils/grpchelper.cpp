@@ -24,7 +24,7 @@ using namespace aos;
 static std::string CreateGRPCPKCS11URL(const String& keyURL)
 {
     auto [libP11URL, err] = aos::common::utils::CreatePKCS11URL(keyURL);
-    AOS_ERROR_CHECK_AND_THROW("failed to create PKCS11 URL", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to create PKCS11 URL");
 
     return "engine:pkcs11:" + libP11URL;
 }
@@ -34,7 +34,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW("load certificate by URL failed", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
 
     std::ifstream file {rootCertPath.CStr()};
     std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -51,7 +51,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
     crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW("Load certificate by URL failed", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "Load certificate by URL failed");
 
     auto keyCertPair = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11URL(certInfo.mKeyURL), certificates};
 
