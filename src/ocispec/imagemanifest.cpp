@@ -55,11 +55,11 @@ Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescri
         std::ifstream file(path.CStr());
 
         if (!file.is_open()) {
-            AOS_ERROR_THROW("failed to open file", ErrorEnum::eNotFound);
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open file");
         }
 
         auto [var, err] = utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse json", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
 
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
@@ -78,7 +78,7 @@ Error OCISpec::SaveContentDescriptor(const String& path, const aos::oci::Content
         Poco::JSON::Object::Ptr object = new Poco::JSON::Object(ContentDescriptorToJSON(descriptor));
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
-        AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to write json to file");
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
@@ -92,11 +92,11 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
         std::ifstream file(path.CStr());
 
         if (!file.is_open()) {
-            AOS_ERROR_THROW("failed to open file", ErrorEnum::eNotFound);
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open file");
         }
 
         auto [var, err] = utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse json", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
 
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
@@ -118,7 +118,7 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
 
             for (const auto& layer : layers) {
                 err = manifest.mLayers.PushBack(layer);
-                AOS_ERROR_CHECK_AND_THROW("layers parsing error", err);
+                AOS_ERROR_CHECK_AND_THROW(err, "layers parsing error");
             }
         }
 
@@ -157,7 +157,7 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
-        AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to write json to file");
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }

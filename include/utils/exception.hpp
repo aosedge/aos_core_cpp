@@ -16,17 +16,31 @@
 #include <aos/common/tools/log.hpp>
 
 /**
- * Throws exception with Aos error and specified message.
+ * Helper macros for argument counting
  */
-#define AOS_ERROR_THROW(message, err) throw aos::common::utils::AosException(message, AOS_ERROR_WRAP(err))
+#define _GET_NTH_ARG(_1, _2, NAME, ...) NAME
+#define GET_MACRO(NAME)                 NAME
 
 /**
- * Checks Aos error and throws exception if error is not none.
+ * Error throw with and without message
  */
-#define AOS_ERROR_CHECK_AND_THROW(message, err)                                                                        \
+#define AOS_ERROR_THROW_1(err)          throw aos::common::utils::AosException(AOS_ERROR_WRAP(err))
+#define AOS_ERROR_THROW_2(err, message) throw aos::common::utils::AosException(AOS_ERROR_WRAP(err), message)
+#define AOS_ERROR_THROW(...)            GET_MACRO(_GET_NTH_ARG(__VA_ARGS__, AOS_ERROR_THROW_2, AOS_ERROR_THROW_1))(__VA_ARGS__)
+
+/**
+ * Error check and throw with and without message
+ */
+#define AOS_ERROR_CHECK_AND_THROW_1(err)                                                                               \
     if (!aos::Error(err).IsNone()) {                                                                                   \
-        AOS_ERROR_THROW(message, err);                                                                                 \
+        AOS_ERROR_THROW_1(err);                                                                                        \
     }
+#define AOS_ERROR_CHECK_AND_THROW_2(err, message)                                                                      \
+    if (!aos::Error(err).IsNone()) {                                                                                   \
+        AOS_ERROR_THROW_2(err, message);                                                                               \
+    }
+#define AOS_ERROR_CHECK_AND_THROW(...)                                                                                 \
+    GET_MACRO(_GET_NTH_ARG(__VA_ARGS__, AOS_ERROR_CHECK_AND_THROW_2, AOS_ERROR_CHECK_AND_THROW_1))(__VA_ARGS__)
 
 namespace aos::common::utils {
 
@@ -38,10 +52,10 @@ public:
     /**
      * Creates Aos exception instance.
      *
-     * @param message message.
      * @param err Aos error.
+     * @param message message.
      */
-    explicit AosException(const std::string& message, const Error& err = ErrorEnum::eFailed);
+    explicit AosException(const Error& err, const std::string& message = "");
 
     /**
      * Returns Aos error.

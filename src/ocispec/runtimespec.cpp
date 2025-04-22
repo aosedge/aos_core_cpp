@@ -30,35 +30,35 @@ void CapabilitiesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos
     if (object.Has("bounding")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "bounding")) {
             auto err = capabilities.mBounding.EmplaceBack(cap.c_str());
-            AOS_ERROR_CHECK_AND_THROW("bounding capabilities parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "bounding capabilities parsing error");
         }
     }
 
     if (object.Has("effective")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "effective")) {
             auto err = capabilities.mEffective.EmplaceBack(cap.c_str());
-            AOS_ERROR_CHECK_AND_THROW("effective capabilities parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "effective capabilities parsing error");
         }
     }
 
     if (object.Has("inheritable")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "inheritable")) {
             auto err = capabilities.mInheritable.EmplaceBack(cap.c_str());
-            AOS_ERROR_CHECK_AND_THROW("inheritable capabilities parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "inheritable capabilities parsing error");
         }
     }
 
     if (object.Has("permitted")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "permitted")) {
             auto err = capabilities.mPermitted.EmplaceBack(cap.c_str());
-            AOS_ERROR_CHECK_AND_THROW("permitted capabilities parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "permitted capabilities parsing error");
         }
     }
 
     if (object.Has("ambient")) {
         for (const auto& cap : utils::GetArrayValue<std::string>(object, "ambient")) {
             auto err = capabilities.mAmbient.EmplaceBack(cap.c_str());
-            AOS_ERROR_CHECK_AND_THROW("ambient capabilities parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "ambient capabilities parsing error");
         }
     }
 }
@@ -121,7 +121,7 @@ void UserFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::U
 
     for (const auto gid : utils::GetArrayValue<uint32_t>(object, "additionalGids")) {
         auto err = user.mAdditionalGIDs.EmplaceBack(gid);
-        AOS_ERROR_CHECK_AND_THROW("additionalGids parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "additionalGids parsing error");
     }
 
     const auto username = object.GetValue<std::string>("username");
@@ -162,14 +162,14 @@ void ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci
     if (object.Has("args")) {
         for (const auto& arg : utils::GetArrayValue<std::string>(object, "args")) {
             auto err = process.mArgs.EmplaceBack(arg.c_str());
-            AOS_ERROR_CHECK_AND_THROW("args parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "args parsing error");
         }
     }
 
     if (object.Has("env")) {
         for (const auto& env : utils::GetArrayValue<std::string>(object, "env")) {
             auto err = process.mEnv.EmplaceBack(env.c_str());
-            AOS_ERROR_CHECK_AND_THROW("env parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "env parsing error");
         }
     }
 
@@ -195,7 +195,7 @@ void ProcessFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci
 
         for (const auto& rlimit : rlimits) {
             auto err = process.mRlimits.EmplaceBack(rlimit);
-            AOS_ERROR_CHECK_AND_THROW("rlimits parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "rlimits parsing error");
         }
     }
 }
@@ -263,7 +263,7 @@ void MountFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Mount& mou
 
     for (const auto& option : utils::GetArrayValue<std::string>(object, "options")) {
         auto err = mount.mOptions.EmplaceBack(option.c_str());
-        AOS_ERROR_CHECK_AND_THROW("mount options parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "mount options parsing error");
     }
 }
 
@@ -519,7 +519,7 @@ void SysctlFromJSON(const Poco::Dynamic::Var& var, decltype(aos::oci::Linux::mSy
         const auto valueStr = value.convert<std::string>();
 
         auto err = sysctl.TryEmplace(key.c_str(), valueStr.c_str());
-        AOS_ERROR_CHECK_AND_THROW("sysctl parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "sysctl parsing error");
     }
 }
 
@@ -546,7 +546,7 @@ void LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, a
 
     for (const auto& device : devices) {
         auto err = resources.mDevices.PushBack(device);
-        AOS_ERROR_CHECK_AND_THROW("linux devices parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "linux devices parsing error");
     }
 
     if (object.Has("memory")) {
@@ -603,7 +603,7 @@ void LinuxNamespaceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, a
     aos::oci::LinuxNamespaceType nsType;
 
     auto err = nsType.FromString(type.c_str());
-    AOS_ERROR_CHECK_AND_THROW("linux namespace type parsing error", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "linux namespace type parsing error");
 
     ns.mPath = path.c_str();
     ns.mType = nsType;
@@ -695,7 +695,7 @@ void LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::
 
     for (const auto& ns : namespaces) {
         auto err = lnx.mNamespaces.PushBack(ns);
-        AOS_ERROR_CHECK_AND_THROW("linux namespaces parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "linux namespaces parsing error");
     }
 
     const auto devices = utils::GetArrayValue<aos::oci::LinuxDevice>(object, "devices", [](const auto& value) {
@@ -708,17 +708,17 @@ void LinuxFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::
 
     for (const auto& device : devices) {
         auto err = lnx.mDevices.PushBack(device);
-        AOS_ERROR_CHECK_AND_THROW("linux devices parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "linux devices parsing error");
     }
 
     for (const auto& path : utils::GetArrayValue<std::string>(object, "maskedPaths")) {
         auto err = lnx.mMaskedPaths.EmplaceBack(path.c_str());
-        AOS_ERROR_CHECK_AND_THROW("masked paths parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "masked paths parsing error");
     }
 
     for (const auto& path : utils::GetArrayValue<std::string>(object, "readonlyPaths")) {
         auto err = lnx.mReadonlyPaths.EmplaceBack(path.c_str());
-        AOS_ERROR_CHECK_AND_THROW("readonly paths parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "readonly paths parsing error");
     }
 }
 
@@ -766,7 +766,7 @@ void VMHypervisorFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos
 
     for (const auto& param : parameters) {
         auto err = hypervisor.mParameters.EmplaceBack(param.c_str());
-        AOS_ERROR_CHECK_AND_THROW("hypervisor parameters parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "hypervisor parameters parsing error");
     }
 }
 
@@ -792,7 +792,7 @@ void VMKernelFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oc
 
     for (const auto& param : parameters) {
         auto err = kernel.mParameters.EmplaceBack(param.c_str());
-        AOS_ERROR_CHECK_AND_THROW("kernel parameters parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "kernel parameters parsing error");
     }
 }
 
@@ -853,17 +853,17 @@ void VMHWConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::
 
     for (const auto& dev : dtDevs) {
         auto err = hwConfig.mDTDevs.EmplaceBack(dev.c_str());
-        AOS_ERROR_CHECK_AND_THROW("dt devices parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "dt devices parsing error");
     }
 
     for (const auto& irq : irqs) {
         auto err = hwConfig.mIRQs.PushBack(irq);
-        AOS_ERROR_CHECK_AND_THROW("irqs parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "irqs parsing error");
     }
 
     for (const auto& iomem : iomems) {
         auto err = hwConfig.mIOMEMs.PushBack(iomem);
-        AOS_ERROR_CHECK_AND_THROW("iomems parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "iomems parsing error");
     }
 }
 
@@ -942,11 +942,11 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         std::ifstream file(path.CStr());
 
         if (!file.is_open()) {
-            AOS_ERROR_THROW("failed to open file", ErrorEnum::eNotFound);
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open file");
         }
 
         auto [var, err] = utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse json", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
 
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
@@ -977,7 +977,7 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
 
             for (const auto& mount : mounts) {
                 err = runtimeSpec.mMounts.PushBack(mount);
-                AOS_ERROR_CHECK_AND_THROW("mounts parsing error", err);
+                AOS_ERROR_CHECK_AND_THROW(err, "mounts parsing error");
             }
         }
 
@@ -1031,7 +1031,7 @@ Error OCISpec::SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& 
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
-        AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to write json to file");
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }

@@ -71,7 +71,7 @@ public:
         int day, month, year, hour, minute, second;
 
         auto err = time.GetDate(&day, &month, &year);
-        AOS_ERROR_CHECK_AND_THROW("failed to get date", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to get date");
 
         if (mYear.has_value() && mYear.value() != year) {
             return false;
@@ -86,7 +86,7 @@ public:
         }
 
         err = time.GetTime(&hour, &minute, &second);
-        AOS_ERROR_CHECK_AND_THROW("failed to get time", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to get time");
 
         if (mHour.has_value() && mHour.value() != hour) {
             return false;

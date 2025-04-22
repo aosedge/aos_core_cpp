@@ -19,11 +19,19 @@ namespace aos::common::utils {
 
 class ExceptionTest : public Test {
 protected:
-    void FunctionWithException()
+    void FunctionWithExceptionWithMessage()
     {
         mFileName = __FILENAME__;
         mLineNum  = __LINE__ + 1;
-        AOS_ERROR_THROW("oops", ErrorEnum::eRuntime);
+        AOS_ERROR_THROW(ErrorEnum::eRuntime, "oops");
+    }
+
+    void FunctionWithExceptionWithoutMessage()
+    {
+        aos::Error err(ErrorEnum::eRuntime, "oops");
+        mFileName = __FILENAME__;
+        mLineNum  = __LINE__ + 1;
+        AOS_ERROR_THROW(err);
     }
 
     std::string GetFileAndLine() const { return "(" + mFileName + ":" + std::to_string(mLineNum) + ")"; }
@@ -37,13 +45,32 @@ private:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ExceptionTest, ThrowAosException)
+TEST_F(ExceptionTest, ThrowAosExceptionWithMessage)
 {
     try {
-        FunctionWithException();
+        FunctionWithExceptionWithMessage();
         EXPECT_TRUE(false) << "AosException expected";
     } catch (const AosException& e) {
         const auto expectedMessage = std::string("oops: runtime error ") + GetFileAndLine();
+
+        EXPECT_EQ(e.what(), "Aos exception");
+        EXPECT_EQ(e.message(), expectedMessage);
+        EXPECT_EQ(e.displayText(), std::string("Aos exception: ") + expectedMessage);
+
+        EXPECT_TRUE(e.GetError().Is(ErrorEnum::eRuntime));
+        EXPECT_STREQ(e.GetError().Message(), "oops");
+    } catch (...) {
+        FAIL() << "AosException expected";
+    }
+}
+
+TEST_F(ExceptionTest, ThrowAosExceptionWithoutMessage)
+{
+    try {
+        FunctionWithExceptionWithoutMessage();
+        EXPECT_TRUE(false) << "AosException expected";
+    } catch (const AosException& e) {
+        const auto expectedMessage = std::string("oops ") + GetFileAndLine();
 
         EXPECT_EQ(e.what(), "Aos exception");
         EXPECT_EQ(e.message(), expectedMessage);

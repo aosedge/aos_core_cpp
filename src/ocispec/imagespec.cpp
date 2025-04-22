@@ -29,17 +29,17 @@ void ImageConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
 {
     for (const auto& env : utils::GetArrayValue<std::string>(object, "env")) {
         auto err = config.mEnv.EmplaceBack(env.c_str());
-        AOS_ERROR_CHECK_AND_THROW("env parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "env parsing error");
     }
 
     for (const auto& entrypoint : utils::GetArrayValue<std::string>(object, "entrypoint")) {
         auto err = config.mEntryPoint.EmplaceBack(entrypoint.c_str());
-        AOS_ERROR_CHECK_AND_THROW("entrypoint parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "entrypoint parsing error");
     }
 
     for (const auto& cmd : utils::GetArrayValue<std::string>(object, "cmd")) {
         auto err = config.mCmd.EmplaceBack(cmd.c_str());
-        AOS_ERROR_CHECK_AND_THROW("cmd parsing error", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "cmd parsing error");
     }
 
     const auto workingDir = object.GetValue<std::string>("workingDir");
@@ -81,11 +81,11 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
         std::ifstream file(path.CStr());
 
         if (!file.is_open()) {
-            AOS_ERROR_THROW("failed to open file", ErrorEnum::eNotFound);
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open file");
         }
 
         auto [var, err] = utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse json", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
 
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
@@ -108,7 +108,7 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
 
         if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
             Tie(imageSpec.mCreated, err) = utils::FromUTCString(created->c_str());
-            AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
         }
 
     } catch (const std::exception& e) {
@@ -125,7 +125,7 @@ Error OCISpec::SaveImageSpec(const String& path, const aos::oci::ImageSpec& imag
 
         if (!imageSpec.mCreated.IsZero()) {
             auto [created, err] = utils::ToUTCString(imageSpec.mCreated);
-            AOS_ERROR_CHECK_AND_THROW("created time parsing error", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
 
             object->set("created", created);
         }
@@ -150,7 +150,7 @@ Error OCISpec::SaveImageSpec(const String& path, const aos::oci::ImageSpec& imag
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
-        AOS_ERROR_CHECK_AND_THROW("failed to write json to file", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to write json to file");
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
