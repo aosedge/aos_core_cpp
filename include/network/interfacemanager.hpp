@@ -81,17 +81,21 @@ public:
 class Bridge : public LinkItf {
 public:
     /**
-     * Construct a new Bridge object
+     * Construct a new Bridge object.
      */
     explicit Bridge(const LinkAttrs& attrs);
 
     /**
-     * Get the type of the link
+     * Get the attributes of the link.
+     *
+     * @return Link attributes.
      */
     const LinkAttrs& GetAttrs() const override;
 
     /**
-     * Get the type of the link
+     * Get the type of the link.
+     *
+     * @return Link type.
      */
     const char* GetType() const override;
 
@@ -105,22 +109,28 @@ private:
 class Vlan : public LinkItf {
 public:
     /**
-     * Construct a new Vlan object
+     * Construct a new Vlan object.
      */
     Vlan(const LinkAttrs& attrs, int vlanId);
 
     /**
-     * Get the type of the link
+     * Get the attributes of the link.
+     *
+     * @return Link attributes.
      */
     const LinkAttrs& GetAttrs() const override;
 
     /**
-     * Get the type of the link
+     * Get the type of the link.
+     *
+     * @return Link type.
      */
     const char* GetType() const override;
 
     /**
-     * Get the vlan id
+     * Get the vlan id.
+     *
+     * @return Vlan id.
      */
     int GetVlanId() const;
 
