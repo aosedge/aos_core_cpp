@@ -176,6 +176,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
     param.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
     param.mServiceVersion = "1.0.0";
     param.mRunState       = aos::InstanceRunStateEnum::eActive;
+    param.mError          = aos::ErrorEnum::eFailed;
 
     ::servicemanager::v4::InstanceStatus result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -185,6 +186,8 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 
     EXPECT_EQ(aos::String(result.service_version().c_str()), param.mServiceVersion);
     EXPECT_EQ(aos::String(result.run_state().c_str()), param.mRunState.ToString());
+
+    EXPECT_EQ(result.error().aos_code(), static_cast<int32_t>(param.mError.Value()));
 }
 
 TEST_F(PBConvertSMTest, ConvertInstanceFilterToProto)
