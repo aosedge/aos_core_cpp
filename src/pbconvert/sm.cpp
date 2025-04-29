@@ -101,7 +101,17 @@ public:
 
     Res Visit(const aos::cloudprotocol::DownloadAlert& val) const { return CreateAlert(val); }
 
-    Res Visit(const aos::cloudprotocol::ServiceInstanceAlert& val) const { return CreateAlert(val); }
+    Res Visit(const aos::cloudprotocol::ServiceInstanceAlert& val) const
+    {
+        Res   result  = CreateAlert(val);
+        auto& pbAlert = *result.mutable_instance_alert();
+
+        *pbAlert.mutable_instance() = aos::common::pbconvert::ConvertToProto(val.mInstanceIdent);
+        pbAlert.set_service_version(val.mServiceVersion.CStr());
+        pbAlert.set_message(val.mMessage.CStr());
+
+        return result;
+    }
 
 private:
     Res CreateAlert(const aos::cloudprotocol::AlertItem& src) const

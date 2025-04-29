@@ -777,12 +777,22 @@ TEST_F(PBConvertSMTest, ConvertServiceInstanceAlertToProto)
 
     aos::cloudprotocol::ServiceInstanceAlert alert {expectedTimestamp};
 
+    alert.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
+    alert.mServiceVersion = "1.0.0";
+    alert.mMessage        = "test-message";
+
     param.SetValue<aos::cloudprotocol::ServiceInstanceAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
-    EXPECT_EQ(result.AlertItem_case(), ::servicemanager::v4::Alert::ALERTITEM_NOT_SET);
+    ASSERT_TRUE(result.has_instance_alert());
+
     EXPECT_EQ(result.tag(), "serviceInstanceAlert");
+    EXPECT_EQ(aos::String(result.instance_alert().instance().service_id().c_str()), alert.mInstanceIdent.mServiceID);
+    EXPECT_EQ(aos::String(result.instance_alert().instance().subject_id().c_str()), alert.mInstanceIdent.mSubjectID);
+    EXPECT_EQ(result.instance_alert().instance().instance(), alert.mInstanceIdent.mInstance);
+    EXPECT_EQ(aos::String(result.instance_alert().service_version().c_str()), alert.mServiceVersion);
+    EXPECT_EQ(aos::String(result.instance_alert().message().c_str()), alert.mMessage);
 
     CompareTimestamps(alert.mTimestamp, result.timestamp());
 }
