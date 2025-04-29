@@ -189,11 +189,9 @@ namespace aos::common::pbconvert {
     ::servicemanager::v4::InstanceStatus result;
 
     *result.mutable_instance() = ConvertToProto(src.mInstanceIdent);
-
     result.set_service_version(src.mServiceVersion.CStr());
     result.set_run_state(src.mRunState.ToString().CStr());
-
-    result.clear_error_info();
+    SetErrorInfo(src.mError, result);
 
     return result;
 }
@@ -224,9 +222,7 @@ namespace aos::common::pbconvert {
 
     result.set_name(src.mName.CStr());
 
-    if (!src.mError.IsNone()) {
-        SetErrorInfo(src.mError, result);
-    }
+    SetErrorInfo(src.mError, result);
 
     return result;
 }
