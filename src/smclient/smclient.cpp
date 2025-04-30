@@ -168,6 +168,7 @@ Error SMClient::SendMonitoringData(const monitoring::NodeMonitoringData& monitor
     LOG_INF() << "Send monitoring data";
 
     smproto::SMOutgoingMessages outgoingMessage;
+
     *outgoingMessage.mutable_instant_monitoring() = common::pbconvert::ConvertToProtoInstantMonitoring(monitoringData);
 
     if (!mStream || !mStream->Write(outgoingMessage)) {
@@ -185,6 +186,7 @@ Error SMClient::SendAlert(const cloudprotocol::AlertVariant& alert)
     LOG_DBG() << "Send alert: alert=" << alert;
 
     smproto::SMOutgoingMessages outgoingMessage;
+
     *outgoingMessage.mutable_alert() = common::pbconvert::ConvertToProto(alert);
 
     if (!mStream || !mStream->Write(outgoingMessage)) {
@@ -200,7 +202,8 @@ Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
 
     LOG_INF() << "Send log";
 
-    auto outgoingMessage            = std::make_unique<smproto::SMOutgoingMessages>();
+    auto outgoingMessage = std::make_unique<smproto::SMOutgoingMessages>();
+
     *outgoingMessage->mutable_log() = common::pbconvert::ConvertToProto(log);
 
     if (!mStream || !mStream->Write(*outgoingMessage)) {
