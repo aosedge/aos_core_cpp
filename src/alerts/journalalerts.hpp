@@ -48,11 +48,6 @@ public:
      */
     Error Stop();
 
-    /**
-     * Destructor.
-     */
-    ~JournalAlerts();
-
 private:
     static constexpr auto cWaitJournalTimeout = std::chrono::seconds(1);
     static constexpr auto cCursorSavePeriod   = 10 * 1000; // ms.

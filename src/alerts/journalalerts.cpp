@@ -39,18 +39,18 @@ Error JournalAlerts::Init(const config::JournalAlertsConfig& config, InstanceInf
         mAlertFilters.emplace_back(filter);
     }
 
-    try {
-        SetupJournal();
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
     return ErrorEnum::eNone;
 }
 
 Error JournalAlerts::Start()
 {
     LOG_DBG() << "Start journal alerts";
+
+    try {
+        SetupJournal();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 
     mStopped       = false;
     mMonitorThread = std::thread(&JournalAlerts::MonitorJournal, this);
@@ -95,11 +95,6 @@ Error JournalAlerts::Stop()
     }
 
     return ErrorEnum::eNone;
-}
-
-JournalAlerts::~JournalAlerts()
-{
-    Stop();
 }
 
 std::shared_ptr<utils::JournalItf> JournalAlerts::CreateJournal()
