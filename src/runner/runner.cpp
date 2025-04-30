@@ -310,7 +310,7 @@ RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& u
 
     auto [initialStatus, err] = mSystemd->GetUnitStatus(unitName);
     if (!err.IsNone()) {
-        return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(err)};
+        return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(Error(err, "failed to get unit status"))};
     }
 
     {
@@ -325,7 +325,7 @@ RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& u
         mStartingUnits.erase(unitName);
 
         if (runState.GetValue() != UnitStateEnum::eActive) {
-            return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
+            return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to start unit"))};
         }
 
         mRunningUnits[unitName] = InstanceRunStateEnum::eActive;
