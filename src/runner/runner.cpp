@@ -62,18 +62,18 @@ Error Runner::Init(RunStatusReceiverItf& listener)
 {
     mRunStatusReceiver = &listener;
 
-    try {
-        mSystemd = CreateSystemdConn();
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
     return ErrorEnum::eNone;
 }
 
 Error Runner::Start()
 {
     LOG_DBG() << "Start runner";
+
+    try {
+        mSystemd = CreateSystemdConn();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 
     mClosed           = false;
     mMonitoringThread = std::thread(&Runner::MonitorUnits, this);

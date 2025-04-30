@@ -22,6 +22,7 @@
 #include <network/interfacemanager.hpp>
 #include <network/iptables.hpp>
 #include <network/namespacemanager.hpp>
+#include <utils/cleanupmanager.hpp>
 
 #include "alerts/journalalerts.hpp"
 #include "database/database.hpp"
@@ -110,6 +111,7 @@ private:
     sm::servicemanager::ServiceManager                                   mServiceManager;
     sm::alerts::JournalAlerts                                            mJournalAlerts;
     sm::smclient::SMClient                                               mSMClient;
+    aos::common::utils::CleanupManager                                   mCleanupManager;
 
 private:
     static constexpr auto cDefaultConfigFile = "aos_servicemanager.cfg";

@@ -153,74 +153,88 @@ void AosCore::Start()
     auto err = mRunner.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start runner", err);
 
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mRunner.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop runner: err=" << err;
+        }
+    });
+
     err = mLauncher.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start launcher", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mLauncher.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop launcher: err=" << err;
+        }
+    });
 
     err = mLayerManager.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start layer manager", err);
 
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mLayerManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop layer manager: err=" << err;
+        }
+    });
+
     err = mNetworkManager.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start network manager", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mNetworkManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop network manager: err=" << err;
+        }
+    });
 
     err = mResourceMonitor.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start resource monitor", err);
 
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mResourceMonitor.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop resource monitor: err=" << err;
+        }
+    });
+
     err = mServiceManager.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start service manager", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mServiceManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop service manager: err=" << err;
+        }
+    });
 
     err = mLogProvider.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start logprovider", err);
 
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mLogProvider.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop logprovider: err=" << err;
+        }
+    });
+
     err = mJournalAlerts.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start journalalerts", err);
 
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mJournalAlerts.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop journalalerts: err=" << err;
+        }
+    });
+
     err = mSMClient.Start();
     AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mSMClient.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop SM client: err=" << err;
+        }
+    });
 }
 
 void AosCore::Stop()
 {
-    Error stopError;
-
-    if (auto err = mSMClient.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mLauncher.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mRunner.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mLayerManager.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mNetworkManager.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mResourceMonitor.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mServiceManager.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mLogProvider.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (auto err = mJournalAlerts.Stop(); !err.IsNone() && stopError.IsNone()) {
-        stopError = err;
-    }
-
-    if (!stopError.IsNone()) {
-        AOS_ERROR_THROW("can't stop Aos core", stopError);
-    }
+    mCleanupManager.ExecuteCleanups();
 }
 
 void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
