@@ -218,7 +218,7 @@ void JournalAlerts::ProcessJournal()
         if (unit.empty()) {
 
             // add prefix 'aos-service@' and postfix '.service'
-            // to service uuid and get proper seervice object from DB
+            // to service uuid and get proper service object from DB
             unit = entry.mSystemdCGroup;
         }
 
