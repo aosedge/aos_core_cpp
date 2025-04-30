@@ -17,9 +17,9 @@ class AosCoreCI(ConanFile):
         if self.options.with_poco :
             self.requires("poco/1.13.2")
 
-        libp11path = os.path.join(self.recipe_folder, "libp11conan.py")
-        self.run("conan export %s --user user --channel stable" % libp11path, cwd=self.recipe_folder)
-        self.requires("libp11/0.4.11@user/stable")
+        pkcs11path = os.path.join(self.recipe_folder, "pkcs11provider.conan.v1.0.py")
+        self.run("conan export %s --user user --channel stable" % pkcs11path, cwd=self.recipe_folder)
+        self.requires("pkcs11provider/1.0@user/stable")
 
     def build_requirements(self):
         self.tool_requires("protobuf/3.21.12")
