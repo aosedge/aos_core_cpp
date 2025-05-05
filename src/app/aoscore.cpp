@@ -22,7 +22,7 @@ namespace aos::sm::app {
 void AosCore::Init(const std::string& configFile)
 {
     auto err = mLogger.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
     LOG_INF() << "Init SM: version=" << AOS_CORE_SM_VERSION;
     LOG_DBG() << "Aos core size: size=" << sizeof(AosCore);
@@ -30,128 +30,128 @@ void AosCore::Init(const std::string& configFile)
     // Initialize Aos modules
 
     err = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile, mConfig);
-    AOS_ERROR_CHECK_AND_THROW("can't parse config", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse config");
 
     // Initialize crypto provider
 
     err = mCryptoProvider.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize crypto provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
     // Initialize cert loader
 
     err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize cert loader", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     // Initialize IAM client
 
     err = mIAMClientPublic.Init(mConfig.mIAMClientConfig, mCertLoader, mCryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize public IAM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public IAM client");
 
     auto nodeInfo = std::make_shared<NodeInfo>();
 
     err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
-    AOS_ERROR_CHECK_AND_THROW("can't get node info", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't get node info");
 
     err = mIAMClientPermissions.Init(mConfig.mIAMProtectedServerURL, mConfig.mCertStorage, mIAMClientPublic);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize permissions IAM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize permissions IAM client");
 
     // Initialize host device manager
 
     err = mHostDeviceManager.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize host device manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize host device manager");
 
     // Initialize resource manager
 
     err = mResourceManager.Init(
         mJSONProvider, mHostDeviceManager, nodeInfo->mNodeType, mConfig.mNodeConfigFile.c_str());
-    AOS_ERROR_CHECK_AND_THROW("can't initialize resource manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource manager");
 
     // Initialize database
 
     err = mDatabase.Init(mConfig.mWorkingDir, mConfig.mMigration);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
     // Initialize traffic monitor
 
     err = mTrafficMonitor.Init(mDatabase, mIPTables);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize traffic monitor", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize traffic monitor");
 
     // Initialize network manager
 
     err = mNetworkInterfaceManager.Init(mCryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize network interface manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network interface manager");
 
     err = mNamespaceManager.Init(mNetworkInterfaceManager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize namespace manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize namespace manager");
 
     err = mCNI.Init(mExec);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize CNI", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CNI");
 
     err = mNetworkManager.Init(mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager,
         mCryptoProvider, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
-    AOS_ERROR_CHECK_AND_THROW("can't initialize network manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
 
     // Initialize resource usage provider
 
     err = mResourceUsageProvider.Init(mNetworkManager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize resource usage provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource usage provider");
 
     // Initialize resource monitor
 
     err = mResourceMonitor.Init(mConfig.mMonitoring, mIAMClientPublic, mResourceManager, mResourceUsageProvider,
         mSMClient, mSMClient, mSMClient);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize resource monitor", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource monitor");
 
     // Initialize image handler
 
     err = mImageHandler.Init(mCryptoProvider, mLayersSpaceAllocator, mServicesSpaceAllocator, mOCISpec);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize image handler", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image handler");
 
     // Initialize service manager
 
     err = mServiceManager.Init(mConfig.mServiceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
         mDownloadSpaceAllocator, mImageHandler);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize service manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize service manager");
 
     // Initialize layer manager
 
     err = mLayerManager.Init(mConfig.mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
         mDownloader, mImageHandler);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize layer manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize layer manager");
 
     // Initialize runner
 
     err = mRunner.Init(mLauncher);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize runner", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize runner");
 
     // Initialize launcher
 
     err = mLauncher.Init(mConfig.mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
         mNetworkManager, mIAMClientPermissions, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient,
         mDatabase);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize launcher", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize SM client
 
     err = mSMClient.Init(mConfig.mSMClientConfig, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager,
         mLogProvider, mResourceMonitor, mLauncher);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize SM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
     // Initialize logprovider
 
     err = mLogProvider.Init(mConfig.mLogging, mDatabase);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize logprovider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logprovider");
 
     // Initialize journalalerts
 
     err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mDatabase, mSMClient);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize journalalerts", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
 }
 
 void AosCore::Start()
 {
     auto err = mRunner.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start runner", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start runner");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mRunner.Stop(); !err.IsNone()) {
@@ -160,7 +160,7 @@ void AosCore::Start()
     });
 
     err = mLauncher.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start launcher", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start launcher");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mLauncher.Stop(); !err.IsNone()) {
@@ -169,7 +169,7 @@ void AosCore::Start()
     });
 
     err = mLayerManager.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start layer manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start layer manager");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mLayerManager.Stop(); !err.IsNone()) {
@@ -178,7 +178,7 @@ void AosCore::Start()
     });
 
     err = mNetworkManager.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start network manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start network manager");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mNetworkManager.Stop(); !err.IsNone()) {
@@ -187,7 +187,7 @@ void AosCore::Start()
     });
 
     err = mResourceMonitor.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start resource monitor", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start resource monitor");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mResourceMonitor.Stop(); !err.IsNone()) {
@@ -196,7 +196,7 @@ void AosCore::Start()
     });
 
     err = mServiceManager.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start service manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start service manager");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mServiceManager.Stop(); !err.IsNone()) {
@@ -205,7 +205,7 @@ void AosCore::Start()
     });
 
     err = mLogProvider.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start logprovider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start logprovider");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mLogProvider.Stop(); !err.IsNone()) {
@@ -214,7 +214,7 @@ void AosCore::Start()
     });
 
     err = mJournalAlerts.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start journalalerts", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start journalalerts");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mJournalAlerts.Stop(); !err.IsNone()) {
@@ -223,7 +223,7 @@ void AosCore::Start()
     });
 
     err = mSMClient.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start SM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start SM client");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mSMClient.Stop(); !err.IsNone()) {

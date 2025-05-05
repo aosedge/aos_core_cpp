@@ -347,7 +347,7 @@ std::string Runner::CreateInstanceID(const std::string& unitname)
     if (Poco::startsWith(unitname, prefix) && Poco::endsWith(unitname, suffix)) {
         return unitname.substr(prefix.length(), unitname.length() - prefix.length() - suffix.length());
     } else {
-        AOS_ERROR_THROW("not a valid Aos service name", AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument)));
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument)), "not a valid Aos service name");
     }
 }
 

@@ -141,7 +141,7 @@ void ConvertEnvVarsInfoFromJSON(
 
     for (auto& envVar : envVars) {
         auto err = result.mVariables.PushBack(Move(envVar));
-        AOS_ERROR_CHECK_AND_THROW("DB instance's envVar count exceeds application limit", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "DB instance's envVar count exceeds application limit");
     }
 }
 
@@ -177,7 +177,7 @@ Error ConvertEnvVarsInstanceInfoArrayFromJSON(
             ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr), *envVarsInfo);
 
             err = envVarsInstanceInfos.PushBack(*envVarsInfo);
-            AOS_ERROR_CHECK_AND_THROW("DB instance's envvars count exceeds application limit", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "DB instance's envvars count exceeds application limit");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -261,7 +261,7 @@ public:
 
         const auto ptr = parser.parse(networkJson.value()).extract<Poco::JSON::Object::Ptr>();
         if (ptr == nullptr) {
-            AOS_ERROR_CHECK_AND_THROW("failed to parse network json", AOS_ERROR_WRAP(ErrorEnum::eFailed));
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse network json");
         }
 
         ConvertNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);

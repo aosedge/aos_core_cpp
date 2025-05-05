@@ -440,7 +440,7 @@ void SMClient::HandleIncomingMessages() noexcept
             } else if (incomingMsg.has_connection_status()) {
                 ok = ProcessConnectionStatus(incomingMsg.connection_status());
             } else {
-                AOS_ERROR_CHECK_AND_THROW("not supported request type", ErrorEnum::eNotSupported);
+                AOS_ERROR_CHECK_AND_THROW(ErrorEnum::eNotSupported, "not supported request type");
             }
 
             if (!ok) {

@@ -33,7 +33,7 @@ void Copy(const InputContainer& input, OutputContainer& output)
 {
     for (const auto& item : input) {
         auto err = output.PushBack(item);
-        AOS_ERROR_CHECK_AND_THROW("can't copy container item", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't copy container item");
     }
 }
 
@@ -42,7 +42,7 @@ void Copy(const std::vector<std::string>& input, OutputContainer& output)
 {
     for (const auto& item : input) {
         auto err = output.PushBack(item.c_str());
-        AOS_ERROR_CHECK_AND_THROW("can't copy container item", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't copy container item");
     }
 }
 
@@ -458,7 +458,7 @@ std::string CNI::ExecuteBridgePlugin(const NetworkConfigList& net, const std::st
     auto pluginPath   = std::filesystem::path(cBinaryPluginDir) / net.mBridge.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(bridgeConfig, pluginPath, args);
-    AOS_ERROR_CHECK_AND_THROW("failed to execute bridge plugin", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to execute bridge plugin");
 
     return result;
 }
@@ -476,7 +476,7 @@ std::string CNI::ExecuteDNSPlugin(const NetworkConfigList& net, const RuntimeCon
     auto pluginPath = std::filesystem::path(cBinaryPluginDir) / net.mDNS.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(dnsConfig, pluginPath, args);
-    AOS_ERROR_CHECK_AND_THROW("failed to execute DNS plugin", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to execute DNS plugin");
 
     return result;
 }
@@ -494,7 +494,7 @@ std::string CNI::ExecuteFirewallPlugin(const NetworkConfigList& net, const std::
     auto pluginPath     = std::filesystem::path(cBinaryPluginDir) / net.mFirewall.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(firewallConfig, pluginPath, args);
-    AOS_ERROR_CHECK_AND_THROW("failed to execute firewall plugin", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to execute firewall plugin");
 
     return result;
 }
@@ -681,7 +681,7 @@ std::string CNI::ExecuteBandwidthPlugin(const NetworkConfigList& net, const std:
     auto pluginPath      = std::string(cBinaryPluginDir) + "/" + net.mBandwidth.mType.CStr();
 
     auto [result, err] = mExec->ExecPlugin(bandwidthConfig, pluginPath, args);
-    AOS_ERROR_CHECK_AND_THROW("failed to execute bandwidth plugin", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to execute bandwidth plugin");
 
     return result;
 }
@@ -724,7 +724,7 @@ std::string CNI::AddDNSRuntimeConfig(
     }
 
     auto [json, err] = common::utils::ParseJson(pluginConfig);
-    AOS_ERROR_CHECK_AND_THROW("failed to parse plugin config", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse plugin config");
 
     auto jsonRoot = json.extract<Poco::JSON::Object::Ptr>();
 
@@ -755,7 +755,7 @@ std::string CNI::AddCNIData(const std::string& pluginConfig, const std::string& 
     const std::string& prevResult) const
 {
     auto [json, err] = common::utils::ParseJson(pluginConfig);
-    AOS_ERROR_CHECK_AND_THROW("failed to parse plugin config", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse plugin config");
 
     auto jsonRoot = json.extract<Poco::JSON::Object::Ptr>();
 
@@ -764,7 +764,7 @@ std::string CNI::AddCNIData(const std::string& pluginConfig, const std::string& 
 
     if (!prevResult.empty()) {
         Tie(json, err) = common::utils::ParseJson(prevResult);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse previous result", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse previous result");
 
         jsonRoot->set("prevResult", json.extract<Poco::JSON::Object::Ptr>());
     }
@@ -825,7 +825,7 @@ void CNI::ParsePrevResult(const std::string& prevResult, Result& result) const
     }
 
     auto [json, err] = common::utils::ParseJson(prevResult);
-    AOS_ERROR_CHECK_AND_THROW("failed to parse previous result", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse previous result");
 
     common::utils::CaseInsensitiveObjectWrapper object(json);
 
@@ -865,7 +865,7 @@ std::string CNI::CreatePluginsConfig(const NetworkConfigList& net, const std::ve
     for (const auto& pluginConfig : plugins) {
         if (!pluginConfig.empty()) {
             auto [json, err] = common::utils::ParseJson(pluginConfig);
-            AOS_ERROR_CHECK_AND_THROW("failed to parse plugin config", err);
+            AOS_ERROR_CHECK_AND_THROW(err, "failed to parse plugin config");
 
             auto jsonObject = json.extract<Poco::JSON::Object::Ptr>();
 
@@ -944,7 +944,7 @@ std::string CNI::CreateCacheEntry(const NetworkConfigList& net, const RuntimeCon
 
     if (!prevResult.empty()) {
         auto [json, err] = common::utils::ParseJson(prevResult);
-        AOS_ERROR_CHECK_AND_THROW("failed to parse previous result", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse previous result");
 
         cacheEntry.set("result", json.extract<Poco::JSON::Object::Ptr>());
     }
