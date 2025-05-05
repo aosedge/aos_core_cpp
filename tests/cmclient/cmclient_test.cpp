@@ -61,7 +61,7 @@ static servicemanager::v4::SMOutgoingMessages CreateRunInstancesStatus()
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
-    instanceStatus.mutable_error_info()->CopyFrom(errorInfo);
+    instanceStatus.mutable_error()->CopyFrom(errorInfo);
     runInstancesStatus.mutable_run_instances_status()->add_instances()->CopyFrom(instanceStatus);
 
     return runInstancesStatus;
@@ -85,7 +85,7 @@ static servicemanager::v4::SMOutgoingMessages CreateUpdateInstancesStatus()
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
-    instanceStatus.mutable_error_info()->CopyFrom(errorInfo);
+    instanceStatus.mutable_error()->CopyFrom(errorInfo);
     updateInstancesStatus.mutable_update_instances_status()->add_instances()->CopyFrom(instanceStatus);
 
     return updateInstancesStatus;
@@ -333,9 +333,9 @@ TEST_F(CMClientTest, SendOutgoingMsg)
     auto instanceStatus = runInstancesStatus.instances(0);
     EXPECT_EQ(instanceStatus.service_version(), "service_version");
     EXPECT_EQ(instanceStatus.run_state(), "run_state");
-    EXPECT_EQ(instanceStatus.error_info().aos_code(), 1);
-    EXPECT_EQ(instanceStatus.error_info().exit_code(), 1);
-    EXPECT_EQ(instanceStatus.error_info().message(), "message");
+    EXPECT_EQ(instanceStatus.error().aos_code(), 1);
+    EXPECT_EQ(instanceStatus.error().exit_code(), 1);
+    EXPECT_EQ(instanceStatus.error().message(), "message");
     EXPECT_EQ(instanceStatus.instance().service_id(), "service_id");
     EXPECT_EQ(instanceStatus.instance().subject_id(), "subject_id");
     EXPECT_EQ(instanceStatus.instance().instance(), 1);
@@ -378,9 +378,9 @@ TEST_F(CMClientTest, SendOutgoingMsg)
     instanceStatus = updateInstancesStatus.instances(0);
     EXPECT_EQ(instanceStatus.service_version(), "service_version");
     EXPECT_EQ(instanceStatus.run_state(), "run_state");
-    EXPECT_EQ(instanceStatus.error_info().aos_code(), 1);
-    EXPECT_EQ(instanceStatus.error_info().exit_code(), 1);
-    EXPECT_EQ(instanceStatus.error_info().message(), "message");
+    EXPECT_EQ(instanceStatus.error().aos_code(), 1);
+    EXPECT_EQ(instanceStatus.error().exit_code(), 1);
+    EXPECT_EQ(instanceStatus.error().message(), "message");
     EXPECT_EQ(instanceStatus.instance().service_id(), "service_id");
     EXPECT_EQ(instanceStatus.instance().subject_id(), "subject_id");
     EXPECT_EQ(instanceStatus.instance().instance(), 1);
