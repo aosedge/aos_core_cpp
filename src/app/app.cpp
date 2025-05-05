@@ -79,35 +79,35 @@ void App::initialize(Application& self)
 void App::Init()
 {
     auto err = mLogger.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
     LOG_INF() << "Initialize message-proxy: version = " << AOS_MESSAGE_PROXY_VERSION;
 
     CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
     if (result != CURLE_OK) {
-        AOS_ERROR_THROW("can't initialize curl", aos::ErrorEnum::eFailed);
+        AOS_ERROR_THROW(aos::ErrorEnum::eFailed, "can't initialize curl");
     }
 
     mCleanupManager.AddCleanup([this]() { curl_global_cleanup(); });
 
     err = mCryptoProvider.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize crypto provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
     err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize cert loader", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     auto retConfig = aos::mp::config::ParseConfig(mConfigFile);
-    AOS_ERROR_CHECK_AND_THROW("can't parse config", retConfig.mError);
+    AOS_ERROR_CHECK_AND_THROW(retConfig.mError, "can't parse config");
 
     mConfig = retConfig.mValue;
 
     err = mPublicServiceHandler.Init(
         aos::common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL, mConfig.mCACert}, mCertLoader,
         mCryptoProvider, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
 
     err = mCMClient.Init(mConfig, mPublicServiceHandler, mCertLoader, mCryptoProvider, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize CM client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CM client");
 
 #ifdef VCHAN
     mTransport.Init(mConfig.mVChan);
@@ -117,58 +117,58 @@ void App::Init()
 
     if (mProvisioning) {
         err = mCommunicationManager.Init(mConfig, mTransport);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize communication manager");
 
         err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CM connection");
     } else {
         err = mCommunicationManager.Init(mConfig, mTransport, &mCertLoader, &mCryptoProvider);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize communication manager", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize communication manager");
 
         err = mCMConnection.Init(mConfig, mCMClient, mCommunicationManager, &mDownloader, &mPublicServiceHandler);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize CM connection", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CM connection");
 
         err = mProtectedNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, false);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize protected node client", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize protected node client");
 
         err = mIAMProtectedConnection.Init(mConfig.mIAMConfig.mSecurePort, mProtectedNodeClient, mCommunicationManager,
             &mPublicServiceHandler, mConfig.mVChan.mIAMCertStorage);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize IAM protected connection", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM protected connection");
     }
     err = mPublicNodeClient.Init(mConfig.mIAMConfig, mPublicServiceHandler, true);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize public node client", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public node client");
 
     err = mIAMPublicConnection.Init(mConfig.mIAMConfig.mOpenPort, mPublicNodeClient, mCommunicationManager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM public connection", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM public connection");
 
     // Subscribe to certificate changed
 
     if (!mProvisioning) {
         err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage.c_str(), mCMClient);
-        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
         err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
-        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
         err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
-        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
         err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage.c_str(), mCommunicationManager);
-        AOS_ERROR_CHECK_AND_THROW("can't subscribe to certificate changed", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
     }
 
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
     if (ret < 0) {
-        AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
+        AOS_ERROR_CHECK_AND_THROW(ret, "can't notify systemd");
     }
 }
 
 void App::Start()
 {
     auto err = mCommunicationManager.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start communication manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start communication manager");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mCommunicationManager.Stop(); !err.IsNone()) {
@@ -177,7 +177,7 @@ void App::Start()
     });
 
     err = mCMConnection.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start CM connection", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start CM connection");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mCMConnection.Stop(); !err.IsNone()) {
@@ -187,7 +187,7 @@ void App::Start()
 
     if (!mProvisioning) {
         err = mIAMProtectedConnection.Start();
-        AOS_ERROR_CHECK_AND_THROW("can't start IAM protected connection", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't start IAM protected connection");
 
         mCleanupManager.AddCleanup([this]() {
             if (auto err = mIAMProtectedConnection.Stop(); !err.IsNone()) {
@@ -197,7 +197,7 @@ void App::Start()
     }
 
     err = mIAMPublicConnection.Start();
-    AOS_ERROR_CHECK_AND_THROW("can't start IAM public connection", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start IAM public connection");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mIAMPublicConnection.Stop(); !err.IsNone()) {

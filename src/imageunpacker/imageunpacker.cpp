@@ -28,7 +28,7 @@ ImageUnpacker::ImageUnpacker(const std::string& imageStoreDir)
             std::filesystem::create_directories(mImageStoreDir);
         }
     } catch (const std::exception& e) {
-        AOS_ERROR_THROW("failed to create image store directory: " + std::string(e.what()), ErrorEnum::eRuntime);
+        AOS_ERROR_THROW(ErrorEnum::eRuntime, "failed to create image store directory: " + std::string(e.what()));
     }
 }
 
