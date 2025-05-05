@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 EPAM Systems, Inc.
+ * Copyright (C) 2022 Simo Sorce <simo@redhat.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +11,7 @@
 #include <openssl/asn1t.h>
 
 /**
- * P11PROV_PK11_URI routines taken from pkcs11-provider:
+ * Routines of this header are taken from pkcs11-provider codebase:
  * https://github.com/latchset/pkcs11-provider/blob/main/src/pk11_uri.h
  */
 
