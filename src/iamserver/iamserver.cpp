@@ -37,7 +37,7 @@ namespace {
 std::string CorrectAddress(const std::string& addr)
 {
     if (addr.empty()) {
-        throw common::utils::AosException("bad address");
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "bad address");
     }
 
     if (addr[0] == ':') {

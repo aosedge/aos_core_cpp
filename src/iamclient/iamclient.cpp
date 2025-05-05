@@ -221,7 +221,7 @@ void IAMClient::HandleIncomingMessages() noexcept
             } else if (incomingMsg.has_get_cert_types_request()) {
                 ok = ProcessGetCertTypes(incomingMsg.get_cert_types_request());
             } else {
-                AOS_ERROR_CHECK_AND_THROW("Not supported request type", ErrorEnum::eNotSupported);
+                AOS_ERROR_CHECK_AND_THROW(ErrorEnum::eNotSupported, "Not supported request type");
             }
 
             if (!ok) {

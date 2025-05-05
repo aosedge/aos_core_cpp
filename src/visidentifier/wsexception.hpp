@@ -24,7 +24,7 @@ public:
      * @param err Aos error.
      */
     explicit WSException(const std::string& message, const aos::Error& err = aos::ErrorEnum::eFailed)
-        : aos::common::utils::AosException(message, err) {};
+        : aos::common::utils::AosException(err, message) {};
 };
 
 } // namespace aos::iam::visidentifier

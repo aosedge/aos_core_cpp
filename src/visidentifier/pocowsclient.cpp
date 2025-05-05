@@ -197,16 +197,16 @@ void PocoWSClient::HandleResponse(const std::string& frame)
         aos::Error         err;
 
         aos::Tie(objectVar, err) = aos::common::utils::ParseJson(frame);
-        AOS_ERROR_CHECK_AND_THROW("can't parse as json", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse as json");
 
         const auto object = objectVar.extract<Poco::JSON::Object::Ptr>();
 
         if (object.isNull()) {
-            throw aos::common::utils::AosException("can't extract json object");
+            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "can't extract json object");
         }
 
         if (!object->has(VISMessage::cActionTagName)) {
-            throw aos::common::utils::AosException("action tag is missing");
+            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "action tag is missing");
         }
 
         if (const auto action = object->get(VISMessage::cActionTagName); action == "subscription") {
@@ -217,7 +217,7 @@ void PocoWSClient::HandleResponse(const std::string& frame)
 
         const auto requestId = object->get(VISMessage::cRequestIdTagName).convert<std::string>();
         if (requestId.empty()) {
-            throw aos::common::utils::AosException("requestId tag is empty");
+            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "requestId tag is empty");
         }
 
         if (!mPendingRequests.SetResponse(requestId, frame)) {

@@ -158,7 +158,7 @@ void App::initialize(Application& self)
     RegisterErrorSignals();
 
     auto err = mLogger.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize logger", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
     Application::initialize(self);
 
@@ -167,42 +167,42 @@ void App::initialize(Application& self)
     // Initialize Aos modules
 
     auto config = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
-    AOS_ERROR_CHECK_AND_THROW("can't parse config", config.mError);
+    AOS_ERROR_CHECK_AND_THROW(config.mError, "can't parse config");
 
     err = mDatabase.Init(config.mValue.mDatabase);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize database", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
     err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize node info provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
 
     err = InitIdentifierModule(config.mValue.mIdentifier);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize identifier module", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
 
     if (config.mValue.mEnablePermissionsHandler) {
         mPermHandler = std::make_unique<permhandler::PermHandler>();
     }
 
     err = mCryptoProvider.Init();
-    AOS_ERROR_CHECK_AND_THROW("can't initialize crypto provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
     err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize cert loader", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     err = InitCertModules(config.mValue);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize cert modules", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
 
     err = mNodeManager.Init(mDatabase);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize node manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node manager");
 
     err = mProvisionManager.Init(mIAMServer, mCertHandler);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize provision manager", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
     err = mCertProvider.Init(mCertHandler);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize cert provider", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert provider");
 
     err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
         mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW("can't initialize IAM server", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
     const auto& clientConfig = config.mValue.mIAMClient;
     if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
@@ -210,14 +210,14 @@ void App::initialize(Application& self)
 
         err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
             mCryptoProvider, mNodeInfoProvider, mProvisioning);
-        AOS_ERROR_CHECK_AND_THROW("can't initialize IAM client", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }
 
     // Notify systemd
 
     auto ret = sd_notify(0, cSDNotifyReady);
     if (ret < 0) {
-        AOS_ERROR_CHECK_AND_THROW("can't notify systemd", ret);
+        AOS_ERROR_CHECK_AND_THROW(ret, "can't notify systemd");
     }
 }
 

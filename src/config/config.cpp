@@ -137,7 +137,7 @@ IAMClientConfig ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectW
 
     Error err                               = ErrorEnum::eNone;
     Tie(config.mNodeReconnectInterval, err) = common::utils::ParseDuration(nodeReconnectInterval);
-    AOS_ERROR_CHECK_AND_THROW("nodeReconnectInterval parse error", err);
+    AOS_ERROR_CHECK_AND_THROW(err, "nodeReconnectInterval parse error");
 
     return config;
 }
@@ -262,7 +262,7 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
 
         Tie(moduleParams.mWebSocketTimeout, err)
             = common::utils::ParseDuration(object.GetValue<std::string>("webSocketTimeout", "120s"));
-        AOS_ERROR_CHECK_AND_THROW("failed to parse webSocketTimeout", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse webSocketTimeout");
     } catch (const std::exception& e) {
         return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
     }

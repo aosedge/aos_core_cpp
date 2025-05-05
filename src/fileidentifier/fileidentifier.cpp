@@ -32,10 +32,10 @@ Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler:
         mSubjectsObserver = &subjectsObserver;
 
         err = ReadLineFromFile(mConfig.mSystemIDPath, mSystemId);
-        AOS_ERROR_CHECK_AND_THROW("can't set system id", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't set system id");
 
         err = ReadLineFromFile(mConfig.mUnitModelPath, mUnitModel);
-        AOS_ERROR_CHECK_AND_THROW("can't set unit model", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't set unit model");
 
         ReadSubjectsFromFile();
     } catch (const std::exception& e) {
@@ -87,10 +87,10 @@ void FileIdentifier::ReadSubjectsFromFile()
 
     while (std::getline(file, subject)) {
         auto err = mSubjects.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW("can't set subject", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't set subject");
 
         err = mSubjects.Back().Assign(subject.c_str());
-        AOS_ERROR_CHECK_AND_THROW("can't set subject", err);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't set subject");
 
         LOG_DBG() << "Read subject: subject=" << mSubjects.Back();
     }
