@@ -40,14 +40,21 @@ gencertificates(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
 # Setup openssl.conf
 # ######################################################################################################################
 
-find_package(libp11)
+find_package(pkcs11provider)
+find_package(OpenSSL)
 
 set(OPENSSL_CONF "${CMAKE_CURRENT_BINARY_DIR}/openssl.conf")
 
 file(COPY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/openssl.conf" "${OPENSSL_CONF}")
-file(APPEND "${OPENSSL_CONF}"
-     "\n[pkcs11_section]\n" "engine_id = pkcs11\n" "dynamic_path = ${libp11_LIB_DIRS_DEBUG}/libpkcs11.so\n"
-     "MODULE_PATH = ${SOFTHSM2_LIB}\n" "init = 0\n"
+file(
+    APPEND "${OPENSSL_CONF}"
+    "\n[legacy_sect]\n"
+    "activate = 1\n"
+    "module = ${openssl_LIB_DIRS_DEBUG}/ossl-modules/legacy.so\n"
+    "\n[pkcs11_sect]\n"
+    "module = ${pkcs11provider_PACKAGE_FOLDER_DEBUG}/pkcs11.so\n"
+    "pkcs11-module-path = ${SOFTHSM2_LIB}\n"
+    "activate = 1\n"
 )
 
 # ######################################################################################################################

@@ -79,22 +79,13 @@ Error SecureChannel::Connect()
     BIO_meth_set_read(mBioMethod.get(), CustomBIORead);
     BIO_meth_set_ctrl(mBioMethod.get(), CustomBIOCtrl);
 
-    std::unique_ptr<ENGINE, decltype(&ENGINE_free)> eng(ENGINE_by_id("pkcs11"), ENGINE_free);
-    if (!eng) {
-        return Error(ErrorEnum::eRuntime, "failed to load PKCS11 engine");
-    }
-
-    if (!ENGINE_init(eng.get())) {
-        return Error(ErrorEnum::eRuntime, "failed to initialize PKCS11 engine");
-    }
-
     const SSL_METHOD* method = TLS_server_method();
     mCtx                     = CreateSSLContext(method);
     if (!mCtx) {
         return Error(ErrorEnum::eRuntime, "failed to create SSL context");
     }
 
-    if (auto err = ConfigureSSLContext(mCtx, eng.get()); !err.IsNone()) {
+    if (auto err = ConfigureSSLContext(mCtx); !err.IsNone()) {
         SSL_CTX_free(mCtx);
         mCtx = nullptr;
 
@@ -219,6 +210,31 @@ std::string SecureChannel::GetOpensslErrorString()
     return oss.str();
 }
 
+RetWithError<EVP_PKEY*> SecureChannel::LoadPrivateKey(const std::string& keyURL)
+{
+    auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
+    if (!createErr.IsNone()) {
+        return {nullptr, createErr};
+    }
+
+    auto [pem, encodeErr] = common::utils::PEMEncodePKCS11URL(pkcs11URL);
+    if (!encodeErr.IsNone()) {
+        return {nullptr, encodeErr};
+    }
+
+    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
+    if (!bio) {
+        return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
+    }
+
+    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
+    if (!pkey) {
+        return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
+    }
+
+    return {pkey, ErrorEnum::eNone};
+}
+
 SSL_CTX* SecureChannel::CreateSSLContext(const SSL_METHOD* method)
 {
     SSL_CTX* ctx = SSL_CTX_new(method);
@@ -229,7 +245,7 @@ SSL_CTX* SecureChannel::CreateSSLContext(const SSL_METHOD* method)
     return ctx;
 }
 
-Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
+Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
 {
     LOG_DBG() << "Configuring SSL context";
 
@@ -246,14 +262,9 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx, ENGINE* eng)
         return errLoad;
     }
 
-    auto [keyURI, errURI] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
-    if (!errURI.IsNone()) {
-        return errURI;
-    }
-
-    EVP_PKEY* pkey = ENGINE_load_private_key(eng, keyURI.c_str(), nullptr, nullptr);
-    if (!pkey) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    auto [pkey, errLoadKey] = LoadPrivateKey(certInfo.mKeyURL.CStr());
+    if (!errLoadKey.IsNone()) {
+        return errLoadKey;
     }
 
     std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> pkeyPtr(pkey, EVP_PKEY_free);

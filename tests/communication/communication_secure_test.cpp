@@ -9,7 +9,6 @@
 #include <optional>
 
 #include <gtest/gtest.h>
-#include <openssl/engine.h>
 
 #include <openssl/err.h>
 #include <openssl/trace.h>
@@ -246,11 +245,6 @@ protected:
         std::filesystem::remove_all(mTmpDir);
         std::filesystem::remove_all(mConfig.mDownload.mDownloadDir);
         std::filesystem::remove_all(mConfig.mImageStoreDir);
-
-        if (auto engine = ENGINE_by_id("pkcs11"); engine != nullptr) {
-            // Clear the PKCS#11 engine cache like slots/sessions
-            ENGINE_get_finish_function(engine)(engine);
-        }
 
         std::filesystem::remove_all(SOFTHSM_BASE_MP_DIR "/tokens");
     }
