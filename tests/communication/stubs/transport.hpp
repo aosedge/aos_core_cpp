@@ -11,7 +11,6 @@
 
 #include <Poco/Net/StreamSocket.h>
 
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
@@ -20,6 +19,7 @@
 #include "communication/communicationchannel.hpp"
 #include "communication/types.hpp"
 #include "communication/utils.hpp"
+#include "utils/pkcs11helper.hpp"
 
 using namespace aos::mp::communication;
 
@@ -153,9 +153,8 @@ public:
             return aos::ErrorEnum::eNone;
         }
 
-        mCtx    = nullptr;
-        mSSL    = nullptr;
-        mEngine = nullptr;
+        mCtx = nullptr;
+        mSSL = nullptr;
 
         int retryCount = 0;
 
@@ -218,12 +217,6 @@ public:
             mCtx = nullptr;
         }
 
-        if (mEngine) {
-            ENGINE_finish(mEngine);
-            ENGINE_free(mEngine);
-            mEngine = nullptr;
-        }
-
         mConnected = false;
 
         if (auto err = mChannel.Close(); !err.IsNone()) {
@@ -245,7 +238,6 @@ private:
     std::string       mCaCertPath;
     SSL_CTX*          mCtx       = nullptr;
     SSL*              mSSL       = nullptr;
-    ENGINE*           mEngine    = nullptr;
     BIO_METHOD*       mBioMethod = nullptr;
     std::atomic<bool> mConnected {false};
 
@@ -259,49 +251,22 @@ private:
             return err;
         }
 
-        auto err = createContext();
+        auto err = CreateContext();
         if (err != aos::ErrorEnum::eNone)
             return err;
 
-        err = initializeOpenSSL();
+        err = ConfigureContext();
         if (err != aos::ErrorEnum::eNone)
             return err;
 
-        err = configureContext();
+        err = SetupSSL();
         if (err != aos::ErrorEnum::eNone)
             return err;
 
-        err = setupSSL();
-        if (err != aos::ErrorEnum::eNone)
-            return err;
-
-        return performHandshake();
+        return PerformHandshake();
     }
 
-    aos::Error initializeOpenSSL()
-    {
-        if (mEngine) {
-            ENGINE_finish(mEngine);
-            ENGINE_free(mEngine);
-            mEngine = nullptr;
-        }
-
-        mEngine = ENGINE_by_id("pkcs11");
-        if (!mEngine) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load PKCS#11 engine");
-        }
-
-        if (!ENGINE_init(mEngine)) {
-            ENGINE_free(mEngine);
-            mEngine = nullptr;
-
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to initialize PKCS#11 engine");
-        }
-
-        return aos::ErrorEnum::eNone;
-    }
-
-    aos::Error createContext()
+    aos::Error CreateContext()
     {
         const SSL_METHOD* method = TLS_client_method();
         mCtx                     = SSL_CTX_new(method);
@@ -312,13 +277,13 @@ private:
         return aos::ErrorEnum::eNone;
     }
 
-    aos::Error configureContext()
+    aos::Error ConfigureContext()
     {
         SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, nullptr);
 
-        EVP_PKEY* pkey = ENGINE_load_private_key(mEngine, mKeyID.c_str(), nullptr, nullptr);
-        if (!pkey) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load private key");
+        auto [pkey, err] = LoadPrivateKey(mKeyID.c_str());
+        if (!err.IsNone()) {
+            return err;
         }
 
         if (SSL_CTX_use_PrivateKey(mCtx, pkey) <= 0) {
@@ -363,14 +328,39 @@ private:
         return aos::ErrorEnum::eNone;
     }
 
-    aos::Error setupSSL()
+    aos::RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
+    {
+        auto [pkcs11URL, createErr] = aos::common::utils::CreatePKCS11URL(keyURL.c_str());
+        if (!createErr.IsNone()) {
+            return {nullptr, createErr};
+        }
+
+        auto [pem, encodeErr] = aos::common::utils::PEMEncodePKCS11URL(pkcs11URL);
+        if (!encodeErr.IsNone()) {
+            return {nullptr, encodeErr};
+        }
+
+        auto bio = aos::DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
+        if (!bio) {
+            return {nullptr, AOS_ERROR_WRAP(aos::ErrorEnum::eRuntime)};
+        }
+
+        EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
+        if (!pkey) {
+            return {nullptr, AOS_ERROR_WRAP(aos::ErrorEnum::eRuntime)};
+        }
+
+        return {pkey, aos::ErrorEnum::eNone};
+    }
+
+    aos::Error SetupSSL()
     {
         mSSL = SSL_new(mCtx);
         if (!mSSL) {
             return aos::Error(aos::ErrorEnum::eRuntime, "failed to create SSL object");
         }
 
-        mBioMethod = createCustomBioMethod();
+        mBioMethod = CreateCustomBioMethod();
         if (!mBioMethod) {
             return aos::Error(aos::ErrorEnum::eRuntime, "failed to create custom BIO method");
         }
@@ -393,7 +383,7 @@ private:
         return aos::ErrorEnum::eNone;
     }
 
-    aos::Error performHandshake()
+    aos::Error PerformHandshake()
     {
         int result = SSL_connect(mSSL);
         if (result <= 0) {
@@ -405,7 +395,7 @@ private:
         return aos::ErrorEnum::eNone;
     }
 
-    static int customBioWrite(BIO* bio, const char* data, int len)
+    static int CustomBioWrite(BIO* bio, const char* data, int len)
     {
         SecureClientChannel* pipe = static_cast<SecureClientChannel*>(BIO_get_data(bio));
         std::vector<uint8_t> buffer(data, data + len);
@@ -414,7 +404,7 @@ private:
         return err.IsNone() ? len : -1;
     }
 
-    static int customBioRead(BIO* bio, char* data, int len)
+    static int CustomBioRead(BIO* bio, char* data, int len)
     {
         SecureClientChannel* pipe = static_cast<SecureClientChannel*>(BIO_get_data(bio));
         std::vector<uint8_t> buffer(len);
@@ -427,7 +417,7 @@ private:
         return buffer.size();
     }
 
-    static long customBioCtrl([[maybe_unused]] BIO* bio, int cmd, [[maybe_unused]] long num, [[maybe_unused]] void* ptr)
+    static long CustomBioCtrl([[maybe_unused]] BIO* bio, int cmd, [[maybe_unused]] long num, [[maybe_unused]] void* ptr)
     {
         switch (cmd) {
         case BIO_CTRL_FLUSH:
@@ -437,15 +427,15 @@ private:
         }
     }
 
-    BIO_METHOD* createCustomBioMethod()
+    BIO_METHOD* CreateCustomBioMethod()
     {
         BIO_METHOD* method = BIO_meth_new(BIO_TYPE_SOURCE_SINK, "SecureClientChannel BIO");
         if (!method)
             return nullptr;
 
-        BIO_meth_set_write(method, customBioWrite);
-        BIO_meth_set_read(method, customBioRead);
-        BIO_meth_set_ctrl(method, customBioCtrl);
+        BIO_meth_set_write(method, CustomBioWrite);
+        BIO_meth_set_read(method, CustomBioRead);
+        BIO_meth_set_ctrl(method, CustomBioCtrl);
 
         return method;
     }
