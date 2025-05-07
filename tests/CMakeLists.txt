@@ -12,6 +12,7 @@
 add_subdirectory(iamclient)
 add_subdirectory(include)
 add_subdirectory(jsonprovider)
+add_subdirectory(logprovider)
 add_subdirectory(migration)
 add_subdirectory(ocispec)
 add_subdirectory(utils)
