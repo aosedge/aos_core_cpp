@@ -56,9 +56,18 @@ public:
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
     /**
-     * Destroys object instance.
+     * Starts IAM client.
+     *
+     * @returns Error.
      */
-    ~IAMClient();
+    Error Start();
+
+    /**
+     * Stops IAM client.
+     *
+     * @returns Error.
+     */
+    Error Stop();
 
 private:
     void OnCertChanged(const certhandler::CertInfo& info) override;
@@ -102,22 +111,20 @@ private:
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;
 
-    std::vector<std::string> mStartProvisioningCmdArgs;
-    std::vector<std::string> mDiskEncryptionCmdArgs;
-    std::vector<std::string> mFinishProvisioningCmdArgs;
-    std::vector<std::string> mDeprovisionCmdArgs;
-    Duration                 mReconnectInterval;
-    std::string              mServerURL;
-    std::string              mCACert;
+    Duration    mReconnectInterval;
+    std::string mCACert;
+    std::string mCertStorage;
+    std::string mServerURL;
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     StreamPtr                            mStream;
     PublicNodeServiceStubPtr             mPublicNodeServiceStub;
 
-    std::thread             mConnectionThread;
-    std::condition_variable mShutdownCV;
-    bool                    mShutdown = false;
-    std::mutex              mShutdownLock;
+    std::thread mConnectionThread;
+
+    std::condition_variable mCondVar;
+    bool                    mStop = true;
+    std::mutex              mMutex;
 };
 
 } // namespace aos::iam::iamclient

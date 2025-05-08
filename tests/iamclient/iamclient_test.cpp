@@ -404,7 +404,7 @@ private:
     }
 
     grpc::ServerReaderWriter<iamanager::v5::IAMIncomingMessages, iamanager::v5::IAMOutgoingMessages>* mStream;
-    grpc::ServerContext* mRegisterNodeContext;
+    grpc::ServerContext* mRegisterNodeContext {};
 
     std::mutex              mLock;
     std::condition_variable mNodeInfoCV;
@@ -466,6 +466,7 @@ protected:
         EXPECT_CALL(*server, OnNodeInfo(expNodeInfo));
 
         auto client = CreateClient(true, config);
+        EXPECT_TRUE(client->Start().IsNone());
 
         server->WaitNodeInfo();
 
@@ -498,7 +499,11 @@ TEST_F(IAMClientTest, InitFailed)
     EXPECT_CALL(*server, OnNodeInfo(_)).Times(0);
 
     auto client = CreateClient(true);
+    EXPECT_TRUE(client->Start().IsNone());
+
     server->WaitNodeInfo(std::chrono::seconds(1));
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, ConnectionFailed)
@@ -506,7 +511,11 @@ TEST_F(IAMClientTest, ConnectionFailed)
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eNone));
 
     auto client = CreateClient(true);
+    EXPECT_TRUE(client->Start().IsNone());
+
     sleep(1);
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, Reconnect)
@@ -526,6 +535,8 @@ TEST_F(IAMClientTest, Reconnect)
     EXPECT_CALL(*server2, OnNodeInfo(expNodeInfo));
 
     server2->WaitNodeInfo();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, StartProvisioning)
@@ -541,6 +552,8 @@ TEST_F(IAMClientTest, StartProvisioning)
 
     server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, StartProvisioningExecFailed)
@@ -559,6 +572,8 @@ TEST_F(IAMClientTest, StartProvisioningExecFailed)
 
     server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, StartProvisioningWrongNodeStatus)
@@ -574,6 +589,8 @@ TEST_F(IAMClientTest, StartProvisioningWrongNodeStatus)
 
     server->StartProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, FinishProvisioning)
@@ -595,6 +612,8 @@ TEST_F(IAMClientTest, FinishProvisioning)
 
     server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
@@ -609,6 +628,8 @@ TEST_F(IAMClientTest, FinishProvisioningWrongNodeStatus)
 
     server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, Deprovision)
@@ -630,6 +651,8 @@ TEST_F(IAMClientTest, Deprovision)
 
     server->DeprovisionRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, DeprovisionWrongNodeStatus)
@@ -645,6 +668,8 @@ TEST_F(IAMClientTest, DeprovisionWrongNodeStatus)
 
     server->DeprovisionRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, PauseNode)
@@ -668,6 +693,8 @@ TEST_F(IAMClientTest, PauseNode)
     server->PauseNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, PauseWrongNodeStatus)
@@ -683,6 +710,8 @@ TEST_F(IAMClientTest, PauseWrongNodeStatus)
 
     server->PauseNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, ResumeNode)
@@ -706,6 +735,8 @@ TEST_F(IAMClientTest, ResumeNode)
     server->ResumeNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
     server->WaitNodeInfo();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, ResumeWrongNodeStatus)
@@ -721,6 +752,8 @@ TEST_F(IAMClientTest, ResumeWrongNodeStatus)
 
     server->ResumeNodeRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, CreateKey)
@@ -737,6 +770,8 @@ TEST_F(IAMClientTest, CreateKey)
 
     server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, ApplyCert)
@@ -756,6 +791,8 @@ TEST_F(IAMClientTest, ApplyCert)
 
     server->ApplyCertRequest(nodeInfo.mNodeID.CStr(), cCertType.CStr(), {});
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 TEST_F(IAMClientTest, GetCertTypes)
@@ -773,6 +810,8 @@ TEST_F(IAMClientTest, GetCertTypes)
 
     server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
 }
 
 } // namespace aos::iam::iamclient

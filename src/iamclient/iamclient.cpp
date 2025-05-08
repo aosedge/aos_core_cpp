@@ -29,19 +29,14 @@ Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::Ident
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {
-    mIdentHandler     = identHandler;
-    mNodeInfoProvider = &nodeInfoProvider;
-    mCertProvider     = &certProvider;
-    mCertLoader       = &certLoader;
-    mCryptoProvider   = &cryptoProvider;
-    mProvisionManager = &provisionManager;
-
-    mStartProvisioningCmdArgs  = config.mStartProvisioningCmdArgs;
-    mDiskEncryptionCmdArgs     = config.mDiskEncryptionCmdArgs;
-    mFinishProvisioningCmdArgs = config.mFinishProvisioningCmdArgs;
-    mDeprovisionCmdArgs        = config.mDeprovisionCmdArgs;
-    mReconnectInterval         = config.mNodeReconnectInterval;
-    mCACert                    = config.mCACert;
+    mIdentHandler      = identHandler;
+    mNodeInfoProvider  = &nodeInfoProvider;
+    mCertProvider      = &certProvider;
+    mCertLoader        = &certLoader;
+    mCryptoProvider    = &cryptoProvider;
+    mProvisionManager  = &provisionManager;
+    mReconnectInterval = config.mNodeReconnectInterval;
+    mCACert            = config.mCACert;
 
     if (provisioningMode) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
@@ -53,18 +48,10 @@ Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::Ident
     } else {
         certhandler::CertInfo certInfo;
 
-        auto err = mCertProvider->GetCert(String(config.mCertStorage.c_str()), {}, {}, certInfo);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Get certificates failed: error=" << err.Message();
+        mCertStorage = config.mCertStorage;
 
-            return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
-        }
-
-        err = mCertProvider->SubscribeCertChanged(String(config.mCertStorage.c_str()), *this);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Subscribe certificate receiver failed: error=" << err.Message();
-
-            return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
+        if (auto err = mCertProvider->GetCert(String(mCertStorage.c_str()), {}, {}, certInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
 
         mCredentialList.push_back(
@@ -73,20 +60,51 @@ Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::Ident
         mServerURL = config.mMainIAMProtectedServerURL;
     }
 
+    return ErrorEnum::eNone;
+}
+
+Error IAMClient::Start()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Start IAM client";
+
+    if (!mStop) {
+        return ErrorEnum::eNone;
+    }
+
+    mStop = false;
+
+    if (!mCertStorage.empty()) {
+        if (auto err = mCertProvider->SubscribeCertChanged(String(mCertStorage.c_str()), *this); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
     mConnectionThread = std::thread(&IAMClient::ConnectionLoop, this);
 
     return ErrorEnum::eNone;
 }
 
-IAMClient::~IAMClient()
+Error IAMClient::Stop()
 {
+    Error err;
+
     {
-        std::unique_lock lock {mShutdownLock};
+        std::unique_lock lock {mMutex};
 
-        mShutdown = true;
-        mShutdownCV.notify_all();
+        if (mStop) {
+            return ErrorEnum::eNone;
+        }
 
-        mCertProvider->UnsubscribeCertChanged(*this);
+        LOG_DBG() << "Stop IAM client";
+
+        if (!mCertStorage.empty()) {
+            err = AOS_ERROR_WRAP(mCertProvider->UnsubscribeCertChanged(*this));
+        }
+
+        mStop = true;
+        mCondVar.notify_all();
 
         if (mRegisterNodeCtx) {
             mRegisterNodeCtx->TryCancel();
@@ -96,6 +114,8 @@ IAMClient::~IAMClient()
     if (mConnectionThread.joinable()) {
         mConnectionThread.join();
     }
+
+    return err;
 }
 
 /***********************************************************************************************************************
@@ -104,7 +124,7 @@ IAMClient::~IAMClient()
 
 void IAMClient::OnCertChanged(const certhandler::CertInfo& info)
 {
-    std::unique_lock lock {mShutdownLock};
+    std::unique_lock lock {mMutex};
 
     mCredentialList.clear();
     mCredentialList.push_back(
@@ -133,10 +153,10 @@ PublicNodeServiceStubPtr IAMClient::CreateStub(
 
 bool IAMClient::RegisterNode(const std::string& url)
 {
-    std::unique_lock lock {mShutdownLock};
+    std::unique_lock lock {mMutex};
 
     for (const auto& credentials : mCredentialList) {
-        if (mShutdown) {
+        if (mStop) {
             return false;
         }
 
@@ -184,11 +204,10 @@ void IAMClient::ConnectionLoop() noexcept
             LOG_DBG() << "IAMClient connection closed";
         }
 
-        std::unique_lock lock {mShutdownLock};
+        std::unique_lock lock {mMutex};
 
-        mShutdownCV.wait_for(
-            lock, std::chrono::nanoseconds(mReconnectInterval.Nanoseconds()), [this]() { return mShutdown; });
-        if (mShutdown) {
+        mCondVar.wait_for(lock, std::chrono::nanoseconds(mReconnectInterval.Nanoseconds()), [this]() { return mStop; });
+        if (mStop) {
             break;
         }
     }
@@ -229,7 +248,7 @@ void IAMClient::HandleIncomingMessages() noexcept
             }
 
             {
-                std::unique_lock lock {mShutdownLock};
+                std::unique_lock lock {mMutex};
 
                 if (mCredentialListUpdated) {
                     LOG_DBG() << "Credential list updated: closing connection";
