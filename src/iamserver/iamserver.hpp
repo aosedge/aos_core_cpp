@@ -8,6 +8,7 @@
 #ifndef IAMSERVER_HPP_
 #define IAMSERVER_HPP_
 
+#include <atomic>
 #include <string>
 #include <thread>
 #include <vector>
@@ -66,6 +67,20 @@ public:
         bool provisioningMode);
 
     /**
+     * Starts IAM server.
+     *
+     * @returns Error.
+     */
+    Error Start();
+
+    /**
+     * Stops IAM server.
+     *
+     * @returns Error.
+     */
+    Error Stop();
+
+    /**
      * Called when provisioning starts.
      *
      * @param password password.
@@ -111,11 +126,6 @@ public:
      */
     void OnNodeRemoved(const String& id) override;
 
-    /**
-     * Destroys IAM server.
-     */
-    virtual ~IAMServer();
-
 private:
     // identhandler::SubjectsObserverItf interface
     Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) override;
@@ -123,17 +133,14 @@ private:
     // certhandler::CertReceiverItf interface
     void OnCertChanged(const certhandler::CertInfo& info) override;
 
-    // lifecycle routines
-    void Start();
-    void Shutdown();
-
     // creating routines
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
-    config::IAMServerConfig    mConfig         = {};
-    crypto::CertLoader*        mCertLoader     = nullptr;
-    crypto::x509::ProviderItf* mCryptoProvider = nullptr;
+    config::IAMServerConfig      mConfig         = {};
+    crypto::CertLoader*          mCertLoader     = nullptr;
+    crypto::x509::ProviderItf*   mCryptoProvider = nullptr;
+    certhandler::CertHandlerItf* mCertHandler    = nullptr;
 
     NodeController                           mNodeController;
     PublicMessageHandler                     mPublicMessageHandler;
@@ -141,8 +148,10 @@ private:
     std::unique_ptr<grpc::Server>            mPublicServer, mProtectedServer;
     std::shared_ptr<grpc::ServerCredentials> mPublicCred, mProtectedCred;
 
-    bool              mIsStarted = false;
+    std::atomic<bool> mIsStarted = false;
     std::future<void> mCertChangedResult;
+
+    bool mProvisioningMode {};
 };
 
 } // namespace aos::iam::iamserver

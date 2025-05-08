@@ -280,6 +280,9 @@ TEST_F(IAMServerTest, InitWithInsecureChannelsSucceeds)
     auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
     ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    ASSERT_TRUE(mServer.Start().IsNone());
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, InitWithSecureChannelsSucceeds)
@@ -287,6 +290,9 @@ TEST_F(IAMServerTest, InitWithSecureChannelsSucceeds)
     auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOff);
     ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    ASSERT_TRUE(mServer.Start().IsNone());
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, InitWithSecureChannelsFails)
@@ -304,10 +310,12 @@ TEST_F(IAMServerTest, OnNodeInfoChange)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(mServer.Start().IsNone());
 
     NodeInfo nodeInfo;
 
     ASSERT_NO_THROW(mServer.OnNodeInfoChange(nodeInfo));
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
@@ -323,6 +331,7 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(mServer.Start().IsNone());
 
     auto stub = CreateCustomStub<iamproto::IAMPublicIdentityService>(
         mServerConfig.mIAMProtectedServerURL, cProvisioningModeOn);
@@ -337,6 +346,8 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMPublicIdentityService must be unimplemented: code = " << status.error_code()
         << ", message = " << status.error_message();
+
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
@@ -352,6 +363,7 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(mServer.Start().IsNone());
 
     auto stub
         = CreateCustomStub<iamproto::IAMPublicNodesService>(mServerConfig.mIAMProtectedServerURL, cProvisioningModeOn);
@@ -366,6 +378,8 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMPublicNodesService must be unimplemented: code = " << status.error_code()
         << ", message = " << status.error_message();
+
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
@@ -381,7 +395,7 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
-
+    ASSERT_TRUE(mServer.Start().IsNone());
     auto stub
         = CreateCustomStub<iamproto::IAMCertificateService>(mServerConfig.mIAMProtectedServerURL, cProvisioningModeOn);
 
@@ -396,6 +410,8 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMCertificateService must be unimplemented: code = " << status.error_code()
         << ", message = " << status.error_message();
+
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
@@ -411,6 +427,7 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(mServer.Start().IsNone());
 
     auto stub
         = CreateCustomStub<iamproto::IAMProvisioningService>(mServerConfig.mIAMProtectedServerURL, cProvisioningModeOn);
@@ -426,6 +443,8 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMProvisioningService must be unimplemented: code = " << status.error_code()
         << ", message = " << status.error_message();
+
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
@@ -441,6 +460,7 @@ TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(mServer.Start().IsNone());
 
     auto stub = CreateCustomStub<iamproto::IAMNodesService>(mServerConfig.mIAMProtectedServerURL, cProvisioningModeOn);
 
@@ -455,6 +475,8 @@ TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMNodesService must be unimplemented: code = " << status.error_code()
         << ", message = " << status.error_message();
+
+    ASSERT_TRUE(mServer.Stop().IsNone());
 }
 
 } // namespace aos::iam::iamserver
