@@ -168,8 +168,8 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observer);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedSystemId {"test-system-id"};
     VISParams::Instance().Set("Attribute.Vehicle.VehicleIdentification.VIN", expectedSystemId);
@@ -177,6 +177,8 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
     const auto systemId = visIdentifier.GetSystemID();
     EXPECT_TRUE(systemId.mError.IsNone()) << systemId.mError.Message();
     EXPECT_STREQ(systemId.mValue.CStr(), expectedSystemId.c_str());
+
+    visIdentifier.Stop();
 }
 
 TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
@@ -187,8 +189,8 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observer);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedUnitModel {"test-unit-model"};
     VISParams::Instance().Set("Attribute.Aos.UnitModel", expectedUnitModel);
@@ -196,6 +198,8 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
     const auto unitModel = visIdentifier.GetUnitModel();
     EXPECT_TRUE(unitModel.mError.IsNone()) << unitModel.mError.Message();
     EXPECT_STREQ(unitModel.mValue.CStr(), expectedUnitModel.c_str());
+
+    visIdentifier.Stop();
 }
 
 TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
@@ -206,8 +210,8 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    auto err = visIdentifier.Init(config, observer);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
+    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::vector<std::string> testSubjects {"1", "2", "3"};
     VISParams::Instance().Set("Attribute.Aos.Subjects", testSubjects);
@@ -219,10 +223,12 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     StaticArray<StaticString<cSubjectIDLen>, 3> receivedSubjects;
 
-    err = visIdentifier.GetSubjects(receivedSubjects);
+    const auto err = visIdentifier.GetSubjects(receivedSubjects);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     ASSERT_EQ(receivedSubjects, expectedSubjects);
+
+    visIdentifier.Stop();
 }
 
 } // namespace aos::iam::visidentifier

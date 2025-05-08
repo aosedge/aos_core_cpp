@@ -66,15 +66,29 @@ VISIdentifier::VISIdentifier()
 Error VISIdentifier::Init(
     const config::IdentifierConfig& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver)
 {
+
+    mSubjectsObserver = &subjectsObserver;
+    mConfig           = config;
+
+    return ErrorEnum::eNone;
+}
+
+Error VISIdentifier::Start()
+{
     std::lock_guard lock(mMutex);
 
-    if (auto err = InitWSClient(config); !err.IsNone()) {
+    if (auto err = InitWSClient(mConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    mSubjectsObserver = &subjectsObserver;
-
     mHandleConnectionThread = std::thread(&VISIdentifier::HandleConnection, this);
+
+    return ErrorEnum::eNone;
+}
+
+Error VISIdentifier::Stop()
+{
+    Close();
 
     return ErrorEnum::eNone;
 }
@@ -180,11 +194,6 @@ Error VISIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
     return ErrorEnum::eNone;
 }
 
-VISIdentifier::~VISIdentifier()
-{
-    Close();
-}
-
 /***********************************************************************************************************************
  * Protected
  **********************************************************************************************************************/
@@ -263,11 +272,15 @@ void VISIdentifier::WaitUntilConnected()
 void VISIdentifier::Close()
 {
     try {
-        if (mWsClientPtr) {
-            SendUnsubscribeAllRequest();
+        {
+            std::lock_guard lock(mMutex);
 
-            mStopHandleSubjectsChangedThread.set();
-            mWsClientPtr->Close();
+            if (mWsClientPtr) {
+                SendUnsubscribeAllRequest();
+
+                mStopHandleSubjectsChangedThread.set();
+                mWsClientPtr->Close();
+            }
         }
 
         if (mHandleConnectionThread.joinable()) {

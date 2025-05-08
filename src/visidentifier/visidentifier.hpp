@@ -74,6 +74,20 @@ public:
     Error Init(const config::IdentifierConfig& config, iam::identhandler::SubjectsObserverItf& subjectsObserver);
 
     /**
+     * Starts vis identifier.
+     *
+     * @return Error.
+     */
+    Error Start() override;
+
+    /**
+     * Stops vis identifier.
+     *
+     * @return Error.
+     */
+    Error Stop() override;
+
+    /**
      * Returns System ID.
      *
      * @returns RetWithError<StaticString>.
@@ -94,11 +108,6 @@ public:
      * @returns Error.
      */
     Error GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects) override;
-
-    /**
-     * Destroys vis identifier object instance.
-     */
-    ~VISIdentifier() override;
 
 protected:
     virtual Error  InitWSClient(const config::IdentifierConfig& config);
@@ -132,6 +141,7 @@ private:
     Poco::Event                                                 mWSClientIsConnected;
     Poco::Event                                                 mStopHandleSubjectsChangedThread;
     std::mutex                                                  mMutex;
+    config::IdentifierConfig                                    mConfig;
 };
 
 } // namespace aos::iam::visidentifier

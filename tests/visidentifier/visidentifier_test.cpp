@@ -76,7 +76,7 @@ protected:
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
     }
 
-    void TearDown() override
+    void ExpectStopSucceeded()
     {
         if (mVisIdentifier.GetWSClient() != nullptr) {
             ExpectUnsubscribeAllIsSent();
@@ -86,6 +86,8 @@ protected:
                 mWSClientEvent.Set(WSClientEvent::EventEnum::CLOSED, "mock closed");
             }));
         }
+
+        mVisIdentifier.Stop();
     }
 
     void ExpectSubscribeSucceeded()
@@ -114,7 +116,7 @@ protected:
                 }));
     }
 
-    void ExpectInitSucceeded()
+    void ExpectStartSucceeded()
     {
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
 
@@ -123,8 +125,9 @@ protected:
         EXPECT_CALL(mVisIdentifier, InitWSClient).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mWSClientItfMockPtr, WaitForEvent).WillOnce(Invoke([this]() { return mWSClientEvent.Wait(); }));
 
-        const auto err = mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock);
-        ASSERT_TRUE(err.IsNone()) << err.Message();
+        ASSERT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock).IsNone());
+
+        ASSERT_TRUE(mVisIdentifier.Start().IsNone());
 
         mVisIdentifier.WaitUntilConnected();
     }
@@ -153,14 +156,14 @@ protected:
 TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
+    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock).IsNone());
 
-    const auto err = identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock);
-    ASSERT_FALSE(err.IsNone()) << err.Message();
+    EXPECT_FALSE(identifier.Start().IsNone());
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     StaticArray<StaticString<cSubjectIDLen>, 3> subjects;
 
@@ -184,11 +187,13 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
         EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
         mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverIsNotified)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     StaticArray<StaticString<cSubjectIDLen>, 3> subjects;
 
@@ -201,7 +206,8 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
         }));
 
     const std::string cSubscriptionNotificationJson
-        = R"({"action":"subscription","subscriptionId":"1234-4321","value":{"Attribute.Aos.Subjects": [11,12,13]}, "timestamp": 0})";
+        = R"({"action":"subscription","subscriptionId":"1234-4321","value":{"Attribute.Aos.Subjects": [11,12,13]},
+        "timestamp": 0})";
 
     mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
 
@@ -212,30 +218,36 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
         EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
         mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationReceivedUnknownSubscriptionId)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
     mVisIdentifier.HandleSubscription(
         R"({"action":"subscription","subscriptionId":"unknown-subscriptionId","value":[11,12,13], "timestamp": 0})");
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationReceivedInvalidPayload)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
     ASSERT_NO_THROW(mVisIdentifier.HandleSubscription(R"({cActionTagName})"));
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, SubscriptionNotificationValueExceedsMaxLimit)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
 
@@ -250,6 +262,8 @@ TEST_F(VisidentifierTest, SubscriptionNotificationValueExceedsMaxLimit)
     Poco::JSON::Stringifier::stringify(notification, jsonStream);
 
     ASSERT_NO_THROW(mVisIdentifier.HandleSubscription(jsonStream.str()));
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
@@ -278,15 +292,17 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
             return {str.cbegin(), str.cend()};
         }));
 
-    const auto err = mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
+    EXPECT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock).IsNone());
+    EXPECT_TRUE(mVisIdentifier.Start().IsNone());
 
     mVisIdentifier.WaitUntilConnected();
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetSystemIDSucceeds)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     const std::string cExpectedSystemId {"expectedSystemId"};
 
@@ -314,11 +330,13 @@ TEST_F(VisidentifierTest, GetSystemIDSucceeds)
     Tie(systemId, err) = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.IsNone()) << err.Message();
     EXPECT_STREQ(systemId.CStr(), cExpectedSystemId.c_str());
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     const std::string cExpectedSystemId {"expectedSystemId"};
 
@@ -349,11 +367,13 @@ TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
     Tie(systemId, err) = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.IsNone()) << err.Message();
     EXPECT_STREQ(systemId.CStr(), cExpectedSystemId.c_str());
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetSystemIDExceedsMaxSize)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
@@ -375,11 +395,13 @@ TEST_F(VisidentifierTest, GetSystemIDExceedsMaxSize)
 
     const auto err = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.mError.Is(ErrorEnum::eNoMemory)) << err.mError.Message();
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetSystemIDRequestFailed)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
@@ -389,11 +411,13 @@ TEST_F(VisidentifierTest, GetSystemIDRequestFailed)
 
     const auto err = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.mError.Is(ErrorEnum::eFailed)) << err.mError.Message();
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetUnitModelExceedsMaxSize)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
@@ -415,11 +439,13 @@ TEST_F(VisidentifierTest, GetUnitModelExceedsMaxSize)
 
     const auto err = mVisIdentifier.GetUnitModel();
     EXPECT_TRUE(err.mError.Is(ErrorEnum::eNoMemory)) << err.mError.Message();
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetUnitModelRequestFailed)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
@@ -429,11 +455,13 @@ TEST_F(VisidentifierTest, GetUnitModelRequestFailed)
 
     const auto err = mVisIdentifier.GetUnitModel();
     EXPECT_TRUE(err.mError.Is(ErrorEnum::eFailed)) << err.mError.Message();
+
+    ExpectStopSucceeded();
 }
 
 TEST_F(VisidentifierTest, GetSubjectsRequestFailed)
 {
-    ExpectInitSucceeded();
+    ExpectStartSucceeded();
 
     EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
@@ -445,6 +473,8 @@ TEST_F(VisidentifierTest, GetSubjectsRequestFailed)
     const auto                                                  err = mVisIdentifier.GetSubjects(subjects);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
     EXPECT_TRUE(subjects.IsEmpty());
+
+    ExpectStopSucceeded();
 }
 
 } // namespace aos::iam::visidentifier
