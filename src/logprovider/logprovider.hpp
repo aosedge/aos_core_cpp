@@ -14,7 +14,8 @@
 #include <thread>
 #include <vector>
 
-#include "archivator.hpp"
+#include <logprovider/archivator.hpp>
+
 #include "utils/journal.hpp"
 
 namespace aos::sm::logprovider {
@@ -51,7 +52,7 @@ public:
      * @param config log provider config.
      * @return Error.
      */
-    Error Init(const config::LoggingConfig& config, InstanceIDProviderItf& instanceProvider);
+    Error Init(const common::logprovider::Config& config, InstanceIDProviderItf& instanceProvider);
 
     /**
      * Starts requests processing thread.
@@ -122,7 +123,7 @@ private:
         bool                                   mCrashLog = false;
     };
 
-    std::shared_ptr<Archivator> CreateArchivator();
+    std::shared_ptr<common::logprovider::Archivator> CreateArchivator();
     // to be overridden in unit tests.
     virtual std::shared_ptr<utils::JournalItf> CreateJournal();
 
@@ -147,10 +148,10 @@ private:
     void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
     void AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
 
-    void ProcessJournalLogs(
-        utils::JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator);
+    void ProcessJournalLogs(utils::JournalItf& journal, Optional<Time> till, bool needUnitField,
+        common::logprovider::Archivator& archivator);
     void ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
-        const std::vector<std::string>& instanceIDs, Archivator& archivator);
+        const std::vector<std::string>& instanceIDs, common::logprovider::Archivator& archivator);
 
     std::string FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit);
 
@@ -158,9 +159,9 @@ private:
     std::string GetUnitNameFromLog(const utils::JournalEntry& entry);
     std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
 
-    InstanceIDProviderItf* mInstanceProvider = nullptr;
-    config::LoggingConfig  mConfig           = {};
-    LogObserverItf*        mLogReceiver      = nullptr;
+    InstanceIDProviderItf*      mInstanceProvider = nullptr;
+    common::logprovider::Config mConfig           = {};
+    LogObserverItf*             mLogReceiver      = nullptr;
 
     std::thread               mWorkerThread;
     std::queue<GetLogRequest> mLogRequests;

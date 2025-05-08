@@ -10,7 +10,7 @@ set(TARGET logprovider)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES logprovider.cpp archivator.cpp)
+set(SOURCES logprovider.cpp)
 
 # ######################################################################################################################
 # Target
@@ -33,4 +33,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC utils aoscommon Poco::JSON Poco::Foundation)
+target_link_libraries(${TARGET} PUBLIC utils aoscommon aoslogprovider Poco::JSON Poco::Foundation)

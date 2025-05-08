@@ -21,7 +21,7 @@ namespace aos::sm::logprovider {
  * Public
  **********************************************************************************************************************/
 
-Error LogProvider::Init(const config::LoggingConfig& config, InstanceIDProviderItf& instanceProvider)
+Error LogProvider::Init(const common::logprovider::Config& config, InstanceIDProviderItf& instanceProvider)
 {
     LOG_DBG() << "Init log provider";
 
@@ -149,9 +149,9 @@ Error LogProvider::Unsubscribe(LogObserverItf& observer)
  * Private
  **********************************************************************************************************************/
 
-std::shared_ptr<Archivator> LogProvider::CreateArchivator()
+std::shared_ptr<common::logprovider::Archivator> LogProvider::CreateArchivator()
 {
-    return std::make_shared<Archivator>(*mLogReceiver, mConfig);
+    return std::make_shared<common::logprovider::Archivator>(*mLogReceiver, mConfig);
 }
 
 std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
@@ -348,7 +348,7 @@ void LogProvider::SeekToTime(utils::JournalItf& journal, const Optional<Time>& f
 }
 
 void LogProvider::ProcessJournalLogs(
-    utils::JournalItf& journal, Optional<Time> till, bool needUnitField, Archivator& archivator)
+    utils::JournalItf& journal, Optional<Time> till, bool needUnitField, common::logprovider::Archivator& archivator)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();
@@ -363,8 +363,8 @@ void LogProvider::ProcessJournalLogs(
     }
 }
 
-void LogProvider::ProcessJournalCrashLogs(
-    utils::JournalItf& journal, Time crashTime, const std::vector<std::string>& instanceIDs, Archivator& archivator)
+void LogProvider::ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
+    const std::vector<std::string>& instanceIDs, common::logprovider::Archivator& archivator)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();

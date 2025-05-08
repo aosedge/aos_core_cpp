@@ -18,6 +18,7 @@
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
 #include <iamclient/publicservicehandler.hpp>
+#include <logprovider/config.hpp>
 #include <utils/time.hpp>
 
 #include "smclient/config.hpp"
@@ -27,14 +28,6 @@ namespace aos::sm::config {
 /***********************************************************************************************************************
  * Types
  **********************************************************************************************************************/
-
-/*
- * Logging configuration.
- */
-struct LoggingConfig {
-    uint64_t mMaxPartSize;
-    uint64_t mMaxPartCount;
-};
 
 /*
  * Journal alerts configuration.
@@ -57,21 +50,21 @@ struct MigrationConfig {
  * Config instance.
  */
 struct Config {
-    common::iamclient::Config  mIAMClientConfig;
-    sm::layermanager::Config   mLayerManagerConfig;
-    sm::servicemanager::Config mServiceManagerConfig;
-    sm::launcher::Config       mLauncherConfig;
-    smclient::Config           mSMClientConfig;
-    std::string                mCertStorage;
-    std::string                mIAMProtectedServerURL;
-    std::string                mWorkingDir;
-    uint32_t                   mServicesPartLimit;
-    uint32_t                   mLayersPartLimit;
-    std::string                mNodeConfigFile;
-    monitoring::Config         mMonitoring;
-    LoggingConfig              mLogging;
-    JournalAlertsConfig        mJournalAlerts;
-    MigrationConfig            mMigration;
+    common::iamclient::Config   mIAMClientConfig;
+    sm::layermanager::Config    mLayerManagerConfig;
+    sm::servicemanager::Config  mServiceManagerConfig;
+    sm::launcher::Config        mLauncherConfig;
+    smclient::Config            mSMClientConfig;
+    std::string                 mCertStorage;
+    std::string                 mIAMProtectedServerURL;
+    std::string                 mWorkingDir;
+    uint32_t                    mServicesPartLimit;
+    uint32_t                    mLayersPartLimit;
+    std::string                 mNodeConfigFile;
+    monitoring::Config          mMonitoring;
+    common::logprovider::Config mLogging;
+    JournalAlertsConfig         mJournalAlerts;
+    MigrationConfig             mMigration;
 };
 
 /*******************************************************************************
