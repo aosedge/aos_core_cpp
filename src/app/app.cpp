@@ -162,56 +162,8 @@ void App::initialize(Application& self)
 
     Application::initialize(self);
 
-    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_IAM_VERSION;
-
-    // Initialize Aos modules
-
-    auto config = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
-    AOS_ERROR_CHECK_AND_THROW(config.mError, "can't parse config");
-
-    err = mDatabase.Init(config.mValue.mDatabase);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
-
-    err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
-
-    err = InitIdentifierModule(config.mValue.mIdentifier);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
-
-    if (config.mValue.mEnablePermissionsHandler) {
-        mPermHandler = std::make_unique<permhandler::PermHandler>();
-    }
-
-    err = mCryptoProvider.Init();
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
-
-    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
-
-    err = InitCertModules(config.mValue);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
-
-    err = mNodeManager.Init(mDatabase);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node manager");
-
-    err = mProvisionManager.Init(mIAMServer, mCertHandler);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
-
-    err = mCertProvider.Init(mCertHandler);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert provider");
-
-    err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
-        mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, mProvisioning);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
-
-    const auto& clientConfig = config.mValue.mIAMClient;
-    if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
-        mIAMClient = std::make_unique<iamclient::IAMClient>();
-
-        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
-            mCryptoProvider, mNodeInfoProvider, mProvisioning);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
-    }
+    Init();
+    Start();
 
     // Notify systemd
 
@@ -223,6 +175,8 @@ void App::initialize(Application& self)
 
 void App::uninitialize()
 {
+    Stop();
+
     Application::uninitialize();
 }
 
@@ -267,6 +221,103 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+void App::Init()
+{
+    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_IAM_VERSION;
+
+    // Initialize Aos modules
+
+    auto config = config::ParseConfig(mConfigFile.empty() ? cDefaultConfigFile : mConfigFile);
+    AOS_ERROR_CHECK_AND_THROW(config.mError, "can't parse config");
+
+    auto err = mDatabase.Init(config.mValue.mDatabase);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
+
+    err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
+
+    err = InitIdentifierModule(config.mValue.mIdentifier);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
+
+    if (config.mValue.mEnablePermissionsHandler) {
+        mPermHandler = std::make_unique<permhandler::PermHandler>();
+    }
+
+    err = mCryptoProvider.Init();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
+
+    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
+
+    err = InitCertModules(config.mValue);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
+
+    err = mNodeManager.Init(mDatabase);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node manager");
+
+    err = mProvisionManager.Init(mIAMServer, mCertHandler);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
+
+    err = mCertProvider.Init(mCertHandler);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert provider");
+
+    err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
+        mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, mProvisioning);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
+
+    const auto& clientConfig = config.mValue.mIAMClient;
+    if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
+        mIAMClient = std::make_unique<iamclient::IAMClient>();
+
+        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
+            mCryptoProvider, mNodeInfoProvider, mProvisioning);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
+    }
+}
+
+void App::Start()
+{
+    LOG_INF() << "Start IAM";
+
+    if (mIdentifier) {
+        auto err = mIdentifier->Start();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't start identifier module");
+
+        mCleanupManager.AddCleanup([this]() {
+            if (auto err = mIdentifier->Stop(); !err.IsNone()) {
+                LOG_ERR() << "Can't stop identifier module: err=" << err;
+            }
+        });
+    }
+
+    auto err = mIAMServer.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start IAM server");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mIAMServer.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop IAM server: err=" << err;
+        }
+    });
+
+    if (mIAMClient) {
+        err = mIAMClient->Start();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't start IAM client");
+
+        mCleanupManager.AddCleanup([this]() {
+            if (auto err = mIAMClient->Stop(); !err.IsNone()) {
+                LOG_ERR() << "Can't stop IAM client: err=" << err;
+            }
+        });
+    }
+}
+
+void App::Stop()
+{
+    LOG_INF() << "Stop IAM";
+
+    mCleanupManager.ExecuteCleanups();
+}
 
 void App::HandleHelp(const std::string& name, const std::string& value)
 {

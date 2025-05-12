@@ -17,6 +17,7 @@
 #include <aos/iam/permhandler.hpp>
 #include <aos/iam/provisionmanager.hpp>
 #include <logger/logger.hpp>
+#include <utils/cleanupmanager.hpp>
 
 #include "database/database.hpp"
 #include "iamclient/iamclient.hpp"
@@ -49,6 +50,9 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
+    void  Init();
+    void  Start();
+    void  Stop();
     Error InitCertModules(const config::Config& config);
     Error InitIdentifierModule(const config::IdentifierConfig& config);
 
@@ -67,6 +71,7 @@ private:
     std::unique_ptr<permhandler::PermHandler>      mPermHandler;
     std::unique_ptr<iamclient::IAMClient>          mIAMClient;
     std::unique_ptr<identhandler::IdentHandlerItf> mIdentifier;
+    aos::common::utils::CleanupManager             mCleanupManager;
 
     bool        mStopProcessing = false;
     bool        mProvisioning   = false;
