@@ -11,6 +11,9 @@
 #include <logger/logmodule.hpp>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
+#include <aos/common/cloudprotocol/log.hpp>
+#include <pbconvert/sm.hpp>
+
 #include "cmconnection.hpp"
 #include "communication/utils.hpp"
 
@@ -55,6 +58,10 @@ Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, Communi
 
     mHandler = &handler;
 
+    if (auto err = mArchiveManager.Init(*this, cfg.mLogProviderConfig); !err.IsNone()) {
+        return err;
+    }
+
     try {
         mCMCommOpenChannel = comManager.CreateChannel(cfg.mCMConfig.mOpenPort);
         if (certProvider != nullptr) {
@@ -83,6 +90,10 @@ Error CMConnection::Start()
 {
     LOG_DBG() << "Start CM connection";
 
+    if (auto err = mArchiveManager.Start(); !err.IsNone()) {
+        return err;
+    }
+
     StartTask([this] { RunOpenChannel(); });
     StartTask([this] { RunSecureChannel(); });
 
@@ -91,6 +102,10 @@ Error CMConnection::Start()
 
 Error CMConnection::Stop()
 {
+    if (auto err = mArchiveManager.Stop(); !err.IsNone()) {
+        return err;
+    }
+
     {
         std::lock_guard lock {mMutex};
 
@@ -114,6 +129,28 @@ Error CMConnection::Stop()
 
     mTaskManager.cancelAll();
     mTaskManager.joinAll();
+
+    return ErrorEnum::eNone;
+}
+
+// cppcheck-suppress unusedFunction
+Error CMConnection::OnLogReceived(const cloudprotocol::PushLog& log)
+{
+    LOG_DBG() << "On log received: id=" << log.mLogID << ", status=" << log.mStatus << ", part=" << log.mPart
+              << ", count=" << log.mPartsCount << ", size=" << log.mContent.Size();
+
+    auto outMsg            = std::make_unique<servicemanager::v4::SMOutgoingMessages>();
+    *outMsg->mutable_log() = common::pbconvert::ConvertToProto(log);
+
+    std::vector<uint8_t> data(outMsg->ByteSizeLong());
+
+    if (!outMsg->SerializeToArray(data.data(), static_cast<int>(data.size()))) {
+        return Error(ErrorEnum::eFailed, "failed to serialize message");
+    }
+
+    if (auto err = mHandler->SendMessages(std::move(data)); !err.IsNone()) {
+        return err;
+    }
 
     return ErrorEnum::eNone;
 }
@@ -212,6 +249,17 @@ Error CMConnection::ReadSecureMsgHandler()
                     LOG_ERR() << "Failed to download: error=" << err;
                 }
             });
+
+            continue;
+        }
+
+        if (outgoingMessages.has_log()) {
+            LOG_DBG() << "Log message received";
+
+            err = mArchiveManager.HandleLog(std::make_shared<servicemanager::v4::LogData>(outgoingMessages.log()));
+            if (!err.IsNone()) {
+                LOG_ERR() << "Failed to handle log message: error=" << err;
+            }
 
             continue;
         }

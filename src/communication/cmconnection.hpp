@@ -27,6 +27,7 @@
 #include "downloader/downloader.hpp"
 #include "filechunker/filechunker.hpp"
 #include "imageunpacker/imageunpacker.hpp"
+#include "logprovider/archivemanager.hpp"
 #include "types.hpp"
 
 namespace aos::mp::communication {
@@ -34,7 +35,7 @@ namespace aos::mp::communication {
 /**
  * CM connection class.
  */
-class CMConnection {
+class CMConnection : public sm::logprovider::LogObserverItf {
 public:
     /**
      * Constructor.
@@ -66,6 +67,14 @@ public:
      * @return Error.
      */
     Error Stop();
+
+    /**
+     * On log received event handler.
+     *
+     * @param log log.
+     * @return Error.
+     */
+    Error OnLogReceived(const cloudprotocol::PushLog& log) override;
 
 private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
@@ -138,9 +147,10 @@ private:
     std::string                                 mDownloadDir;
     std::optional<imageunpacker::ImageUnpacker> mImageUnpacker;
 
-    std::atomic<bool>       mShutdown {};
-    std::mutex              mMutex;
-    std::condition_variable mCondVar;
+    std::atomic<bool>           mShutdown {};
+    std::mutex                  mMutex;
+    std::condition_variable     mCondVar;
+    logprovider::ArchiveManager mArchiveManager;
 };
 
 } // namespace aos::mp::communication

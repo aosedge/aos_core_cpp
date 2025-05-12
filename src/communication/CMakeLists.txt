@@ -53,6 +53,7 @@ target_link_libraries(
            aosutils
            filechunker
            imageunpacker
+           logprovider
 )
 
 if(WITH_VCHAN)
