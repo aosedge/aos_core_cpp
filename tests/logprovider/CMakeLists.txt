@@ -1,24 +1,27 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Common include directories
-# ######################################################################################################################
-
-include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+set(TARGET logprovider_test)
 
 # ######################################################################################################################
-# Add tests
+# Sources
 # ######################################################################################################################
 
-add_subdirectory(cmclient)
-add_subdirectory(communication)
-add_subdirectory(config)
-add_subdirectory(filechunker)
-add_subdirectory(iamclient)
-add_subdirectory(imageunpacker)
-add_subdirectory(logprovider)
+set(SOURCES archivemanager_test.cpp)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_executable(${TARGET} ${SOURCES})
+
+gtest_discover_tests(${TARGET})
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+target_link_libraries(${TARGET} logprovider GTest::gmock_main)
