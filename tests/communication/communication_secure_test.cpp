@@ -118,14 +118,16 @@ protected:
         // OSSL_trace_set_prefix(OSSL_TRACE_CATEGORY_TLS, "BEGIN TRACE[TLS]");
         // OSSL_trace_set_suffix(OSSL_TRACE_CATEGORY_TLS, "END TRACE[TLS]");
 
-        mConfig.mIAMConfig.mOpenPort   = 8081;
-        mConfig.mIAMConfig.mSecurePort = 8080;
-        mConfig.mVChan.mIAMCertStorage = "server";
-        mConfig.mVChan.mSMCertStorage  = "server";
-        mConfig.mDownload.mDownloadDir = "download";
-        mConfig.mImageStoreDir         = "images";
-        mConfig.mCMConfig.mOpenPort    = 30001;
-        mConfig.mCMConfig.mSecurePort  = 30002;
+        mConfig.mIAMConfig.mOpenPort             = 8081;
+        mConfig.mIAMConfig.mSecurePort           = 8080;
+        mConfig.mVChan.mIAMCertStorage           = "server";
+        mConfig.mVChan.mSMCertStorage            = "server";
+        mConfig.mDownload.mDownloadDir           = "download";
+        mConfig.mImageStoreDir                   = "images";
+        mConfig.mCMConfig.mOpenPort              = 30001;
+        mConfig.mCMConfig.mSecurePort            = 30002;
+        mConfig.mLogProviderConfig.mMaxPartSize  = 1024;
+        mConfig.mLogProviderConfig.mMaxPartCount = 10;
 
         mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
 
@@ -555,6 +557,68 @@ TEST_F(CommunicationSecureManagerTest, TestDownload)
     }
 
     EXPECT_TRUE(foundService);
+
+    mCommManager->Stop();
+    mCommManagerClient->Close();
+    mCMConnection.Stop();
+    mCMSecurePipe->Close();
+}
+
+TEST_F(CommunicationSecureManagerTest, TestSendLog)
+{
+    CMConnection mCMConnection {};
+
+    mCMClientChannel = mCommManagerClient->CreateCommChannel(30002);
+    mCMSecurePipe.emplace(*mCMClientChannel, mKeyURI, mCertPEM, CERTIFICATES_MP_DIR "/ca.cer");
+
+    auto err = mCommManager->Init(mConfig, mServer.value(), &mCertLoader, &mCryptoProvider);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    err = mCMConnection.Init(mConfig, CMHandler, *mCommManager, &mDownloader, &mCertProvider.value());
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+
+    // connect to CM
+    EXPECT_EQ(mCMSecurePipe->Connect(), aos::ErrorEnum::eNone);
+
+    struct LogData {
+        std::string                   mLogId;
+        std::string                   mLogMessage;
+        aos::cloudprotocol::LogStatus mStatus;
+    } testLogData[] = {
+        {"id1", "test log message1\n", aos::cloudprotocol::LogStatusEnum::eOk},
+        {"id1", "test log message2\n", aos::cloudprotocol::LogStatusEnum::eOk},
+        {"id1", "", aos::cloudprotocol::LogStatusEnum::eEmpty},
+    };
+
+    for (const auto& logData : testLogData) {
+        servicemanager::v4::SMOutgoingMessages outgoingMsg;
+        auto&                                  log = *outgoingMsg.mutable_log();
+
+        log.set_log_id(logData.mLogId);
+        log.set_data(logData.mLogMessage);
+        log.set_status(logData.mStatus.ToString().CStr());
+
+        std::vector<uint8_t> messageData(outgoingMsg.ByteSizeLong());
+        EXPECT_TRUE(outgoingMsg.SerializeToArray(messageData.data(), messageData.size()));
+
+        auto protobufHeader = PrepareProtobufHeader(messageData.size());
+        protobufHeader.insert(protobufHeader.end(), messageData.begin(), messageData.end());
+        EXPECT_EQ(mCMSecurePipe->Write(protobufHeader), aos::ErrorEnum::eNone);
+    }
+
+    auto [receivedMsg, errReceive] = CMHandler.GetOutgoingMessages();
+    EXPECT_EQ(errReceive, aos::ErrorEnum::eNone);
+
+    servicemanager::v4::SMOutgoingMessages outgoingMsg;
+    EXPECT_TRUE(outgoingMsg.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
+
+    EXPECT_EQ(outgoingMsg.SMOutgoingMessage_case(), servicemanager::v4::SMOutgoingMessages::kLog);
+    EXPECT_EQ(outgoingMsg.log().log_id(), "id1");
+    EXPECT_EQ(outgoingMsg.log().status(),
+        aos::cloudprotocol::LogStatus(aos::cloudprotocol::LogStatusEnum::eOk).ToString().CStr());
 
     mCommManager->Stop();
     mCommManagerClient->Close();
