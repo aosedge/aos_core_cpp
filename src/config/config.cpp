@@ -17,7 +17,12 @@ namespace aos::mp::config {
  * Static
  **********************************************************************************************************************/
 
-static Duration GetDuration(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key)
+namespace {
+
+constexpr auto cDefaultMaxLogPartSize  = 10 * 1024;
+constexpr auto cDefaultMaxLogPartCount = 10;
+
+Duration GetDuration(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& key)
 {
     auto value = object.GetValue<std::string>(key);
 
@@ -33,7 +38,7 @@ static Duration GetDuration(const common::utils::CaseInsensitiveObjectWrapper& o
     return ret.mValue;
 }
 
-static Download ParseDownloader(const common::utils::CaseInsensitiveObjectWrapper& object)
+Download ParseDownloader(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return Download {
         object.GetValue<std::string>("DownloadDir"),
@@ -43,7 +48,7 @@ static Download ParseDownloader(const common::utils::CaseInsensitiveObjectWrappe
     };
 }
 
-static VChanConfig ParseVChanConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+VChanConfig ParseVChanConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return VChanConfig {
         object.GetValue<int>("Domain"),
@@ -54,7 +59,7 @@ static VChanConfig ParseVChanConfig(const common::utils::CaseInsensitiveObjectWr
     };
 }
 
-static IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return IAMConfig {
         object.GetValue<std::string>("IAMPublicServerURL"),
@@ -65,7 +70,24 @@ static IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrappe
     };
 }
 
-static CMConfig ParseCMConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+common::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    if (!object.Has("LogProvider")) {
+        return common::logprovider::Config {
+            cDefaultMaxLogPartSize,
+            cDefaultMaxLogPartCount,
+        };
+    }
+
+    auto logProviderObject = object.GetObject("LogProvider");
+
+    return common::logprovider::Config {
+        logProviderObject.GetValue<uint64_t>("MaxPartSize", cDefaultMaxLogPartSize),
+        logProviderObject.GetValue<uint64_t>("MaxPartCount", cDefaultMaxLogPartCount),
+    };
+}
+
+CMConfig ParseCMConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return CMConfig {
         object.GetValue<std::string>("CMServerURL"),
@@ -73,6 +95,8 @@ static CMConfig ParseCMConfig(const common::utils::CaseInsensitiveObjectWrapper&
         object.GetValue<int>("SecurePort"),
     };
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public functions
@@ -98,14 +122,15 @@ RetWithError<Config> ParseConfig(const std::string& filename)
     try {
         common::utils::CaseInsensitiveObjectWrapper object(result.mValue.extract<Poco::JSON::Object::Ptr>());
 
-        config.mWorkingDir    = object.GetValue<std::string>("WorkingDir");
-        config.mVChan         = ParseVChanConfig(object.GetObject("VChan"));
-        config.mCMConfig      = ParseCMConfig(object.GetObject("CMConfig"));
-        config.mCertStorage   = object.GetValue<std::string>("CertStorage");
-        config.mCACert        = object.GetValue<std::string>("CACert");
-        config.mImageStoreDir = object.GetValue<std::string>("ImageStoreDir");
-        config.mDownload      = ParseDownloader(object.GetObject("Downloader"));
-        config.mIAMConfig     = ParseIAMConfig(object.GetObject("IAMConfig"));
+        config.mWorkingDir        = object.GetValue<std::string>("WorkingDir");
+        config.mVChan             = ParseVChanConfig(object.GetObject("VChan"));
+        config.mCMConfig          = ParseCMConfig(object.GetObject("CMConfig"));
+        config.mCertStorage       = object.GetValue<std::string>("CertStorage");
+        config.mCACert            = object.GetValue<std::string>("CACert");
+        config.mImageStoreDir     = object.GetValue<std::string>("ImageStoreDir");
+        config.mDownload          = ParseDownloader(object.GetObject("Downloader"));
+        config.mIAMConfig         = ParseIAMConfig(object.GetObject("IAMConfig"));
+        config.mLogProviderConfig = ParseLogProviderConfig(object);
     } catch (const std::exception& e) {
         return {config, Error(ErrorEnum::eFailed, e.what())};
     }
