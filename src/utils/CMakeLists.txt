@@ -16,6 +16,7 @@ set(SOURCES
     cryptohelper.cpp
     exception.cpp
     filesystem.cpp
+    fsplatform.cpp
     grpchelper.cpp
     image.cpp
     json.cpp
