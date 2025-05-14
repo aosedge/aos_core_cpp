@@ -146,6 +146,12 @@ constexpr auto cTestNodeConfigJSON = R"({
             "maxThreshold": 400
         }
     },
+    "resourceRatios": {
+        "cpu": 50,
+        "ram": 51,
+        "storage": 52,
+        "state": 53
+    },
     "nodeType": "mainType",
     "priority": 1,
     "version": "1.0.0"
@@ -179,6 +185,18 @@ AlertRules CreateAlerts()
     alerts.mUpload.SetValue(AlertRulePoints {6 * aos::Time::cSeconds, 300, 400});
 
     return alerts;
+}
+
+ResourceRatios CreateResourceRatios()
+{
+    ResourceRatios ratios;
+
+    ratios.mCPU.SetValue(50);
+    ratios.mRAM.SetValue(51);
+    ratios.mStorage.SetValue(52);
+    ratios.mState.SetValue(53);
+
+    return ratios;
 }
 
 sm::resourcemanager::NodeConfig CreateNodeConfig()
@@ -264,6 +282,8 @@ sm::resourcemanager::NodeConfig CreateNodeConfig()
 
     nodeConfig.mNodeConfig.mAlertRules.SetValue(CreateAlerts());
 
+    nodeConfig.mNodeConfig.mResourceRatios.SetValue(CreateResourceRatios());
+
     return nodeConfig;
 }
 
@@ -308,6 +328,20 @@ void CompareNodeConfig(
         << "Alert rules download mismatch";
     EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mUpload, expectedNodeConfig.mNodeConfig.mAlertRules->mUpload)
         << "Alert rules upload mismatch";
+
+    // Compare resource ratios
+
+    ASSERT_TRUE(nodeConfig.mNodeConfig.mResourceRatios.HasValue()) << "Resource ratios not set";
+    ASSERT_TRUE(expectedNodeConfig.mNodeConfig.mResourceRatios.HasValue()) << "Expected resource ratios not set";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mCPU, expectedNodeConfig.mNodeConfig.mResourceRatios->mCPU)
+        << "Resource ratios cpu mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mRAM, expectedNodeConfig.mNodeConfig.mResourceRatios->mRAM)
+        << "Resource ratios ram mismatch";
+    EXPECT_EQ(
+        nodeConfig.mNodeConfig.mResourceRatios->mStorage, expectedNodeConfig.mNodeConfig.mResourceRatios->mStorage)
+        << "Resource ratios storage mismatch";
+    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mState, expectedNodeConfig.mNodeConfig.mResourceRatios->mState)
+        << "Resource ratios state mismatch";
 }
 
 } // namespace
