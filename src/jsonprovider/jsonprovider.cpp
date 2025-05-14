@@ -373,6 +373,52 @@ Poco::JSON::Object AlertRulesToJSON(const AlertRules& rules)
     return object;
 }
 
+ResourceRatios ResourceRatiosFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+{
+    ResourceRatios ratios = {};
+
+    if (object.Has("cpu")) {
+        ratios.mCPU.SetValue(object.GetValue<double>("cpu"));
+    }
+
+    if (object.Has("ram")) {
+        ratios.mRAM.SetValue(object.GetValue<double>("ram"));
+    }
+
+    if (object.Has("storage")) {
+        ratios.mStorage.SetValue(object.GetValue<double>("storage"));
+    }
+
+    if (object.Has("state")) {
+        ratios.mState.SetValue(object.GetValue<double>("state"));
+    }
+
+    return ratios;
+}
+
+Poco::JSON::Object ResourceRatiosToJSON(const ResourceRatios& ratios)
+{
+    Poco::JSON::Object object;
+
+    if (ratios.mCPU.HasValue()) {
+        object.set("cpu", ratios.mCPU.GetValue());
+    }
+
+    if (ratios.mRAM.HasValue()) {
+        object.set("ram", ratios.mRAM.GetValue());
+    }
+
+    if (ratios.mStorage.HasValue()) {
+        object.set("storage", ratios.mStorage.GetValue());
+    }
+
+    if (ratios.mState.HasValue()) {
+        object.set("state", ratios.mState.GetValue());
+    }
+
+    return object;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -393,6 +439,10 @@ Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& node
 
         if (nodeConfig.mNodeConfig.mAlertRules.HasValue()) {
             object.set("alertRules", AlertRulesToJSON(*nodeConfig.mNodeConfig.mAlertRules));
+        }
+
+        if (nodeConfig.mNodeConfig.mResourceRatios.HasValue()) {
+            object.set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mNodeConfig.mResourceRatios));
         }
 
         json = utils::Stringify(object).c_str();
@@ -425,6 +475,11 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::
         if (object.Has("alertRules")) {
             nodeConfig.mNodeConfig.mAlertRules.SetValue(AlertRulesFromJSON(object.GetObject("alertRules")));
         }
+
+        if (object.Has("resourceRatios")) {
+            nodeConfig.mNodeConfig.mResourceRatios.SetValue(ResourceRatiosFromJSON(object.GetObject("resourceRatios")));
+        }
+
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
