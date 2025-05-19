@@ -15,7 +15,7 @@
 
 #include <logger/logger.hpp>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 #include <downloader/downloader.hpp>
 #include <iamclient/publicservicehandler.hpp>
@@ -70,7 +70,7 @@ private:
     bool                        mProvisioning   = false;
     std::string                 mConfigFile;
 
-    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider mCryptoProvider;
     aos::crypto::CertLoader            mCertLoader;
     aos::pkcs11::PKCS11Manager         mPKCS11Manager;
 
