@@ -45,7 +45,7 @@ add_executable(${TARGET} ${SOURCES})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aoscommon app)
+target_link_libraries(${TARGET} aoscrypto aoscommon app)
 
 # ######################################################################################################################
 # Install

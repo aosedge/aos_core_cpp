@@ -77,5 +77,4 @@ target_link_libraries(
     aosiam
     aosutils
     communication
-    mbedtls
 )

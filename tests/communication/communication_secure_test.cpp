@@ -13,7 +13,7 @@
 #include <openssl/err.h>
 #include <openssl/trace.h>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
@@ -251,7 +251,7 @@ protected:
         std::filesystem::remove_all(SOFTHSM_BASE_MP_DIR "/tokens");
     }
 
-    aos::crypto::MbedTLSCryptoProvider  mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider  mCryptoProvider;
     aos::crypto::CertLoader             mCertLoader;
     aos::iam::certhandler::CertHandler  mCertHandler;
     aos::iam::certhandler::CertInfo     mClientInfo;

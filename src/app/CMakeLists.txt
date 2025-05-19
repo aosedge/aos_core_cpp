@@ -43,7 +43,6 @@ target_link_libraries(
            config
            CURL::libcurl
            iamclient
-           mbedtls
            Poco::Foundation
            Poco::Util
 )
