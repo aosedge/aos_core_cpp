@@ -43,6 +43,5 @@ target_link_libraries(
            iamserver
            nodeinfoprovider
            visidentifier
-           mbedtls
            aoslogger
 )

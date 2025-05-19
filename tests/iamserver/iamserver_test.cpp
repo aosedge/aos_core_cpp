@@ -16,7 +16,7 @@
 #include <aos/test/log.hpp>
 #include <aos/test/softhsmenv.hpp>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 #include <utils/grpchelper.hpp>
@@ -78,7 +78,7 @@ protected:
     config::IAMClientConfig mClientConfig;
 
     certhandler::CertHandler      mCertHandler;
-    crypto::MbedTLSCryptoProvider mCryptoProvider;
+    crypto::DefaultCryptoProvider mCryptoProvider;
     crypto::CertLoader            mCertLoader;
 
     // mocks
