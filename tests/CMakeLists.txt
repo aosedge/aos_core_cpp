@@ -17,6 +17,7 @@ add_subdirectory(migration)
 add_subdirectory(ocispec)
 add_subdirectory(utils)
 add_subdirectory(downloader)
+add_subdirectory(testtools)
 
 if(WITH_IAM_API OR WITH_SM_API)
     add_subdirectory(pbconvert)
