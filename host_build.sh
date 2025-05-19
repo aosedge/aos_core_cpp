@@ -43,7 +43,8 @@ cd ./build
 
 cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug \
                                                         -DWITH_TEST=ON \
-                                                        -DWITH_VCHAN=OFF
+                                                        -DWITH_VCHAN=OFF \
+                                                        -DWITH_MBEDTLS=OFF -DWITH_OPENSSL=ON
 
 #=======================================================================================================================
 print_next_step "Run make"
