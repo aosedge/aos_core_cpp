@@ -40,7 +40,8 @@ print_next_step "Run cmake"
 
 cd ./build
 
-cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON -DWITH_TEST=ON
+cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON -DWITH_TEST=ON \
+         -DWITH_MBEDTLS=OFF -DWITH_OPENSSL=ON
 
 #=======================================================================================================================
 
