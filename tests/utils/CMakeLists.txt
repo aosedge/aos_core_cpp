@@ -16,6 +16,7 @@ set(SOURCES
     cleanupmanager_test.cpp
     exception_test.cpp
     filesystem_test.cpp
+    fsplatform_test.cpp
     image_test.cpp
     json_test.cpp
     parser_test.cpp
@@ -34,4 +35,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aostestutils aosutils mbedtls GTest::gmock_main)
+target_link_libraries(${TARGET} aostestutils aosutils aostesttools mbedtls GTest::gmock_main)
