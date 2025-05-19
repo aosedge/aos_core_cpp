@@ -587,14 +587,14 @@ bool SMClient::ProcessGetSystemLogRequest(const smproto::SystemLogRequest& reque
 {
     LOG_INF() << "Process get system log request: logID=" << request.log_id().c_str();
 
-    aos::cloudprotocol::RequestLog logRequest;
+    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
 
-    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting system log request: err=" << err;
         return false;
     }
 
-    if (auto err = mLogProvider->GetSystemLog(logRequest); !err.IsNone()) {
+    if (auto err = mLogProvider->GetSystemLog(*logRequest); !err.IsNone()) {
         LOG_ERR() << "Get system log failed: err=" << err;
         return false;
     }
@@ -606,14 +606,14 @@ bool SMClient::ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& r
 {
     LOG_INF() << "Process get instance log request: logID=" << request.log_id().c_str();
 
-    aos::cloudprotocol::RequestLog logRequest;
+    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
 
-    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting instance log request: err=" << err;
         return false;
     }
 
-    if (auto err = mLogProvider->GetInstanceLog(logRequest); !err.IsNone()) {
+    if (auto err = mLogProvider->GetInstanceLog(*logRequest); !err.IsNone()) {
         LOG_ERR() << "Get instance log failed: err=" << err;
         return false;
     }
@@ -625,14 +625,14 @@ bool SMClient::ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLog
 {
     LOG_INF() << "Process get instance crash log request: logID=" << request.log_id().c_str();
 
-    aos::cloudprotocol::RequestLog logRequest;
+    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
 
-    if (auto err = common::pbconvert::ConvertToAos(request, logRequest); !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting instance crash log request: err=" << err;
         return false;
     }
 
-    if (auto err = mLogProvider->GetInstanceCrashLog(logRequest); !err.IsNone()) {
+    if (auto err = mLogProvider->GetInstanceCrashLog(*logRequest); !err.IsNone()) {
         LOG_ERR() << "Get instance crash log failed: err=" << err;
         return false;
     }
