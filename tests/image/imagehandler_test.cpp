@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/test/log.hpp>
 #include <utils/json.hpp>
 
@@ -324,7 +324,7 @@ protected:
 
     void TearDown() override { std::filesystem::remove_all(cTestDirRoot); }
 
-    aos::crypto::MbedTLSCryptoProvider mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider mCryptoProvider;
     oci::OCISpecMock                   mOCISpec;
     spaceallocator::SpaceAllocatorStub mSpaceAllocator;
     ImageHandler                       mImageHandler;

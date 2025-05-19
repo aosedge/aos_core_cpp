@@ -9,7 +9,7 @@
 
 #include <optional>
 
-#include <aos/common/crypto/mbedtls/cryptoprovider.hpp>
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
 #include <aos/sm/launcher.hpp>
 #include <aos/sm/layermanager.hpp>
@@ -79,7 +79,7 @@ public:
 private:
     config::Config                                                       mConfig = {};
     aos::crypto::CertLoader                                              mCertLoader;
-    aos::crypto::MbedTLSCryptoProvider                                   mCryptoProvider;
+    aos::crypto::DefaultCryptoProvider                                   mCryptoProvider;
     aos::monitoring::ResourceMonitor                                     mResourceMonitor;
     aos::pkcs11::PKCS11Manager                                           mPKCS11Manager;
     aos::spaceallocator::SpaceAllocator<cMaxNumLayers>                   mLayersSpaceAllocator;
