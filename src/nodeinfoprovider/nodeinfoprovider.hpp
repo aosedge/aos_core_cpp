@@ -64,6 +64,7 @@ public:
     Error UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
 
 private:
+    Error InitOSType(const iam::config::NodeInfoConfig& config);
     Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
     Error InitPartitionInfo(const iam::config::NodeInfoConfig& config);
     Error NotifyNodeStatusChanged();

@@ -8,6 +8,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <sys/utsname.h>
 #include <thread>
 
 #include <Poco/Environment.h>
@@ -70,6 +71,7 @@ core id		: 0
 cpu cores	: 1
 )";
 constexpr auto    cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
+constexpr auto    cEmptyProcFileContent        = R"()";
 constexpr auto    cMemInfoFileContent          = "MemTotal:       16384 kB";
 constexpr auto    cExpectedMemSizeBytes        = 16384 * 1024;
 const NodeStatus  cProvisionedStatus           = NodeStatusEnum::eProvisioned;
@@ -89,11 +91,23 @@ iam::config::NodeInfoConfig CreateConfig()
     config.mNodeIDPath            = cNodeIDPath;
     config.mNodeName              = "node-name";
     config.mMaxDMIPS              = 1000;
+    config.mOSType                = "testOS";
 
     config.mAttrs      = {{"attr1", "value1"}, {"attr2", "value2"}};
     config.mPartitions = {cPartitionsInfoConfig.cbegin(), cPartitionsInfoConfig.cend()};
 
     return config;
+}
+
+std::string GetCPUArch()
+{
+    struct utsname buffer;
+
+    if (auto ret = uname(&buffer); ret != 0) {
+        return "unknown";
+    }
+
+    return buffer.machine;
 }
 
 } // namespace
@@ -169,7 +183,7 @@ TEST_F(NodeInfoProviderTest, InitFailsIfMemInfoFileIsEmpty)
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
 }
 
-TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoFileNotFound)
+TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoFileNotFound)
 {
     NodeInfoProvider provider;
 
@@ -177,10 +191,20 @@ TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoFileNotFound)
     std::filesystem::remove(cCPUInfoPath);
 
     auto err = provider.Init(CreateConfig());
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
+    EXPECT_TRUE(err.IsNone());
+
+    NodeInfo nodeInfo;
+
+    err = provider.GetNodeInfo(nodeInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
+
+    ASSERT_EQ(nodeInfo.mCPUs.Size(), 1) << "Invalid number of CPUs";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1) << "Invalid number of cores";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
 }
 
-TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoCorrupted)
+TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoCorrupted)
 {
     NodeInfoProvider provider;
 
@@ -194,7 +218,17 @@ TEST_F(NodeInfoProviderTest, InitFailsIfCPUInfoCorrupted)
     cpuInfoFile.close();
 
     auto err = provider.Init(CreateConfig());
-    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
+    EXPECT_TRUE(err.IsNone());
+
+    NodeInfo nodeInfo;
+
+    err = provider.GetNodeInfo(nodeInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
+
+    ASSERT_EQ(nodeInfo.mCPUs.Size(), 1) << "Invalid number of CPUs";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1) << "Invalid number of cores";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
@@ -209,6 +243,35 @@ TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
 
     auto err = provider.Init(config);
     EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << "Init should return no memory error, err = " << err.Message();
+}
+
+TEST_F(NodeInfoProviderTest, InitSucceedsOnNonStandardProcFile)
+{
+    NodeInfoProvider provider;
+
+    // remove test cpu info file
+    std::ofstream cpuInfoFile(cCPUInfoPath);
+    if (!cpuInfoFile.is_open()) {
+        FAIL() << "Failed to create test CPU info file";
+    }
+
+    cpuInfoFile << cEmptyProcFileContent;
+    cpuInfoFile.close();
+
+    auto err = provider.Init(CreateConfig());
+    ASSERT_TRUE(err.IsNone());
+
+    NodeInfo nodeInfo;
+
+    err = provider.GetNodeInfo(nodeInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
+
+    ASSERT_EQ(nodeInfo.mCPUs.Size(), 1) << "Invalid number of CPUs";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1) << "Invalid number of cores";
+    EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
+
+    const auto expectedCPUArch = GetCPUArch();
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), expectedCPUArch.c_str()) << "Invalid CPU architecture";
 }
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)

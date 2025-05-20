@@ -6,7 +6,9 @@
  */
 
 #include <fstream>
+#include <memory>
 #include <sys/statfs.h>
+#include <sys/utsname.h>
 #include <unordered_map>
 #include <vector>
 
@@ -34,18 +36,22 @@ class CPUInfoParser {
 public:
     Error GetCPUInfo(const std::string& path, Array<CPUInfo>& cpuInfoArray)
     {
-        if (mFile.open(path); !mFile.is_open()) {
-            return ErrorEnum::eNotFound;
-        }
-
-        if (const auto err = ParseCPUInfoFile(); !err.IsNone()) {
-            return err;
-        }
-
-        for (const auto& item : mCPUInfos) {
-            if (const auto err = cpuInfoArray.PushBack(item.second); !err.IsNone()) {
-                return err;
+        try {
+            if (const auto err = ParseCPUInfoFile(path); !err.IsNone()) {
+                LOG_WRN() << "Failed to parse CPU info file" << Log::Field(err);
             }
+
+            if (mCPUInfos.empty()) {
+                mCPUInfos.insert({0, CreateDefaultCPUInfo()});
+            }
+
+            for (const auto& item : mCPUInfos) {
+                if (const auto err = cpuInfoArray.PushBack(item.second); !err.IsNone()) {
+                    return err;
+                }
+            }
+        } catch (const std::exception& e) {
+            return common::utils::ToAosError(e);
         }
 
         return ErrorEnum::eNone;
@@ -59,7 +65,7 @@ private:
         }
 
         size_t  physicalId = 0;
-        CPUInfo cpuInfo {};
+        CPUInfo cpuInfo    = CreateDefaultCPUInfo();
 
         for (const auto& keyValue : mCurrentEntryKeyValues) {
             try {
@@ -88,13 +94,30 @@ private:
         mCurrentEntryKeyValues.clear();
     }
 
-    Error ParseCPUInfoFile() noexcept
+    void SetArchitecture(CPUInfo& cpuInfo) const
     {
+        struct utsname buffer;
+
+        if (auto ret = uname(&buffer); ret != 0) {
+            AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get CPU architecture");
+        }
+
+        auto err = cpuInfo.mArch.Assign(buffer.machine);
+        AOS_ERROR_CHECK_AND_THROW(err);
+    }
+
+    Error ParseCPUInfoFile(const std::string& path) noexcept
+    {
+        auto file = std::ifstream(path);
+        if (!file.is_open()) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+
         try {
             std::string line;
 
-            while (std::getline(mFile, line)) {
-                const auto keyValue = common::utils::ParseKeyValue(line);
+            while (std::getline(file, line)) {
+                auto keyValue = common::utils::ParseKeyValue(line);
 
                 if (!keyValue.has_value() || keyValue->mKey == "processor") {
                     PopulateCPUInfoObject();
@@ -108,13 +131,24 @@ private:
             // populate last CPU info object
             PopulateCPUInfoObject();
         } catch (const std::exception& e) {
-            return common::utils::ToAosError(e);
+            return AOS_ERROR_WRAP(common::utils::ToAosError(e));
         }
 
         return ErrorEnum::eNone;
     }
 
-    std::ifstream                        mFile;
+    CPUInfo CreateDefaultCPUInfo() const
+    {
+        CPUInfo cpuInfo = {};
+
+        cpuInfo.mNumCores   = 1;
+        cpuInfo.mNumThreads = 1;
+
+        SetArchitecture(cpuInfo);
+
+        return cpuInfo;
+    }
+
     std::unordered_map<size_t, CPUInfo>  mCPUInfos;
     std::vector<common::utils::KeyValue> mCurrentEntryKeyValues;
 };

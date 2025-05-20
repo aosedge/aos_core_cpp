@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <sys/utsname.h>
 
 #include <utils/exception.hpp>
 
@@ -21,6 +22,17 @@ namespace {
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
+
+Error GetOSType(String& osType)
+{
+    struct utsname buffer;
+
+    if (auto ret = uname(&buffer); ret != 0) {
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+    }
+
+    return osType.Assign(buffer.sysname);
+}
 
 RetWithError<NodeStatus> GetNodeStatus(const std::string& path)
 {
@@ -73,10 +85,13 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
+    if (err = InitOSType(config); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     mProvisioningStatusPath = config.mProvisioningStatePath;
     mNodeInfo.mNodeType     = config.mNodeType.c_str();
     mNodeInfo.mName         = config.mNodeName.c_str();
-    mNodeInfo.mOSType       = config.mOSType.c_str();
     mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
 
     Tie(mNodeInfo.mTotalRAM, err) = utils::GetMemTotal(config.mMemInfoPath);
@@ -186,6 +201,15 @@ Error NodeInfoProvider::UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::Node
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+Error NodeInfoProvider::InitOSType(const iam::config::NodeInfoConfig& config)
+{
+    if (!config.mOSType.empty()) {
+        return mNodeInfo.mOSType.Assign(config.mOSType.c_str());
+    }
+
+    return GetOSType(mNodeInfo.mOSType);
+}
 
 Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& config)
 {
