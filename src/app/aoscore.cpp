@@ -102,6 +102,22 @@ void AosCore::Init(const std::string& configFile)
         mSMClient, mSMClient, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource monitor");
 
+    // Initialize space allocators
+
+    err = mDownloadServicesSpaceAllocator.Init(mConfig.mServiceManagerConfig.mDownloadDir, mPlatformFS);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download services space allocator");
+
+    err = mDownloadLayersSpaceAllocator.Init(mConfig.mLayerManagerConfig.mDownloadDir, mPlatformFS);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download layers space allocator");
+
+    err = mServicesSpaceAllocator.Init(mConfig.mServiceManagerConfig.mServicesDir, mPlatformFS,
+        mConfig.mServiceManagerConfig.mPartLimit, &mServiceManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize services space allocator");
+
+    err = mLayersSpaceAllocator.Init(
+        mConfig.mLayerManagerConfig.mLayersDir, mPlatformFS, mConfig.mLayerManagerConfig.mPartLimit, &mLayerManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize layers space allocator");
+
     // Initialize image handler
 
     err = mImageHandler.Init(mCryptoProvider, mLayersSpaceAllocator, mServicesSpaceAllocator, mOCISpec);
@@ -110,13 +126,13 @@ void AosCore::Init(const std::string& configFile)
     // Initialize service manager
 
     err = mServiceManager.Init(mConfig.mServiceManagerConfig, mOCISpec, mDownloader, mDatabase, mServicesSpaceAllocator,
-        mDownloadSpaceAllocator, mImageHandler);
+        mDownloadServicesSpaceAllocator, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize service manager");
 
     // Initialize layer manager
 
-    err = mLayerManager.Init(mConfig.mLayerManagerConfig, mLayersSpaceAllocator, mDownloadSpaceAllocator, mDatabase,
-        mDownloader, mImageHandler);
+    err = mLayerManager.Init(mConfig.mLayerManagerConfig, mLayersSpaceAllocator, mDownloadLayersSpaceAllocator,
+        mDatabase, mDownloader, mImageHandler);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize layer manager");
 
     // Initialize runner

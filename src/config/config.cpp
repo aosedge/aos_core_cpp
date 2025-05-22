@@ -129,6 +129,7 @@ void ParseServiceManagerConfig(const common::utils::CaseInsensitiveObjectWrapper
 {
     config.mServicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
+    config.mPartLimit   = object.GetValue<size_t>("servicesPartLimit", 0);
 
     Error err = ErrorEnum::eNone;
 
@@ -148,6 +149,7 @@ void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
 {
     config.mLayersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers")).c_str();
     config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
+    config.mPartLimit   = object.GetValue<size_t>("layersPartLimit", 0);
 
     Error err = ErrorEnum::eNone;
 
