@@ -53,7 +53,14 @@ iamanager::v5::CPUInfo ConvertToProto(const CPUInfo& src)
     result.set_num_cores(src.mNumCores);
     result.set_num_threads(src.mNumThreads);
     result.set_arch(src.mArch.CStr());
-    result.set_arch_family(src.mArchFamily.CStr());
+
+    if (src.mArchFamily.HasValue()) {
+        result.set_arch_family(src.mArchFamily->CStr());
+    }
+
+    if (src.mMaxDMIPS.HasValue()) {
+        result.set_max_dmips(*src.mMaxDMIPS);
+    }
 
     return result;
 }
