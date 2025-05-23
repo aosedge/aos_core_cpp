@@ -89,7 +89,7 @@ CPUInfo CreateCPUInfo()
     cpuInfo.mNumCores   = 4;
     cpuInfo.mNumThreads = 4;
     cpuInfo.mArch       = "GenuineIntel";
-    cpuInfo.mArchFamily = "6";
+    cpuInfo.mArchFamily.SetValue("6");
 
     return cpuInfo;
 }

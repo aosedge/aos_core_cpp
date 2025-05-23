@@ -398,8 +398,14 @@ Poco::JSON::Array Database::ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo)
         pocoItem.set("numCores", srcItem.mNumCores);
         pocoItem.set("numThreads", srcItem.mNumThreads);
         pocoItem.set("arch", srcItem.mArch.CStr());
-        pocoItem.set("archFamily", srcItem.mArchFamily.CStr());
-        pocoItem.set("maxDMIPS", srcItem.mMaxDMIPS);
+
+        if (srcItem.mArchFamily.HasValue()) {
+            pocoItem.set("archFamily", srcItem.mArchFamily->CStr());
+        }
+
+        if (srcItem.mMaxDMIPS.HasValue()) {
+            pocoItem.set("maxDMIPS", *srcItem.mMaxDMIPS);
+        }
 
         dst.add(pocoItem);
     }
@@ -421,8 +427,14 @@ Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUIn
         dstItem.mNumCores   = cpuInfo->getValue<size_t>("numCores");
         dstItem.mNumThreads = cpuInfo->getValue<size_t>("numThreads");
         dstItem.mArch       = cpuInfo->getValue<std::string>("arch").c_str();
-        dstItem.mArchFamily = cpuInfo->getValue<std::string>("archFamily").c_str();
-        dstItem.mMaxDMIPS   = cpuInfo->getValue<uint64_t>("maxDMIPS");
+
+        if (cpuInfo->has("archFamily")) {
+            dstItem.mArchFamily.SetValue(cpuInfo->getValue<std::string>("archFamily").c_str());
+        }
+
+        if (cpuInfo->has("maxDMIPS")) {
+            dstItem.mMaxDMIPS.SetValue(cpuInfo->getValue<uint64_t>("maxDMIPS"));
+        }
 
         auto err = dst.PushBack(dstItem);
         if (!err.IsNone()) {
