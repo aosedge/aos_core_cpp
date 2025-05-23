@@ -111,8 +111,14 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
         dstCPU.mNumCores   = srcCPU.num_cores();
         dstCPU.mNumThreads = srcCPU.num_threads();
         dstCPU.mArch       = srcCPU.arch().c_str();
-        dstCPU.mArchFamily = srcCPU.arch_family().c_str();
-        dstCPU.mMaxDMIPS   = srcCPU.max_dmips();
+
+        if (!srcCPU.arch_family().empty()) {
+            dstCPU.mArchFamily.SetValue(srcCPU.arch_family().c_str());
+        }
+
+        if (srcCPU.max_dmips() > 0) {
+            dstCPU.mMaxDMIPS.SetValue(srcCPU.max_dmips());
+        }
 
         if (auto err = dst.PushBack(dstCPU); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
