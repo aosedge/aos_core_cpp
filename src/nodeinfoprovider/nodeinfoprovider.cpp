@@ -225,7 +225,7 @@ Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& co
 Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& config)
 {
     for (const auto& partition : config.mPartitions) {
-        PartitionInfo partitionInfo;
+        PartitionInfo partitionInfo = {};
 
         partitionInfo.mName = partition.mName.c_str();
         partitionInfo.mPath = partition.mPath.c_str();
