@@ -99,6 +99,12 @@ private:
     struct StartingUnitData {
         std::condition_variable mCondVar;
         UnitState               mRunState;
+        Optional<int32_t>       mExitCode;
+    };
+
+    struct RunningUnitData {
+        InstanceRunState  mRunState;
+        Optional<int32_t> mExitCode;
     };
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
@@ -109,7 +115,7 @@ private:
     std::condition_variable         mCondVar;
 
     std::map<std::string, StartingUnitData> mStartingUnits;
-    std::map<std::string, InstanceRunState> mRunningUnits;
+    std::map<std::string, RunningUnitData>  mRunningUnits;
     mutable std::vector<RunStatus>          mRunningInstances;
 
     bool mClosed = false;

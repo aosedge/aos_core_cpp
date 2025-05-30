@@ -41,8 +41,9 @@ using UnitState     = EnumStringer<UnitStateType>;
  * Unit status.
  */
 struct UnitStatus {
-    std::string mName;
-    UnitState   mActiveState;
+    std::string       mName;
+    UnitState         mActiveState;
+    Optional<int32_t> mExitCode;
 };
 
 /**
@@ -164,6 +165,7 @@ private:
 
     Error                  WaitForJobCompletion(const char* jobPath, const Duration& timeout);
     std::pair<bool, Error> HandleJobRemove(sd_bus_message* m, const char* jobPath);
+    Optional<int32_t>      GetExitCode(const char* serviceName);
 
     sd_bus*    mBus = nullptr;
     std::mutex mMutex;

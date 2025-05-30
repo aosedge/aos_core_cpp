@@ -79,11 +79,12 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
 
     while ((rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0) {
         const char* name        = nullptr;
-        const char* description = nullptr;
-        const char* loadState   = nullptr;
         const char* activeState = nullptr;
+        const char* objectPath  = nullptr;
+        const char* ignore      = nullptr;
 
-        rv = sd_bus_message_read(reply, "ssss", &name, &description, &loadState, &activeState);
+        rv = sd_bus_message_read(
+            reply, "sssssso", &name, &ignore, &ignore, &activeState, &ignore, &ignore, &objectPath);
         if (rv < 0) {
             return {{}, AOS_ERROR_WRAP(-rv)};
         }
@@ -98,9 +99,13 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
             return {{}, AOS_ERROR_WRAP(err)};
         }
 
+        if (status.mActiveState != UnitStateEnum::eActive) {
+            status.mExitCode = GetExitCode(objectPath);
+        }
+
         units.push_back(status);
 
-        rv = sd_bus_message_skip(reply, "ssouso");
+        rv = sd_bus_message_skip(reply, "uso");
         if (rv < 0) {
             return {{}, AOS_ERROR_WRAP(-rv)};
         }
@@ -167,6 +172,10 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     Tie(status.mActiveState, err) = ConvertToUnitState(activeState);
     if (!err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};
+    }
+
+    if (status.mActiveState != UnitStateEnum::eActive) {
+        status.mExitCode = GetExitCode(unitPath);
     }
 
     return {status, ErrorEnum::eNone};
@@ -329,6 +338,27 @@ std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const c
     }
 
     return {false, ErrorEnum::eNone};
+}
+
+Optional<int32_t> SystemdConn::GetExitCode(const char* serviceName)
+{
+    sd_bus_message* serviceExitReply = nullptr;
+
+    auto rv = sd_bus_get_property(mBus, cDestination, serviceName, "org.freedesktop.systemd1.Service", "ExecMainStatus",
+        nullptr, &serviceExitReply, "i");
+    if (rv < 0) {
+        return {};
+    } else {
+        auto    freeExitReply = DeferRelease(serviceExitReply, sd_bus_message_unref);
+        int32_t exitCode      = 0;
+
+        rv = sd_bus_message_read(serviceExitReply, "i", &exitCode);
+        if (rv < 0) {
+            return {};
+        }
+
+        return exitCode;
+    }
 }
 
 } // namespace aos::sm::runner
