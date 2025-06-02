@@ -21,7 +21,9 @@ CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Obj
     : mObject(object)
 {
     for (const auto& pair : *object) {
-        mKeyMap.emplace(ToLowercase(pair.first), pair.first);
+        if (!pair.second.isEmpty()) {
+            mKeyMap.emplace(ToLowercase(pair.first), pair.first);
+        }
     }
 }
 
