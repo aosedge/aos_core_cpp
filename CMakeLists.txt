@@ -13,14 +13,21 @@ project("aos_core_cpp")
 # Options
 # ######################################################################################################################
 
+set(AOS_EXTERNAL_DIR
+    "external"
+    CACHE STRING "path where external dependencies are located"
+)
+
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
-option(WITH_DOC "build with documenation" OFF)
+option(WITH_DOC "build with documentation" OFF)
 
 message(STATUS)
 message(STATUS "${CMAKE_PROJECT_NAME} configuration:")
 message(STATUS "CMAKE_BUILD_TYPE              = ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_INSTALL_PREFIX          = ${CMAKE_INSTALL_PREFIX}")
+message(STATUS)
+message(STATUS "AOS_EXTERNAL_DIR              = ${AOS_EXTERNAL_DIR}")
 message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
@@ -31,17 +38,22 @@ message(STATUS)
 # External project options
 # ######################################################################################################################
 
-# aos core api options
+# aos_core_api options
 set(WITH_IAM_API ON)
 set(WITH_SM_API ON)
+
+# aos_core_lib_cpp options
+set(WITH_MBEDTLS OFF)
+set(WITH_OPENSSL ON)
 
 # ######################################################################################################################
 # Config
 # ######################################################################################################################
 
-set(AOS_CORE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/aos_core_lib_cpp)
-set(AOS_CORE_COMMON_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(AOS_STACK_USAGE 4096)
+
+get_filename_component(AOS_CORE_LIB_DIR ${AOS_EXTERNAL_DIR}/aos_core_lib_cpp REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+get_filename_component(AOS_CORE_API_DIR ${AOS_EXTERNAL_DIR}/aos_core_api REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 
 # ######################################################################################################################
 # Compiler flags
@@ -98,7 +110,41 @@ if(WITH_DOC)
 endif()
 
 # ######################################################################################################################
+# External projects
+# ######################################################################################################################
+
+include(FetchContent)
+
+if(NOT EXISTS ${AOS_CORE_LIB_DIR})
+    FetchContent_Populate(
+        aos_core_lib_cpp
+        GIT_REPOSITORY https://github.com/aosedge/aos_core_lib_cpp.git
+        GIT_TAG develop
+        SOURCE_DIR ${AOS_CORE_LIB_DIR}
+    )
+endif()
+
+if(NOT EXISTS ${AOS_CORE_API_DIR})
+    FetchContent_Populate(
+        aos_core_api
+        GIT_REPOSITORY https://github.com/aosedge/aos_core_api.git
+        GIT_TAG develop
+        SOURCE_DIR ${AOS_CORE_API_DIR}
+    )
+endif()
+
+# ######################################################################################################################
 # Targets
 # ######################################################################################################################
 
 add_subdirectory(src)
+
+# External projects
+
+add_subdirectory(${AOS_CORE_API_DIR} aos_core_api)
+add_subdirectory(${AOS_CORE_LIB_DIR}/src/common aos_core_lib/common)
+
+if(WITH_TEST)
+    add_subdirectory(${AOS_CORE_LIB_DIR}/tests/utils aos_core_lib_cpp/tests/utils)
+    add_subdirectory(${AOS_CORE_LIB_DIR}/tests/include aos_core_lib_cpp/tests/include)
+endif()
