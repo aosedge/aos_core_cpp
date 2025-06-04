@@ -34,16 +34,3 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::DataSQLite)
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/migration
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-)

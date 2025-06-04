@@ -40,9 +40,3 @@ target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/tests)
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::Foundation)
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION ${AOS_CORE_COMMON_LIB_DIR}/tests/testtools)

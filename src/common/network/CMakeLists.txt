@@ -36,16 +36,3 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} PUBLIC aoscommon aosutils ${Libnl_LIBRARIES})
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/network
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-)
