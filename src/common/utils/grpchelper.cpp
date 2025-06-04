@@ -10,10 +10,10 @@
 #include <regex>
 #include <streambuf>
 
-#include "utils/cryptohelper.hpp"
-#include "utils/exception.hpp"
-#include "utils/grpchelper.hpp"
-#include "utils/pkcs11helper.hpp"
+#include "cryptohelper.hpp"
+#include "exception.hpp"
+#include "grpchelper.hpp"
+#include "pkcs11helper.hpp"
 
 using namespace aos;
 

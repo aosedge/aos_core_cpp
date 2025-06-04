@@ -20,8 +20,8 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/StringTokenizer.h>
 
-#include "utils/exception.hpp"
-#include "utils/image.hpp"
+#include "exception.hpp"
+#include "image.hpp"
 
 namespace fs = std::filesystem;
 

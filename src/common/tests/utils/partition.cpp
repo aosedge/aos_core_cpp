@@ -9,11 +9,11 @@
 #include <sstream>
 
 #include <Poco/String.h>
+#include <aos/common/tools/string.hpp>
 
-#include "aos/common/tools/string.hpp"
+#include "utils/utils.hpp"
 
 #include "partition.hpp"
-#include "utils/utils.hpp"
 
 using Poco::trimInPlace;
 

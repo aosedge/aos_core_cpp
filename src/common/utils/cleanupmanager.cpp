@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "utils/cleanupmanager.hpp"
+#include "cleanupmanager.hpp"
 
 namespace aos::common::utils {
 

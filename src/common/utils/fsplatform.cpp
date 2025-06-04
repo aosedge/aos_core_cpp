@@ -13,7 +13,7 @@
 
 #include <aos/common/tools/fs.hpp>
 
-#include "utils/fsplatform.hpp"
+#include "fsplatform.hpp"
 
 namespace aos::common::utils {
 
