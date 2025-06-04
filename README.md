@@ -28,13 +28,12 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DCMAKE_B
 
 Cmake options:
 
-| Option | Description |
-| --- | --- |
-| `WITH_TEST` | creates unit tests target |
-| `WITH_COVERAGE` | creates coverage calculation target |
-| `WITH_DOC` | creates documentation target |
-
-Options should be set to `ON` or `OFF` value.
+| Option | Value | Default | Description |
+| --- | --- | --- | --- |
+| `AOS_EXTERNAL_DIR` | `path/to/core to` | `build/core` | Aos core lib and API directory path |
+| `WITH_TEST` | `ON`, `OFF` | `OFF` | creates unit tests target |
+| `WITH_COVERAGE` | `ON`, `OFF` | `OFF` | creates coverage calculation target |
+| `WITH_DOC` | `ON`, `OFF` | `OFF` | creates documentation target |
 
 Cmake variables:
 

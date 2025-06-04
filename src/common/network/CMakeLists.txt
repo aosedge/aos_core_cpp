@@ -22,7 +22,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Includes
 # ######################################################################################################################
 
-target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/include ${Libnl_INCLUDE_DIRS})
+target_include_directories(${TARGET} PUBLIC ${Libnl_INCLUDE_DIRS})
 
 # ######################################################################################################################
 # Compiler flags
