@@ -50,8 +50,6 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-find_package(gRPC REQUIRED)
-
 target_link_libraries(
     ${TARGET}
     PUBLIC aoscommon Poco::Foundation gRPC::grpc++ aoscoreapi-gen-iam
