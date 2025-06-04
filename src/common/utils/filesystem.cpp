@@ -16,8 +16,8 @@
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
 
-#include "utils/exception.hpp"
-#include "utils/filesystem.hpp"
+#include "exception.hpp"
+#include "filesystem.hpp"
 
 namespace fs = std::filesystem;
 

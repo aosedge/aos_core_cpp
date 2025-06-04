@@ -13,8 +13,8 @@
 #include "iamclient/permservicehandler.hpp"
 #include "iamclient/publicservicehandler.hpp"
 #include "mocks/certhandlermock.hpp"
-#include "mocks/iamclientmock.hpp"
 #include "stubs/iamserverstub.hpp"
+#include "tests/mocks/iamclientmock.hpp"
 
 using namespace testing;
 using namespace aos::common::iamclient;

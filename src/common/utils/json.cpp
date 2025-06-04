@@ -12,8 +12,8 @@
 #include <Poco/JSON/JSONException.h>
 #include <Poco/JSON/Parser.h>
 
-#include "utils/exception.hpp"
-#include "utils/json.hpp"
+#include "exception.hpp"
+#include "json.hpp"
 
 namespace aos::common::utils {
 

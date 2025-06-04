@@ -9,7 +9,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 
-#include "testtools/partition.hpp"
+#include "tests/utils/partition.hpp"
 #include "utils/fsplatform.hpp"
 #include "utils/utils.hpp"
 
