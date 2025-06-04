@@ -12,15 +12,15 @@ set(TARGET utils_test)
 # ######################################################################################################################
 
 set(SOURCES
-    channel_test.cpp
-    cleanupmanager_test.cpp
-    exception_test.cpp
-    filesystem_test.cpp
-    fsplatform_test.cpp
-    image_test.cpp
-    json_test.cpp
-    parser_test.cpp
-    time_test.cpp
+    channel.cpp
+    cleanupmanager.cpp
+    exception.cpp
+    filesystem.cpp
+    fsplatform.cpp
+    image.cpp
+    json.cpp
+    parser.cpp
+    time.cpp
 )
 
 # ######################################################################################################################
