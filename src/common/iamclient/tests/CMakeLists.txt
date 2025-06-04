@@ -32,12 +32,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    aosiamclient
-    aostestcore
-    aostestcommon
-    aostestutils
-    GTest::gmock_main
-    Poco::Foundation
-)
+target_link_libraries(${TARGET} aosiamclient aostestcore aostestutils GTest::gmock_main Poco::Foundation)
