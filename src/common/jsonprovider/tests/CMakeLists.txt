@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET jsonprovider_test)
+set(TARGET_NAME jsonprovider_test)
 
 # ######################################################################################################################
 # Sources
@@ -17,6 +17,8 @@ set(SOURCES jsonprovider.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
@@ -25,4 +27,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aosjsonprovider GTest::gmock_main)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::jsonprovider GTest::gmock_main)

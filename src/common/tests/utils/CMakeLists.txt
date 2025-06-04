@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aostesttools)
+set(TARGET_NAME utils)
 
 # ######################################################################################################################
 # Sources
@@ -16,7 +16,10 @@ set(SOURCES partition.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -32,4 +35,4 @@ target_include_directories(${TARGET} PUBLIC ${AOS_CORE_COMMON_LIB_DIR}/tests)
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::Foundation)
+target_link_libraries(${TARGET} PUBLIC aos::common::utils aoscommon Poco::Foundation)

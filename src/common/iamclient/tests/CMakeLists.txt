@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET iamclient_test)
+set(TARGET_NAME iamclient_test)
 
 # ######################################################################################################################
 # Sources
@@ -17,6 +17,8 @@ set(SOURCES iamclient.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
@@ -25,4 +27,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aosiamclient aostestcore aostestutils GTest::gmock_main Poco::Foundation)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::iamclient aostestcore GTest::gmock_main Poco::Foundation)

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET downloader_test)
+set(TARGET_NAME downloader_test)
 
 # ######################################################################################################################
 # Sources
@@ -16,6 +16,8 @@ set(SOURCES downloader.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
@@ -24,4 +26,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aosdownloader Poco::Net Poco::NetSSL Poco::Util GTest::gmock_main)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::downloader Poco::Net Poco::NetSSL Poco::Util GTest::gmock_main)

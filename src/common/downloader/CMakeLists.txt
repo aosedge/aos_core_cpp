@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosdownloader)
+set(TARGET_NAME downloader)
 
 # ######################################################################################################################
 # Sources
@@ -16,7 +16,10 @@ set(SOURCES downloader.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -33,4 +36,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aosutils aoscommon CURL::libcurl Poco::Foundation)
+target_link_libraries(${TARGET} PUBLIC ${TARGET_NAMESPACE}::utils aoscommon CURL::libcurl Poco::Foundation)
