@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET migration_test)
+set(TARGET_NAME migration_test)
 
 # ######################################################################################################################
 # Sources
@@ -17,6 +17,8 @@ set(SOURCES migration.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
@@ -25,4 +27,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aoscommon aosmigration GTest::gmock_main)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::migration aoscommon GTest::gmock_main)

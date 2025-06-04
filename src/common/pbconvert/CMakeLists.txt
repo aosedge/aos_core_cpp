@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aospbconvert)
+set(TARGET_NAME pbconvert)
 
 # ######################################################################################################################
 # Sources
@@ -24,7 +24,10 @@ endif()
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -40,7 +43,7 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE} -Wno-f
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::Util)
+target_link_libraries(${TARGET} PUBLIC ${TARGET_NAMESPACE}::utils aoscommon Poco::Util)
 
 if(WITH_IAM_API)
     target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-iam)

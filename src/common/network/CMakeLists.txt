@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosnetwork)
+set(TARGET_NAME network)
 
 # ######################################################################################################################
 # Sources
@@ -16,7 +16,10 @@ set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -35,4 +38,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils ${Libnl_LIBRARIES})
+target_link_libraries(${TARGET} PUBLIC ${TARGET_NAMESPACE}::utils aoscommon ${Libnl_LIBRARIES})

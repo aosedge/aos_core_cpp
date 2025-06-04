@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosutils)
+set(TARGET_NAME utils)
 
 # ######################################################################################################################
 # Sources
@@ -32,7 +32,10 @@ set(SOURCES
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -50,8 +53,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC aoscommon Poco::Foundation gRPC::grpc++ aoscoreapi-gen-iam
-    PRIVATE Poco::JSON
-)
+target_link_libraries(${TARGET} PUBLIC aoscommon Poco::Foundation Poco::JSON gRPC::grpc++ aoscoreapi-gen-iam)

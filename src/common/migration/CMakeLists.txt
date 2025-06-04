@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosmigration)
+set(TARGET_NAME migration)
 
 # ######################################################################################################################
 # Sources
@@ -17,7 +17,10 @@ set(SOURCES migration.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -33,4 +36,4 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::DataSQLite)
+target_link_libraries(${TARGET} PUBLIC ${TARGET_NAMESPACE}::utils aoscommon Poco::DataSQLite)

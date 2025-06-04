@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosiamclient)
+set(TARGET_NAME iamclient)
 
 # ######################################################################################################################
 # Sources
@@ -16,7 +16,10 @@ set(SOURCES permservicehandler.cpp publicservicehandler.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_library(${TARGET} STATIC ${SOURCES})
+add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 
 # ######################################################################################################################
 # Includes
@@ -33,4 +36,6 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-iam aosutils aospbconvert)
+target_link_libraries(
+    ${TARGET} PUBLIC ${TARGET_NAMESPACE}::utils ${TARGET_NAMESPACE}::pbconvert aoscommon aoscoreapi-gen-iam
+)

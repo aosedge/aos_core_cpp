@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET pbconvert_test)
+set(TARGET_NAME pbconvert_test)
 
 # ######################################################################################################################
 # Sources
@@ -16,6 +16,8 @@ set(SOURCES common.cpp iam.cpp sm.cpp)
 # Target
 # ######################################################################################################################
 
+set(TARGET ${TARGET_PREFIX}_${TARGET_NAME})
+
 add_executable(${TARGET} ${SOURCES})
 
 gtest_discover_tests(${TARGET})
@@ -24,4 +26,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} aostestutils aospbconvert GTest::gmock_main)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::pbconvert GTest::gmock_main)
