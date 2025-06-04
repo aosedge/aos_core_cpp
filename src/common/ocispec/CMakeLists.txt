@@ -26,7 +26,7 @@ add_library(${TARGET} STATIC ${SOURCES})
 # Compiler flags
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="networkmanager")
+add_definitions(-DLOG_MODULE="ocispec")
 target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 
 # ######################################################################################################################
