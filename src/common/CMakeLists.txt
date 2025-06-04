@@ -9,22 +9,13 @@
 # Dependencies
 # ######################################################################################################################
 
-# gRPC lib
+find_package(CURL REQUIRED)
 find_package(gRPC REQUIRED)
-
-# Poco lib
+find_package(PkgConfig REQUIRED)
 find_package(Poco REQUIRED JSON DataSQLite Foundation Util)
 
-# Find the libcurl package
-find_package(CURL REQUIRED)
-
-# Systemd lib
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(Systemd libsystemd REQUIRED)
-
-# Add libnl dependencies
-find_package(PkgConfig REQUIRED)
 pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
+pkg_check_modules(Systemd libsystemd REQUIRED)
 
 # ######################################################################################################################
 # Defines
