@@ -59,16 +59,16 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
 {
     std::lock_guard lock {mMutex};
 
-    sd_bus_error    error   = SD_BUS_ERROR_NULL;
-    sd_bus_message* reply   = nullptr;
-    auto            freeErr = DeferRelease(&error, sd_bus_error_free);
+    sd_bus_error          error   = SD_BUS_ERROR_NULL;
+    sd_bus_message*       reply   = nullptr;
+    [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     auto rv = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
     if (rv < 0) {
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
 
-    auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
+    [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
 
     rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
     if (rv < 0) {
@@ -135,7 +135,7 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
 
-    auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
+    [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
 
     const char* unitPath = nullptr;
 
@@ -145,9 +145,9 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     }
 
     // Get active state
-    sd_bus_error    stateError   = SD_BUS_ERROR_NULL;
-    sd_bus_message* stateReply   = nullptr;
-    auto            freeStateErr = DeferRelease(&stateError, sd_bus_error_free);
+    sd_bus_error          stateError   = SD_BUS_ERROR_NULL;
+    sd_bus_message*       stateReply   = nullptr;
+    [[maybe_unused]] auto freeStateErr = DeferRelease(&stateError, sd_bus_error_free);
 
     rv = sd_bus_get_property(
         mBus, cDestination, unitPath, "org.freedesktop.systemd1.Unit", "ActiveState", &stateError, &stateReply, "s");
@@ -156,7 +156,7 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
 
-    auto freeStateMsg = DeferRelease(stateReply, sd_bus_message_unref);
+    [[maybe_unused]] auto freeStateMsg = DeferRelease(stateReply, sd_bus_message_unref);
 
     const char* activeState = nullptr;
     rv                      = sd_bus_message_read(stateReply, "s", &activeState);
@@ -192,8 +192,8 @@ Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, c
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto            freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
-    sd_bus_message* msg      = nullptr;
+    [[maybe_unused]] auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
+    sd_bus_message*       msg      = nullptr;
 
     rv = sd_bus_call_method(
         mBus, cDestination, cPath, cInterface, "StartUnit", nullptr, &msg, "ss", name.c_str(), mode.c_str());
@@ -201,8 +201,8 @@ Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, c
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto        freeMsg = DeferRelease(msg, sd_bus_message_unref);
-    const char* jobPath = nullptr;
+    [[maybe_unused]] auto freeMsg = DeferRelease(msg, sd_bus_message_unref);
+    const char*           jobPath = nullptr;
 
     rv = sd_bus_message_read(msg, "o", &jobPath);
     if (rv < 0) {
@@ -223,11 +223,11 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
+    [[maybe_unused]] auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
 
-    sd_bus_message* msg     = nullptr;
-    sd_bus_error    error   = SD_BUS_ERROR_NULL;
-    auto            freeErr = DeferRelease(&error, sd_bus_error_free);
+    sd_bus_message*       msg     = nullptr;
+    sd_bus_error          error   = SD_BUS_ERROR_NULL;
+    [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     rv = sd_bus_call_method(
         mBus, cDestination, cPath, cInterface, "StopUnit", &error, &msg, "ss", name.c_str(), mode.c_str());
@@ -238,8 +238,8 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto        freeMsg = DeferRelease(msg, sd_bus_message_unref);
-    const char* jobPath = nullptr;
+    [[maybe_unused]] auto freeMsg = DeferRelease(msg, sd_bus_message_unref);
+    const char*           jobPath = nullptr;
 
     rv = sd_bus_message_read(msg, "o", &jobPath);
     if (rv < 0) {
@@ -253,9 +253,9 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
 {
     std::lock_guard lock {mMutex};
 
-    sd_bus_error    error   = SD_BUS_ERROR_NULL;
-    sd_bus_message* reply   = nullptr;
-    auto            freeErr = DeferRelease(&error, sd_bus_error_free);
+    sd_bus_error          error   = SD_BUS_ERROR_NULL;
+    sd_bus_message*       reply   = nullptr;
+    [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     auto rv = sd_bus_call_method(
         mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
@@ -267,7 +267,7 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
         return AOS_ERROR_WRAP(-rv);
     }
 
-    auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
+    [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
 
     return ErrorEnum::eNone;
 }
@@ -349,8 +349,8 @@ Optional<int32_t> SystemdConn::GetExitCode(const char* serviceName)
     if (rv < 0) {
         return {};
     } else {
-        auto    freeExitReply = DeferRelease(serviceExitReply, sd_bus_message_unref);
-        int32_t exitCode      = 0;
+        [[maybe_unused]] auto freeExitReply = DeferRelease(serviceExitReply, sd_bus_message_unref);
+        int32_t               exitCode      = 0;
 
         rv = sd_bus_message_read(serviceExitReply, "i", &exitCode);
         if (rv < 0) {

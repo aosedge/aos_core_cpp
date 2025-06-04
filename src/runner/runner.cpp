@@ -328,7 +328,7 @@ RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& u
         if (runState.GetValue() != UnitStateEnum::eActive) {
 
             const auto errMsg = "failed to start unit";
-            auto err = exitCode.HasValue() ? Error(exitCode.GetValue(), errMsg) : Error(ErrorEnum::eFailed, errMsg);
+            err = exitCode.HasValue() ? Error(exitCode.GetValue(), errMsg) : Error(ErrorEnum::eFailed, errMsg);
 
             return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(err)};
         }
