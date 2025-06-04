@@ -34,16 +34,3 @@ target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 # ######################################################################################################################
 
 target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-iam aosutils aospbconvert)
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/iamclient
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-)

@@ -49,16 +49,3 @@ endif()
 if(WITH_SM_API)
     target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-sm)
 endif()
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/pbconvert
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-)

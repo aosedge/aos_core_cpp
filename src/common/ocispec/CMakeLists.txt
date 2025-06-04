@@ -38,16 +38,3 @@ target_link_libraries(
     PUBLIC aoscommon
     PRIVATE aosutils
 )
-
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
-
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/migration
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-)
