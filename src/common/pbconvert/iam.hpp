@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PBCONVERT_IAM_HPP_
-#define PBCONVERT_IAM_HPP_
+#ifndef AOS_COMMON_PBCONVERT_IAM_HPP_
+#define AOS_COMMON_PBCONVERT_IAM_HPP_
 
 #include <aos/common/crypto/crypto.hpp>
 #include <aos/common/types.hpp>

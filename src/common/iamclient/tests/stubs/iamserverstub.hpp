@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IAMPUBLICSERVICE_HPP
-#define IAMPUBLICSERVICE_HPP
+#ifndef AOS_COMMON_IAMCLIENT_IAMSERVERSTUB_HPP_
+#define AOS_COMMON_IAMCLIENT_IAMSERVERSTUB_HPP_
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server_builder.h>
@@ -181,4 +181,4 @@ private:
     bool                                         mClose     = false;
 };
 
-#endif // IAMPUBLICSERVICE_HPP
+#endif

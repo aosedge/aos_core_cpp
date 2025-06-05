@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_CHANNEL_HPP
-#define UTILS_CHANNEL_HPP
+#ifndef AOS_COMMON_UTILS_CHANNEL_HPP_
+#define AOS_COMMON_UTILS_CHANNEL_HPP_
 
 #include <condition_variable>
 #include <mutex>
@@ -98,4 +98,4 @@ private:
 
 } // namespace aos::common::utils
 
-#endif // UTILS_CHANNEL_HPP
+#endif
