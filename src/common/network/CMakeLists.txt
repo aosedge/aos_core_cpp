@@ -31,7 +31,7 @@ target_include_directories(${TARGET} PUBLIC ${Libnl_INCLUDE_DIRS})
 # Compiler flags
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="networkmanager")
+target_compile_definitions(${TARGET} PRIVATE LOG_MODULE="networkmanager")
 target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 
 # ######################################################################################################################
