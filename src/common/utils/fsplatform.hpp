@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_FSPLATFORM_HPP
-#define UTILS_FSPLATFORM_HPP
+#ifndef AOS_COMMON_UTILS_FSPLATFORM_HPP_
+#define AOS_COMMON_UTILS_FSPLATFORM_HPP_
 
 #include <aos/common/tools/fs.hpp>
 
@@ -52,4 +52,4 @@ private:
 
 } // namespace aos::common::utils
 
-#endif // UTILS_FSPLATFORM_HPP
+#endif

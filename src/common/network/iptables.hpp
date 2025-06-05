@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NETWORK_IPTABLES_HPP
-#define NETWORK_IPTABLES_HPP
+#ifndef AOS_COMMON_NETWORK_IPTABLES_HPP_
+#define AOS_COMMON_NETWORK_IPTABLES_HPP_
 
 #include <cstdint>
 #include <mutex>
@@ -256,4 +256,4 @@ private:
 };
 } // namespace aos::common::network
 
-#endif // NETWORK_IPTABLES_HPP
+#endif

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef EXCEPTION_HPP_
-#define EXCEPTION_HPP_
+#ifndef AOS_COMMON_UTILS_EXCEPTION_HPP_
+#define AOS_COMMON_UTILS_EXCEPTION_HPP_
 
 #include <Poco/Exception.h>
 
