@@ -29,7 +29,7 @@ add_library(${TARGET_NAMESPACE}::${TARGET_NAME} ALIAS ${TARGET})
 # Compiler flags
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="iamclient")
+target_compile_definitions(${TARGET} PRIVATE LOG_MODULE="iamclient")
 target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
 
 # ######################################################################################################################

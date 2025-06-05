@@ -37,4 +37,4 @@ gtest_discover_tests(${TARGET})
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::utils aos::common::tests::utils GTest::gmock_main)
+target_link_libraries(${TARGET} ${TARGET_NAMESPACE}::utils ${TARGET_NAMESPACE}::tests::utils GTest::gmock_main)
