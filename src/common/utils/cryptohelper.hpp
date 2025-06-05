@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CRYPTOHELPER_HPP_
-#define CRYPTOHELPER_HPP_
+#ifndef AOS_COMMON_UTILS_CRYPTOHELPER_HPP_
+#define AOS_COMMON_UTILS_CRYPTOHELPER_HPP_
 
 #include <string>
 
@@ -31,4 +31,4 @@ RetWithError<std::string> LoadPEMCertificates(
 
 } // namespace aos::common::utils
 
-#endif /* CRYPTOHELPER_HPP_ */
+#endif
