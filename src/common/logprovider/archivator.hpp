@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef LOGPROVIDER_ARCHIVATOR_HPP_
-#define LOGPROVIDER_ARCHIVATOR_HPP_
+#ifndef AOS_COMMON_LOGPROVIDER_ARCHIVATOR_HPP_
+#define AOS_COMMON_LOGPROVIDER_ARCHIVATOR_HPP_
 
 #include <memory>
 #include <sstream>
@@ -65,4 +65,4 @@ private:
 
 } // namespace aos::common::logprovider
 
-#endif // ARCHIVATOR_HPP_
+#endif

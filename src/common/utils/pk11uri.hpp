@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PK11_URI_H
-#define PK11_URI_H
+#ifndef AOS_COMMON_UTILS_PK11URI_HPP_
+#define AOS_COMMON_UTILS_PK11URI_HPP_
 
 #include <openssl/asn1t.h>
 

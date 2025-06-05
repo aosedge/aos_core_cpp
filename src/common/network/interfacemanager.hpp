@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NETWORKINTERFACEMANAGER_HPP_
-#define NETWORKINTERFACEMANAGER_HPP_
+#ifndef AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
+#define AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
 
 #include <functional>
 #include <optional>
@@ -260,4 +260,4 @@ private:
 
 } // namespace aos::common::network
 
-#endif // NETWORKINTERFACEMANAGER_HPP_
+#endif

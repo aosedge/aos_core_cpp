@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef LOGGER_HPP_
-#define LOGGER_HPP_
+#ifndef AOS_COMMON_LOGGER_LOGGER_HPP_
+#define AOS_COMMON_LOGGER_LOGGER_HPP_
 
 #include <mutex>
 

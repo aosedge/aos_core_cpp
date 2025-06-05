@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PKCS11HELPER_HPP_
-#define PKCS11HELPER_HPP_
+#ifndef AOS_COMMON_UTILS_PKCS11HELPER_HPP_
+#define AOS_COMMON_UTILS_PKCS11HELPER_HPP_
 
 #include <string>
 
@@ -33,4 +33,4 @@ RetWithError<std::string> PEMEncodePKCS11URL(const std::string& url);
 
 } // namespace aos::common::utils
 
-#endif /* PKCS11HELPER_HPP_ */
+#endif
