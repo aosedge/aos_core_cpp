@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PUBLICSERVICEHANDLER_HPP_
-#define PUBLICSERVICEHANDLER_HPP_
+#ifndef AOS_COMMON_IAMCLIENT_PUBLICSERVICEHANDLER_HPP_
+#define AOS_COMMON_IAMCLIENT_PUBLICSERVICEHANDLER_HPP_
 
 #include <condition_variable>
 #include <future>

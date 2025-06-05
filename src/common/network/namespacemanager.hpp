@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NAMESPACEMANAGER_HPP_
-#define NAMESPACEMANAGER_HPP_
+#ifndef AOS_COMMON_NETWORK_NAMESPACEMANAGER_HPP_
+#define AOS_COMMON_NETWORK_NAMESPACEMANAGER_HPP_
 
 #include <filesystem>
 
@@ -59,4 +59,4 @@ private:
 
 } // namespace aos::common::network
 
-#endif // NAMESPACEMANAGER_HPP_
+#endif

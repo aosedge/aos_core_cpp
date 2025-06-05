@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_JSON_HPP_
-#define UTILS_JSON_HPP_
+#ifndef AOS_COMMON_UTILS_JSON_HPP_
+#define AOS_COMMON_UTILS_JSON_HPP_
 
 #include <optional>
 #include <string>

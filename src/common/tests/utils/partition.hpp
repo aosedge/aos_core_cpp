@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef TESTTOOLS_PARTITION_HPP
-#define TESTTOOLS_PARTITION_HPP
+#ifndef AOS_COMMON_TESTS_UTILS_PARTITION_HPP_
+#define AOS_COMMON_TESTS_UTILS_PARTITION_HPP_
 
 #include <cstdint>
 #include <string>
@@ -82,4 +82,4 @@ RetWithError<TestDisk> NewTestDisk(const std::string& path, const std::vector<Pa
 
 } // namespace aos::common::testtools
 
-#endif // TESTTOOLS_PARTITION_HPP
+#endif

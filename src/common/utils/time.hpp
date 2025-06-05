@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef TIME_HPP_
-#define TIME_HPP_
+#ifndef AOS_COMMON_UTILS_TIME_HPP_
+#define AOS_COMMON_UTILS_TIME_HPP_
 
 #include <chrono>
 #include <optional>

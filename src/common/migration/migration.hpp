@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef MIGRATION_HPP_
-#define MIGRATION_HPP_
+#ifndef AOS_COMMON_MIGRATION_MIGRATION_HPP_
+#define AOS_COMMON_MIGRATION_MIGRATION_HPP_
 
 #include <Poco/Data/Session.h>
 #include <filesystem>
@@ -56,4 +56,4 @@ private:
 
 } // namespace aos::common::migration
 
-#endif /* MIGRATION_HPP_ */
+#endif

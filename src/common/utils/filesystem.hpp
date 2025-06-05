@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_FILESYSTEM_HPP
-#define UTILS_FILESYSTEM_HPP
+#ifndef AOS_COMMON_UTILS_FILESYSTEM_HPP_
+#define AOS_COMMON_UTILS_FILESYSTEM_HPP_
 
 #include <string>
 
@@ -50,4 +50,4 @@ Error ChangeOwner(const std::string& path, uint32_t newUID, uint32_t newGID);
 
 } // namespace aos::common::utils
 
-#endif // UTILS_FILESYSTEM_HPP
+#endif

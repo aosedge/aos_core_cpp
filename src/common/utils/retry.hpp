@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef RETRY_HPP_
-#define RETRY_HPP_
+#ifndef AOS_COMMON_UTILS_RETRY_HPP_
+#define AOS_COMMON_UTILS_RETRY_HPP_
 
 #include <functional>
 

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PERMSERVICEHANDLER_HPP_
-#define PERMSERVICEHANDLER_HPP_
+#ifndef AOS_COMMON_IAMCLIENT_PERMSERVICEHANDLER_HPP_
+#define AOS_COMMON_IAMCLIENT_PERMSERVICEHANDLER_HPP_
 
 #include <chrono>
 #include <memory>
@@ -74,4 +74,4 @@ private:
 
 } // namespace aos::common::iamclient
 
-#endif // PERMSERVICEHANDLER_HPP_
+#endif

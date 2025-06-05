@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_IMAGE_HPP
-#define UTILS_IMAGE_HPP
+#ifndef AOS_COMMON_UTILS_IMAGE_HPP_
+#define AOS_COMMON_UTILS_IMAGE_HPP_
 
 #include <string>
 
@@ -59,4 +59,4 @@ RetWithError<std::string> HashDir(const std::string& dir);
 
 } // namespace aos::common::utils
 
-#endif // UTILS_IMAGE_HPP
+#endif

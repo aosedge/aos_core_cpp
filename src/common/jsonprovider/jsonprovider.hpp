@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef JSONPROVIDER_HPP
-#define JSONPROVIDER_HPP
+#ifndef AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
+#define AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
 
 #include <aos/sm/resourcemanager.hpp>
 

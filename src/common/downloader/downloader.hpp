@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef DOWNLOADER_HPP_
-#define DOWNLOADER_HPP_
+#ifndef AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
+#define AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 
 #include <chrono>
 #include <condition_variable>

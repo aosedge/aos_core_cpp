@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef HTTP_SERVER_STUB_HPP_
-#define HTTP_SERVER_STUB_HPP_
+#ifndef AOS_COMMON_DOWNLOADER_HTTPSERVERSTUB_HPP_
+#define AOS_COMMON_DOWNLOADER_HTTPSERVERSTUB_HPP_
 
 #include <fstream>
 #include <optional>
@@ -142,4 +142,4 @@ private:
     std::optional<Poco::Net::HTTPServer> mServer;
 };
 
-#endif // HTTP_SERVER_HPP_
+#endif

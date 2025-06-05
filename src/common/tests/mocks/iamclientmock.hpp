@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IAMCLIENT_HPP_
-#define IAMCLIENT_HPP_
+#ifndef AOS_COMMON_TESTS_MOCKS_IAMCLIENTMOCK_HPP_
+#define AOS_COMMON_TESTS_MOCKS_IAMCLIENTMOCK_HPP_
 
 #include <gmock/gmock.h>
 

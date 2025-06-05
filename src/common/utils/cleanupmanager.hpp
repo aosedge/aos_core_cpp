@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_CLEANUPMANAGER_HPP_
-#define UTILS_CLEANUPMANAGER_HPP_
+#ifndef AOS_COMMON_UTILS_CLEANUPMANAGER_HPP_
+#define AOS_COMMON_UTILS_CLEANUPMANAGER_HPP_
 
 #include <functional>
 #include <vector>
@@ -32,4 +32,4 @@ private:
 
 } // namespace aos::common::utils
 
-#endif // UTILS_CLEANUPMANAGER_HPP_
+#endif

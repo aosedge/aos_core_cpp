@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PBCONVERT_COMMON_HPP_
-#define PBCONVERT_COMMON_HPP_
+#ifndef AOS_COMMON_PBCONVERT_PBCONVERT_HPP_
+#define AOS_COMMON_PBCONVERT_PBCONVERT_HPP_
 
 #include <google/protobuf/timestamp.pb.h>
 

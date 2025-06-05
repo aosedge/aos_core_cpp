@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PBCONVERT_SM_HPP_
-#define PBCONVERT_SM_HPP_
+#ifndef AOS_COMMON_PBCONVERT_SM_HPP_
+#define AOS_COMMON_PBCONVERT_SM_HPP_
 
 #include <aos/common/cloudprotocol/alerts.hpp>
 #include <aos/common/cloudprotocol/envvars.hpp>

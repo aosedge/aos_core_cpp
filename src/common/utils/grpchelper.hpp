@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GRPCHELPER_HPP_
-#define GRPCHELPER_HPP_
+#ifndef AOS_COMMON_UTILS_GRPCHELPER_HPP_
+#define AOS_COMMON_UTILS_GRPCHELPER_HPP_
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/server_credentials.h>
