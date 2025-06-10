@@ -20,7 +20,7 @@ set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp)
 # Includes
 # ######################################################################################################################
 
-set(INCLUDES ${Libnl_INCLUDE_DIRS})
+set(INCLUDES ${Libnl_INCLUDE_DIRS} ${AOS_COMMON_DIR})
 
 # ######################################################################################################################
 # Libraries
