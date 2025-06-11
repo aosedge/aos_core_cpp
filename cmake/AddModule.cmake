@@ -4,7 +4,7 @@
 function(_add_target)
     set(options LOG_MODULE)
     set(one_value_args TARGET_NAME STACK_USAGE TARGET_TYPE)
-    set(multi_value_args SOURCES DEFINES COMPILE_OPTIONS INCLUDES LIBRARIES)
+    set(multi_value_args SOURCES DEFINES COMPILE_OPTIONS INCLUDES LIBRARIES LINK_OPTIONS)
 
     cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -32,7 +32,12 @@ function(_add_target)
 
     # create target
 
-    set(TARGET "${TARGET_PREFIX}_${ARG_TARGET_NAME}")
+    if(NOT "${ARG_TARGET_TYPE}" STREQUAL "EXECUTABLE")
+        set(TARGET "${TARGET_PREFIX}_${ARG_TARGET_NAME}")
+    else()
+        set(TARGET "${ARG_TARGET_NAME}")
+    endif()
+
     set(TARGET
         "${TARGET}"
         PARENT_SCOPE
@@ -45,6 +50,8 @@ function(_add_target)
         add_executable(${TARGET} ${ARG_SOURCES})
         add_executable("${TARGET_NAMESPACE}::${ARG_TARGET_NAME}" ALIAS ${TARGET})
         gtest_discover_tests(${TARGET})
+    elseif("${ARG_TARGET_TYPE}" STREQUAL "EXECUTABLE")
+        add_executable(${TARGET} ${ARG_SOURCES})
     endif()
 
     # set stack usage
@@ -81,6 +88,12 @@ function(_add_target)
     if(ARG_LIBRARIES)
         target_link_libraries(${TARGET} PUBLIC ${ARG_LIBRARIES})
     endif()
+
+    # link options
+    if(ARG_LINK_OPTIONS)
+        message(STATUS "Link options-------------->: ${ARG_LINK_OPTIONS}")
+        target_link_options(${TARGET} PRIVATE ${ARG_LINK_OPTIONS})
+    endif()
 endfunction()
 
 # ######################################################################################################################
@@ -94,7 +107,8 @@ endfunction()
 #     COMPILE_OPTIONS <list> - list of compiler options (optional);
 #     INCLUDES <list>        - list of include directories (optional);
 #     SOURCES <list>         - list of source files;
-#     LIBRARIES <list>       - list of libraries to link against (optional).
+#     LIBRARIES <list>       - list of libraries to link against (optional);
+#     LINK_OPTIONS <list>    - list of link options (optional).
 # )
 #
 # The following public variables are used:
@@ -123,7 +137,8 @@ endfunction()
 #     COMPILE_OPTIONS <list> - list of compiler options (optional);
 #     INCLUDES <list>        - list of include directories (optional);
 #     SOURCES <list>         - list of source files;
-#     LIBRARIES <list>       - list of libraries to link against (optional).
+#     LIBRARIES <list>       - list of libraries to link against (optional);
+#     LINK_OPTIONS <list>    - list of link options (optional).
 # )
 #
 # The following public variables are used:
@@ -134,6 +149,36 @@ endfunction()
 # ######################################################################################################################
 function(add_test)
     _add_target(TARGET_TYPE TEST ${ARGN})
+
+    set(TARGET
+        ${TARGET}
+        PARENT_SCOPE
+    )
+endfunction()
+
+# ######################################################################################################################
+# This function creates an executable target.
+#
+# add_executable(
+#     TARGET_NAME <name>     - name of executable;
+#     LOG_MODULE             - if set, defines the LOG_MODULE for the target (optional);
+#     STACK_USAGE <value>    - stack usage for the target (optional);
+#     DEFINES <list>         - list of preprocessor definitions (optional);
+#     COMPILE_OPTIONS <list> - list of compiler options (optional);
+#     INCLUDES <list>        - list of include directories (optional);
+#     SOURCES <list>         - list of source files;
+#     LIBRARIES <list>       - list of libraries to link against (optional);
+#     LINK_OPTIONS <list>    - list of link options (optional).
+# )
+#
+# The following public variables are used:
+#   - TARGET_PREFIX    - prefix for the target name, default is "aos";
+#   - TARGET_NAMESPACE - namespace for the target alias, default is "aos".
+#
+# This function set TARGET and make it available in the parent scope.
+# ######################################################################################################################
+function(add_exec)
+    _add_target(TARGET_TYPE EXECUTABLE ${ARGN})
 
     set(TARGET
         ${TARGET}
