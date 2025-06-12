@@ -18,6 +18,7 @@ set(AOS_CORE_DIR
     CACHE STRING "path where Aos core lib, core API and other dependencies are located"
 )
 
+option(WITH_VCHAN "build with vchan" ON)
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
 option(WITH_DOC "build with documentation" OFF)
@@ -28,6 +29,8 @@ message(STATUS "CMAKE_BUILD_TYPE              = ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_INSTALL_PREFIX          = ${CMAKE_INSTALL_PREFIX}")
 message(STATUS)
 message(STATUS "AOS_CORE_DIR                  = ${AOS_CORE_DIR}")
+message(STATUS)
+message(STATUS "WITH_VCHAN                    = ${WITH_VCHAN}")
 message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
