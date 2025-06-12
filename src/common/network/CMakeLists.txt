@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,25 +8,25 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME utils)
+set(TARGET_NAME network)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES partition.cpp)
+set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp)
 
 # ######################################################################################################################
 # Includes
 # ######################################################################################################################
 
-set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
+set(INCLUDES ${Libnl_INCLUDE_DIRS})
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon ${Libnl_LIBRARIES})
 
 # ######################################################################################################################
 # Target
@@ -36,6 +36,8 @@ add_module(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
     SOURCES
     ${SOURCES}
     INCLUDES

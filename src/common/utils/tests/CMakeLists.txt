@@ -1,5 +1,6 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2024 Renesas Electronics Corporation.
+# Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,38 +9,40 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME utils)
+set(TARGET_NAME utils_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES partition.cpp)
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
+set(SOURCES
+    channel.cpp
+    cleanupmanager.cpp
+    exception.cpp
+    filesystem.cpp
+    fsplatform.cpp
+    image.cpp
+    json.cpp
+    parser.cpp
+    time.cpp
+)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES ${TARGET_NAMESPACE}::utils ${TARGET_NAMESPACE}::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_module(
+add_test(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
     SOURCES
     ${SOURCES}
-    INCLUDES
-    ${INCLUDES}
     LIBRARIES
     ${LIBRARIES}
 )

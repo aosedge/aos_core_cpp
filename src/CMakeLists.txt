@@ -8,12 +8,12 @@
 # Target properties
 # ######################################################################################################################
 
-set(TARGET_NAMESPACE ${TARGET_NAMESPACE}::tests)
-set(TARGET_PREFIX ${TARGET_PREFIX}_tests)
+set(TARGET_NAMESPACE aos)
+set(TARGET_PREFIX aos)
+set(TARGET_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ######################################################################################################################
-# Modules
+# AosCore components
 # ######################################################################################################################
 
-add_subdirectory(utils)
-add_subdirectory(mocks)
+add_subdirectory(common)

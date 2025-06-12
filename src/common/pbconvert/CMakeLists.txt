@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,25 +8,41 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME utils)
+set(TARGET_NAME pbconvert)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES partition.cpp)
+set(SOURCES common.cpp)
+
+if(WITH_IAM_API)
+    list(APPEND SOURCES iam.cpp)
+endif()
+
+if(WITH_SM_API)
+    list(APPEND SOURCES sm.cpp)
+endif()
 
 # ######################################################################################################################
-# Includes
+# Compile options
 # ######################################################################################################################
 
-set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
+set(COMPILE_OPTIONS -Wno-format-truncation)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon Poco::Util)
+
+if(WITH_IAM_API)
+    list(APPEND LIBRARIES aoscoreapi-gen-iam)
+endif()
+
+if(WITH_SM_API)
+    list(APPEND LIBRARIES aoscoreapi-gen-sm)
+endif()
 
 # ######################################################################################################################
 # Target
@@ -36,10 +52,12 @@ add_module(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
     SOURCES
     ${SOURCES}
-    INCLUDES
-    ${INCLUDES}
+    COMPILE_OPTIONS
+    ${COMPILE_OPTIONS}
     LIBRARIES
     ${LIBRARIES}
 )

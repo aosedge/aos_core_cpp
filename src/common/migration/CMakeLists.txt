@@ -1,5 +1,6 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2024 Renesas Electronics Corporation.
+# Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -8,25 +9,19 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME utils)
+set(TARGET_NAME migration)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES partition.cpp)
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
+set(SOURCES migration.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon Poco::DataSQLite)
 
 # ######################################################################################################################
 # Target
@@ -36,10 +31,10 @@ add_module(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
     SOURCES
     ${SOURCES}
-    INCLUDES
-    ${INCLUDES}
     LIBRARIES
     ${LIBRARIES}
 )

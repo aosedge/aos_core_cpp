@@ -1,5 +1,6 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2024 Renesas Electronics Corporation.
+# Copyright (C) 2024 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -14,19 +15,34 @@ set(TARGET_NAME utils)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES partition.cpp)
+set(SOURCES
+    cleanupmanager.cpp
+    cryptohelper.cpp
+    exception.cpp
+    filesystem.cpp
+    fsplatform.cpp
+    grpchelper.cpp
+    image.cpp
+    json.cpp
+    parser.cpp
+    pk11uri.cpp
+    pkcs11helper.cpp
+    retry.cpp
+    time.cpp
+    utils.cpp
+)
 
 # ######################################################################################################################
 # Includes
 # ######################################################################################################################
 
-set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
+set(INCLUDES ${AOS_CORE_LIB_DIR}/include)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aoscommon Poco::Foundation Poco::JSON gRPC::grpc++ aoscoreapi-gen-iam)
 
 # ######################################################################################################################
 # Target
