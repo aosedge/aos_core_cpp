@@ -7,10 +7,10 @@
 
 #include <thread>
 
-#include <pbconvert/common.hpp>
-#include <utils/exception.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/pbconvert/common.hpp>
+#include <common/utils/exception.hpp>
 
-#include "logger/logmodule.hpp"
 #include "nodecontroller.hpp"
 
 namespace aos::iam::iamserver {

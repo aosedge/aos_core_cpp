@@ -19,7 +19,7 @@
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <utils/grpchelper.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "iamserver/iamserver.hpp"
 

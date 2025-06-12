@@ -14,11 +14,11 @@
 
 #include <aos/common/pkcs11/pkcs11.hpp>
 #include <aos/common/tools/fs.hpp>
-#include <utils/exception.hpp>
-#include <utils/json.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
 
 #include "config.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::iam::config {
 

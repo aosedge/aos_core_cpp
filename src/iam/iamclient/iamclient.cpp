@@ -10,13 +10,13 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <pbconvert/common.hpp>
-#include <pbconvert/iam.hpp>
-#include <utils/exception.hpp>
-#include <utils/grpchelper.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/pbconvert/common.hpp>
+#include <common/pbconvert/iam.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "iamclient.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::iam::iamclient {
 

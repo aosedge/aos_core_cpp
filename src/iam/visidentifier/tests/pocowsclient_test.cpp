@@ -8,7 +8,8 @@
 #include <string>
 
 #include <gmock/gmock.h>
-#include <logger/logger.hpp>
+
+#include <common/logger/logger.hpp>
 
 #include "mocks/identhandlermock.hpp"
 #include "visidentifier/pocowsclient.hpp"

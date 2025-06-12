@@ -11,9 +11,9 @@
 #include <Poco/URI.h>
 
 #include <aos/common/tools/uuid.hpp>
-#include <utils/json.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/json.hpp>
 
-#include "logger/logmodule.hpp"
 #include "pocowsclient.hpp"
 #include "vismessage.hpp"
 #include "wsexception.hpp"

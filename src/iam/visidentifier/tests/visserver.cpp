@@ -17,8 +17,8 @@
 #include <Poco/URI.h>
 
 #include <aos/common/tools/log.hpp>
+#include <common/logger/logmodule.hpp>
 
-#include "logger/logmodule.hpp"
 #include "visidentifier/vismessage.hpp"
 #include "visserver.hpp"
 

@@ -12,10 +12,10 @@
 #include <Poco/Path.h>
 #include <filesystem>
 
-#include <utils/exception.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
 
 #include "database.hpp"
-#include "logger/logmodule.hpp"
 
 using namespace Poco::Data::Keywords;
 

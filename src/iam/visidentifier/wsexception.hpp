@@ -8,7 +8,7 @@
 #ifndef WSEXCEPTION_HPP_
 #define WSEXCEPTION_HPP_
 
-#include <utils/exception.hpp>
+#include <common/utils/exception.hpp>
 
 namespace aos::iam::visidentifier {
 

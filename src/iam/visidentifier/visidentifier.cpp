@@ -7,9 +7,9 @@
 
 #include <Poco/JSON/JSONException.h>
 
-#include <utils/json.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/json.hpp>
 
-#include "logger/logmodule.hpp"
 #include "pocowsclient.hpp"
 #include "visidentifier.hpp"
 #include "vismessage.hpp"

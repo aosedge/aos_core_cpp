@@ -9,9 +9,9 @@
 #include <fstream>
 #include <sys/utsname.h>
 
-#include <utils/exception.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
 
-#include "logger/logmodule.hpp"
 #include "nodeinfoprovider.hpp"
 #include "systeminfo.hpp"
 

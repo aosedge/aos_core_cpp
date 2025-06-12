@@ -22,7 +22,7 @@
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/nodemanager.hpp>
 #include <aos/iam/permhandler.hpp>
-#include <pbconvert/common.hpp>
+#include <common/pbconvert/common.hpp>
 
 #include <iamanager/version.grpc.pb.h>
 

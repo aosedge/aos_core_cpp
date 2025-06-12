@@ -12,10 +12,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include <utils/exception.hpp>
-#include <utils/parser.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/parser.hpp>
 
-#include "logger/logmodule.hpp"
 #include "systeminfo.hpp"
 
 namespace aos::iam::nodeinfoprovider::utils {

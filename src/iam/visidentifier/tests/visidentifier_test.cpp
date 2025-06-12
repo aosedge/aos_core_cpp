@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <common/logger/logger.hpp>
 #include <gmock/gmock.h>
-#include <logger/logger.hpp>
 
 #include "mocks/identhandlermock.hpp"
 #include "mocks/wsclientmock.hpp"
