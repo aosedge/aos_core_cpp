@@ -1,0 +1,35 @@
+#
+# Copyright (C) 2025 EPAM Systems, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+set(TARGET_NAME iamserver)
+
+# ######################################################################################################################
+# Sources
+# ######################################################################################################################
+
+set(SOURCES iamserver.cpp nodecontroller.cpp protectedmessagehandler.cpp publicmessagehandler.cpp)
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+set(LIBRARIES aos::common::pbconvert aos::common::utils aoscommon aosiam aoscoreapi-gen-iam Poco::Util)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
