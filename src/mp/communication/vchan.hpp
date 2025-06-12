@@ -14,6 +14,7 @@ extern "C" {
 #include <mutex>
 
 #include "config/config.hpp"
+
 #include "types.hpp"
 
 namespace aos::mp::communication {

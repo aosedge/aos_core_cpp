@@ -10,8 +10,9 @@
 #include <string>
 
 #include <aos/common/tools/error.hpp>
-#include <logprovider/config.hpp>
-#include <utils/time.hpp>
+
+#include "common/logprovider/config.hpp"
+#include "common/utils/time.hpp"
 
 namespace aos::mp::config {
 

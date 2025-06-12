@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#include "filechunker/filechunker.hpp"
+#include "mp/filechunker/filechunker.hpp"
 
 using namespace testing;
 using namespace aos::mp::filechunker;

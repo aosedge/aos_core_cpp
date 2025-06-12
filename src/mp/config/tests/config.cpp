@@ -15,7 +15,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "config/config.hpp"
+#include "mp/config/config.hpp"
 
 using namespace aos::mp::config;
 

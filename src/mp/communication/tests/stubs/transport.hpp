@@ -16,10 +16,10 @@
 #include <openssl/ssl.h>
 #include <pthread.h>
 
-#include "communication/communicationchannel.hpp"
-#include "communication/types.hpp"
-#include "communication/utils.hpp"
-#include "utils/pkcs11helper.hpp"
+#include "common/utils/pkcs11helper.hpp"
+#include "mp/communication/communicationchannel.hpp"
+#include "mp/communication/types.hpp"
+#include "mp/communication/utils.hpp"
 
 using namespace aos::mp::communication;
 

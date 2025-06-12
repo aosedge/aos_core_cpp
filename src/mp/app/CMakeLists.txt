@@ -28,6 +28,7 @@ set(LIBRARIES
     aoscrypto
     aos::common::downloader
     aos::common::logger
+    aos::common::version
     aos::mp::communication
     aos::mp::cmclient
     aos::mp::iamclient
