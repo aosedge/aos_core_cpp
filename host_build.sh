@@ -17,10 +17,12 @@ if [ "$1" == "clean" ]; then
   print_next_step "Clean artifacts"
 
   rm -rf ./build/
-  conan remove 'poco*' -c
   conan remove 'gtest*' -c
   conan remove 'grpc*' -c
-  conan remove 'protobuf*' -c
+  conan remove 'poco*' -c
+  conan remove 'libcu*' -c
+  conan remove 'opens*' -c
+  conan remove 'libp11*' -c
 fi
 
 #=======================================================================================================================
@@ -41,8 +43,10 @@ print_next_step "Run cmake"
 
 cd ./build
 
-cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON \
-  -DWITH_TEST=ON
+cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug \
+                                                        -DWITH_VCHAN=OFF \
+                                                        -DWITH_COVERAGE=ON \
+                                                        -DWITH_TEST=ON
 
 #=======================================================================================================================
 
