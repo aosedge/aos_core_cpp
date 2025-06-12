@@ -4,13 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET app)
-
 # ######################################################################################################################
-# Compiler flags
+# Target name
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="app")
+set(TARGET_NAME app)
 
 # ######################################################################################################################
 # Sources
@@ -19,30 +17,34 @@ add_definitions(-DLOG_MODULE="app")
 set(SOURCES app.cpp)
 
 # ######################################################################################################################
-# Includes
+# Libraries
 # ######################################################################################################################
+
+set(LIBRARIES
+    CURL::libcurl
+    Poco::Foundation
+    Poco::Util
+    aoscommon
+    aos::common::downloader
+    aos::common::logger
+    aos::mp::communication
+    aos::mp::cmclient
+    aos::mp::iamclient
+    aos::mp::config
+)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_library(${TARGET} STATIC ${SOURCES})
-
-# ######################################################################################################################
-# Libraries
-# ######################################################################################################################
-
-target_link_libraries(
-    ${TARGET}
-    PUBLIC aoscommon
-           aosdownloader
-           aoslogger
-           aosutils
-           cmclient
-           communication
-           config
-           CURL::libcurl
-           iamclient
-           Poco::Foundation
-           Poco::Util
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
 )

@@ -5,20 +5,65 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET communication_test)
+# ######################################################################################################################
+# Target name
+# ######################################################################################################################
+
+set(TARGET_NAME communication_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES communication_secure_test.cpp communication_open_test.cpp stubs/storagestub.cpp)
+set(SOURCES communication_secure.cpp communication_open.cpp stubs/storagestub.cpp)
+
+# ######################################################################################################################
+# Compile options
+# ######################################################################################################################
+
+set(COMPILE_OPTIONS -Wno-deprecated-declarations)
+
+# ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+set(LIBRARIES
+    ${TARGET_NAMESPACE}::communication
+    aos::common::downloader
+    aosiam
+    aostestutils
+    GTest::gmock_main
+    OpenSSL::Crypto
+    OpenSSL::SSL
+)
+
+# ######################################################################################################################
+# Properties
+# ######################################################################################################################
+
+set(OPENSSL_CONF "${CMAKE_CURRENT_BINARY_DIR}/openssl.conf")
+
+set(PROPERTIES "ENVIRONMENT" "SOFTHSM2_CONF=${CMAKE_CURRENT_BINARY_DIR}/softhsm/softhsm2.conf" "ENVIRONMENT"
+               "OPENSSL_CONF=${OPENSSL_CONF}"
+)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_executable(${TARGET} ${SOURCES})
-target_compile_options(${TARGET} PRIVATE -Wno-deprecated-declarations)
+add_test(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    SOURCES
+    ${SOURCES}
+    COMPILE_OPTIONS
+    ${COMPILE_OPTIONS}
+    LIBRARIES
+    ${LIBRARIES}
+    PROPERTIES
+    ${PROPERTIES}
+)
 
 # ######################################################################################################################
 # Setup softhsm
@@ -26,7 +71,7 @@ target_compile_options(${TARGET} PRIVATE -Wno-deprecated-declarations)
 
 include(cmake/softhsm.cmake)
 
-createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
+createsofthsmtestenv(${TARGET_PREFIX}_${TARGET_NAME} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 
 # ######################################################################################################################
 # Gen certificates
@@ -34,7 +79,7 @@ createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 
 include(cmake/gencertificates.cmake)
 
-gencertificates(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
+gencertificates(${TARGET_PREFIX}_${TARGET_NAME} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
 
 # ######################################################################################################################
 # Setup openssl.conf
@@ -42,8 +87,6 @@ gencertificates(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
 
 find_package(pkcs11provider)
 find_package(OpenSSL)
-
-set(OPENSSL_CONF "${CMAKE_CURRENT_BINARY_DIR}/openssl.conf")
 
 file(COPY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/openssl.conf" "${OPENSSL_CONF}")
 file(
@@ -55,26 +98,4 @@ file(
     "module = ${pkcs11provider_PACKAGE_FOLDER_DEBUG}/pkcs11.so\n"
     "pkcs11-module-path = ${SOFTHSM2_LIB}\n"
     "activate = 1\n"
-)
-
-# ######################################################################################################################
-# Libraries
-# ######################################################################################################################
-
-gtest_discover_tests(
-    ${TARGET} PROPERTIES ENVIRONMENT SOFTHSM2_CONF=${CMAKE_CURRENT_BINARY_DIR}/softhsm/softhsm2.conf ENVIRONMENT
-                         OPENSSL_CONF=${OPENSSL_CONF}
-)
-
-target_link_libraries(
-    ${TARGET}
-    GTest::gmock_main
-    OpenSSL::Crypto
-    OpenSSL::SSL
-    aoscommon
-    aosdownloader
-    aostestutils
-    aosiam
-    aosutils
-    communication
 )
