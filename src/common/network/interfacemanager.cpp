@@ -23,8 +23,9 @@
 #include <netlink/route/link/vlan.h>
 #include <netlink/route/route.h>
 
-#include "logger/logmodule.hpp"
-#include "network/interfacemanager.hpp"
+#include "common/logger/logmodule.hpp"
+
+#include "interfacemanager.hpp"
 
 namespace aos::common::network {
 

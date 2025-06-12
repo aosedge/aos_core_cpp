@@ -14,8 +14,9 @@
 
 #include <aos/common/tools/memory.hpp>
 
-#include "logger/logmodule.hpp"
-#include "network/namespacemanager.hpp"
+#include "common/logger/logmodule.hpp"
+
+#include "namespacemanager.hpp"
 
 namespace aos::common::network {
 

@@ -4,11 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "iamclient/publicservicehandler.hpp"
-#include "logger/logmodule.hpp"
-#include "pbconvert/common.hpp"
-#include "utils/exception.hpp"
-#include "utils/grpchelper.hpp"
+#include "common/logger/logmodule.hpp"
+#include "common/pbconvert/common.hpp"
+#include "common/utils/exception.hpp"
+#include "common/utils/grpchelper.hpp"
+
+#include "publicservicehandler.hpp"
 
 namespace aos::common::iamclient {
 

@@ -9,7 +9,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "utils/parser.hpp"
+#include "common/utils/parser.hpp"
 
 using namespace testing;
 

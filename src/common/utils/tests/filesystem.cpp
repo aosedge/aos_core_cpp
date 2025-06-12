@@ -13,7 +13,7 @@
 #include <aos/common/tools/fs.hpp>
 #include <aos/test/log.hpp>
 
-#include "utils/filesystem.hpp"
+#include "common/utils/filesystem.hpp"
 
 using namespace testing;
 

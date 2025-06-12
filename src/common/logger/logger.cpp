@@ -13,7 +13,7 @@
 
 #include <systemd/sd-journal.h>
 
-#include "logger/logger.hpp"
+#include "common/logger/logger.hpp"
 
 namespace aos::common::logger {
 

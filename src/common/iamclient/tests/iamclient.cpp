@@ -10,10 +10,11 @@
 
 #include <aos/test/log.hpp>
 
-#include "iamclient/permservicehandler.hpp"
-#include "iamclient/publicservicehandler.hpp"
+#include "common/iamclient/permservicehandler.hpp"
+#include "common/iamclient/publicservicehandler.hpp"
+#include "common/tests/mocks/iamclientmock.hpp"
+
 #include "mocks/certhandlermock.hpp"
-#include "mocks/iamclientmock.hpp"
 #include "stubs/iamserverstub.hpp"
 
 using namespace testing;

@@ -12,7 +12,7 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <gtest/gtest.h>
 
-#include "migration/migration.hpp"
+#include "common/migration/migration.hpp"
 
 using namespace testing;
 
