@@ -1,11 +1,10 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET iamclient_test)
+set(TARGET_NAME iamclient_test)
 
 # ######################################################################################################################
 # Sources
@@ -14,15 +13,21 @@ set(TARGET iamclient_test)
 set(SOURCES iamclient_test.cpp)
 
 # ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_executable(${TARGET} ${SOURCES})
-
-gtest_discover_tests(${TARGET})
-
-# ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} iamclient aostestcore GTest::gmock_main)
+set(LIBRARIES ${TARGET_NAMESPACE}::iamclient aostestcore GTest::gmock_main)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_test(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
