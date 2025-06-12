@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef POCOWSCLIENT_HPP_
-#define POCOWSCLIENT_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_POCOWSCLIENT_HPP_
+#define AOS_IAM_VISIDENTIFIER_POCOWSCLIENT_HPP_
 
 #include <memory>
 #include <mutex>

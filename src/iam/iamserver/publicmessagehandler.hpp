@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PUBLICMESSAGEHANDLER_HPP_
-#define PUBLICMESSAGEHANDLER_HPP_
+#ifndef AOS_IAM_IAMSERVER_PUBLICMESSAGEHANDLER_HPP_
+#define AOS_IAM_IAMSERVER_PUBLICMESSAGEHANDLER_HPP_
 
 #include <array>
 #include <optional>

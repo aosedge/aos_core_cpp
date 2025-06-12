@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NODECONTROLLER_HPP_
-#define NODECONTROLLER_HPP_
+#ifndef AOS_IAM_IAMSERVER_NODECONTROLLER_HPP_
+#define AOS_IAM_IAMSERVER_NODECONTROLLER_HPP_
 
 #include <future>
 #include <map>
