@@ -19,9 +19,9 @@
 #include <Poco/Util/HelpFormatter.h>
 #include <systemd/sd-daemon.h>
 
+#include "common/logger/logmodule.hpp"
+#include "common/utils/exception.hpp"
 #include <aos/common/version.hpp>
-#include <logger/logmodule.hpp>
-#include <utils/exception.hpp>
 
 #include "app.hpp"
 // cppcheck-suppress missingInclude
@@ -81,7 +81,7 @@ void App::Init()
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
-    LOG_INF() << "Initialize message-proxy: version = " << AOS_MESSAGE_PROXY_VERSION;
+    LOG_INF() << "Initialize message-proxy: version = " << AOS_CORE_CPP_VERSION;
 
     CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
     if (result != CURLE_OK) {
@@ -283,7 +283,7 @@ void App::HandleVersion(const std::string& name, const std::string& value)
 
     mStopProcessing = true;
 
-    std::cout << "Aos IA manager version:   " << AOS_MESSAGE_PROXY_VERSION << std::endl;
+    std::cout << "Aos IA manager version:   " << AOS_CORE_CPP_VERSION << std::endl;
     std::cout << "Aos core library version: " << AOS_CORE_VERSION << std::endl;
 
     stopOptionsProcessing();

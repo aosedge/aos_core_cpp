@@ -10,14 +10,15 @@
 #include <optional>
 
 #include <aos/test/log.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <utils/channel.hpp>
 
 #include <gtest/gtest.h>
 
-#include "cmclient/cmclient.hpp"
-#include "config/config.hpp"
-#include "iamclient/mocks/certprovider.hpp"
+#include "common/iamclient/publicservicehandler.hpp"
+#include "common/utils/channel.hpp"
+#include "mp/cmclient/cmclient.hpp"
+#include "mp/config/config.hpp"
+
+#include "common/tests/mocks/iamclientmock.hpp"
 #include "stubs/smservice.hpp"
 
 using namespace testing;
@@ -293,8 +294,8 @@ protected:
 
 TEST_F(CMClientTest, SendOutgoingMsg)
 {
-    MockCertProvider certProvider {};
-    auto             err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
+    aos::common::iamclient::TLSCredentialsMock certProvider {};
+    auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
     mCMClient->OnConnected();
 
@@ -524,8 +525,8 @@ TEST_F(CMClientTest, SendOutgoingMsg)
 
 TEST_F(CMClientTest, SendIncomingMessages)
 {
-    MockCertProvider certProvider {};
-    auto             err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
+    aos::common::iamclient::TLSCredentialsMock certProvider {};
+    auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
     mCMClient->OnConnected();
 
@@ -757,7 +758,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
 
 TEST_F(CMClientTest, CertChanged)
 {
-    MockCertProvider certProvider {};
+    aos::common::iamclient::TLSCredentialsMock certProvider {};
     EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
         .Times(2)
         .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));

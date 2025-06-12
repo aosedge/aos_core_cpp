@@ -20,7 +20,7 @@
 #include <Poco/StreamCopier.h>
 #include <gtest/gtest.h>
 
-#include "imageunpacker/imageunpacker.hpp"
+#include "mp/imageunpacker/imageunpacker.hpp"
 
 using namespace testing;
 using namespace aos::mp::imageunpacker;
