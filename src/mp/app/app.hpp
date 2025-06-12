@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef APP_HPP_
-#define APP_HPP_
+#ifndef AOS_MP_APP_APP_HPP_
+#define AOS_MP_APP_APP_HPP_
 
 #include <functional>
 #include <optional>

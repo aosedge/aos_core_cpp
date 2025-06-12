@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef COMMUNICATION_TYPES_HPP
-#define COMMUNICATION_TYPES_HPP
+#ifndef AOS_MP_COMMUNICATION_TYPES_HPP
+#define AOS_MP_COMMUNICATION_TYPES_HPP
 
 #include <cstdint>
 #include <memory>
@@ -173,4 +173,4 @@ public:
 
 } // namespace aos::mp::communication
 
-#endif // COMMUNICATION_TYPES_HPP
+#endif

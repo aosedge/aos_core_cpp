@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef FILECHUNKER_HPP_
-#define FILECHUNKER_HPP_
+#ifndef AOS_MP_FILECHUNKER_FILECHUNKER_HPP_
+#define AOS_MP_FILECHUNKER_FILECHUNKER_HPP_
 
 #include <filesystem>
 #include <string>
@@ -55,4 +55,4 @@ RetWithError<ContentInfo> ChunkFiles(const std::string& rootDir, uint64_t reques
 
 } // namespace aos::mp::filechunker
 
-#endif // FILECHUNKER_HPP_
+#endif

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef PUBLICNODECLIENT_HPP_
-#define PUBLICNODECLIENT_HPP_
+#ifndef AOS_MP_IAMCLIENT_PUBLICNODECLIENT_HPP_
+#define AOS_MP_IAMCLIENT_PUBLICNODECLIENT_HPP_
 
 #include <atomic>
 #include <condition_variable>
@@ -150,4 +150,4 @@ private:
 
 } // namespace aos::mp::iamclient
 
-#endif // PUBLICNODECLIENT_HPP_
+#endif

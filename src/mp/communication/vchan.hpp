@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef VCHAN_HPP_
-#define VCHAN_HPP_
+#ifndef AOS_MP_COMMUNICATION_VCHAN_HPP_
+#define AOS_MP_COMMUNICATION_VCHAN_HPP_
 
 extern "C" {
 #include <libxenvchan.h>
@@ -80,4 +80,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif // VCHAN_HPP_
+#endif

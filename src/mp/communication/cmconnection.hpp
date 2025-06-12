@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CMCONNECTION_HPP_
-#define CMCONNECTION_HPP_
+#ifndef AOS_MP_COMMUNICATION_CMCONNECTION_HPP_
+#define AOS_MP_COMMUNICATION_CMCONNECTION_HPP_
 
 #include <atomic>
 #include <functional>
@@ -156,4 +156,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif /* CMCONNECTION_HPP_ */
+#endif
