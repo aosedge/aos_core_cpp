@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef VISIDENTIFIER_HPP_
-#define VISIDENTIFIER_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
+#define AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
 
 #include <map>
 #include <mutex>

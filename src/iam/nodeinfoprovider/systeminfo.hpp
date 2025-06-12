@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SYSTEMINFO_HPP_
-#define SYSTEMINFO_HPP_
+#ifndef AOS_IAM_NODEINFOPROVIDER_SYSTEMINFO_HPP_
+#define AOS_IAM_NODEINFOPROVIDER_SYSTEMINFO_HPP_
 
 #include <string>
 

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef WS_CLIENT_MOCK_HPP_
-#define WS_CLIENT_MOCK_HPP_
+#ifndef AOS_TESTS_MOCKS_WSCLIENTMOCK_HPP_
+#define AOS_TESTS_MOCKS_WSCLIENTMOCK_HPP_
 
 #include <memory>
 

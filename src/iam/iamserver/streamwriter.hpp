@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef STREAMWRITER_HPP_
-#define STREAMWRITER_HPP_
+#ifndef AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
+#define AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
