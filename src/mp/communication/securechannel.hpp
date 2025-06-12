@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SECURECHANNEL_HPP_
-#define SECURECHANNEL_HPP_
+#ifndef AOS_MP_COMMUNICATION_SECURECHANNEL_HPP_
+#define AOS_MP_COMMUNICATION_SECURECHANNEL_HPP_
 
 #include <atomic>
 #include <memory>
@@ -111,4 +111,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif /* SECURECHANNEL_HPP_ */
+#endif

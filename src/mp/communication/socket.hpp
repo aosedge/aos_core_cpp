@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SOCKET_HPP_
-#define SOCKET_HPP_
+#ifndef AOS_MP_COMMUNICATION_SOCKET_HPP_
+#define AOS_MP_COMMUNICATION_SOCKET_HPP_
 
 #include <atomic>
 #include <condition_variable>
@@ -92,4 +92,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif // SOCKET_HPP_
+#endif

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef COMMUNICATIONCHANNEL_HPP_
-#define COMMUNICATIONCHANNEL_HPP_
+#ifndef AOS_MP_COMMUNICATION_COMMUNICATIONCHANNEL_HPP_
+#define AOS_MP_COMMUNICATION_COMMUNICATIONCHANNEL_HPP_
 
 #include <condition_variable>
 #include <mutex>
@@ -85,4 +85,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif /* COMMUNICATIONCHANNEL_HPP_ */
+#endif

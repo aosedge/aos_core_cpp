@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CERTPROVIDER_HPP_
-#define CERTPROVIDER_HPP_
+#ifndef AOS_MP_IAMCLIENT_CERTPROVIDER_HPP_
+#define AOS_MP_IAMCLIENT_CERTPROVIDER_HPP_
 
 #include <gmock/gmock.h>
 #include <grpc++/security/credentials.h>
@@ -33,4 +33,4 @@ public:
     MOCK_METHOD(aos::Error, UnsubscribeCertChanged, (aos::iam::certhandler::CertReceiverItf & subscriber), (override));
 };
 
-#endif /* CERTPROVIDER_HPP_ */
+#endif
