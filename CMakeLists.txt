@@ -18,6 +18,10 @@ set(AOS_CORE_DIR
     CACHE STRING "path where Aos core lib, core API and other dependencies are located"
 )
 
+option(WITH_IAM "build with iam" ON)
+option(WITH_MP "build with message proxy" ON)
+option(WITH_SM "build with service manager" ON)
+
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
 option(WITH_DOC "build with documentation" OFF)
@@ -29,6 +33,10 @@ message(STATUS "CMAKE_INSTALL_PREFIX          = ${CMAKE_INSTALL_PREFIX}")
 message(STATUS)
 message(STATUS "AOS_CORE_DIR                  = ${AOS_CORE_DIR}")
 message(STATUS)
+message(STATUS "WITH_IAM                      = ${WITH_IAM}")
+message(STATUS "WITH_MP                       = ${WITH_MP}")
+message(STATUS "WITH_SM                       = ${WITH_SM}")
+message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
 message(STATUS "WITH_DOC                      = ${WITH_DOC}")
@@ -39,8 +47,18 @@ message(STATUS)
 # ######################################################################################################################
 
 # aos_core_api options
-set(WITH_IAM_API ON)
-set(WITH_SM_API ON)
+
+if(WITH_MP)
+    set(WITH_AOS_PROTOCOL ON)
+endif()
+
+if(WITH_MP OR WITH_IAM)
+    set(WITH_IAM_API ON)
+endif()
+
+if(WITH_MP OR WITH_SM)
+    set(WITH_SM_API ON)
+endif()
 
 # aos_core_lib_cpp options
 set(WITH_MBEDTLS OFF)
@@ -149,6 +167,10 @@ add_subdirectory(src)
 
 add_subdirectory(${AOS_CORE_API_DIR} aos_core_api)
 add_subdirectory(${AOS_CORE_LIB_DIR}/src/common aos_core_lib/common)
+
+if(WITH_MP OR WITH_IAM)
+    add_subdirectory(${AOS_CORE_LIB_DIR}/src/iam aos_core_lib/iam)
+endif()
 
 if(WITH_TEST)
     add_subdirectory(${AOS_CORE_LIB_DIR}/tests/utils aos_core_lib_cpp/tests/utils)
