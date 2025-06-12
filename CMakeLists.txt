@@ -141,6 +141,26 @@ if(NOT EXISTS ${AOS_CORE_API_DIR})
 endif()
 
 # ######################################################################################################################
+# Versioning
+# ######################################################################################################################
+
+find_package(Git)
+
+if(NOT GIT_FOUND)
+    set(GIT_EXECUTABLE git)
+endif()
+
+execute_process(
+    OUTPUT_FILE ${CMAKE_BINARY_DIR}/version.hpp
+    COMMAND
+        ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE} -D INPUT_FILE=${CMAKE_SOURCE_DIR}/src/version.hpp.in -D
+        OUTPUT_FILE=${CMAKE_BINARY_DIR}/version.hpp -D GIT_SOURCE_DIR=${CMAKE_SOURCE_DIR} -P
+        ${CMAKE_SOURCE_DIR}/cmake/GenerateVersion.cmake
+)
+
+include_directories(${CMAKE_BINARY_DIR})
+
+# ######################################################################################################################
 # Targets
 # ######################################################################################################################
 
