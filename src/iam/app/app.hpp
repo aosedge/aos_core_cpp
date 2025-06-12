@@ -16,8 +16,8 @@
 #include <aos/iam/nodemanager.hpp>
 #include <aos/iam/permhandler.hpp>
 #include <aos/iam/provisionmanager.hpp>
-#include <logger/logger.hpp>
-#include <utils/cleanupmanager.hpp>
+#include <common/logger/logger.hpp>
+#include <common/utils/cleanupmanager.hpp>
 
 #include "database/database.hpp"
 #include "iamclient/iamclient.hpp"

@@ -13,10 +13,10 @@
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
 
-#include <pbconvert/common.hpp>
-#include <pbconvert/iam.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/pbconvert/common.hpp>
+#include <common/pbconvert/iam.hpp>
 
-#include "logger/logmodule.hpp"
 #include "protectedmessagehandler.hpp"
 
 namespace aos::iam::iamserver {

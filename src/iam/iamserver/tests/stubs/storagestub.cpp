@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2025 Renesas Electronics Corporation.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "storagestub.hpp"
 
 namespace aos {
