@@ -1,0 +1,12 @@
+/*
+ * Copyright (C) 2025 EPAM Systems, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef AOS_CORE_CPP_VERSION_HPP_
+#define AOS_CORE_CPP_VERSION_HPP_
+
+#define AOS_CORE_CPP_VERSION "${GIT_VERSION}"
+
+#endif

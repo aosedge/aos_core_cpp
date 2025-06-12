@@ -42,6 +42,7 @@ if(WITH_IAM_API OR WITH_SM_API)
 endif()
 
 add_subdirectory(utils)
+add_subdirectory(version)
 
 if(WITH_TEST)
     add_subdirectory(tests)
