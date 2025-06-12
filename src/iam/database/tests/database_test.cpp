@@ -115,7 +115,7 @@ void AddCertificate(Poco::Data::Session& session, const std::string& type, const
 std::string GetMigrationSourceDir()
 {
     std::filesystem::path curFilePath(__FILE__);
-    std::filesystem::path migrationSourceDir = curFilePath.parent_path() / "../.." / "src/database/migration/";
+    std::filesystem::path migrationSourceDir = curFilePath.parent_path() / "../" / "migration/";
 
     return std::filesystem::canonical(migrationSourceDir).string();
 }
