@@ -4,13 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET communication)
-
 # ######################################################################################################################
-# Compiler flags
+# Target name
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="communication")
+set(TARGET_NAME communication)
 
 # ######################################################################################################################
 # Sources
@@ -25,37 +23,57 @@ else()
 endif()
 
 # ######################################################################################################################
-# Includes
+# Compile options
 # ######################################################################################################################
 
-# ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_library(${TARGET} STATIC ${SOURCES})
-
-target_compile_options(${TARGET} PRIVATE -Wno-deprecated-declarations)
+set(COMPILE_OPTIONS -Wno-deprecated-declarations)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC OpenSSL::Crypto
-           OpenSSL::SSL
-           Poco::Foundation
-           Poco::Net
-           aoscommon
-           aoscoreapi-gen-sm
-           iamclient
-           aosprotocol
-           aosutils
-           filechunker
-           imageunpacker
-           logprovider
+set(LIBRARIES
+    OpenSSL::Crypto
+    OpenSSL::SSL
+    Poco::Foundation
+    Poco::Net
+    aoscommon
+    aoscoreapi-gen-sm
+    aosprotocol
+    aos::mp::config
+    aos::mp::filechunker
+    aos::mp::imageunpacker
+    aos::mp::logprovider
+    aos::common::logger
+    aos::common::pbconvert
 )
 
 if(WITH_VCHAN)
-    target_link_libraries(${TARGET} PUBLIC Xenvchan::Xenvchan)
+    list(APPEND LIBRARIES Xenvchan::Xenvchan)
+endif()
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    COMPILE_OPTIONS
+    ${COMPILE_OPTIONS}
+    LIBRARIES
+    ${LIBRARIES}
+)
+
+# ######################################################################################################################
+# Tests
+# ######################################################################################################################
+
+if(WITH_TEST)
+    add_subdirectory(tests)
 endif()

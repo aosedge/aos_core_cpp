@@ -17,3 +17,7 @@ set(TARGET_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 # ######################################################################################################################
 
 add_subdirectory(common)
+
+if(WITH_MP)
+    add_subdirectory(mp)
+endif()

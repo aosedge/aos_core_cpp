@@ -4,13 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET cmclient)
-
 # ######################################################################################################################
-# Compiler flags
+# Target name
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="cmclient")
+set(TARGET_NAME cmclient)
 
 # ######################################################################################################################
 # Sources
@@ -19,17 +17,31 @@ add_definitions(-DLOG_MODULE="cmclient")
 set(SOURCES cmclient.cpp)
 
 # ######################################################################################################################
-# Includes
+# Libraries
 # ######################################################################################################################
+
+set(LIBRARIES aoscommon aos::common::logger aos::common::iamclient aos::mp::communication aoscoreapi-gen-sm)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_library(${TARGET} STATIC ${SOURCES})
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
 
 # ######################################################################################################################
-# Libraries
+# Tests
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosiamclient aoscoreapi-gen-sm aosutils)
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()
