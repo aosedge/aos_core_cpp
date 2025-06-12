@@ -10,9 +10,10 @@
 
 #include <curl/curl.h>
 
-#include "downloader/downloader.hpp"
-#include "logger/logmodule.hpp"
-#include "utils/exception.hpp"
+#include "common/logger/logmodule.hpp"
+#include "common/utils/exception.hpp"
+
+#include "downloader.hpp"
 
 namespace aos::common::downloader {
 
