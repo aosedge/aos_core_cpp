@@ -12,7 +12,7 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/String.h>
 
-#include "utils/utils.hpp"
+#include "utils.hpp"
 
 namespace aos::common::utils {
 

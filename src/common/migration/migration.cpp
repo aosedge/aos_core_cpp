@@ -8,8 +8,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include "migration/migration.hpp"
-#include "utils/exception.hpp"
+#include "common/utils/exception.hpp"
+
+#include "migration.hpp"
 
 using namespace Poco::Data::Keywords;
 

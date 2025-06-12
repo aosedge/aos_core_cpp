@@ -12,8 +12,9 @@
 
 #include "aos/common/tools/string.hpp"
 
+#include "common/utils/utils.hpp"
+
 #include "partition.hpp"
-#include "utils/utils.hpp"
 
 using Poco::trimInPlace;
 

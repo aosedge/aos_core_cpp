@@ -12,7 +12,7 @@
 
 #include <aos/common/tools/time.hpp>
 
-#include "utils/time.hpp"
+#include "time.hpp"
 
 namespace aos::common::utils {
 

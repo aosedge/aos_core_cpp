@@ -6,9 +6,10 @@
 
 #include <Poco/Zip/Compress.h>
 
-#include "logger/logmodule.hpp"
-#include "logprovider/archivator.hpp"
-#include "utils/exception.hpp"
+#include "common/logger/logmodule.hpp"
+#include "common/utils/exception.hpp"
+
+#include "archivator.hpp"
 
 namespace aos::common::logprovider {
 

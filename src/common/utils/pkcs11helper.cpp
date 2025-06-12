@@ -8,9 +8,9 @@
 
 #include <aos/common/crypto/utils.hpp>
 
+#include "exception.hpp"
 #include "pk11uri.hpp"
-#include "utils/exception.hpp"
-#include "utils/pkcs11helper.hpp"
+#include "pkcs11helper.hpp"
 
 namespace aos::common::utils {
 

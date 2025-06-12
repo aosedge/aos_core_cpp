@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "pbconvert/iam.hpp"
-#include "pbconvert/common.hpp"
+#include "iam.hpp"
+#include "common.hpp"
 
 namespace aos::common::pbconvert {
 

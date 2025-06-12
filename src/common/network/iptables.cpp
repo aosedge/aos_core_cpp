@@ -9,8 +9,9 @@
 #include <regex>
 #include <sstream>
 
-#include "network/iptables.hpp"
-#include "utils/exception.hpp"
+#include "common/utils/exception.hpp"
+
+#include "iptables.hpp"
 
 namespace aos::common::network {
 

@@ -9,8 +9,8 @@
 
 #include <aos/test/log.hpp>
 
-#include "utils/exception.hpp"
-#include "utils/time.hpp"
+#include "common/utils/exception.hpp"
+#include "common/utils/time.hpp"
 
 using namespace testing;
 

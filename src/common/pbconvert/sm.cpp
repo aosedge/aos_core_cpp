@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "pbconvert/sm.hpp"
-#include "pbconvert/common.hpp"
+#include "sm.hpp"
+#include "common.hpp"
 
 namespace {
 

@@ -7,8 +7,8 @@
 
 #include <numeric>
 
-#include "utils/cryptohelper.hpp"
-#include "utils/exception.hpp"
+#include "cryptohelper.hpp"
+#include "exception.hpp"
 
 namespace aos::common::utils {
 

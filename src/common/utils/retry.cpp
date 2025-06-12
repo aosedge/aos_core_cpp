@@ -6,7 +6,7 @@
 
 #include <thread>
 
-#include "utils/retry.hpp"
+#include "retry.hpp"
 
 namespace aos::common::utils {
 

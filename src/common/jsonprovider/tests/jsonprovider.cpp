@@ -8,7 +8,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "jsonprovider/jsonprovider.hpp"
+#include "common/jsonprovider/jsonprovider.hpp"
 
 using namespace testing;
 
