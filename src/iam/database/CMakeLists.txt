@@ -1,28 +1,35 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET database_test)
+set(TARGET_NAME database)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES database_test.cpp)
-
-# ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_executable(${TARGET} ${SOURCES})
-
-gtest_discover_tests(${TARGET})
+set(SOURCES database.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} database GTest::gmock_main)
+set(LIBRARIES aos::common::utils aos::common::migration aoscommon Poco::DataSQLite Poco::JSON)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
