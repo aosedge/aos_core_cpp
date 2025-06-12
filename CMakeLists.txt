@@ -44,6 +44,7 @@ message(STATUS)
 # aos_core_api options
 set(WITH_IAM_API ON)
 set(WITH_SM_API ON)
+set(WITH_AOS_PROTOCOL ON)
 
 # aos_core_lib_cpp options
 set(WITH_MBEDTLS OFF)
