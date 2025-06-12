@@ -15,14 +15,13 @@
 
 #include <aos/common/version.hpp>
 #include <aos/iam/certmodules/certmodule.hpp>
-#include <utils/exception.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
+#include <common/version/version.hpp>
 
 #include "app.hpp"
 #include "config/config.hpp"
 #include "fileidentifier/fileidentifier.hpp"
-#include "logger/logmodule.hpp"
-// cppcheck-suppress missingInclude
-#include "version.hpp"
 
 namespace aos::iam::app {
 
@@ -224,7 +223,7 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 
 void App::Init()
 {
-    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_IAM_VERSION;
+    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_CPP_VERSION;
 
     // Initialize Aos modules
 
@@ -343,7 +342,7 @@ void App::HandleVersion(const std::string& name, const std::string& value)
 
     mStopProcessing = true;
 
-    std::cout << "Aos IA manager version:   " << AOS_CORE_IAM_VERSION << std::endl;
+    std::cout << "Aos IA manager version:   " << AOS_CORE_CPP_VERSION << std::endl;
     std::cout << "Aos core library version: " << AOS_CORE_VERSION << std::endl;
 
     stopOptionsProcessing();
