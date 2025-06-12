@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef UTILS_HPP
-#define UTILS_HPP
+#ifndef AOS_MP_COMMUNICATION_UTILS_HPP
+#define AOS_MP_COMMUNICATION_UTILS_HPP
 
 #include <cstring>
 #include <vector>
@@ -77,4 +77,4 @@ inline AosProtobufHeader ParseProtobufHeader(const std::vector<uint8_t>& header)
 
 } // namespace aos::mp::communication
 
-#endif // UTILS_HPP
+#endif

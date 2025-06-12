@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SMSERVICE_HPP_
-#define SMSERVICE_HPP_
+#ifndef AOS_MP_CMCLIENT_SMSERVICE_HPP_
+#define AOS_MP_CMCLIENT_SMSERVICE_HPP_
 
 #include <condition_variable>
 #include <mutex>

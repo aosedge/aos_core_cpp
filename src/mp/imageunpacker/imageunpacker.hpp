@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IMAGEUNPACKER_HPP_
-#define IMAGEUNPACKER_HPP_
+#ifndef AOS_MP_IMAGEUNPACKER_IMAGEUNPACKER_HPP_
+#define AOS_MP_IMAGEUNPACKER_IMAGEUNPACKER_HPP_
 
 #include <string>
 

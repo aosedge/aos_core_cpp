@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ARCHIVERMANAGER_HPP_
-#define ARCHIVERMANAGER_HPP_
+#ifndef AOS_MP_ARCHIVERMANAGER_ARCHIVERMANAGER_HPP_
+#define AOS_MP_ARCHIVERMANAGER_ARCHIVERMANAGER_HPP_
 
 #include <condition_variable>
 #include <map>

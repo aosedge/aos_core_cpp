@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef COMMUNICATIONMANAGER_HPP_
-#define COMMUNICATIONMANAGER_HPP_
+#ifndef AOS_MP_COMMUNICATION_COMMUNICATIONMANAGER_HPP_
+#define AOS_MP_COMMUNICATION_COMMUNICATIONMANAGER_HPP_
 
 #include <atomic>
 #include <condition_variable>
@@ -138,4 +138,4 @@ private:
 
 } // namespace aos::mp::communication
 
-#endif /* COMMUNICATIONMANAGER_HPP_ */
+#endif

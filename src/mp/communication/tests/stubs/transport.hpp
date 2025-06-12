@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef AOS_MP_COMMUNICATION_TRANSPORT_HPP_
+#define AOS_MP_COMMUNICATION_TRANSPORT_HPP_
+
 #include <fstream>
 #include <map>
 #include <vector>
@@ -685,3 +688,5 @@ private:
 
     bool mShutdown {};
 };
+
+#endif
