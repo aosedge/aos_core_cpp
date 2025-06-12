@@ -4,7 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aospbconvert)
+# ######################################################################################################################
+# Target name
+# ######################################################################################################################
+
+set(TARGET_NAME pbconvert)
 
 # ######################################################################################################################
 # Sources
@@ -21,44 +25,39 @@ if(WITH_SM_API)
 endif()
 
 # ######################################################################################################################
-# Target
+# Compile options
 # ######################################################################################################################
 
-add_library(${TARGET} STATIC ${SOURCES})
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-# ######################################################################################################################
-# Compiler flags
-# ######################################################################################################################
-
-target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE} -Wno-format-truncation)
+set(COMPILE_OPTIONS -Wno-format-truncation)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils Poco::Util)
+set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon Poco::Util)
 
 if(WITH_IAM_API)
-    target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-iam)
+    list(APPEND LIBRARIES aoscoreapi-gen-iam)
 endif()
 
 if(WITH_SM_API)
-    target_link_libraries(${TARGET} PUBLIC aoscoreapi-gen-sm)
+    list(APPEND LIBRARIES aoscoreapi-gen-sm)
 endif()
 
 # ######################################################################################################################
-# Install
+# Target
 # ######################################################################################################################
 
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/pbconvert
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    COMPILE_OPTIONS
+    ${COMPILE_OPTIONS}
+    LIBRARIES
+    ${LIBRARIES}
 )

@@ -4,7 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET aosnetwork)
+# ######################################################################################################################
+# Target name
+# ######################################################################################################################
+
+set(TARGET_NAME network)
 
 # ######################################################################################################################
 # Sources
@@ -13,39 +17,31 @@ set(TARGET aosnetwork)
 set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp)
 
 # ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_library(${TARGET} STATIC ${SOURCES})
-
-# ######################################################################################################################
 # Includes
 # ######################################################################################################################
 
-target_include_directories(${TARGET} PUBLIC ${Libnl_INCLUDE_DIRS})
-
-# ######################################################################################################################
-# Compiler flags
-# ######################################################################################################################
-
-add_definitions(-DLOG_MODULE="networkmanager")
-target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
+set(INCLUDES ${Libnl_INCLUDE_DIRS})
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aosutils ${Libnl_LIBRARIES})
+set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon ${Libnl_LIBRARIES})
 
 # ######################################################################################################################
-# Install
+# Target
 # ######################################################################################################################
 
-install(TARGETS ${TARGET} DESTINATION lib)
-
-install(
-    DIRECTORY ${AOS_CORE_COMMON_LIB_DIR}/include/network
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    INCLUDES
+    ${INCLUDES}
+    LIBRARIES
+    ${LIBRARIES}
 )
