@@ -1,28 +1,35 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET nodeinfoprovider_test)
+set(TARGET_NAME nodeinfoprovider)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES nodeinfoprovider_test.cpp)
-
-# ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_executable(${TARGET} ${SOURCES})
+set(SOURCES nodeinfoprovider.cpp systeminfo.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-gtest_discover_tests(${TARGET})
+set(LIBRARIES aos::common::pbconvert aos::common::utils aoscommon Poco::Util)
 
-target_link_libraries(${TARGET} nodeinfoprovider aostestcore GTest::gmock_main)
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
