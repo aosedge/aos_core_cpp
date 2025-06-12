@@ -1,0 +1,12 @@
+/*
+ * Copyright (C) 2024 EPAM Systems, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef VERSION_HPP_
+#define VERSION_HPP_
+
+#define AOS_MESSAGE_PROXY_VERSION "${GIT_VERSION}"
+
+#endif
