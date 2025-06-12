@@ -17,7 +17,8 @@
 #include <aos/common/cloudprotocol/cloudprotocol.hpp>
 #include <aos/common/cloudprotocol/log.hpp>
 #include <aos/sm/logprovider.hpp>
-#include <logprovider/config.hpp>
+
+#include "config.hpp"
 
 namespace aos::common::logprovider {
 

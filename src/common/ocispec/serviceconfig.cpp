@@ -6,11 +6,11 @@
 
 #include <fstream>
 
-#include "ocispec/ocispec.hpp"
+#include "common/utils/exception.hpp"
+#include "common/utils/json.hpp"
+#include "common/utils/time.hpp"
 
-#include "utils/exception.hpp"
-#include "utils/json.hpp"
-#include "utils/time.hpp"
+#include "ocispec.hpp"
 
 namespace aos::common::oci {
 

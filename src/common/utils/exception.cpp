@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include "utils/exception.hpp"
+#include "exception.hpp"
 
 namespace aos::common::utils {
 

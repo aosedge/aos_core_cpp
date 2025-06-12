@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include "utils/exception.hpp"
+#include "common/utils/exception.hpp"
 
 using namespace testing;
 

@@ -15,7 +15,7 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include "utils/image.hpp"
+#include "common/utils/image.hpp"
 
 using namespace testing;
 

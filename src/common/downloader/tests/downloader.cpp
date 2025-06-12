@@ -13,7 +13,8 @@
 
 #include <aos/test/log.hpp>
 
-#include "downloader/downloader.hpp"
+#include "common/downloader/downloader.hpp"
+
 #include "stubs/httpserverstub.hpp"
 
 using namespace testing;

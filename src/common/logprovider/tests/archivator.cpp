@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "logprovider/archivator.hpp"
+#include "common/logprovider/archivator.hpp"
 
 using namespace testing;
 

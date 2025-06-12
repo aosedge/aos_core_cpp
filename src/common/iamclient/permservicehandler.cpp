@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "iamclient/permservicehandler.hpp"
-#include "logger/logmodule.hpp"
-#include "pbconvert/common.hpp"
-#include "utils/exception.hpp"
+#include "common/logger/logmodule.hpp"
+#include "common/pbconvert/common.hpp"
+#include "common/utils/exception.hpp"
+
+#include "permservicehandler.hpp"
 
 namespace aos::common::iamclient {
 
