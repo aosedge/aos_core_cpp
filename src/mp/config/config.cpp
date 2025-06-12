@@ -6,8 +6,8 @@
 
 #include <fstream>
 
-#include <logger/logmodule.hpp>
-#include <utils/json.hpp>
+#include "common/logger/logmodule.hpp"
+#include "common/utils/json.hpp"
 
 #include "config.hpp"
 

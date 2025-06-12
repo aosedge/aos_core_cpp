@@ -12,9 +12,9 @@
 #include <openssl/ssl.h>
 #include <openssl/trace.h>
 
-#include <logger/logmodule.hpp>
-#include <utils/cryptohelper.hpp>
-#include <utils/pkcs11helper.hpp>
+#include "common/logger/logmodule.hpp"
+#include "common/utils/cryptohelper.hpp"
+#include "common/utils/pkcs11helper.hpp"
 
 #include "securechannel.hpp"
 

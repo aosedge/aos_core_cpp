@@ -13,9 +13,8 @@
 #include <Poco/SHA2Engine.h>
 #include <Poco/StreamCopier.h>
 
-#include <logger/logmodule.hpp>
-
-#include "filechunker.hpp"
+#include "common/logger/logmodule.hpp"
+#include "mp/filechunker/filechunker.hpp"
 
 namespace aos::mp::filechunker {
 

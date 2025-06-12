@@ -6,10 +6,10 @@
 
 #include <thread>
 
-#include <logger/logmodule.hpp>
+#include "common/logger/logmodule.hpp"
 
-#include "communication/utils.hpp"
 #include "communicationchannel.hpp"
+#include "utils.hpp"
 
 namespace aos::mp::communication {
 
