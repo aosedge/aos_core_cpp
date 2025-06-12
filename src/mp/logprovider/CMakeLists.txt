@@ -4,13 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET logprovider)
-
 # ######################################################################################################################
-# Compiler flags
+# Target name
 # ######################################################################################################################
 
-add_definitions(-DLOG_MODULE="logprovider")
+set(TARGET_NAME logprovider)
 
 # ######################################################################################################################
 # Sources
@@ -19,17 +17,31 @@ add_definitions(-DLOG_MODULE="logprovider")
 set(SOURCES archivemanager.cpp)
 
 # ######################################################################################################################
-# Includes
+# Libraries
 # ######################################################################################################################
+
+set(LIBRARIES aoscommon aoscoreapi-gen-sm aos::common::logger aos::common::logprovider)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_library(${TARGET} STATIC ${SOURCES})
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
 
 # ######################################################################################################################
-# Libraries
+# Tests
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} PUBLIC aoscommon aoscoreapi-gen-sm aoslogprovider aosutils)
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()
