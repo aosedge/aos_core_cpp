@@ -1,11 +1,10 @@
 #
-# Copyright (C) 2024 Renesas Electronics Corporation.
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET iamserver_test)
+set(TARGET_NAME iamserver_test)
 
 # ######################################################################################################################
 # Sources
@@ -16,10 +15,26 @@ set(SOURCES iamserver_test.cpp nodecontroller_test.cpp protectedmessagehandler_t
 )
 
 # ######################################################################################################################
+# Libraries
+# ######################################################################################################################
+
+set(LIBRARIES ${TARGET_NAMESPACE}::iamserver ${TARGET_NAMESPACE}::iamclient aosiam aostestcore aostestutils
+              GTest::gmock_main
+)
+
+# ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_executable(${TARGET} ${SOURCES})
+add_test(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
 
 # ######################################################################################################################
 # Setup softhsm
@@ -27,7 +42,7 @@ add_executable(${TARGET} ${SOURCES})
 
 include(cmake/softhsm.cmake)
 
-createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
+createsofthsmtestenv(${TARGET_PREFIX}_${TARGET_NAME} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 
 # ######################################################################################################################
 # Gen certificates
@@ -35,7 +50,7 @@ createsofthsmtestenv(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/softhsm")
 
 include(cmake/gencertificates.cmake)
 
-gencertificates(${TARGET} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
+gencertificates(${TARGET_PREFIX}_${TARGET_NAME} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
 
 # ######################################################################################################################
 # Setup openssl.conf
@@ -50,14 +65,3 @@ file(APPEND "${OPENSSL_CONF}"
      "\n[pkcs11_section]\n" "engine_id = pkcs11\n" "dynamic_path = ${libp11_LIB_DIRS_DEBUG}/libpkcs11.so\n"
      "MODULE_PATH = ${SOFTHSM2_LIB}\n" "init = 0\n"
 )
-
-# ######################################################################################################################
-# Libraries
-# ######################################################################################################################
-
-gtest_discover_tests(
-    ${TARGET} PROPERTIES ENVIRONMENT SOFTHSM2_CONF=${CMAKE_CURRENT_BINARY_DIR}/softhsm/softhsm2.conf ENVIRONMENT
-                         OPENSSL_CONF=${OPENSSL_CONF}
-)
-
-target_link_libraries(${TARGET} iamserver iamclient aostestcore aostestutils GTest::gmock_main)
