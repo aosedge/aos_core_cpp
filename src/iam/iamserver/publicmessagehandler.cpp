@@ -12,9 +12,9 @@
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
-#include <pbconvert/iam.hpp>
+#include <common/logger/logmodule.hpp>
+#include <common/pbconvert/iam.hpp>
 
-#include "logger/logmodule.hpp"
 #include "publicmessagehandler.hpp"
 
 namespace aos::iam::iamserver {

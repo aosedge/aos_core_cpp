@@ -11,7 +11,7 @@
 #include <grpcpp/server_builder.h>
 
 #include <aos/test/log.hpp>
-#include <utils/exception.hpp>
+#include <common/utils/exception.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 

@@ -7,8 +7,8 @@
 
 #include <Poco/JSON/Stringifier.h>
 
-#include <utils/exception.hpp>
-#include <utils/json.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
 
 #include "vismessage.hpp"
 
