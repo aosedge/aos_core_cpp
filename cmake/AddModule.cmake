@@ -12,6 +12,7 @@
 #     SOURCES <list>         - list of source files;
 #     LINK_OPTIONS <list>    - list of link options (optional);
 #     LIBRARIES <list>       - list of libraries to link against (optional).
+#     PROPERTIES <list>      - list of properties for test targets (optional).
 # )
 #
 # The following public variables are used:
@@ -24,7 +25,15 @@
 function(_add_target)
     set(options LOG_MODULE)
     set(one_value_args TARGET_NAME STACK_USAGE TARGET_TYPE)
-    set(multi_value_args SOURCES DEFINES COMPILE_OPTIONS INCLUDES LINK_OPTIONS LIBRARIES)
+    set(multi_value_args
+        SOURCES
+        DEFINES
+        COMPILE_OPTIONS
+        INCLUDES
+        LINK_OPTIONS
+        LIBRARIES
+        PROPERTIES
+    )
 
     cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -74,7 +83,14 @@ function(_add_target)
     elseif("${ARG_TARGET_TYPE}" STREQUAL "TEST")
         add_executable(${TARGET} ${ARG_SOURCES})
         add_executable("${TARGET_NAMESPACE}::${ARG_TARGET_NAME}" ALIAS ${TARGET})
-        gtest_discover_tests(${TARGET})
+
+        if(ARG_PROPERTIES)
+            gtest_discover_tests(${TARGET} PROPERTIES ${ARG_PROPERTIES})
+
+            message(STATUS "Adding test target ${TARGET} with properties: ${ARG_PROPERTIES}")
+        else()
+            gtest_discover_tests(${TARGET})
+        endif()
     elseif("${ARG_TARGET_TYPE}" STREQUAL "EXECUTABLE")
         add_executable(${TARGET} ${ARG_SOURCES})
         add_executable("${TARGET_NAMESPACE}::${ARG_TARGET_NAME}" ALIAS ${TARGET})
