@@ -6,7 +6,7 @@
 
 #include <Poco/Net/SocketAddress.h>
 
-#include <logger/logmodule.hpp>
+#include "common/logger/logmodule.hpp"
 
 #include "socket.hpp"
 

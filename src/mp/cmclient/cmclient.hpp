@@ -21,11 +21,11 @@
 
 #include <aos/common/crypto/utils.hpp>
 #include <aos/common/tools/error.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <utils/channel.hpp>
 
-#include "communication/types.hpp"
-#include "config/config.hpp"
+#include "common/iamclient/publicservicehandler.hpp"
+#include "common/utils/channel.hpp"
+#include "mp/communication/types.hpp"
+#include "mp/config/config.hpp"
 
 using SMService        = servicemanager::v4::SMService;
 using SMServiceStubPtr = std::unique_ptr<SMService::StubInterface>;

@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <logger/logmodule.hpp>
+#include "common/logger/logmodule.hpp"
 
-#include "communication/utils.hpp"
 #include "iamconnection.hpp"
+#include "utils.hpp"
 
 namespace aos::mp::communication {
 

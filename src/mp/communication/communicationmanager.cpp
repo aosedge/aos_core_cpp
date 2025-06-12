@@ -6,11 +6,11 @@
 
 #include <openssl/sha.h>
 
-#include <logger/logmodule.hpp>
+#include "common/logger/logmodule.hpp"
 
-#include "communication/utils.hpp"
 #include "communicationmanager.hpp"
 #include "securechannel.hpp"
+#include "utils.hpp"
 
 namespace aos::mp::communication {
 

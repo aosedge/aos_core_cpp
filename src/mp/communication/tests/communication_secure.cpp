@@ -17,9 +17,10 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <downloader/downloader.hpp>
-#include <utils/cryptohelper.hpp>
-#include <utils/pkcs11helper.hpp>
+
+#include "common/downloader/downloader.hpp"
+#include "common/utils/cryptohelper.hpp"
+#include "common/utils/pkcs11helper.hpp"
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
@@ -27,8 +28,8 @@
 #include <aos/test/log.hpp>
 #include <aos/test/softhsmenv.hpp>
 
-#include "communication/communicationmanager.hpp"
-#include "communication/socket.hpp"
+#include "mp/communication/communicationmanager.hpp"
+#include "mp/communication/socket.hpp"
 
 #include "stubs/storagestub.hpp"
 #include "stubs/transport.hpp"
@@ -237,8 +238,10 @@ protected:
         ASSERT_TRUE(aos::fs::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
         clientCertChain.Append(caCert);
 
+        auto err = mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo);
         // apply client certificate
-        ASSERT_TRUE(mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo).IsNone());
+        LOG_DBG() << "err = " << err;
+        ASSERT_TRUE(err.IsNone());
         EXPECT_EQ(certInfo.mSerial, serialArr);
     }
 

@@ -14,9 +14,9 @@
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include "communication/communicationmanager.hpp"
-#include "communication/socket.hpp"
-#include "config/config.hpp"
+#include "mp/communication/communicationmanager.hpp"
+#include "mp/communication/socket.hpp"
+#include "mp/config/config.hpp"
 #include "stubs/transport.hpp"
 
 using namespace testing;

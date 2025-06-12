@@ -8,14 +8,15 @@
 
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
-#include <logger/logmodule.hpp>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include <aos/common/cloudprotocol/log.hpp>
-#include <pbconvert/sm.hpp>
+
+#include "common/logger/logmodule.hpp"
+#include "common/pbconvert/sm.hpp"
 
 #include "cmconnection.hpp"
-#include "communication/utils.hpp"
+#include "utils.hpp"
 
 namespace aos::mp::communication {
 

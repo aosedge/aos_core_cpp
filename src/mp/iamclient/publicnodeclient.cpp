@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <logger/logmodule.hpp>
-#include <utils/grpchelper.hpp>
+#include "common/logger/logmodule.hpp"
+#include "common/utils/grpchelper.hpp"
 
 #include "publicnodeclient.hpp"
 

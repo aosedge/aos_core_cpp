@@ -14,7 +14,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "logprovider/archivemanager.hpp"
+#include "mp/logprovider/archivemanager.hpp"
 
 using namespace testing;
 

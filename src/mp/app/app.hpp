@@ -13,26 +13,25 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include <logger/logger.hpp>
-
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <downloader/downloader.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <utils/cleanupmanager.hpp>
 
-#include "cmclient/cmclient.hpp"
-#include "communication/cmconnection.hpp"
-#include "communication/communicationmanager.hpp"
-#include "communication/iamconnection.hpp"
+#include "common/downloader/downloader.hpp"
+#include "common/iamclient/publicservicehandler.hpp"
+#include "common/logger/logger.hpp"
+#include "common/utils/cleanupmanager.hpp"
+#include "mp/cmclient/cmclient.hpp"
+#include "mp/communication/cmconnection.hpp"
+#include "mp/communication/communicationmanager.hpp"
+#include "mp/communication/iamconnection.hpp"
+#include "mp/config/config.hpp"
+#include "mp/iamclient/publicnodeclient.hpp"
+
 #ifdef VCHAN
-#include "communication/vchan.hpp"
+#include "mp/communication/vchan.hpp"
 #else
-#include "communication/socket.hpp"
+#include "mp/communication/socket.hpp"
 #endif
-
-#include "config/config.hpp"
-#include "iamclient/publicnodeclient.hpp"
 
 /**
  * Aos message-proxy application.

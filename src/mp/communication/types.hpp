@@ -12,7 +12,8 @@
 #include <vector>
 
 #include <aos/common/tools/error.hpp>
-#include <iamclient/publicservicehandler.hpp>
+
+#include "common/iamclient/publicservicehandler.hpp"
 
 namespace aos::mp::communication {
 

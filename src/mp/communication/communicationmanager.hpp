@@ -14,9 +14,10 @@
 #include <mutex>
 #include <thread>
 
+#include "mp/config/config.hpp"
+
 #include "cmconnection.hpp"
 #include "communicationchannel.hpp"
-#include "config/config.hpp"
 #include "iamconnection.hpp"
 #include "types.hpp"
 

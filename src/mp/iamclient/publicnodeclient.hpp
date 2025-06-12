@@ -23,12 +23,12 @@
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
 #include <aos/common/tools/error.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <utils/channel.hpp>
 
-#include "communication/types.hpp"
-#include "config/config.hpp"
-#include "utils/time.hpp"
+#include "common/iamclient/publicservicehandler.hpp"
+#include "common/utils/channel.hpp"
+#include "common/utils/time.hpp"
+#include "mp/communication/types.hpp"
+#include "mp/config/config.hpp"
 
 namespace aos::mp::iamclient {
 
