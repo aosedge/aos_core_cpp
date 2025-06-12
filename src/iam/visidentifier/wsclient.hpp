@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef WSCLIENT_HPP_
-#define WSCLIENT_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_WSCLIENT_HPP_
+#define AOS_IAM_VISIDENTIFIER_WSCLIENT_HPP_
 
 #include <functional>
 #include <memory>

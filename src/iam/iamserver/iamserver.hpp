@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IAMSERVER_HPP_
-#define IAMSERVER_HPP_
+#ifndef AOS_IAM_IAMSERVER_IAMSERVER_HPP_
+#define AOS_IAM_IAMSERVER_IAMSERVER_HPP_
 
 #include <atomic>
 #include <string>

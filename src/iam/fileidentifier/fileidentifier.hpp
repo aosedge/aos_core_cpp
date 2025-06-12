@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef FILEIDENTIFIER_HPP_
-#define FILEIDENTIFIER_HPP_
+#ifndef AOS_IAM_FILEIDENTIFIER_FILEIDENTIFIER_HPP_
+#define AOS_IAM_FILEIDENTIFIER_FILEIDENTIFIER_HPP_
 
 #include <string>
 

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef VISMESSAGE_HPP_
-#define VISMESSAGE_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_VISMESSAGE_HPP_
+#define AOS_IAM_VISIDENTIFIER_VISMESSAGE_HPP_
 
 #include <array>
 #include <string>

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef WSEXCEPTION_HPP_
-#define WSEXCEPTION_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_WSEXCEPTION_HPP_
+#define AOS_IAM_VISIDENTIFIER_WSEXCEPTION_HPP_
 
 #include <common/utils/exception.hpp>
 

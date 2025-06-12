@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NODEINFOPROVIDER_HPP_
-#define NODEINFOPROVIDER_HPP_
+#ifndef AOS_IAM_NODEINFOPROVIDER_NODEINFOPROVIDER_HPP_
+#define AOS_IAM_NODEINFOPROVIDER_NODEINFOPROVIDER_HPP_
 
 #include <mutex>
 #include <string>

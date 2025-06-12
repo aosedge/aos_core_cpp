@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef WSPENDINGREQUESTS_HPP_
-#define WSPENDINGREQUESTS_HPP_
+#ifndef AOS_IAM_VISIDENTIFIER_WSPENDINGREQUESTS_HPP_
+#define AOS_IAM_VISIDENTIFIER_WSPENDINGREQUESTS_HPP_
 
 #include <memory>
 #include <mutex>
