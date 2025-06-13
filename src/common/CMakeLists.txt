@@ -45,17 +45,4 @@ add_subdirectory(utils)
 
 if(WITH_TEST)
     add_subdirectory(tests)
-
-    add_subdirectory(downloader/tests)
-    add_subdirectory(iamclient/tests)
-    add_subdirectory(jsonprovider/tests)
-    add_subdirectory(logprovider/tests)
-    add_subdirectory(migration/tests)
-    add_subdirectory(ocispec/tests)
-
-    if(WITH_IAM_API OR WITH_SM_API)
-        add_subdirectory(pbconvert/tests)
-    endif()
-
-    add_subdirectory(utils/tests)
 endif()
