@@ -15,7 +15,8 @@
 #include "mp/filechunker/filechunker.hpp"
 
 using namespace testing;
-using namespace aos::mp::filechunker;
+
+namespace aos::mp::filechunker {
 
 /***********************************************************************************************************************
  * Suite
@@ -61,7 +62,7 @@ TEST_F(FileChunkerTest, ChunkFiles)
     uint64_t requestID = 1;
     auto     result    = ChunkFiles(mTestDir, requestID);
 
-    ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(result.mError, ErrorEnum::eNone);
     ASSERT_EQ(result.mValue.mRequestID, requestID);
     ASSERT_EQ(result.mValue.mImageFiles.size(), 1);
     ASSERT_EQ(result.mValue.mImageContents.size(), 1);
@@ -82,3 +83,5 @@ TEST_F(FileChunkerTest, ChunkFiles)
     EXPECT_EQ(imageContent.mPart, 1);
     EXPECT_EQ(imageContent.mData.size(), 37);
 }
+
+} // namespace aos::mp::filechunker
