@@ -23,9 +23,10 @@
 #include "mp/imageunpacker/imageunpacker.hpp"
 
 using namespace testing;
-using namespace aos::mp::imageunpacker;
 
 namespace fs = std::filesystem;
+
+namespace aos::mp::imageunpacker {
 
 /***********************************************************************************************************************
  * Suite
@@ -170,8 +171,10 @@ TEST_F(ImageUnpackerTest, UnpackService)
     ImageUnpacker imageUnpacker(tmpDir + "/image_store");
     auto          result = imageUnpacker.Unpack(archivePath, "service");
 
-    ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(result.mError, ErrorEnum::eNone);
     EXPECT_TRUE(fs::exists(fs::path(result.mValue) / "manifest.json"));
     EXPECT_TRUE(fs::exists(fs::path(result.mValue) / "blobs" / "sha256" / aosSrvConfigDigest));
     EXPECT_TRUE(FindSubdirectoryWithFile(result.mValue, "home", "service.py"));
 }
+
+} // namespace aos::mp::imageunpacker
