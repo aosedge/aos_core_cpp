@@ -33,6 +33,8 @@
 #include "mp/communication/socket.hpp"
 #endif
 
+namespace aos::mp::app {
+
 /**
  * Aos message-proxy application.
  */
@@ -64,33 +66,35 @@ private:
     void Init();
     void Start();
 
-    aos::common::logger::Logger mLogger;
-    bool                        mStopProcessing = false;
-    bool                        mProvisioning   = false;
-    std::string                 mConfigFile;
+    common::logger::Logger mLogger;
+    bool                   mStopProcessing = false;
+    bool                   mProvisioning   = false;
+    std::string            mConfigFile;
 
-    aos::crypto::DefaultCryptoProvider mCryptoProvider;
-    aos::crypto::CertLoader            mCertLoader;
-    aos::pkcs11::PKCS11Manager         mPKCS11Manager;
+    crypto::DefaultCryptoProvider mCryptoProvider;
+    crypto::CertLoader            mCertLoader;
+    pkcs11::PKCS11Manager         mPKCS11Manager;
 
-    aos::mp::config::Config mConfig = {};
+    config::Config mConfig = {};
 
-    aos::common::iamclient::PublicServiceHandler mPublicServiceHandler;
-    aos::mp::cmclient::CMClient                  mCMClient;
-    aos::mp::iamclient::PublicNodeClient         mPublicNodeClient;
-    aos::mp::iamclient::PublicNodeClient         mProtectedNodeClient;
+    common::iamclient::PublicServiceHandler mPublicServiceHandler;
+    cmclient::CMClient                      mCMClient;
+    iamclient::PublicNodeClient             mPublicNodeClient;
+    iamclient::PublicNodeClient             mProtectedNodeClient;
 
 #ifdef VCHAN
-    aos::mp::communication::VChan mTransport;
+    communication::VChan mTransport;
 #else
-    aos::mp::communication::Socket mTransport;
+    communication::Socket mTransport;
 #endif
-    aos::mp::communication::CommunicationManager mCommunicationManager;
-    aos::mp::communication::IAMConnection        mIAMPublicConnection;
-    aos::mp::communication::IAMConnection        mIAMProtectedConnection;
-    aos::mp::communication::CMConnection         mCMConnection;
-    aos::common::downloader::Downloader          mDownloader;
-    aos::common::utils::CleanupManager           mCleanupManager;
+    communication::CommunicationManager mCommunicationManager;
+    communication::IAMConnection        mIAMPublicConnection;
+    communication::IAMConnection        mIAMProtectedConnection;
+    communication::CMConnection         mCMConnection;
+    common::downloader::Downloader      mDownloader;
+    common::utils::CleanupManager       mCleanupManager;
 };
+
+} // namespace aos::mp::app
 
 #endif
