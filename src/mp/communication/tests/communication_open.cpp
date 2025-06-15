@@ -20,7 +20,8 @@
 #include "stubs/transport.hpp"
 
 using namespace testing;
-using namespace aos::mp::communication;
+
+namespace aos::mp::communication {
 
 /***********************************************************************************************************************
  * Suite
@@ -30,13 +31,13 @@ class CommunicationOpenManagerTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         mConfig.mIAMConfig.mOpenPort = 8080;
         mConfig.mCMConfig.mOpenPort  = 30001;
 
         mServer.emplace();
-        EXPECT_EQ(mServer->Init(30001), aos::ErrorEnum::eNone);
+        EXPECT_EQ(mServer->Init(30001), ErrorEnum::eNone);
 
         mClient.emplace("localhost", 30001);
 
@@ -56,22 +57,22 @@ protected:
         mCommManagerClient->Close();
     }
 
-    std::optional<aos::mp::communication::Socket> mServer;
-    std::optional<SocketClient>                   mClient;
+    std::optional<communication::Socket> mServer;
+    std::optional<SocketClient>          mClient;
 
     std::shared_ptr<CommChannelItf> mIAMClientChannel;
     std::shared_ptr<CommChannelItf> mCMClientChannel;
     std::optional<CommManager>      mCommManagerClient;
 
-    aos::mp::config::Config                    mConfig;
-    aos::common::iamclient::TLSCredentialsItf* mCertProvider {};
-    aos::crypto::CertLoaderItf*                mCertLoader {};
-    aos::crypto::x509::ProviderItf*            mCryptoProvider {};
-    Handler                                    IAMHandler {};
-    Handler                                    CMHandler {};
-    IAMConnection                              mIAMConnection {};
-    CMConnection                               mCMConnection {};
-    std::optional<CommunicationManager>        mCommManager;
+    config::Config                        mConfig;
+    common::iamclient::TLSCredentialsItf* mCertProvider {};
+    crypto::CertLoaderItf*                mCertLoader {};
+    crypto::x509::ProviderItf*            mCryptoProvider {};
+    Handler                               IAMHandler {};
+    Handler                               CMHandler {};
+    IAMConnection                         mIAMConnection {};
+    CMConnection                          mCMConnection {};
+    std::optional<CommunicationManager>   mCommManager;
 };
 
 /***********************************************************************************************************************
@@ -80,17 +81,17 @@ protected:
 
 TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
-    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), ErrorEnum::eNone);
 
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_response();
@@ -100,10 +101,10 @@ TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 
     auto protobufHeader = PrepareProtobufHeader(messageData.size());
     protobufHeader.insert(protobufHeader.end(), messageData.begin(), messageData.end());
-    EXPECT_EQ(mIAMClientChannel->Write(protobufHeader), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Write(protobufHeader), ErrorEnum::eNone);
 
     auto [receivedMsg, errReceive] = IAMHandler.GetOutgoingMessages();
-    EXPECT_EQ(errReceive, aos::ErrorEnum::eNone);
+    EXPECT_EQ(errReceive, ErrorEnum::eNone);
     EXPECT_TRUE(outgoingMsg.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
     EXPECT_TRUE(outgoingMsg.has_start_provisioning_response());
 
@@ -115,10 +116,10 @@ TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
     protobufHeader = PrepareProtobufHeader(messageData2.size());
     protobufHeader.insert(protobufHeader.end(), messageData2.begin(), messageData2.end());
 
-    EXPECT_EQ(mCMClientChannel->Write(protobufHeader), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMClientChannel->Write(protobufHeader), ErrorEnum::eNone);
 
     auto [receivedMsg2, errReceive2] = CMHandler.GetOutgoingMessages();
-    EXPECT_EQ(errReceive2, aos::ErrorEnum::eNone);
+    EXPECT_EQ(errReceive2, ErrorEnum::eNone);
 
     EXPECT_TRUE(smOutgoingMessages.ParseFromArray(receivedMsg2.data(), receivedMsg2.size()));
     EXPECT_TRUE(smOutgoingMessages.has_node_config_status());
@@ -126,17 +127,17 @@ TEST_F(CommunicationOpenManagerTest, TestOpenIAMChannel)
 
 TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
-    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), ErrorEnum::eNone);
 
     servicemanager::v4::SMOutgoingMessages outgoingMessages;
     outgoingMessages.mutable_clock_sync_request();
@@ -145,15 +146,15 @@ TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
     EXPECT_TRUE(outgoingMessages.SerializeToArray(messageData.data(), messageData.size()));
     auto protobufHeader = PrepareProtobufHeader(messageData.size());
     protobufHeader.insert(protobufHeader.end(), messageData.begin(), messageData.end());
-    EXPECT_EQ(mCMClientChannel->Write(protobufHeader), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMClientChannel->Write(protobufHeader), ErrorEnum::eNone);
 
     std::vector<uint8_t> message(sizeof(AosProtobufHeader));
-    EXPECT_EQ(mCMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMClientChannel->Read(message), ErrorEnum::eNone);
     auto header = ParseProtobufHeader(message);
     message.clear();
     message.resize(header.mDataSize);
 
-    EXPECT_EQ(mCMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCMClientChannel->Read(message), ErrorEnum::eNone);
     servicemanager::v4::SMIncomingMessages incomingMessages;
     EXPECT_TRUE(incomingMessages.ParseFromArray(message.data(), message.size()));
     EXPECT_TRUE(incomingMessages.has_clock_sync());
@@ -167,32 +168,32 @@ TEST_F(CommunicationOpenManagerTest, TestSyncClockRequest)
 
 TEST_F(CommunicationOpenManagerTest, TestSendIAMIncomingMessages)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
-    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), ErrorEnum::eNone);
 
     iamanager::v5::IAMIncomingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_request();
     std::vector<uint8_t> messageData(outgoingMsg.ByteSizeLong());
     EXPECT_TRUE(outgoingMsg.SerializeToArray(messageData.data(), messageData.size()));
 
-    EXPECT_EQ(IAMHandler.SetIncomingMessages(messageData), aos::ErrorEnum::eNone);
+    EXPECT_EQ(IAMHandler.SetIncomingMessages(messageData), ErrorEnum::eNone);
 
     std::vector<uint8_t> message(sizeof(AosProtobufHeader));
-    EXPECT_EQ(mIAMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Read(message), ErrorEnum::eNone);
     auto header = ParseProtobufHeader(message);
     message.clear();
     message.resize(header.mDataSize);
 
-    EXPECT_EQ(mIAMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Read(message), ErrorEnum::eNone);
     iamanager::v5::IAMIncomingMessages incomingMessages;
     EXPECT_TRUE(incomingMessages.ParseFromArray(message.data(), message.size()));
     EXPECT_TRUE(incomingMessages.has_start_provisioning_request());
@@ -200,32 +201,32 @@ TEST_F(CommunicationOpenManagerTest, TestSendIAMIncomingMessages)
 
 TEST_F(CommunicationOpenManagerTest, TestIAMFlow)
 {
-    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Init(mConfig, mServer.value()), ErrorEnum::eNone);
 
     auto err = mIAMConnection.Init(mConfig.mIAMConfig.mOpenPort, IAMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
     err = mCMConnection.Init(mConfig, CMHandler, *mCommManager);
-    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
-    EXPECT_EQ(mCommManager->Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mIAMConnection.Start(), aos::ErrorEnum::eNone);
-    EXPECT_EQ(mCMConnection.Start(), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mCommManager->Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mIAMConnection.Start(), ErrorEnum::eNone);
+    EXPECT_EQ(mCMConnection.Start(), ErrorEnum::eNone);
 
     iamanager::v5::IAMIncomingMessages outgoingMsg;
     outgoingMsg.mutable_start_provisioning_request();
     std::vector<uint8_t> messageData(outgoingMsg.ByteSizeLong());
     EXPECT_TRUE(outgoingMsg.SerializeToArray(messageData.data(), messageData.size()));
 
-    EXPECT_EQ(IAMHandler.SetIncomingMessages(messageData), aos::ErrorEnum::eNone);
+    EXPECT_EQ(IAMHandler.SetIncomingMessages(messageData), ErrorEnum::eNone);
 
     std::vector<uint8_t> message(sizeof(AosProtobufHeader));
-    EXPECT_EQ(mIAMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Read(message), ErrorEnum::eNone);
     auto header = ParseProtobufHeader(message);
     message.clear();
     message.resize(header.mDataSize);
 
-    EXPECT_EQ(mIAMClientChannel->Read(message), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Read(message), ErrorEnum::eNone);
     iamanager::v5::IAMIncomingMessages incomingMessages;
     EXPECT_TRUE(incomingMessages.ParseFromArray(message.data(), message.size()));
     EXPECT_TRUE(incomingMessages.has_start_provisioning_request());
@@ -237,10 +238,12 @@ TEST_F(CommunicationOpenManagerTest, TestIAMFlow)
 
     auto protobufHeader = PrepareProtobufHeader(messageData2.size());
     protobufHeader.insert(protobufHeader.end(), messageData2.begin(), messageData2.end());
-    EXPECT_EQ(mIAMClientChannel->Write(protobufHeader), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mIAMClientChannel->Write(protobufHeader), ErrorEnum::eNone);
 
     auto [receivedMsg, errReceive] = IAMHandler.GetOutgoingMessages();
-    EXPECT_EQ(errReceive, aos::ErrorEnum::eNone);
+    EXPECT_EQ(errReceive, ErrorEnum::eNone);
     EXPECT_TRUE(outgoingMsg2.ParseFromArray(receivedMsg.data(), receivedMsg.size()));
     EXPECT_TRUE(outgoingMsg2.has_start_provisioning_response());
 }
+
+} // namespace aos::mp::communication

@@ -24,7 +24,7 @@
 #include "mp/communication/types.hpp"
 #include "mp/communication/utils.hpp"
 
-using namespace aos::mp::communication;
+namespace aos::mp::communication {
 
 class SocketClient {
 public:
@@ -43,7 +43,7 @@ public:
         return mConnected;
     }
 
-    aos::Error Connect()
+    Error Connect()
     {
         try {
             if (mClientSocket.impl()->initialized()) {
@@ -56,48 +56,48 @@ public:
             mConnected = true;
             mCondVar.notify_all();
 
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
 
         } catch (const Poco::Exception& e) {
-            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+            return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
         }
     }
 
-    aos::Error Read(std::vector<uint8_t>& message)
+    Error Read(std::vector<uint8_t>& message)
     {
         try {
             int totalRead = 0;
             while (totalRead < static_cast<int>(message.size())) {
                 int bytesRead = mClientSocket.receiveBytes(message.data() + totalRead, message.size() - totalRead);
                 if (bytesRead == 0) {
-                    return aos::Error {ECONNRESET};
+                    return Error {ECONNRESET};
                 }
                 totalRead += bytesRead;
             }
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         } catch (const Poco::Exception& e) {
-            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+            return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
         }
     }
 
-    aos::Error Write(std::vector<uint8_t> message)
+    Error Write(std::vector<uint8_t> message)
     {
         try {
             int totalSent = 0;
             while (totalSent < static_cast<int>(message.size())) {
                 int bytesSent = mClientSocket.sendBytes(message.data() + totalSent, message.size() - totalSent);
                 if (bytesSent == 0) {
-                    return aos::Error {ECONNRESET};
+                    return Error {ECONNRESET};
                 }
                 totalSent += bytesSent;
             }
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         } catch (const Poco::Exception& e) {
-            return aos::Error {aos::ErrorEnum::eRuntime, e.displayText().c_str()};
+            return Error {ErrorEnum::eRuntime, e.displayText().c_str()};
         }
     }
 
-    aos::Error Close()
+    Error Close()
     {
         LOG_INF() << "Closing connection to " << mAddress.c_str() << ":" << mPort;
 
@@ -113,7 +113,7 @@ public:
         mConnected    = false;
         mCondVar.notify_all();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
 private:
@@ -150,10 +150,10 @@ public:
         }
     }
 
-    aos::Error Connect() override
+    Error Connect() override
     {
         if (mConnected) {
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         }
 
         mCtx = nullptr;
@@ -165,7 +165,7 @@ public:
             if (auto err = AttemptConnect(); err.IsNone()) {
                 mConnected = true;
 
-                return aos::ErrorEnum::eNone;
+                return ErrorEnum::eNone;
             }
 
             retryCount++;
@@ -173,38 +173,38 @@ public:
             std::this_thread::sleep_for(cConnectionTimeout);
         }
 
-        return aos::Error(aos::ErrorEnum::eRuntime, "failed to connect");
+        return Error(ErrorEnum::eRuntime, "failed to connect");
     }
 
-    aos::Error Read(std::vector<uint8_t>& message) override
+    Error Read(std::vector<uint8_t>& message) override
     {
         if (!mConnected || !mSSL) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Not connected");
+            return Error(ErrorEnum::eRuntime, "Not connected");
         }
 
         int bytesRead = SSL_read(mSSL, message.data(), message.size());
         if (bytesRead <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "SSL read failed");
+            return Error(ErrorEnum::eRuntime, "SSL read failed");
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error Write(std::vector<uint8_t> message) override
+    Error Write(std::vector<uint8_t> message) override
     {
         if (!mConnected || !mSSL) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "Not connected");
+            return Error(ErrorEnum::eRuntime, "Not connected");
         }
 
         int bytesWritten = SSL_write(mSSL, message.data(), message.size());
         if (bytesWritten <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "SSL write failed");
+            return Error(ErrorEnum::eRuntime, "SSL write failed");
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error Close() override
+    Error Close() override
     {
         if (mConnected && mSSL) {
             SSL_shutdown(mSSL);
@@ -226,7 +226,7 @@ public:
             return err;
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     bool IsConnected() const override { return mConnected; }
@@ -244,7 +244,7 @@ private:
     BIO_METHOD*       mBioMethod = nullptr;
     std::atomic<bool> mConnected {false};
 
-    aos::Error AttemptConnect()
+    Error AttemptConnect()
     {
         if (mConnected) {
             Close();
@@ -255,32 +255,32 @@ private:
         }
 
         auto err = CreateContext();
-        if (err != aos::ErrorEnum::eNone)
+        if (err != ErrorEnum::eNone)
             return err;
 
         err = ConfigureContext();
-        if (err != aos::ErrorEnum::eNone)
+        if (err != ErrorEnum::eNone)
             return err;
 
         err = SetupSSL();
-        if (err != aos::ErrorEnum::eNone)
+        if (err != ErrorEnum::eNone)
             return err;
 
         return PerformHandshake();
     }
 
-    aos::Error CreateContext()
+    Error CreateContext()
     {
         const SSL_METHOD* method = TLS_client_method();
         mCtx                     = SSL_CTX_new(method);
         if (!mCtx) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "unable to create SSL context");
+            return Error(ErrorEnum::eRuntime, "unable to create SSL context");
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error ConfigureContext()
+    Error ConfigureContext()
     {
         SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, nullptr);
 
@@ -291,24 +291,24 @@ private:
 
         if (SSL_CTX_use_PrivateKey(mCtx, pkey) <= 0) {
             EVP_PKEY_free(pkey);
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set private key");
+            return Error(ErrorEnum::eRuntime, "failed to set private key");
         }
         EVP_PKEY_free(pkey);
 
         BIO* bio = BIO_new_mem_buf(mCertPEM.c_str(), -1);
         if (!bio) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create BIO");
+            return Error(ErrorEnum::eRuntime, "failed to create BIO");
         }
         std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
 
         X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
         if (!cert) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load certificate");
+            return Error(ErrorEnum::eRuntime, "failed to load certificate");
         }
         std::unique_ptr<X509, decltype(&X509_free)> certPtr(cert, X509_free);
 
         if (SSL_CTX_use_certificate(mCtx, cert) <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set certificate");
+            return Error(ErrorEnum::eRuntime, "failed to set certificate");
         }
 
         STACK_OF(X509)* chain  = sk_X509_new_null();
@@ -319,53 +319,53 @@ private:
 
         if (sk_X509_num(chain) > 0 && SSL_CTX_set1_chain(mCtx, chain) <= 0) {
             sk_X509_pop_free(chain, X509_free);
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to set certificate chain");
+            return Error(ErrorEnum::eRuntime, "failed to set certificate chain");
         }
 
         sk_X509_pop_free(chain, X509_free);
 
         if (SSL_CTX_load_verify_locations(mCtx, mCaCertPath.c_str(), nullptr) <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to load CA certificate");
+            return Error(ErrorEnum::eRuntime, "failed to load CA certificate");
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
+    RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
     {
-        auto [pkcs11URL, createErr] = aos::common::utils::CreatePKCS11URL(keyURL.c_str());
+        auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
         if (!createErr.IsNone()) {
             return {nullptr, createErr};
         }
 
-        auto [pem, encodeErr] = aos::common::utils::PEMEncodePKCS11URL(pkcs11URL);
+        auto [pem, encodeErr] = common::utils::PEMEncodePKCS11URL(pkcs11URL);
         if (!encodeErr.IsNone()) {
             return {nullptr, encodeErr};
         }
 
-        auto bio = aos::DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
+        auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
         if (!bio) {
-            return {nullptr, AOS_ERROR_WRAP(aos::ErrorEnum::eRuntime)};
+            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
         }
 
         EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
         if (!pkey) {
-            return {nullptr, AOS_ERROR_WRAP(aos::ErrorEnum::eRuntime)};
+            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
         }
 
-        return {pkey, aos::ErrorEnum::eNone};
+        return {pkey, ErrorEnum::eNone};
     }
 
-    aos::Error SetupSSL()
+    Error SetupSSL()
     {
         mSSL = SSL_new(mCtx);
         if (!mSSL) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create SSL object");
+            return Error(ErrorEnum::eRuntime, "failed to create SSL object");
         }
 
         mBioMethod = CreateCustomBioMethod();
         if (!mBioMethod) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create custom BIO method");
+            return Error(ErrorEnum::eRuntime, "failed to create custom BIO method");
         }
 
         BIO* rbio = BIO_new(mBioMethod);
@@ -375,7 +375,7 @@ private:
             BIO_free(rbio);
             BIO_free(wbio);
 
-            return aos::Error(aos::ErrorEnum::eRuntime, "failed to create BIO objects");
+            return Error(ErrorEnum::eRuntime, "failed to create BIO objects");
         }
 
         BIO_set_data(rbio, this);
@@ -383,26 +383,26 @@ private:
 
         SSL_set_bio(mSSL, rbio, wbio);
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error PerformHandshake()
+    Error PerformHandshake()
     {
         int result = SSL_connect(mSSL);
         if (result <= 0) {
-            return aos::Error(aos::ErrorEnum::eRuntime, "SSL handshake failed");
+            return Error(ErrorEnum::eRuntime, "SSL handshake failed");
         }
 
         mConnected = true;
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     static int CustomBioWrite(BIO* bio, const char* data, int len)
     {
         SecureClientChannel* pipe = static_cast<SecureClientChannel*>(BIO_get_data(bio));
         std::vector<uint8_t> buffer(data, data + len);
-        aos::Error           err = pipe->mChannel.Write(buffer);
+        Error                err = pipe->mChannel.Write(buffer);
 
         return err.IsNone() ? len : -1;
     }
@@ -468,22 +468,22 @@ public:
         return commChannel;
     }
 
-    aos::Error Write(std::vector<uint8_t> message) override
+    Error Write(std::vector<uint8_t> message) override
     {
         if (auto err = mTransport.Write(message); !err.IsNone()) {
             return err;
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error Close() override
+    Error Close() override
     {
         {
             std::lock_guard lock {mMutex};
 
             if (mShutdown) {
-                return aos::ErrorEnum::eNone;
+                return ErrorEnum::eNone;
             }
 
             mShutdown = true;
@@ -497,19 +497,19 @@ public:
 
         mThread.join();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::Error Connect() override
+    Error Connect() override
     {
         std::lock_guard lock {mMutex};
 
         if (mShutdown) {
-            return aos::ErrorEnum::eRuntime;
+            return ErrorEnum::eRuntime;
         }
 
         if (mConnected) {
-            return aos::ErrorEnum::eNone;
+            return ErrorEnum::eNone;
         }
 
         mConnected = false;
@@ -520,10 +520,10 @@ public:
 
         mConnected = true;
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
-    aos::Error Read([[maybe_unused]] std::vector<uint8_t>& message) override { return aos::ErrorEnum::eNone; }
-    bool       IsConnected() const override { return mConnected; }
+    Error Read([[maybe_unused]] std::vector<uint8_t>& message) override { return ErrorEnum::eNone; }
+    bool  IsConnected() const override { return mConnected; }
 
 private:
     static constexpr auto mWaitTimeout = std::chrono::seconds(1);
@@ -565,7 +565,7 @@ private:
         }
     }
 
-    aos::Error ReadHandler()
+    Error ReadHandler()
     {
         while (!mShutdown) {
             std::vector<uint8_t> headerBuffer(sizeof(AosProtocolHeader));
@@ -600,7 +600,7 @@ private:
             }
         }
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
     SocketClient&                                        mTransport;
@@ -625,58 +625,58 @@ public:
         mCondVar.notify_all();
     }
 
-    aos::Error SendMessages(std::vector<uint8_t> messages) override
+    Error SendMessages(std::vector<uint8_t> messages) override
     {
         std::lock_guard lock {mMutex};
 
         if (mShutdown) {
-            return aos::ErrorEnum::eRuntime;
+            return ErrorEnum::eRuntime;
         }
 
         mOutgoingMessages = std::move(messages);
         mCondVar.notify_all();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::RetWithError<std::vector<uint8_t>> GetOutgoingMessages()
+    RetWithError<std::vector<uint8_t>> GetOutgoingMessages()
     {
         std::unique_lock lock {mMutex};
 
         mCondVar.wait(lock, [this] { return !mOutgoingMessages.empty() || mShutdown; });
 
         if (mShutdown) {
-            return {{}, aos::ErrorEnum::eRuntime};
+            return {{}, ErrorEnum::eRuntime};
         }
 
-        return {std::move(mOutgoingMessages), aos::ErrorEnum::eNone};
+        return {std::move(mOutgoingMessages), ErrorEnum::eNone};
     }
 
-    aos::Error SetIncomingMessages(std::vector<uint8_t> messages)
+    Error SetIncomingMessages(std::vector<uint8_t> messages)
     {
         std::lock_guard lock {mMutex};
 
         if (mShutdown) {
-            return aos::ErrorEnum::eRuntime;
+            return ErrorEnum::eRuntime;
         }
 
         mIncomingMessages = std::move(messages);
         mCondVar.notify_all();
 
-        return aos::ErrorEnum::eNone;
+        return ErrorEnum::eNone;
     }
 
-    aos::RetWithError<std::vector<uint8_t>> ReceiveMessages() override
+    RetWithError<std::vector<uint8_t>> ReceiveMessages() override
     {
         std::unique_lock lock {mMutex};
 
         mCondVar.wait(lock, [this] { return !mIncomingMessages.empty() || mShutdown; });
 
         if (mShutdown) {
-            return {{}, aos::ErrorEnum::eRuntime};
+            return {{}, ErrorEnum::eRuntime};
         }
 
-        return {std::move(mIncomingMessages), aos::ErrorEnum::eNone};
+        return {std::move(mIncomingMessages), ErrorEnum::eNone};
     }
 
 private:
@@ -688,5 +688,7 @@ private:
 
     bool mShutdown {};
 };
+
+} // namespace aos::mp::communication
 
 #endif
