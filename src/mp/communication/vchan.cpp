@@ -82,7 +82,7 @@ Error VChan::Write(std::vector<uint8_t> message)
     return ErrorEnum::eNone;
 }
 
-aos::Error VChan::Close()
+Error VChan::Close()
 {
     std::lock_guard lock {mMutex};
 
@@ -124,7 +124,7 @@ Error VChan::ConnectToVChan(struct libxenvchan*& vchan, const std::string& path,
 {
     vchan = libxenvchan_server_init(nullptr, domain, path.c_str(), 0, 0);
     if (vchan == nullptr) {
-        return Error(aos::ErrorEnum::eFailed, errno != 0 ? strerror(errno) : "failed to connect");
+        return Error(ErrorEnum::eFailed, errno != 0 ? strerror(errno) : "failed to connect");
     }
 
     vchan->blocking = 0x1;

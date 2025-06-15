@@ -27,43 +27,45 @@ public:
     /**
      * Initializes the virtual channel.
      *
-     * @param config Configuration
-     * @return Error
+     * @param config configuration.
+     * @return Error.
      */
     Error Init(const config::VChanConfig& config);
 
     /**
      * Connects to the virtual channel.
+     *
+     * @return Error.
      */
     Error Connect() override;
 
     /**
      * Reads message from the virtual channel.
      *
-     * @param message Message
-     * @return aos::Error
+     * @param message[out] read message.
+     * @return Error.
      */
     Error Read(std::vector<uint8_t>& message) override;
 
     /**
      * Writes message to the virtual channel.
      *
-     * @param message Message
-     * @return aos::Error
+     * @param message message to write.
+     * @return Error.
      */
     Error Write(std::vector<uint8_t> message) override;
 
     /**
      * Closes the virtual channel.
      *
-     * @return aos::Error
+     * @return Error.
      */
     Error Close() override;
 
     /**
      * Shuts down virtual channel.
      *
-     * @return Error
+     * @return Error.
      */
     Error Shutdown() override;
 

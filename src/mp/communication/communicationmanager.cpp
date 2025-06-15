@@ -220,7 +220,7 @@ void CommunicationManager::Run()
     }
 }
 
-aos::Error CommunicationManager::ReadHandler()
+Error CommunicationManager::ReadHandler()
 {
     LOG_DBG() << "Read handler communication manager";
 
@@ -274,7 +274,7 @@ aos::Error CommunicationManager::ReadHandler()
         }
     }
 
-    return aos::ErrorEnum::eNone;
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::mp::communication
