@@ -17,18 +17,22 @@
 
 #include "mp/config/config.hpp"
 
-using namespace aos::mp::config;
+namespace aos::mp::config {
+
+namespace {
 
 /***********************************************************************************************************************
  * Test utils
  **********************************************************************************************************************/
 
-static void CreateTempConfigFile(const std::string& filename, const std::string& content)
+void CreateTempConfigFile(const std::string& filename, const std::string& content)
 {
     std::ofstream ofs(filename, std::ios::binary);
     ofs.write(content.c_str(), content.size());
     ofs.close();
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Suite
@@ -38,7 +42,7 @@ class ConfigTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         tempConfigFile = "temp_config.json";
 
@@ -87,7 +91,7 @@ TEST_F(ConfigTest, ParseConfig)
 {
     auto result = ParseConfig(tempConfigFile);
 
-    ASSERT_EQ(result.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(result.mError, ErrorEnum::eNone);
     const Config& config = result.mValue;
 
     EXPECT_EQ(config.mCACert, "/etc/Root_CA.pem");
@@ -113,3 +117,5 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(config.mDownload.mDownloadDir, "/var/aos/workdirs/mp/downloads");
 }
+
+} // namespace aos::mp::config
