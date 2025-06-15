@@ -17,7 +17,8 @@
 #include "stubs/iamserver.hpp"
 
 using namespace testing;
-using namespace aos::mp::iamclient;
+
+namespace aos::mp::iamclient {
 
 /***********************************************************************************************************************
  * Suite
@@ -34,7 +35,7 @@ public:
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         mIAMServerStub.emplace();
         mClient.emplace();
@@ -43,8 +44,8 @@ protected:
     std::optional<TestIAMServer> mIAMServerStub;
 
     std::optional<PublicNodeClient> mClient;
-    aos::crypto::x509::ProviderItf* mCryptoProvider {};
-    aos::mp::config::Config         mConfig {};
+    crypto::x509::ProviderItf*      mCryptoProvider {};
+    config::Config                  mConfig {};
 };
 
 /***********************************************************************************************************************
@@ -53,11 +54,11 @@ protected:
 
 TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 {
-    MockCertProvider certProvider {};
+    common::iamclient::MockCertProvider certProvider {};
     EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
 
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
 
     mClient->OnConnected();
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
@@ -141,11 +142,11 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 
 TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 {
-    MockCertProvider certProvider {};
+    common::iamclient::MockCertProvider certProvider {};
     EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
 
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
 
     mClient->OnConnected();
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
@@ -156,7 +157,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_start_provisioning_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     auto res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_start_provisioning_request());
 
@@ -164,7 +165,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_get_cert_types_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_get_cert_types_request());
 
@@ -172,7 +173,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_finish_provisioning_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_finish_provisioning_request());
 
@@ -180,7 +181,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_deprovision_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_deprovision_request());
 
@@ -188,7 +189,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_pause_node_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_pause_node_request());
 
@@ -196,7 +197,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_resume_node_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_resume_node_request());
 
@@ -204,7 +205,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_create_key_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_create_key_request());
 
@@ -212,7 +213,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     incomingMsg.mutable_apply_cert_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
-    EXPECT_EQ(res.mError, aos::ErrorEnum::eNone);
+    EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_apply_cert_request());
 
@@ -221,20 +222,22 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 
 TEST_F(IamClientTest, CertChanged)
 {
-    MockCertProvider certProvider {};
+    common::iamclient::MockCertProvider certProvider {};
     EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
         .Times(2)
         .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider, false);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
 
     mClient->OnConnected();
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    mClient->OnCertChanged(aos::iam::certhandler::CertInfo {});
+    mClient->OnCertChanged(iam::certhandler::CertInfo {});
 
     EXPECT_TRUE(mIAMServerStub->WaitForDisconnection());
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
     mClient->OnDisconnected();
 }
+
+} // namespace aos::mp::iamclient
