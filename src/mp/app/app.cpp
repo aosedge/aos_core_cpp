@@ -27,11 +27,15 @@
 
 #include "app.hpp"
 
+namespace aos::mp::app {
+
+namespace {
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
-static void SegmentationHandler(int sig)
+void SegmentationHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
@@ -47,7 +51,7 @@ static void SegmentationHandler(int sig)
     raise(sig);
 }
 
-static void RegisterSegfaultSignal()
+void RegisterSegfaultSignal()
 {
     struct sigaction act { };
 
@@ -56,6 +60,8 @@ static void RegisterSegfaultSignal()
 
     sigaction(SIGSEGV, &act, nullptr);
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Protected
@@ -85,7 +91,7 @@ void App::Init()
 
     CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
     if (result != CURLE_OK) {
-        AOS_ERROR_THROW(aos::ErrorEnum::eFailed, "can't initialize curl");
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "can't initialize curl");
     }
 
     mCleanupManager.AddCleanup([this]() { curl_global_cleanup(); });
@@ -96,13 +102,13 @@ void App::Init()
     err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
-    auto retConfig = aos::mp::config::ParseConfig(mConfigFile);
+    auto retConfig = config::ParseConfig(mConfigFile);
     AOS_ERROR_CHECK_AND_THROW(retConfig.mError, "can't parse config");
 
     mConfig = retConfig.mValue;
 
     err = mPublicServiceHandler.Init(
-        aos::common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL, mConfig.mCACert}, mCertLoader,
+        common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL, mConfig.mCACert}, mCertLoader,
         mCryptoProvider, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
 
@@ -302,16 +308,16 @@ void App::HandleJournal(const std::string& name, const std::string& value)
     (void)name;
     (void)value;
 
-    mLogger.SetBackend(aos::common::logger::Logger::Backend::eJournald);
+    mLogger.SetBackend(common::logger::Logger::Backend::eJournald);
 }
 
 void App::HandleLogLevel(const std::string& name, const std::string& value)
 {
     (void)name;
 
-    aos::LogLevel level;
+    LogLevel level;
 
-    auto err = level.FromString(aos::String(value.c_str()));
+    auto err = level.FromString(String(value.c_str()));
     if (!err.IsNone()) {
         throw Poco::Exception("unsupported log level", value);
     }
@@ -325,3 +331,5 @@ void App::HandleConfigFile(const std::string& name, const std::string& value)
 
     mConfigFile = value;
 }
+
+} // namespace aos::mp::app
