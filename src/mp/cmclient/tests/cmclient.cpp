@@ -22,19 +22,22 @@
 #include "stubs/smservice.hpp"
 
 using namespace testing;
-using namespace aos::mp::cmclient;
+
+namespace aos::mp::cmclient {
+
+namespace {
 
 /***********************************************************************************************************************
  * Test utils
  **********************************************************************************************************************/
 
-static servicemanager::v4::SMOutgoingMessages CreateNodeConfigStatus()
+servicemanager::v4::SMOutgoingMessages CreateNodeConfigStatus()
 {
     servicemanager::v4::SMOutgoingMessages unitConfigStatus;
     unitConfigStatus.mutable_node_config_status()->set_node_id("node_id");
     unitConfigStatus.mutable_node_config_status()->set_version("version");
 
-    common::v1::ErrorInfo errorInfo;
+    ::common::v1::ErrorInfo errorInfo;
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
@@ -44,7 +47,7 @@ static servicemanager::v4::SMOutgoingMessages CreateNodeConfigStatus()
     return unitConfigStatus;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateRunInstancesStatus()
+servicemanager::v4::SMOutgoingMessages CreateRunInstancesStatus()
 {
     servicemanager::v4::SMOutgoingMessages runInstancesStatus;
 
@@ -52,13 +55,13 @@ static servicemanager::v4::SMOutgoingMessages CreateRunInstancesStatus()
     instanceStatus.set_service_version("service_version");
     instanceStatus.set_run_state("run_state");
 
-    common::v1::InstanceIdent instanceIdent;
+    ::common::v1::InstanceIdent instanceIdent;
     instanceIdent.set_service_id("service_id");
     instanceIdent.set_subject_id("subject_id");
     instanceIdent.set_instance(1);
     instanceStatus.mutable_instance()->CopyFrom(instanceIdent);
 
-    common::v1::ErrorInfo errorInfo;
+    ::common::v1::ErrorInfo errorInfo;
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
@@ -68,7 +71,7 @@ static servicemanager::v4::SMOutgoingMessages CreateRunInstancesStatus()
     return runInstancesStatus;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateUpdateInstancesStatus()
+servicemanager::v4::SMOutgoingMessages CreateUpdateInstancesStatus()
 {
     servicemanager::v4::SMOutgoingMessages updateInstancesStatus;
 
@@ -76,13 +79,13 @@ static servicemanager::v4::SMOutgoingMessages CreateUpdateInstancesStatus()
     instanceStatus.set_service_version("service_version");
     instanceStatus.set_run_state("run_state");
 
-    common::v1::InstanceIdent instanceIdent;
+    ::common::v1::InstanceIdent instanceIdent;
     instanceIdent.set_service_id("service_id");
     instanceIdent.set_subject_id("subject_id");
     instanceIdent.set_instance(1);
     instanceStatus.mutable_instance()->CopyFrom(instanceIdent);
 
-    common::v1::ErrorInfo errorInfo;
+    ::common::v1::ErrorInfo errorInfo;
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
@@ -92,7 +95,7 @@ static servicemanager::v4::SMOutgoingMessages CreateUpdateInstancesStatus()
     return updateInstancesStatus;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateOverrideEnvVarStatus()
+servicemanager::v4::SMOutgoingMessages CreateOverrideEnvVarStatus()
 {
     servicemanager::v4::SMOutgoingMessages   overrideEnvVarStatus;
     servicemanager::v4::EnvVarInstanceStatus envVarInstanceStatus;
@@ -106,7 +109,7 @@ static servicemanager::v4::SMOutgoingMessages CreateOverrideEnvVarStatus()
     servicemanager::v4::EnvVarStatus envVarStatus;
     envVarStatus.set_name("name");
 
-    common::v1::ErrorInfo errorInfo;
+    ::common::v1::ErrorInfo errorInfo;
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
@@ -118,7 +121,7 @@ static servicemanager::v4::SMOutgoingMessages CreateOverrideEnvVarStatus()
     return overrideEnvVarStatus;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateLogData()
+servicemanager::v4::SMOutgoingMessages CreateLogData()
 {
     servicemanager::v4::SMOutgoingMessages logData;
 
@@ -128,7 +131,7 @@ static servicemanager::v4::SMOutgoingMessages CreateLogData()
     logDataMsg.set_part(1);
     logDataMsg.set_data("data");
 
-    common::v1::ErrorInfo errorInfo;
+    ::common::v1::ErrorInfo errorInfo;
     errorInfo.set_aos_code(1);
     errorInfo.set_exit_code(1);
     errorInfo.set_message("message");
@@ -139,7 +142,7 @@ static servicemanager::v4::SMOutgoingMessages CreateLogData()
     return logData;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateInstantMonitoring()
+servicemanager::v4::SMOutgoingMessages CreateInstantMonitoring()
 {
     servicemanager::v4::SMOutgoingMessages instantMonitoring;
     servicemanager::v4::InstantMonitoring  instantMonitoringMsg;
@@ -163,7 +166,7 @@ static servicemanager::v4::SMOutgoingMessages CreateInstantMonitoring()
     instantMonitoringMsg.mutable_node_monitoring()->CopyFrom(monitoringData);
 
     servicemanager::v4::InstanceMonitoring instanceMonitoring;
-    common::v1::InstanceIdent              instanceIdent;
+    ::common::v1::InstanceIdent            instanceIdent;
     instanceIdent.set_service_id("service_id");
     instanceIdent.set_subject_id("subject_id");
     instanceIdent.set_instance(1);
@@ -177,7 +180,7 @@ static servicemanager::v4::SMOutgoingMessages CreateInstantMonitoring()
     return instantMonitoring;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateAverageMonitoring()
+servicemanager::v4::SMOutgoingMessages CreateAverageMonitoring()
 {
     servicemanager::v4::SMOutgoingMessages averageMonitoring;
     servicemanager::v4::AverageMonitoring  averageMonitoringMsg;
@@ -201,7 +204,7 @@ static servicemanager::v4::SMOutgoingMessages CreateAverageMonitoring()
     averageMonitoringMsg.mutable_node_monitoring()->CopyFrom(monitoringData);
 
     servicemanager::v4::InstanceMonitoring instanceMonitoring;
-    common::v1::InstanceIdent              instanceIdent;
+    ::common::v1::InstanceIdent            instanceIdent;
     instanceIdent.set_service_id("service_id");
     instanceIdent.set_subject_id("subject_id");
     instanceIdent.set_instance(1);
@@ -215,7 +218,7 @@ static servicemanager::v4::SMOutgoingMessages CreateAverageMonitoring()
     return averageMonitoring;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateAlert()
+servicemanager::v4::SMOutgoingMessages CreateAlert()
 {
     servicemanager::v4::SMOutgoingMessages alert;
     servicemanager::v4::Alert              alertMsg;
@@ -239,7 +242,7 @@ static servicemanager::v4::SMOutgoingMessages CreateAlert()
     return alert;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateImageContentRequest()
+servicemanager::v4::SMOutgoingMessages CreateImageContentRequest()
 {
     servicemanager::v4::SMOutgoingMessages  imageContentRequest;
     servicemanager::v4::ImageContentRequest imageContentRequestMsg;
@@ -253,7 +256,7 @@ static servicemanager::v4::SMOutgoingMessages CreateImageContentRequest()
     return imageContentRequest;
 }
 
-static servicemanager::v4::SMOutgoingMessages CreateClockSyncRequest()
+servicemanager::v4::SMOutgoingMessages CreateClockSyncRequest()
 {
     servicemanager::v4::SMOutgoingMessages clockSyncRequest;
     servicemanager::v4::ClockSyncRequest   clockSyncRequestMsg;
@@ -262,6 +265,8 @@ static servicemanager::v4::SMOutgoingMessages CreateClockSyncRequest()
 
     return clockSyncRequest;
 }
+
+} // namespace
 
 /***********************************************************************************************************************
  * Suite
@@ -274,18 +279,18 @@ public:
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        test::InitLog();
 
         mSMService.emplace(mCfg.mCMConfig.mCMServerURL);
 
         mCMClient.emplace();
     }
 
-    std::optional<TestSMService>    mSMService;
-    aos::crypto::CertLoaderItf*     mCertLoader {};
-    aos::crypto::x509::ProviderItf* mCryptoProvider {};
-    std::optional<CMClient>         mCMClient;
-    aos::mp::config::Config         mCfg;
+    std::optional<TestSMService> mSMService;
+    crypto::CertLoaderItf*       mCertLoader {};
+    crypto::x509::ProviderItf*   mCryptoProvider {};
+    std::optional<CMClient>      mCMClient;
+    config::Config               mCfg;
 };
 
 /***********************************************************************************************************************
@@ -294,9 +299,9 @@ protected:
 
 TEST_F(CMClientTest, SendOutgoingMsg)
 {
-    aos::common::iamclient::TLSCredentialsMock certProvider {};
+    common::iamclient::TLSCredentialsMock certProvider {};
     auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
     mCMClient->OnConnected();
 
     // Send a unit config status message
@@ -525,16 +530,16 @@ TEST_F(CMClientTest, SendOutgoingMsg)
 
 TEST_F(CMClientTest, SendIncomingMessages)
 {
-    aos::common::iamclient::TLSCredentialsMock certProvider {};
+    common::iamclient::TLSCredentialsMock certProvider {};
     auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, true);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
     mCMClient->OnConnected();
 
     // Send a get unit config status message
     EXPECT_TRUE(mSMService->SendGetNodeConfigStatus());
 
     auto [msg, errRecv] = mCMClient->ReceiveMessages();
-    ASSERT_EQ(errRecv, aos::ErrorEnum::eNone);
+    ASSERT_EQ(errRecv, ErrorEnum::eNone);
 
     servicemanager::v4::SMIncomingMessages incomingMsg;
 
@@ -545,7 +550,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendCheckNodeConfig());
 
     auto res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_check_node_config());
     EXPECT_EQ(incomingMsg.check_node_config().node_config(), "unit_config");
@@ -555,7 +560,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendSetUnitConfig());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_set_node_config());
     EXPECT_EQ(incomingMsg.set_node_config().node_config(), "unit_config");
@@ -565,7 +570,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendRunInstances());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_run_instances());
@@ -611,7 +616,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendOverrideEnvVars());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_override_env_vars());
@@ -627,7 +632,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendSystemLogRequest());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_system_log_request());
@@ -641,7 +646,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendInstanceLogRequest());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_instance_log_request());
@@ -658,7 +663,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendInstanceCrashLogRequest());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_instance_crash_log_request());
@@ -675,7 +680,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendGetAverageMonitoring());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_get_average_monitoring());
@@ -684,7 +689,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendConnectionStatus());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_connection_status());
@@ -694,7 +699,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendImageContentInfo());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_image_content_info());
@@ -711,7 +716,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendImageContent());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_image_content());
@@ -725,7 +730,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendUpdateNetworks());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_update_networks());
@@ -746,7 +751,7 @@ TEST_F(CMClientTest, SendIncomingMessages)
     EXPECT_TRUE(mSMService->SendClockSync());
 
     res = mCMClient->ReceiveMessages();
-    ASSERT_EQ(res.mError, aos::ErrorEnum::eNone);
+    ASSERT_EQ(res.mError, ErrorEnum::eNone);
 
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), static_cast<int>(res.mValue.size())));
     EXPECT_TRUE(incomingMsg.has_clock_sync());
@@ -758,21 +763,23 @@ TEST_F(CMClientTest, SendIncomingMessages)
 
 TEST_F(CMClientTest, CertChanged)
 {
-    aos::common::iamclient::TLSCredentialsMock certProvider {};
+    common::iamclient::TLSCredentialsMock certProvider {};
     EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
         .Times(2)
         .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
 
     auto err = mCMClient->Init(mCfg, certProvider, *mCertLoader, *mCryptoProvider, false);
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(err, ErrorEnum::eNone);
 
     mCMClient->OnConnected();
     EXPECT_TRUE(mSMService->WaitForConnection());
 
-    mCMClient->OnCertChanged(aos::iam::certhandler::CertInfo {});
+    mCMClient->OnCertChanged(iam::certhandler::CertInfo {});
 
     EXPECT_TRUE(mSMService->WaitForDisconnection());
     EXPECT_TRUE(mSMService->WaitForConnection());
 
     mCMClient->OnDisconnected();
 }
+
+} // namespace aos::mp::cmclient
