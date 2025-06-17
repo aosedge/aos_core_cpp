@@ -15,12 +15,13 @@
 #include <vector>
 
 #include <aos/sm/image/imageparts.hpp>
-#include <utils/exception.hpp>
-#include <utils/filesystem.hpp>
-#include <utils/image.hpp>
+
+#include <common/utils/exception.hpp>
+#include <common/utils/filesystem.hpp>
+#include <common/utils/image.hpp>
+#include <sm/logger/logmodule.hpp>
 
 #include "imagehandler.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::sm::image {
 

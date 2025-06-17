@@ -8,7 +8,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include "app/app.hpp"
+#include "app.hpp"
 
 /***********************************************************************************************************************
  * Main

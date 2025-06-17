@@ -15,30 +15,29 @@
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
 
-#include "alerts/journalalerts.hpp"
-#include "database/database.hpp"
-#include "downloader/downloader.hpp"
-#include "image/imagehandler.hpp"
-#include "launcher/runtime.hpp"
-#include "logger/logger.hpp"
-#include "logprovider/logprovider.hpp"
-#include "monitoring/resourceusageprovider.hpp"
-#include "networkmanager/cni.hpp"
-#include "networkmanager/exec.hpp"
-#include "networkmanager/trafficmonitor.hpp"
-#include "ocispec/ocispec.hpp"
-#include "resourcemanager/resourcemanager.hpp"
-#include "runner/runner.hpp"
-#include "smclient/smclient.hpp"
-#include <downloader/downloader.hpp>
-#include <iamclient/permservicehandler.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <jsonprovider/jsonprovider.hpp>
-#include <network/interfacemanager.hpp>
-#include <network/iptables.hpp>
-#include <network/namespacemanager.hpp>
-#include <utils/cleanupmanager.hpp>
-#include <utils/fsplatform.hpp>
+#include <common/downloader/downloader.hpp>
+#include <common/iamclient/permservicehandler.hpp>
+#include <common/iamclient/publicservicehandler.hpp>
+#include <common/jsonprovider/jsonprovider.hpp>
+#include <common/logger/logger.hpp>
+#include <common/network/interfacemanager.hpp>
+#include <common/network/iptables.hpp>
+#include <common/network/namespacemanager.hpp>
+#include <common/ocispec/ocispec.hpp>
+#include <common/utils/cleanupmanager.hpp>
+#include <common/utils/fsplatform.hpp>
+#include <sm/alerts/journalalerts.hpp>
+#include <sm/database/database.hpp>
+#include <sm/image/imagehandler.hpp>
+#include <sm/launcher/runtime.hpp>
+#include <sm/logprovider/logprovider.hpp>
+#include <sm/monitoring/resourceusageprovider.hpp>
+#include <sm/networkmanager/cni.hpp>
+#include <sm/networkmanager/exec.hpp>
+#include <sm/networkmanager/trafficmonitor.hpp>
+#include <sm/resourcemanager/resourcemanager.hpp>
+#include <sm/runner/runner.hpp>
+#include <sm/smclient/smclient.hpp>
 
 namespace aos::sm::app {
 

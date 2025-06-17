@@ -14,11 +14,11 @@
 #include <Poco/Base64Decoder.h>
 #include <Poco/Base64Encoder.h>
 
-#include <utils/exception.hpp>
-#include <utils/json.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
+#include <sm/logger/logmodule.hpp>
 
 #include "cni.hpp"
-#include "logger/logmodule.hpp"
 
 namespace aos::sm::cni {
 

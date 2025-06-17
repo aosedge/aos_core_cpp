@@ -9,12 +9,12 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <pbconvert/common.hpp>
-#include <pbconvert/sm.hpp>
-#include <utils/exception.hpp>
-#include <utils/grpchelper.hpp>
+#include <common/pbconvert/common.hpp>
+#include <common/pbconvert/sm.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
+#include <sm/logger/logmodule.hpp>
 
-#include "logger/logmodule.hpp"
 #include "smclient.hpp"
 
 namespace aos::sm::smclient {
