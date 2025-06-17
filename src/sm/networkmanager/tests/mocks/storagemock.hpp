@@ -18,5 +18,10 @@ public:
     MOCK_METHOD(aos::Error, AddNetworkInfo, (const aos::sm::networkmanager::NetworkInfo& info), (override));
     MOCK_METHOD(
         aos::Error, GetNetworksInfo, (aos::Array<aos::sm::networkmanager::NetworkInfo> & networks), (const, override));
+    MOCK_METHOD(
+        aos::Error, AddInstanceNetworkInfo, (const aos::sm::networkmanager::InstanceNetworkInfo& info), (override));
+    MOCK_METHOD(aos::Error, RemoveInstanceNetworkInfo, (const aos::String& instanceID), (override));
+    MOCK_METHOD(aos::Error, GetInstanceNetworksInfo,
+        (aos::Array<aos::sm::networkmanager::InstanceNetworkInfo> & networks), (const, override));
     MOCK_METHOD(aos::Error, RemoveTrafficMonitorData, (const aos::String& chain), (override));
 };
