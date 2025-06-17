@@ -11,11 +11,13 @@
 
 #include <common/logger/logger.hpp>
 
+#include <iam/visidentifier/pocowsclient.hpp>
+#include <iam/visidentifier/visidentifier.hpp>
+#include <iam/visidentifier/wsexception.hpp>
+
 #include "mocks/identhandlermock.hpp"
-#include "visidentifier/pocowsclient.hpp"
-#include "visidentifier/visidentifier.hpp"
-#include "visidentifier/wsexception.hpp"
 #include "visserver.hpp"
+
 
 using namespace testing;
 

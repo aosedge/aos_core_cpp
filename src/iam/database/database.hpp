@@ -18,7 +18,7 @@
 #include <aos/iam/certmodules/certmodule.hpp>
 #include <aos/iam/nodemanager.hpp>
 #include <common/migration/migration.hpp>
-#include <config/config.hpp>
+#include <iam/config/config.hpp>
 
 namespace aos::iam::database {
 

@@ -9,7 +9,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include "app/app.hpp"
+#include <iam/app/app.hpp>
 
 /***********************************************************************************************************************
  * Main

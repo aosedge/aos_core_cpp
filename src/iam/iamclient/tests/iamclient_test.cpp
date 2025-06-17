@@ -23,7 +23,7 @@
 #include "mocks/nodeinfoprovidermock.hpp"
 #include "mocks/provisionmanagermock.hpp"
 
-#include "iamclient/iamclient.hpp"
+#include <iam/iamclient/iamclient.hpp>
 
 using namespace testing;
 

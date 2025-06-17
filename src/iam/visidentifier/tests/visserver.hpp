@@ -17,7 +17,7 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-#include "visidentifier/vismessage.hpp"
+#include <iam/visidentifier/vismessage.hpp>
 
 namespace aos::iam::visidentifier {
 

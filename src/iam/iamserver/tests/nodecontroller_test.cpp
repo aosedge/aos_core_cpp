@@ -13,10 +13,10 @@
 #include <openssl/engine.h>
 
 #include <aos/test/log.hpp>
-
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include "iamserver/nodecontroller.hpp"
+#include <iam/iamserver/nodecontroller.hpp>
+
 #include "mocks/nodemanagermock.hpp"
 
 using namespace testing;

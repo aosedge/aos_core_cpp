@@ -19,11 +19,11 @@
 #include <common/logger/logger.hpp>
 #include <common/utils/cleanupmanager.hpp>
 
-#include "database/database.hpp"
-#include "iamclient/iamclient.hpp"
-#include "iamserver/iamserver.hpp"
-#include "nodeinfoprovider/nodeinfoprovider.hpp"
-#include "visidentifier/visidentifier.hpp"
+#include <iam/database/database.hpp>
+#include <iam/iamclient/iamclient.hpp>
+#include <iam/iamserver/iamserver.hpp>
+#include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <iam/visidentifier/visidentifier.hpp>
 
 namespace aos::iam::app {
 
