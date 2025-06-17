@@ -513,6 +513,68 @@ TEST_F(DatabaseTest, GetNetworksInfoSucceeds)
     EXPECT_EQ(networks, expectedNetworks) << "expected networks are not equal to the result";
 }
 
+TEST_F(DatabaseTest, AddInstanceNetworkInfo)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info;
+    info.mInstanceID = "instance-1";
+    info.mNetworkID  = "network-1";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info).IsNone());
+    EXPECT_TRUE(mDB.AddInstanceNetworkInfo(info).Is(aos::ErrorEnum::eFailed));
+}
+
+TEST_F(DatabaseTest, RemoveInstanceNetworkInfo)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info;
+    info.mInstanceID = "instance-1";
+    info.mNetworkID  = "network-1";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info).IsNone());
+    ASSERT_TRUE(mDB.RemoveInstanceNetworkInfo(info.mInstanceID).IsNone());
+    EXPECT_TRUE(mDB.RemoveInstanceNetworkInfo(info.mInstanceID).Is(aos::ErrorEnum::eNotFound));
+}
+
+TEST_F(DatabaseTest, GetInstanceNetworksInfo)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info1;
+    info1.mInstanceID = "instance-1";
+    info1.mNetworkID  = "network-1";
+
+    aos::sm::networkmanager::InstanceNetworkInfo info2;
+    info2.mInstanceID = "instance-2";
+    info2.mNetworkID  = "network-2";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info1).IsNone());
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info2).IsNone());
+
+    aos::StaticArray<aos::sm::networkmanager::InstanceNetworkInfo, 2> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+
+    ASSERT_EQ(result.Size(), 2);
+
+    EXPECT_EQ(result[0].mInstanceID, info1.mInstanceID);
+    EXPECT_EQ(result[0].mNetworkID, info1.mNetworkID);
+    EXPECT_EQ(result[1].mInstanceID, info2.mInstanceID);
+    EXPECT_EQ(result[1].mNetworkID, info2.mNetworkID);
+}
+
+TEST_F(DatabaseTest, GetInstanceNetworksInfoEmpty)
+{
+    ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
+
+    aos::Array<aos::sm::networkmanager::InstanceNetworkInfo> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+    EXPECT_TRUE(result.IsEmpty());
+}
+
 TEST_F(DatabaseTest, SetUpdateAndRemoveTrafficMonitorDataSucceeds)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());

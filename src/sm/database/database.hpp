@@ -202,6 +202,30 @@ public:
     Error GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks) const override;
 
     /**
+     * Adds instance network info to storage.
+     *
+     * @param info instance network information.
+     * @return Error.
+     */
+    Error AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info) override;
+
+    /**
+     * Removes instance network info from storage.
+     *
+     * @param instanceID instance ID.
+     * @return Error.
+     */
+    Error RemoveInstanceNetworkInfo(const String& instanceID) override;
+
+    /**
+     * Returns instance network info.
+     *
+     * @param[out] networks instance network information.
+     * @return Error.
+     */
+    Error GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetworkInfo>& networks) const override;
+
+    /**
      * Sets traffic monitor data.
      *
      * @param chain chain.
@@ -311,7 +335,7 @@ public:
     RetWithError<alerts::ServiceInstanceData> GetInstanceInfoByID(const String& id) override;
 
 private:
-    static constexpr int  sVersion    = 1;
+    static constexpr int  sVersion    = 2;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     RetWithError<bool> TableExist(const std::string& tableName);
