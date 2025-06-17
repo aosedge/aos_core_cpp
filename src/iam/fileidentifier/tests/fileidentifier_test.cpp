@@ -11,7 +11,8 @@
 
 #include <aos/test/log.hpp>
 
-#include "fileidentifier/fileidentifier.hpp"
+#include <iam/fileidentifier/fileidentifier.hpp>
+
 #include "mocks/identhandlermock.hpp"
 #include "mocks/wsclientmock.hpp"
 

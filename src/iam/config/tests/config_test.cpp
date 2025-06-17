@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#include "config/config.hpp"
+#include <iam/config/config.hpp>
 
 using namespace testing;
 

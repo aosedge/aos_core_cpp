@@ -20,8 +20,9 @@
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/WebSocket.h>
 
-#include "config/config.hpp"
-#include "visidentifier/wsclient.hpp"
+#include <iam/config/config.hpp>
+#include <iam/visidentifier/wsclient.hpp>
+
 #include "wsclientevent.hpp"
 #include "wspendingrequests.hpp"
 

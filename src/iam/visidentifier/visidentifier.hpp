@@ -19,8 +19,8 @@
 
 #include <aos/iam/identhandler.hpp>
 
-#include "config/config.hpp"
-#include "visidentifier/wsclient.hpp"
+#include <iam/config/config.hpp>
+#include <iam/visidentifier/wsclient.hpp>
 
 namespace aos::iam::visidentifier {
 

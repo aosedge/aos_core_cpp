@@ -12,7 +12,7 @@
 
 #include <gmock/gmock.h>
 
-#include "visidentifier/wsclient.hpp"
+#include <iam/visidentifier/wsclient.hpp>
 
 namespace aos::iam::visidentifier {
 

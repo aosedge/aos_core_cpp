@@ -19,7 +19,8 @@
 #include <aos/common/tools/log.hpp>
 #include <common/logger/logmodule.hpp>
 
-#include "visidentifier/vismessage.hpp"
+#include <iam/visidentifier/vismessage.hpp>
+
 #include "visserver.hpp"
 
 namespace aos::iam::visidentifier {
