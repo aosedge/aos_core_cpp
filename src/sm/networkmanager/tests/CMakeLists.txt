@@ -4,24 +4,38 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET networkmanager_test)
+set(TARGET_NAME networkmanager_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES cni_test.cpp trafficmonitor_test.cpp)
+set(SOURCES cni.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
-# Target
+# Includes
 # ######################################################################################################################
 
-add_executable(${TARGET} ${SOURCES})
-
-gtest_discover_tests(${TARGET})
+set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(${TARGET} networkmanager GTest::gmock_main)
+set(LIBRARIES ${TARGET_NAMESPACE}::networkmanager GTest::gmock_main)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_test(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    SOURCES
+    ${SOURCES}
+    INCLUDES
+    ${INCLUDES}
+    LIBRARIES
+    ${LIBRARIES}
+)
