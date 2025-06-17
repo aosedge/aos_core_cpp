@@ -127,10 +127,10 @@ aos::sm::servicemanager::ServiceData CreateServiceData(
 
 std::string GetMigrationSourceDir()
 {
-    std::filesystem::path curFilePath(__FILE__);
-    std::filesystem::path migrationSourceDir = curFilePath.parent_path() / "../.." / "src/database/migration/";
-
-    return std::filesystem::canonical(migrationSourceDir).string();
+#ifndef DATABASE_MIGRATION_PATH
+#error "DATABASE_MIGRATION_PATH must be defined"
+#endif
+    return std::filesystem::canonical(DATABASE_MIGRATION_PATH).string();
 }
 
 } // namespace
