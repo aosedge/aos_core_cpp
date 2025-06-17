@@ -21,9 +21,9 @@
 
 #include <Poco/StringTokenizer.h>
 
-#include <utils/exception.hpp>
+#include <common/utils/exception.hpp>
+#include <sm/logger/logmodule.hpp>
 
-#include "logger/logmodule.hpp"
 #include "resourceusageprovider.hpp"
 
 namespace aos::sm::monitoring {

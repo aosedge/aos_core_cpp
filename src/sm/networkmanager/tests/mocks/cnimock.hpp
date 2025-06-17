@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "networkmanager/cni.hpp"
+#include <sm/networkmanager/cni.hpp>
 
 namespace aos::sm::cni {
 

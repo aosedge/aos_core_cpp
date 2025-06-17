@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "runner/runner.hpp"
+#include <sm/runner/runner.hpp>
 
 namespace aos::sm::runner {
 

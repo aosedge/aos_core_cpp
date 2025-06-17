@@ -12,9 +12,9 @@
 #include <gtest/gtest.h>
 
 #include <aos/test/log.hpp>
-#include <utils/json.hpp>
 
-#include "networkmanager/cni.hpp"
+#include <common/utils/json.hpp>
+#include <sm/networkmanager/cni.hpp>
 
 #include "mocks/cnimock.hpp"
 

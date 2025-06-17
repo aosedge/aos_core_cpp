@@ -14,10 +14,11 @@
 #include <vector>
 
 #include <aos/common/cloudprotocol/cloudprotocol.hpp>
-#include <config/config.hpp>
+
+#include <sm/config/config.hpp>
+#include <sm/utils/journal.hpp>
 
 #include "alerts.hpp"
-#include "utils/journal.hpp"
 
 namespace aos::sm::alerts {
 

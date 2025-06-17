@@ -9,10 +9,10 @@
 
 #include <aos/test/log.hpp>
 
-#include "runner/runner.hpp"
+#include <sm/runner/runner.hpp>
 
-#include "runstatusreceiver_mock.hpp"
-#include "systemdconn_mock.hpp"
+#include "mocks/runstatusreceivermock.hpp"
+#include "mocks/systemdconnmock.hpp"
 
 using namespace testing;
 

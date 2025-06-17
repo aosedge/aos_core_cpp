@@ -17,11 +17,11 @@
 #include <aos/sm/launcher/config.hpp>
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/servicemanager.hpp>
-#include <iamclient/publicservicehandler.hpp>
-#include <logprovider/config.hpp>
-#include <utils/time.hpp>
 
-#include "smclient/config.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
+#include <common/logprovider/config.hpp>
+#include <common/utils/time.hpp>
+#include <sm/smclient/config.hpp>
 
 namespace aos::sm::config {
 

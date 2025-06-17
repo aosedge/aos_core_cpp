@@ -15,8 +15,9 @@
 #include <string>
 #include <thread>
 
-#include "aos/common/tools/time.hpp"
-#include "aos/common/types.hpp"
+#include <aos/common/tools/time.hpp>
+#include <aos/common/types.hpp>
+
 #include "systemdconn.hpp"
 
 namespace aos::sm::runner {

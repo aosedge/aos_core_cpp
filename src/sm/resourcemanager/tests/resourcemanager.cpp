@@ -8,7 +8,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "resourcemanager/resourcemanager.hpp"
+#include <sm/resourcemanager/resourcemanager.hpp>
 
 using namespace testing;
 
