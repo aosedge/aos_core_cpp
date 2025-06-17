@@ -29,3 +29,7 @@ endif()
 if(WITH_CM)
     add_subdirectory(cm)
 endif()
+
+if(WITH_SM)
+    add_subdirectory(sm)
+endif()
