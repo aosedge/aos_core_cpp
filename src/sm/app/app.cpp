@@ -183,7 +183,7 @@ void App::HandleVersion(const std::string& name, const std::string& value)
 
     mStopProcessing = true;
 
-    std::cout << "Aos service manager version: " << AOS_CORE_SM_VERSION << std::endl;
+    std::cout << "Aos service manager version: " << AOS_CORE_CPP_VERSION << std::endl;
     std::cout << "Aos core library version:    " << AOS_CORE_VERSION << std::endl;
 
     stopOptionsProcessing();
