@@ -13,10 +13,10 @@
 
 #include <aos/test/log.hpp>
 
-#include "mocks/iptablesmock.hpp"
-#include "mocks/storage.hpp"
+#include <sm/networkmanager/trafficmonitor.hpp>
 
-#include "networkmanager/trafficmonitor.hpp"
+#include "mocks/iptablesmock.hpp"
+#include "mocks/storagemock.hpp"
 
 using namespace testing;
 

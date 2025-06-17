@@ -7,8 +7,9 @@
 #ifndef JOURNAL_STUB_HPP_
 #define JOURNAL_STUB_HPP_
 
-#include "utils/journal.hpp"
 #include <vector>
+
+#include <sm/utils/journal.hpp>
 
 namespace aos::sm::utils {
 

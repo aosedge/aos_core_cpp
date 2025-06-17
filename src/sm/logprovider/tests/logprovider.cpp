@@ -10,12 +10,13 @@
 #include <Poco/InflatingStream.h>
 #include <Poco/StreamCopier.h>
 
-#include <alerts/journalalerts.hpp>
 #include <aos/test/log.hpp>
-#include <logprovider/logprovider.hpp>
 
-#include "journalstub.hpp"
-#include "mocks/logprovidermock.hpp"
+#include <sm/alerts/journalalerts.hpp>
+#include <sm/logprovider/logprovider.hpp>
+#include <sm/tests/mocks/logprovidermock.hpp>
+
+#include "stubs/journalstub.hpp"
 
 using namespace testing;
 

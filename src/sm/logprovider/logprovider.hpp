@@ -14,9 +14,8 @@
 #include <thread>
 #include <vector>
 
-#include <logprovider/archivator.hpp>
-
-#include "utils/journal.hpp"
+#include <common/logprovider/archivator.hpp>
+#include <sm/utils/journal.hpp>
 
 namespace aos::sm::logprovider {
 

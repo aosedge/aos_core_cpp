@@ -8,9 +8,9 @@
 
 #include <aos/test/log.hpp>
 
-#include "monitoring/resourceusageprovider.hpp"
+#include <mocks/networkmanagermock.hpp>
 
-#include "mocks/networkmanagermock.hpp"
+#include <sm/monitoring/resourceusageprovider.hpp>
 
 using namespace testing;
 

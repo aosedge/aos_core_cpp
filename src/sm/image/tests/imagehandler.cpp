@@ -20,12 +20,11 @@
 
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/test/log.hpp>
-#include <utils/json.hpp>
-
 #include <mocks/ocispecmock.hpp>
 #include <stubs/spaceallocatorstub.hpp>
 
-#include "image/imagehandler.hpp"
+#include <common/utils/json.hpp>
+#include <sm/image/imagehandler.hpp>
 
 using namespace testing;
 

@@ -7,9 +7,9 @@
 #ifndef ALERTS_HPP_
 #define ALERTS_HPP_
 
-#include "aos/common/alerts/alerts.hpp"
-#include "aos/common/cloudprotocol/alerts.hpp"
-#include "aos/common/types.hpp"
+#include <aos/common/alerts/alerts.hpp>
+#include <aos/common/cloudprotocol/alerts.hpp>
+#include <aos/common/types.hpp>
 
 namespace aos::sm::alerts {
 

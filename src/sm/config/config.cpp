@@ -12,10 +12,9 @@
 #include <aos/common/cloudprotocol/log.hpp>
 #include <aos/common/tools/fs.hpp>
 
-#include <utils/exception.hpp>
-#include <utils/json.hpp>
-
-#include "logger/logmodule.hpp"
+#include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
+#include <sm/logger/logmodule.hpp>
 
 #include "config.hpp"
 

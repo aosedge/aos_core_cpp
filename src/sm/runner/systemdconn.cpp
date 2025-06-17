@@ -10,8 +10,9 @@
 #include <thread>
 
 #include <aos/common/tools/memory.hpp>
-#include <logger/logmodule.hpp>
-#include <utils/exception.hpp>
+
+#include <common/utils/exception.hpp>
+#include <sm/logger/logmodule.hpp>
 
 #include "systemdconn.hpp"
 

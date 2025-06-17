@@ -8,7 +8,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "database/database.hpp"
+#include <sm/database/database.hpp>
 
 using namespace testing;
 

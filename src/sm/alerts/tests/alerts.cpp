@@ -6,11 +6,12 @@
 
 #include <gtest/gtest.h>
 
-#include <alerts/journalalerts.hpp>
 #include <aos/test/log.hpp>
 
+#include <sm/alerts/journalalerts.hpp>
+#include <sm/tests/mocks/journalmock.hpp>
+
 #include "mocks/alertsmock.hpp"
-#include "mocks/journalmock.hpp"
 
 using namespace testing;
 

@@ -11,7 +11,7 @@
 
 #include <aos/sm/logprovider.hpp>
 
-#include "sm/logprovider/logprovider.hpp"
+#include <sm/logprovider/logprovider.hpp>
 
 namespace aos::sm::logprovider {
 

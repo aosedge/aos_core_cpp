@@ -7,9 +7,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include <utils/exception.hpp>
+#include <common/utils/exception.hpp>
+#include <sm/logger/logmodule.hpp>
 
-#include "logger/logmodule.hpp"
 #include "resourcemanager.hpp"
 
 namespace aos::sm::resourcemanager {

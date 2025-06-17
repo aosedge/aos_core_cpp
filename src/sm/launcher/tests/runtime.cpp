@@ -10,7 +10,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "launcher/runtime.hpp"
+#include <sm/launcher/runtime.hpp>
 
 using namespace testing;
 

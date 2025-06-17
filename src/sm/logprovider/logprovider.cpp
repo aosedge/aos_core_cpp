@@ -10,8 +10,9 @@
 #undef LOG_ERR
 
 #include <aos/common/crypto/crypto.hpp>
-#include <logger/logmodule.hpp>
-#include <utils/exception.hpp>
+
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
 
 #include "logprovider.hpp"
 

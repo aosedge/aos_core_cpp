@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "runner/systemdconn.hpp"
+#include <sm/runner/systemdconn.hpp>
 
 namespace aos::sm::runner {
 

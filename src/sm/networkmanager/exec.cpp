@@ -14,9 +14,9 @@
 #include <Poco/PipeStream.h>
 #include <Poco/Process.h>
 
-#include <utils/exception.hpp>
-#include <utils/json.hpp>
-#include <utils/parser.hpp>
+#include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
+#include <common/utils/parser.hpp>
 
 #include "exec.hpp"
 

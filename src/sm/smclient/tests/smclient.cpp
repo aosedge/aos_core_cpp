@@ -15,19 +15,19 @@
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include "smclient/smclient.hpp"
+#include <mocks/certhandlermock.hpp>
+#include <mocks/connectionsubscmock.hpp>
+#include <mocks/cryptomock.hpp>
+#include <mocks/launchermock.hpp>
+#include <mocks/logprovidermock.hpp>
+#include <mocks/monitoringmock.hpp>
+#include <mocks/networkmanagermock.hpp>
+#include <mocks/nodeinfoprovidermock.hpp>
+#include <mocks/provisionmanagermock.hpp>
+#include <mocks/resourcemanagermock.hpp>
 
-#include "mocks/certhandlermock.hpp"
-#include "mocks/connectionsubscmock.hpp"
-#include "mocks/cryptomock.hpp"
-#include "mocks/iamclientmock.hpp"
-#include "mocks/launchermock.hpp"
-#include "mocks/logprovidermock.hpp"
-#include "mocks/monitoringmock.hpp"
-#include "mocks/networkmanagermock.hpp"
-#include "mocks/nodeinfoprovidermock.hpp"
-#include "mocks/provisionmanagermock.hpp"
-#include "mocks/resourcemanagermock.hpp"
+#include <common/tests/mocks/iamclientmock.hpp>
+#include <sm/smclient/smclient.hpp>
 
 using namespace testing;
 using namespace aos;

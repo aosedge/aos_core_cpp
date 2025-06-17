@@ -31,7 +31,7 @@
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include <iamclient/publicservicehandler.hpp>
+#include <common/iamclient/publicservicehandler.hpp>
 
 #include "config.hpp"
 

@@ -14,9 +14,8 @@
 
 #include <aos/common/version.hpp>
 
-#include <utils/exception.hpp>
-
-#include "version.hpp" // cppcheck-suppress missingInclude
+#include <common/utils/exception.hpp>
+#include <common/version/version.hpp>
 
 #include "app.hpp"
 

@@ -14,7 +14,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "config/config.hpp"
+#include <sm/config/config.hpp>
 
 using namespace testing;
 

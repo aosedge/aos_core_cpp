@@ -15,8 +15,8 @@
 #include <aos/common/tools/timer.hpp>
 #include <aos/sm/networkmanager.hpp>
 
-#include <network/iptables.hpp>
-#include <utils/time.hpp>
+#include <common/network/iptables.hpp>
+#include <common/utils/time.hpp>
 
 namespace aos::sm::networkmanager {
 

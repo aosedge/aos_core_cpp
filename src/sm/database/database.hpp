@@ -11,16 +11,16 @@
 #include <optional>
 #include <string>
 
-#include <alerts/alerts.hpp>
 #include <aos/common/cloudprotocol/alerts.hpp>
 #include <aos/sm/launcher.hpp>
 #include <aos/sm/layermanager.hpp>
 #include <aos/sm/networkmanager.hpp>
 #include <aos/sm/servicemanager.hpp>
-#include <logprovider/logprovider.hpp>
-#include <migration/migration.hpp>
 
-#include "config/config.hpp"
+#include <common/migration/migration.hpp>
+#include <sm/alerts/alerts.hpp>
+#include <sm/config/config.hpp>
+#include <sm/logprovider/logprovider.hpp>
 
 namespace aos::sm::database {
 
