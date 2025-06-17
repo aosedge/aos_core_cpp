@@ -25,7 +25,7 @@
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include "config/config.hpp"
+#include <iam/config/config.hpp>
 
 namespace aos::iam::iamclient {
 

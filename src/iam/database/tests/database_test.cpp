@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include "database/database.hpp"
+#include <iam/database/database.hpp>
 
 using namespace testing;
 

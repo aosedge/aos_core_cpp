@@ -14,7 +14,7 @@
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 #include <common/utils/grpchelper.hpp>
 
-#include "iamserver/protectedmessagehandler.hpp"
+#include <iam/iamserver/protectedmessagehandler.hpp>
 
 #include "mocks/certprovidermock.hpp"
 #include "mocks/identhandlermock.hpp"

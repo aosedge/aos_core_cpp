@@ -11,7 +11,7 @@
 
 #include <aos/iam/identhandler.hpp>
 
-#include "config/config.hpp"
+#include <iam/config/config.hpp>
 
 namespace aos::iam::fileidentifier {
 

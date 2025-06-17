@@ -19,9 +19,10 @@
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 
+#include <iam/config/config.hpp>
+#include <iam/fileidentifier/fileidentifier.hpp>
+
 #include "app.hpp"
-#include "config/config.hpp"
-#include "fileidentifier/fileidentifier.hpp"
 
 namespace aos::iam::app {
 
