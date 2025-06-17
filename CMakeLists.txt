@@ -174,6 +174,10 @@ add_subdirectory(src)
 add_subdirectory(${AOS_CORE_API_DIR} aos_core_api)
 add_subdirectory(${AOS_CORE_LIB_DIR}/src/common aos_core_lib/common)
 
+if(WITH_SM)
+    add_subdirectory(${AOS_CORE_LIB_DIR}/src/sm aos_core_lib/sm)
+endif()
+
 if(WITH_MP OR WITH_IAM)
     add_subdirectory(${AOS_CORE_LIB_DIR}/src/iam aos_core_lib/iam)
 endif()
