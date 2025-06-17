@@ -21,6 +21,7 @@ set(AOS_CORE_DIR
 option(WITH_IAM "build with iam" ON)
 option(WITH_MP "build with message proxy" ON)
 option(WITH_SM "build with service manager" ON)
+option(WITH_CM "build with communication manager" ON)
 
 option(WITH_VCHAN "build with vchan" ON)
 
