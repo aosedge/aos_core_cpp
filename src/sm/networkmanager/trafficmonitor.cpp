@@ -493,6 +493,10 @@ Error TrafficMonitor::DeleteAllTrafficChains()
 
 Error TrafficMonitor::DeleteTrafficChain(const std::string& chain, const std::string& rootChain)
 {
+    if (chain.empty()) {
+        return ErrorEnum::eNone;
+    }
+
     {
         std::unique_lock lock {mMutex};
 
