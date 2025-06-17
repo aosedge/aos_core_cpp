@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 #include <vector>
 
-#include "utils/journal.hpp"
+#include "sm/utils/journal.hpp"
 
 namespace aos::sm::utils {
 
