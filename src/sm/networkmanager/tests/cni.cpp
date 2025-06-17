@@ -35,9 +35,11 @@ protected:
         mExec = std::make_unique<::StrictMock<MockExec>>();
         mCNI.Init(*mExec.get());
 
-        ASSERT_TRUE(std::filesystem::create_directories(mTestDir));
+        auto cniCacheDir = std::filesystem::path(mTestDir.c_str()) / "results";
+        ASSERT_TRUE(std::filesystem::create_directories(cniCacheDir));
 
-        auto err = mCNI.SetConfDir(mTestDir.c_str());
+        auto err = mCNI.SetConfDir(cniCacheDir.string().c_str());
+
         ASSERT_TRUE(err.IsNone());
     }
 
