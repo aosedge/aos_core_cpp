@@ -870,6 +870,64 @@ Error Database::RemoveTrafficMonitorData(const String& chain)
     return ErrorEnum::eNone;
 }
 
+Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info)
+{
+    LOG_DBG() << "Add instance network info" << Log::Field("instanceID", info.mInstanceID)
+              << Log::Field("networkID", info.mNetworkID);
+
+    try {
+        *mSession << "INSERT INTO instancenetwork (instanceID, networkID) VALUES (?, ?);",
+            bind(info.mInstanceID.CStr()), bind(info.mNetworkID.CStr()), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::RemoveInstanceNetworkInfo(const String& instanceID)
+{
+    LOG_DBG() << "Remove instance network info" << Log::Field("instanceID", instanceID);
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "DELETE FROM instancenetwork WHERE instanceID = ?;", bind(instanceID.CStr());
+
+        if (statement.execute() == 0) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetworkInfo>& networks) const
+{
+    LOG_DBG() << "Get all instance networks";
+
+    try {
+        std::vector<std::pair<std::string, std::string>> result;
+
+        *mSession << "SELECT instanceID, networkID FROM instancenetwork", into(result), now;
+
+        for (const auto& [instanceID, networkID] : result) {
+            if (auto err = networks.EmplaceBack(instanceID.c_str(), networkID.c_str()); !err.IsNone()) {
+                LOG_WRN() << "Failed to add instance network info" << Log::Field("instanceID", instanceID.c_str())
+                          << Log::Field("networkID", networkID.c_str()) << Log::Field(err);
+                return AOS_ERROR_WRAP(Error(err, "db instance networks count exceeds application limit"));
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG_WRN() << "Failed to get instance networks info" << Log::Field(common::utils::ToAosError(e));
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * sm::layermanager::StorageItf implementation
  **********************************************************************************************************************/
