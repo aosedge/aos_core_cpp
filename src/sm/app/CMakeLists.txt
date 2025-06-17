@@ -4,54 +4,53 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET app)
+set(TARGET_NAME app)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES app.cpp aoscore.cpp)
-
-# ######################################################################################################################
-# Target
-# ######################################################################################################################
-
-add_library(${TARGET} STATIC ${SOURCES})
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-# ######################################################################################################################
-# Compiler flags
-# ######################################################################################################################
-
-add_definitions(-DLOG_MODULE="app")
-target_compile_options(${TARGET} PRIVATE -Wstack-usage=${AOS_STACK_USAGE})
+set(SOURCES app.cpp aoscore.cpp main.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-target_link_libraries(
-    ${TARGET}
-    PUBLIC config
-           database
-           image
-           launcher
-           monitoring
-           resourcemanager
-           runner
-           smclient
-           networkmanager
-           alerts
-           aoscommon
-           aosdownloader
-           aosocispec
-           aossm
-           aosiamclient
-           aosjsonprovider
-           aoslogger
-           logprovider
-           Poco::Util
+set(LIBRARIES
+    aoscommon
+    aossm
+    aos::common::iamclient
+    aos::common::jsonprovider
+    aos::common::logger
+    aos::common::downloader
+    aos::common::ocispec
+    aos::common::version
+    ${TARGET_NAMESPACE}::config
+    ${TARGET_NAMESPACE}::database
+    ${TARGET_NAMESPACE}::image
+    ${TARGET_NAMESPACE}::launcher
+    ${TARGET_NAMESPACE}::monitoring
+    ${TARGET_NAMESPACE}::resourcemanager
+    ${TARGET_NAMESPACE}::runner
+    ${TARGET_NAMESPACE}::networkmanager
+    ${TARGET_NAMESPACE}::alerts
+    ${TARGET_NAMESPACE}::smclient
+    ${TARGET_NAMESPACE}::logprovider
+    Poco::Util
+)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_exec(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
 )
