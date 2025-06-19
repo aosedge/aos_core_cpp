@@ -9,6 +9,7 @@
 #define AOS_COMMON_LOGGER_LOGGER_HPP_
 
 #include <mutex>
+#include <string>
 
 #include <aos/common/tools/log.hpp>
 
