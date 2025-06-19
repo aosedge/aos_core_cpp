@@ -10,8 +10,8 @@
 
 #include <curl/curl.h>
 
-#include "common/logger/logmodule.hpp"
-#include "common/utils/exception.hpp"
+#include <common/logger/logmodule.hpp>
+#include <common/utils/exception.hpp>
 
 #include "downloader.hpp"
 

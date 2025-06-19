@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include "common/iamclient/publicservicehandler.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
 
 namespace aos::common::iamclient {
 

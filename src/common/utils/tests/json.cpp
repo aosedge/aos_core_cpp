@@ -13,8 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "common/utils/grpchelper.hpp"
-#include "common/utils/json.hpp"
+#include <common/utils/grpchelper.hpp>
+#include <common/utils/json.hpp>
 
 using namespace testing;
 

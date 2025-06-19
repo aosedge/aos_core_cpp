@@ -13,7 +13,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "common/downloader/downloader.hpp"
+#include <common/downloader/downloader.hpp>
 
 #include "stubs/httpserverstub.hpp"
 

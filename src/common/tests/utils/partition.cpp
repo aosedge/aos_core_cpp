@@ -11,9 +11,9 @@
 
 #include <Poco/String.h>
 
-#include "aos/common/tools/string.hpp"
+#include <aos/common/tools/string.hpp>
 
-#include "common/utils/utils.hpp"
+#include <common/utils/utils.hpp>
 
 #include "partition.hpp"
 
