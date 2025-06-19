@@ -16,7 +16,6 @@
 #include "mocks/identhandlermock.hpp"
 #include "mocks/wsclientmock.hpp"
 
-
 using namespace testing;
 
 namespace aos::iam::visidentifier {
