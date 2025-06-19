@@ -16,21 +16,22 @@
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
 
-#include "common/downloader/downloader.hpp"
-#include "common/iamclient/publicservicehandler.hpp"
-#include "common/logger/logger.hpp"
-#include "common/utils/cleanupmanager.hpp"
-#include "mp/cmclient/cmclient.hpp"
-#include "mp/communication/cmconnection.hpp"
-#include "mp/communication/communicationmanager.hpp"
-#include "mp/communication/iamconnection.hpp"
-#include "mp/config/config.hpp"
-#include "mp/iamclient/publicnodeclient.hpp"
+#include <common/downloader/downloader.hpp>
+#include <common/iamclient/publicservicehandler.hpp>
+#include <common/logger/logger.hpp>
+#include <common/utils/cleanupmanager.hpp>
+
+#include <mp/cmclient/cmclient.hpp>
+#include <mp/communication/cmconnection.hpp>
+#include <mp/communication/communicationmanager.hpp>
+#include <mp/communication/iamconnection.hpp>
+#include <mp/config/config.hpp>
+#include <mp/iamclient/publicnodeclient.hpp>
 
 #ifdef VCHAN
-#include "mp/communication/vchan.hpp"
+#include <mp/communication/vchan.hpp>
 #else
-#include "mp/communication/socket.hpp"
+#include <mp/communication/socket.hpp>
 #endif
 
 namespace aos::mp::app {

@@ -11,7 +11,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "mp/iamclient/publicnodeclient.hpp"
+#include <mp/iamclient/publicnodeclient.hpp>
 
 #include "mocks/certprovider.hpp"
 #include "stubs/iamserver.hpp"

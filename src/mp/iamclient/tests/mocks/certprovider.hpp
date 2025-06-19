@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <grpc++/security/credentials.h>
 
-#include "common/iamclient/publicservicehandler.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
 
 namespace aos::common::iamclient {
 

@@ -16,10 +16,10 @@
 #include <Poco/SHA2Engine.h>
 #include <Poco/StreamCopier.h>
 
-#include "common/logger/logmodule.hpp"
-#include "common/utils/filesystem.hpp"
-#include "common/utils/image.hpp"
-#include "common/utils/json.hpp"
+#include <common/logger/logmodule.hpp>
+#include <common/utils/filesystem.hpp>
+#include <common/utils/image.hpp>
+#include <common/utils/json.hpp>
 
 #include "serviceimage.hpp"
 
