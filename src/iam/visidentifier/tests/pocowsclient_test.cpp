@@ -18,7 +18,6 @@
 #include "mocks/identhandlermock.hpp"
 #include "visserver.hpp"
 
-
 using namespace testing;
 
 namespace aos::iam::visidentifier {
