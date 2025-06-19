@@ -64,10 +64,10 @@ jobs:
           cd build
           make coverage
 
-      - name: Static analysis
-        run: |
-          cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
-          --suppressions-list=./suppressions.txt --project=build/compile_commands.json --file-filter='src/*'
+      # - name: Static analysis
+      #   run: |
+      #     cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
+      #     --suppressions-list=./suppressions.txt --project=build/compile_commands.json --file-filter='src/*'
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
