@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "common/utils/exception.hpp"
+#include <common/utils/exception.hpp>
 
 #include "migration.hpp"
 

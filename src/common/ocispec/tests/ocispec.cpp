@@ -10,8 +10,8 @@
 #include <aos/common/tools/fs.hpp>
 #include <aos/test/log.hpp>
 
-#include "common/ocispec/ocispec.hpp"
-#include "common/utils/json.hpp"
+#include <common/ocispec/ocispec.hpp>
+#include <common/utils/json.hpp>
 
 using namespace testing;
 

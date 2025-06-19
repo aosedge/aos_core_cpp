@@ -9,9 +9,9 @@
 #include <fstream>
 #include <gtest/gtest.h>
 
-#include "common/tests/utils/partition.hpp"
-#include "common/utils/fsplatform.hpp"
-#include "common/utils/utils.hpp"
+#include <common/tests/utils/partition.hpp>
+#include <common/utils/fsplatform.hpp>
+#include <common/utils/utils.hpp>
 
 namespace aos::common::utils::test {
 

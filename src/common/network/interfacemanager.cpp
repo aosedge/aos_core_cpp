@@ -23,7 +23,7 @@
 #include <netlink/route/link/vlan.h>
 #include <netlink/route/route.h>
 
-#include "common/logger/logmodule.hpp"
+#include <common/logger/logmodule.hpp>
 
 #include "interfacemanager.hpp"
 

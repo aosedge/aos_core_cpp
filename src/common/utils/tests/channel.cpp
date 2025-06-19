@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include "common/utils/channel.hpp"
+#include <common/utils/channel.hpp>
 
 using namespace testing;
 

@@ -21,7 +21,7 @@
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include "common/utils/grpchelper.hpp"
+#include <common/utils/grpchelper.hpp>
 
 namespace aos::common::iamclient {
 
