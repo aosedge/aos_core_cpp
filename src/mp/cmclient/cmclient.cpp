@@ -21,8 +21,8 @@ Error CMClient::Init(const config::Config& config, common::iamclient::TLSCredent
     LOG_INF() << "Initializing CM client";
 
     mCertProvider       = &certProvider;
-    mCertLoader         = &certLoader;
     mCryptoProvider     = &cryptoProvider;
+    mCertLoader         = &certLoader;
     mUrl                = config.mCMConfig.mCMServerURL;
     mInsecureConnection = insecureConnection;
     mCertStorage        = config.mCertStorage;
