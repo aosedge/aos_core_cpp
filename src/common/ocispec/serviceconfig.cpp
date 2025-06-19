@@ -237,7 +237,7 @@ Poco::JSON::Object RequestedResourcesToJSON(const aos::oci::RequestedResources& 
 
 void ServiceDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ServiceDevice& serviceDevice)
 {
-    const auto device      = object.GetValue<std::string>("device");
+    const auto device      = object.GetValue<std::string>("name");
     const auto permissions = object.GetValue<std::string>("permissions");
 
     serviceDevice.mDevice      = device.c_str();
@@ -248,7 +248,7 @@ Poco::JSON::Object ServiceDeviceToJSON(const aos::oci::ServiceDevice& device)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
-    object.set("device", device.mDevice.CStr());
+    object.set("name", device.mDevice.CStr());
     object.set("permissions", device.mPermissions.CStr());
 
     return object;
