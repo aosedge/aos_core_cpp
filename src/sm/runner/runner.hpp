@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef RUNNER_HPP_
-#define RUNNER_HPP_
+#ifndef AOS_SM_RUNNER_RUNNER_HPP_
+#define AOS_SM_RUNNER_RUNNER_HPP_
 
 #include <chrono>
 #include <condition_variable>

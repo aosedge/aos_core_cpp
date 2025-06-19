@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SYSTEMDCONN_HPP_
-#define SYSTEMDCONN_HPP_
+#ifndef AOS_SM_RUNNER_SYSTEMDCONN_HPP_
+#define AOS_SM_RUNNER_SYSTEMDCONN_HPP_
 
 #include <mutex>
 #include <string>

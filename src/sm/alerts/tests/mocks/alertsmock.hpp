@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ALERTS_MOCK_HPP_
-#define ALERTS_MOCK_HPP_
+#ifndef AOS_SM_ALERTS_TESTS_MOCKS_ALERTSTEST_HPP_
+#define AOS_SM_ALERTS_TESTS_MOCKS_ALERTSTEST_HPP_
 
 #include <gmock/gmock.h>
 

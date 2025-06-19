@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef LOGPROVIDER_MOCK_HPP_
-#define LOGPROVIDER_MOCK_HPP_
+#ifndef AOS_SM_TESTS_MOCKS_LOGPROVIDERMOCK_HPP_
+#define AOS_SM_TESTS_MOCKS_LOGPROVIDERMOCK_HPP_
 
 #include <gmock/gmock.h>
 

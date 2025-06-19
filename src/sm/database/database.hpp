@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef DATABASE_HPP_
-#define DATABASE_HPP_
+#ifndef AOS_SM_DATABASE_DATABASE_HPP_
+#define AOS_SM_DATABASE_DATABASE_HPP_
 
 #include <memory>
 #include <optional>

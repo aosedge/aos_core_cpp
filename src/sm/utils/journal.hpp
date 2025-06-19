@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef JOURNAL_HPP_
-#define JOURNAL_HPP_
+#ifndef AOS_SM_UTILS_JOURNAL_HPP_
+#define AOS_SM_UTILS_JOURNAL_HPP_
 
 #include <aos/common/tools/time.hpp>
 

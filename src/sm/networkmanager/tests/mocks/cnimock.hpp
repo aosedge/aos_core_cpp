@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef AOS_CNI_MOCK_HPP_
-#define AOS_CNI_MOCK_HPP_
+#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_CNIMOCK_HPP_
+#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_CNIMOCK_HPP_
 
 #include <gmock/gmock.h>
 

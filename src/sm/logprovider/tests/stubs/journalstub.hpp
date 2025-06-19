@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef JOURNAL_STUB_HPP_
-#define JOURNAL_STUB_HPP_
+#ifndef AOS_SM_LOGPROVIDER_TESTS_STUBS_JOURNALSTUB_HPP_
+#define AOS_SM_LOGPROVIDER_TESTS_STUBS_JOURNALSTUB_HPP_
 
 #include <vector>
 

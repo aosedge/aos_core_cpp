@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_STORAGEMOCK_HPP_
+#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_STORAGEMOCK_HPP_
+
 #include <gmock/gmock.h>
 
 #include <aos/sm/networkmanager.hpp>
@@ -25,3 +28,5 @@ public:
         (aos::Array<aos::sm::networkmanager::InstanceNetworkInfo> & networks), (const, override));
     MOCK_METHOD(aos::Error, RemoveTrafficMonitorData, (const aos::String& chain), (override));
 };
+
+#endif

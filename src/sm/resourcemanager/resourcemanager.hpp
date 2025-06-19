@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef RESOURCEMANAGER_HPP_
-#define RESOURCEMANAGER_HPP_
+#ifndef AOS_SM_RESOURCEMANAGER_RESOURCEMANAGER_HPP_
+#define AOS_SM_RESOURCEMANAGER_RESOURCEMANAGER_HPP_
 
 #include <set>
 #include <string>

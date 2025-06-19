@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CNI_HPP_
-#define CNI_HPP_
+#ifndef AOS_SM_NETWORKMANAGER_CNI_HPP_
+#define AOS_SM_NETWORKMANAGER_CNI_HPP_
 
 #include <string>
 #include <unordered_map>

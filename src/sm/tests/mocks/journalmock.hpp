@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef JOURNAL_MOCK_HPP_
-#define JOURNAL_MOCK_HPP_
+#ifndef AOS_SM_TESTS_MOCKS_JOURNALMOCK_HPP_
+#define AOS_SM_TESTS_MOCKS_JOURNALMOCK_HPP_
 
 #include <gmock/gmock.h>
 #include <vector>
