@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef CONFIG_HPP_
-#define CONFIG_HPP_
+#ifndef AOS_SM_CONFIG_CONFIG_HPP_
+#define AOS_SM_CONFIG_CONFIG_HPP_
 
 #include <string>
 #include <vector>

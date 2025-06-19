@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef NETWORK_TRAFFICMONITOR_HPP
-#define NETWORK_TRAFFICMONITOR_HPP
+#ifndef AOS_SM_NETWORKMANAGER_TRAFFICMONITOR_HPP_
+#define AOS_SM_NETWORKMANAGER_TRAFFICMONITOR_HPP_
 
 #include <chrono>
 #include <shared_mutex>

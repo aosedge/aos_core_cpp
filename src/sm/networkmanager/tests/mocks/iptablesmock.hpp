@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IPTABLESMOCK_HPP
-#define IPTABLESMOCK_HPP
+#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_IPTABLESMOCK_HPP_
+#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_IPTABLESMOCK_HPP_
 
 #include <gmock/gmock.h>
 

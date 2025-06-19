@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef EXEC_HPP_
-#define EXEC_HPP_
+#ifndef AOS_SM_NETWORKMANAGER_EXEC_HPP_
+#define AOS_SM_NETWORKMANAGER_EXEC_HPP_
 
 #include <string>
 

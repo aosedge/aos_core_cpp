@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef LOGMODULE_HPP_
-#define LOGMODULE_HPP_
+#ifndef AOS_SM_LOGGER_LOGMODULE_HPP_
+#define AOS_SM_LOGGER_LOGMODULE_HPP_
 
 #include <sstream>
 

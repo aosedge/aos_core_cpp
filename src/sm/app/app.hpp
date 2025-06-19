@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef APP_HPP_
-#define APP_HPP_
+#ifndef AOS_SM_APP_APP_HPP_
+#define AOS_SM_APP_APP_HPP_
 
 #include <Poco/Util/ServerApplication.h>
 
