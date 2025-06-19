@@ -8,7 +8,7 @@
 
 #include <aos/test/log.hpp>
 
-#include "common/pbconvert/common.hpp"
+#include <common/pbconvert/common.hpp>
 
 using namespace testing;
 

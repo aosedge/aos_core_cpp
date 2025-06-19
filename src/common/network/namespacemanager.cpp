@@ -14,7 +14,7 @@
 
 #include <aos/common/tools/memory.hpp>
 
-#include "common/logger/logmodule.hpp"
+#include <common/logger/logmodule.hpp>
 
 #include "namespacemanager.hpp"
 

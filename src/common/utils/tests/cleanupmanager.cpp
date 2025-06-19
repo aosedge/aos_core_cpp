@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "common/utils/cleanupmanager.hpp"
+#include <common/utils/cleanupmanager.hpp>
 
 namespace aos::common::utils::test {
 
