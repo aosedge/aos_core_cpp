@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SMCLIENT_CONFIG_HPP_
-#define SMCLIENT_CONFIG_HPP_
+#ifndef AOS_SM_SMCLIENT_CONFIG_HPP_
+#define AOS_SM_SMCLIENT_CONFIG_HPP_
 
 #include <string>
 

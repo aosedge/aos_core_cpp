@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef RUNTIME_HPP_
-#define RUNTIME_HPP_
+#ifndef AOS_SM_LAUNCHER_RUNTIME_HPP_
+#define AOS_SM_LAUNCHER_RUNTIME_HPP_
 
 #include <aos/sm/launcher.hpp>
 

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef SYSTEMDCONN_MOCK_HPP_
-#define SYSTEMDCONN_MOCK_HPP_
+#ifndef AOS_SM_RUNNER_TESTS_MOCKS_SYSTEMDCONNMOCK_HPP_
+#define AOS_SM_RUNNER_TESTS_MOCKS_SYSTEMDCONNMOCK_HPP_
 
 #include <gmock/gmock.h>
 

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef IMAGEHANDLER_HPP_
-#define IMAGEHANDLER_HPP_
+#ifndef AOS_SM_IMAGE_IMAGEHANDLER_HPP_
+#define AOS_SM_IMAGE_IMAGEHANDLER_HPP_
 
 #include <aos/common/crypto/crypto.hpp>
 #include <aos/common/tools/error.hpp>

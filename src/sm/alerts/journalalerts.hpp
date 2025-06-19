@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef JOURNALALERTS_HPP_
-#define JOURNALALERTS_HPP_
+#ifndef AOS_SM_ALERTS_JOURNALALERTS_HPP_
+#define AOS_SM_ALERTS_JOURNALALERTS_HPP_
 
 #include <Poco/Timer.h>
 #include <condition_variable>
