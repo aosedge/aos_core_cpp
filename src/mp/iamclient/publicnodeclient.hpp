@@ -24,11 +24,12 @@
 
 #include <aos/common/tools/error.hpp>
 
-#include "common/iamclient/publicservicehandler.hpp"
-#include "common/utils/channel.hpp"
-#include "common/utils/time.hpp"
-#include "mp/communication/types.hpp"
-#include "mp/config/config.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
+#include <common/utils/channel.hpp>
+#include <common/utils/time.hpp>
+
+#include <mp/communication/types.hpp>
+#include <mp/config/config.hpp>
 
 namespace aos::mp::iamclient {
 

@@ -19,10 +19,11 @@
 #include <openssl/ssl.h>
 #include <pthread.h>
 
-#include "common/utils/pkcs11helper.hpp"
-#include "mp/communication/communicationchannel.hpp"
-#include "mp/communication/types.hpp"
-#include "mp/communication/utils.hpp"
+#include <common/utils/pkcs11helper.hpp>
+
+#include <mp/communication/communicationchannel.hpp>
+#include <mp/communication/types.hpp>
+#include <mp/communication/utils.hpp>
 
 namespace aos::mp::communication {
 

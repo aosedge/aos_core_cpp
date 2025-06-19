@@ -12,8 +12,8 @@
 
 #include <aos/common/cloudprotocol/log.hpp>
 
-#include "common/logger/logmodule.hpp"
-#include "common/pbconvert/sm.hpp"
+#include <common/logger/logmodule.hpp>
+#include <common/pbconvert/sm.hpp>
 
 #include "cmconnection.hpp"
 #include "utils.hpp"

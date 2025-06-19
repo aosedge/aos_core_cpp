@@ -13,7 +13,7 @@ extern "C" {
 
 #include <mutex>
 
-#include "config/config.hpp"
+#include <mp/config/config.hpp>
 
 #include "types.hpp"
 

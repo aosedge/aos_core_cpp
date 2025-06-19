@@ -13,7 +13,7 @@
 
 #include <aos/common/tools/error.hpp>
 
-#include "common/iamclient/publicservicehandler.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
 
 namespace aos::mp::communication {
 

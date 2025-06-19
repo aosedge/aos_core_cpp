@@ -20,7 +20,7 @@
 #include <aos/common/tools/error.hpp>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include "common/logprovider/archivator.hpp"
+#include <common/logprovider/archivator.hpp>
 
 namespace aos::mp::logprovider {
 

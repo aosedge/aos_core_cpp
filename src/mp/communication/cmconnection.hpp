@@ -23,11 +23,12 @@
 #include <aos/common/downloader/downloader.hpp>
 #include <aos/common/tools/error.hpp>
 
-#include "common/downloader/downloader.hpp"
-#include "mp/config/config.hpp"
-#include "mp/filechunker/filechunker.hpp"
-#include "mp/imageunpacker/imageunpacker.hpp"
-#include "mp/logprovider/archivemanager.hpp"
+#include <common/downloader/downloader.hpp>
+
+#include <mp/config/config.hpp>
+#include <mp/filechunker/filechunker.hpp>
+#include <mp/imageunpacker/imageunpacker.hpp>
+#include <mp/logprovider/archivemanager.hpp>
 
 #include "types.hpp"
 

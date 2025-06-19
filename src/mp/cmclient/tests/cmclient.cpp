@@ -13,12 +13,13 @@
 
 #include <gtest/gtest.h>
 
-#include "common/iamclient/publicservicehandler.hpp"
-#include "common/utils/channel.hpp"
-#include "mp/cmclient/cmclient.hpp"
-#include "mp/config/config.hpp"
+#include <common/iamclient/publicservicehandler.hpp>
+#include <common/tests/mocks/iamclientmock.hpp>
+#include <common/utils/channel.hpp>
 
-#include "common/tests/mocks/iamclientmock.hpp"
+#include <mp/cmclient/cmclient.hpp>
+#include <mp/config/config.hpp>
+
 #include "stubs/smservice.hpp"
 
 using namespace testing;

@@ -17,19 +17,18 @@
 #include <aos/common/crypto/utils.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-
-#include "common/downloader/downloader.hpp"
-#include "common/utils/cryptohelper.hpp"
-#include "common/utils/pkcs11helper.hpp"
+#include <aos/test/log.hpp>
+#include <aos/test/softhsmenv.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/softhsmenv.hpp>
+#include <common/downloader/downloader.hpp>
+#include <common/utils/cryptohelper.hpp>
+#include <common/utils/pkcs11helper.hpp>
 
-#include "mp/communication/communicationmanager.hpp"
-#include "mp/communication/socket.hpp"
+#include <mp/communication/communicationmanager.hpp>
+#include <mp/communication/socket.hpp>
 
 #include "stubs/storagestub.hpp"
 #include "stubs/transport.hpp"

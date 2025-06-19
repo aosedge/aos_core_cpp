@@ -14,7 +14,7 @@
 #include <mutex>
 #include <thread>
 
-#include "mp/config/config.hpp"
+#include <mp/config/config.hpp>
 
 #include "cmconnection.hpp"
 #include "communicationchannel.hpp"

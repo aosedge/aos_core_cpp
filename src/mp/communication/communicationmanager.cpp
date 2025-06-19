@@ -6,7 +6,7 @@
 
 #include <openssl/sha.h>
 
-#include "common/logger/logmodule.hpp"
+#include <common/logger/logmodule.hpp>
 
 #include "communicationmanager.hpp"
 #include "securechannel.hpp"

@@ -6,7 +6,7 @@
 
 #include <thread>
 
-#include "common/logger/logmodule.hpp"
+#include <common/logger/logmodule.hpp>
 
 #include "communicationchannel.hpp"
 #include "utils.hpp"
