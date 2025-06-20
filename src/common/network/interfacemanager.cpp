@@ -248,7 +248,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
             IPAddr ipAddr;
             ipAddr.mFamily = rtnl_addr_get_family(addr);
 
-            if (auto local = rtnl_addr_get_local(addr); local) {
+            if (const auto* local = rtnl_addr_get_local(addr); local) {
                 char buf[INET6_ADDRSTRLEN];
 
                 nl_addr2str(local, buf, sizeof(buf));
@@ -468,7 +468,7 @@ Error InterfaceManager::GetRouteList(Array<RouteInfo>& routes) const
         info.mLinkIndex = rtnl_route_nh_get_ifindex(nh);
 
         if (rtnl_route_get_table(route) == RT_TABLE_MAIN) {
-            if (auto* dst = rtnl_route_get_dst(route); dst && nl_addr_get_prefixlen(dst) > 0) {
+            if (const auto* dst = rtnl_route_get_dst(route); dst && nl_addr_get_prefixlen(dst) > 0) {
                 char buf[INET6_ADDRSTRLEN];
 
                 nl_addr2str(dst, buf, sizeof(buf));
@@ -550,6 +550,7 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
     vlanAttrs.mName        = name.CStr();
     vlanAttrs.mParentIndex = masterIndex;
 
+    // cppcheck-suppress unusedScopedObject
     if (Tie(vlanAttrs.mMac, err) = GenerateMACAddress(*mRandom); !err.IsNone()) {
         return err;
     }

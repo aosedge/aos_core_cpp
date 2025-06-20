@@ -127,6 +127,7 @@ RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
 
     totalDuration += delta;
 
+    // cppcheck-suppress unusedScopedObject
     Tie(delta, err) = ParseISO8601DurationTime(match[2].str());
     if (!err.IsNone()) {
         return {{}, AOS_ERROR_WRAP(err)};

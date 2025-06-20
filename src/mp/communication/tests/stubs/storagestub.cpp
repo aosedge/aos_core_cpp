@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
+
 #include "storagestub.hpp"
 
 namespace aos {
@@ -13,7 +15,7 @@ namespace certhandler {
 
 Error StorageStub::AddCertInfo(const String& certType, const CertInfo& certInfo)
 {
-    Error err  = ErrorEnum::eNone;
+    Error err;
     auto  cell = FindCell(certType);
 
     if (cell == mStorage.end()) {
@@ -26,10 +28,9 @@ Error StorageStub::AddCertInfo(const String& certType, const CertInfo& certInfo)
         cell->mCertType = certType;
     }
 
-    for (const auto& cert : cell->mCertificates) {
-        if (cert == certInfo) {
-            return ErrorEnum::eAlreadyExist;
-        }
+    if (std::any_of(cell->mCertificates.begin(), cell->mCertificates.end(),
+            [&](const auto& cert) { return cert == certInfo; })) {
+        return ErrorEnum::eAlreadyExist;
     }
 
     return cell->mCertificates.PushBack(certInfo);
@@ -38,11 +39,12 @@ Error StorageStub::AddCertInfo(const String& certType, const CertInfo& certInfo)
 Error StorageStub::GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t>& serial, CertInfo& cert)
 {
     for (auto& cell : mStorage) {
-        for (auto& cur : cell.mCertificates) {
-            if (cur.mIssuer == issuer && cur.mSerial == serial) {
-                cert = cur;
-                return ErrorEnum::eNone;
-            }
+        auto it = std::find_if(cell.mCertificates.begin(), cell.mCertificates.end(),
+            [&](const auto& cur) { return cur.mIssuer == issuer && cur.mSerial == serial; });
+
+        if (it != cell.mCertificates.end()) {
+            cert = *it;
+            return ErrorEnum::eNone;
         }
     }
 
@@ -51,7 +53,7 @@ Error StorageStub::GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t
 
 Error StorageStub::GetCertsInfo(const String& certType, Array<CertInfo>& certsInfo)
 {
-    auto* cell = FindCell(certType);
+    const auto* cell = FindCell(certType);
     if (cell == mStorage.end()) {
         return ErrorEnum::eNotFound;
     }
@@ -75,12 +77,13 @@ Error StorageStub::RemoveCertInfo(const String& certType, const String& certURL)
         return ErrorEnum::eNotFound;
     }
 
-    for (auto& cur : cell->mCertificates) {
-        if (cur.mCertURL == certURL) {
-            cell->mCertificates.Remove(cur);
+    auto it = std::find_if(cell->mCertificates.begin(), cell->mCertificates.end(),
+        [&certURL](const auto& cur) { return cur.mCertURL == certURL; });
 
-            return ErrorEnum::eNone;
-        }
+    if (it != cell->mCertificates.end()) {
+        cell->mCertificates.Remove(*it);
+
+        return ErrorEnum::eNone;
     }
 
     return ErrorEnum::eNotFound;
@@ -100,10 +103,11 @@ Error StorageStub::RemoveAllCertsInfo(const String& certType)
 
 StorageStub::StorageCell* StorageStub::FindCell(const String& certType)
 {
-    for (auto& cell : mStorage) {
-        if (cell.mCertType == certType) {
-            return &cell;
-        }
+    auto it
+        = std::find_if(mStorage.begin(), mStorage.end(), [&](const auto& cell) { return cell.mCertType == certType; });
+
+    if (it != mStorage.end()) {
+        return &*it;
     }
 
     return mStorage.end();

@@ -107,6 +107,7 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
         imageSpec.mVariant      = variant.c_str();
 
         if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
+            // cppcheck-suppress unusedScopedObject
             Tie(imageSpec.mCreated, err) = utils::FromUTCString(created->c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
         }
