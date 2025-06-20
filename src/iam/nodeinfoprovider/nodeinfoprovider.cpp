@@ -94,6 +94,7 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
     mNodeInfo.mName         = config.mNodeName.c_str();
     mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
 
+    // cppcheck-suppress unusedScopedObject
     Tie(mNodeInfo.mTotalRAM, err) = utils::GetMemTotal(config.mMemInfoPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -111,6 +112,7 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
+    // cppcheck-suppress unusedScopedObject
     Tie(mNodeInfo.mStatus, err) = GetNodeStatus(mProvisioningStatusPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -126,6 +128,7 @@ Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
     Error      err;
     NodeStatus status;
 
+    // cppcheck-suppress unusedScopedObject
     Tie(status, err) = GetNodeStatus(mProvisioningStatusPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -232,6 +235,7 @@ Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& con
 
         Error err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(partitionInfo.mTotalSize, err) = utils::GetMountFSTotalSize(partition.mPath);
         if (!err.IsNone()) {
             LOG_WRN() << "Failed to get total size for partition: path=" << partition.mPath.c_str() << ", err=" << err;

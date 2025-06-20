@@ -204,6 +204,7 @@ Error VISIdentifier::InitWSClient(const config::IdentifierConfig& config)
         config::VISIdentifierModuleParams visParams;
         Error                             err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(visParams, err) = config::ParseVISIdentifierModuleParams(config.mParams);
         if (!err.IsNone()) {
             LOG_ERR() << "Failed to parse VIS identifier module params: error = " << err.Message();
