@@ -135,7 +135,9 @@ IAMClientConfig ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectW
     config.mMainIAMProtectedServerURL = object.GetValue<std::string>("mainIAMProtectedServerURL");
     auto nodeReconnectInterval        = object.GetOptionalValue<std::string>("nodeReconnectInterval").value_or("10s");
 
-    Error err                               = ErrorEnum::eNone;
+    Error err = ErrorEnum::eNone;
+
+    // cppcheck-suppress unusedScopedObject
     Tie(config.mNodeReconnectInterval, err) = common::utils::ParseDuration(nodeReconnectInterval);
     AOS_ERROR_CHECK_AND_THROW(err, "nodeReconnectInterval parse error");
 
@@ -261,6 +263,7 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
         Error err;
 
         Tie(moduleParams.mWebSocketTimeout, err)
+            // cppcheck-suppress unusedScopedObject
             = common::utils::ParseDuration(object.GetValue<std::string>("webSocketTimeout", "120s"));
         AOS_ERROR_CHECK_AND_THROW(err, "failed to parse webSocketTimeout");
     } catch (const std::exception& e) {

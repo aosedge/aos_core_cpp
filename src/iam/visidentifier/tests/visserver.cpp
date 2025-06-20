@@ -244,6 +244,7 @@ bool VISWebSocketServer::TryWaitServiceStart(const long timeout)
  **********************************************************************************************************************/
 
 void VISWebSocketServer::RunServiceThreadF(
+    // cppcheck-suppress passedByValueCallback
     const std::string keyPath, const std::string certPath, const std::string uriStr)
 {
     try {

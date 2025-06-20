@@ -34,12 +34,14 @@ void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Ru
     Error err;
 
     if (const auto startInterval = object.GetOptionalValue<std::string>("startInterval"); startInterval.has_value()) {
+        // cppcheck-suppress unusedScopedObject
         Tie(params.mStartInterval, err) = utils::ParseDuration(*startInterval);
         AOS_ERROR_CHECK_AND_THROW(err, "start interval parsing error");
     }
 
     if (const auto restartInterval = object.GetOptionalValue<std::string>("restartInterval");
         restartInterval.has_value()) {
+        // cppcheck-suppress unusedScopedObject
         Tie(params.mRestartInterval, err) = utils::ParseDuration(*restartInterval);
         AOS_ERROR_CHECK_AND_THROW(err, "restart interval parsing error");
     }
@@ -302,6 +304,7 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(percents.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
@@ -319,6 +322,7 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(points.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
@@ -442,6 +446,7 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
         if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
+            // cppcheck-suppress unusedScopedObject
             Tie(serviceConfig.mCreated, err) = utils::FromUTCString(created->c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
         }
@@ -474,6 +479,7 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
         }
 
         if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL"); offlineTTLStr.has_value()) {
+            // cppcheck-suppress unusedScopedObject
             Tie(serviceConfig.mOfflineTTL, err) = utils::ParseDuration(*offlineTTLStr);
             AOS_ERROR_CHECK_AND_THROW(err, "offlineTTL parsing error");
         }

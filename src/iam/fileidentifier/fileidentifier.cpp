@@ -23,7 +23,7 @@ Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler:
 
     try {
         Error err;
-
+        // cppcheck-suppress unusedScopedObject
         Tie(mConfig, err) = config::ParseFileIdentifierModuleParams(config.mParams);
         if (!err.IsNone()) {
             return err;

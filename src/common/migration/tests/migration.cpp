@@ -121,7 +121,7 @@ TEST_F(MigrationTest, MergeMigration)
 
     WriteMigrationScript(secondDownSql, "CREATE TABLE IF NOT EXISTS test2 (id INTEGER PRIMARY KEY);", cMigrationDir);
 
-    aos::common::migration::Migration migration {*mSession, cMigrationDir, cMergedMigrationDir};
+    [[maybe_unused]] aos::common::migration::Migration migration {*mSession, cMigrationDir, cMergedMigrationDir};
 
     EXPECT_TRUE(fs::exists(fs::path(cMergedMigrationDir) / firstUpSql));
     EXPECT_TRUE(fs::exists(fs::path(cMergedMigrationDir) / secondUpSql));

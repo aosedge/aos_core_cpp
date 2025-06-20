@@ -2,3 +2,5 @@ missingIncludeSystem
 unusedFunction
 syntaxError
 preprocessorErrorDirective
+*:*build/*
+*:*usr/include/*

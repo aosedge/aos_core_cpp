@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <numeric>
 #include <sstream>
 
 #include <Poco/String.h>
@@ -132,10 +133,8 @@ RetWithError<std::vector<PartInfo>> FormatDisk(const std::string& loopDev, const
 RetWithError<TestDisk> NewTestDisk(const std::string& path, const std::vector<PartDesc>& desc)
 {
     // skip 1M for GPT table etc. and add 1M after device
-    uint64_t totalSize = 2;
-
-    for (auto const& p : desc)
-        totalSize += p.mSize;
+    uint64_t totalSize = std::accumulate(
+        desc.begin(), desc.end(), uint64_t {2}, [](uint64_t sum, const PartDesc& p) { return sum + p.mSize; });
 
     TestDisk disk(path);
 

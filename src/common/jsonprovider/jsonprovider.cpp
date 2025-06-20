@@ -254,6 +254,7 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(percents.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
@@ -271,6 +272,7 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err;
 
+        // cppcheck-suppress unusedScopedObject
         Tie(points.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
