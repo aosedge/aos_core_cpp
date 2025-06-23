@@ -60,7 +60,7 @@ void PocoWSClient::Connect()
         StopReceiveFramesThread();
 
         Poco::Net::Context::Ptr context = new Poco::Net::Context(
-            Poco::Net::Context::TLS_CLIENT_USE, "", mConfig.mCaCertFile, "", Poco::Net::Context::VERIFY_NONE, 9);
+            Poco::Net::Context::TLS_CLIENT_USE, "", "", mConfig.mCaCertFile, Poco::Net::Context::VERIFY_RELAXED, 9);
 
         // HTTPSClientSession is not copyable or movable.
         mClientSession = std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
