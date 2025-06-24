@@ -422,7 +422,7 @@ Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>&
                 LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
             }
         } else {
-            if (entry.mMessage.find("Started") == 0) {
+            if (entry.mMessage.rfind("Started", 0) == 0) {
                 break;
             }
         }

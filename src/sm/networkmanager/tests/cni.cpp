@@ -58,7 +58,7 @@ protected:
 
     NetworkConfigList CreateTestBridgeNetworkConfig()
     {
-        NetworkConfigList netConfig;
+        NetworkConfigList netConfig {};
         netConfig.mVersion = "0.4.0";
         netConfig.mName    = "sp5f809a3c";
 
