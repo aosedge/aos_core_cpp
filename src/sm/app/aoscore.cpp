@@ -142,7 +142,7 @@ void AosCore::Init(const std::string& configFile)
 
     err = mLauncher.Init(mConfig.mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
         mNetworkManager, mIAMClientPermissions, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient,
-        mDatabase);
+        mDatabase, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize SM client
