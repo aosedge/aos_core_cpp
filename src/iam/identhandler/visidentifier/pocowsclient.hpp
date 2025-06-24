@@ -20,6 +20,8 @@
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/WebSocket.h>
 
+#include <aos/common/crypto/crypto.hpp>
+
 #include <iam/config/config.hpp>
 #include <iam/identhandler/visidentifier/wsclient.hpp>
 
@@ -37,9 +39,11 @@ public:
      * Creates Web socket client instance.
      *
      * @param config VIS config.
+     * @param uuidProvider UUID provider.
      * @param handler handler functor.
      */
-    PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, MessageHandlerFunc handler);
+    PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, crypto::UUIDItf& uuidProvider,
+        MessageHandlerFunc handler);
 
     /**
      * Connects to Web Socket server.
@@ -100,7 +104,8 @@ private:
     void     StopReceiveFramesThread();
     Duration GetWebSocketTimeout();
 
-    aos::iam::config::VISIdentifierModuleParams    mConfig;
+    config::VISIdentifierModuleParams              mConfig;
+    crypto::UUIDItf*                               mUUIDProvider {};
     std::recursive_mutex                           mMutex;
     std::thread                                    mReceivedFramesThread;
     std::unique_ptr<Poco::Net::HTTPSClientSession> mClientSession;
