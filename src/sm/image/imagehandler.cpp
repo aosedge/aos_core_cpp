@@ -65,7 +65,7 @@ Error OCIWhiteoutsToOverlay(const String& path, uint32_t uid, uint32_t gid)
                 continue;
             }
 
-            if (baseName.find(cWhiteoutPrefix) == 0) {
+            if (baseName.rfind(cWhiteoutPrefix, 0) == 0) {
                 auto fullPath = std::filesystem::path(dirName) / baseName.substr(strlen(cWhiteoutPrefix));
 
                 if (auto res = mknod(fullPath.c_str(), S_IFCHR, 0); res != 0) {
