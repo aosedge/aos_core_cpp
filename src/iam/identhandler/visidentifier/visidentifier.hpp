@@ -69,9 +69,11 @@ public:
      *
      * @param config identifier config.
      * @param subjectsObserver subject observer.
+     * @param uuidProvider UUID provider.
      * @return Error.
      */
-    Error Init(const config::IdentifierConfig& config, iam::identhandler::SubjectsObserverItf& subjectsObserver);
+    Error Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
+        crypto::UUIDItf& uuidProvider);
 
     /**
      * Starts vis identifier.
@@ -132,7 +134,8 @@ private:
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
     std::shared_ptr<WSClientItf>                                mWsClientPtr;
-    iam::identhandler::SubjectsObserverItf*                     mSubjectsObserver = nullptr;
+    identhandler::SubjectsObserverItf*                          mSubjectsObserver = nullptr;
+    crypto::UUIDItf*                                            mUUIDProvider     = nullptr;
     VISSubscriptions                                            mSubscriptions;
     StaticString<cSystemIDLen>                                  mSystemId;
     StaticString<cUnitModelLen>                                 mUnitModel;

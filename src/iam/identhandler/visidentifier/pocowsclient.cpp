@@ -39,8 +39,10 @@ auto OnScopeExit(F&& f)
  * Public
  **********************************************************************************************************************/
 
-PocoWSClient::PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, MessageHandlerFunc handler)
+PocoWSClient::PocoWSClient(const aos::iam::config::VISIdentifierModuleParams& config, crypto::UUIDItf& uuidProvider,
+    MessageHandlerFunc handler)
     : mConfig(config)
+    , mUUIDProvider(&uuidProvider)
     , mHandleSubscription(std::move(handler))
 {
     mHttpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_GET);
@@ -122,7 +124,11 @@ void PocoWSClient::Disconnect()
 
 std::string PocoWSClient::GenerateRequestID()
 {
-    const auto uuid    = aos::uuid::CreateUUID();
+    auto [uuid, err] = mUUIDProvider->CreateUUIDv4();
+    if (!err.IsNone()) {
+        throw WSException("Failed to generate UUID", AOS_ERROR_WRAP(ErrorEnum::eFailed));
+    }
+
     const auto uuidStr = aos::uuid::UUIDToString(uuid);
 
     return {uuidStr.begin(), uuidStr.end()};

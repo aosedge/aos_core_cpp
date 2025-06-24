@@ -462,7 +462,7 @@ Error App::InitIdentifierModule(const config::IdentifierConfig& config)
     } else if (config.mPlugin == "visidentifier") {
         auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
 
-        if (auto err = visIdentifier->Init(config, mIAMServer); !err.IsNone()) {
+        if (auto err = visIdentifier->Init(config, mIAMServer, mCryptoProvider); !err.IsNone()) {
             return err;
         }
 

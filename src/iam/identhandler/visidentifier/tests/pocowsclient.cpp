@@ -9,6 +9,7 @@
 
 #include <gmock/gmock.h>
 
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <mocks/identhandlermock.hpp>
 
 #include <common/logger/logger.hpp>
@@ -59,7 +60,11 @@ protected:
 
     void SetUp() override
     {
-        ASSERT_NO_THROW(mWsClientPtr = std::make_shared<PocoWSClient>(cConfig, WSClientItf::MessageHandlerFunc()));
+        mCryptoProvider = std::make_unique<crypto::DefaultCryptoProvider>();
+        ASSERT_TRUE(mCryptoProvider->Init().IsNone()) << "Failed to initialize crypto provider";
+
+        ASSERT_NO_THROW(mWsClientPtr
+            = std::make_shared<PocoWSClient>(cConfig, *mCryptoProvider, WSClientItf::MessageHandlerFunc()));
     }
 
     // This method is called before any test cases in the test suite
@@ -85,7 +90,8 @@ protected:
         Poco::Net::uninitializeSSL();
     }
 
-    std::shared_ptr<PocoWSClient> mWsClientPtr;
+    std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
+    std::shared_ptr<PocoWSClient>                  mWsClientPtr;
 };
 
 const config::VISIdentifierModuleParams PocoWSClientTests::cConfig {cWebSocketURI, cClientCertPath, 5 * Time::cSeconds};
@@ -170,7 +176,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedSystemId {"test-system-id"};
@@ -191,7 +197,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedUnitModel {"test-unit-model"};
@@ -212,7 +218,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     iam::identhandler::SubjectsObserverMock observer;
 
-    ASSERT_TRUE(visIdentifier.Init(config, observer).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::vector<std::string> testSubjects {"1", "2", "3"};

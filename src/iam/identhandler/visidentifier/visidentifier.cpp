@@ -63,12 +63,14 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-Error VISIdentifier::Init(
-    const config::IdentifierConfig& config, aos::iam::identhandler::SubjectsObserverItf& subjectsObserver)
+Error VISIdentifier::Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
+    crypto::UUIDItf& uuidProvider)
 {
+    LOG_DBG() << "Initializing VIS identifier";
 
-    mSubjectsObserver = &subjectsObserver;
     mConfig           = config;
+    mSubjectsObserver = &subjectsObserver;
+    mUUIDProvider     = &uuidProvider;
 
     return ErrorEnum::eNone;
 }
@@ -213,7 +215,7 @@ Error VISIdentifier::InitWSClient(const config::IdentifierConfig& config)
         }
 
         mWsClientPtr = std::make_shared<PocoWSClient>(
-            visParams, std::bind(&VISIdentifier::HandleSubscription, this, std::placeholders::_1));
+            visParams, *mUUIDProvider, std::bind(&VISIdentifier::HandleSubscription, this, std::placeholders::_1));
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to create WS client: error = " << e.what();
 

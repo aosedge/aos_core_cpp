@@ -7,6 +7,7 @@
 
 #include <gmock/gmock.h>
 
+#include <aos/common/crypto/cryptoprovider.hpp>
 #include <mocks/identhandlermock.hpp>
 
 #include <common/logger/logger.hpp>
@@ -49,11 +50,12 @@ protected:
     const std::string                       cTestSubscriptionId {"1234-4321"};
     const config::VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
-    WSClientEvent                           mWSClientEvent;
-    iam::identhandler::SubjectsObserverMock mVISSubjectsObserverMock;
-    WSClientMockPtr                         mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
-    TestVISIdentifier                       mVisIdentifier;
-    config::IdentifierConfig                mConfig;
+    WSClientEvent                                  mWSClientEvent;
+    iam::identhandler::SubjectsObserverMock        mVISSubjectsObserverMock;
+    std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
+    WSClientMockPtr                                mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
+    TestVISIdentifier                              mVisIdentifier;
+    config::IdentifierConfig                       mConfig;
 
     // This method is called before any test cases in the test suite
     static void SetUpTestSuite()
@@ -76,6 +78,9 @@ protected:
         mConfig.mParams = object;
 
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
+
+        mCryptoProvider = std::make_unique<crypto::DefaultCryptoProvider>();
+        ASSERT_TRUE(mCryptoProvider->Init().IsNone()) << "Failed to initialize crypto provider";
     }
 
     void ExpectStopSucceeded()
@@ -127,7 +132,7 @@ protected:
         EXPECT_CALL(mVisIdentifier, InitWSClient).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mWSClientItfMockPtr, WaitForEvent).WillOnce(Invoke([this]() { return mWSClientEvent.Wait(); }));
 
-        ASSERT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock).IsNone());
+        ASSERT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
 
         ASSERT_TRUE(mVisIdentifier.Start().IsNone());
 
@@ -158,7 +163,7 @@ protected:
 TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
-    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock).IsNone());
+    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
 
     EXPECT_FALSE(identifier.Start().IsNone());
 }
@@ -294,7 +299,7 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
             return {str.cbegin(), str.cend()};
         }));
 
-    EXPECT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock).IsNone());
+    EXPECT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
     EXPECT_TRUE(mVisIdentifier.Start().IsNone());
 
     mVisIdentifier.WaitUntilConnected();
