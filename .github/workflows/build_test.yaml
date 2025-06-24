@@ -7,17 +7,23 @@ on:
       - develop
       - feature*
 
-  pull_request_target:
-    types:
-      - edited
-      - opened
-      - reopened
-      - synchronize
-
+  pull_request:
     branches:
       - main
       - develop
-      - feature*
+      - 'feature*'
+
+  # pull_request_target:
+  #   types:
+  #     - edited
+  #     - opened
+  #     - reopened
+  #     - synchronize
+
+  #   branches:
+  #     - main
+  #     - develop
+  #     - feature*
 
 jobs:
   build:
