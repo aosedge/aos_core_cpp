@@ -49,24 +49,15 @@ jobs:
 
       - name: Build using SonarQube Build Wrapper
         run: |
-          mkdir build
-
-          conan profile detect --force
-
-          conan install ./conan/ --output-folder build --settings=build_type=Debug --build=missing
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DWITH_TEST=ON -DWITH_COVERAGE=ON -DWITH_VCHAN=OFF -G "Unix Makefiles" \
-            -DWITH_MBEDTLS=OFF -DWITH_OPENSSL=ON -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ./build/ --config Debug --parallel
+          ./scripts/build.sh build
 
       - name: Run Tests
         run: |
-          cd build
-          make coverage
+          ./scripts/build.sh coverage
 
       - name: Static analysis
         run: |
-          cppcheck --enable=all --inline-suppr -I src --std=c++17 --error-exitcode=1 \
-          --suppressions-list=./suppressions.txt --project=build/compile_commands.json --file-filter='src/*'
+          ./scripts/build.sh lint
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
