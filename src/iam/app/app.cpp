@@ -241,10 +241,6 @@ void App::Init()
     err = InitIdentifierModule(config.mValue.mIdentifier);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
 
-    if (config.mValue.mEnablePermissionsHandler) {
-        mPermHandler = std::make_unique<permhandler::PermHandler>();
-    }
-
     err = mCryptoProvider.Init();
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
@@ -253,6 +249,13 @@ void App::Init()
 
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
+
+    if (config.mValue.mEnablePermissionsHandler) {
+        mPermHandler = std::make_unique<permhandler::PermHandler>();
+
+        err = mPermHandler->Init(mCryptoProvider);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize permissions handler");
+    }
 
     err = mNodeManager.Init(mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node manager");
