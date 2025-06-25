@@ -22,7 +22,7 @@ namespace aos::sm::logprovider {
  * Public
  **********************************************************************************************************************/
 
-Error LogProvider::Init(const common::logprovider::Config& config, InstanceIDProviderItf& instanceProvider)
+Error LogProvider::Init(const aos::logprovider::Config& config, InstanceIDProviderItf& instanceProvider)
 {
     LOG_DBG() << "Init log provider";
 

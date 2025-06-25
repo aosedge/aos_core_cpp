@@ -42,7 +42,7 @@ public:
     {
         aos::test::InitLog();
 
-        auto config = common::logprovider::Config {200, 10};
+        auto config = aos::logprovider::Config {200, 10};
 
         mLogProvider.Init(config, mInstanceIDProvider);
         mLogProvider.Subscribe(mLogObserver);
