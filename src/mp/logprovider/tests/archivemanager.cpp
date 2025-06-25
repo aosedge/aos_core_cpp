@@ -140,9 +140,9 @@ protected:
 
     void TearDown() override { }
 
-    common::logprovider::Config mConfig;
-    LogObserverStub             mLogObserver;
-    ArchiveManager              mArchiveManager;
+    aos::logprovider::Config mConfig;
+    LogObserverStub          mLogObserver;
+    ArchiveManager           mArchiveManager;
 };
 
 /***********************************************************************************************************************

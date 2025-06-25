@@ -20,7 +20,7 @@ namespace aos::mp::logprovider {
  * Public
  **********************************************************************************************************************/
 
-Error ArchiveManager::Init(sm::logprovider::LogObserverItf& logReceiver, const common::logprovider::Config& config)
+Error ArchiveManager::Init(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config)
 {
     LOG_DBG() << "Init archive manager";
 
