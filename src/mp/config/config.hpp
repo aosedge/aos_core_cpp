@@ -9,9 +9,9 @@
 
 #include <string>
 
+#include <aos/common/logprovider/config.hpp>
 #include <aos/common/tools/error.hpp>
 
-#include <common/logprovider/config.hpp>
 #include <common/utils/time.hpp>
 
 namespace aos::mp::config {
@@ -65,15 +65,15 @@ struct CMConfig {
  * Configuration.
  */
 struct Config {
-    std::string                 mWorkingDir;
-    VChanConfig                 mVChan;
-    CMConfig                    mCMConfig;
-    std::string                 mCertStorage;
-    std::string                 mCACert;
-    std::string                 mImageStoreDir;
-    Download                    mDownload;
-    IAMConfig                   mIAMConfig;
-    common::logprovider::Config mLogProviderConfig;
+    std::string              mWorkingDir;
+    VChanConfig              mVChan;
+    CMConfig                 mCMConfig;
+    std::string              mCertStorage;
+    std::string              mCACert;
+    std::string              mImageStoreDir;
+    Download                 mDownload;
+    IAMConfig                mIAMConfig;
+    aos::logprovider::Config mLogProviderConfig;
 };
 
 /***********************************************************************************************************************

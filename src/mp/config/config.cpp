@@ -70,10 +70,10 @@ IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
     };
 }
 
-common::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+aos::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     if (!object.Has("LogProvider")) {
-        return common::logprovider::Config {
+        return aos::logprovider::Config {
             cDefaultMaxLogPartSize,
             cDefaultMaxLogPartCount,
         };
@@ -81,7 +81,7 @@ common::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInse
 
     auto logProviderObject = object.GetObject("LogProvider");
 
-    return common::logprovider::Config {
+    return aos::logprovider::Config {
         logProviderObject.GetValue<uint64_t>("MaxPartSize", cDefaultMaxLogPartSize),
         logProviderObject.GetValue<uint64_t>("MaxPartCount", cDefaultMaxLogPartCount),
     };

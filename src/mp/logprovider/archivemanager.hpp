@@ -36,7 +36,7 @@ public:
      * @param config configuration.
      * @return Error.
      */
-    Error Init(sm::logprovider::LogObserverItf& logReceiver, const common::logprovider::Config& config);
+    Error Init(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config);
 
     /**
      * Starts archive manager.
@@ -66,7 +66,7 @@ private:
 
     struct ArchiveContext {
         ArchiveContext(const std::string& logID, sm::logprovider::LogObserverItf& logReceiver,
-            const common::logprovider::Config& config)
+            const aos::logprovider::Config& config)
             : mLogID(logID)
             , mUpdated(Time::Now())
             , mArchivator(logReceiver, config)
@@ -89,7 +89,7 @@ private:
     std::thread                                              mThread;
     std::condition_variable                                  mCondVar;
     std::mutex                                               mMutex;
-    common::logprovider::Config                              mConfig      = {};
+    aos::logprovider::Config                                 mConfig      = {};
     sm::logprovider::LogObserverItf*                         mLogReceiver = {};
     std::vector<std::shared_ptr<ArchiveContext>>             mArchiveContexts;
     std::queue<std::shared_ptr<servicemanager::v4::LogData>> mLogQueue;
