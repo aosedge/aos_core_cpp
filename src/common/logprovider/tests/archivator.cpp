@@ -47,8 +47,8 @@ public:
 
 class ArchivatorTest : public Test {
 public:
-    LogObserverMock mLogObserver;
-    Config          mConfig {1024, 5};
+    LogObserverMock          mLogObserver;
+    aos::logprovider::Config mConfig {1024, 5};
 };
 
 /***********************************************************************************************************************
