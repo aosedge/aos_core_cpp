@@ -16,9 +16,8 @@
 
 #include <aos/common/cloudprotocol/cloudprotocol.hpp>
 #include <aos/common/cloudprotocol/log.hpp>
+#include <aos/common/logprovider/config.hpp>
 #include <aos/sm/logprovider.hpp>
-
-#include "config.hpp"
 
 namespace aos::common::logprovider {
 
@@ -33,7 +32,7 @@ public:
      * @param logReceiver log receiver.
      * @param config logprovider config.
      */
-    Archivator(sm::logprovider::LogObserverItf& logReceiver, const Config& config);
+    Archivator(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config);
 
     /**
      * Adds log message to the archivator.
@@ -56,7 +55,7 @@ private:
     Error AddLogPart();
 
     sm::logprovider::LogObserverItf& mLogReceiver;
-    Config                           mConfig;
+    aos::logprovider::Config         mConfig;
 
     uint64_t                                     mPartCount = {};
     uint64_t                                     mPartSize  = {};

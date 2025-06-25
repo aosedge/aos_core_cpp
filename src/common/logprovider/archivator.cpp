@@ -13,7 +13,7 @@
 
 namespace aos::common::logprovider {
 
-Archivator::Archivator(sm::logprovider::LogObserverItf& logReceiver, const Config& config)
+Archivator::Archivator(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config)
     : mLogReceiver(logReceiver)
     , mConfig(config)
 {
