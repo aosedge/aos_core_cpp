@@ -12,6 +12,7 @@
 
 #include <Poco/Dynamic/Var.h>
 
+#include <aos/common/logprovider/config.hpp>
 #include <aos/common/monitoring/resourcemonitor.hpp>
 #include <aos/common/tools/error.hpp>
 #include <aos/sm/launcher/config.hpp>
@@ -19,7 +20,6 @@
 #include <aos/sm/servicemanager.hpp>
 
 #include <common/iamclient/publicservicehandler.hpp>
-#include <common/logprovider/config.hpp>
 #include <common/utils/time.hpp>
 #include <sm/smclient/config.hpp>
 
@@ -50,21 +50,21 @@ struct MigrationConfig {
  * Config instance.
  */
 struct Config {
-    common::iamclient::Config   mIAMClientConfig;
-    sm::layermanager::Config    mLayerManagerConfig;
-    sm::servicemanager::Config  mServiceManagerConfig;
-    sm::launcher::Config        mLauncherConfig;
-    smclient::Config            mSMClientConfig;
-    std::string                 mCertStorage;
-    std::string                 mIAMProtectedServerURL;
-    std::string                 mWorkingDir;
-    uint32_t                    mServicesPartLimit;
-    uint32_t                    mLayersPartLimit;
-    std::string                 mNodeConfigFile;
-    monitoring::Config          mMonitoring;
-    common::logprovider::Config mLogging;
-    JournalAlertsConfig         mJournalAlerts;
-    MigrationConfig             mMigration;
+    common::iamclient::Config  mIAMClientConfig;
+    sm::layermanager::Config   mLayerManagerConfig;
+    sm::servicemanager::Config mServiceManagerConfig;
+    sm::launcher::Config       mLauncherConfig;
+    smclient::Config           mSMClientConfig;
+    std::string                mCertStorage;
+    std::string                mIAMProtectedServerURL;
+    std::string                mWorkingDir;
+    uint32_t                   mServicesPartLimit;
+    uint32_t                   mLayersPartLimit;
+    std::string                mNodeConfigFile;
+    monitoring::Config         mMonitoring;
+    logprovider::Config        mLogging;
+    JournalAlertsConfig        mJournalAlerts;
+    MigrationConfig            mMigration;
 };
 
 /*******************************************************************************

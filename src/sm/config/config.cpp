@@ -69,7 +69,7 @@ void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& ob
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing averageWindow tag");
 }
 
-void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::logprovider::Config& config)
+void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, aos::logprovider::Config& config)
 {
     config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen);
     config.mMaxPartCount = object.GetValue<uint64_t>("maxPartCount", 80);

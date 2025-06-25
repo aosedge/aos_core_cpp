@@ -51,7 +51,7 @@ public:
      * @param config log provider config.
      * @return Error.
      */
-    Error Init(const common::logprovider::Config& config, InstanceIDProviderItf& instanceProvider);
+    Error Init(const aos::logprovider::Config& config, InstanceIDProviderItf& instanceProvider);
 
     /**
      * Starts requests processing thread.
@@ -158,9 +158,9 @@ private:
     std::string GetUnitNameFromLog(const utils::JournalEntry& entry);
     std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
 
-    InstanceIDProviderItf*      mInstanceProvider = nullptr;
-    common::logprovider::Config mConfig           = {};
-    LogObserverItf*             mLogReceiver      = nullptr;
+    InstanceIDProviderItf*   mInstanceProvider = nullptr;
+    aos::logprovider::Config mConfig           = {};
+    LogObserverItf*          mLogReceiver      = nullptr;
 
     std::thread               mWorkerThread;
     std::queue<GetLogRequest> mLogRequests;
