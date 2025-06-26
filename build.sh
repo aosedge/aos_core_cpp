@@ -64,11 +64,13 @@ build_project() {
     local aos_services="$1"
     local ci_flag="$2"
 
+    local with_cm="ON"
     local with_iam="ON"
     local with_mp="ON"
     local with_sm="ON"
 
     if [[ -n "$aos_services" ]]; then
+        with_cm="OFF"
         with_iam="OFF"
         with_mp="OFF"
         with_sm="OFF"
@@ -80,6 +82,10 @@ build_project() {
         for service in "${service_array[@]}"; do
             service=$(echo "$service" | xargs) # trim whitespace
             case "$service" in
+            "cm")
+                with_cm="ON"
+                ;;
+
             "iam")
                 with_iam="ON"
                 ;;
@@ -106,6 +112,7 @@ build_project() {
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
         -DWITH_TEST=ON \
+        -DWITH_CM="$with_cm" \
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
         -DWITH_SM="$with_sm" \
