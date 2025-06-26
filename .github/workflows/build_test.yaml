@@ -44,14 +44,14 @@ jobs:
           repository: ${{github.event.pull_request.head.repo.full_name}}
           fetch-depth: 0
 
-      - name: Install Build Wrapper
+      - name: Install SonarQube build wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4
 
-      - name: Build using SonarQube Build Wrapper
+      - name: Build
         run: |
           ./build.sh build --ci
 
-      - name: Run Tests
+      - name: Test
         run: |
           ./build.sh coverage
 
@@ -65,7 +65,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.total
 
-      - name: SonarCloud Scan on push
+      - name: SonarQube analysis
         if: github.event_name == 'push'
         uses: SonarSource/sonarqube-scan-action@v4
         env:
@@ -76,7 +76,7 @@ jobs:
             --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
             --define sonar.coverageReportPaths=build/coverage_sonarqube.xml
 
-      - name: SonarCloud Scan on pull request
+      - name: SonarQube analysis
         if: github.event_name == 'pull_request_target'
         uses: SonarSource/sonarqube-scan-action@v4
         env:
