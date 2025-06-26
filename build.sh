@@ -61,22 +61,19 @@ conan_setup() {
 }
 
 build_project() {
-    local aos_services="$1"
-    local ci_flag="$2"
-
     local with_cm="ON"
     local with_iam="ON"
     local with_mp="ON"
     local with_sm="ON"
 
-    if [[ -n "$aos_services" ]]; then
+    if [[ -n "$ARG_AOS_SERVICES" ]]; then
         with_cm="OFF"
         with_iam="OFF"
         with_mp="OFF"
         with_sm="OFF"
 
         local services_lower
-        services_lower=$(echo "$aos_services" | tr '[:upper:]' '[:lower:]')
+        services_lower=$(echo "$ARG_AOS_SERVICES" | tr '[:upper:]' '[:lower:]')
 
         IFS=',' read -ra service_array <<<"$services_lower"
         for service in "${service_array[@]}"; do
@@ -120,7 +117,7 @@ build_project() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -G "Unix Makefiles"
 
-    if [ "$ci_flag" == "true" ]; then
+    if [ "$ARG_CI_FLAG" == "true" ]; then
         print_next_step "Run build-wrapper and build (CI mode)"
 
         build-wrapper-linux-x86-64 --out-dir "$BUILD_WRAPPER_OUT_DIR" cmake --build ./build/ --config Debug --parallel
@@ -135,24 +132,20 @@ build_project() {
 }
 
 parse_arguments() {
-    local clean_flag=false
-    local aos_services=""
-    local ci_flag=false
-
     while [[ $# -gt 0 ]]; do
         case $1 in
         --clean)
-            clean_flag=true
+            ARG_CLEAN_FLAG=true
             shift
             ;;
 
         --aos-service)
-            aos_services="$2"
+            ARG_AOS_SERVICES="$2"
             shift 2
             ;;
 
         --ci)
-            ci_flag=true
+            ARG_CI_FLAG=true
             shift
             ;;
 
@@ -161,25 +154,19 @@ parse_arguments() {
             ;;
         esac
     done
-
-    echo "$clean_flag:$aos_services:$ci_flag"
 }
 
 build_target() {
-    local clean_flag="$1"
-    local aos_services="$2"
-    local ci_flag="$3"
-
-    if [ "$clean_flag" == "true" ]; then
+    if [ "$ARG_CLEAN_FLAG" == "true" ]; then
         clean_build
 
-        if [[ -z "$aos_services" ]]; then
+        if [[ -z "$ARG_AOS_SERVICES" ]]; then
             return
         fi
     fi
 
     conan_setup
-    build_project "$aos_services" "$ci_flag"
+    build_project
 }
 
 run_tests() {
@@ -231,13 +218,14 @@ fi
 command="$1"
 shift
 
+ARG_CLEAN_FLAG=false
+ARG_AOS_SERVICES=""
+ARG_CI_FLAG=false
+
 case "$command" in
 build)
-    args_result=$(parse_arguments "$@")
-    clean_flag=$(echo "$args_result" | cut -d: -f1)
-    aos_services=$(echo "$args_result" | cut -d: -f2)
-    ci_flag=$(echo "$args_result" | cut -d: -f3)
-    build_target "$clean_flag" "$aos_services" "$ci_flag"
+    parse_arguments "$@"
+    build_target
     ;;
 
 test)
