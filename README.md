@@ -6,17 +6,25 @@
 
 ## Prepare build environment
 
-```sh
+```console
 sudo apt install lcov
 pip install conan
+```
+
+`lcov` version 2.0 or greater is required. If your Linux distributive doesn't contain the required version, download and
+install the required version manually. For example in Ubuntu 22.04 it can be installed as following:
+
+```console
+wget https://launchpad.net/ubuntu/+source/lcov/2.0-4ubuntu2/+build/27959742/+files/lcov_2.0-4ubuntu2_all.deb
+sudo dpkg -i lcov_2.0-4ubuntu2_all.deb
 ```
 
 ## Build for host
 
 To make a build for host please run:
 
-```sh
-./host_build.sh
+```console
+./build.sh build
 ```
 
 It installs all external dependencies to conan, creates `./build` directory, builds the AoCore components with unit
@@ -24,8 +32,8 @@ tests and coverage calculation target.
 
 It is also possible to customize the build using different cmake options:
 
-```sh
-cd ${BUILD_DIR}
+```console
+cd build/
 conan install ../conan/ --output-folder . --settings=build_type=Debug --build=missing
 cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -35,6 +43,11 @@ Cmake options:
 | Option | Value | Default | Description |
 | --- | --- | --- | --- |
 | `AOS_EXTERNAL_DIR` | `path/to/core to` | `build/core` | Aos core lib and API directory path |
+| `WITH_CM` | `ON`, `OFF` | `ON` | build AosCore communication manager (CM) |
+| `WITH_IAM` | `ON`, `OFF` | `ON` | build AosCore identity and access manager (IAM) |
+| `WITH_MP` | `ON`, `OFF` | `ON` | build AosCore message proxy (MP) |
+| `WITH_SM` | `ON`, `OFF` | `ON` | build AosCore service manager (SM) |
+| `WITH_VCHAN` | `ON`, `OFF` | `ON` | use Xen vchan as communication transport for MP |
 | `WITH_TEST` | `ON`, `OFF` | `OFF` | creates unit tests target |
 | `WITH_COVERAGE` | `ON`, `OFF` | `OFF` | creates coverage calculation target |
 | `WITH_DOC` | `ON`, `OFF` | `OFF` | creates documentation target |
@@ -50,31 +63,23 @@ Cmake variables:
 
 Build and run:
 
-```sh
-./host_build.sh
-cd ${BUILD_DIR}
-make test
+```console
+./build.sh test
 ```
 
 ## Check coverage
 
-`lcov` utility shall be installed on your host to run this target:
-
-```sh
-sudo apt install lcov
-```
+`lcov` utility shall be installed on your host to run this target. See [this chapter](#prepare-build-environment).
 
 Build and run:
 
-```sh
-./host_build.sh
-cd ${BUILD_DIR}
-make coverage
+```console
+./build.sh coverage
 ```
 
 The overall coverage rate will be displayed at the end of the coverage target output:
 
-```sh
+```console
 ...
 Overall coverage rate:
   lines......: 94.7% (72 of 76 lines)
@@ -87,21 +92,18 @@ Detailed coverage information can be find by viewing `./coverage/index.html` fil
 
 `doxygen` package should be installed before generation the documentations:
 
-```sh
+```console
 sudo apt install doxygen
 ```
 
-`host_build.sh` tool doesn't generate documentation. User should run the following commands to do that:
+Generate documentation:
 
-```sh
-cd ${BUILD_DIR}
-conan install ../conan/ --output-folder . --settings=build_type=Debug --build=missing
-cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_DOC=ON
-make doc
+```console
+./build.sh doc
 ```
 
-The result documentation is located in `${BUILD_DIR}/doc folder`. And it can be viewed by opening
-`./doc/html/index.html` file in your browser.
+The result documentation is located in `build/doc` folder. And it can be viewed by opening `build/doc/html/index.html`
+file in your browser.
 
 ## Development tools
 
