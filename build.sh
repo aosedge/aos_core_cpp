@@ -16,11 +16,12 @@ print_usage() {
     echo "Usage: ./build.sh <command> [options]"
     echo
     echo "Commands:"
-    echo
     echo "  build                      build target"
     echo "  test                       run tests only"
     echo "  coverage                   run tests with coverage"
     echo "  lint                       run static analysis (cppcheck)"
+    echo "  doc                        generate documentation"
+    echo
     echo "Options:"
     echo "  --clean                    clean build artifacts"
     echo "  --aos-service <services>   specify services (e.g., sm,mp,iam)"
@@ -202,6 +203,18 @@ run_lint() {
     echo "Static analysis completed!"
 }
 
+build_doc() {
+    print_next_step "Build documentation"
+
+    cd ./build
+
+    cmake -DWITH_DOC=ON ../
+    make doc
+
+    echo
+    echo "Documentation generated!"
+}
+
 #=======================================================================================================================
 
 if [ $# -lt 1 ]; then
@@ -230,6 +243,10 @@ coverage)
 
 lint)
     run_lint
+    ;;
+
+doc)
+    build_doc
     ;;
 
 *)
