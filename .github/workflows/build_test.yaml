@@ -49,15 +49,15 @@ jobs:
 
       - name: Build using SonarQube Build Wrapper
         run: |
-          ./scripts/build.sh build --ci
+          ./build.sh build --ci
 
       - name: Run Tests
         run: |
-          ./scripts/build.sh coverage
+          ./build.sh coverage
 
       - name: Static analysis
         run: |
-          ./scripts/build.sh lint
+          ./build.sh lint
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
