@@ -21,7 +21,7 @@ set(SOURCES filechunker.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::filechunker Poco::Foundation GTest::gmock_main)
+set(LIBRARIES aos::mp::filechunker Poco::Foundation GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

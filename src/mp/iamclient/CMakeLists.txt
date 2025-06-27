@@ -20,7 +20,7 @@ set(SOURCES publicnodeclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aos::common::logger aos::common::iamclient aos::mp::communication)
+set(LIBRARIES aos::mp::communication aos::common::logger aos::common::iamclient aoscommon)
 
 # ######################################################################################################################
 # Target

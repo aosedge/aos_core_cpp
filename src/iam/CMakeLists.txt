@@ -18,8 +18,6 @@ find_package(Poco REQUIRED Foundation Util JSON DataSQLite)
 set(TARGET_NAMESPACE ${TARGET_NAMESPACE}::iam)
 set(TARGET_PREFIX ${TARGET_PREFIX}_iam)
 
-set(AOS_IAM_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
 # ######################################################################################################################
 # Modules
 # ######################################################################################################################
@@ -32,3 +30,7 @@ add_subdirectory(iamserver)
 add_subdirectory(nodeinfoprovider)
 add_subdirectory(visidentifier)
 add_subdirectory(app)
+
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()

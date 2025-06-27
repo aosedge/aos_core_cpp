@@ -20,7 +20,7 @@ set(SOURCES filechunker.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aos::common::logger Poco::Foundation)
+set(LIBRARIES aos::common::logger aoscommon Poco::Foundation)
 
 # ######################################################################################################################
 # Target

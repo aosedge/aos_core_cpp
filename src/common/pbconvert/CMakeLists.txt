@@ -34,14 +34,14 @@ set(COMPILE_OPTIONS -Wno-format-truncation)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon Poco::Util)
+set(LIBRARIES aos::common::utils aoscommon Poco::Util)
 
 if(WITH_IAM_API)
-    list(APPEND LIBRARIES aoscoreapi-gen-iam)
+    list(APPEND LIBRARIES aos::api::iam)
 endif()
 
 if(WITH_SM_API)
-    list(APPEND LIBRARIES aoscoreapi-gen-sm)
+    list(APPEND LIBRARIES aos::api::sm)
 endif()
 
 # ######################################################################################################################

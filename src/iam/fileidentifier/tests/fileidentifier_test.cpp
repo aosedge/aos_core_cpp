@@ -13,8 +13,8 @@
 
 #include <iam/fileidentifier/fileidentifier.hpp>
 
+#include "iam/tests/mocks/wsclientmock.hpp"
 #include "mocks/identhandlermock.hpp"
-#include "mocks/wsclientmock.hpp"
 
 using namespace testing;
 

@@ -26,7 +26,7 @@ set(INCLUDES ${Libnl_INCLUDE_DIRS})
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon ${Libnl_LIBRARIES})
+set(LIBRARIES aos::common::utils aoscommon ${Libnl_LIBRARIES})
 
 # ######################################################################################################################
 # Target

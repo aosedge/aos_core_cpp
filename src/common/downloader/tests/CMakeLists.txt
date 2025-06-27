@@ -20,7 +20,7 @@ set(SOURCES downloader.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::downloader Poco::Net Poco::NetSSL Poco::Util GTest::gmock_main)
+set(LIBRARIES aos::common::downloader Poco::Net Poco::NetSSL Poco::Util GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

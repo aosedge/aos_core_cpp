@@ -16,7 +16,7 @@ set(SOURCES smclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::smclient aostestcore aos::common::tests::utils GTest::gmock_main)
+set(LIBRARIES aos::sm::smclient aostestcore aos::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

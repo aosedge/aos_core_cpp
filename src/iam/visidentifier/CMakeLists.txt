@@ -19,7 +19,7 @@ set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp wsclientevent.cpp 
 set(LIBRARIES
     aos::common::utils
     aos::common::logger
-    ${TARGET_NAMESPACE}::config
+    aos::iam::config
     aoscommon
     Poco::Foundation
     Poco::Crypto

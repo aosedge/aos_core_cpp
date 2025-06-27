@@ -16,7 +16,7 @@ set(SOURCES iamclient_test.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::iamclient aostestcore GTest::gmock_main)
+set(LIBRARIES aos::iam::iamclient aostestcore GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -22,7 +22,7 @@ set(SOURCES database.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::database GTest::gmock_main)
+set(LIBRARIES aos::sm::database GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

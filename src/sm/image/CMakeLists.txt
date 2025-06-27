@@ -16,7 +16,7 @@ set(SOURCES imagehandler.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aossm aos::common::utils Poco::JSON)
+set(LIBRARIES aos::common::utils aoscommon aossm Poco::JSON)
 
 # ######################################################################################################################
 # Target
