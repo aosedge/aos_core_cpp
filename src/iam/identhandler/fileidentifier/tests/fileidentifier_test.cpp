@@ -11,9 +11,8 @@
 
 #include <aos/test/log.hpp>
 
-#include <iam/fileidentifier/fileidentifier.hpp>
+#include <iam/identhandler/fileidentifier/fileidentifier.hpp>
 
-#include "iam/tests/mocks/wsclientmock.hpp"
 #include "mocks/identhandlermock.hpp"
 
 using namespace testing;

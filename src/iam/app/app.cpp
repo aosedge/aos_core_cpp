@@ -20,7 +20,8 @@
 #include <common/version/version.hpp>
 
 #include <iam/config/config.hpp>
-#include <iam/fileidentifier/fileidentifier.hpp>
+#include <iam/identhandler/fileidentifier/fileidentifier.hpp>
+#include <iam/identhandler/visidentifier/visidentifier.hpp>
 
 #include "app.hpp"
 
