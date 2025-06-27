@@ -16,13 +16,7 @@ set(SOURCES pocowsclient_test.cpp visidentifier_test.cpp vismessage_test.cpp vis
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::visidentifier aostestcore GTest::gmock_main)
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-set(INCLUDES ${AOS_IAM_DIR}/tests ${AOS_CORE_LIB_DIR}/include/tests)
+set(LIBRARIES aos::iam::visidentifier aostestcore GTest::gmock_main)
 
 # ######################################################################################################################
 # Gen certificates

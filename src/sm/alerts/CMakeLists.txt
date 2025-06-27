@@ -16,7 +16,7 @@ set(SOURCES journalalerts.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::sm::utils aoscommon Poco::Foundation)
 
 # ######################################################################################################################
 # Target

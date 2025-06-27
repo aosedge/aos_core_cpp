@@ -21,18 +21,18 @@ set(SOURCES app.cpp main.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES
-    CURL::libcurl
-    Poco::Foundation
-    Poco::Util
-    aoscommon
-    aoscrypto
-    aos::common::downloader
-    aos::common::logger
-    aos::common::version
     aos::mp::communication
     aos::mp::cmclient
     aos::mp::iamclient
     aos::mp::config
+    aos::common::downloader
+    aos::common::logger
+    aos::common::version
+    aoscommon
+    aoscrypto
+    CURL::libcurl
+    Poco::Foundation
+    Poco::Util
 )
 
 # ######################################################################################################################

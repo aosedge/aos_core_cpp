@@ -22,7 +22,7 @@ set(INCLUDES ${AOS_SM_DIR}/tests)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::logprovider GTest::gmock_main)
+set(LIBRARIES aos::sm::logprovider GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

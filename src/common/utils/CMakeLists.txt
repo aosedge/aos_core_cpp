@@ -42,7 +42,7 @@ set(INCLUDES ${AOS_CORE_LIB_DIR}/include)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon Poco::Foundation Poco::JSON gRPC::grpc++ aoscoreapi-gen-iam)
+set(LIBRARIES aoscommon aos::api::iam Poco::Foundation Poco::JSON gRPC::grpc++)
 
 # ######################################################################################################################
 # Target

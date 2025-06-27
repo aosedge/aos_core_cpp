@@ -16,7 +16,7 @@ set(SOURCES resourceusageprovider.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aostestcore ${TARGET_NAMESPACE}::monitoring GTest::gmock_main)
+set(LIBRARIES aos::sm::monitoring aostestcore GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

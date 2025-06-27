@@ -17,13 +17,13 @@ set(SOURCES smclient.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES
-    aoscommon
-    aossm
     aos::common::iamclient
     aos::common::pbconvert
     aos::common::utils
+    aoscommon
+    aossm
+    aos::api::sm
     Poco::Util
-    aoscoreapi-gen-sm
 )
 
 # ######################################################################################################################

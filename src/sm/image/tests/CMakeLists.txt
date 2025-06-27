@@ -22,7 +22,7 @@ set(INCLUDES ${AOS_CORE_LIB_DIR}/tests/include ${AOS_CORE_LIB_DIR}/tests/sm)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::image GTest::gmock_main)
+set(LIBRARIES aos::sm::image GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

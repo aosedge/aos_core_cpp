@@ -16,7 +16,7 @@ set(SOURCES iamclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aos::common::pbconvert aoscommon aoscoreapi-gen-iam Poco::Util)
+set(LIBRARIES aos::common::utils aos::common::pbconvert aoscommon aos::api::iam Poco::Util)
 
 # ######################################################################################################################
 # Target

@@ -20,7 +20,7 @@ set(SOURCES imagemanifest.cpp imagespec.cpp runtimespec.cpp serviceconfig.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils aoscommon)
+set(LIBRARIES aos::common::utils aoscommon)
 
 # ######################################################################################################################
 # Target

@@ -16,7 +16,7 @@ set(SOURCES config_test.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::config GTest::gmock_main)
+set(LIBRARIES aos::iam::config GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

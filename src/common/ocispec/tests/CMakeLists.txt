@@ -20,7 +20,7 @@ set(SOURCES ocispec.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::ocispec ${TARGET_NAMESPACE}::utils GTest::gmock_main)
+set(LIBRARIES aos::common::ocispec aos::common::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

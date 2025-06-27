@@ -16,7 +16,7 @@ set(SOURCES resourceusageprovider.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aossm aos::common::utils Poco::Util)
+set(LIBRARIES aos::common::utils aoscommon aossm Poco::Util)
 
 # ######################################################################################################################
 # Target

@@ -21,7 +21,7 @@ set(SOURCES imageunpacker.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::imageunpacker Poco::Foundation GTest::gmock_main)
+set(LIBRARIES aos::mp::imageunpacker Poco::Foundation GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

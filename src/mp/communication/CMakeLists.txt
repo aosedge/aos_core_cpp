@@ -33,19 +33,19 @@ set(COMPILE_OPTIONS -Wno-deprecated-declarations)
 # ######################################################################################################################
 
 set(LIBRARIES
-    OpenSSL::Crypto
-    OpenSSL::SSL
-    Poco::Foundation
-    Poco::Net
-    aoscommon
-    aoscoreapi-gen-sm
-    aosprotocol
     aos::mp::config
     aos::mp::filechunker
     aos::mp::imageunpacker
     aos::mp::logprovider
     aos::common::logger
     aos::common::pbconvert
+    aoscommon
+    aos::api::sm
+    aos::api::protocol
+    OpenSSL::Crypto
+    OpenSSL::SSL
+    Poco::Foundation
+    Poco::Net
 )
 
 if(WITH_VCHAN)

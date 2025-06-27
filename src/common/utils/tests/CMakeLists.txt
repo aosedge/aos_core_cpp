@@ -31,7 +31,7 @@ set(SOURCES
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils ${TARGET_NAMESPACE}::tests::utils GTest::gmock_main)
+set(LIBRARIES aos::common::utils aos::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

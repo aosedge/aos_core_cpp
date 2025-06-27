@@ -17,25 +17,25 @@ set(SOURCES app.cpp aoscore.cpp main.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES
-    aoscommon
-    aossm
+    aos::sm::config
+    aos::sm::database
+    aos::sm::image
+    aos::sm::launcher
+    aos::sm::monitoring
+    aos::sm::resourcemanager
+    aos::sm::runner
+    aos::sm::networkmanager
+    aos::sm::alerts
+    aos::sm::smclient
+    aos::sm::logprovider
     aos::common::iamclient
     aos::common::jsonprovider
     aos::common::logger
     aos::common::downloader
     aos::common::ocispec
     aos::common::version
-    ${TARGET_NAMESPACE}::config
-    ${TARGET_NAMESPACE}::database
-    ${TARGET_NAMESPACE}::image
-    ${TARGET_NAMESPACE}::launcher
-    ${TARGET_NAMESPACE}::monitoring
-    ${TARGET_NAMESPACE}::resourcemanager
-    ${TARGET_NAMESPACE}::runner
-    ${TARGET_NAMESPACE}::networkmanager
-    ${TARGET_NAMESPACE}::alerts
-    ${TARGET_NAMESPACE}::smclient
-    ${TARGET_NAMESPACE}::logprovider
+    aoscommon
+    aossm
     Poco::Util
 )
 

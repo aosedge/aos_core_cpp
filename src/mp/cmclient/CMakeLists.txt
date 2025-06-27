@@ -20,7 +20,7 @@ set(SOURCES cmclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aos::common::logger aos::common::iamclient aos::mp::communication aoscoreapi-gen-sm)
+set(LIBRARIES aos::mp::communication aos::common::logger aos::common::iamclient aoscommon aos::api::sm)
 
 # ######################################################################################################################
 # Target
