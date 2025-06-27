@@ -5,12 +5,11 @@
  */
 
 #include <algorithm>
-#include <memory>
-#include <string>
-
 #include <iomanip>
+#include <memory>
 #include <random>
 #include <sstream>
+#include <string>
 
 #include <arpa/inet.h>
 #include <linux/if.h>

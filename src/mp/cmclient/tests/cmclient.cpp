@@ -9,9 +9,9 @@
 #include <mutex>
 #include <optional>
 
-#include <aos/test/log.hpp>
-
 #include <gtest/gtest.h>
+
+#include <aos/test/log.hpp>
 
 #include <common/iamclient/publicservicehandler.hpp>
 #include <common/tests/mocks/iamclientmock.hpp>

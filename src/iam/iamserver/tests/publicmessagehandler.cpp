@@ -10,21 +10,20 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
-
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <common/utils/grpchelper.hpp>
+#include <aos/test/log.hpp>
+#include <mocks/certprovidermock.hpp>
+#include <mocks/identhandlermock.hpp>
+#include <mocks/nodeinfoprovidermock.hpp>
+#include <mocks/nodemanagermock.hpp>
+#include <mocks/permhandlermock.hpp>
+#include <mocks/provisionmanagermock.hpp>
 
+#include <common/utils/grpchelper.hpp>
 #include <iam/iamserver/publicmessagehandler.hpp>
 
-#include "mocks/certprovidermock.hpp"
-#include "mocks/identhandlermock.hpp"
-#include "mocks/nodeinfoprovidermock.hpp"
-#include "mocks/nodemanagermock.hpp"
-#include "mocks/permhandlermock.hpp"
-#include "mocks/provisionmanagermock.hpp"
 #include "stubs/storagestub.hpp"
 
 using namespace testing;

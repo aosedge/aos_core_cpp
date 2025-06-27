@@ -9,7 +9,6 @@
 #include <sstream>
 
 #include <Poco/JSON/Object.h>
-
 #include <gtest/gtest.h>
 
 #include <aos/test/log.hpp>

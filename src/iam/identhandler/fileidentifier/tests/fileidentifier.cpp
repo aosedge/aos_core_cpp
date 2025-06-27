@@ -10,10 +10,9 @@
 #include <gmock/gmock.h>
 
 #include <aos/test/log.hpp>
+#include <mocks/identhandlermock.hpp>
 
 #include <iam/identhandler/fileidentifier/fileidentifier.hpp>
-
-#include "mocks/identhandlermock.hpp"
 
 using namespace testing;
 

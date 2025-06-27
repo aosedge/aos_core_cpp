@@ -10,10 +10,11 @@
 #include <cstring>
 #include <vector>
 
-#include <aosprotocol.h>
+#include <openssl/sha.h>
 
 #include <aos/common/tools/error.hpp>
-#include <openssl/sha.h>
+
+#include <aosprotocol.h>
 
 namespace aos::mp::communication {
 

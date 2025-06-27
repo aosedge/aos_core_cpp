@@ -8,12 +8,11 @@
 #include <filesystem>
 #include <fstream>
 
-#include <gtest/gtest.h>
-
 #include <Poco/Pipe.h>
 #include <Poco/PipeStream.h>
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
+#include <gtest/gtest.h>
 
 #include <common/utils/image.hpp>
 

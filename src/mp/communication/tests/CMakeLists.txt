@@ -15,7 +15,7 @@ set(TARGET_NAME communication_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES communication_secure.cpp communication_open.cpp stubs/storagestub.cpp)
+set(SOURCES communicationsecure.cpp communicationopen.cpp stubs/storagestub.cpp)
 
 # ######################################################################################################################
 # Compile options

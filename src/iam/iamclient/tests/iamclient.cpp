@@ -6,23 +6,21 @@
  */
 
 #include <gmock/gmock.h>
-
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 
 #include <aos/test/log.hpp>
-#include <common/utils/exception.hpp>
+#include <mocks/certhandlermock.hpp>
+#include <mocks/certloadermock.hpp>
+#include <mocks/certprovidermock.hpp>
+#include <mocks/cryptomock.hpp>
+#include <mocks/identhandlermock.hpp>
+#include <mocks/nodeinfoprovidermock.hpp>
+#include <mocks/provisionmanagermock.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include "mocks/certhandlermock.hpp"
-#include "mocks/certloadermock.hpp"
-#include "mocks/certprovidermock.hpp"
-#include "mocks/cryptomock.hpp"
-#include "mocks/identhandlermock.hpp"
-#include "mocks/nodeinfoprovidermock.hpp"
-#include "mocks/provisionmanagermock.hpp"
-
+#include <common/utils/exception.hpp>
 #include <iam/iamclient/iamclient.hpp>
 
 using namespace testing;
