@@ -36,3 +36,7 @@ add_subdirectory(resourcemanager)
 add_subdirectory(runner)
 add_subdirectory(smclient)
 add_subdirectory(utils)
+
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()
