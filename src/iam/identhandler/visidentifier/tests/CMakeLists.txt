@@ -10,7 +10,7 @@ set(TARGET_NAME visidentifier_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES pocowsclient_test.cpp visidentifier_test.cpp vismessage_test.cpp visserver.cpp)
+set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp visserver.cpp)
 
 # ######################################################################################################################
 # Libraries
