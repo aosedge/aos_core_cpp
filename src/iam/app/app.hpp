@@ -23,7 +23,6 @@
 #include <iam/iamclient/iamclient.hpp>
 #include <iam/iamserver/iamserver.hpp>
 #include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
-#include <iam/visidentifier/visidentifier.hpp>
 
 namespace aos::iam::app {
 

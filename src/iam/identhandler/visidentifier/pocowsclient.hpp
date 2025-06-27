@@ -21,7 +21,7 @@
 #include <Poco/Net/WebSocket.h>
 
 #include <iam/config/config.hpp>
-#include <iam/visidentifier/wsclient.hpp>
+#include <iam/identhandler/visidentifier/wsclient.hpp>
 
 #include "wsclientevent.hpp"
 #include "wspendingrequests.hpp"

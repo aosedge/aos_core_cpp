@@ -8,13 +8,13 @@
 #include <common/logger/logger.hpp>
 #include <gmock/gmock.h>
 
-#include <iam/visidentifier/pocowsclient.hpp>
-#include <iam/visidentifier/visidentifier.hpp>
-#include <iam/visidentifier/vismessage.hpp>
-#include <iam/visidentifier/wsexception.hpp>
+#include <iam/identhandler/visidentifier/pocowsclient.hpp>
+#include <iam/identhandler/visidentifier/visidentifier.hpp>
+#include <iam/identhandler/visidentifier/vismessage.hpp>
+#include <iam/identhandler/visidentifier/wsexception.hpp>
 
-#include "iam/tests/mocks/wsclientmock.hpp"
 #include "mocks/identhandlermock.hpp"
+#include "mocks/wsclientmock.hpp"
 
 using namespace testing;
 

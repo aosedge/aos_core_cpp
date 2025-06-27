@@ -19,7 +19,7 @@
 #include <aos/common/tools/log.hpp>
 #include <common/logger/logmodule.hpp>
 
-#include <iam/visidentifier/vismessage.hpp>
+#include <iam/identhandler/visidentifier/vismessage.hpp>
 
 #include "visserver.hpp"
 

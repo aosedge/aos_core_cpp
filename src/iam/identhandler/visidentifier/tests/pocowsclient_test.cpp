@@ -11,9 +11,9 @@
 
 #include <common/logger/logger.hpp>
 
-#include <iam/visidentifier/pocowsclient.hpp>
-#include <iam/visidentifier/visidentifier.hpp>
-#include <iam/visidentifier/wsexception.hpp>
+#include <iam/identhandler/visidentifier/pocowsclient.hpp>
+#include <iam/identhandler/visidentifier/visidentifier.hpp>
+#include <iam/identhandler/visidentifier/wsexception.hpp>
 
 #include "mocks/identhandlermock.hpp"
 #include "visserver.hpp"
