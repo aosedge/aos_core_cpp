@@ -16,16 +16,17 @@ print_usage() {
     echo "Usage: ./build.sh <command> [options]"
     echo
     echo "Commands:"
-    echo "  build                      build target"
-    echo "  test                       run tests only"
-    echo "  coverage                   run tests with coverage"
-    echo "  lint                       run static analysis (cppcheck)"
-    echo "  doc                        generate documentation"
+    echo "  build                      builds target"
+    echo "  test                       runs tests only"
+    echo "  coverage                   runs tests with coverage"
+    echo "  lint                       runs static analysis (cppcheck)"
+    echo "  doc                        generates documentation"
     echo
     echo "Options:"
-    echo "  --clean                    clean build artifacts"
-    echo "  --aos-service <services>   specify services (e.g., sm,mp,iam)"
-    echo "  --ci                       use build-wrapper for CI analysis (SonarQube)"
+    echo "  --clean                    cleans build artifacts"
+    echo "  --aos-service <services>   specifies services (e.g., sm,mp,iam)"
+    echo "  --ci                       uses build-wrapper for CI analysis (SonarQube)"
+    echo "  --core-dir <pat            specifies path to core libs directory"
     echo
 }
 
@@ -106,6 +107,7 @@ build_project() {
 
     cmake -S . -B build \
         -DCMAKE_BUILD_TYPE=Debug \
+        ${ARG_CORE_DIR+-DAOS_CORE_DIR="$ARG_CORE_DIR"} \
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
         -DWITH_TEST=ON \
@@ -147,6 +149,11 @@ parse_arguments() {
         --ci)
             ARG_CI_FLAG=true
             shift
+            ;;
+
+        --core-dir)
+            ARG_CORE_DIR="$2"
+            shift 2
             ;;
 
         *)
