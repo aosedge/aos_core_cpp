@@ -13,6 +13,7 @@
 #include <unordered_set>
 
 #include <aos/iam/nodeinfoprovider.hpp>
+
 #include <iam/config/config.hpp>
 
 namespace aos::iam::nodeinfoprovider {

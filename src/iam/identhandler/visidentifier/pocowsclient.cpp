@@ -11,6 +11,7 @@
 #include <Poco/URI.h>
 
 #include <aos/common/tools/uuid.hpp>
+
 #include <common/logger/logmodule.hpp>
 #include <common/utils/json.hpp>
 

@@ -20,7 +20,6 @@
 #include <common/iamclient/publicservicehandler.hpp>
 #include <common/logger/logger.hpp>
 #include <common/utils/cleanupmanager.hpp>
-
 #include <mp/cmclient/cmclient.hpp>
 #include <mp/communication/cmconnection.hpp>
 #include <mp/communication/communicationmanager.hpp>

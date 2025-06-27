@@ -15,10 +15,10 @@
 
 #include <aos/common/version.hpp>
 #include <aos/iam/certmodules/certmodule.hpp>
+
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
-
 #include <iam/config/config.hpp>
 #include <iam/identhandler/fileidentifier/fileidentifier.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>

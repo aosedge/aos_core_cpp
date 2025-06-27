@@ -7,11 +7,11 @@
 #ifndef AOS_MP_COMMUNICATION_VCHAN_HPP_
 #define AOS_MP_COMMUNICATION_VCHAN_HPP_
 
+#include <mutex>
+
 extern "C" {
 #include <libxenvchan.h>
 }
-
-#include <mutex>
 
 #include <mp/config/config.hpp>
 

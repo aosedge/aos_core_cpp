@@ -8,15 +8,13 @@
 #include <execinfo.h>
 #include <iostream>
 
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <openssl/trace.h>
-
-#include <curl/curl.h>
-
 #include <Poco/Path.h>
 #include <Poco/SignalHandler.h>
 #include <Poco/Util/HelpFormatter.h>
+#include <curl/curl.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/trace.h>
 #include <systemd/sd-daemon.h>
 
 #include <aos/common/version.hpp>

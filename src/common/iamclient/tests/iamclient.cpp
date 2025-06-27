@@ -9,12 +9,12 @@
 #include <gtest/gtest.h>
 
 #include <aos/test/log.hpp>
+#include <mocks/certhandlermock.hpp>
 
 #include <common/iamclient/permservicehandler.hpp>
 #include <common/iamclient/publicservicehandler.hpp>
 #include <common/tests/mocks/iamclientmock.hpp>
 
-#include "mocks/certhandlermock.hpp"
 #include "stubs/iamserverstub.hpp"
 
 using namespace testing;

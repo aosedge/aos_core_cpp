@@ -22,9 +22,10 @@
 #include <aos/iam/nodeinfoprovider.hpp>
 #include <aos/iam/permhandler.hpp>
 #include <aos/iam/provisionmanager.hpp>
-#include <iam/config/config.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
+
+#include <iam/config/config.hpp>
 
 #include "protectedmessagehandler.hpp"
 #include "publicmessagehandler.hpp"

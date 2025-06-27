@@ -17,6 +17,7 @@
 
 #include <aos/iam/certmodules/certmodule.hpp>
 #include <aos/iam/nodemanager.hpp>
+
 #include <common/migration/migration.hpp>
 #include <iam/config/config.hpp>
 

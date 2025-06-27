@@ -8,8 +8,9 @@
 #ifndef AOS_COMMON_MIGRATION_MIGRATION_HPP_
 #define AOS_COMMON_MIGRATION_MIGRATION_HPP_
 
-#include <Poco/Data/Session.h>
 #include <filesystem>
+
+#include <Poco/Data/Session.h>
 
 namespace aos::common::migration {
 

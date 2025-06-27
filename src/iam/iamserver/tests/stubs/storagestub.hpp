@@ -8,7 +8,7 @@
 #ifndef AOS_STORAGE_STUB_HPP_
 #define AOS_STORAGE_STUB_HPP_
 
-#include "aos/iam/certmodules/certmodule.hpp"
+#include <aos/iam/certmodules/certmodule.hpp>
 
 namespace aos {
 namespace iam {

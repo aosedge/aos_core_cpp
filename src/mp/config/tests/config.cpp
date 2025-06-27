@@ -10,7 +10,6 @@
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
-
 #include <gtest/gtest.h>
 
 #include <aos/test/log.hpp>

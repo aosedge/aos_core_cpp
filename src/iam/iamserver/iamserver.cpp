@@ -20,6 +20,7 @@
 #include <aos/common/tools/string.hpp>
 #include <aos/common/types.hpp>
 #include <aos/iam/certhandler.hpp>
+
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>

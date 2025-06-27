@@ -4,13 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <linux/dqblk_xfs.h>
-#include <linux/major.h>
-#include <sys/quota.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/sysmacros.h>
-
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -18,6 +11,13 @@
 #include <regex>
 #include <thread>
 #include <vector>
+
+#include <linux/dqblk_xfs.h>
+#include <linux/major.h>
+#include <sys/quota.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/sysmacros.h>
 
 #include <Poco/StringTokenizer.h>
 

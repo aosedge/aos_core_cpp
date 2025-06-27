@@ -15,7 +15,6 @@
 #include <Poco/PipeStream.h>
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
-
 #include <gtest/gtest.h>
 
 #include <aos/common/crypto/cryptoprovider.hpp>

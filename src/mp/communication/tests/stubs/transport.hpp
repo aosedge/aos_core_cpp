@@ -13,14 +13,11 @@
 #include <vector>
 
 #include <Poco/Net/StreamSocket.h>
-
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
-#include <pthread.h>
 
 #include <common/utils/pkcs11helper.hpp>
-
 #include <mp/communication/communicationchannel.hpp>
 #include <mp/communication/types.hpp>
 #include <mp/communication/utils.hpp>

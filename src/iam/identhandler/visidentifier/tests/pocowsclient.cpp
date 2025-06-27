@@ -9,13 +9,13 @@
 
 #include <gmock/gmock.h>
 
-#include <common/logger/logger.hpp>
+#include <mocks/identhandlermock.hpp>
 
+#include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
 #include <iam/identhandler/visidentifier/wsexception.hpp>
 
-#include "mocks/identhandlermock.hpp"
 #include "visserver.hpp"
 
 using namespace testing;

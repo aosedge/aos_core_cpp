@@ -9,7 +9,6 @@
 #include <fstream>
 
 #include <Poco/SHA2Engine.h>
-
 #include <gtest/gtest.h>
 
 #include <mp/filechunker/filechunker.hpp>

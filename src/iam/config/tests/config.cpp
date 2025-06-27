@@ -8,7 +8,6 @@
 #include <fstream>
 
 #include <Poco/JSON/Object.h>
-
 #include <gtest/gtest.h>
 
 #include <iam/config/config.hpp>

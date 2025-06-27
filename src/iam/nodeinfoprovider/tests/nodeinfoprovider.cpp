@@ -15,9 +15,9 @@
 #include <gmock/gmock.h>
 
 #include <aos/test/log.hpp>
-#include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <mocks/nodeinfoprovidermock.hpp>
 
-#include "mocks/nodeinfoprovidermock.hpp"
+#include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 using namespace testing;
 
