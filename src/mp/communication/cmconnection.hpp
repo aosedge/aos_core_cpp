@@ -24,7 +24,6 @@
 #include <aos/common/tools/error.hpp>
 
 #include <common/downloader/downloader.hpp>
-
 #include <mp/config/config.hpp>
 #include <mp/filechunker/filechunker.hpp>
 #include <mp/imageunpacker/imageunpacker.hpp>

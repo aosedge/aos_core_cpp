@@ -5,15 +5,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <common/logger/logger.hpp>
 #include <gmock/gmock.h>
 
+#include <mocks/identhandlermock.hpp>
+
+#include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
 #include <iam/identhandler/visidentifier/vismessage.hpp>
 #include <iam/identhandler/visidentifier/wsexception.hpp>
 
-#include "mocks/identhandlermock.hpp"
 #include "mocks/wsclientmock.hpp"
 
 using namespace testing;

@@ -13,22 +13,20 @@
 #include <gmock/gmock.h>
 #include <openssl/engine.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/softhsmenv.hpp>
-
 #include <aos/common/crypto/cryptoprovider.hpp>
 #include <aos/iam/certhandler.hpp>
 #include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <aos/test/log.hpp>
+#include <aos/test/softhsmenv.hpp>
+#include <mocks/certprovidermock.hpp>
+#include <mocks/identhandlermock.hpp>
+#include <mocks/nodeinfoprovidermock.hpp>
+#include <mocks/nodemanagermock.hpp>
+#include <mocks/permhandlermock.hpp>
+#include <mocks/provisionmanagermock.hpp>
+
 #include <common/utils/grpchelper.hpp>
-
 #include <iam/iamserver/iamserver.hpp>
-
-#include "mocks/certprovidermock.hpp"
-#include "mocks/identhandlermock.hpp"
-#include "mocks/nodeinfoprovidermock.hpp"
-#include "mocks/nodemanagermock.hpp"
-#include "mocks/permhandlermock.hpp"
-#include "mocks/provisionmanagermock.hpp"
 
 #include "stubs/storagestub.hpp"
 

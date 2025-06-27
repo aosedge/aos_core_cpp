@@ -15,7 +15,6 @@
 #include <aos/common/crypto/utils.hpp>
 
 #include <common/iamclient/publicservicehandler.hpp>
-
 #include <mp/config/config.hpp>
 
 #include "types.hpp"

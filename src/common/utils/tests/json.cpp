@@ -9,7 +9,6 @@
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

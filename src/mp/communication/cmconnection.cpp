@@ -8,9 +8,10 @@
 
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
-#include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include <aos/common/cloudprotocol/log.hpp>
+
+#include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/sm.hpp>

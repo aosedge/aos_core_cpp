@@ -7,14 +7,11 @@
 #include <future>
 
 #include <gmock/gmock.h>
-
-#include <aos/test/log.hpp>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 
-#include <servicemanager/v4/servicemanager.grpc.pb.h>
-
+#include <aos/test/log.hpp>
 #include <mocks/certhandlermock.hpp>
 #include <mocks/connectionsubscmock.hpp>
 #include <mocks/cryptomock.hpp>
@@ -25,6 +22,8 @@
 #include <mocks/nodeinfoprovidermock.hpp>
 #include <mocks/provisionmanagermock.hpp>
 #include <mocks/resourcemanagermock.hpp>
+
+#include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include <common/tests/mocks/iamclientmock.hpp>
 #include <sm/smclient/smclient.hpp>
