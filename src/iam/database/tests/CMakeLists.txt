@@ -16,7 +16,7 @@ set(SOURCES database_test.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::database GTest::gmock_main)
+set(LIBRARIES aos::iam::database GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -21,7 +21,7 @@ set(SOURCES jsonprovider.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::jsonprovider GTest::gmock_main)
+set(LIBRARIES aos::common::jsonprovider GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

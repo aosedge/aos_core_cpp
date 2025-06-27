@@ -17,13 +17,13 @@ set(SOURCES app.cpp main.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES
-    ${TARGET_NAMESPACE}::config
-    ${TARGET_NAMESPACE}::database
-    ${TARGET_NAMESPACE}::fileidentifier
-    ${TARGET_NAMESPACE}::iamclient
-    ${TARGET_NAMESPACE}::iamserver
-    ${TARGET_NAMESPACE}::nodeinfoprovider
-    ${TARGET_NAMESPACE}::visidentifier
+    aos::iam::config
+    aos::iam::database
+    aos::iam::fileidentifier
+    aos::iam::iamclient
+    aos::iam::iamserver
+    aos::iam::nodeinfoprovider
+    aos::iam::visidentifier
     aos::common::version
     aosiam
 )

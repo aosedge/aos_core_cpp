@@ -18,9 +18,7 @@ set(SOURCES iamserver_test.cpp nodecontroller_test.cpp protectedmessagehandler_t
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::iamserver ${TARGET_NAMESPACE}::iamclient aosiam aostestcore aostestutils
-              GTest::gmock_main
-)
+set(LIBRARIES aos::iam::iamserver aos::iam::iamclient aosiam aostestcore aostestutils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -21,7 +21,7 @@ set(SOURCES cmclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::cmclient aos::common::tests::utils GTest::gmock_main)
+set(LIBRARIES aos::mp::cmclient aos::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -21,7 +21,7 @@ set(SOURCES migration.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::migration aoscommon GTest::gmock_main)
+set(LIBRARIES aos::common::migration aoscommon GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

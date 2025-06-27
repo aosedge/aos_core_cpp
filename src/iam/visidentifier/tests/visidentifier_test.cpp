@@ -13,8 +13,8 @@
 #include <iam/visidentifier/vismessage.hpp>
 #include <iam/visidentifier/wsexception.hpp>
 
+#include "iam/tests/mocks/wsclientmock.hpp"
 #include "mocks/identhandlermock.hpp"
-#include "mocks/wsclientmock.hpp"
 
 using namespace testing;
 

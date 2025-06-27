@@ -20,7 +20,7 @@ set(SOURCES archivemanager.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::logprovider Poco::Foundation GTest::gmock_main)
+set(LIBRARIES aos::mp::logprovider Poco::Foundation GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

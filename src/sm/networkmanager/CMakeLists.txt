@@ -16,7 +16,7 @@ set(SOURCES cni.cpp exec.cpp trafficmonitor.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aoscommon aossm aos::common::network aos::common::utils Poco::JSON Poco::Foundation)
+set(LIBRARIES aos::common::network aos::common::utils aoscommon aossm Poco::JSON Poco::Foundation)
 
 # ######################################################################################################################
 # Target

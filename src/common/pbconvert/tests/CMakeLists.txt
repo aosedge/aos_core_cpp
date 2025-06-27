@@ -20,7 +20,7 @@ set(SOURCES common.cpp iam.cpp sm.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::pbconvert GTest::gmock_main)
+set(LIBRARIES aos::common::pbconvert GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

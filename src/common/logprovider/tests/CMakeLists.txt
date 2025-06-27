@@ -20,7 +20,7 @@ set(SOURCES archivator.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::logprovider aoscommon GTest::gmock_main)
+set(LIBRARIES aos::common::logprovider aoscommon GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

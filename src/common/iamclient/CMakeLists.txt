@@ -20,7 +20,7 @@ set(SOURCES permservicehandler.cpp publicservicehandler.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils ${TARGET_NAMESPACE}::pbconvert aoscommon aoscoreapi-gen-iam)
+set(LIBRARIES aos::common::utils aos::common::pbconvert aoscommon aos::api::iam)
 
 # ######################################################################################################################
 # Target

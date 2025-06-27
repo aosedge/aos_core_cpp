@@ -16,13 +16,7 @@ set(SOURCES fileidentifier_test.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::fileidentifier aostestcore GTest::gmock_main)
-
-# ######################################################################################################################
-# Includes
-# ######################################################################################################################
-
-set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR} ${AOS_IAM_DIR}/tests)
+set(LIBRARIES aos::iam::fileidentifier aos::iam::tests::mocks aostestcore GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -16,7 +16,7 @@ set(SOURCES runtime.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::launcher GTest::gmock_main)
+set(LIBRARIES aos::sm::launcher GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
