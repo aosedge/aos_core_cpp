@@ -28,6 +28,7 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_common)
 # Modules
 # ######################################################################################################################
 
+add_subdirectory(config)
 add_subdirectory(downloader)
 add_subdirectory(iamclient)
 add_subdirectory(jsonprovider)
