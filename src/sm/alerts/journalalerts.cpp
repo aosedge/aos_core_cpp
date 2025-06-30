@@ -18,7 +18,7 @@ namespace aos::sm::alerts {
  * Statics
  **********************************************************************************************************************/
 
-Error JournalAlerts::Init(const config::JournalAlertsConfig& config, InstanceInfoProviderItf& instanceInfoProvider,
+Error JournalAlerts::Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf& instanceInfoProvider,
     StorageItf& storage, aos::alerts::SenderItf& sender)
 {
     LOG_DBG() << "Init journal alerts";

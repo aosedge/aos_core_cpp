@@ -400,7 +400,7 @@ Database::~Database()
     Poco::Data::SQLite::Connector::unregisterConnector();
 }
 
-Error Database::Init(const std::string& workDir, const config::MigrationConfig& migrationConfig)
+Error Database::Init(const std::string& workDir, const common::config::Migration& migrationConfig)
 {
     LOG_DBG() << "Init database: workDir=" << workDir.c_str();
 

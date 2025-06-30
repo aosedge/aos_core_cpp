@@ -16,7 +16,7 @@ set(SOURCES config.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::JSON)
+set(LIBRARIES aos::common::config aos::common::utils aoscommon Poco::JSON)
 
 # ######################################################################################################################
 # Target
