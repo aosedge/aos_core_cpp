@@ -49,7 +49,7 @@ jobs:
 
       - name: Build using SonarQube Build Wrapper
         run: |
-          ./scripts/build.sh build
+          ./scripts/build.sh build --ci
 
       - name: Run Tests
         run: |
