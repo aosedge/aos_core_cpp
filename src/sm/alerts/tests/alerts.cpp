@@ -72,7 +72,7 @@ public:
         aos::test::InitLog();
 
         mConfig
-            = config::JournalAlertsConfig {{"50-udev-default.rules", "getty@tty1.service", "quotaon.service"}, 4, 4};
+            = common::config::JournalAlerts {{"50-udev-default.rules", "getty@tty1.service", "quotaon.service"}, 4, 4};
     }
 
     void Init();
@@ -86,11 +86,11 @@ public:
     std::condition_variable mAlertCV;
     bool                    mAlertSent = false;
 
-    config::JournalAlertsConfig mConfig;
-    InstanceInfoProviderMock    mInstanceInfoProvider;
-    aos::alerts::SenderMock     mSender;
-    StorageMock                 mStorage;
-    std::string                 mCursor = "cursor";
+    common::config::JournalAlerts mConfig;
+    InstanceInfoProviderMock      mInstanceInfoProvider;
+    aos::alerts::SenderMock       mSender;
+    StorageMock                   mStorage;
+    std::string                   mCursor = "cursor";
 
     TestJournalAlerts mJournalAlerts;
 };

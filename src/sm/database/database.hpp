@@ -49,7 +49,7 @@ public:
      * @param migrationConfig migration config.
      * @return Error.
      */
-    Error Init(const std::string& workDir, const config::MigrationConfig& migrationConfig);
+    Error Init(const std::string& workDir, const common::config::Migration& migrationConfig);
 
     // sm::launcher::StorageItf interface
 

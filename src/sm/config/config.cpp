@@ -22,16 +22,10 @@
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultServiceTTLDays          = "30d";
-constexpr auto cDefaultLayerTTLDays            = "30d";
-constexpr auto cDefaultHealthCheckTimeout      = "35s";
-constexpr auto cDefaultCMReconnectTimeout      = "10s";
-constexpr auto cDefaultMonitoringPollPeriod    = "35s";
-constexpr auto cDefaultMonitoringAverageWindow = "35s";
-constexpr auto cDefaultServiceAlertPriority    = 4;
-constexpr auto cDefaultSystemAlertPriority     = 3;
-constexpr auto cMaxAlertPriorityLevel          = 7;
-constexpr auto cMinAlertPriorityLevel          = 0;
+constexpr auto cDefaultServiceTTLDays     = "30d";
+constexpr auto cDefaultLayerTTLDays       = "30d";
+constexpr auto cDefaultHealthCheckTimeout = "35s";
+constexpr auto cDefaultCMReconnectTimeout = "10s";
 
 namespace aos::sm::config {
 
@@ -50,51 +44,10 @@ std::filesystem::path JoinPath(const std::string& base, const std::string& entry
     return path;
 }
 
-void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, monitoring::Config& config)
-{
-    const auto pollPeriod = object.Has("monitoring")
-        ? object.GetObject("monitoring").GetValue<std::string>("pollPeriod", cDefaultMonitoringPollPeriod)
-        : cDefaultMonitoringPollPeriod;
-
-    const auto averageWindow = object.Has("monitoring")
-        ? object.GetObject("monitoring").GetValue<std::string>("averageWindow", cDefaultMonitoringAverageWindow)
-        : cDefaultMonitoringAverageWindow;
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mPollPeriod, err) = common::utils::ParseDuration(pollPeriod);
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing pollPeriod tag");
-
-    Tie(config.mAverageWindow, err) = common::utils::ParseDuration(averageWindow);
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing averageWindow tag");
-}
-
-void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, aos::logprovider::Config& config)
+void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, logprovider::Config& config)
 {
     config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen);
     config.mMaxPartCount = object.GetValue<uint64_t>("maxPartCount", 80);
-}
-
-void ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, JournalAlertsConfig& config)
-{
-    config.mFilter = common::utils::GetArrayValue<std::string>(object, "filter");
-
-    config.mServiceAlertPriority
-        = object.GetOptionalValue<int>("serviceAlertPriority").value_or(cDefaultServiceAlertPriority);
-    if (config.mServiceAlertPriority > cMaxAlertPriorityLevel
-        || config.mServiceAlertPriority < cMinAlertPriorityLevel) {
-        config.mServiceAlertPriority = cDefaultServiceAlertPriority;
-
-        LOG_WRN() << "Default value is set for service alert priority: value=" << cDefaultServiceAlertPriority;
-    }
-
-    config.mSystemAlertPriority
-        = object.GetOptionalValue<int>("systemAlertPriority").value_or(cDefaultSystemAlertPriority);
-    if (config.mSystemAlertPriority > cMaxAlertPriorityLevel || config.mSystemAlertPriority < cMinAlertPriorityLevel) {
-        config.mSystemAlertPriority = cDefaultSystemAlertPriority;
-
-        LOG_WRN() << "Default value is set for system alert priority: value=" << cDefaultServiceAlertPriority;
-    }
 }
 
 Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
@@ -106,15 +59,6 @@ Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
         ip.c_str(),
         hostname.c_str(),
     };
-}
-
-void ParseMigrationConfig(
-    const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir, MigrationConfig& config)
-{
-    config.mMigrationPath
-        = object.GetOptionalValue<std::string>("migrationPath").value_or("/usr/share/aos/servicemanager/migration");
-    config.mMergedMigrationPath = object.GetOptionalValue<std::string>("mergedMigrationPath")
-                                      .value_or(JoinPath(workingDir, "mergedMigration").c_str());
 }
 
 void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::iamclient::Config& config)
@@ -242,16 +186,29 @@ Error ParseConfig(const std::string& filename, Config& config)
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
-        ParseMonitoringConfig(object, config.mMonitoring);
+        auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
-        auto empty         = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
+        if (auto err = common::config::ParseMonitoringConfig(
+                object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
+            err != ErrorEnum::eNone) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
         auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
         auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
         ParseLoggingConfig(logging, config.mLogging);
-        ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
-        ParseMigrationConfig(migration, config.mWorkingDir, config.mMigration);
+        if (auto err = common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
+            err != ErrorEnum::eNone) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
+                JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
+            err != ErrorEnum::eNone) {
+            return AOS_ERROR_WRAP(err);
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
