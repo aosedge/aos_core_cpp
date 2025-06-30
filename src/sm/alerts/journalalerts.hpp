@@ -36,7 +36,7 @@ public:
      * @param sender alerts sender.
      * @return Error.
      */
-    Error Init(const config::JournalAlertsConfig& config, InstanceInfoProviderItf& instanceInfoProvider,
+    Error Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf& instanceInfoProvider,
         StorageItf& storage, aos::alerts::SenderItf& sender);
 
     /**
@@ -74,10 +74,10 @@ private:
     std::string                               ParseInstanceID(const std::string& unit);
     void                                      WriteAlertMsg(const std::string& src, String& dst);
 
-    config::JournalAlertsConfig mConfig               = {};
-    InstanceInfoProviderItf*    mInstanceInfoProvider = nullptr;
-    StorageItf*                 mStorage              = nullptr;
-    aos::alerts::SenderItf*     mSender               = nullptr;
+    common::config::JournalAlerts mConfig               = {};
+    InstanceInfoProviderItf*      mInstanceInfoProvider = nullptr;
+    StorageItf*                   mStorage              = nullptr;
+    aos::alerts::SenderItf*       mSender               = nullptr;
 
     std::vector<std::string> mAlertFilters;
     Poco::Timer              mCursorSaveTimer;

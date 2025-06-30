@@ -161,9 +161,9 @@ protected:
     }
 
 protected:
-    static constexpr auto            sWorkingDir = "database";
-    aos::sm::config::MigrationConfig mMigrationConfig;
-    aos::sm::database::Database      mDB;
+    static constexpr auto          sWorkingDir = "database";
+    aos::common::config::Migration mMigrationConfig;
+    aos::sm::database::Database    mDB;
 };
 
 /***********************************************************************************************************************
