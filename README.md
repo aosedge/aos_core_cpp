@@ -105,6 +105,22 @@ Generate documentation:
 The result documentation is located in `build/doc` folder. And it can be viewed by opening `build/doc/html/index.html`
 file in your browser.
 
+## Use docker container
+
+Build container:
+
+```console
+docker build -t aos-core-build-base:latest -f docker/Dockerfile .
+```
+
+Run container:
+
+```console
+ docker run -v ${PWD}:/opt/aos_core_cpp -w /opt/aos_core_cpp -it --rm aos-core-build-base:latest
+```
+
+All above commands for build, test, coverage etc. can be used inside the docker container.
+
 ## Development tools
 
 The following tools are used for code formatting and analyzing:

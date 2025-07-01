@@ -17,6 +17,8 @@ RUN pipx install gcovr
 
 # Build conan dependencies
 
+ENV CONAN_HOME="/opt/.conan2"
+
 COPY conan/* /opt
 
 WORKDIR /opt
@@ -25,6 +27,3 @@ RUN conan profile detect --force
 RUN conan install . --output-folder build --settings=build_type=Debug --build=missing \
     && conan install . --output-folder build --settings=build_type=Release --build=missing \
     && conan cache clean
-
-# Set default user
-USER root
