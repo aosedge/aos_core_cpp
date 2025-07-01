@@ -34,10 +34,6 @@ jobs:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
 
     steps:
-      # Apply solution to "HOME is overridden for containers" problem: https://github.com/actions/runner/issues/863
-      - name: Preserve $HOME set in the container
-        run: echo HOME=/root >> "$GITHUB_ENV"
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
