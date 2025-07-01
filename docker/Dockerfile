@@ -17,13 +17,13 @@ RUN pipx install gcovr
 
 # Build conan dependencies
 
-COPY conan/* /opt/
+COPY conan/* /opt
 
 WORKDIR /opt
 
 RUN conan profile detect --force
-RUN conan install . --output-folder build --settings=build_type=Debug --options=with_poco=True --build=missing \
-    && conan install . --output-folder build --settings=build_type=Release --options=with_poco=True --build=missing \
+RUN conan install . --output-folder build --settings=build_type=Debug --build=missing \
+    && conan install . --output-folder build --settings=build_type=Release --build=missing \
     && conan cache clean
 
 # Set default user
