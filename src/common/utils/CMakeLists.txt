@@ -21,6 +21,7 @@ set(SOURCES
     exception.cpp
     filesystem.cpp
     fsplatform.cpp
+    fswatcher.cpp
     grpchelper.cpp
     image.cpp
     json.cpp
