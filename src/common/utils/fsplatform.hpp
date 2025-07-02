@@ -45,6 +45,16 @@ public:
      */
     RetWithError<size_t> GetAvailableSize(const String& dir) const override;
 
+    /**
+     * Sets user quota for the given path.
+     *
+     * @param path path to set quota for.
+     * @param quota quota size in bytes.
+     * @param uid user ID.
+     * @return Error.
+     */
+    Error SetUserQuota(const String& path, size_t quota, size_t uid) const override;
+
 private:
     static constexpr size_t cStatBlockSize = 512;
     static constexpr auto   cMtabPath      = "/proc/mounts";
