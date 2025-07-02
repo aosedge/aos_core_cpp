@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <mntent.h>
+#include <sys/quota.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
@@ -80,6 +81,22 @@ RetWithError<size_t> FSPlatform::GetAvailableSize(const String& dir) const
     }
 
     return size_t(st.f_bavail) * st.f_frsize;
+}
+
+Error FSPlatform::SetUserQuota(const String& path, size_t quota, size_t uid) const
+{
+    dqblk dq {};
+
+    dq.dqb_bhardlimit = quota;
+    dq.dqb_valid      = QIF_BLIMITS;
+
+    if (auto res
+        = quotactl(QCMD(Q_SETQUOTA, USRQUOTA), path.CStr(), static_cast<int>(uid), reinterpret_cast<char*>(&dq));
+        res == -1) {
+        return Error(errno);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::common::utils
