@@ -37,6 +37,7 @@ set(LIBRARIES
     aos::mp::filechunker
     aos::mp::imageunpacker
     aos::mp::logprovider
+    aos::common::downloader
     aos::common::logger
     aos::common::pbconvert
     aoscommon
