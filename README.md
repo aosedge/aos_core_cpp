@@ -116,7 +116,7 @@ docker build -t aos-core-build:latest -f docker/Dockerfile .
 Run container:
 
 ```console
- docker run -v ${PWD}:/opt/aos_core_cpp -w /opt/aos_core_cpp -it --rm aos-core-build:latest
+docker run -v ${PWD}:/opt/aos_core_cpp -w /opt/aos_core_cpp -it --rm aos-core-build:latest
 ```
 
 All above commands for build, test, coverage etc. can be used inside the docker container.
