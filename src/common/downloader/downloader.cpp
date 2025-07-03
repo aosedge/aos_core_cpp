@@ -8,7 +8,7 @@
 #include <fstream>
 #include <thread>
 
-#include <curl/curl.h>
+#include <aos/common/cloudprotocol/alerts.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -17,9 +17,19 @@
 
 namespace aos::common::downloader {
 
+using namespace std::chrono;
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
+
+Error Downloader::Init(aos::alerts::SenderItf* sender, std::chrono::seconds progressInterval)
+{
+    mSender           = sender;
+    mProgressInterval = progressInterval;
+
+    return ErrorEnum::eNone;
+}
 
 Downloader::~Downloader()
 {
@@ -29,9 +39,17 @@ Downloader::~Downloader()
     mCondVar.notify_all();
 }
 
-Error Downloader::Download(const String& url, const String& path, aos::downloader::DownloadContent contentType)
+Error Downloader::Download(const String& url, const String& path, cloudprotocol::DownloadTarget targetType,
+    const String& targetID, const String& version)
 {
-    LOG_DBG() << "Start download: url=" << url << ", path=" << path << ", contentType=" << contentType;
+    LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path)
+              << Log::Field("targetType", targetType) << Log::Field("targetID", targetID)
+              << Log::Field("version", version);
+
+    mTargetType = targetType;
+    mTargetID   = targetID.CStr();
+    mVersion    = version.CStr();
+    mURL        = url.CStr();
 
     return RetryDownload(url, path);
 }
@@ -67,19 +85,44 @@ Error Downloader::Download(const String& url, const String& path)
 
     fseek(fp.get(), 0, SEEK_END);
 
-    auto existingFileSize = ftell(fp.get());
+    mExistingOffset = ftell(fp.get());
+
+    if (uri.getScheme() == "http" || uri.getScheme() == "https") {
+        curl_easy_setopt(curl.get(), CURLOPT_FAILONERROR, 1L);
+    }
 
     curl_easy_setopt(curl.get(), CURLOPT_URL, url.CStr());
-    curl_easy_setopt(curl.get(), CURLOPT_RESUME_FROM_LARGE, existingFileSize);
+    curl_easy_setopt(curl.get(), CURLOPT_RESUME_FROM_LARGE, mExistingOffset);
     curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, fp.get());
     curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, cTimeoutSec); // Timeout in seconds
     curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
 
-    auto res = curl_easy_perform(curl.get());
-    if (res != CURLE_OK) {
-        return Error(ErrorEnum::eFailed, curl_easy_strerror(res));
+    if (mSender) {
+        mLastProgressTime = steady_clock::now();
+
+        curl_easy_setopt(curl.get(), CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl.get(), CURLOPT_XFERINFOFUNCTION, &Downloader::XferInfoCallback);
+        curl_easy_setopt(curl.get(), CURLOPT_XFERINFODATA, this);
     }
+
+    if (auto res = curl_easy_perform(curl.get()); res != CURLE_OK) {
+        if (res == CURLE_HTTP_RETURNED_ERROR) {
+            long code = 0;
+
+            curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &code);
+
+            LOG_ERR() << "HTTP error: " << Log::Field("HTTP_CODE", code);
+        }
+
+        std::string msg = curl_easy_strerror(res);
+
+        SendAlert("Download interrupted reason: " + msg);
+
+        return Error(ErrorEnum::eFailed, msg.c_str());
+    }
+
+    SendAlert("Download completed");
 
     return ErrorEnum::eNone;
 }
@@ -133,6 +176,62 @@ Error Downloader::RetryDownload(const String& url, const String& path)
     }
 
     return err;
+}
+
+/***********************************************************************************************************************
+ * Progress callback
+ **********************************************************************************************************************/
+
+int Downloader::XferInfoCallback(
+    void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+    return static_cast<Downloader*>(clientp)->OnProgress(dltotal, dlnow, ultotal, ulnow);
+}
+
+int Downloader::OnProgress(
+    curl_off_t dltotal, curl_off_t dlnow, [[maybe_unused]] curl_off_t ultotal, [[maybe_unused]] curl_off_t ulnow)
+{
+    auto now = steady_clock::now();
+
+    if (now - mLastProgressTime < mProgressInterval) {
+        return 0;
+    }
+
+    mLastProgressTime = now;
+
+    curl_off_t nowBytes = mExistingOffset + dlnow;
+
+    LOG_DBG() << "Download progress" << Log::Field("complete", nowBytes) << Log::Field("total", dltotal);
+
+    SendAlert("Download status", std::to_string(nowBytes), std::to_string(dltotal));
+
+    return 0;
+}
+
+void Downloader::PrepareDownloadAlert(cloudprotocol::DownloadAlert& alert, const std::string& msg,
+    const std::string& downloadedBytes, const std::string& totalBytes)
+{
+    alert.mTargetType      = mTargetType;
+    alert.mTargetID        = mTargetID.c_str();
+    alert.mVersion         = mVersion.c_str();
+    alert.mURL             = mURL.c_str();
+    alert.mMessage         = msg.c_str();
+    alert.mDownloadedBytes = downloadedBytes.c_str();
+    alert.mTotalBytes      = totalBytes.c_str();
+}
+
+void Downloader::SendAlert(const std::string& msg, const std::string& downloadedBytes, const std::string& totalBytes)
+{
+    if (!mSender) {
+        return;
+    }
+
+    cloudprotocol::DownloadAlert alert;
+    cloudprotocol::AlertVariant  param;
+
+    PrepareDownloadAlert(alert, msg, downloadedBytes, totalBytes);
+    param.SetValue<cloudprotocol::DownloadAlert>(alert);
+    mSender->SendAlert(param);
 }
 
 } // namespace aos::common::downloader

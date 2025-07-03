@@ -7,6 +7,7 @@
 #ifndef AOS_COMMON_DOWNLOADER_HTTPSERVERSTUB_HPP_
 #define AOS_COMMON_DOWNLOADER_HTTPSERVERSTUB_HPP_
 
+#include <chrono>
 #include <fstream>
 #include <optional>
 #include <thread>
@@ -29,9 +30,11 @@ public:
      * Constructor.
      *
      * @param filePath file path.
+     * @param delayMs delay in milliseconds between chunks.
      */
-    explicit FileRequestHandler(const std::string& filePath)
+    explicit FileRequestHandler(const std::string& filePath, int delayMs = 0)
         : mFilePath(filePath)
+        , mDelayMs(delayMs)
     {
     }
 
@@ -49,7 +52,21 @@ public:
             response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
             response.setContentType("application/octet-stream");
 
-            Poco::StreamCopier::copyStream(ifs, response.send());
+            if (mDelayMs > 0) {
+                const size_t chunkSize = 64 * 1024;
+                char         buffer[chunkSize];
+                auto&        output = response.send();
+
+                while (ifs.read(buffer, chunkSize) || ifs.gcount() > 0) {
+                    std::streamsize bytesRead = ifs.gcount();
+                    output.write(buffer, bytesRead);
+                    output.flush();
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(mDelayMs));
+                }
+            } else {
+                Poco::StreamCopier::copyStream(ifs, response.send());
+            }
         } else {
             response.setStatus(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
             response.send() << "File not found";
@@ -58,6 +75,7 @@ public:
 
 private:
     std::string mFilePath;
+    int         mDelayMs;
 };
 
 /**
@@ -69,9 +87,11 @@ public:
      * Constructor.
      *
      * @param filePath file path.
+     * @param delayMs delay in milliseconds between chunks.
      */
-    explicit FileRequestHandlerFactory(const std::string& filePath)
+    explicit FileRequestHandlerFactory(const std::string& filePath, int delayMs = 0)
         : mFilePath(filePath)
+        , mDelayMs(delayMs)
     {
     }
 
@@ -84,11 +104,12 @@ public:
     Poco::Net::HTTPRequestHandler* createRequestHandler(
         [[maybe_unused]] const Poco::Net::HTTPServerRequest& request) override
     {
-        return new FileRequestHandler(mFilePath);
+        return new FileRequestHandler(mFilePath, mDelayMs);
     }
 
 private:
     std::string mFilePath;
+    int         mDelayMs;
 };
 
 /**
@@ -101,10 +122,12 @@ public:
      *
      * @param filePath file path.
      * @param port port.
+     * @param delayMs delay in milliseconds between chunks.
      */
-    HTTPServer(const std::string& filePath, int port)
+    HTTPServer(const std::string& filePath, int port, int delayMs = 0)
         : mFilePath(filePath)
         , mPort(port)
+        , mDelayMs(delayMs)
     {
     }
 
@@ -116,7 +139,7 @@ public:
         mServerThread = std::thread([this]() {
             Poco::Net::ServerSocket svs(mPort);
 
-            mServer.emplace(new FileRequestHandlerFactory(mFilePath), Poco::Net::ServerSocket(mPort),
+            mServer.emplace(new FileRequestHandlerFactory(mFilePath, mDelayMs), Poco::Net::ServerSocket(mPort),
                 new Poco::Net::HTTPServerParams);
 
             mServer->start();
@@ -128,7 +151,9 @@ public:
      */
     void Stop()
     {
-        mServer->stop();
+        if (mServer) {
+            mServer->stop();
+        }
 
         if (mServerThread.joinable()) {
             mServerThread.join();
@@ -138,6 +163,7 @@ public:
 private:
     std::string                          mFilePath;
     int                                  mPort;
+    int                                  mDelayMs;
     std::thread                          mServerThread;
     std::optional<Poco::Net::HTTPServer> mServer;
 };
