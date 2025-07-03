@@ -8,10 +8,12 @@
 #include <future>
 #include <optional>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include <aos/test/log.hpp>
+#include <mocks/alertsmock.hpp>
 
 #include <common/downloader/downloader.hpp>
 
@@ -33,12 +35,33 @@ protected:
 
         std::ofstream ofs("test_file.dat", std::ios::binary);
         ofs << "This is a test file";
-        ofs.close();
     }
 
-    void StartServer()
+    void CreateLargeFile(const std::string& filename, size_t sizeMB)
     {
-        mServer.emplace("test_file.dat", 8000);
+        std::ofstream ofs(filename, std::ios::binary);
+        if (!ofs.is_open()) {
+            FAIL() << "Failed to create large file: " << filename;
+        }
+
+        const size_t      bufferSize = 1024 * 1024;
+        std::vector<char> buffer(bufferSize);
+
+        for (size_t i = 0; i < bufferSize; ++i) {
+            buffer[i] = static_cast<char>(i % 256);
+        }
+
+        for (size_t mb = 0; mb < sizeMB; ++mb) {
+            ofs.write(buffer.data(), bufferSize);
+            if (!ofs.good()) {
+                FAIL() << "Failed to write to large file at MB " << mb;
+            }
+        }
+    }
+
+    void StartServer(const std::string& filename = "test_file.dat", int port = 8000, int delayMs = 0)
+    {
+        mServer.emplace(filename, port, delayMs);
         mServer->Start();
     }
 
@@ -47,12 +70,14 @@ protected:
     void TearDown() override
     {
         std::remove("test_file.dat");
+        std::remove("large_test_file.dat");
         std::remove(mFilePath.c_str());
     }
 
-    std::optional<HTTPServer>           mServer;
-    aos::common::downloader::Downloader mDownloader;
-    std::string                         mFilePath = "download/test_file.dat";
+    std::optional<HTTPServer>                mServer;
+    aos::common::downloader::Downloader      mDownloader;
+    StrictMock<aos::alerts::AlertSenderMock> mAlertSender;
+    std::string                              mFilePath = "download/test_file.dat";
 };
 
 /***********************************************************************************************************************
@@ -64,7 +89,7 @@ TEST_F(DownloaderTest, Download)
     StartServer();
 
     auto err = mDownloader.Download(
-        "http://localhost:8000/test_file.dat", mFilePath.c_str(), aos::downloader::DownloadContentEnum::eService);
+        "http://localhost:8000/test_file.dat", mFilePath.c_str(), aos::cloudprotocol::DownloadTargetEnum::eService);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -80,7 +105,7 @@ TEST_F(DownloaderTest, Download)
 TEST_F(DownloaderTest, DownloadFileScheme)
 {
     auto err = mDownloader.Download(
-        "file://test_file.dat", mFilePath.c_str(), aos::downloader::DownloadContentEnum::eService);
+        "file://test_file.dat", mFilePath.c_str(), aos::cloudprotocol::DownloadTargetEnum::eService);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -89,4 +114,30 @@ TEST_F(DownloaderTest, DownloadFileScheme)
     std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
     EXPECT_EQ(content, "This is a test file");
+}
+
+TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
+{
+    const size_t fileSizeMB = 1;
+
+    CreateLargeFile("large_test_file.dat", fileSizeMB);
+
+    mDownloader.Init(&mAlertSender, std::chrono::seconds {1});
+
+    StartServer("large_test_file.dat", 8001, 350);
+
+    EXPECT_CALL(mAlertSender, SendAlert(_)).Times(6);
+
+    auto err = mDownloader.Download("http://localhost:8001/large_test_file.dat", mFilePath.c_str(),
+        aos::cloudprotocol::DownloadTargetEnum::eService);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_TRUE(std::filesystem::exists(mFilePath));
+
+    std::ifstream ifs(mFilePath, std::ios::binary | std::ios::ate);
+    auto          fileSize = ifs.tellg();
+
+    EXPECT_EQ(fileSize, static_cast<std::streamsize>(fileSizeMB * 1024 * 1024));
+
+    StopServer();
 }
