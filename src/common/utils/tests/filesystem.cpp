@@ -151,9 +151,9 @@ TEST_F(FSTest, CalculateSize)
     EXPECT_EQ(size, 4 * buffer.size());
 }
 
-TEST_F(FSTest, ChangeOwner)
+TEST_F(FSTest, ChangeDirectoryOwner)
 {
-    const auto root = std::filesystem::path(cTestDir) / "change-owner-test";
+    const auto root = std::filesystem::path(cTestDir) / "change-dir-owner-test";
 
     std::filesystem::create_directories(root);
 
@@ -162,6 +162,19 @@ TEST_F(FSTest, ChangeOwner)
     }
 
     ASSERT_EQ(ChangeOwner(root.string(), getuid(), getgid()), aos::ErrorEnum::eNone);
+}
+
+TEST_F(FSTest, ChangeFileOwner)
+{
+    const auto file = std::filesystem::path(cTestDir) / "change-file-owner-test.txt";
+
+    fs::WriteStringToFile(file.c_str(), "Test content", 0644);
+
+    if (getuid() != 0 && getgid() != 0) {
+        ASSERT_EQ(ChangeOwner(file.string(), 0, 0), aos::ErrorEnum::eFailed);
+    }
+
+    ASSERT_EQ(ChangeOwner(file.string(), getuid(), getgid()), aos::ErrorEnum::eNone);
 }
 
 } // namespace aos::common::utils
