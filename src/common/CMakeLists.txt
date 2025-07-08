@@ -30,6 +30,7 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_common)
 
 add_subdirectory(config)
 add_subdirectory(downloader)
+add_subdirectory(fileserver)
 add_subdirectory(iamclient)
 add_subdirectory(jsonprovider)
 add_subdirectory(logger)
