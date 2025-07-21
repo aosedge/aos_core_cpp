@@ -107,7 +107,7 @@ aos::InstanceStatusStaticArray CreateInstanceStatus()
 
     aos::InstanceStatus instance;
     instance.mInstanceIdent  = aos::InstanceIdent {"service-id", "instance-id", 0};
-    instance.mRunState       = aos::InstanceRunStateEnum::eActive;
+    instance.mStatus         = aos::InstanceRunStateEnum::eActive;
     instance.mServiceVersion = "1.0.0";
 
     instances.PushBack(instance);
