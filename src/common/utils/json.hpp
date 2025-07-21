@@ -218,12 +218,12 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
  * @return Poco::JSON::Array.
  */
 template <class Container, class ConverterFunc>
-Poco::JSON::Array ToJsonArray(const Container& container, ConverterFunc converterFunc)
+Poco::JSON::Array::Ptr ToJsonArray(const Container& container, ConverterFunc converterFunc)
 {
-    Poco::JSON::Array jsonArr;
+    auto jsonArr = Poco::makeShared<Poco::JSON::Array>();
 
     for (const auto& elem : container) {
-        jsonArr.add(converterFunc(elem));
+        jsonArr->add(converterFunc(elem));
     }
 
     return jsonArr;

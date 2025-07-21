@@ -286,13 +286,15 @@ TEST_F(JsonTest, WriteJsonToFileFails)
 
 TEST_F(JsonTest, ToJSONArray)
 {
-    Poco::JSON::Array array
+    auto array
         = ToJsonArray(std::vector<int> {1, 2}, [](const auto value) { return std::to_string(value).append("-str"); });
 
-    ASSERT_EQ(array.size(), 2);
+    ASSERT_TRUE(array);
 
-    EXPECT_EQ(array.get(0).convert<std::string>(), "1-str");
-    EXPECT_EQ(array.get(1).convert<std::string>(), "2-str");
+    ASSERT_EQ(array->size(), 2);
+
+    EXPECT_EQ(array->get(0).convert<std::string>(), "1-str");
+    EXPECT_EQ(array->get(1).convert<std::string>(), "2-str");
 }
 
 TEST_F(JsonTest, Stringify)
