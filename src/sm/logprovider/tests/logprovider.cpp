@@ -146,7 +146,7 @@ TEST_F(LogProviderTest, GetServiceLog)
 
     cloudprotocol::RequestLog request = {};
     request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
@@ -174,7 +174,7 @@ TEST_F(LogProviderTest, GetBigServiceLog)
 
     cloudprotocol::RequestLog request = {};
     request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
@@ -200,7 +200,7 @@ TEST_F(LogProviderTest, GetSystemLog)
 
     cloudprotocol::RequestLog request = {};
     request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}, {}};
+    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}};
 
     EXPECT_CALL(
         mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "Hello World", cloudprotocol::LogStatusEnum::eOk)))
@@ -220,7 +220,7 @@ TEST_F(LogProviderTest, GetEmptyLog)
 
     cloudprotocol::RequestLog request = {};
     request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
@@ -250,7 +250,7 @@ TEST_F(LogProviderTest, GetCrashLog)
 
     cloudprotocol::RequestLog request = {};
     request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
@@ -279,7 +279,7 @@ TEST_F(LogProviderTest, GetInstanceIDsFailed)
     cloudprotocol::RequestLog request = {};
 
     request.mLogID  = "log0";
-    request.mFilter = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eFailed)));
@@ -314,7 +314,7 @@ TEST_F(LogProviderTest, EmptyInstanceIDs)
     cloudprotocol::RequestLog request = {};
 
     request.mLogID  = "log0";
-    request.mFilter = cloudprotocol::LogFilter {from, till, {}, {}, instanceFilter};
+    request.mFilter = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
 
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
