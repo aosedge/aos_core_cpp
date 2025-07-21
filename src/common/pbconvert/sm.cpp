@@ -190,7 +190,7 @@ namespace aos::common::pbconvert {
 
     *result.mutable_instance() = ConvertToProto(src.mInstanceIdent);
     result.set_service_version(src.mServiceVersion.CStr());
-    result.set_run_state(src.mRunState.ToString().CStr());
+    result.set_run_state(src.mStatus.ToString().CStr());
     SetErrorInfo(src.mError, result);
 
     return result;
