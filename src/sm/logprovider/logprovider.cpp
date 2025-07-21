@@ -283,12 +283,11 @@ void LogProvider::SendErrorResponse(const String& logID, const std::string& erro
 {
     auto response = std::make_unique<cloudprotocol::PushLog>();
 
-    response->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-    response->mLogID       = logID;
-    response->mStatus      = cloudprotocol::LogStatusEnum::eError;
-    response->mErrorInfo   = Error(ErrorEnum::eFailed, errorMsg.c_str());
-    response->mPartsCount  = 0;
-    response->mPart        = 0;
+    response->mLogID      = logID;
+    response->mStatus     = cloudprotocol::LogStatusEnum::eError;
+    response->mErrorInfo  = Error(ErrorEnum::eFailed, errorMsg.c_str());
+    response->mPartsCount = 0;
+    response->mPart       = 0;
 
     if (mLogReceiver) {
         mLogReceiver->OnLogReceived(*response);
@@ -299,12 +298,11 @@ void LogProvider::SendEmptyResponse(const String& logID, const std::string& erro
 {
     auto response = std::make_unique<cloudprotocol::PushLog>();
 
-    response->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-    response->mLogID       = logID;
-    response->mStatus      = cloudprotocol::LogStatusEnum::eAbsent;
-    response->mPartsCount  = 1;
-    response->mPart        = 1;
-    response->mErrorInfo   = Error(ErrorEnum::eNone, errorMsg.c_str());
+    response->mLogID      = logID;
+    response->mStatus     = cloudprotocol::LogStatusEnum::eAbsent;
+    response->mPartsCount = 1;
+    response->mPart       = 1;
+    response->mErrorInfo  = Error(ErrorEnum::eNone, errorMsg.c_str());
 
     if (mLogReceiver) {
         mLogReceiver->OnLogReceived(*response);
