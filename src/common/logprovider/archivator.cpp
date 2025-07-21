@@ -56,11 +56,10 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
 
         auto emptyLog = std::make_unique<cloudprotocol::PushLog>();
 
-        emptyLog->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-        emptyLog->mLogID       = logID;
-        emptyLog->mPartsCount  = part;
-        emptyLog->mPart        = part;
-        emptyLog->mStatus      = cloudprotocol::LogStatusEnum::eEmpty;
+        emptyLog->mLogID      = logID;
+        emptyLog->mPartsCount = part;
+        emptyLog->mPart       = part;
+        emptyLog->mStatus     = cloudprotocol::LogStatusEnum::eEmpty;
 
         mLogReceiver.OnLogReceived(*emptyLog);
 
@@ -75,11 +74,10 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
 
         auto logPart = std::make_unique<cloudprotocol::PushLog>();
 
-        logPart->mMessageType = cloudprotocol::LogMessageTypeEnum::ePushLog;
-        logPart->mLogID       = logID;
-        logPart->mPartsCount  = mLogStreams.size();
-        logPart->mPart        = part;
-        logPart->mStatus      = cloudprotocol::LogStatusEnum::eOk;
+        logPart->mLogID      = logID;
+        logPart->mPartsCount = mLogStreams.size();
+        logPart->mPart       = part;
+        logPart->mStatus     = cloudprotocol::LogStatusEnum::eOk;
 
         auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
         if (!err.IsNone()) {
