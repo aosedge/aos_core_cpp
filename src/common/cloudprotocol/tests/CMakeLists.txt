@@ -23,6 +23,7 @@ set(SOURCES
     monitoring.cpp
     provisioning.cpp
     servicediscovery.cpp
+    state.cpp
 )
 
 # ######################################################################################################################
