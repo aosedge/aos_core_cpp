@@ -17,6 +17,7 @@ set(TARGET_NAME cloudprotocol)
 set(SOURCES
     alerts.cpp
     certificates.cpp
+    cloudmessage.cpp
     common.cpp
     desiredstatus.cpp
     envvars.cpp
