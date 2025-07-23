@@ -295,7 +295,7 @@ public:
         result.mProviderID     = dbFields.get<Columns::eProviderID>().c_str();
         result.mImagePath      = dbFields.get<Columns::eImagePath>().c_str();
         result.mManifestDigest = dbFields.get<Columns::eManifestDigest>().c_str();
-        result.mState          = static_cast<sm::servicemanager::ServiceStateEnum>(dbFields.get<Columns::eCached>());
+        result.mState          = static_cast<ServiceStateEnum>(dbFields.get<Columns::eCached>());
         result.mTimestamp      = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
         result.mSize           = dbFields.get<Columns::eSize>();
         result.mGID            = dbFields.get<Columns::eGID>();
@@ -360,7 +360,7 @@ public:
         layer.mOSVersion           = dbFields.get<Columns::eOSVersion>().c_str();
         layer.mVersion             = dbFields.get<Columns::eVersion>().c_str();
         layer.mSize                = dbFields.get<Columns::eSize>();
-        layer.mState               = static_cast<sm::layermanager::LayerStateEnum>(dbFields.get<Columns::eState>());
+        layer.mState               = static_cast<LayerStateEnum>(dbFields.get<Columns::eState>());
         layer.mTimestamp           = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
 
         return layer;
