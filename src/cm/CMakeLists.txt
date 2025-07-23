@@ -23,4 +23,5 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_cm)
 
 add_subdirectory(app)
 add_subdirectory(config)
+add_subdirectory(networkmanager)
 add_subdirectory(storagestate)
