@@ -20,7 +20,6 @@
 #include <netlink/route/link.h>
 #include <netlink/route/link/bridge.h>
 #include <netlink/route/link/vlan.h>
-#include <netlink/route/route.h>
 
 #include <common/logger/logmodule.hpp>
 
@@ -437,52 +436,6 @@ Error InterfaceManager::SetMasterLink(const String& ifname, const String& master
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::GetRouteList(Array<RouteInfo>& routes) const
-{
-    LOG_DBG() << "List routes";
-
-    auto [sock, err] = CreateNetlinkSocket();
-    if (!err.IsNone()) {
-        return err;
-    }
-
-    nl_cache* cacheRaw;
-
-    if (auto errRouteCache = rtnl_route_alloc_cache(sock.get(), AF_INET, 0, &cacheRaw); errRouteCache < 0) {
-        return NLToAosErr(errRouteCache, "failed to allocate route cache");
-    }
-
-    [[maybe_unused]] auto cleanupCache = DeferRelease(cacheRaw, [](nl_cache* cache) { nl_cache_free(cache); });
-
-    for (auto obj = nl_cache_get_first(cacheRaw); obj != nullptr; obj = nl_cache_get_next(obj)) {
-        auto route = reinterpret_cast<struct rtnl_route*>(obj);
-
-        auto* nh = rtnl_route_nexthop_n(route, 0);
-        if (!nh) {
-            continue;
-        }
-
-        RouteInfo info;
-
-        info.mLinkIndex = rtnl_route_nh_get_ifindex(nh);
-
-        if (rtnl_route_get_table(route) == RT_TABLE_MAIN) {
-            if (const auto* dst = rtnl_route_get_dst(route); dst && nl_addr_get_prefixlen(dst) > 0) {
-                char buf[INET6_ADDRSTRLEN];
-
-                nl_addr2str(dst, buf, sizeof(buf));
-                info.mDestination = buf;
-            }
-        }
-
-        if (err = routes.PushBack(info); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error InterfaceManager::CreateBridge(const String& name, const String& ip, const String& subnet)
 {
     LOG_DBG() << "Create bridge: name=" << name << ", ip=" << ip << ", subnet=" << subnet;
@@ -538,6 +491,10 @@ Error InterfaceManager::CreateBridge(const String& name, const String& ip, const
 
 Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
 {
+    if (mRandom == nullptr) {
+        return Error(ErrorEnum::eFailed, "random generator is not initialized");
+    }
+
     LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId;
 
     auto [masterIndex, err] = GetMasterInterfaceIndex();
@@ -591,20 +548,6 @@ RetWithError<int> InterfaceManager::GetMasterInterfaceIndex() const
     return {-1, Error(ErrorEnum::eFailed, "no master interface found")};
 }
 
-RetWithError<InterfaceManager::UniqueNetlinkSocket> InterfaceManager::CreateNetlinkSocket() const
-{
-    auto sock = UniqueNetlinkSocket(nl_socket_alloc(), nl_socket_free);
-    if (!sock) {
-        return {nullptr, NLToAosErr(errno, "Failed to allocate netlink socket")};
-    }
-
-    if (nl_connect(sock.get(), NETLINK_ROUTE) < 0) {
-        return {nullptr, NLToAosErr(errno, "failed to connect to netlink")};
-    }
-
-    return {std::move(sock), ErrorEnum::eNone};
-}
-
 RetWithError<InterfaceManager::UniqueLink> InterfaceManager::CreateLink() const
 {
     auto link = UniqueLink(rtnl_link_alloc(), rtnl_link_put);
@@ -613,11 +556,6 @@ RetWithError<InterfaceManager::UniqueLink> InterfaceManager::CreateLink() const
     }
 
     return {std::move(link), ErrorEnum::eNone};
-}
-
-Error InterfaceManager::NLToAosErr(int nlError, const std::string& message) const
-{
-    return Error(ErrorEnum::eFailed, (message + ": " + std::string(nl_geterror(nlError))).c_str());
 }
 
 } // namespace aos::common::network

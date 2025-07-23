@@ -7,7 +7,6 @@
 #ifndef AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
 #define AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
 
-#include <functional>
 #include <optional>
 #include <string>
 
@@ -15,6 +14,8 @@
 
 #include <core/common/crypto/crypto.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
+
+#include "utils.hpp"
 
 // Forward declarations
 struct nl_sock;
@@ -40,14 +41,6 @@ struct IPAddr {
     std::string mSubnet;
     int         mFamily = AF_INET;
     std::string mLabel;
-};
-
-/**
- * Route info.
- */
-struct RouteInfo {
-    std::optional<std::string> mDestination;
-    int                        mLinkIndex;
 };
 
 /**
@@ -197,13 +190,13 @@ public:
      */
     Error CreateVlan(const String& name, uint64_t vlanId) override;
 
-    /**
-     * Gets route list.
-     *
-     * @param[out] routes routes.
-     * @return Error.
-     */
-    Error GetRouteList(Array<RouteInfo>& routes) const;
+    // /**
+    //  * Gets route list.
+    //  *
+    //  * @param[out] routes routes.
+    //  * @return Error.
+    //  */
+    // Error GetRouteList(Array<RouteInfo>& routes) const;
 
     /**
      * Adds link.
@@ -242,18 +235,11 @@ public:
     Error GetAddrList(const String& ifname, int family, Array<IPAddr>& addr) const;
 
 private:
-    using NetlinkSocketDeleter = std::function<void(nl_sock*)>;
-    using UniqueNetlinkSocket  = std::unique_ptr<nl_sock, NetlinkSocketDeleter>;
-
     using LinkDeleter = std::function<void(rtnl_link*)>;
     using UniqueLink  = std::unique_ptr<rtnl_link, LinkDeleter>;
 
-    static constexpr size_t cMaxRouteCount = 20;
-
-    RetWithError<int>                 GetMasterInterfaceIndex() const;
-    RetWithError<UniqueNetlinkSocket> CreateNetlinkSocket() const;
-    RetWithError<UniqueLink>          CreateLink() const;
-    Error                             NLToAosErr(int nlError, const std::string& message) const;
+    RetWithError<int>        GetMasterInterfaceIndex() const;
+    RetWithError<UniqueLink> CreateLink() const;
 
     crypto::RandomItf* mRandom {};
 };
