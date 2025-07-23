@@ -118,7 +118,7 @@ aos::sm::servicemanager::ServiceData CreateServiceData(
     service.mImagePath      = "image-path";
     service.mManifestDigest = "manifest-digest";
     service.mTimestamp      = aos::Time::Now();
-    service.mState          = aos::sm::servicemanager::ServiceStateEnum::eActive;
+    service.mState          = aos::ServiceStateEnum::eActive;
     service.mSize           = 1024;
     service.mGID            = 16;
 
@@ -386,7 +386,7 @@ TEST_F(DatabaseTest, UpdateService)
     ASSERT_TRUE(mDB.AddService(service).IsNone());
 
     service.mGID += 1;
-    service.mState     = aos::sm::servicemanager::ServiceStateEnum::eActive;
+    service.mState     = aos::ServiceStateEnum::eActive;
     service.mTimestamp = aos::Time::Now();
 
     ASSERT_TRUE(mDB.UpdateService(service).IsNone());
@@ -409,7 +409,7 @@ TEST_F(DatabaseTest, UpdateServiceVersionFails)
 
     auto updatedService       = service;
     updatedService.mVersion   = "0.0.2";
-    updatedService.mState     = aos::sm::servicemanager::ServiceStateEnum::eCached;
+    updatedService.mState     = aos::ServiceStateEnum::eCached;
     updatedService.mTimestamp = aos::Time::Now();
 
     ASSERT_FALSE(mDB.UpdateService(updatedService).IsNone());
@@ -619,9 +619,9 @@ TEST_F(DatabaseTest, GetAllLayers)
 
     aos::StaticArray<aos::sm::layermanager::LayerData, 2> layers;
     layers.PushBack({"digest-1", "unpacked-1", "layerID-1", "path-1", "osVersion-1", "version-1", aos::Time::Now(),
-        aos::sm::layermanager::LayerStateEnum::eCached, 1024});
+        aos::LayerStateEnum::eCached, 1024});
     layers.PushBack({"digest-2", "unpacked-2", "layerID-2", "path-2", "osVersion-2", "version-2", aos::Time::Now(),
-        aos::sm::layermanager::LayerStateEnum::eActive, 2048});
+        aos::LayerStateEnum::eActive, 2048});
 
     for (const auto& layer : layers) {
         ASSERT_TRUE(mDB.AddLayer(layer).IsNone());
@@ -649,7 +649,7 @@ TEST_F(DatabaseTest, GetLayerSucceeds)
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
     aos::sm::layermanager::LayerData layer {"digest-1", "unpacked-digest", "layerID-1", "path-1", "osVersion-1",
-        "version-1", aos::Time::Now(), aos::sm::layermanager::LayerStateEnum::eActive, 1024};
+        "version-1", aos::Time::Now(), aos::LayerStateEnum::eActive, 1024};
 
     ASSERT_TRUE(mDB.AddLayer(layer).IsNone());
 
@@ -683,7 +683,7 @@ TEST_F(DatabaseTest, UpdateLayerReturnsNotFound)
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
     aos::sm::layermanager::LayerData layer {"digest-1", "unpacked-1", "layerID-1", "path-1", "osVersion-1", "version-1",
-        aos::Time::Now(), aos::sm::layermanager::LayerStateEnum::eActive, 1024};
+        aos::Time::Now(), aos::LayerStateEnum::eActive, 1024};
 
     EXPECT_TRUE(mDB.UpdateLayer(layer).Is(aos::ErrorEnum::eNotFound));
 }
