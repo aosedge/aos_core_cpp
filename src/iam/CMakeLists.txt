@@ -12,7 +12,7 @@
 find_package(Poco REQUIRED Foundation Util JSON DataSQLite)
 
 # ######################################################################################################################
-# Target aliases
+# Target properties
 # ######################################################################################################################
 
 set(TARGET_NAMESPACE ${TARGET_NAMESPACE}::iam)
