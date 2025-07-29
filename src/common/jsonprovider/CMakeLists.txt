@@ -20,7 +20,7 @@ set(SOURCES jsonprovider.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon)
+set(LIBRARIES aos::common::cloudprotocol aos::common::utils aoscommon)
 
 # ######################################################################################################################
 # Target

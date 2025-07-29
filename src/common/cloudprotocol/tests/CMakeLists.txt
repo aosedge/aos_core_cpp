@@ -18,6 +18,7 @@ set(SOURCES
     alerts.cpp
     certificates.cpp
     common.cpp
+    desiredstatus.cpp
     envvars.cpp
     log.cpp
     monitoring.cpp
