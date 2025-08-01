@@ -4,24 +4,38 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Dependencies
-# ######################################################################################################################
-
-find_package(Poco REQUIRED Util)
+set(TARGET_NAME monitoring)
 
 # ######################################################################################################################
-# Target properties
+# Sources
 # ######################################################################################################################
 
-set(TARGET_NAMESPACE ${TARGET_NAMESPACE}::cm)
-set(TARGET_PREFIX ${TARGET_PREFIX}_cm)
+set(SOURCES monitoring.cpp)
 
 # ######################################################################################################################
-# Modules
+# Libraries
 # ######################################################################################################################
 
-add_subdirectory(app)
-add_subdirectory(config)
-add_subdirectory(monitoring)
-add_subdirectory(storagestate)
+set(LIBRARIES aos::core::common::connectionprovider aos::core::common::monitoring aos::core::cm::communication
+              aos::common::utils
+)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
+
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()
