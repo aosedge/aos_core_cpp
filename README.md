@@ -107,19 +107,8 @@ file in your browser.
 
 ## Use docker container
 
-Build container:
-
-```console
-docker build -t aos-core-build:latest -f docker/Dockerfile .
-```
-
-Run container:
-
-```console
-docker run -v ${PWD}:/opt/aos_core_cpp -w /opt/aos_core_cpp -it --rm aos-core-build:latest
-```
-
-All above commands for build, test, coverage etc. can be used inside the docker container.
+You can build and use container from [aos_core_lib_cpp](https://github.com/aosedge/aos_core_lib_cpp) repo. See
+[this chapter](https://github.com/aosedge/aos_core_lib_cpp?tab=readme-ov-file#use-docker-container) for details.
 
 ## Development tools
 
