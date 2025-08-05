@@ -9,8 +9,8 @@
 
 #include <Poco/JSON/Parser.h>
 
-#include <aos/common/cloudprotocol/log.hpp>
-#include <aos/common/tools/fs.hpp>
+#include <core/common/cloudprotocol/log.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>

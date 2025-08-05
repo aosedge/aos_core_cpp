@@ -12,12 +12,12 @@
 
 #include <Poco/Dynamic/Var.h>
 
-#include <aos/common/logprovider/config.hpp>
-#include <aos/common/monitoring/resourcemonitor.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/sm/launcher/config.hpp>
-#include <aos/sm/layermanager.hpp>
-#include <aos/sm/servicemanager.hpp>
+#include <core/common/logprovider/config.hpp>
+#include <core/common/monitoring/resourcemonitor.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/sm/launcher/config.hpp>
+#include <core/sm/layermanager/layermanager.hpp>
+#include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/config/config.hpp>
 #include <common/iamclient/publicservicehandler.hpp>

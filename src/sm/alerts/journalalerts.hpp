@@ -13,7 +13,7 @@
 #include <thread>
 #include <vector>
 
-#include <aos/common/cloudprotocol/cloudprotocol.hpp>
+#include <core/common/cloudprotocol/cloudprotocol.hpp>
 
 #include <sm/config/config.hpp>
 #include <sm/utils/journal.hpp>

@@ -8,7 +8,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/runner/runner.hpp>
 
@@ -48,7 +48,7 @@ class RunnerTest : public Test {
 public:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         mRunner.Init(mRunStatusReceiver);
     }

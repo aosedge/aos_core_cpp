@@ -34,8 +34,11 @@ set(LIBRARIES
     aos::common::downloader
     aos::common::ocispec
     aos::common::version
-    aoscommon
-    aossm
+    aos::core::common::monitoring
+    aos::core::common::version
+    aos::core::sm::layermanager
+    aos::core::sm::servicemanager
+    aos::core::sm::launcher
     Poco::Util
 )
 

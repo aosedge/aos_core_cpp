@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/utils/json.hpp>
 #include <sm/networkmanager/cni.hpp>
@@ -30,7 +30,7 @@ class CNITest : public ::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         mExec = std::make_unique<::StrictMock<MockExec>>();
         mCNI.Init(*mExec.get());

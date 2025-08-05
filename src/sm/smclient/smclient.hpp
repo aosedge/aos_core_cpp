@@ -13,21 +13,21 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
-#include <aos/common/alerts/alerts.hpp>
-#include <aos/common/cloudprotocol/alerts.hpp>
-#include <aos/common/connectionsubsc.hpp>
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/monitoring/monitoring.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/thread.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <aos/iam/nodeinfoprovider.hpp>
-#include <aos/iam/provisionmanager.hpp>
-#include <aos/sm/launcher.hpp>
-#include <aos/sm/logprovider.hpp>
-#include <aos/sm/networkmanager.hpp>
-#include <aos/sm/resourcemanager.hpp>
+#include <core/common/alerts/alerts.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
+#include <core/common/connectionprovider/connectionprovider.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/monitoring/monitoring.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/thread.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/provisionmanager/provisionmanager.hpp>
+#include <core/sm/launcher/launcher.hpp>
+#include <core/sm/logprovider/logprovider.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/resourcemanager/resourcemanager.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 

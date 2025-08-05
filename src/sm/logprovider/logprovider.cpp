@@ -9,7 +9,7 @@
 #include <systemd/sd-journal.h>
 #undef LOG_ERR
 
-#include <aos/common/crypto/crypto.hpp>
+#include <core/common/crypto/crypto.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>

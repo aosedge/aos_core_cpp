@@ -11,9 +11,9 @@
 #include <shared_mutex>
 #include <unordered_map>
 
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/timer.hpp>
-#include <aos/sm/networkmanager.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/timer.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 #include <common/network/iptables.hpp>
 #include <common/utils/time.hpp>

@@ -16,7 +16,7 @@ set(SOURCES resourcemanager.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::JSON)
+set(LIBRARIES aos::common::utils aos::core::sm::resourcemanager Poco::JSON)
 
 # ######################################################################################################################
 # Target
