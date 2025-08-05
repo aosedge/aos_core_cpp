@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <mp/logprovider/archivemanager.hpp>
 
@@ -130,7 +130,7 @@ class ArchiveManagerTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         mConfig.mMaxPartCount = 10;
         mConfig.mMaxPartSize  = 1024;

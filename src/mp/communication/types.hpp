@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-#include <aos/common/tools/error.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <common/iamclient/publicservicehandler.hpp>
 

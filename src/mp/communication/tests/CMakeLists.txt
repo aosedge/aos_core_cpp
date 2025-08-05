@@ -30,8 +30,8 @@ set(COMPILE_OPTIONS -Wno-deprecated-declarations)
 set(LIBRARIES
     aos::mp::communication
     aos::common::downloader
-    aosiam
-    aostestutils
+    aos::common::tests::utils
+    aos::core::common::tests::crypto
     GTest::gmock_main
     OpenSSL::Crypto
     OpenSSL::SSL

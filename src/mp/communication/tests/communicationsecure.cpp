@@ -13,12 +13,12 @@
 #include <openssl/err.h>
 #include <openssl/trace.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <aos/test/log.hpp>
-#include <aos/test/softhsmenv.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tests/crypto/softhsmenv.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
@@ -108,7 +108,7 @@ protected:
 
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         std::filesystem::create_directories(mTmpDir);
 

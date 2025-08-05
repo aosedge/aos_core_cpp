@@ -28,8 +28,9 @@ set(LIBRARIES
     aos::common::downloader
     aos::common::logger
     aos::common::version
-    aoscommon
-    aoscrypto
+    aos::core::common::crypto
+    aos::core::common::pkcs11
+    aos::core::common::version
     CURL::libcurl
     Poco::Foundation
     Poco::Util

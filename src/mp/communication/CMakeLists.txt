@@ -38,9 +38,9 @@ set(LIBRARIES
     aos::mp::imageunpacker
     aos::mp::logprovider
     aos::common::downloader
+    aos::common::iamclient
     aos::common::logger
     aos::common::pbconvert
-    aoscommon
     aos::api::sm
     aos::api::protocol
     OpenSSL::Crypto

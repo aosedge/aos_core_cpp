@@ -12,7 +12,7 @@
 #include <Poco/JSON/Parser.h>
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <mp/config/config.hpp>
 
@@ -41,7 +41,7 @@ class ConfigTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         tempConfigFile = "temp_config.json";
 

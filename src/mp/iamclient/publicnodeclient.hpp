@@ -19,7 +19,7 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
-#include <aos/common/tools/error.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 

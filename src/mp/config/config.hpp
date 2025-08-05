@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <aos/common/logprovider/config.hpp>
-#include <aos/common/tools/error.hpp>
+#include <core/common/logprovider/config.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <common/utils/time.hpp>
 

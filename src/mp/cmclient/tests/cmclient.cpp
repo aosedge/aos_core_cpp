@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/iamclient/publicservicehandler.hpp>
 #include <common/tests/mocks/iamclientmock.hpp>
@@ -280,7 +280,7 @@ public:
 protected:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         mSMService.emplace(mCfg.mCMConfig.mCMServerURL);
 
