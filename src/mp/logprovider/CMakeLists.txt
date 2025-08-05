@@ -20,7 +20,7 @@ set(SOURCES archivemanager.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::logger aos::common::logprovider aoscommon aos::api::sm)
+set(LIBRARIES aos::common::logger aos::common::logprovider aos::api::sm)
 
 # ######################################################################################################################
 # Target

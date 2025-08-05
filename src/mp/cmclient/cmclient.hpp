@@ -18,8 +18,8 @@
 
 #include <grpcpp/security/credentials.h>
 
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/error.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 

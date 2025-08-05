@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <mp/iamclient/publicnodeclient.hpp>
 
@@ -35,7 +35,7 @@ public:
 protected:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         mIAMServerStub.emplace();
         mClient.emplace();

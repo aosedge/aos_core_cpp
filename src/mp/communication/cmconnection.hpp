@@ -20,8 +20,8 @@
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
 
-#include <aos/common/downloader/downloader.hpp>
-#include <aos/common/tools/error.hpp>
+#include <core/common/downloader/downloader.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <common/downloader/downloader.hpp>
 #include <mp/config/config.hpp>

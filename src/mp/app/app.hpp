@@ -13,8 +13,8 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 
 #include <common/downloader/downloader.hpp>
 #include <common/iamclient/publicservicehandler.hpp>

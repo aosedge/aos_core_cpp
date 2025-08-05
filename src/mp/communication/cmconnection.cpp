@@ -9,8 +9,8 @@
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
 
-#include <aos/common/cloudprotocol/alerts.hpp>
-#include <aos/common/cloudprotocol/log.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
+#include <core/common/cloudprotocol/log.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
