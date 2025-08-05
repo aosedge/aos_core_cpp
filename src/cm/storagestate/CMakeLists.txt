@@ -20,7 +20,7 @@ set(SOURCES storagestate.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::logger aos::common::utils aos::cm::config aoscommon)
+set(LIBRARIES aos::common::logger aos::common::utils aos::cm::config)
 
 # ######################################################################################################################
 # Target

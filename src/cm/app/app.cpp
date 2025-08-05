@@ -12,7 +12,7 @@
 #include <Poco/Util/HelpFormatter.h>
 #include <systemd/sd-daemon.h>
 
-#include <aos/common/version.hpp>
+#include <core/common/version/version.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -224,8 +224,8 @@ void App::HandleVersion(const std::string& name, const std::string& value)
 
     mStopProcessing = true;
 
-    std::cout << "Aos CM version: " << AOS_CORE_CPP_VERSION << std::endl;
-    std::cout << "Aos core library version: " << AOS_CORE_VERSION << std::endl;
+    std::cout << "Aos CM version:           " << AOS_CORE_CPP_VERSION << std::endl;
+    std::cout << "Aos core library version: " << AOS_CORE_LIB_VERSION << std::endl;
 
     stopOptionsProcessing();
 }
