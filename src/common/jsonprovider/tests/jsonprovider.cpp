@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/jsonprovider/jsonprovider.hpp>
 
@@ -351,7 +351,7 @@ void CompareNodeConfig(
  **********************************************************************************************************************/
 class JSONProviderTest : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 
     JSONProvider mProvider;
 };

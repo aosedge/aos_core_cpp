@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <aos/common/tools/string.hpp>
+#include <core/common/tools/string.hpp>
 
 namespace aos::common::utils {
 

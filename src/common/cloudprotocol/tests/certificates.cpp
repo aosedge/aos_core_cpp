@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/certificates.hpp>
 #include <common/utils/json.hpp>
@@ -22,7 +22,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolCertificates : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -36,7 +36,7 @@ TEST_F(CloudProtocolCertificates, EmptyIssuedUnitCerts)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -46,7 +46,7 @@ TEST_F(CloudProtocolCertificates, EmptyIssuedUnitCerts)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::IssuedUnitCerts>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -70,7 +70,7 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -80,7 +80,7 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::IssuedUnitCerts>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -92,7 +92,7 @@ TEST_F(CloudProtocolCertificates, EmptyInstallUnitCertsConfirmation)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -102,7 +102,7 @@ TEST_F(CloudProtocolCertificates, EmptyInstallUnitCertsConfirmation)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::InstallUnitCertsConfirmation>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -130,7 +130,7 @@ TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -140,7 +140,7 @@ TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::InstallUnitCertsConfirmation>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -152,7 +152,7 @@ TEST_F(CloudProtocolCertificates, EmptyRenewCertsNotification)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -163,7 +163,7 @@ TEST_F(CloudProtocolCertificates, EmptyRenewCertsNotification)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::RenewCertsNotification>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -192,7 +192,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*certificates, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -202,7 +202,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
     auto unparsedCertificates = std::make_unique<aos::cloudprotocol::RenewCertsNotification>();
 
     err = FromJSON(wrapper, *unparsedCertificates);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*certificates, *unparsedCertificates);
 }
@@ -214,7 +214,7 @@ TEST_F(CloudProtocolCertificates, EmptyIssueUnitCerts)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*issueUnitCerts, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -224,7 +224,7 @@ TEST_F(CloudProtocolCertificates, EmptyIssueUnitCerts)
     auto unparsedIssueUnitCerts = std::make_unique<aos::cloudprotocol::IssueUnitCerts>();
 
     err = FromJSON(wrapper, *unparsedIssueUnitCerts);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*issueUnitCerts, *unparsedIssueUnitCerts);
 }
@@ -248,7 +248,7 @@ TEST_F(CloudProtocolCertificates, IssueUnitCerts)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*issueUnitCerts, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -258,7 +258,7 @@ TEST_F(CloudProtocolCertificates, IssueUnitCerts)
     auto unparsedIssueUnitCerts = std::make_unique<aos::cloudprotocol::IssueUnitCerts>();
 
     err = FromJSON(wrapper, *unparsedIssueUnitCerts);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*issueUnitCerts, *unparsedIssueUnitCerts);
 }

@@ -15,8 +15,8 @@
 #include <thread>
 #include <unordered_map>
 
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/time.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/time.hpp>
 
 namespace aos::common::utils {
 

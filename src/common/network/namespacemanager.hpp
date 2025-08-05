@@ -9,7 +9,7 @@
 
 #include <filesystem>
 
-#include <aos/sm/networkmanager.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 namespace aos::common::network {
 

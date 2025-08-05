@@ -7,7 +7,7 @@
 #ifndef AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
 #define AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
 
-#include <aos/sm/resourcemanager.hpp>
+#include <core/sm/resourcemanager/resourcemanager.hpp>
 
 namespace aos::common::jsonprovider {
 

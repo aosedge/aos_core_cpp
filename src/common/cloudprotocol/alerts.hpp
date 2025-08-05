@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/alerts.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
 
 #include <common/utils/json.hpp>
 

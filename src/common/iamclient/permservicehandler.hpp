@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-#include <aos/iam/permhandler.hpp>
+#include <core/iam/permhandler/permhandler.hpp>
 
 #include "publicservicehandler.hpp"
 

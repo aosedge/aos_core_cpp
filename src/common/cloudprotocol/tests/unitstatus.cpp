@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/unitstatus.hpp>
 #include <common/utils/json.hpp>
@@ -22,7 +22,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolUnitStatus : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -36,7 +36,7 @@ TEST_F(CloudProtocolUnitStatus, EmptyUnitStatus)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*status, *json);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     auto jsonWrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -85,7 +85,7 @@ TEST_F(CloudProtocolUnitStatus, UnitConfigStatus)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*status, *json);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     auto jsonWrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -101,7 +101,7 @@ TEST_F(CloudProtocolUnitStatus, UnitConfigStatus)
     auto unparsedStatus = std::make_unique<aos::cloudprotocol::UnitStatus>();
 
     err = FromJSON(jsonWrapper, *unparsedStatus);
-    ASSERT_TRUE(err.IsNone()) << "Failed to parse JSON: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to parse JSON: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*status, *unparsedStatus);
 }
@@ -113,7 +113,7 @@ TEST_F(CloudProtocolUnitStatus, EmptyDeltaUnitStatus)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*status, *json);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     auto jsonWrapper = utils::CaseInsensitiveObjectWrapper(json);
 

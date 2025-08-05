@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/monitoring.hpp>
 #include <common/utils/json.hpp>
@@ -22,7 +22,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolMonitoring : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -36,7 +36,7 @@ TEST_F(CloudProtocolMonitoring, EmptyMonitoring)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*monitoring, *json);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     auto jsonWrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -47,7 +47,7 @@ TEST_F(CloudProtocolMonitoring, EmptyMonitoring)
     auto unparsedMonitoring = std::make_unique<aos::cloudprotocol::Monitoring>();
 
     err = FromJSON(jsonWrapper, *unparsedMonitoring);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*monitoring, *unparsedMonitoring);
 }
@@ -82,7 +82,7 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*monitoring, *json);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     auto jsonWrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -93,7 +93,7 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
     auto unparsedMonitoring = std::make_unique<aos::cloudprotocol::Monitoring>();
 
     err = FromJSON(jsonWrapper, *unparsedMonitoring);
-    ASSERT_TRUE(err.IsNone()) << "Error: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*monitoring, *unparsedMonitoring);
 }

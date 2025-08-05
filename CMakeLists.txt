@@ -90,6 +90,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Dependencies
 # ######################################################################################################################
 
+set(VERSION_CMAKE_PATH ${AOS_CORE_LIB_DIR}/cmake)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${AOS_CORE_LIB_DIR}/cmake)
 
 if(WITH_TEST)

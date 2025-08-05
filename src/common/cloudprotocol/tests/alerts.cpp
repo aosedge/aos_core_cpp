@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/alerts.hpp>
 #include <common/utils/json.hpp>
@@ -160,7 +160,7 @@ std::unique_ptr<aos::cloudprotocol::AlertVariant> CreateResourceValidateAlertWit
  **********************************************************************************************************************/
 class CloudProtocolAlerts : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -174,7 +174,7 @@ TEST_F(CloudProtocolAlerts, EmptyAlerts)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*alerts, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -184,7 +184,7 @@ TEST_F(CloudProtocolAlerts, EmptyAlerts)
     auto unparsedAlerts = std::make_unique<aos::cloudprotocol::Alerts>();
 
     err = FromJSON(wrapper, *unparsedAlerts);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(CloudProtocolAlerts, AlertsArray)
@@ -205,13 +205,13 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
 
     for (const auto& alert : alertsArray) {
         auto err = alerts->mItems.PushBack(*alert);
-        ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+        ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
     }
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*alerts, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -221,7 +221,7 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
     auto unparsedAlerts = std::make_unique<aos::cloudprotocol::Alerts>();
 
     err = FromJSON(wrapper, *unparsedAlerts);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::common::cloudprotocol

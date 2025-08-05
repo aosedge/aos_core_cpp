@@ -20,7 +20,7 @@ set(SOURCES archivator.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::common::utils Poco::Foundation)
 
 # ######################################################################################################################
 # Target

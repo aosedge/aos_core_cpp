@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/desiredstatus.hpp>
 #include <common/utils/json.hpp>
@@ -195,7 +195,7 @@ void CompareNodeConfig(
 
 class CloudProtocolDesiredStatus : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -209,12 +209,12 @@ TEST_F(CloudProtocolDesiredStatus, NodeConfig)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*nodeConfig, *json);
-    ASSERT_TRUE(err.IsNone()) << "Failed to convert node config to JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to convert node config to JSON: " << aos::tests::utils::ErrorToStr(err);
 
     auto parsedNodeConfig = std::make_unique<aos::cloudprotocol::NodeConfig>();
 
     err = FromJSON(utils::CaseInsensitiveObjectWrapper(json), *parsedNodeConfig);
-    ASSERT_TRUE(err.IsNone()) << "Failed to parse node config from JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to parse node config from JSON: " << aos::tests::utils::ErrorToStr(err);
 
     CompareNodeConfig(*parsedNodeConfig, *nodeConfig);
 }
@@ -270,7 +270,7 @@ TEST_F(CloudProtocolDesiredStatus, EmptyDesiredStatus)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*desiredStatus, *json);
-    ASSERT_TRUE(err.IsNone()) << "Failed to convert desired status to JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to convert desired status to JSON: " << aos::tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -280,7 +280,7 @@ TEST_F(CloudProtocolDesiredStatus, EmptyDesiredStatus)
     auto parsedDesiredStatus = std::make_unique<aos::cloudprotocol::DesiredStatus>();
 
     err = FromJSON(wrapper, *parsedDesiredStatus);
-    ASSERT_TRUE(err.IsNone()) << "Failed to parse desired status from JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to parse desired status from JSON: " << aos::tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*desiredStatus, *parsedDesiredStatus) << "Parsed desired status does not match original";
 }
@@ -299,7 +299,7 @@ TEST_F(CloudProtocolDesiredStatus, DesiredStatus)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     auto err = ToJSON(*desiredStatus, *json);
-    ASSERT_TRUE(err.IsNone()) << "Failed to convert desired status to JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to convert desired status to JSON: " << aos::tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -309,7 +309,7 @@ TEST_F(CloudProtocolDesiredStatus, DesiredStatus)
     auto parsedDesiredStatus = std::make_unique<aos::cloudprotocol::DesiredStatus>();
 
     err = FromJSON(wrapper, *parsedDesiredStatus);
-    ASSERT_TRUE(err.IsNone()) << "Failed to parse desired status from JSON: " << aos::test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to parse desired status from JSON: " << aos::tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*desiredStatus, *parsedDesiredStatus) << "Parsed desired status does not match original";
 }

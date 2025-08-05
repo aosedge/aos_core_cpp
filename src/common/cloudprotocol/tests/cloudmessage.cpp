@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/cloudmessage.hpp>
 #include <common/utils/json.hpp>
@@ -59,7 +59,7 @@ private:
  **********************************************************************************************************************/
 class CloudProtocolCloudMessage : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -199,7 +199,7 @@ TEST_F(CloudProtocolCloudMessage, ConvertVariant)
 
         auto err = FromJSON(jsonStr, *parsedMessage);
         EXPECT_TRUE(err.IsNone()) << "caseNumber: " << i << ",json: " << jsonStr
-                                  << ", error: " << test::ErrorToStr(err);
+                                  << ", error: " << tests::utils::ErrorToStr(err);
 
         EXPECT_TRUE(*parsedMessage == *message);
     }

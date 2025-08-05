@@ -13,8 +13,8 @@
 
 #include <sys/socket.h>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/sm/networkmanager.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 // Forward declarations
 struct nl_sock;

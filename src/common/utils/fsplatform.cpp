@@ -11,7 +11,7 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 
-#include <aos/common/tools/fs.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include "fsplatform.hpp"
 

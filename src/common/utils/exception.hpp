@@ -10,10 +10,9 @@
 
 #include <Poco/Exception.h>
 
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/string.hpp>
-
-#include <aos/common/tools/log.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/log.hpp>
+#include <core/common/tools/string.hpp>
 
 /**
  * Helper macros for argument counting

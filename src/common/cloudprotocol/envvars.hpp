@@ -9,7 +9,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/envvars.hpp>
+#include <core/common/cloudprotocol/envvars.hpp>
 
 #include <common/utils/json.hpp>
 

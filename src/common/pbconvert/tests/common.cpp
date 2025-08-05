@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/pbconvert/common.hpp>
 
@@ -28,7 +28,7 @@ void CompareTimestamps(const aos::Time& lhs, const google::protobuf::Timestamp& 
 
 class PBConvertCommon : public Test {
 public:
-    void SetUp() override { aos::test::InitLog(); }
+    void SetUp() override { aos::tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************

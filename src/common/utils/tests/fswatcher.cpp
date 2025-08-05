@@ -20,7 +20,7 @@
 #include <common/utils/fswatcher.hpp>
 #include <common/utils/utils.hpp>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 namespace aos::common::utils::test {
 
@@ -129,7 +129,7 @@ struct TestParams {
 class FSWatcherTest : public ::testing::Test {
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
         std::filesystem::create_directory(cTestDir);
     }
 
