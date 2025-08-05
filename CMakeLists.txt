@@ -90,7 +90,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Dependencies
 # ######################################################################################################################
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake ${AOS_CORE_LIB_DIR}/cmake)
 
 if(WITH_TEST)
     find_package(GTest REQUIRED)
