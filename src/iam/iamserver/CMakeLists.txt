@@ -16,7 +16,16 @@ set(SOURCES iamserver.cpp nodecontroller.cpp protectedmessagehandler.cpp publicm
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::pbconvert aos::common::utils aoscommon aosiam aos::api::iam Poco::Util)
+set(LIBRARIES
+    aos::common::pbconvert
+    aos::common::utils
+    aos::api::iam
+    aos::core::iam::certhandler
+    aos::core::iam::nodeinfoprovider
+    aos::core::iam::nodemanager
+    aos::core::iam::provisionmanager
+    Poco::Util
+)
 
 # ######################################################################################################################
 # Target

@@ -7,11 +7,11 @@
 
 #include <memory>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/string.hpp>
-#include <aos/common/types.hpp>
-#include <aos/iam/certhandler.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/string.hpp>
+#include <core/common/types/types.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/iam.hpp>
@@ -26,7 +26,7 @@ namespace aos::iam::iamserver {
 
 Error PublicMessageHandler::Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
     iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    iam::nodemanager::NodeManagerItf& nodeManager, iam::certprovider::CertProviderItf& certProvider)
+    iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
 

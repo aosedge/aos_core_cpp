@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <aos/common/types.hpp>
+#include <core/common/types/types.hpp>
 
 namespace aos::iam::nodeinfoprovider::utils {
 

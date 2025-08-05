@@ -9,8 +9,8 @@
 #include <Poco/JSON/Object.h>
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/identhandlermock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/identhandlermock.hpp>
 
 #include <iam/identhandler/fileidentifier/fileidentifier.hpp>
 
@@ -43,7 +43,7 @@ class FileIdentifierTest : public testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         if (std::ofstream f(cSystemIDPath); f) {
             f << cSystemID;

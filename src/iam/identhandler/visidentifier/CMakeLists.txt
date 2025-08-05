@@ -20,7 +20,6 @@ set(LIBRARIES
     aos::common::utils
     aos::common::logger
     aos::iam::config
-    aoscommon
     Poco::Foundation
     Poco::Crypto
     Poco::Net
