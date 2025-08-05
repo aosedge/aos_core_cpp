@@ -20,7 +20,7 @@ set(SOURCES config.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES ${TARGET_NAMESPACE}::utils aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::common::utils aos::common::utils aoscommon Poco::Foundation)
 
 # ######################################################################################################################
 # Target
