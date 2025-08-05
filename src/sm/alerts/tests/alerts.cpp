@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/tests/mocks/journalmock.hpp>
@@ -69,7 +69,7 @@ class JournalAlertsTest : public Test {
 public:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         mConfig
             = common::config::JournalAlerts {{"50-udev-default.rules", "getty@tty1.service", "quotaon.service"}, 4, 4};

@@ -16,7 +16,7 @@ set(SOURCES logprovider.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::utils aos::common::logprovider aoscommon Poco::JSON Poco::Foundation)
+set(LIBRARIES aos::sm::utils aos::common::logprovider Poco::JSON Poco::Foundation)
 
 # ######################################################################################################################
 # Target

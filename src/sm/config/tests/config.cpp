@@ -11,7 +11,7 @@
 #include <Poco/JSON/Object.h>
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/config/config.hpp>
 
@@ -105,7 +105,7 @@ class ConfigTest : public Test {
 public:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         if (std::ofstream file(cConfigFileName); file.good()) {
             file << cTestServiceManagerJSON;

@@ -9,8 +9,8 @@
 
 #include <map>
 
-#include <aos/common/monitoring/monitoring.hpp>
-#include <aos/sm/networkmanager.hpp>
+#include <core/common/monitoring/monitoring.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 namespace aos::sm::monitoring {
 

@@ -6,9 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-
-#include <mocks/networkmanagermock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/sm/tests/mocks/networkmanagermock.hpp>
 
 #include <sm/monitoring/resourceusageprovider.hpp>
 
@@ -18,7 +17,7 @@ namespace aos::sm::monitoring {
 
 class ResourceUsageProviderTest : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 
     ResourceUsageProvider              mResourceUsageProvider;
     networkmanager::NetworkManagerMock mNetworkManager;

@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/database/database.hpp>
 
@@ -143,7 +143,7 @@ class DatabaseTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         std::filesystem::remove_all(sWorkingDir);
 

@@ -16,15 +16,7 @@ set(SOURCES smclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    aos::common::iamclient
-    aos::common::pbconvert
-    aos::common::utils
-    aoscommon
-    aossm
-    aos::api::sm
-    Poco::Util
-)
+set(LIBRARIES aos::common::iamclient aos::common::pbconvert aos::common::utils aos::api::sm Poco::Util)
 
 # ######################################################################################################################
 # Target

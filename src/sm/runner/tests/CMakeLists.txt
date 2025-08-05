@@ -22,7 +22,7 @@ set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::runner aostestutils GTest::gmock_main)
+set(LIBRARIES aos::sm::runner aos::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

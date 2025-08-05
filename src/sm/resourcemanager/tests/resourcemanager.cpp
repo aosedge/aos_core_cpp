@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/resourcemanager/resourcemanager.hpp>
 
@@ -16,7 +16,7 @@ namespace aos::sm::resourcemanager {
 
 class ResourcemanagerTest : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 
     HostDeviceManager mHostDeviceManager;
 };

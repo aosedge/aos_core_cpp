@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/networkmanager/trafficmonitor.hpp>
 
@@ -24,7 +24,7 @@ class TrafficMonitorTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         mStorage  = std::make_unique<StrictMock<MockStorage>>();
         mIPTables = std::make_unique<StrictMock<aos::common::network::MockIPTables>>();

@@ -11,17 +11,17 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/certhandlermock.hpp>
-#include <mocks/connectionsubscmock.hpp>
-#include <mocks/cryptomock.hpp>
-#include <mocks/launchermock.hpp>
-#include <mocks/logprovidermock.hpp>
-#include <mocks/monitoringmock.hpp>
-#include <mocks/networkmanagermock.hpp>
-#include <mocks/nodeinfoprovidermock.hpp>
-#include <mocks/provisionmanagermock.hpp>
-#include <mocks/resourcemanagermock.hpp>
+#include <core/common/tests/mocks/connectionprovidermock.hpp>
+#include <core/common/tests/mocks/cryptomock.hpp>
+#include <core/common/tests/mocks/logprovidermock.hpp>
+#include <core/common/tests/mocks/monitoringmock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/certhandlermock.hpp>
+#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
+#include <core/iam/tests/mocks/provisionmanagermock.hpp>
+#include <core/sm/tests/mocks/launchermock.hpp>
+#include <core/sm/tests/mocks/networkmanagermock.hpp>
+#include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
@@ -373,7 +373,7 @@ private:
 
 class SMClientTest : public Test {
 protected:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 
     static sm::smclient::Config GetConfig()
     {

@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/sm/logprovider.hpp>
+#include <core/sm/logprovider/logprovider.hpp>
 
 #include <sm/logprovider/logprovider.hpp>
 

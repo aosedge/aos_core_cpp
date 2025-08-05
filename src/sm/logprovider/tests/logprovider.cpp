@@ -10,7 +10,7 @@
 #include <Poco/InflatingStream.h>
 #include <Poco/StreamCopier.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/logprovider/logprovider.hpp>
@@ -40,7 +40,7 @@ class LogProviderTest : public Test {
 public:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         auto config = aos::logprovider::Config {200, 10};
 

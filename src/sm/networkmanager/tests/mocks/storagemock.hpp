@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/sm/networkmanager.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 class MockStorage : public aos::sm::networkmanager::StorageItf {
 public:

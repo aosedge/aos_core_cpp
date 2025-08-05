@@ -17,10 +17,10 @@
 #include <Poco/StreamCopier.h>
 #include <gtest/gtest.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/test/log.hpp>
-#include <mocks/ocispecmock.hpp>
-#include <stubs/spaceallocatorstub.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tests/mocks/ocispecmock.hpp>
+#include <core/common/tests/stubs/spaceallocatorstub.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/utils/json.hpp>
 #include <sm/image/imagehandler.hpp>
@@ -313,7 +313,7 @@ class ImageTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         ASSERT_TRUE(mCryptoProvider.Init().IsNone());
 

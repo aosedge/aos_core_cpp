@@ -16,7 +16,7 @@ set(SOURCES runner.cpp systemdconn.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::JSON)
+set(LIBRARIES aos::common::utils Poco::JSON)
 
 # ######################################################################################################################
 # Target

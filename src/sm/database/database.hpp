@@ -11,11 +11,11 @@
 #include <optional>
 #include <string>
 
-#include <aos/common/cloudprotocol/alerts.hpp>
-#include <aos/sm/launcher.hpp>
-#include <aos/sm/layermanager.hpp>
-#include <aos/sm/networkmanager.hpp>
-#include <aos/sm/servicemanager.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
+#include <core/sm/launcher/launcher.hpp>
+#include <core/sm/layermanager/layermanager.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/migration/migration.hpp>
 #include <sm/alerts/alerts.hpp>
