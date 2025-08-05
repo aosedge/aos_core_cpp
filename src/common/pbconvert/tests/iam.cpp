@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/pbconvert/iam.hpp>
 
@@ -75,7 +75,7 @@ NodeInfo CreateNodeInfo()
 
 class PBConvertIAMTest : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************

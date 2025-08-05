@@ -7,7 +7,7 @@
 #ifndef AOS_COMMON_OCISPEC_OCISPEC_HPP_
 #define AOS_COMMON_OCISPEC_OCISPEC_HPP_
 
-#include <aos/common/ocispec/ocispec.hpp>
+#include <core/common/ocispec/ocispec.hpp>
 
 namespace aos::common::oci {
 

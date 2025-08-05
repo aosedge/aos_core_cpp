@@ -17,7 +17,7 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-#include <aos/common/tools/error.hpp>
+#include <core/common/tools/error.hpp>
 
 namespace aos::common::fileserver {
 

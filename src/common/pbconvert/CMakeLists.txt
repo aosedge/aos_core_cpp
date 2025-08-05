@@ -34,7 +34,7 @@ set(COMPILE_OPTIONS -Wno-format-truncation)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Util)
+set(LIBRARIES aos::common::utils Poco::Util)
 
 if(WITH_IAM_API)
     list(APPEND LIBRARIES aos::api::iam)

@@ -13,7 +13,7 @@
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
-#include <aos/iam/certhandler.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
 
 /**
  * Test IAM server.

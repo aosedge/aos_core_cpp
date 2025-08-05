@@ -11,7 +11,7 @@
 
 #include <Poco/String.h>
 
-#include <aos/common/tools/string.hpp>
+#include <core/common/tools/string.hpp>
 
 #include <common/utils/utils.hpp>
 

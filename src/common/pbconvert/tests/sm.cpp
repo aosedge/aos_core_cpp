@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/pbconvert/sm.hpp>
 
@@ -43,7 +43,7 @@ aos::Array<uint8_t> StringToArray(const aos::String& str)
 
 class PBConvertSMTest : public Test {
 public:
-    void SetUp() override { aos::test::InitLog(); }
+    void SetUp() override { aos::tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************

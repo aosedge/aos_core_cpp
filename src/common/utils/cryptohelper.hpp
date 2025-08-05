@@ -10,11 +10,11 @@
 
 #include <string>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/array.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/string.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/array.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/string.hpp>
 
 namespace aos::common::utils {
 

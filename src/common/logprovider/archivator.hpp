@@ -14,10 +14,10 @@
 
 #include <Poco/DeflatingStream.h>
 
-#include <aos/common/cloudprotocol/cloudprotocol.hpp>
-#include <aos/common/cloudprotocol/log.hpp>
-#include <aos/common/logprovider/config.hpp>
-#include <aos/sm/logprovider.hpp>
+#include <core/common/cloudprotocol/cloudprotocol.hpp>
+#include <core/common/cloudprotocol/log.hpp>
+#include <core/common/logprovider/config.hpp>
+#include <core/sm/logprovider/logprovider.hpp>
 
 namespace aos::common::logprovider {
 

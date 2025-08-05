@@ -20,7 +20,7 @@ set(SOURCES fileserver.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::fileserver aostestcore GTest::gmock_main Poco::Net)
+set(LIBRARIES aos::common::fileserver GTest::gmock_main Poco::Net)
 
 # ######################################################################################################################
 # Target

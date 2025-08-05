@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/noncopyable.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/noncopyable.hpp>
 
 namespace aos::common::network {
 

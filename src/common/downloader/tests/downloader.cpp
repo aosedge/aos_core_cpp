@@ -12,8 +12,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/alertsmock.hpp>
+#include <core/common/tests/mocks/alertsmock.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/downloader/downloader.hpp>
 
@@ -29,7 +29,7 @@ class DownloaderTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         std::filesystem::create_directory("download");
 

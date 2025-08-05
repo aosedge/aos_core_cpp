@@ -12,8 +12,8 @@
 #include <optional>
 #include <string>
 
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/time.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/time.hpp>
 
 namespace aos::common::utils {
 

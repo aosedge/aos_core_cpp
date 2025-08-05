@@ -8,8 +8,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/servicediscovery.hpp>
 #include <common/utils/json.hpp>
@@ -24,7 +24,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolServiceDiscovery : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************

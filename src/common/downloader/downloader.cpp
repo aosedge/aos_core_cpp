@@ -8,7 +8,7 @@
 #include <fstream>
 #include <thread>
 
-#include <aos/common/cloudprotocol/alerts.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>

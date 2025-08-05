@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/unitstatus.hpp>
+#include <core/common/cloudprotocol/unitstatus.hpp>
 
 #include <common/utils/json.hpp>
 

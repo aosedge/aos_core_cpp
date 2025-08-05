@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/envvars.hpp>
 #include <common/utils/json.hpp>
@@ -22,7 +22,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolEnvVars : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -36,7 +36,7 @@ TEST_F(CloudProtocolEnvVars, EmptyOverrideEnvVarsRequest)
     auto envVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsRequest>();
 
     auto err = ToJSON(*envVars, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -46,7 +46,7 @@ TEST_F(CloudProtocolEnvVars, EmptyOverrideEnvVarsRequest)
     auto unparsedEnvVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsRequest>();
 
     err = FromJSON(wrapper, *unparsedEnvVars);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedEnvVars, *envVars);
 }
@@ -81,7 +81,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
     envVars->mItems.Back().mFilter.mSubjectID.SetValue("subject2");
 
     auto err = ToJSON(*envVars, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -91,7 +91,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
     auto unparsedEnvVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsRequest>();
 
     err = FromJSON(wrapper, *unparsedEnvVars);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedEnvVars, *envVars);
 }
@@ -103,7 +103,7 @@ TEST_F(CloudProtocolEnvVars, EmptyOverrideEnvVarsStatuses)
     auto envVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsStatuses>();
 
     auto err = ToJSON(*envVars, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -113,7 +113,7 @@ TEST_F(CloudProtocolEnvVars, EmptyOverrideEnvVarsStatuses)
     auto unparsedEnvVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsStatuses>();
 
     err = FromJSON(wrapper, *unparsedEnvVars);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedEnvVars, *envVars);
 }
@@ -144,7 +144,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsStatuses)
     envVars->mStatuses.Back().mFilter.mSubjectID.SetValue("subject2");
 
     auto err = ToJSON(*envVars, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -154,7 +154,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsStatuses)
     auto unparsedEnvVars = std::make_unique<aos::cloudprotocol::OverrideEnvVarsStatuses>();
 
     err = FromJSON(wrapper, *unparsedEnvVars);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedEnvVars, *envVars);
 }

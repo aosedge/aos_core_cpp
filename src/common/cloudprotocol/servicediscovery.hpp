@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/servicediscovery.hpp>
+#include <core/common/cloudprotocol/servicediscovery.hpp>
 
 #include <common/utils/json.hpp>
 

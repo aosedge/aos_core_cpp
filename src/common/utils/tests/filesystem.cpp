@@ -10,9 +10,9 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/common/tools/fs.hpp>
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <common/utils/filesystem.hpp>
 
@@ -41,7 +41,7 @@ protected:
     void SetUp() override
     {
         fs::ClearDir(cTestDir);
-        test::InitLog();
+        tests::utils::InitLog();
     }
 };
 
@@ -160,14 +160,14 @@ TEST_F(FSTest, ChangeDirectoryOwner)
 
     if (getuid() != 0 && getgid() != 0) {
         auto err = ChangeOwner(root.string(), 0, 0);
-        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
     }
 
     auto err = ChangeOwner(root.string(), getuid(), getgid());
-    EXPECT_TRUE(err.IsNone()) << "Failed to change directory owner: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to change directory owner: " << tests::utils::ErrorToStr(err);
 
     err = ChangeOwner(root / "non_existent_dir", getuid(), getgid());
-    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(FSTest, ChangeFileOwner)
@@ -178,14 +178,14 @@ TEST_F(FSTest, ChangeFileOwner)
 
     if (getuid() != 0 && getgid() != 0) {
         auto err = ChangeOwner(file.string(), 0, 0);
-        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
     }
 
     auto err = ChangeOwner(file.string(), getuid(), getgid());
-    EXPECT_TRUE(err.IsNone()) << "Failed to change file owner: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to change file owner: " << tests::utils::ErrorToStr(err);
 
     err = ChangeOwner(file.string() + "-not-exists", getuid(), getgid());
-    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::common::utils

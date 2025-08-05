@@ -19,7 +19,7 @@
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
 
-#include <aos/common/tools/fs.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <common/logger/logmodule.hpp>
 

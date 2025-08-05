@@ -13,11 +13,11 @@
 #include <thread>
 #include <unordered_map>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/iam/certprovider.hpp>
-#include <aos/iam/nodeinfoprovider.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/iam/certhandler/certprovider.hpp>
+#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
@@ -33,7 +33,7 @@ struct Config {
     std::string mCACert;
 };
 
-class TLSCredentialsItf : public iam::certprovider::CertProviderItf {
+class TLSCredentialsItf : public iam::certhandler::CertProviderItf {
 public:
     /**
      * Gets MTLS configuration.

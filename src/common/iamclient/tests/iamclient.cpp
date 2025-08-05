@@ -8,8 +8,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/certhandlermock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/certhandlermock.hpp>
 
 #include <common/iamclient/permservicehandler.hpp>
 #include <common/iamclient/publicservicehandler.hpp>
@@ -31,7 +31,7 @@ public:
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         mIAMServerStub.emplace();
         mClient.emplace();

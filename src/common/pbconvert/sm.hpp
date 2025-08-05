@@ -7,12 +7,12 @@
 #ifndef AOS_COMMON_PBCONVERT_SM_HPP_
 #define AOS_COMMON_PBCONVERT_SM_HPP_
 
-#include <aos/common/cloudprotocol/alerts.hpp>
-#include <aos/common/cloudprotocol/envvars.hpp>
-#include <aos/common/cloudprotocol/log.hpp>
-#include <aos/common/monitoring/monitoring.hpp>
-#include <aos/common/types.hpp>
-#include <aos/sm/networkmanager.hpp>
+#include <core/common/cloudprotocol/alerts.hpp>
+#include <core/common/cloudprotocol/envvars.hpp>
+#include <core/common/cloudprotocol/log.hpp>
+#include <core/common/monitoring/monitoring.hpp>
+#include <core/common/types/types.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 

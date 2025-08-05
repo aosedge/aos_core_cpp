@@ -21,7 +21,7 @@ set(SOURCES migration.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::DataSQLite)
+set(LIBRARIES aos::common::utils Poco::DataSQLite)
 
 # ######################################################################################################################
 # Target

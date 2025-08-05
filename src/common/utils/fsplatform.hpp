@@ -7,7 +7,7 @@
 #ifndef AOS_COMMON_UTILS_FSPLATFORM_HPP_
 #define AOS_COMMON_UTILS_FSPLATFORM_HPP_
 
-#include <aos/common/tools/fs.hpp>
+#include <core/common/tools/fs.hpp>
 
 namespace aos::common::utils {
 

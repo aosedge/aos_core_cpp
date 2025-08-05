@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/monitoring.hpp>
+#include <core/common/cloudprotocol/monitoring.hpp>
 
 #include <common/utils/json.hpp>
 

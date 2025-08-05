@@ -9,9 +9,9 @@
 
 #include <google/protobuf/timestamp.pb.h>
 
-#include <aos/common/tools/optional.hpp>
-#include <aos/common/types.hpp>
-#include <aos/iam/permhandler.hpp>
+#include <core/common/tools/optional.hpp>
+#include <core/common/types/types.hpp>
+#include <core/iam/permhandler/permhandler.hpp>
 
 #include <common/v1/common.grpc.pb.h>
 #include <iamanager/v5/iamanager.grpc.pb.h>

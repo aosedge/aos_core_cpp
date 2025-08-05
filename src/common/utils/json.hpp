@@ -16,9 +16,9 @@
 #include <Poco/Dynamic/Var.h>
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/tools/array.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/common/tools/string.hpp>
+#include <core/common/tools/array.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/string.hpp>
 
 namespace aos::common::utils {
 /**

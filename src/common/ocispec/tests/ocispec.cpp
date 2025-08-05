@@ -7,8 +7,8 @@
 #include <Poco/JSON/Object.h>
 #include <gtest/gtest.h>
 
-#include <aos/common/tools/fs.hpp>
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <common/ocispec/ocispec.hpp>
 #include <common/utils/json.hpp>
@@ -262,7 +262,7 @@ class OCISpecTest : public Test {
 public:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         fs::ClearDir(cTestBaseDir);
 

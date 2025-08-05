@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/time.hpp>
@@ -116,7 +116,7 @@ private:
 
 class TimeTest : public Test {
 protected:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -189,7 +189,7 @@ TEST_F(TimeTest, ParseDurationFromInvalidString)
 
 TEST_F(TimeTest, FromToUTCString)
 {
-    test::InitLog();
+    tests::utils::InitLog();
 
     struct Test {
         std::string      input;

@@ -33,7 +33,7 @@ set(SOURCES
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::cloudprotocol aostestutils GTest::gmock_main)
+set(LIBRARIES aos::common::cloudprotocol aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

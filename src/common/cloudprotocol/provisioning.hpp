@@ -9,7 +9,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/cloudprotocol/provisioning.hpp>
+#include <core/common/cloudprotocol/provisioning.hpp>
 
 #include <common/utils/json.hpp>
 
