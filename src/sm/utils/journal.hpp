@@ -7,7 +7,7 @@
 #ifndef AOS_SM_UTILS_JOURNAL_HPP_
 #define AOS_SM_UTILS_JOURNAL_HPP_
 
-#include <aos/common/tools/time.hpp>
+#include <core/common/tools/time.hpp>
 
 #include <optional>
 #include <string>

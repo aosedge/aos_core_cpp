@@ -15,8 +15,8 @@
 #include <string>
 #include <thread>
 
-#include <aos/common/tools/time.hpp>
-#include <aos/common/types.hpp>
+#include <core/common/tools/time.hpp>
+#include <core/common/types/types.hpp>
 
 #include "systemdconn.hpp"
 

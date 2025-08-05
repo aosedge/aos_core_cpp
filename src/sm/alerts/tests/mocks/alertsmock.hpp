@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/common/alerts/alerts.hpp>
+#include <core/common/alerts/alerts.hpp>
 
 namespace aos::sm::alerts {
 

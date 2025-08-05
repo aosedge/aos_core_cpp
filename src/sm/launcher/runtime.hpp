@@ -7,7 +7,7 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIME_HPP_
 #define AOS_SM_LAUNCHER_RUNTIME_HPP_
 
-#include <aos/sm/launcher.hpp>
+#include <core/sm/launcher/launcher.hpp>
 
 namespace aos::sm::launcher {
 

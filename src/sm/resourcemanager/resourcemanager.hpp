@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <aos/sm/resourcemanager.hpp>
+#include <core/sm/resourcemanager/resourcemanager.hpp>
 
 namespace aos::sm::resourcemanager {
 

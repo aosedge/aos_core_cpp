@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <sm/launcher/runtime.hpp>
 
@@ -36,7 +36,7 @@ class LauncherTest : public Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         fs::remove_all(cTestDirRoot);
     }

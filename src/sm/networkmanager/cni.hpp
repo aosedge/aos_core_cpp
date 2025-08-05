@@ -14,7 +14,7 @@
 #include <Poco/JSON/Array.h>
 #include <Poco/JSON/Object.h>
 
-#include <aos/sm/cni.hpp>
+#include <core/sm/networkmanager/cni.hpp>
 
 #include "exec.hpp"
 

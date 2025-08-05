@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include <aos/sm/image/imageparts.hpp>
+#include <core/sm/image/imageparts.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/filesystem.hpp>
