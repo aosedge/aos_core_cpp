@@ -20,7 +20,9 @@ set(SOURCES storagestate.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::cm::storagestate aos::common::tests::utils aostestcore aostestutils GTest::gmock_main)
+set(LIBRARIES aos::cm::storagestate aos::common::tests::utils aos::common::tests::utils aos::core::common::tests::utils
+              GTest::gmock_main
+)
 
 # ######################################################################################################################
 # Target

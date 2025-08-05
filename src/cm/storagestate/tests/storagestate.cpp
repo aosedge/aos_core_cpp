@@ -11,11 +11,11 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/common/tools/fs.hpp>
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
-#include <mocks/communicationmock.hpp>
-#include <mocks/filesystemmock.hpp>
+#include <core/cm/tests/mocks/communicationmock.hpp>
+#include <core/common/tests/mocks/fsmock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <cm/storagestate/storagestate.hpp>
 
@@ -265,7 +265,7 @@ protected:
         mConfig.mStorageDir = cStorageDir.c_str();
         mConfig.mStateDir   = cStateDir.c_str();
 
-        test::InitLog();
+        tests::utils::InitLog();
 
         ASSERT_TRUE(mCryptoProvider.Init().IsNone()) << "Failed to initialize crypto provider";
 
@@ -354,19 +354,19 @@ protected:
 TEST_F(StorageStateTests, StartStop)
 {
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.Is(ErrorEnum::eWrongState)) << "Double start should fail: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.Is(ErrorEnum::eWrongState)) << "Double start should fail: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.Is(ErrorEnum::eWrongState)) << "Double stop should fail: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.Is(ErrorEnum::eWrongState)) << "Double stop should fail: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, StorageQuotaNotSet)
@@ -383,10 +383,10 @@ TEST_F(StorageStateTests, StorageQuotaNotSet)
     EXPECT_CALL(mFSPlatformMock, SetUserQuota(_, setupParams.mStateQuota, setupParams.mUID)).Times(1);
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Setup(setupParams, storagePath, statePath);
-    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(mStorageStub.Contains([&setupParams](const StorageStateInstanceInfo& info) {
         return info.mInstanceIdent == setupParams.mInstanceIdent;
@@ -408,12 +408,12 @@ TEST_F(StorageStateTests, StateQuotaNotSet)
     StaticString<cFilePathLen> storagePath, statePath;
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(mFSPlatformMock, SetUserQuota(_, setupParams.mStorageQuota, setupParams.mUID)).Times(1);
 
     err = mStorageState.Setup(setupParams, storagePath, statePath);
-    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(mStorageStub.Contains([&setupParams](const StorageStateInstanceInfo& info) {
         return info.mInstanceIdent == setupParams.mInstanceIdent;
@@ -435,12 +435,12 @@ TEST_F(StorageStateTests, StorageAndStateQuotaNotSet)
     StaticString<cFilePathLen> storagePath, statePath;
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(mFSPlatformMock, SetUserQuota).Times(0);
 
     err = mStorageState.Setup(setupParams, storagePath, statePath);
-    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(mStorageStub.Contains([&setupParams](const StorageStateInstanceInfo& info) {
         return info.mInstanceIdent == setupParams.mInstanceIdent;
@@ -459,10 +459,10 @@ TEST_F(StorageStateTests, SetupOnDifferentPartitions)
         .WillOnce(Return(RetWithError<StaticString<cFilePathLen>>("partition2")));
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(
         mFSPlatformMock, SetUserQuota(String(cStorageDir.c_str()), cSetupParams.mStorageQuota, cSetupParams.mUID))
@@ -475,10 +475,10 @@ TEST_F(StorageStateTests, SetupOnDifferentPartitions)
 
     err = mStorageState.Setup(
         SetupParams {{"service1", "subject1", 1}, getuid(), getgid(), 2000, 1000}, storagePath, statePath);
-    EXPECT_TRUE(err.IsNone()) << "Setup should succeed: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Setup should succeed: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, SetupFailsOnSetUserQuotaError)
@@ -486,10 +486,10 @@ TEST_F(StorageStateTests, SetupFailsOnSetUserQuotaError)
     constexpr auto cSetQuotaError = ErrorEnum::eOutOfRange;
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(mFSPlatformMock, SetUserQuota).WillOnce(Return(cSetQuotaError));
 
@@ -497,19 +497,20 @@ TEST_F(StorageStateTests, SetupFailsOnSetUserQuotaError)
 
     err = mStorageState.Setup(
         SetupParams {{"service1", "subject1", 1}, getuid(), getgid(), 2000, 1000}, storagePath, statePath);
-    EXPECT_TRUE(err.Is(cSetQuotaError)) << "Setup should fail with SetUserQuota error: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.Is(cSetQuotaError)) << "Setup should fail with SetUserQuota error: "
+                                        << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, SetupSameInstance)
 {
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << tests::utils::ErrorToStr(err);
 
     const struct TestParams {
         SetupParams              mSetupParams;
@@ -539,13 +540,13 @@ TEST_F(StorageStateTests, SetupSameInstance)
         }
 
         err = mStorageState.Setup(testParam.mSetupParams, storagePath, statePath);
-        ASSERT_TRUE(err.IsNone()) << "Can't setup storage state: " << test::ErrorToStr(err);
+        ASSERT_TRUE(err.IsNone()) << "Can't setup storage state: " << tests::utils::ErrorToStr(err);
 
         if (testParam.mExpectStateRequest) {
             cloudprotocol::StateRequest request;
 
             err = mCommunicationStub.WaitForMessage(testParam.mSetupParams.mInstanceIdent, request);
-            ASSERT_TRUE(err.IsNone()) << "Failed to wait for state request: " << test::ErrorToStr(err);
+            ASSERT_TRUE(err.IsNone()) << "Failed to wait for state request: " << tests::utils::ErrorToStr(err);
         }
 
         for (const auto& state : testParam.mNewStates) {
@@ -559,7 +560,7 @@ TEST_F(StorageStateTests, SetupSameInstance)
             cloudprotocol::NewState state;
 
             err = mCommunicationStub.WaitForMessage(testParam.mSetupParams.mInstanceIdent, state);
-            ASSERT_TRUE(err.IsNone()) << "Failed to wait for new state: " << test::ErrorToStr(err);
+            ASSERT_TRUE(err.IsNone()) << "Failed to wait for new state: " << tests::utils::ErrorToStr(err);
 
             const auto expectedState = testParam.mNewStates.empty() ? std::string("") : testParam.mNewStates.back();
 
@@ -568,19 +569,19 @@ TEST_F(StorageStateTests, SetupSameInstance)
             StaticString<crypto::cSHA2DigestSize> checksumStr;
 
             err = CalculateChecksum(expectedState, checksumStr);
-            EXPECT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << test::ErrorToStr(err);
+            EXPECT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << tests::utils::ErrorToStr(err);
 
             EXPECT_EQ(state.mChecksum, checksumStr) << "Checksum mismatch";
 
             err = mStorageState.GetInstanceCheckSum(testParam.mSetupParams.mInstanceIdent, checksumStr);
-            EXPECT_TRUE(err.IsNone()) << "Failed to get instance checksum: " << test::ErrorToStr(err);
+            EXPECT_TRUE(err.IsNone()) << "Failed to get instance checksum: " << tests::utils::ErrorToStr(err);
 
             EXPECT_EQ(checksumStr, state.mChecksum) << "Checksum mismatch in GetInstanceCheckSum";
         }
     }
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, GetInstanceCheckSum)
@@ -591,15 +592,15 @@ TEST_F(StorageStateTests, GetInstanceCheckSum)
     ASSERT_TRUE(err.IsNone());
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     StaticString<crypto::cSHA2DigestSize> storedChecksumStr;
 
     err = mStorageState.GetInstanceCheckSum(instanceIdent, storedChecksumStr);
-    ASSERT_TRUE(err.IsNone()) << "Failed to get instance checksum: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance checksum: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.GetInstanceCheckSum(InstanceIdent {"not exists", "not exists", 0}, storedChecksumStr);
-    ASSERT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Expected not found error, got: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Expected not found error, got: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, Cleanup)
@@ -609,7 +610,7 @@ TEST_F(StorageStateTests, Cleanup)
     auto err = AddInstanceIdent(instanceIdent, "cleanup-id", "cleanup-content");
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Cleanup(instanceIdent);
     ASSERT_TRUE(err.IsNone());
@@ -620,7 +621,7 @@ TEST_F(StorageStateTests, Cleanup)
     StorageStateInstanceInfo storageData;
 
     err = mStorageStub.GetStorageStateInfo(instanceIdent, storageData);
-    ASSERT_TRUE(err.IsNone()) << "Failed to get storage state info: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get storage state info: " << tests::utils::ErrorToStr(err);
 
     ASSERT_TRUE(std::filesystem::exists(ToStatePath(storageData.mInstanceID.CStr())))
         << "State file should exist after cleanup";
@@ -633,7 +634,7 @@ TEST_F(StorageStateTests, Remove)
     auto err = AddInstanceIdent(instanceIdent, "remove-id", "remove-content");
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Remove(instanceIdent);
     ASSERT_TRUE(err.IsNone());
@@ -642,7 +643,7 @@ TEST_F(StorageStateTests, Remove)
 
     err = mStorageStub.GetStorageStateInfo(instanceIdent, storageData);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound))
-        << "Storage data should not exists after remove: " << test::ErrorToStr(err);
+        << "Storage data should not exists after remove: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Remove(instanceIdent);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound));
@@ -656,20 +657,20 @@ TEST_F(StorageStateTests, UpdateState)
     auto err = AddInstanceIdent(instanceIdent, "updatestate-id", "outdated state content");
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     auto updateState = std::make_unique<cloudprotocol::UpdateState>(instanceIdent);
 
     StaticString<crypto::cSHA2DigestSize> checksum;
 
     err = CalculateChecksum(newStateContent, checksum);
-    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << tests::utils::ErrorToStr(err);
 
     ASSERT_TRUE(updateState->mState.Assign(newStateContent).IsNone());
     ASSERT_TRUE(updateState->mChecksum.Assign(checksum).IsNone());
 
     err = mStorageState.UpdateState(*updateState);
-    ASSERT_TRUE(err.IsNone()) << "Failed to update state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to update state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(mStorageStub.Contains([&instanceIdent, &checksum](const StorageStateInstanceInfo& info) {
         return info.mInstanceIdent == instanceIdent && info.mStateChecksum == checksum;
@@ -684,7 +685,7 @@ TEST_F(StorageStateTests, UpdateState)
 TEST_F(StorageStateTests, AcceptStateUnknownInstance)
 {
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>(InstanceIdent {"not exists", "not exists", 0});
     acceptState->mResult = cloudprotocol::StateResultEnum::eAccepted;
@@ -700,7 +701,7 @@ TEST_F(StorageStateTests, AcceptStateChecksumMismatch)
     auto err = AddInstanceIdent(cInstanceIdent, "acceptstate-id", "initial state content");
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     auto acceptState       = std::make_unique<cloudprotocol::StateAcceptance>(cInstanceIdent);
     acceptState->mResult   = cloudprotocol::StateResultEnum::eAccepted;
@@ -708,7 +709,7 @@ TEST_F(StorageStateTests, AcceptStateChecksumMismatch)
 
     err = mStorageState.AcceptState(*acceptState);
     ASSERT_TRUE(err.Is(ErrorEnum::eInvalidChecksum))
-        << "Accepting state with invalid checksum should fail: " << test::ErrorToStr(err);
+        << "Accepting state with invalid checksum should fail: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, AcceptStateWithRejectedStatus)
@@ -716,29 +717,29 @@ TEST_F(StorageStateTests, AcceptStateWithRejectedStatus)
     const auto cInstanceIdent = InstanceIdent {"service1", "subject1", 0};
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     StaticString<cFilePathLen> storagePath, statePath;
 
     err = mStorageState.Setup(SetupParams {cInstanceIdent, getuid(), getgid(), 2000, 1000}, storagePath, statePath);
-    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to setup storage state: " << tests::utils::ErrorToStr(err);
 
     StorageStateInstanceInfo storageData;
 
     err = mStorageStub.GetStorageStateInfo(cInstanceIdent, storageData);
-    ASSERT_TRUE(err.IsNone()) << "Failed to get storage state info: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get storage state info: " << tests::utils::ErrorToStr(err);
 
     auto acceptState       = std::make_unique<cloudprotocol::StateAcceptance>(cInstanceIdent);
     acceptState->mResult   = cloudprotocol::StateResultEnum::eRejected;
     acceptState->mChecksum = storageData.mStateChecksum;
 
     err = mStorageState.AcceptState(*acceptState);
-    ASSERT_TRUE(err.IsNone()) << "Failed to accept state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to accept state: " << tests::utils::ErrorToStr(err);
 
     auto stateRequest = std::make_unique<cloudprotocol::StateRequest>();
 
     err = mCommunicationStub.WaitForMessage(cInstanceIdent, *stateRequest);
-    ASSERT_TRUE(err.IsNone()) << "Failed to wait for state request: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to wait for state request: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(stateRequest->mInstanceIdent == cInstanceIdent) << "State request instance ident mismatch";
 }
@@ -752,16 +753,16 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
     StaticString<crypto::cSHA2DigestSize> cStateContentChecksum, cUpdateStateContentChecksum;
 
     auto err = CalculateChecksum(cStateContent, cStateContentChecksum);
-    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << tests::utils::ErrorToStr(err);
 
     err = CalculateChecksum(cUpdateStateContent, cUpdateStateContentChecksum);
-    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to calculate checksum: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
-    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start storage state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(
         mFSPlatformMock, SetUserQuota(_, cSetupParams.mStateQuota + cSetupParams.mStorageQuota, cSetupParams.mUID))
@@ -770,12 +771,12 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
     // Setup storage state
 
     err = mStorageState.Setup(cSetupParams, storagePath, statePath);
-    EXPECT_TRUE(err.IsNone()) << "Failed to setup storage state: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to setup storage state: " << tests::utils::ErrorToStr(err);
 
     auto stateRequest = std::make_unique<cloudprotocol::StateRequest>();
 
     err = mCommunicationStub.WaitForMessage(cSetupParams.mInstanceIdent, *stateRequest);
-    EXPECT_TRUE(err.IsNone()) << "Failed to wait for state request: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to wait for state request: " << tests::utils::ErrorToStr(err);
 
     EXPECT_TRUE(stateRequest->mInstanceIdent == cSetupParams.mInstanceIdent) << "State request instance ident mismatch";
 
@@ -786,19 +787,19 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
     updateState->mChecksum = cStateContentChecksum;
 
     err = mStorageState.UpdateState(*updateState);
-    EXPECT_TRUE(err.IsNone()) << "Failed to update state: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to update state: " << tests::utils::ErrorToStr(err);
 
     // Emulate service mutates its state file
 
     err = fs::WriteStringToFile((cStateDir / statePath.CStr()).c_str(), cUpdateStateContent, 0600);
-    ASSERT_TRUE(err.IsNone()) << "Failed to write state file: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to write state file: " << tests::utils::ErrorToStr(err);
 
     // Expect storage state notices the new state and sends a new state notification
 
     auto newState = std::make_unique<cloudprotocol::NewState>();
 
     err = mCommunicationStub.WaitForMessage(cSetupParams.mInstanceIdent, *newState, std::chrono::seconds(10));
-    EXPECT_TRUE(err.IsNone()) << "Failed to wait for new state: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to wait for new state: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(newState->mInstanceIdent, cSetupParams.mInstanceIdent) << "New state instance ident mismatch";
     EXPECT_STREQ(newState->mState.CStr(), cUpdateStateContent) << "New state content mismatch";
@@ -811,10 +812,10 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
 
     err = FillStateAcceptance(
         cSetupParams.mInstanceIdent, cUpdateStateContent, cloudprotocol::StateResultEnum::eAccepted, *acceptState);
-    EXPECT_TRUE(err.IsNone()) << "Failed to fill state acceptance: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to fill state acceptance: " << tests::utils::ErrorToStr(err);
 
     err = mStorageState.AcceptState(*acceptState);
-    EXPECT_TRUE(err.IsNone()) << "Failed to accept state: " << test::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to accept state: " << tests::utils::ErrorToStr(err);
 
     // And the storage stub is updated
 
@@ -824,7 +825,7 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
     })) << "Storage state info should be updated with new state checksum";
 
     err = mStorageState.Stop();
-    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop storage state: " << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::cm::storagestate

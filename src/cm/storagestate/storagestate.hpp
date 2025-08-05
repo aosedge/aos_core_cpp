@@ -12,11 +12,11 @@
 
 #include <Poco/Timer.h>
 
-#include <aos/cm/communication/communication.hpp>
-#include <aos/cm/storagestate/storagestate.hpp>
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/common/tools/fs.hpp>
-#include <aos/common/tools/timer.hpp>
+#include <core/cm/communication/communication.hpp>
+#include <core/cm/storagestate/storagestate.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tools/fs.hpp>
+#include <core/common/tools/timer.hpp>
 
 #include <common/logger/logger.hpp>
 #include <common/utils/fswatcher.hpp>

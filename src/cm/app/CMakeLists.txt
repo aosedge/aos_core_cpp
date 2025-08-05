@@ -20,7 +20,7 @@ set(SOURCES app.cpp main.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::logger aos::common::utils aos::common::version aoscommon Poco::Util)
+set(LIBRARIES aos::common::logger aos::common::utils aos::common::version aos::core::common::version Poco::Util)
 
 # ######################################################################################################################
 # Target
