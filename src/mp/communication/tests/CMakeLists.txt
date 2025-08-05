@@ -28,7 +28,7 @@ set(COMPILE_OPTIONS -Wno-deprecated-declarations)
 # ######################################################################################################################
 
 set(LIBRARIES
-    ${TARGET_NAMESPACE}::communication
+    aos::mp::communication
     aos::common::downloader
     aosiam
     aostestutils
