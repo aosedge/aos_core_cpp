@@ -32,7 +32,7 @@ set(SOURCES
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aos::common::tests::utils GTest::gmock_main)
+set(LIBRARIES aos::common::utils aos::common::tests::utils aostestutils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
