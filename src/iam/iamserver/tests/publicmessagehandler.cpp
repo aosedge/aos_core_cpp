@@ -10,16 +10,16 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <aos/test/log.hpp>
-#include <mocks/certprovidermock.hpp>
-#include <mocks/identhandlermock.hpp>
-#include <mocks/nodeinfoprovidermock.hpp>
-#include <mocks/nodemanagermock.hpp>
-#include <mocks/permhandlermock.hpp>
-#include <mocks/provisionmanagermock.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
+#include <core/iam/tests/mocks/certprovidermock.hpp>
+#include <core/iam/tests/mocks/identhandlermock.hpp>
+#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
+#include <core/iam/tests/mocks/nodemanagermock.hpp>
+#include <core/iam/tests/mocks/permhandlermock.hpp>
+#include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
 #include <common/utils/grpchelper.hpp>
 #include <iam/iamserver/publicmessagehandler.hpp>
@@ -70,12 +70,12 @@ protected:
     std::unique_ptr<grpc::Server> mPublicServer;
 
     // mocks
-    iam::identhandler::IdentHandlerMock         mIdentHandler;
-    iam::permhandler::PermHandlerMock           mPermHandler;
-    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    iam::nodemanager::NodeManagerMock           mNodeManager;
-    iam::certprovider::CertProviderMock         mCertProvider;
-    iam::provisionmanager::ProvisionManagerMock mProvisionManager;
+    identhandler::IdentHandlerMock         mIdentHandler;
+    permhandler::PermHandlerMock           mPermHandler;
+    nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    nodemanager::NodeManagerMock           mNodeManager;
+    certhandler::CertProviderMock          mCertProvider;
+    provisionmanager::ProvisionManagerMock mProvisionManager;
 
 private:
     void SetUp() override;
@@ -84,7 +84,7 @@ private:
 
 void PublicMessageHandlerTest::SetUp()
 {
-    test::InitLog();
+    tests::utils::InitLog();
 
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";

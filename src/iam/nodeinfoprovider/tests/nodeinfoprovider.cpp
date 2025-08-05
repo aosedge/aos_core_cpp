@@ -14,8 +14,8 @@
 #include <Poco/Environment.h>
 #include <gmock/gmock.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/nodeinfoprovidermock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 
 #include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
@@ -120,7 +120,7 @@ class NodeInfoProviderTest : public Test {
 protected:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         std::filesystem::create_directory(TEST_TMP_DIR);
 

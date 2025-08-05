@@ -16,7 +16,7 @@ set(SOURCES database.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aos::common::migration aoscommon Poco::DataSQLite Poco::JSON)
+set(LIBRARIES aos::common::utils aos::common::migration Poco::DataSQLite Poco::JSON)
 
 # ######################################################################################################################
 # Target

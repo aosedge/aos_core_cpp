@@ -13,8 +13,8 @@
 #include <Poco/Util/HelpFormatter.h>
 #include <systemd/sd-daemon.h>
 
-#include <aos/common/version.hpp>
-#include <aos/iam/certmodules/certmodule.hpp>
+#include <core/common/version/version.hpp>
+#include <core/iam/certhandler/certmodule.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -347,8 +347,8 @@ void App::HandleVersion(const std::string& name, const std::string& value)
 
     mStopProcessing = true;
 
-    std::cout << "Aos IA manager version:   " << AOS_CORE_CPP_VERSION << std::endl;
-    std::cout << "Aos core library version: " << AOS_CORE_VERSION << std::endl;
+    std::cout << "Aos IAM version:          " << AOS_CORE_CPP_VERSION << std::endl;
+    std::cout << "Aos core library version: " << AOS_CORE_LIB_VERSION << std::endl;
 
     stopOptionsProcessing();
 }

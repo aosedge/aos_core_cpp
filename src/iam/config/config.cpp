@@ -12,8 +12,8 @@
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 
-#include <aos/common/pkcs11/pkcs11.hpp>
-#include <aos/common/tools/fs.hpp>
+#include <core/common/pkcs11/pkcs11.hpp>
+#include <core/common/tools/fs.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>

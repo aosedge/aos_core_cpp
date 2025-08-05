@@ -25,7 +25,7 @@ namespace aos::iam::iamclient {
  **********************************************************************************************************************/
 
 Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
-    certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+    certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {

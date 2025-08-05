@@ -25,7 +25,7 @@ set(LIBRARIES
     aos::iam::nodeinfoprovider
     aos::iam::visidentifier
     aos::common::version
-    aosiam
+    aos::core::common::version
 )
 
 # ######################################################################################################################

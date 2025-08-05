@@ -16,7 +16,9 @@ set(SOURCES iamserver.cpp nodecontroller.cpp protectedmessagehandler.cpp publicm
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::iam::iamserver aos::iam::iamclient aosiam aostestcore aostestutils GTest::gmock_main)
+set(LIBRARIES aos::iam::iamserver aos::iam::iamclient aos::common::tests::utils aos::core::common::tests::crypto
+              GTest::gmock_main
+)
 
 # ######################################################################################################################
 # Target

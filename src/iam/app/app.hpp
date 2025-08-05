@@ -10,12 +10,12 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <aos/iam/certmodules/pkcs11/pkcs11.hpp>
-#include <aos/iam/certprovider.hpp>
-#include <aos/iam/nodemanager.hpp>
-#include <aos/iam/permhandler.hpp>
-#include <aos/iam/provisionmanager.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
+#include <core/iam/certhandler/certprovider.hpp>
+#include <core/iam/nodemanager/nodemanager.hpp>
+#include <core/iam/permhandler/permhandler.hpp>
+#include <core/iam/provisionmanager/provisionmanager.hpp>
 
 #include <common/logger/logger.hpp>
 #include <common/utils/cleanupmanager.hpp>
@@ -63,7 +63,7 @@ private:
     database::Database                                                                                     mDatabase;
     nodeinfoprovider::NodeInfoProvider             mNodeInfoProvider;
     nodemanager::NodeManager                       mNodeManager;
-    certprovider::CertProvider                     mCertProvider;
+    certhandler::CertProvider                      mCertProvider;
     provisionmanager::ProvisionManager             mProvisionManager;
     iamserver::IAMServer                           mIAMServer;
     common::logger::Logger                         mLogger;

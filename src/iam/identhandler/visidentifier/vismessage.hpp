@@ -13,8 +13,8 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <aos/common/tools/array.hpp>
-#include <aos/common/tools/enum.hpp>
+#include <core/common/tools/array.hpp>
+#include <core/common/tools/enum.hpp>
 
 namespace aos::iam::visidentifier {
 

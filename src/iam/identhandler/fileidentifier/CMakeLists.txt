@@ -16,7 +16,7 @@ set(SOURCES fileidentifier.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::iam::config aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::iam::config aos::common::utils Poco::Foundation)
 
 # ######################################################################################################################
 # Target

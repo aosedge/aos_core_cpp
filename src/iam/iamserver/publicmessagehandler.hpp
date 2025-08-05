@@ -15,13 +15,13 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <aos/common/crypto/utils.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <aos/iam/certprovider.hpp>
-#include <aos/iam/identhandler.hpp>
-#include <aos/iam/nodeinfoprovider.hpp>
-#include <aos/iam/nodemanager.hpp>
-#include <aos/iam/permhandler.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/certhandler/certprovider.hpp>
+#include <core/iam/identhandler/identhandler.hpp>
+#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/nodemanager/nodemanager.hpp>
+#include <core/iam/permhandler/permhandler.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <iamanager/version.grpc.pb.h>
@@ -58,7 +58,7 @@ public:
      */
     Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
         iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        iam::nodemanager::NodeManagerItf& nodeManager, iam::certprovider::CertProviderItf& certProvider);
+        iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider);
 
     /**
      * Registers grpc services.
@@ -176,7 +176,7 @@ private:
     iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
     iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
-    iam::certprovider::CertProviderItf*         mCertProvider     = nullptr;
+    iam::certhandler::CertProviderItf*          mCertProvider     = nullptr;
     NodeController*                             mNodeController   = nullptr;
     StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
     StreamWriter<iamproto::Subjects>            mSubjectsChangedController;

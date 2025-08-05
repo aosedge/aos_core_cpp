@@ -9,8 +9,8 @@
 
 #include <gmock/gmock.h>
 
-#include <aos/common/crypto/cryptoprovider.hpp>
-#include <mocks/identhandlermock.hpp>
+#include <core/common/crypto/cryptoprovider.hpp>
+#include <core/iam/tests/mocks/identhandlermock.hpp>
 
 #include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
