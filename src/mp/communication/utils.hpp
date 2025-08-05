@@ -12,7 +12,7 @@
 
 #include <openssl/sha.h>
 
-#include <aos/common/tools/error.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <aosprotocol.h>
 

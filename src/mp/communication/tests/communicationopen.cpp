@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
@@ -32,7 +32,7 @@ class CommunicationOpenManagerTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         mConfig.mIAMConfig.mOpenPort = 8080;
         mConfig.mCMConfig.mOpenPort  = 30001;

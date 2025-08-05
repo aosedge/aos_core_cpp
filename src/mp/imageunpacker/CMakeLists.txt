@@ -20,7 +20,7 @@ set(SOURCES imageunpacker.cpp serviceimage.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::logger aos::common::utils aoscommon Poco::JSON)
+set(LIBRARIES aos::common::logger aos::common::utils Poco::JSON)
 
 # ######################################################################################################################
 # Target
