@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include <aos/common/monitoring/resourcemonitor.hpp>
-#include <aos/common/tools/error.hpp>
+#include <core/common/monitoring/resourcemonitor.hpp>
+#include <core/common/tools/error.hpp>
 
 #include <common/config/config.hpp>
 #include <common/utils/time.hpp>

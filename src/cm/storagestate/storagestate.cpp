@@ -9,7 +9,7 @@
 #include <fstream>
 #include <memory>
 
-#include <aos/common/tools/uuid.hpp>
+#include <core/common/tools/uuid.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
