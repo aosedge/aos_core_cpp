@@ -30,7 +30,7 @@ execute_process(
     COMMAND
         ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE} -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/version.hpp.in
         -D OUTPUT_FILE=${HEADER_PATH}/version.hpp -D GIT_SOURCE_DIR=${PROJECT_SOURCE_DIR} -P
-        ${PROJECT_SOURCE_DIR}/cmake/GenerateVersion.cmake
+        ${VERSION_CMAKE_PATH}/GenerateVersion.cmake
 )
 
 # ######################################################################################################################

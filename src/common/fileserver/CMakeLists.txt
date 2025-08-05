@@ -20,7 +20,7 @@ set(SOURCES fileserver.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation Poco::Net Poco::NetSSL)
+set(LIBRARIES aos::common::utils Poco::Foundation Poco::Net Poco::NetSSL)
 
 # ######################################################################################################################
 # Target

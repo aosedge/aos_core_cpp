@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <aos/test/log.hpp>
-#include <aos/test/utils.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/cloudprotocol/log.hpp>
 #include <common/utils/json.hpp>
@@ -22,7 +22,7 @@ namespace aos::common::cloudprotocol {
 
 class CloudProtocolLog : public Test {
 public:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 };
 
 /***********************************************************************************************************************
@@ -36,7 +36,7 @@ TEST_F(CloudProtocolLog, EmptyPushLog)
     auto pushLog = std::make_unique<aos::cloudprotocol::PushLog>();
 
     auto err = ToJSON(*pushLog, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -52,7 +52,7 @@ TEST_F(CloudProtocolLog, EmptyPushLog)
     auto unparsedPushLog = std::make_unique<aos::cloudprotocol::PushLog>();
 
     err = FromJSON(wrapper, *unparsedPushLog);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedPushLog, *pushLog);
 }
@@ -72,12 +72,12 @@ TEST_F(CloudProtocolLog, PushLog)
     pushLog->mErrorInfo  = Error(ErrorEnum::eFailed, "test error");
 
     auto err = ToJSON(*pushLog, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto unparsedPushLog = std::make_unique<aos::cloudprotocol::PushLog>();
 
     err = FromJSON(utils::CaseInsensitiveObjectWrapper(json), *unparsedPushLog);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedPushLog, *pushLog);
 }
@@ -89,7 +89,7 @@ TEST_F(CloudProtocolLog, EmptyLogRequest)
     auto requestLog = std::make_unique<aos::cloudprotocol::RequestLog>();
 
     auto err = ToJSON(*requestLog, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto wrapper = utils::CaseInsensitiveObjectWrapper(json);
 
@@ -102,7 +102,7 @@ TEST_F(CloudProtocolLog, EmptyLogRequest)
     auto unparsedRequestLog = std::make_unique<aos::cloudprotocol::RequestLog>();
 
     err = FromJSON(wrapper, *unparsedRequestLog);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedRequestLog, *requestLog);
 }
@@ -133,12 +133,12 @@ TEST_F(CloudProtocolLog, LogRequest)
     requestLog->mUploadOptions->mBearerTokenTTL.SetValue(cTime.Add(Time::cDay));
 
     auto err = ToJSON(*requestLog, *json);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto unparsedRequestLog = std::make_unique<aos::cloudprotocol::RequestLog>();
 
     err = FromJSON(utils::CaseInsensitiveObjectWrapper(json), *unparsedRequestLog);
-    ASSERT_TRUE(err.IsNone()) << test::ErrorToStr(err);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*unparsedRequestLog, *requestLog);
 }

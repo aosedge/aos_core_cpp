@@ -26,7 +26,7 @@ set(INCLUDES ${AOS_CORE_COMMON_LIB_DIR}/tests)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::common::utils Poco::Foundation)
 
 # ######################################################################################################################
 # Target

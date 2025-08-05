@@ -11,7 +11,7 @@
 #include <sys/mount.h>
 #include <unistd.h>
 
-#include <aos/common/tools/memory.hpp>
+#include <core/common/tools/memory.hpp>
 
 #include <common/logger/logmodule.hpp>
 

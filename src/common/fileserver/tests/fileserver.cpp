@@ -15,7 +15,7 @@
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/StreamCopier.h>
 
-#include <aos/test/log.hpp>
+#include <core/common/tests/utils/log.hpp>
 
 #include <common/fileserver/fileserver.hpp>
 
@@ -31,7 +31,7 @@ class CommonFileserverTest : public ::testing::Test {
 protected:
     void SetUp() override
     {
-        aos::test::InitLog();
+        aos::tests::utils::InitLog();
 
         std::filesystem::create_directory("download");
         auto err = mFileserver.Init("http://localhost:8000", "download");

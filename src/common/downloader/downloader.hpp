@@ -15,9 +15,9 @@
 #include <Poco/URI.h>
 #include <curl/curl.h>
 
-#include <aos/common/alerts/alerts.hpp>
-#include <aos/common/cloudprotocol/cloudprotocol.hpp>
-#include <aos/common/downloader/downloader.hpp>
+#include <core/common/alerts/alerts.hpp>
+#include <core/common/cloudprotocol/cloudprotocol.hpp>
+#include <core/common/downloader/downloader.hpp>
 
 namespace aos::common::downloader {
 

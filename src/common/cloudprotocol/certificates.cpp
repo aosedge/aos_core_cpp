@@ -6,7 +6,7 @@
 
 #include <Poco/JSON/Parser.h>
 
-#include <aos/common/cloudprotocol/cloudmessage.hpp>
+#include <core/common/cloudprotocol/cloudmessage.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>

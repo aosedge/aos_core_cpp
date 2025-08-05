@@ -20,7 +20,7 @@ set(SOURCES downloader.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aoscommon CURL::libcurl Poco::Foundation)
+set(LIBRARIES aos::common::utils CURL::libcurl Poco::Foundation)
 
 # ######################################################################################################################
 # Target

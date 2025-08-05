@@ -20,7 +20,7 @@ set(SOURCES config.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aos::common::utils aoscommon Poco::Foundation)
+set(LIBRARIES aos::common::utils aos::core::common::tools Poco::Foundation)
 
 # ######################################################################################################################
 # Target
