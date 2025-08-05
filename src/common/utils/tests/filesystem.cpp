@@ -12,6 +12,7 @@
 
 #include <aos/common/tools/fs.hpp>
 #include <aos/test/log.hpp>
+#include <aos/test/utils.hpp>
 
 #include <common/utils/filesystem.hpp>
 
@@ -158,10 +159,15 @@ TEST_F(FSTest, ChangeDirectoryOwner)
     std::filesystem::create_directories(root);
 
     if (getuid() != 0 && getgid() != 0) {
-        ASSERT_EQ(ChangeOwner(root.string(), 0, 0), aos::ErrorEnum::eFailed);
+        auto err = ChangeOwner(root.string(), 0, 0);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
     }
 
-    ASSERT_EQ(ChangeOwner(root.string(), getuid(), getgid()), aos::ErrorEnum::eNone);
+    auto err = ChangeOwner(root.string(), getuid(), getgid());
+    EXPECT_TRUE(err.IsNone()) << "Failed to change directory owner: " << test::ErrorToStr(err);
+
+    err = ChangeOwner(root / "non_existent_dir", getuid(), getgid());
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
 }
 
 TEST_F(FSTest, ChangeFileOwner)
@@ -171,10 +177,15 @@ TEST_F(FSTest, ChangeFileOwner)
     fs::WriteStringToFile(file.c_str(), "Test content", 0644);
 
     if (getuid() != 0 && getgid() != 0) {
-        ASSERT_EQ(ChangeOwner(file.string(), 0, 0), aos::ErrorEnum::eFailed);
+        auto err = ChangeOwner(file.string(), 0, 0);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
     }
 
-    ASSERT_EQ(ChangeOwner(file.string(), getuid(), getgid()), aos::ErrorEnum::eNone);
+    auto err = ChangeOwner(file.string(), getuid(), getgid());
+    EXPECT_TRUE(err.IsNone()) << "Failed to change file owner: " << test::ErrorToStr(err);
+
+    err = ChangeOwner(file.string() + "-not-exists", getuid(), getgid());
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << test::ErrorToStr(err);
 }
 
 } // namespace aos::common::utils
