@@ -29,6 +29,7 @@ set(LIBRARIES aos::common::logger aos::common::utils aos::common::version aoscom
 add_exec(
     TARGET_NAME
     ${TARGET_NAME}
+    LOG_MODULE
     STACK_USAGE
     ${AOS_STACK_USAGE}
     SOURCES
