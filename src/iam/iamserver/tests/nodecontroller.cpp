@@ -12,8 +12,8 @@
 #include <grpcpp/server_builder.h>
 #include <openssl/engine.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/nodemanagermock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/nodemanagermock.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
@@ -108,7 +108,7 @@ protected:
 private:
     void SetUp() override
     {
-        test::InitLog();
+        tests::utils::InitLog();
 
         mServer.Start();
 

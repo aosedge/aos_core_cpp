@@ -15,11 +15,11 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/string.hpp>
-#include <aos/common/types.hpp>
-#include <aos/iam/certhandler.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/string.hpp>
+#include <core/common/types/types.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -94,7 +94,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
     crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
-    certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+    certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";

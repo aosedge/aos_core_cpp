@@ -14,14 +14,14 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
-#include <aos/common/crypto/crypto.hpp>
-#include <aos/common/crypto/utils.hpp>
-#include <aos/common/tools/error.hpp>
-#include <aos/iam/certhandler.hpp>
-#include <aos/iam/certprovider.hpp>
-#include <aos/iam/identhandler.hpp>
-#include <aos/iam/nodeinfoprovider.hpp>
-#include <aos/iam/provisionmanager.hpp>
+#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/certhandler/certprovider.hpp>
+#include <core/iam/identhandler/identhandler.hpp>
+#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/provisionmanager/provisionmanager.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
@@ -51,7 +51,7 @@ public:
      * @returns Error.
      */
     Error Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
-        certprovider::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+        certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
@@ -103,7 +103,7 @@ private:
 
     identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    certprovider::CertProviderItf*         mCertProvider     = nullptr;
+    certhandler::CertProviderItf*          mCertProvider     = nullptr;
     crypto::CertLoaderItf*                 mCertLoader       = nullptr;
     crypto::x509::ProviderItf*             mCryptoProvider   = nullptr;
     nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;

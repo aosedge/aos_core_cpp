@@ -16,7 +16,7 @@ set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp visserver.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::iam::visidentifier aostestcore GTest::gmock_main)
+set(LIBRARIES aos::iam::visidentifier aos::core::common::tests::crypto GTest::gmock_main)
 
 # ######################################################################################################################
 # Gen certificates

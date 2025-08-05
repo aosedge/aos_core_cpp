@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <aos/iam/identhandler.hpp>
+#include <core/iam/identhandler/identhandler.hpp>
 
 #include <iam/config/config.hpp>
 

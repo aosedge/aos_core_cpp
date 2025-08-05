@@ -9,14 +9,14 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 
-#include <aos/test/log.hpp>
-#include <mocks/certhandlermock.hpp>
-#include <mocks/certloadermock.hpp>
-#include <mocks/certprovidermock.hpp>
-#include <mocks/cryptomock.hpp>
-#include <mocks/identhandlermock.hpp>
-#include <mocks/nodeinfoprovidermock.hpp>
-#include <mocks/provisionmanagermock.hpp>
+#include <core/common/tests/mocks/cryptomock.hpp>
+#include <core/common/tests/utils/log.hpp>
+#include <core/iam/tests/mocks/certhandlermock.hpp>
+#include <core/iam/tests/mocks/certloadermock.hpp>
+#include <core/iam/tests/mocks/certprovidermock.hpp>
+#include <core/iam/tests/mocks/identhandlermock.hpp>
+#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
+#include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
 
@@ -413,7 +413,7 @@ private:
 
 class IAMClientTest : public Test {
 protected:
-    void SetUp() override { test::InitLog(); }
+    void SetUp() override { tests::utils::InitLog(); }
 
     static config::IAMClientConfig GetConfig()
     {
@@ -478,7 +478,7 @@ protected:
 
     iam::identhandler::IdentHandlerMock         mIdentHandler;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
-    iam::certprovider::CertProviderMock         mCertProvider;
+    iam::certhandler::CertProviderMock          mCertProvider;
     crypto::CertLoaderMock                      mCertLoader;
     crypto::x509::ProviderMock                  mCryptoProvider;
     iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;

@@ -16,7 +16,7 @@ set(SOURCES nodeinfoprovider.cpp systeminfo.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::pbconvert aos::common::utils aoscommon Poco::Util)
+set(LIBRARIES aos::common::pbconvert aos::common::utils Poco::Util)
 
 # ######################################################################################################################
 # Target
