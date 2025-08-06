@@ -4,24 +4,46 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# ######################################################################################################################
-# Dependencies
-# ######################################################################################################################
-
-find_package(Poco REQUIRED Util)
+set(TARGET_NAME communication)
 
 # ######################################################################################################################
-# Target properties
+# Sources
 # ######################################################################################################################
 
-set(TARGET_NAMESPACE ${TARGET_NAMESPACE}::cm)
-set(TARGET_PREFIX ${TARGET_PREFIX}_cm)
+set(SOURCES communication.cpp)
 
 # ######################################################################################################################
-# Modules
+# Libraries
 # ######################################################################################################################
 
-add_subdirectory(app)
-add_subdirectory(communication)
-add_subdirectory(config)
-add_subdirectory(storagestate)
+set(LIBRARIES
+    aos::common::utils
+    aos::common::cloudprotocol
+    aos::common::config
+    aos::core::common::crypto
+    Poco::Crypto
+    Poco::Foundation
+    Poco::Net
+    Poco::NetSSL
+    Poco::JSON
+)
+
+# ######################################################################################################################
+# Target
+# ######################################################################################################################
+
+add_module(
+    TARGET_NAME
+    ${TARGET_NAME}
+    LOG_MODULE
+    STACK_USAGE
+    ${AOS_STACK_USAGE}
+    SOURCES
+    ${SOURCES}
+    LIBRARIES
+    ${LIBRARIES}
+)
+
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()

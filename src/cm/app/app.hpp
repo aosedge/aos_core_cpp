@@ -10,6 +10,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
+#include <cm/communication/communication.hpp>
 #include <cm/config/config.hpp>
 #include <common/logger/logger.hpp>
 
@@ -51,7 +52,9 @@ private:
     bool                   mProvisioning   = false;
     std::string            mConfigFile;
 
-    config::Config mConfig;
+    config::Config                mConfig;
+    communication::MessageHandler mCloudMessageHandler;
+    communication::Communication  mCommunicationManager;
 };
 
 } // namespace aos::cm::app
