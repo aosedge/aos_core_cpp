@@ -15,7 +15,7 @@ set(TARGET_NAME communication_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES communicationsecure.cpp communicationopen.cpp stubs/storagestub.cpp)
+set(SOURCES communicationsecure.cpp communicationopen.cpp)
 
 # ######################################################################################################################
 # Compile options
@@ -30,6 +30,7 @@ set(COMPILE_OPTIONS -Wno-deprecated-declarations)
 set(LIBRARIES
     aos::mp::communication
     aos::common::downloader
+    aos::common::tests::stubs
     aos::common::tests::utils
     aos::core::common::tests::crypto
     GTest::gmock_main

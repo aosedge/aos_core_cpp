@@ -15,5 +15,6 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_tests)
 # Modules
 # ######################################################################################################################
 
-add_subdirectory(utils)
 add_subdirectory(mocks)
+add_subdirectory(stubs)
+add_subdirectory(utils)
