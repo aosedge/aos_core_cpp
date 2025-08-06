@@ -19,7 +19,8 @@
  * Test IAM server.
  */
 class TestIAMServerStub final : public iamanager::v5::IAMPublicService::Service,
-                                public iamanager::v5::IAMPermissionsService::Service {
+                                public iamanager::v5::IAMPermissionsService::Service,
+                                public iamanager::v5::IAMPublicIdentityService::Service {
 public:
     /**
      * Constructor.
@@ -52,6 +53,22 @@ public:
         mCertInfo.mKeyURL  = certInfo.key_url().c_str();
 
         return mStream->Write(certInfo);
+    }
+
+    /**
+     * Sends subjects changed info.
+     *
+     * @param subjects subjects to send.
+     * @return bool.
+     */
+    bool SendSubjectsChanged(const std::vector<std::string>& subjects)
+    {
+        iamanager::v5::Subjects changedSubjects;
+        for (const auto& subject : subjects) {
+            changedSubjects.add_subjects(subject);
+        }
+
+        return mSubjectsStream->Write(changedSubjects);
     }
 
     /**
@@ -90,6 +107,7 @@ private:
         builder.AddListeningPort("localhost:8002", grpc::InsecureServerCredentials());
         builder.RegisterService(static_cast<iamanager::v5::IAMPublicService::Service*>(this));
         builder.RegisterService(static_cast<iamanager::v5::IAMPermissionsService::Service*>(this));
+        builder.RegisterService(static_cast<iamanager::v5::IAMPublicIdentityService::Service*>(this));
 
         return builder.BuildAndStart();
     }
@@ -171,10 +189,45 @@ private:
         return grpc::Status::OK;
     }
 
+    grpc::Status GetSystemInfo(
+        ::grpc::ServerContext*, const ::google::protobuf::Empty*, ::iamanager::v5::SystemInfo* response) override
+    {
+        response->set_system_id("system_id");
+        response->set_unit_model("unit_model");
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status GetSubjects(
+        ::grpc::ServerContext*, const ::google::protobuf::Empty*, ::iamanager::v5::Subjects* response) override
+    {
+        response->add_subjects("subject1");
+        response->add_subjects("subject2");
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status SubscribeSubjectsChanged(::grpc::ServerContext*, const ::google::protobuf::Empty*,
+        ::grpc::ServerWriter<::iamanager::v5::Subjects>* writer) override
+    {
+        mSubjectsStream = writer;
+
+        mConnected = true;
+        mCV.notify_all();
+
+        {
+            std::unique_lock lock {mLock};
+            mCV.wait(lock, [this] { return mClose; });
+        }
+
+        return grpc::Status::OK;
+    }
+
     std::unique_ptr<grpc::Server>                mServer;
     std::string                                  mCertType;
     aos::iam::certhandler::CertInfo              mCertInfo;
     grpc::ServerWriter<iamanager::v5::CertInfo>* mStream {};
+    grpc::ServerWriter<iamanager::v5::Subjects>* mSubjectsStream {};
     std::mutex                                   mLock;
     std::condition_variable                      mCV;
     bool                                         mConnected = false;

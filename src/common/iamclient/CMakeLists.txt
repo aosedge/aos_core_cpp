@@ -14,13 +14,15 @@ set(TARGET_NAME iamclient)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES permservicehandler.cpp publicservicehandler.cpp)
+set(SOURCES permservicehandler.cpp publicidentityhandler.cpp publicservicehandler.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils aos::common::pbconvert aos::core::iam::certhandler aos::api::iam)
+set(LIBRARIES aos::common::utils aos::common::pbconvert aos::core::common::identprovider aos::core::iam::certhandler
+              aos::api::iam
+)
 
 # ######################################################################################################################
 # Target

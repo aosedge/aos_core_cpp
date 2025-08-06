@@ -21,7 +21,9 @@ set(SOURCES iamclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::iamclient aos::common::tests::mocks Poco::Foundation GTest::gmock_main)
+set(LIBRARIES aos::common::iamclient aos::common::tests::mocks aos::core::common::tests::utils Poco::Foundation
+              GTest::gmock_main
+)
 
 # ######################################################################################################################
 # Target
