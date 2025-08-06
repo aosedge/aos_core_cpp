@@ -15,11 +15,11 @@
 
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/tests/mocks/certprovidermock.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 #include <core/iam/tests/mocks/permhandlermock.hpp>
@@ -80,7 +80,7 @@ protected:
     crypto::CertLoader            mCertLoader;
 
     // mocks
-    identhandler::IdentHandlerMock         mIdentHandler;
+    identprovider::IdentProviderMock       mIdentProvider;
     permhandler::PermHandlerMock           mPermHandler;
     nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     nodemanager::NodeManagerMock           mNodeManager;
@@ -268,14 +268,14 @@ TEST_F(IAMServerTest, InitFailsOnHandlersInit)
     EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eFailed));
     EXPECT_CALL(mNodeManager, SetNodeInfo).Times(0);
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << err.Message();
 }
 
 TEST_F(IAMServerTest, InitWithInsecureChannelsSucceeds)
 {
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
@@ -285,7 +285,7 @@ TEST_F(IAMServerTest, InitWithInsecureChannelsSucceeds)
 
 TEST_F(IAMServerTest, InitWithSecureChannelsSucceeds)
 {
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOff);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
@@ -297,14 +297,14 @@ TEST_F(IAMServerTest, InitWithSecureChannelsFails)
 {
     mServerConfig.mCertStorage = "unknown";
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOff);
     ASSERT_FALSE(err.IsNone());
 }
 
 TEST_F(IAMServerTest, OnNodeInfoChange)
 {
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -325,7 +325,7 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -357,7 +357,7 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -389,7 +389,7 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -421,7 +421,7 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();
@@ -454,7 +454,7 @@ TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentHandler, mPermHandler, mCertLoader, mCryptoProvider,
+    auto err = mServer.Init(mServerConfig, mCertHandler, mIdentProvider, mPermHandler, mCertLoader, mCryptoProvider,
         mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, cProvisioningModeOn);
 
     ASSERT_TRUE(err.IsNone()) << err.Message();

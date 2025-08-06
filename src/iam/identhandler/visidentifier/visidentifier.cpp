@@ -63,14 +63,12 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-Error VISIdentifier::Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
-    crypto::UUIDItf& uuidProvider)
+Error VISIdentifier::Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider)
 {
     LOG_DBG() << "Initializing VIS identifier";
 
-    mConfig           = config;
-    mSubjectsObserver = &subjectsObserver;
-    mUUIDProvider     = &uuidProvider;
+    mConfig       = config;
+    mUUIDProvider = &uuidProvider;
 
     return ErrorEnum::eNone;
 }
@@ -194,6 +192,27 @@ Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
     subjects = mSubjects;
 
     return ErrorEnum::eNone;
+}
+
+Error VISIdentifier::SubscribeSubjectsChanged(identprovider::SubjectsObserverItf& observer)
+{
+    std::lock_guard lock {mMutex};
+
+    if (std::find(mSubjectsObservers.begin(), mSubjectsObservers.end(), &observer) != mSubjectsObservers.end()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eAlreadyExist);
+    }
+
+    mSubjectsObservers.push_back(&observer);
+
+    return ErrorEnum::eNone;
+}
+
+void VISIdentifier::UnsubscribeSubjectsChanged(identprovider::SubjectsObserverItf& observer)
+{
+    std::lock_guard lock {mMutex};
+
+    mSubjectsObservers.erase(
+        std::remove(mSubjectsObservers.begin(), mSubjectsObservers.end(), &observer), mSubjectsObservers.end());
 }
 
 /***********************************************************************************************************************
@@ -354,7 +373,14 @@ Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 
         if (mSubjects != newSubjects) {
             mSubjects = std::move(newSubjects);
-            mSubjectsObserver->SubjectsChanged(mSubjects);
+
+            for (auto* observer : mSubjectsObservers) {
+                if (observer == nullptr) {
+                    continue;
+                }
+
+                observer->SubjectsChanged(mSubjects);
+            }
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to handle subjects subscription: error = " << e.what();

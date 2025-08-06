@@ -24,14 +24,14 @@ namespace aos::iam::iamserver {
  * Public
  **********************************************************************************************************************/
 
-Error PublicMessageHandler::Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+Error PublicMessageHandler::Init(NodeController& nodeController, identprovider::IdentProviderItf& identProvider,
     iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
 
     mNodeController   = &nodeController;
-    mIdentHandler     = &identHandler;
+    mIdentProvider    = &identProvider;
     mPermHandler      = &permHandler;
     mNodeInfoProvider = &nodeInfoProvider;
     mNodeManager      = &nodeManager;
@@ -56,7 +56,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 
     if (iam::nodeinfoprovider::IsMainNode(mNodeInfo)) {
-        if (GetIdentHandler() != nullptr) {
+        if (GetIdentProvider() != nullptr) {
             builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
         }
 
@@ -262,7 +262,7 @@ grpc::Status PublicMessageHandler::GetSystemInfo([[maybe_unused]] grpc::ServerCo
     StaticString<cIDLen> systemID;
     Error                err;
 
-    Tie(systemID, err) = GetIdentHandler()->GetSystemID();
+    Tie(systemID, err) = GetIdentProvider()->GetSystemID();
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get system ID: " << err;
 
@@ -271,7 +271,7 @@ grpc::Status PublicMessageHandler::GetSystemInfo([[maybe_unused]] grpc::ServerCo
 
     StaticString<cUnitModelLen> boardModel;
 
-    Tie(boardModel, err) = GetIdentHandler()->GetUnitModel();
+    Tie(boardModel, err) = GetIdentProvider()->GetUnitModel();
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get unit model: " << err;
 
@@ -291,7 +291,7 @@ grpc::Status PublicMessageHandler::GetSubjects([[maybe_unused]] grpc::ServerCont
 
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
 
-    if (auto err = GetIdentHandler()->GetSubjects(subjects); !err.IsNone()) {
+    if (auto err = GetIdentProvider()->GetSubjects(subjects); !err.IsNone()) {
         LOG_ERR() << "Failed to get subjects: " << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);

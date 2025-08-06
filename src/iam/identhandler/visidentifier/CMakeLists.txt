@@ -17,8 +17,9 @@ set(SOURCES pocowsclient.cpp visidentifier.cpp vismessage.cpp wsclientevent.cpp 
 # ######################################################################################################################
 
 set(LIBRARIES
-    aos::common::utils
+    aos::core::common::identprovider
     aos::common::logger
+    aos::common::utils
     aos::iam::config
     Poco::Foundation
     Poco::Crypto

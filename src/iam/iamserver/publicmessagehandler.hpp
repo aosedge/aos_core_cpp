@@ -16,9 +16,9 @@
 #include <grpcpp/server_builder.h>
 
 #include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/identprovider/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
@@ -43,20 +43,20 @@ class PublicMessageHandler :
     protected iamproto::IAMPublicNodesService::Service,
     // NodeInfo listener interface.
     public iam::nodemanager::NodeInfoListenerItf,
-    // identhandler subject observer interface
-    public iam::identhandler::SubjectsObserverItf {
+    // identprovider subject observer interface
+    public identprovider::SubjectsObserverItf {
 public:
     /**
      * Initializes public message handler instance.
      *
      * @param nodeController node controller.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param permHandler permission handler.
      * @param nodeInfoProvider node info provider.
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      */
-    Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+    Error Init(NodeController& nodeController, identprovider::IdentProviderItf& identProvider,
         iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider);
 
@@ -100,7 +100,7 @@ public:
     void Close();
 
 protected:
-    iam::identhandler::IdentHandlerItf*         GetIdentHandler() { return mIdentHandler; }
+    identprovider::IdentProviderItf*            GetIdentProvider() { return mIdentProvider; }
     iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
     iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
     NodeController*                             GetNodeController() { return mNodeController; }
@@ -172,7 +172,7 @@ private:
     grpc::Status RegisterNode(grpc::ServerContext*                                              context,
         grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override;
 
-    iam::identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    identprovider::IdentProviderItf*            mIdentProvider    = nullptr;
     iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
     iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;

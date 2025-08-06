@@ -16,10 +16,10 @@
 
 #include <core/common/crypto/crypto.hpp>
 #include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/identprovider/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
@@ -41,7 +41,7 @@ public:
      * Initializes IAM client instance.
      *
      * @param config client configuration.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      * @param certLoader certificate loader.
@@ -50,7 +50,7 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns Error.
      */
-    Error Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
+    Error Init(const config::IAMClientConfig& config, identprovider::IdentProviderItf* identProvider,
         certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
@@ -101,7 +101,7 @@ private:
         const Array<uint8_t>& serial, const Error& error);
     bool SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
 
-    identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    identprovider::IdentProviderItf*       mIdentProvider    = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
     certhandler::CertProviderItf*          mCertProvider     = nullptr;
     crypto::CertLoaderItf*                 mCertLoader       = nullptr;

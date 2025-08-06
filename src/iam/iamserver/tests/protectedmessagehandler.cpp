@@ -8,11 +8,11 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/tests/mocks/certprovidermock.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 #include <core/iam/tests/mocks/permhandlermock.hpp>
@@ -69,7 +69,7 @@ protected:
     std::unique_ptr<grpc::Server> mServer;
 
     // mocks
-    identhandler::IdentHandlerMock         mIdentHandler;
+    identprovider::IdentProviderMock       mIdentProvider;
     permhandler::PermHandlerMock           mPermHandler;
     nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     nodemanager::NodeManagerMock           mNodeManager;
@@ -105,7 +105,7 @@ void ProtectedMessageHandlerTest::SetUp()
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServerHandler.Init(mNodeController, mIdentHandler, mPermHandler, mNodeInfoProvider, mNodeManager,
+    auto err = mServerHandler.Init(mNodeController, mIdentProvider, mPermHandler, mNodeInfoProvider, mNodeManager,
         mCertProvider, mProvisionManager);
 
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();
@@ -435,7 +435,7 @@ TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
     request.set_node_id("node0");
 
     EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
 
     auto status = clientStub->CreateKey(&context, request, &response);
 

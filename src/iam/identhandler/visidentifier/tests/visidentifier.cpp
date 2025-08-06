@@ -8,7 +8,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 
 #include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
@@ -51,7 +51,7 @@ protected:
     const config::VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
     WSClientEvent                                  mWSClientEvent;
-    iam::identhandler::SubjectsObserverMock        mVISSubjectsObserverMock;
+    identprovider::SubjectsObserverMock            mVISSubjectsObserverMock;
     std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
     WSClientMockPtr                                mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
     TestVISIdentifier                              mVisIdentifier;
@@ -127,12 +127,14 @@ protected:
     {
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
 
+        mVisIdentifier.SubscribeSubjectsChanged(mVISSubjectsObserverMock);
+
         ExpectSubscribeSucceeded();
         EXPECT_CALL(*mWSClientItfMockPtr, Connect).Times(1);
         EXPECT_CALL(mVisIdentifier, InitWSClient).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mWSClientItfMockPtr, WaitForEvent).WillOnce(Invoke([this]() { return mWSClientEvent.Wait(); }));
 
-        ASSERT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+        ASSERT_TRUE(mVisIdentifier.Init(mConfig, *mCryptoProvider).IsNone());
 
         ASSERT_TRUE(mVisIdentifier.Start().IsNone());
 
@@ -163,7 +165,7 @@ protected:
 TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
-    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, *mCryptoProvider).IsNone());
 
     EXPECT_FALSE(identifier.Start().IsNone());
 }
@@ -299,7 +301,7 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
             return {str.cbegin(), str.cend()};
         }));
 
-    EXPECT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+    EXPECT_TRUE(mVisIdentifier.Init(mConfig, *mCryptoProvider).IsNone());
     EXPECT_TRUE(mVisIdentifier.Start().IsNone());
 
     mVisIdentifier.WaitUntilConnected();

@@ -19,13 +19,13 @@ set(SOURCES app.cpp main.cpp)
 set(LIBRARIES
     aos::iam::config
     aos::iam::database
-    aos::iam::fileidentifier
     aos::iam::iamclient
     aos::iam::iamserver
     aos::iam::nodeinfoprovider
     aos::iam::visidentifier
     aos::common::version
     aos::core::common::version
+    aos::core::iam::fileidentifier
 )
 
 # ######################################################################################################################

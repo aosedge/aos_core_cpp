@@ -10,7 +10,6 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 
 #include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
@@ -174,9 +173,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemID)
 
     auto config = CreateConfigWithVisParams(cConfig);
 
-    iam::identhandler::SubjectsObserverMock observer;
-
-    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedSystemId {"test-system-id"};
@@ -195,9 +192,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetUnitModel)
 
     auto config = CreateConfigWithVisParams(cConfig);
 
-    iam::identhandler::SubjectsObserverMock observer;
-
-    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::string expectedUnitModel {"test-unit-model"};
@@ -216,9 +211,7 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     auto config = CreateConfigWithVisParams(cConfig);
 
-    iam::identhandler::SubjectsObserverMock observer;
-
-    ASSERT_TRUE(visIdentifier.Init(config, observer, *mCryptoProvider).IsNone());
+    ASSERT_TRUE(visIdentifier.Init(config, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
     const std::vector<std::string> testSubjects {"1", "2", "3"};

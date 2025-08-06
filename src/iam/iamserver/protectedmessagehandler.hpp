@@ -15,8 +15,8 @@
 #include <grpcpp/server_builder.h>
 
 #include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/identprovider/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
@@ -46,14 +46,14 @@ public:
      * Initializes protected message handler instance.
      *
      * @param nodeController node controller.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param permHandler permission handler.
      * @param nodeInfoProvider node info provider.
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      */
-    Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+    Error Init(NodeController& nodeController, identprovider::IdentProviderItf& identProvider,
         iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider,
         iam::provisionmanager::ProvisionManagerItf& provisionManager);

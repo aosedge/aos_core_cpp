@@ -24,12 +24,12 @@ namespace aos::iam::iamclient {
  * Public
  **********************************************************************************************************************/
 
-Error IAMClient::Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
+Error IAMClient::Init(const config::IAMClientConfig& config, identprovider::IdentProviderItf* identProvider,
     certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
 {
-    mIdentHandler      = identHandler;
+    mIdentProvider     = identProvider;
     mNodeInfoProvider  = &nodeInfoProvider;
     mCertProvider      = &certProvider;
     mCertLoader        = &certLoader;
@@ -449,7 +449,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 
     LOG_DBG() << "Process create key request: type=" << certType << ", subject=" << subject;
 
-    if (subject.IsEmpty() && !mIdentHandler) {
+    if (subject.IsEmpty() && !mIdentProvider) {
         LOG_ERR() << "Subject can't be empty";
 
         return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument));
@@ -457,8 +457,8 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 
     Error err = ErrorEnum::eNone;
 
-    if (subject.IsEmpty() && mIdentHandler) {
-        Tie(subject, err) = mIdentHandler->GetSystemID();
+    if (subject.IsEmpty() && mIdentProvider) {
+        Tie(subject, err) = mIdentProvider->GetSystemID();
         if (!err.IsNone()) {
             LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
 

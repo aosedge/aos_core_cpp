@@ -15,12 +15,12 @@
 
 #include <core/common/version/version.hpp>
 #include <core/iam/certhandler/certmodule.hpp>
+#include <core/iam/identmodules/fileidentifier/fileidentifier.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 #include <iam/config/config.hpp>
-#include <iam/identhandler/fileidentifier/fileidentifier.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
 
 #include "app.hpp"
@@ -285,12 +285,24 @@ void App::Start()
     LOG_INF() << "Start IAM";
 
     if (mIdentifier) {
-        auto err = mIdentifier->Start();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't start identifier module");
+
+        auto err = mIdentifier->SubscribeSubjectsChanged(mIAMServer);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to subjects changed events");
+
+        if (auto* visIdentifier = dynamic_cast<visidentifier::VISIdentifier*>(mIdentifier.get());
+            visIdentifier != nullptr) {
+            err = visIdentifier->Start();
+            AOS_ERROR_CHECK_AND_THROW(err, "can't start VIS identifier module");
+        }
 
         mCleanupManager.AddCleanup([this]() {
-            if (auto err = mIdentifier->Stop(); !err.IsNone()) {
-                LOG_ERR() << "Can't stop identifier module: err=" << err;
+            mIdentifier->UnsubscribeSubjectsChanged(mIAMServer);
+
+            if (auto* visIdentifier = dynamic_cast<visidentifier::VISIdentifier*>(mIdentifier.get());
+                visIdentifier != nullptr) {
+                if (auto err = visIdentifier->Stop(); !err.IsNone()) {
+                    LOG_ERR() << "can't stop VIS identifier module" << Log::Field(err);
+                }
             }
         });
     }
@@ -452,9 +464,20 @@ Error App::InitCertModules(const config::Config& config)
 Error App::InitIdentifierModule(const config::IdentifierConfig& config)
 {
     if (config.mPlugin == "fileidentifier") {
-        auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
+        auto fileIdentifier = std::make_unique<iam::identmodules::fileidentifier::FileIdentifier>();
 
-        if (auto err = fileIdentifier->Init(config, mIAMServer); !err.IsNone()) {
+        auto [moduleParams, err] = config::ParseFileIdentifierModuleParams(config.mParams);
+        if (!err.IsNone()) {
+            return err;
+        }
+
+        iam::identmodules::fileidentifier::Config fileIdentifierConfig {};
+        fileIdentifierConfig.mSystemIDPath  = moduleParams.mSystemIDPath.c_str();
+        fileIdentifierConfig.mUnitModelPath = moduleParams.mUnitModelPath.c_str();
+        fileIdentifierConfig.mSubjectsPath  = moduleParams.mSubjectsPath.c_str();
+
+        err = fileIdentifier->Init(fileIdentifierConfig);
+        if (!err.IsNone()) {
             return err;
         }
 
@@ -462,7 +485,7 @@ Error App::InitIdentifierModule(const config::IdentifierConfig& config)
     } else if (config.mPlugin == "visidentifier") {
         auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
 
-        if (auto err = visIdentifier->Init(config, mIAMServer, mCryptoProvider); !err.IsNone()) {
+        if (auto err = visIdentifier->Init(config, mCryptoProvider); !err.IsNone()) {
             return err;
         }
 

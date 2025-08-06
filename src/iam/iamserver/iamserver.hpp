@@ -16,9 +16,9 @@
 #include <grpcpp/server_builder.h>
 
 #include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/identprovider/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
@@ -36,7 +36,7 @@ namespace aos::iam::iamserver {
  * IAM GRPC server
  */
 class IAMServer : public nodemanager::NodeInfoListenerItf,
-                  public identhandler::SubjectsObserverItf,
+                  public identprovider::SubjectsObserverItf,
                   public provisionmanager::ProvisionManagerCallbackItf,
                   private certhandler::CertReceiverItf {
 public:
@@ -50,7 +50,7 @@ public:
      *
      * @param config server configuration.
      * @param certHandler certificate handler.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param permHandler permission handler.
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
@@ -61,7 +61,7 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
     Error Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
-        identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
+        identprovider::IdentProviderItf& identProvider, permhandler::PermHandlerItf& permHandler,
         crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
         certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
@@ -128,7 +128,7 @@ public:
     void OnNodeRemoved(const String& id) override;
 
 private:
-    // identhandler::SubjectsObserverItf interface
+    // identprovider::SubjectsObserverItf interface
     Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
 
     // certhandler::CertReceiverItf interface

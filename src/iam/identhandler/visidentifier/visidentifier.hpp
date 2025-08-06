@@ -17,7 +17,7 @@
 #include <Poco/Dynamic/Var.h>
 #include <Poco/Event.h>
 
-#include <core/iam/identhandler/identhandler.hpp>
+#include <core/common/identprovider/itf/identprovider.hpp>
 
 #include <iam/config/config.hpp>
 #include <iam/identhandler/visidentifier/wsclient.hpp>
@@ -57,7 +57,7 @@ private:
 /**
  * VIS Identifier.
  */
-class VISIdentifier : public iam::identhandler::IdentHandlerItf {
+class VISIdentifier : public identprovider::IdentProviderItf {
 public:
     /**
      * Creates a new object instance.
@@ -68,26 +68,24 @@ public:
      * Initializes vis identifier.
      *
      * @param config identifier config.
-     * @param subjectsObserver subject observer.
      * @param uuidProvider UUID provider.
      * @return Error.
      */
-    Error Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
-        crypto::UUIDItf& uuidProvider);
+    Error Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider);
 
     /**
      * Starts vis identifier.
      *
      * @return Error.
      */
-    Error Start() override;
+    Error Start();
 
     /**
      * Stops vis identifier.
      *
      * @return Error.
      */
-    Error Stop() override;
+    Error Stop();
 
     /**
      * Returns System ID.
@@ -110,6 +108,21 @@ public:
      * @returns Error.
      */
     Error GetSubjects(Array<StaticString<cIDLen>>& subjects) override;
+
+    /**
+     * Subscribes to subjects changed events.
+     *
+     * @param observer subjects observer.
+     * @returns Error.
+     */
+    Error SubscribeSubjectsChanged(identprovider::SubjectsObserverItf& observer) override;
+
+    /**
+     * Unsubscribes from subjects changed events.
+     *
+     * @param observer subjects observer.
+     */
+    void UnsubscribeSubjectsChanged(identprovider::SubjectsObserverItf& observer) override;
 
 protected:
     virtual Error  InitWSClient(const config::IdentifierConfig& config);
@@ -134,8 +147,8 @@ private:
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
-    identhandler::SubjectsObserverItf*                 mSubjectsObserver = nullptr;
-    crypto::UUIDItf*                                   mUUIDProvider     = nullptr;
+    std::vector<identprovider::SubjectsObserverItf*>   mSubjectsObservers;
+    crypto::UUIDItf*                                   mUUIDProvider = nullptr;
     VISSubscriptions                                   mSubscriptions;
     StaticString<cIDLen>                               mSystemId;
     StaticString<cUnitModelLen>                        mUnitModel;
