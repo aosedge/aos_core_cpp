@@ -24,13 +24,13 @@
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include <common/downloader/downloader.hpp>
+#include <common/tests/stubs/storagestub.hpp>
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/pkcs11helper.hpp>
 
 #include <mp/communication/communicationmanager.hpp>
 #include <mp/communication/socket.hpp>
 
-#include "stubs/storagestub.hpp"
 #include "stubs/transport.hpp"
 #include "utils/generateimage.hpp"
 
