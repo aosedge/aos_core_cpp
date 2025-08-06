@@ -85,7 +85,9 @@ Error SecureChannel::Connect()
         return Error(ErrorEnum::eRuntime, "failed to create SSL context");
     }
 
-    if (auto err = ConfigureSSLContext(mCtx); !err.IsNone()) {
+    if (auto err = common::utils::ConfigureSSLContext(
+            mCertStorage.c_str(), mCfg->mCACert.c_str(), *mCertProvider, *mCertLoader, *mCryptoProvider, mCtx);
+        !err.IsNone()) {
         SSL_CTX_free(mCtx);
         mCtx = nullptr;
 
@@ -210,31 +212,6 @@ std::string SecureChannel::GetOpensslErrorString()
     return oss.str();
 }
 
-RetWithError<EVP_PKEY*> SecureChannel::LoadPrivateKey(const std::string& keyURL)
-{
-    auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
-    if (!createErr.IsNone()) {
-        return {nullptr, createErr};
-    }
-
-    auto [pem, encodeErr] = common::utils::PEMEncodePKCS11URL(pkcs11URL);
-    if (!encodeErr.IsNone()) {
-        return {nullptr, encodeErr};
-    }
-
-    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
-    if (!bio) {
-        return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
-    }
-
-    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
-    if (!pkey) {
-        return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
-    }
-
-    return {pkey, ErrorEnum::eNone};
-}
-
 SSL_CTX* SecureChannel::CreateSSLContext(const SSL_METHOD* method)
 {
     SSL_CTX* ctx = SSL_CTX_new(method);
@@ -243,72 +220,6 @@ SSL_CTX* SecureChannel::CreateSSLContext(const SSL_METHOD* method)
     }
 
     return ctx;
-}
-
-Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
-{
-    LOG_DBG() << "Configuring SSL context";
-
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-
-    iam::certhandler::CertInfo certInfo;
-
-    if (auto err = mCertProvider->GetCert(mCertStorage.c_str(), {}, {}, certInfo); !err.IsNone()) {
-        return err;
-    }
-
-    auto [certificate, errLoad] = common::utils::LoadPEMCertificates(certInfo.mCertURL, *mCertLoader, *mCryptoProvider);
-    if (!errLoad.IsNone()) {
-        return errLoad;
-    }
-
-    auto [pkey, errLoadKey] = LoadPrivateKey(certInfo.mKeyURL.CStr());
-    if (!errLoadKey.IsNone()) {
-        return errLoadKey;
-    }
-
-    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> pkeyPtr(pkey, EVP_PKEY_free);
-    if (SSL_CTX_use_PrivateKey(ctx, pkey) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    BIO* bio = BIO_new_mem_buf(certificate.c_str(), -1);
-    if (!bio) {
-        return Error(ErrorEnum::eRuntime, "failed to create BIO");
-    }
-
-    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
-
-    X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
-    if (!cert) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    std::unique_ptr<X509, decltype(&X509_free)> certPtr(cert, X509_free);
-
-    if (SSL_CTX_use_certificate(ctx, cert) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    auto chain_deleter = [](STACK_OF(X509) * chain) { sk_X509_pop_free(chain, X509_free); };
-    std::unique_ptr<STACK_OF(X509), decltype(chain_deleter)> chain(sk_X509_new_null(), chain_deleter);
-
-    X509* intermediateCert = nullptr;
-    while ((intermediateCert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr) {
-        sk_X509_push(chain.get(), intermediateCert);
-    }
-
-    if (sk_X509_num(chain.get()) > 0 && SSL_CTX_set1_chain(ctx, chain.get()) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    if (SSL_CTX_load_verify_locations(ctx, mCfg->mCACert.c_str(), nullptr) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    LOG_DBG() << "SSL context configured";
-
-    return ErrorEnum::eNone;
 }
 
 int SecureChannel::CustomBIOWrite(BIO* bio, const char* buf, int len)

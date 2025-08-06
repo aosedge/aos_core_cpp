@@ -88,12 +88,10 @@ private:
     static int  CustomBIORead(BIO* bio, char* buf, int len);
     static long CustomBIOCtrl(BIO* bio, int cmd, long num, void* ptr);
 
-    void                    InitOpenssl();
-    void                    CleanupOpenssl();
-    SSL_CTX*                CreateSSLContext(const SSL_METHOD* method);
-    Error                   ConfigureSSLContext(SSL_CTX* ctx);
-    std::string             GetOpensslErrorString();
-    RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL);
+    void        InitOpenssl();
+    void        CleanupOpenssl();
+    SSL_CTX*    CreateSSLContext(const SSL_METHOD* method);
+    std::string GetOpensslErrorString();
 
     CommChannelItf*                       mChannel {};
     common::iamclient::TLSCredentialsItf* mCertProvider {};

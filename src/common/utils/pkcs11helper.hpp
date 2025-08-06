@@ -10,7 +10,10 @@
 
 #include <string>
 
+#include <openssl/types.h>
+
 #include <core/common/tools/string.hpp>
+#include <core/iam/certhandler/certprovider.hpp>
 
 namespace aos::common::utils {
 
@@ -30,6 +33,21 @@ RetWithError<std::string> CreatePKCS11URL(const String& keyURL, const String& ty
  * @return RetWithError<std::string>.
  */
 RetWithError<std::string> PEMEncodePKCS11URL(const std::string& url);
+
+/**
+ * Configures SSL context with the provided cert type.
+ *
+ * @param certType cert type.
+ * @param caCertPath CA certificate path.
+ * @param certProvider certificate provider.
+ * @param certLoader certificate loader.
+ * @param cryptoProvider crypto provider.
+ * @param[out] ctx SSL context.
+ * @return Error
+ */
+Error ConfigureSSLContext(const String& certType, const String& caCertPath,
+    iam::certhandler::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx);
 
 } // namespace aos::common::utils
 
