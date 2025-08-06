@@ -87,6 +87,30 @@ add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic -Wno-format-truncatio
 set(CMAKE_CXX_STANDARD 17)
 
 # ######################################################################################################################
+# External projects
+# ######################################################################################################################
+
+include(FetchContent)
+
+if(NOT EXISTS ${AOS_CORE_LIB_DIR})
+    FetchContent_Populate(
+        aos_core_lib_cpp
+        GIT_REPOSITORY https://github.com/aosedge/aos_core_lib_cpp.git
+        GIT_TAG develop
+        SOURCE_DIR ${AOS_CORE_LIB_DIR}
+    )
+endif()
+
+if(NOT EXISTS ${AOS_CORE_API_DIR})
+    FetchContent_Populate(
+        aos_core_api
+        GIT_REPOSITORY https://github.com/aosedge/aos_core_api.git
+        GIT_TAG develop
+        SOURCE_DIR ${AOS_CORE_API_DIR}
+    )
+endif()
+
+# ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
 
@@ -132,30 +156,6 @@ if(WITH_DOC)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
-    )
-endif()
-
-# ######################################################################################################################
-# External projects
-# ######################################################################################################################
-
-include(FetchContent)
-
-if(NOT EXISTS ${AOS_CORE_LIB_DIR})
-    FetchContent_Populate(
-        aos_core_lib_cpp
-        GIT_REPOSITORY https://github.com/aosedge/aos_core_lib_cpp.git
-        GIT_TAG develop
-        SOURCE_DIR ${AOS_CORE_LIB_DIR}
-    )
-endif()
-
-if(NOT EXISTS ${AOS_CORE_API_DIR})
-    FetchContent_Populate(
-        aos_core_api
-        GIT_REPOSITORY https://github.com/aosedge/aos_core_api.git
-        GIT_TAG develop
-        SOURCE_DIR ${AOS_CORE_API_DIR}
     )
 endif()
 
