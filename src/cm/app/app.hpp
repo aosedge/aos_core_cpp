@@ -10,6 +10,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
+#include <cm/config/config.hpp>
 #include <common/logger/logger.hpp>
 
 namespace aos::cm::app {
@@ -49,6 +50,8 @@ private:
     bool                   mStopProcessing = false;
     bool                   mProvisioning   = false;
     std::string            mConfigFile;
+
+    config::Config mConfig;
 };
 
 } // namespace aos::cm::app

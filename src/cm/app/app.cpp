@@ -157,6 +157,9 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 void App::Init()
 {
     LOG_INF() << "Initialize CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+
+    auto err = config::ParseConfig(mConfigFile, mConfig);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse config");
 }
 
 void App::Start()
