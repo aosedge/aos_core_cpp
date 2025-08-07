@@ -157,16 +157,43 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 void App::Init()
 {
     LOG_INF() << "Initialize CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+
+    auto err = config::ParseConfig(mConfigFile, mConfig);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize config");
+
+    err = mCryptoProvider.Init();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
+
+    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
+
+    err = mPublicServiceHandler.Init(
+        common::iamclient::Config {mConfig.mIAMPublicServerURL, mConfig.mCrypt.mCACert}, mCertLoader, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public service handler");
+
+    err = mPublicIdentityHandler.Init(mConfig.mIAMProtectedServerURL, mConfig.mCertStorage, mPublicServiceHandler);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public identity handler");
 }
 
 void App::Start()
 {
     LOG_INF() << "Start CM";
+
+    auto err = mPublicIdentityHandler.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start public identity handler");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mPublicIdentityHandler.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop public identity handler" << Log::Field("err", err);
+        }
+    });
 }
 
 void App::Stop()
 {
     LOG_INF() << "Stop CM";
+
+    mCleanupManager.ExecuteCleanups();
 }
 
 void App::HandleHelp(const std::string& name, const std::string& value)
