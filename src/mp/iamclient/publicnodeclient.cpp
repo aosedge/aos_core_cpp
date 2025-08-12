@@ -28,7 +28,7 @@ Error PublicNodeClient::Init(
         return err;
     }
 
-    mUrl = publicServer ? cfg.mIAMPublicServerURL : cfg.mIAMProtectedServerURL;
+    mUrl = publicServer ? cfg.mIAMMainPublicServerURL : cfg.mIAMMainProtectedServerURL;
 
     return ErrorEnum::eNone;
 }

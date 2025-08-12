@@ -52,7 +52,8 @@ protected:
             "ImageStoreDir": "/path/to/images",
             "IAMConfig": {
                 "IAMPublicServerURL": "localhost:8090",
-                "IAMProtectedServerURL": "localhost:8091",
+                "IAMMainPublicServerURL": "main:8090",
+                "IAMMainProtectedServerURL": "main:8091",
                 "CertStorage": "iam",
                 "OpenPort": 8080,
                 "SecurePort": 8081
@@ -99,7 +100,8 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mImageStoreDir, "/path/to/images");
 
     EXPECT_EQ(config.mIAMConfig.mIAMPublicServerURL, "localhost:8090");
-    EXPECT_EQ(config.mIAMConfig.mIAMProtectedServerURL, "localhost:8091");
+    EXPECT_EQ(config.mIAMConfig.mIAMMainPublicServerURL, "main:8090");
+    EXPECT_EQ(config.mIAMConfig.mIAMMainProtectedServerURL, "main:8091");
     EXPECT_EQ(config.mIAMConfig.mCertStorage, "iam");
     EXPECT_EQ(config.mIAMConfig.mOpenPort, 8080);
     EXPECT_EQ(config.mIAMConfig.mSecurePort, 8081);

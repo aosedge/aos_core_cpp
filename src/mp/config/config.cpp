@@ -63,7 +63,8 @@ IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
 {
     return IAMConfig {
         object.GetValue<std::string>("IAMPublicServerURL"),
-        object.GetValue<std::string>("IAMProtectedServerURL"),
+        object.GetValue<std::string>("IAMMainPublicServerURL"),
+        object.GetValue<std::string>("IAMMainProtectedServerURL"),
         object.GetValue<std::string>("CertStorage"),
         object.GetValue<int>("OpenPort"),
         object.GetValue<int>("SecurePort"),
