@@ -46,7 +46,8 @@ struct VChanConfig {
  */
 struct IAMConfig {
     std::string mIAMPublicServerURL;
-    std::string mIAMProtectedServerURL;
+    std::string mIAMMainPublicServerURL;
+    std::string mIAMMainProtectedServerURL;
     std::string mCertStorage;
     int         mOpenPort;
     int         mSecurePort;
