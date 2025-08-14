@@ -14,7 +14,15 @@ set(TARGET_NAME pbconvert_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES common.cpp iam.cpp sm.cpp)
+set(SOURCES common.cpp)
+
+if(WITH_IAM_API)
+    list(APPEND SOURCES iam.cpp)
+endif()
+
+if(WITH_SM_API)
+    list(APPEND SOURCES sm.cpp)
+endif()
 
 # ######################################################################################################################
 # Libraries
