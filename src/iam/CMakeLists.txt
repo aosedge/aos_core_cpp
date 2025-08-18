@@ -9,7 +9,17 @@
 # Dependencies
 # ######################################################################################################################
 
-find_package(Poco REQUIRED Foundation Util JSON DataSQLite)
+find_package(
+    Poco
+    REQUIRED
+    Foundation
+    Util
+    JSON
+    DataSQLite
+    Net
+    NetSSL
+    Crypto
+)
 
 # ######################################################################################################################
 # Target properties
