@@ -536,18 +536,12 @@ Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::Linux::mSysctl)& sysctl
 
 void LinuxResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxResources& resources)
 {
-    auto devices = utils::GetArrayValue<aos::oci::LinuxDeviceCgroup>(object, "devices", [](const auto& value) {
-        aos::oci::LinuxDeviceCgroup device;
+    utils::ForEach(object, "devices", [&resources](const auto& item) {
+        auto err = resources.mDevices.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to emplace back device");
 
-        DeviceCgroupFromJSON(utils::CaseInsensitiveObjectWrapper(value), device);
-
-        return device;
+        DeviceCgroupFromJSON(utils::CaseInsensitiveObjectWrapper(item), resources.mDevices.Back());
     });
-
-    for (const auto& device : devices) {
-        auto err = resources.mDevices.PushBack(device);
-        AOS_ERROR_CHECK_AND_THROW(err, "linux devices parsing error");
-    }
 
     if (object.Has("memory")) {
         resources.mMemory.SetValue({});
@@ -967,18 +961,12 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         }
 
         if (wrapper.Has("mounts")) {
-            auto mounts = utils::GetArrayValue<Mount>(wrapper, "mounts", [](const auto& value) {
-                auto mount = std::make_unique<Mount>();
+            utils::ForEach(wrapper, "mounts", [&runtimeSpec](const auto& item) {
+                auto err = runtimeSpec.mMounts.EmplaceBack();
+                AOS_ERROR_CHECK_AND_THROW(err, "failed emplace back mount");
 
-                MountFromJSON(utils::CaseInsensitiveObjectWrapper(value), *mount);
-
-                return *mount;
+                MountFromJSON(utils::CaseInsensitiveObjectWrapper(item), runtimeSpec.mMounts.Back());
             });
-
-            for (const auto& mount : mounts) {
-                err = runtimeSpec.mMounts.PushBack(mount);
-                AOS_ERROR_CHECK_AND_THROW(err, "mounts parsing error");
-            }
         }
 
         if (wrapper.Has("linux")) {
