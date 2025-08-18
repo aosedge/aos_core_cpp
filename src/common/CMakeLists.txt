@@ -12,7 +12,16 @@
 find_package(CURL REQUIRED)
 find_package(gRPC REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(Poco REQUIRED JSON DataSQLite Foundation Util)
+find_package(
+    Poco
+    REQUIRED
+    JSON
+    DataSQLite
+    Foundation
+    Util
+    Net
+    NetSSL
+)
 
 pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
 pkg_check_modules(Systemd libsystemd REQUIRED)
