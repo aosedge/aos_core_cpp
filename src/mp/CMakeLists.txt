@@ -11,7 +11,15 @@
 
 find_package(CURL REQUIRED)
 find_package(gRPC REQUIRED)
-find_package(Poco REQUIRED JSON DataSQLite Foundation Util)
+find_package(
+    Poco
+    REQUIRED
+    JSON
+    DataSQLite
+    Foundation
+    Util
+    Net
+)
 
 if(WITH_VCHAN)
     find_package(Xenvchan REQUIRED)
