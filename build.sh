@@ -23,11 +23,12 @@ print_usage() {
     echo "  doc                        generates documentation"
     echo
     echo "Options:"
-    echo "  --clean                    cleans build artifacts"
+    echo "  --clean                    cleans build artifacts before building"
     echo "  --aos-service <services>   specifies services (e.g., sm,mp,iam)"
     echo "  --ci                       uses build-wrapper for CI analysis (SonarQube)"
     echo "  --core-dir <path>          specifies path to core libs directory"
     echo "  --parallel <N>             specifies number of parallel jobs for build (default: all available cores)"
+    echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
     echo
 }
 
@@ -59,7 +60,7 @@ conan_setup() {
 
     print_next_step "Generate conan toolchain"
 
-    conan install ./conan/ --output-folder build --settings=build_type=Debug --build=missing
+    conan install ./conan/ --output-folder build --settings=build_type="$ARG_BUILD_TYPE" --build=missing
 }
 
 build_project() {
@@ -107,7 +108,7 @@ build_project() {
     print_next_step "Run cmake configure"
 
     cmake -S . -B build \
-        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_BUILD_TYPE="$ARG_BUILD_TYPE" \
         ${ARG_CORE_DIR+-DAOS_CORE_DIR="$ARG_CORE_DIR"} \
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
@@ -123,11 +124,11 @@ build_project() {
     if [ "$ARG_CI_FLAG" == "true" ]; then
         print_next_step "Run build-wrapper and build (CI mode)"
 
-        build-wrapper-linux-x86-64 --out-dir "$BUILD_WRAPPER_OUT_DIR" cmake --build ./build/ --config Debug --parallel ${ARG_PARALLEL_JOBS}
+        build-wrapper-linux-x86-64 --out-dir "$BUILD_WRAPPER_OUT_DIR" cmake --build ./build/ --config "$ARG_BUILD_TYPE" --parallel "$ARG_PARALLEL_JOBS"
     else
         print_next_step "Run build"
 
-        cmake --build ./build/ --config Debug --parallel ${ARG_PARALLEL_JOBS}
+        cmake --build ./build/ --config "$ARG_BUILD_TYPE" --parallel "$ARG_PARALLEL_JOBS"
     fi
 
     echo
@@ -159,6 +160,11 @@ parse_arguments() {
 
         --parallel)
             ARG_PARALLEL_JOBS="$2"
+            shift 2
+            ;;
+
+        --build-type)
+            ARG_BUILD_TYPE="$2"
             shift 2
             ;;
 
@@ -235,6 +241,7 @@ ARG_CLEAN_FLAG=false
 ARG_AOS_SERVICES=""
 ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
+ARG_BUILD_TYPE="Debug"
 
 case "$command" in
 build)
