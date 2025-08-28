@@ -104,4 +104,98 @@ Error ToJSON(const aos::cloudprotocol::InstanceFilter& instanceFilter, Poco::JSO
     return ErrorEnum::eNone;
 }
 
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::Identifier& identifier)
+{
+    if (json.Has("id")) {
+        auto [id, err] = uuid::StringToUUID(json.GetValue<std::string>("id").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "can't parse id"));
+        }
+
+        identifier.mID.EmplaceValue(id);
+    }
+
+    if (json.Has("type")) {
+        UpdateItemType type;
+
+        auto err = type.FromString(json.GetValue<std::string>("type").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "wrong type"));
+        }
+
+        identifier.mType.EmplaceValue(type);
+    }
+
+    if (json.Has("codename")) {
+        identifier.mCodeName.EmplaceValue();
+
+        auto err = identifier.mCodeName->Assign(json.GetValue<std::string>("codename").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "failed to parse codename"));
+        }
+    }
+
+    if (json.Has("title")) {
+        identifier.mTitle.EmplaceValue();
+
+        auto err = identifier.mTitle->Assign(json.GetValue<std::string>("title").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "failed to parse title"));
+        }
+    }
+
+    if (json.Has("description")) {
+        identifier.mDescription.EmplaceValue();
+
+        auto err = identifier.mDescription->Assign(json.GetValue<std::string>("description").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "failed to parse description"));
+        }
+    }
+
+    if (json.Has("urn")) {
+        identifier.mURN.EmplaceValue();
+
+        auto err = identifier.mURN->Assign(json.GetValue<std::string>("urn").c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "failed to parse URN"));
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ToJSON(const aos::cloudprotocol::Identifier& identifier, Poco::JSON::Object& json)
+{
+    try {
+        if (identifier.mID.HasValue()) {
+            json.set("serviceID", uuid::UUIDToString(*identifier.mID).CStr());
+        }
+
+        if (identifier.mType.HasValue()) {
+            json.set("type", identifier.mType->ToString().CStr());
+        }
+
+        if (identifier.mCodeName.HasValue()) {
+            json.set("codename", identifier.mCodeName->CStr());
+        }
+
+        if (identifier.mTitle.HasValue()) {
+            json.set("title", identifier.mTitle->CStr());
+        }
+
+        if (identifier.mDescription.HasValue()) {
+            json.set("description", identifier.mDescription->CStr());
+        }
+
+        if (identifier.mURN.HasValue()) {
+            json.set("urn", identifier.mURN->CStr());
+        }
+    } catch (const std::exception& e) {
+        return utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::cloudprotocol
