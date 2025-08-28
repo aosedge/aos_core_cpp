@@ -68,7 +68,7 @@ public:
 
     bool operator==(const Time& time) const
     {
-        int day, month, year, hour, minute, second;
+        int day = 0, month = 0, year = 0, hour = 0, minute = 0, second = 0;
 
         auto err = time.GetDate(&day, &month, &year);
         AOS_ERROR_CHECK_AND_THROW(err, "failed to get date");
