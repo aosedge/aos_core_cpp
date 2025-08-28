@@ -6,7 +6,7 @@
 
 #include <Poco/JSON/Parser.h>
 
-#include <core/common/cloudprotocol/cloudmessage.hpp>
+#include <core/common/cloudprotocol/protocol.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
@@ -101,6 +101,7 @@ Poco::JSON::Object::Ptr UnitSecretsToJSON(const aos::cloudprotocol::UnitSecrets&
     json->set("version", unitSecrets.mVersion.CStr());
 
     auto nodes = Poco::makeShared<Poco::JSON::Object>();
+
     for (const auto& node : unitSecrets.mNodes) {
         nodes->set(node.mFirst.CStr(), node.mSecond.CStr());
     }

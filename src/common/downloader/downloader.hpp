@@ -16,7 +16,6 @@
 #include <curl/curl.h>
 
 #include <core/common/alerts/alerts.hpp>
-#include <core/common/cloudprotocol/cloudprotocol.hpp>
 #include <core/common/downloader/downloader.hpp>
 
 namespace aos::common::downloader {
