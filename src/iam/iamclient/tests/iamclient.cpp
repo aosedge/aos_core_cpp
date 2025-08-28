@@ -434,7 +434,8 @@ protected:
         return config;
     }
 
-    std::unique_ptr<IAMClient> CreateClient(bool provisionMode, const config::IAMClientConfig& config = GetConfig())
+    std::unique_ptr<IAMClient> CreateClient(
+        [[maybe_unused]] bool provisionMode, [[maybe_unused]] const config::IAMClientConfig& config = GetConfig())
     {
         auto client = std::make_unique<IAMClient>();
 
