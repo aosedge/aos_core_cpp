@@ -659,7 +659,9 @@ TEST_F(StorageStateTests, UpdateState)
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
-    auto updateState = std::make_unique<cloudprotocol::UpdateState>(instanceIdent);
+    auto updateState = std::make_unique<cloudprotocol::UpdateState>();
+
+    updateState->mInstanceIdent = instanceIdent;
 
     StaticString<crypto::cSHA2DigestSize> checksum;
 
@@ -687,8 +689,10 @@ TEST_F(StorageStateTests, AcceptStateUnknownInstance)
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
-    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>(InstanceIdent {"not exists", "not exists", 0});
-    acceptState->mResult = cloudprotocol::StateResultEnum::eAccepted;
+    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>();
+
+    acceptState->mInstanceIdent = {"not exists", "not exists", 0};
+    acceptState->mResult        = cloudprotocol::StateResultEnum::eAccepted;
 
     err = mStorageState.AcceptState(*acceptState);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound));
@@ -703,9 +707,10 @@ TEST_F(StorageStateTests, AcceptStateChecksumMismatch)
     err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);
 
-    auto acceptState       = std::make_unique<cloudprotocol::StateAcceptance>(cInstanceIdent);
-    acceptState->mResult   = cloudprotocol::StateResultEnum::eAccepted;
-    acceptState->mChecksum = "invalid checksum";
+    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>();
+
+    acceptState->mInstanceIdent = cInstanceIdent;
+    acceptState->mChecksum      = "invalid checksum";
 
     err = mStorageState.AcceptState(*acceptState);
     ASSERT_TRUE(err.Is(ErrorEnum::eInvalidChecksum))
@@ -729,9 +734,11 @@ TEST_F(StorageStateTests, AcceptStateWithRejectedStatus)
     err = mStorageStub.GetStorageStateInfo(cInstanceIdent, storageData);
     ASSERT_TRUE(err.IsNone()) << "Failed to get storage state info: " << tests::utils::ErrorToStr(err);
 
-    auto acceptState       = std::make_unique<cloudprotocol::StateAcceptance>(cInstanceIdent);
-    acceptState->mResult   = cloudprotocol::StateResultEnum::eRejected;
-    acceptState->mChecksum = storageData.mStateChecksum;
+    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>();
+
+    acceptState->mInstanceIdent = cInstanceIdent;
+    acceptState->mResult        = cloudprotocol::StateResultEnum::eRejected;
+    acceptState->mChecksum      = storageData.mStateChecksum;
 
     err = mStorageState.AcceptState(*acceptState);
     ASSERT_TRUE(err.IsNone()) << "Failed to accept state: " << tests::utils::ErrorToStr(err);
@@ -782,9 +789,11 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
 
     // Update state with initial content
 
-    auto updateState       = std::make_unique<cloudprotocol::UpdateState>(cSetupParams.mInstanceIdent);
-    updateState->mState    = cStateContent;
-    updateState->mChecksum = cStateContentChecksum;
+    auto updateState = std::make_unique<cloudprotocol::UpdateState>();
+
+    updateState->mInstanceIdent = cSetupParams.mInstanceIdent;
+    updateState->mState         = cStateContent;
+    updateState->mChecksum      = cStateContentChecksum;
 
     err = mStorageState.UpdateState(*updateState);
     EXPECT_TRUE(err.IsNone()) << "Failed to update state: " << tests::utils::ErrorToStr(err);
@@ -808,7 +817,9 @@ TEST_F(StorageStateTests, UpdateAndAcceptStateFlow)
 
     // New state is accepted
 
-    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>(cSetupParams.mInstanceIdent);
+    auto acceptState = std::make_unique<cloudprotocol::StateAcceptance>();
+
+    acceptState->mInstanceIdent = cSetupParams.mInstanceIdent;
 
     err = FillStateAcceptance(
         cSetupParams.mInstanceIdent, cUpdateStateContent, cloudprotocol::StateResultEnum::eAccepted, *acceptState);
