@@ -42,8 +42,10 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
 
 Error ToJSON(const aos::cloudprotocol::StateAcceptance& state, Poco::JSON::Object& json)
 {
+    constexpr aos::cloudprotocol::MessageType cMessageType(aos::cloudprotocol::MessageTypeEnum::eStateAcceptance);
+
     try {
-        json.set("messageType", state.mMessageType.ToString().CStr());
+        json.set("messageType", cMessageType.ToString().CStr());
 
         auto err = ToJSON(state.mInstanceIdent, json);
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -77,8 +79,10 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
 
 Error ToJSON(const aos::cloudprotocol::UpdateState& state, Poco::JSON::Object& json)
 {
+    constexpr aos::cloudprotocol::MessageType cMessageType(aos::cloudprotocol::MessageTypeEnum::eUpdateState);
+
     try {
-        json.set("messageType", state.mMessageType.ToString().CStr());
+        json.set("messageType", cMessageType.ToString().CStr());
 
         auto err = ToJSON(state.mInstanceIdent, json);
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -111,8 +115,10 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
 
 Error ToJSON(const aos::cloudprotocol::NewState& state, Poco::JSON::Object& json)
 {
+    constexpr aos::cloudprotocol::MessageType cMessageType(aos::cloudprotocol::MessageTypeEnum::eNewState);
+
     try {
-        json.set("messageType", state.mMessageType.ToString().CStr());
+        json.set("messageType", cMessageType.ToString().CStr());
 
         auto err = ToJSON(state.mInstanceIdent, json);
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -141,8 +147,10 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
 
 Error ToJSON(const aos::cloudprotocol::StateRequest& state, Poco::JSON::Object& json)
 {
+    constexpr aos::cloudprotocol::MessageType cMessageType(aos::cloudprotocol::MessageTypeEnum::eStateRequest);
+
     try {
-        json.set("messageType", state.mMessageType.ToString().CStr());
+        json.set("messageType", cMessageType.ToString().CStr());
 
         auto err = ToJSON(state.mInstanceIdent, json);
         AOS_ERROR_CHECK_AND_THROW(err);

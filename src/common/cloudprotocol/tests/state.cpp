@@ -33,13 +33,15 @@ public:
 
 TEST_F(CloudProtocolState, StateAcceptance)
 {
-    aos::cloudprotocol::StateAcceptance state({"service1", "subject1", 42});
-    state.mChecksum = "test_checksum";
-    state.mResult   = aos::cloudprotocol::StateResultEnum::eRejected;
-    state.mReason   = "test reason";
+    auto state = std::make_unique<aos::cloudprotocol::StateAcceptance>();
+
+    state->mInstanceIdent = {"service1", "subject1", 42};
+    state->mChecksum      = "test_checksum";
+    state->mResult        = aos::cloudprotocol::StateResultEnum::eRejected;
+    state->mReason        = "test reason";
 
     auto json = Poco::makeShared<Poco::JSON::Object>();
-    ASSERT_EQ(ToJSON(state, *json), ErrorEnum::eNone);
+    ASSERT_EQ(ToJSON(*state, *json), ErrorEnum::eNone);
 
     utils::CaseInsensitiveObjectWrapper jsonWrapper(json);
 
@@ -54,14 +56,16 @@ TEST_F(CloudProtocolState, StateAcceptance)
     aos::cloudprotocol::StateAcceptance parsedState;
     ASSERT_EQ(FromJSON(jsonWrapper, parsedState), ErrorEnum::eNone);
 
-    ASSERT_EQ(state, parsedState);
+    ASSERT_EQ(*state, parsedState);
 }
 
 TEST_F(CloudProtocolState, UpdateState)
 {
-    auto state       = std::make_unique<aos::cloudprotocol::UpdateState>(InstanceIdent {"service1", "subject1", 42});
-    state->mChecksum = "test_checksum";
-    state->mState    = "test state";
+    auto state = std::make_unique<aos::cloudprotocol::UpdateState>();
+
+    state->mInstanceIdent = {"service1", "subject1", 42};
+    state->mChecksum      = "test_checksum";
+    state->mState         = "test state";
 
     auto json = Poco::makeShared<Poco::JSON::Object>();
     ASSERT_EQ(ToJSON(*state, *json), ErrorEnum::eNone);
@@ -83,9 +87,11 @@ TEST_F(CloudProtocolState, UpdateState)
 
 TEST_F(CloudProtocolState, NewState)
 {
-    auto state       = std::make_unique<aos::cloudprotocol::NewState>(InstanceIdent {"service1", "subject1", 42});
-    state->mChecksum = "test_checksum";
-    state->mState    = "test state";
+    auto state = std::make_unique<aos::cloudprotocol::NewState>();
+
+    state->mInstanceIdent = {"service1", "subject1", 42};
+    state->mChecksum      = "test_checksum";
+    state->mState         = "test state";
 
     auto json = Poco::makeShared<Poco::JSON::Object>();
     ASSERT_EQ(ToJSON(*state, *json), ErrorEnum::eNone);
@@ -107,8 +113,10 @@ TEST_F(CloudProtocolState, NewState)
 
 TEST_F(CloudProtocolState, StateRequest)
 {
-    auto state      = std::make_unique<aos::cloudprotocol::StateRequest>(InstanceIdent {"service1", "subject1", 42});
-    state->mDefault = true;
+    auto state = std::make_unique<aos::cloudprotocol::StateRequest>();
+
+    state->mInstanceIdent = {"service1", "subject1", 42};
+    state->mDefault       = true;
 
     auto json = Poco::makeShared<Poco::JSON::Object>();
     ASSERT_EQ(ToJSON(*state, *json), ErrorEnum::eNone);
