@@ -36,9 +36,9 @@ AlertRules CreateAlerts()
     return alerts;
 }
 
-ResourceRatios CreateResourceRatios()
+aos::cloudprotocol::ResourceRatios CreateResourceRatios()
 {
-    ResourceRatios ratios;
+    aos::cloudprotocol::ResourceRatios ratios;
 
     ratios.mCPU.SetValue(50);
     ratios.mRAM.SetValue(51);
@@ -52,85 +52,14 @@ std::unique_ptr<aos::cloudprotocol::NodeConfig> CreateNodeConfig()
 {
     auto nodeConfig = std::make_unique<aos::cloudprotocol::NodeConfig>();
 
-    nodeConfig->mPriority = 1;
-    nodeConfig->mNodeType = "mainType";
-
-    nodeConfig->mDevices.Resize(2);
-
-    nodeConfig->mDevices[0].mName        = "device1";
-    nodeConfig->mDevices[0].mSharedCount = 1;
-    nodeConfig->mDevices[0].mGroups.PushBack("group1");
-    nodeConfig->mDevices[0].mGroups.PushBack("group2");
-    nodeConfig->mDevices[0].mHostDevices.PushBack("hostDevice1");
-    nodeConfig->mDevices[0].mHostDevices.PushBack("hostDevice2");
-
-    nodeConfig->mDevices[1].mName        = "device2";
-    nodeConfig->mDevices[1].mSharedCount = 2;
-    nodeConfig->mDevices[1].mGroups.PushBack("group3");
-    nodeConfig->mDevices[1].mGroups.PushBack("group4");
-    nodeConfig->mDevices[1].mHostDevices.PushBack("hostDevice3");
-    nodeConfig->mDevices[1].mHostDevices.PushBack("hostDevice4");
-
-    nodeConfig->mResources.Resize(2);
-
-    nodeConfig->mResources[0].mName = "resource1";
-    nodeConfig->mResources[0].mGroups.PushBack("g1");
-    nodeConfig->mResources[0].mGroups.PushBack("g2");
-
-    nodeConfig->mResources[0].mMounts.Resize(2);
-    nodeConfig->mResources[0].mMounts[0].mDestination = "d1";
-    nodeConfig->mResources[0].mMounts[0].mType        = "type1";
-    nodeConfig->mResources[0].mMounts[0].mSource      = "source1";
-    nodeConfig->mResources[0].mMounts[0].mOptions.PushBack("option1");
-    nodeConfig->mResources[0].mMounts[0].mOptions.PushBack("option2");
-
-    nodeConfig->mResources[0].mMounts[1].mDestination = "d2";
-    nodeConfig->mResources[0].mMounts[1].mType        = "type2";
-    nodeConfig->mResources[0].mMounts[1].mSource      = "source2";
-    nodeConfig->mResources[0].mMounts[1].mOptions.PushBack("option3");
-    nodeConfig->mResources[0].mMounts[1].mOptions.PushBack("option4");
-
-    nodeConfig->mResources[0].mEnv.PushBack("env1");
-    nodeConfig->mResources[0].mEnv.PushBack("env2");
-
-    nodeConfig->mResources[0].mHosts.Resize(2);
-    nodeConfig->mResources[0].mHosts[0].mIP       = "10.0.0.100";
-    nodeConfig->mResources[0].mHosts[0].mHostname = "host1";
-
-    nodeConfig->mResources[0].mHosts[1].mIP       = "10.0.0.101";
-    nodeConfig->mResources[0].mHosts[1].mHostname = "host2";
-
-    nodeConfig->mResources[1].mName = "resource2";
-    nodeConfig->mResources[1].mGroups.PushBack("g3");
-    nodeConfig->mResources[1].mGroups.PushBack("g4");
-
-    nodeConfig->mResources[1].mMounts.Resize(2);
-    nodeConfig->mResources[1].mMounts[0].mDestination = "d3";
-    nodeConfig->mResources[1].mMounts[0].mType        = "type3";
-    nodeConfig->mResources[1].mMounts[0].mSource      = "source3";
-    nodeConfig->mResources[1].mMounts[0].mOptions.PushBack("option5");
-    nodeConfig->mResources[1].mMounts[0].mOptions.PushBack("option6");
-
-    nodeConfig->mResources[1].mMounts[1].mDestination = "d4";
-    nodeConfig->mResources[1].mMounts[1].mType        = "type4";
-    nodeConfig->mResources[1].mMounts[1].mSource      = "source4";
-    nodeConfig->mResources[1].mMounts[1].mOptions.PushBack("option7");
-    nodeConfig->mResources[1].mMounts[1].mOptions.PushBack("option8");
-
-    nodeConfig->mResources[1].mEnv.PushBack("env3");
-    nodeConfig->mResources[1].mEnv.PushBack("env4");
-
-    nodeConfig->mResources[1].mHosts.Resize(2);
-    nodeConfig->mResources[1].mHosts[0].mIP       = "10.0.0.102";
-    nodeConfig->mResources[1].mHosts[0].mHostname = "host3";
-    nodeConfig->mResources[1].mHosts[1].mIP       = "10.0.0.103";
-    nodeConfig->mResources[1].mHosts[1].mHostname = "host4";
-
-    nodeConfig->mLabels.PushBack("mainNode");
+    nodeConfig->mNode.EmplaceValue();
+    nodeConfig->mNode->mURN.SetValue("nodeURN");
+    nodeConfig->mNodeGroupSubject.mURN.SetValue("nodeGroupSubjectURN");
 
     nodeConfig->mAlertRules.SetValue(CreateAlerts());
-
     nodeConfig->mResourceRatios.SetValue(CreateResourceRatios());
+    nodeConfig->mLabels.PushBack("mainNode");
+    nodeConfig->mPriority = 1;
 
     return nodeConfig;
 }
@@ -138,26 +67,12 @@ std::unique_ptr<aos::cloudprotocol::NodeConfig> CreateNodeConfig()
 void CompareNodeConfig(
     const aos::cloudprotocol::NodeConfig& nodeConfig, const aos::cloudprotocol::NodeConfig& expectedNodeConfig)
 {
-    EXPECT_EQ(nodeConfig.mNodeType, expectedNodeConfig.mNodeType) << "Node type mismatch";
+    EXPECT_EQ(nodeConfig.mNode, expectedNodeConfig.mNode) << "Node ID mismatch";
+    EXPECT_EQ(nodeConfig.mNodeGroupSubject, expectedNodeConfig.mNodeGroupSubject) << "Node group subject mismatch";
+
     EXPECT_EQ(nodeConfig.mPriority, expectedNodeConfig.mPriority) << "Priority mismatch";
 
-    EXPECT_EQ(nodeConfig.mDevices, expectedNodeConfig.mDevices) << "Device info mismatch";
     EXPECT_EQ(nodeConfig.mLabels, expectedNodeConfig.mLabels) << "Node labels mismatch";
-
-    // Compare resources
-
-    ASSERT_EQ(nodeConfig.mResources.Size(), expectedNodeConfig.mResources.Size()) << "Resources size mismatch";
-
-    for (size_t i = 0; i < nodeConfig.mResources.Size(); ++i) {
-        const auto& resource         = nodeConfig.mResources[i];
-        const auto& expectedResource = expectedNodeConfig.mResources[i];
-
-        EXPECT_EQ(resource.mName, expectedResource.mName) << "Resource name mismatch";
-        EXPECT_EQ(resource.mGroups, expectedResource.mGroups) << "Resource groups mismatch";
-        EXPECT_EQ(resource.mMounts, expectedResource.mMounts) << "Resource mounts mismatch";
-        EXPECT_EQ(resource.mEnv, expectedResource.mEnv) << "Resource envs mismatch";
-        EXPECT_EQ(resource.mHosts, expectedResource.mHosts) << "Resource hosts mismatch";
-    }
 
     // Compare alert rules
 
@@ -219,34 +134,6 @@ TEST_F(CloudProtocolDesiredStatus, NodeConfig)
     CompareNodeConfig(*parsedNodeConfig, *nodeConfig);
 }
 
-TEST_F(CloudProtocolDesiredStatus, NodeConfigFromJSONFailsOnHostDevicesExceedsLimit)
-{
-    auto parsedNodeConfig = std::make_unique<aos::cloudprotocol::NodeConfig>();
-
-    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-    json->set("devices", utils::ToJsonArray(std::vector<std::string> {"dev1"}, [](const auto& str) { return str; }));
-
-    parsedNodeConfig->mDevices.Resize(cMaxNumNodeDevices);
-
-    auto err = FromJSON(utils::CaseInsensitiveObjectWrapper(json), *parsedNodeConfig);
-    ASSERT_EQ(err, ErrorEnum::eNoMemory);
-}
-
-TEST_F(CloudProtocolDesiredStatus, NodeConfigFromJSONFailsOnResourcesExceedsLimit)
-{
-    auto parsedNodeConfig = std::make_unique<aos::cloudprotocol::NodeConfig>();
-
-    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-    json->set("resources", utils::ToJsonArray(std::vector<std::string> {"res1"}, [](const auto& str) { return str; }));
-
-    parsedNodeConfig->mResources.Resize(cMaxNumNodeResources);
-
-    auto err = FromJSON(utils::CaseInsensitiveObjectWrapper(json), *parsedNodeConfig);
-    ASSERT_EQ(err, ErrorEnum::eNoMemory);
-}
-
 TEST_F(CloudProtocolDesiredStatus, NodeConfigFromJSONFailsOnLabelsExceedsLimit)
 {
     auto parsedNodeConfig = std::make_unique<aos::cloudprotocol::NodeConfig>();
@@ -255,6 +142,7 @@ TEST_F(CloudProtocolDesiredStatus, NodeConfigFromJSONFailsOnLabelsExceedsLimit)
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
+    json->set("nodeGroupSubject", Poco::makeShared<Poco::JSON::Object>());
     json->set("labels",
         utils::ToJsonArray(
             std::vector<std::string> {std::string(cMaxNumNodeLabels, 'l')}, [](const auto& str) { return str; }));
