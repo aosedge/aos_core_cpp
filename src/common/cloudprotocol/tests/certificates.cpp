@@ -56,12 +56,12 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
     auto certificates = std::make_unique<aos::cloudprotocol::IssuedUnitCerts>();
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType             = aos::cloudprotocol::CertTypeEnum::eIAM;
+    certificates->mCertificates.Back().mType             = CertTypeEnum::eIAM;
     certificates->mCertificates.Back().mNodeID           = "node1";
     certificates->mCertificates.Back().mCertificateChain = "cert_chain_1";
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType             = aos::cloudprotocol::CertTypeEnum::eOffline;
+    certificates->mCertificates.Back().mType             = CertTypeEnum::eOffline;
     certificates->mCertificates.Back().mNodeID           = "node2";
     certificates->mCertificates.Back().mCertificateChain = "cert_chain_2";
 
@@ -112,14 +112,14 @@ TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
     auto certificates = std::make_unique<aos::cloudprotocol::InstallUnitCertsConfirmation>();
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType        = aos::cloudprotocol::CertTypeEnum::eIAM;
+    certificates->mCertificates.Back().mType        = CertTypeEnum::eIAM;
     certificates->mCertificates.Back().mNodeID      = "node1";
     certificates->mCertificates.Back().mSerial      = "serial_1";
     certificates->mCertificates.Back().mStatus      = ItemStatusEnum::eInstalled;
     certificates->mCertificates.Back().mDescription = "cert_description_1";
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType        = aos::cloudprotocol::CertTypeEnum::eOffline;
+    certificates->mCertificates.Back().mType        = CertTypeEnum::eOffline;
     certificates->mCertificates.Back().mNodeID      = "node2";
     certificates->mCertificates.Back().mSerial      = "serial_2";
     certificates->mCertificates.Back().mStatus      = ItemStatusEnum::eError;
@@ -173,12 +173,12 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
     auto certificates = std::make_unique<aos::cloudprotocol::RenewCertsNotification>();
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType   = aos::cloudprotocol::CertTypeEnum::eIAM;
+    certificates->mCertificates.Back().mType   = CertTypeEnum::eIAM;
     certificates->mCertificates.Back().mNodeID = "node1";
     certificates->mCertificates.Back().mSerial = "serial_1";
 
     certificates->mCertificates.EmplaceBack();
-    certificates->mCertificates.Back().mType   = aos::cloudprotocol::CertTypeEnum::eOffline;
+    certificates->mCertificates.Back().mType   = CertTypeEnum::eOffline;
     certificates->mCertificates.Back().mNodeID = "node2";
     certificates->mCertificates.Back().mSerial = "serial_2";
     certificates->mCertificates.Back().mValidTill.SetValue(Time::Unix(1706702400));
@@ -234,12 +234,12 @@ TEST_F(CloudProtocolCertificates, IssueUnitCerts)
     auto issueUnitCerts = std::make_unique<aos::cloudprotocol::IssueUnitCerts>();
 
     issueUnitCerts->mRequests.EmplaceBack();
-    issueUnitCerts->mRequests.Back().mType   = aos::cloudprotocol::CertTypeEnum::eIAM;
+    issueUnitCerts->mRequests.Back().mType   = CertTypeEnum::eIAM;
     issueUnitCerts->mRequests.Back().mNodeID = "node1";
     issueUnitCerts->mRequests.Back().mCsr    = "csr_1";
 
     issueUnitCerts->mRequests.EmplaceBack();
-    issueUnitCerts->mRequests.Back().mType   = aos::cloudprotocol::CertTypeEnum::eOffline;
+    issueUnitCerts->mRequests.Back().mType   = CertTypeEnum::eOffline;
     issueUnitCerts->mRequests.Back().mNodeID = "node2";
     issueUnitCerts->mRequests.Back().mCsr    = "csr_2";
 

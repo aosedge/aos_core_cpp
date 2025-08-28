@@ -100,12 +100,12 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponse)
     response->mCSRs.EmplaceBack();
     response->mCSRs.Back().mCsr.Assign("csr-1");
     response->mCSRs.Back().mNodeID.Assign("node-1");
-    response->mCSRs.Back().mType = aos::cloudprotocol::CertTypeEnum::eOffline;
+    response->mCSRs.Back().mType = CertTypeEnum::eOffline;
 
     response->mCSRs.EmplaceBack();
     response->mCSRs.Back().mCsr.Assign("csr-2");
     response->mCSRs.Back().mNodeID.Assign("node-2");
-    response->mCSRs.Back().mType = aos::cloudprotocol::CertTypeEnum::eOnline;
+    response->mCSRs.Back().mType = CertTypeEnum::eOnline;
 
     response->mCSRs.EmplaceBack();
 
@@ -153,12 +153,12 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 
     request->mCertificates.EmplaceBack();
     request->mCertificates.Back().mNodeID.Assign("node-1");
-    request->mCertificates.Back().mType = aos::cloudprotocol::CertTypeEnum::eOffline;
+    request->mCertificates.Back().mType = CertTypeEnum::eOffline;
     request->mCertificates.Back().mCertificateChain.Assign("cert-chain-1");
 
     request->mCertificates.EmplaceBack();
     request->mCertificates.Back().mNodeID.Assign("node-2");
-    request->mCertificates.Back().mType = aos::cloudprotocol::CertTypeEnum::eOnline;
+    request->mCertificates.Back().mType = CertTypeEnum::eOnline;
     request->mCertificates.Back().mCertificateChain.Assign("cert-chain-2");
 
     request->mCertificates.EmplaceBack();
