@@ -574,7 +574,9 @@ void StorageState::NotifyStateChanged(Poco::Timer& timer)
     try {
         LOG_DBG() << "State changed timer function" << *itState;
 
-        auto newState = std::make_unique<cloudprotocol::NewState>(itState->mInstanceIdent);
+        auto newState = std::make_unique<cloudprotocol::NewState>();
+
+        newState->mInstanceIdent = itState->mInstanceIdent;
 
         auto err = fs::ReadFileToString(itState->mFilePath, newState->mState);
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -653,8 +655,10 @@ Error StorageState::SendInstanceStateRequest(const InstanceIdent& instanceIdent)
 {
     LOG_DBG() << "Send instance state request" << Log::Field("instanceIdent", instanceIdent);
 
-    auto stateRequest      = std::make_unique<cloudprotocol::StateRequest>(instanceIdent);
-    stateRequest->mDefault = false;
+    auto stateRequest = std::make_unique<cloudprotocol::StateRequest>();
+
+    stateRequest->mInstanceIdent = instanceIdent;
+    stateRequest->mDefault       = false;
 
     auto message = std::make_unique<cloudprotocol::MessageVariant>(*stateRequest);
 
