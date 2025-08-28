@@ -44,9 +44,14 @@ jobs:
       - name: Install SonarQube build wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v5
 
-      - name: Build
+
+      - name: Build (Release)
         run: |
-          ./build.sh build --ci
+          ./build.sh build --build-type Release
+
+      - name: Build (Debug)
+        run: |
+          ./build.sh build --ci --clean
 
       - name: Test
         run: |
@@ -62,7 +67,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.total
 
-      - name: SonarQube analysis
+      - name: SonarQube analysis (on push)
         if: github.event_name == 'push'
         uses: SonarSource/sonarqube-scan-action@v5
         env:
@@ -73,7 +78,7 @@ jobs:
             --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
             --define sonar.coverageReportPaths=build/coverage_sonarqube.xml
 
-      - name: SonarQube analysis
+      - name: SonarQube analysis (on pull request)
         if: github.event_name == 'pull_request_target'
         uses: SonarSource/sonarqube-scan-action@v5
         env:
