@@ -74,7 +74,7 @@ set(WITH_OPENSSL ON)
 # Config
 # ######################################################################################################################
 
-set(AOS_STACK_USAGE 4096)
+set(AOS_STACK_USAGE 8192)
 
 get_filename_component(AOS_CORE_LIB_DIR ${AOS_CORE_DIR}/aos_core_lib_cpp REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 get_filename_component(AOS_CORE_API_DIR ${AOS_CORE_DIR}/aos_core_api REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
