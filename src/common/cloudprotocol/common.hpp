@@ -71,6 +71,24 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
  */
 Error ToJSON(const aos::cloudprotocol::InstanceFilter& instanceFilter, Poco::JSON::Object& json);
 
+/**
+ * Converts JSON object to Identifier object.
+ *
+ * @param json json object representation.
+ * @param[out] identifier identifier object to fill.
+ * @return Error.
+ */
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::Identifier& identifier);
+
+/**
+ * Converts Identifier object to JSON object.
+ *
+ * @param identifier identifier object to convert.
+ * @param[out] json JSON object to fill.
+ * @return Error.
+ */
+Error ToJSON(const aos::cloudprotocol::Identifier& identifier, Poco::JSON::Object& json);
+
 } // namespace aos::common::cloudprotocol
 
 #endif
