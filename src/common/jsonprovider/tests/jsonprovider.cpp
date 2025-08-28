@@ -187,9 +187,9 @@ AlertRules CreateAlerts()
     return alerts;
 }
 
-ResourceRatios CreateResourceRatios()
+aos::cloudprotocol::ResourceRatios CreateResourceRatios()
 {
-    ResourceRatios ratios;
+    aos::cloudprotocol::ResourceRatios ratios;
 
     ratios.mCPU.SetValue(50);
     ratios.mRAM.SetValue(51);
@@ -203,86 +203,86 @@ sm::resourcemanager::NodeConfig CreateNodeConfig()
 {
     sm::resourcemanager::NodeConfig nodeConfig;
 
-    nodeConfig.mVersion              = "1.0.0";
-    nodeConfig.mNodeConfig.mPriority = 1;
-    nodeConfig.mNodeConfig.mNodeType = "mainType";
+    nodeConfig.mVersion  = "1.0.0";
+    nodeConfig.mPriority = 1;
+    nodeConfig.mNodeType = "mainType";
 
-    nodeConfig.mNodeConfig.mDevices.Resize(2);
+    nodeConfig.mDevices.Resize(2);
 
-    nodeConfig.mNodeConfig.mDevices[0].mName        = "device1";
-    nodeConfig.mNodeConfig.mDevices[0].mSharedCount = 1;
-    nodeConfig.mNodeConfig.mDevices[0].mGroups.PushBack("group1");
-    nodeConfig.mNodeConfig.mDevices[0].mGroups.PushBack("group2");
-    nodeConfig.mNodeConfig.mDevices[0].mHostDevices.PushBack("hostDevice1");
-    nodeConfig.mNodeConfig.mDevices[0].mHostDevices.PushBack("hostDevice2");
+    nodeConfig.mDevices[0].mName        = "device1";
+    nodeConfig.mDevices[0].mSharedCount = 1;
+    nodeConfig.mDevices[0].mGroups.PushBack("group1");
+    nodeConfig.mDevices[0].mGroups.PushBack("group2");
+    nodeConfig.mDevices[0].mHostDevices.PushBack("hostDevice1");
+    nodeConfig.mDevices[0].mHostDevices.PushBack("hostDevice2");
 
-    nodeConfig.mNodeConfig.mDevices[1].mName        = "device2";
-    nodeConfig.mNodeConfig.mDevices[1].mSharedCount = 2;
-    nodeConfig.mNodeConfig.mDevices[1].mGroups.PushBack("group3");
-    nodeConfig.mNodeConfig.mDevices[1].mGroups.PushBack("group4");
-    nodeConfig.mNodeConfig.mDevices[1].mHostDevices.PushBack("hostDevice3");
-    nodeConfig.mNodeConfig.mDevices[1].mHostDevices.PushBack("hostDevice4");
+    nodeConfig.mDevices[1].mName        = "device2";
+    nodeConfig.mDevices[1].mSharedCount = 2;
+    nodeConfig.mDevices[1].mGroups.PushBack("group3");
+    nodeConfig.mDevices[1].mGroups.PushBack("group4");
+    nodeConfig.mDevices[1].mHostDevices.PushBack("hostDevice3");
+    nodeConfig.mDevices[1].mHostDevices.PushBack("hostDevice4");
 
-    nodeConfig.mNodeConfig.mResources.Resize(2);
+    nodeConfig.mResources.Resize(2);
 
-    nodeConfig.mNodeConfig.mResources[0].mName = "resource1";
-    nodeConfig.mNodeConfig.mResources[0].mGroups.PushBack("g1");
-    nodeConfig.mNodeConfig.mResources[0].mGroups.PushBack("g2");
+    nodeConfig.mResources[0].mName = "resource1";
+    nodeConfig.mResources[0].mGroups.PushBack("g1");
+    nodeConfig.mResources[0].mGroups.PushBack("g2");
 
-    nodeConfig.mNodeConfig.mResources[0].mMounts.Resize(2);
-    nodeConfig.mNodeConfig.mResources[0].mMounts[0].mDestination = "d1";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[0].mType        = "type1";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[0].mSource      = "source1";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[0].mOptions.PushBack("option1");
-    nodeConfig.mNodeConfig.mResources[0].mMounts[0].mOptions.PushBack("option2");
+    nodeConfig.mResources[0].mMounts.Resize(2);
+    nodeConfig.mResources[0].mMounts[0].mDestination = "d1";
+    nodeConfig.mResources[0].mMounts[0].mType        = "type1";
+    nodeConfig.mResources[0].mMounts[0].mSource      = "source1";
+    nodeConfig.mResources[0].mMounts[0].mOptions.PushBack("option1");
+    nodeConfig.mResources[0].mMounts[0].mOptions.PushBack("option2");
 
-    nodeConfig.mNodeConfig.mResources[0].mMounts[1].mDestination = "d2";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[1].mType        = "type2";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[1].mSource      = "source2";
-    nodeConfig.mNodeConfig.mResources[0].mMounts[1].mOptions.PushBack("option3");
-    nodeConfig.mNodeConfig.mResources[0].mMounts[1].mOptions.PushBack("option4");
+    nodeConfig.mResources[0].mMounts[1].mDestination = "d2";
+    nodeConfig.mResources[0].mMounts[1].mType        = "type2";
+    nodeConfig.mResources[0].mMounts[1].mSource      = "source2";
+    nodeConfig.mResources[0].mMounts[1].mOptions.PushBack("option3");
+    nodeConfig.mResources[0].mMounts[1].mOptions.PushBack("option4");
 
-    nodeConfig.mNodeConfig.mResources[0].mEnv.PushBack("env1");
-    nodeConfig.mNodeConfig.mResources[0].mEnv.PushBack("env2");
+    nodeConfig.mResources[0].mEnv.PushBack("env1");
+    nodeConfig.mResources[0].mEnv.PushBack("env2");
 
-    nodeConfig.mNodeConfig.mResources[0].mHosts.Resize(2);
-    nodeConfig.mNodeConfig.mResources[0].mHosts[0].mIP       = "10.0.0.100";
-    nodeConfig.mNodeConfig.mResources[0].mHosts[0].mHostname = "host1";
+    nodeConfig.mResources[0].mHosts.Resize(2);
+    nodeConfig.mResources[0].mHosts[0].mIP       = "10.0.0.100";
+    nodeConfig.mResources[0].mHosts[0].mHostname = "host1";
 
-    nodeConfig.mNodeConfig.mResources[0].mHosts[1].mIP       = "10.0.0.101";
-    nodeConfig.mNodeConfig.mResources[0].mHosts[1].mHostname = "host2";
+    nodeConfig.mResources[0].mHosts[1].mIP       = "10.0.0.101";
+    nodeConfig.mResources[0].mHosts[1].mHostname = "host2";
 
-    nodeConfig.mNodeConfig.mResources[1].mName = "resource2";
-    nodeConfig.mNodeConfig.mResources[1].mGroups.PushBack("g3");
-    nodeConfig.mNodeConfig.mResources[1].mGroups.PushBack("g4");
+    nodeConfig.mResources[1].mName = "resource2";
+    nodeConfig.mResources[1].mGroups.PushBack("g3");
+    nodeConfig.mResources[1].mGroups.PushBack("g4");
 
-    nodeConfig.mNodeConfig.mResources[1].mMounts.Resize(2);
-    nodeConfig.mNodeConfig.mResources[1].mMounts[0].mDestination = "d3";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[0].mType        = "type3";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[0].mSource      = "source3";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[0].mOptions.PushBack("option5");
-    nodeConfig.mNodeConfig.mResources[1].mMounts[0].mOptions.PushBack("option6");
+    nodeConfig.mResources[1].mMounts.Resize(2);
+    nodeConfig.mResources[1].mMounts[0].mDestination = "d3";
+    nodeConfig.mResources[1].mMounts[0].mType        = "type3";
+    nodeConfig.mResources[1].mMounts[0].mSource      = "source3";
+    nodeConfig.mResources[1].mMounts[0].mOptions.PushBack("option5");
+    nodeConfig.mResources[1].mMounts[0].mOptions.PushBack("option6");
 
-    nodeConfig.mNodeConfig.mResources[1].mMounts[1].mDestination = "d4";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[1].mType        = "type4";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[1].mSource      = "source4";
-    nodeConfig.mNodeConfig.mResources[1].mMounts[1].mOptions.PushBack("option7");
-    nodeConfig.mNodeConfig.mResources[1].mMounts[1].mOptions.PushBack("option8");
+    nodeConfig.mResources[1].mMounts[1].mDestination = "d4";
+    nodeConfig.mResources[1].mMounts[1].mType        = "type4";
+    nodeConfig.mResources[1].mMounts[1].mSource      = "source4";
+    nodeConfig.mResources[1].mMounts[1].mOptions.PushBack("option7");
+    nodeConfig.mResources[1].mMounts[1].mOptions.PushBack("option8");
 
-    nodeConfig.mNodeConfig.mResources[1].mEnv.PushBack("env3");
-    nodeConfig.mNodeConfig.mResources[1].mEnv.PushBack("env4");
+    nodeConfig.mResources[1].mEnv.PushBack("env3");
+    nodeConfig.mResources[1].mEnv.PushBack("env4");
 
-    nodeConfig.mNodeConfig.mResources[1].mHosts.Resize(2);
-    nodeConfig.mNodeConfig.mResources[1].mHosts[0].mIP       = "10.0.0.102";
-    nodeConfig.mNodeConfig.mResources[1].mHosts[0].mHostname = "host3";
-    nodeConfig.mNodeConfig.mResources[1].mHosts[1].mIP       = "10.0.0.103";
-    nodeConfig.mNodeConfig.mResources[1].mHosts[1].mHostname = "host4";
+    nodeConfig.mResources[1].mHosts.Resize(2);
+    nodeConfig.mResources[1].mHosts[0].mIP       = "10.0.0.102";
+    nodeConfig.mResources[1].mHosts[0].mHostname = "host3";
+    nodeConfig.mResources[1].mHosts[1].mIP       = "10.0.0.103";
+    nodeConfig.mResources[1].mHosts[1].mHostname = "host4";
 
-    nodeConfig.mNodeConfig.mLabels.PushBack("mainNode");
+    nodeConfig.mLabels.PushBack("mainNode");
 
-    nodeConfig.mNodeConfig.mAlertRules.SetValue(CreateAlerts());
+    nodeConfig.mAlertRules.SetValue(CreateAlerts());
 
-    nodeConfig.mNodeConfig.mResourceRatios.SetValue(CreateResourceRatios());
+    nodeConfig.mResourceRatios.SetValue(CreateResourceRatios());
 
     return nodeConfig;
 }
@@ -291,20 +291,19 @@ void CompareNodeConfig(
     const sm::resourcemanager::NodeConfig& nodeConfig, const sm::resourcemanager::NodeConfig& expectedNodeConfig)
 {
     EXPECT_EQ(nodeConfig.mVersion, expectedNodeConfig.mVersion) << "Version mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mNodeType, expectedNodeConfig.mNodeConfig.mNodeType) << "Node type mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mPriority, expectedNodeConfig.mNodeConfig.mPriority) << "Priority mismatch";
+    EXPECT_EQ(nodeConfig.mNodeType, expectedNodeConfig.mNodeType) << "Node type mismatch";
+    EXPECT_EQ(nodeConfig.mPriority, expectedNodeConfig.mPriority) << "Priority mismatch";
 
-    EXPECT_EQ(nodeConfig.mNodeConfig.mDevices, expectedNodeConfig.mNodeConfig.mDevices) << "Device info mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mLabels, expectedNodeConfig.mNodeConfig.mLabels) << "Node labels mismatch";
+    EXPECT_EQ(nodeConfig.mDevices, expectedNodeConfig.mDevices) << "Device info mismatch";
+    EXPECT_EQ(nodeConfig.mLabels, expectedNodeConfig.mLabels) << "Node labels mismatch";
 
     // Compare resources
 
-    ASSERT_EQ(nodeConfig.mNodeConfig.mResources.Size(), expectedNodeConfig.mNodeConfig.mResources.Size())
-        << "Resources size mismatch";
+    ASSERT_EQ(nodeConfig.mResources.Size(), expectedNodeConfig.mResources.Size()) << "Resources size mismatch";
 
-    for (size_t i = 0; i < nodeConfig.mNodeConfig.mResources.Size(); ++i) {
-        const auto& resource         = nodeConfig.mNodeConfig.mResources[i];
-        const auto& expectedResource = expectedNodeConfig.mNodeConfig.mResources[i];
+    for (size_t i = 0; i < nodeConfig.mResources.Size(); ++i) {
+        const auto& resource         = nodeConfig.mResources[i];
+        const auto& expectedResource = expectedNodeConfig.mResources[i];
 
         EXPECT_EQ(resource.mName, expectedResource.mName) << "Resource name mismatch";
         EXPECT_EQ(resource.mGroups, expectedResource.mGroups) << "Resource groups mismatch";
@@ -315,32 +314,29 @@ void CompareNodeConfig(
 
     // Compare alert rules
 
-    ASSERT_TRUE(nodeConfig.mNodeConfig.mAlertRules.HasValue()) << "Alert rules not set";
-    ASSERT_TRUE(expectedNodeConfig.mNodeConfig.mAlertRules.HasValue()) << "Expected alert rules not set";
+    ASSERT_TRUE(nodeConfig.mAlertRules.HasValue()) << "Alert rules not set";
+    ASSERT_TRUE(expectedNodeConfig.mAlertRules.HasValue()) << "Expected alert rules not set";
 
-    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mRAM, expectedNodeConfig.mNodeConfig.mAlertRules->mRAM)
-        << "Alert rules ram mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mCPU, expectedNodeConfig.mNodeConfig.mAlertRules->mCPU)
-        << "Alert rules cpu mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mPartitions, expectedNodeConfig.mNodeConfig.mAlertRules->mPartitions)
+    EXPECT_EQ(nodeConfig.mAlertRules->mRAM, expectedNodeConfig.mAlertRules->mRAM) << "Alert rules ram mismatch";
+    EXPECT_EQ(nodeConfig.mAlertRules->mCPU, expectedNodeConfig.mAlertRules->mCPU) << "Alert rules cpu mismatch";
+    EXPECT_EQ(nodeConfig.mAlertRules->mPartitions, expectedNodeConfig.mAlertRules->mPartitions)
         << "Alert rules partitions mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mDownload, expectedNodeConfig.mNodeConfig.mAlertRules->mDownload)
+    EXPECT_EQ(nodeConfig.mAlertRules->mDownload, expectedNodeConfig.mAlertRules->mDownload)
         << "Alert rules download mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mAlertRules->mUpload, expectedNodeConfig.mNodeConfig.mAlertRules->mUpload)
+    EXPECT_EQ(nodeConfig.mAlertRules->mUpload, expectedNodeConfig.mAlertRules->mUpload)
         << "Alert rules upload mismatch";
 
     // Compare resource ratios
 
-    ASSERT_TRUE(nodeConfig.mNodeConfig.mResourceRatios.HasValue()) << "Resource ratios not set";
-    ASSERT_TRUE(expectedNodeConfig.mNodeConfig.mResourceRatios.HasValue()) << "Expected resource ratios not set";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mCPU, expectedNodeConfig.mNodeConfig.mResourceRatios->mCPU)
+    ASSERT_TRUE(nodeConfig.mResourceRatios.HasValue()) << "Resource ratios not set";
+    ASSERT_TRUE(expectedNodeConfig.mResourceRatios.HasValue()) << "Expected resource ratios not set";
+    EXPECT_EQ(nodeConfig.mResourceRatios->mCPU, expectedNodeConfig.mResourceRatios->mCPU)
         << "Resource ratios cpu mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mRAM, expectedNodeConfig.mNodeConfig.mResourceRatios->mRAM)
+    EXPECT_EQ(nodeConfig.mResourceRatios->mRAM, expectedNodeConfig.mResourceRatios->mRAM)
         << "Resource ratios ram mismatch";
-    EXPECT_EQ(
-        nodeConfig.mNodeConfig.mResourceRatios->mStorage, expectedNodeConfig.mNodeConfig.mResourceRatios->mStorage)
+    EXPECT_EQ(nodeConfig.mResourceRatios->mStorage, expectedNodeConfig.mResourceRatios->mStorage)
         << "Resource ratios storage mismatch";
-    EXPECT_EQ(nodeConfig.mNodeConfig.mResourceRatios->mState, expectedNodeConfig.mNodeConfig.mResourceRatios->mState)
+    EXPECT_EQ(nodeConfig.mResourceRatios->mState, expectedNodeConfig.mResourceRatios->mState)
         << "Resource ratios state mismatch";
 }
 
@@ -373,7 +369,7 @@ TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnHostDevicesExceedsLimit)
 {
     auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig->mNodeConfig.mDevices.Resize(cMaxNumNodeDevices);
+    parsedNodeConfig->mDevices.Resize(cMaxNumNodeDevices);
 
     ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
 }
@@ -382,7 +378,7 @@ TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnResourcesExceedsLimit)
 {
     auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig->mNodeConfig.mResources.Resize(cMaxNumNodeResources);
+    parsedNodeConfig->mResources.Resize(cMaxNumNodeResources);
 
     ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
 }
@@ -391,7 +387,7 @@ TEST_F(JSONProviderTest, NodeConfigFromJSONFailsOnLabelsExceedsLimit)
 {
     auto parsedNodeConfig = std::make_unique<sm::resourcemanager::NodeConfig>();
 
-    parsedNodeConfig->mNodeConfig.mLabels.Resize(cMaxNumNodeLabels);
+    parsedNodeConfig->mLabels.Resize(cMaxNumNodeLabels);
 
     ASSERT_EQ(mProvider.NodeConfigFromJSON(cTestNodeConfigJSON, *parsedNodeConfig), ErrorEnum::eNoMemory);
 
