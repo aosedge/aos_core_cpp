@@ -14,7 +14,6 @@
 
 #include <Poco/DeflatingStream.h>
 
-#include <core/common/cloudprotocol/cloudprotocol.hpp>
 #include <core/common/cloudprotocol/log.hpp>
 #include <core/common/logprovider/config.hpp>
 #include <core/sm/logprovider/logprovider.hpp>
