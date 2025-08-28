@@ -10,6 +10,7 @@
 
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/common/tools/uuid.hpp>
 
 #include <common/cloudprotocol/common.hpp>
 #include <common/utils/json.hpp>
@@ -81,6 +82,43 @@ TEST_F(CloudProtocolCommon, InstanceFilter)
         EXPECT_TRUE(FromJSON(utils::CaseInsensitiveObjectWrapper(json), parsedFilter).IsNone());
 
         EXPECT_EQ(filter, parsedFilter);
+    }
+}
+
+TEST_F(CloudProtocolCommon, Identifier)
+{
+    const std::array identifiers = {
+        aos::cloudprotocol::Identifier {},
+        aos::cloudprotocol::Identifier {
+            uuid::StringToUUID("00000000-0000-0000-0000-000000000001").mValue, {}, {}, {}, {}, {}},
+        aos::cloudprotocol::Identifier {uuid::StringToUUID("00000000-0000-0000-0000-000000000002").mValue,
+            UpdateItemType(UpdateItemTypeEnum::eService), {}, {}, {}, {}},
+        aos::cloudprotocol::Identifier {uuid::StringToUUID("00000000-0000-0000-0000-000000000002").mValue,
+            UpdateItemType(UpdateItemTypeEnum::eService), StaticString<aos::cloudprotocol::cCodeNameLen>("codeName"),
+            {}, {}, {}},
+        aos::cloudprotocol::Identifier {uuid::StringToUUID("00000000-0000-0000-0000-000000000002").mValue,
+            UpdateItemType(UpdateItemTypeEnum::eService), StaticString<aos::cloudprotocol::cCodeNameLen>("codeName"),
+            StaticString<aos::cloudprotocol::cTitleLen>("title"), {}, {}},
+        aos::cloudprotocol::Identifier {uuid::StringToUUID("00000000-0000-0000-0000-000000000002").mValue,
+            UpdateItemType(UpdateItemTypeEnum::eService), StaticString<aos::cloudprotocol::cCodeNameLen>("codeName"),
+            StaticString<aos::cloudprotocol::cTitleLen>("title"),
+            StaticString<aos::cloudprotocol::cDescriptionLen>("description"), {}},
+        aos::cloudprotocol::Identifier {uuid::StringToUUID("00000000-0000-0000-0000-000000000002").mValue,
+            UpdateItemType(UpdateItemTypeEnum::eService), StaticString<aos::cloudprotocol::cCodeNameLen>("codeName"),
+            StaticString<aos::cloudprotocol::cTitleLen>("title"),
+            StaticString<aos::cloudprotocol::cDescriptionLen>("description"),
+            StaticString<aos::cloudprotocol::cURNLen>("urn")},
+    };
+
+    for (const auto& identifier : identifiers) {
+        auto json = Poco::makeShared<Poco::JSON::Object>();
+
+        EXPECT_EQ(ToJSON(identifier, *json), ErrorEnum::eNone);
+
+        aos::cloudprotocol::Identifier parsedIdentifier;
+        EXPECT_TRUE(FromJSON(utils::CaseInsensitiveObjectWrapper(json), parsedIdentifier).IsNone());
+
+        EXPECT_EQ(identifier, parsedIdentifier);
     }
 }
 
