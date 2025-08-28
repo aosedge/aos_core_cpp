@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <core/common/cloudprotocol/cloudprotocol.hpp>
+#include <core/common/cloudprotocol/common.hpp>
 
 #include <common/utils/json.hpp>
 
