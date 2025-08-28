@@ -18,7 +18,7 @@ namespace aos::sm::resourcemanager {
 /**
  * Host device manager.
  */
-class HostDeviceManager : public sm::resourcemanager::HostDeviceManagerItf {
+class HostDeviceManager : public HostDeviceManagerItf {
 public:
     /**
      * Initializes host device manager object.
