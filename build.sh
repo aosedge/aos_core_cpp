@@ -178,10 +178,6 @@ parse_arguments() {
 build_target() {
     if [ "$ARG_CLEAN_FLAG" == "true" ]; then
         clean_build
-
-        if [[ -z "$ARG_AOS_SERVICES" ]]; then
-            return
-        fi
     fi
 
     conan_setup
