@@ -340,7 +340,7 @@ void VISIdentifier::HandleConnection()
 Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 {
     try {
-        StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> newSubjects;
+        StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> newSubjects;
 
         const auto responseSubjects = GetValueArrayByPath(value, cSubjectsVISPath);
 
