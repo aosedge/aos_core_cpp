@@ -107,13 +107,13 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
     for (const auto& srcCPU : src) {
         CPUInfo dstCPU;
 
-        dstCPU.mModelName  = srcCPU.model_name().c_str();
-        dstCPU.mNumCores   = srcCPU.num_cores();
-        dstCPU.mNumThreads = srcCPU.num_threads();
-        dstCPU.mArch       = srcCPU.arch().c_str();
+        dstCPU.mModelName              = srcCPU.model_name().c_str();
+        dstCPU.mNumCores               = srcCPU.num_cores();
+        dstCPU.mNumThreads             = srcCPU.num_threads();
+        dstCPU.mArchInfo.mArchitecture = srcCPU.arch().c_str();
 
         if (!srcCPU.arch_family().empty()) {
-            dstCPU.mArchFamily.SetValue(srcCPU.arch_family().c_str());
+            dstCPU.mArchInfo.mVariant.SetValue(srcCPU.arch_family().c_str());
         }
 
         if (srcCPU.max_dmips() > 0) {

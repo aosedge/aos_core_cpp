@@ -83,11 +83,11 @@ CPUInfo CreateCPUInfo()
 {
     CPUInfo cpuInfo;
 
-    cpuInfo.mModelName  = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
-    cpuInfo.mNumCores   = 4;
-    cpuInfo.mNumThreads = 4;
-    cpuInfo.mArch       = "GenuineIntel";
-    cpuInfo.mArchFamily.SetValue("6");
+    cpuInfo.mModelName              = "11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz";
+    cpuInfo.mNumCores               = 4;
+    cpuInfo.mNumThreads             = 4;
+    cpuInfo.mArchInfo.mArchitecture = "GenuineIntel";
+    cpuInfo.mArchInfo.mVariant.SetValue("6");
 
     return cpuInfo;
 }

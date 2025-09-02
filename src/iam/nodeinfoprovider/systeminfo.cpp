@@ -78,7 +78,7 @@ private:
                 } else if (keyValue.mKey == "siblings") {
                     cpuInfo.mNumThreads = std::stoul(keyValue.mValue);
                 } else if (keyValue.mKey == "cpu family") {
-                    cpuInfo.mArch = keyValue.mValue.c_str();
+                    cpuInfo.mArchInfo.mArchitecture = keyValue.mValue.c_str();
                 }
             } catch (...) {
                 LOG_DBG() << "CPU info parsing failed: key=" << keyValue.mKey.c_str()
@@ -102,7 +102,7 @@ private:
             AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get CPU architecture");
         }
 
-        auto err = cpuInfo.mArch.Assign(buffer.machine);
+        auto err = cpuInfo.mArchInfo.mArchitecture.Assign(buffer.machine);
         AOS_ERROR_CHECK_AND_THROW(err);
     }
 

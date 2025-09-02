@@ -116,8 +116,8 @@ TEST_F(IamClientTest, GetNodeInfo)
     EXPECT_STREQ(nodeInfo.mCPUs[0].mModelName.CStr(), "model_name");
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1);
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1);
-    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), "arch");
-    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchFamily->CStr(), "arch_family");
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchInfo.mArchitecture.CStr(), "arch");
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchInfo.mVariant->CStr(), "arch_family");
     EXPECT_EQ(nodeInfo.mCPUs[0].mMaxDMIPS, 1);
 
     EXPECT_EQ(nodeInfo.mMaxDMIPS, 1);
