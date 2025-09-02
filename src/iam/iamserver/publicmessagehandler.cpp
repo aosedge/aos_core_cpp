@@ -123,15 +123,15 @@ void PublicMessageHandler::Close()
  * Protected
  **********************************************************************************************************************/
 
-Error PublicMessageHandler::SetNodeStatus(const std::string& nodeID, const NodeStatus& status)
+Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeState& state)
 {
     if (ProcessOnThisNode(nodeID)) {
-        if (auto err = mNodeInfoProvider->SetNodeStatus(status); !err.IsNone()) {
+        if (auto err = mNodeInfoProvider->SetNodeState(state); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    if (auto err = mNodeManager->SetNodeStatus(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), status);
+    if (auto err = mNodeManager->SetNodeState(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), state);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -405,7 +405,7 @@ grpc::Status PublicMessageHandler::RegisterNode(grpc::ServerContext*            
     LOG_DBG() << "Process register node: handler=public";
 
     return GetNodeController()->HandleRegisterNodeStream(
-        {cAllowedStatuses.cbegin(), cAllowedStatuses.cend()}, stream, context, GetNodeManager());
+        {cAllowedStates.cbegin(), cAllowedStates.cend()}, stream, context, GetNodeManager());
 }
 
 } // namespace aos::iam::iamserver

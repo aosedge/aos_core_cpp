@@ -147,28 +147,28 @@ public:
     Error GetNodeInfo(NodeInfo& nodeInfo) const override;
 
     /**
-     * Sets the node status.
+     * Sets the node state.
      *
-     * @param status node status
-     * @return Error
+     * @param state node state.
+     * @return Error.
      */
-    Error SetNodeStatus(const NodeStatus& status) override;
+    Error SetNodeState(const NodeState& state) override;
 
     /**
-     * Subscribes on node status changed event.
+     * Subscribes on node state changed event.
      *
-     * @param observer node status changed observer
-     * @return Error
+     * @param observer node state changed observer.
+     * @return Error.
      */
-    Error SubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+    Error SubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer) override;
 
     /**
-     * Unsubscribes from node status changed event.
+     * Unsubscribes from node state changed event.
      *
-     * @param observer node status changed observer
-     * @return Error
+     * @param observer node state changed observer.
+     * @return Error.
      */
-    Error UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer) override;
+    Error UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer) override;
 
 private:
     struct Subscription {

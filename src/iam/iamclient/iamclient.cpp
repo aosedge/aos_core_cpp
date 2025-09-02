@@ -278,7 +278,7 @@ bool IAMClient::SendNodeInfo()
 
     *outgoingMsg.mutable_node_info() = common::pbconvert::ConvertToProto(*nodeInfo);
 
-    LOG_DBG() << "Send node info: status=" << nodeInfo->mStatus;
+    LOG_DBG() << "Send node info: state=" << nodeInfo->mState;
 
     bool isOK = mStream->Write(outgoingMsg);
     if (!isOK) {
@@ -295,9 +295,9 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningR
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
-    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeState({NodeStateEnum::eUnprovisioned});
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't start provisioning: wrong node status";
+        LOG_ERR() << "Can't start provisioning: wrong node state";
 
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -317,9 +317,9 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
-    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeState({NodeStateEnum::eUnprovisioned});
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't finish provisioning: wrong node status";
+        LOG_ERR() << "Can't finish provisioning: wrong node state";
 
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -333,7 +333,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -352,9 +352,9 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
-    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eProvisioned, NodeStatusEnum::ePaused});
+    auto err = CheckCurrentNodeState({NodeStateEnum::eProvisioned, NodeStateEnum::ePaused});
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't deprovision: wrong node status";
+        LOG_ERR() << "Can't deprovision: wrong node state";
 
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -368,7 +368,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eUnprovisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eUnprovisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -389,16 +389,16 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
-    auto err = CheckCurrentNodeStatus({NodeStatusEnum::eProvisioned});
+    auto err = CheckCurrentNodeState({NodeStateEnum::eProvisioned});
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't pause node: wrong node status";
+        LOG_ERR() << "Can't pause node: wrong node state";
 
         common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::ePaused);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::ePaused);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -419,16 +419,16 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
     iamanager::v5::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
-    auto err = CheckCurrentNodeStatus({NodeStatusEnum::ePaused});
+    auto err = CheckCurrentNodeState({NodeStateEnum::ePaused});
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't resume node: wrong node status";
+        LOG_ERR() << "Can't resume node: wrong node state";
 
         common::pbconvert::SetErrorInfo(err, response);
 
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeStatus(NodeStatusEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -501,7 +501,7 @@ bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& re
     return SendGetCertTypesResponse(certTypes, err);
 }
 
-Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<NodeStatus>& allowedStatuses)
+Error IAMClient::CheckCurrentNodeState(const std::initializer_list<NodeState>& allowedStates)
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
@@ -510,8 +510,8 @@ Error IAMClient::CheckCurrentNodeStatus(const std::initializer_list<NodeStatus>&
         return AOS_ERROR_WRAP(err);
     }
 
-    const bool isAllowed = std::any_of(allowedStatuses.begin(), allowedStatuses.end(),
-        [currentStatus = nodeInfo->mStatus](const NodeStatus status) { return currentStatus == status; });
+    const bool isAllowed = std::any_of(allowedStates.begin(), allowedStates.end(),
+        [currentState = nodeInfo->mState](const NodeState state) { return currentState == state; });
 
     return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }
