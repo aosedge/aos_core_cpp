@@ -263,7 +263,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationValueExceedsMaxLimit)
     notification.set("action", "subscription");
     notification.set("timestamp", 0);
     notification.set("subscriptionId", cTestSubscriptionId);
-    notification.set("value", std::vector<std::string>(cMaxSubjectIDSize + 1, "test"));
+    notification.set("value", std::vector<std::string>(cMaxNumSubjects + 1, "test"));
 
     std::ostringstream jsonStream;
     Poco::JSON::Stringifier::stringify(notification, jsonStream);
@@ -476,8 +476,8 @@ TEST_F(VisidentifierTest, GetSubjectsRequestFailed)
             throw WSException("mock");
         }));
 
-    StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> subjects;
-    const auto                                                  err = mVisIdentifier.GetSubjects(subjects);
+    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> subjects;
+    const auto                                                err = mVisIdentifier.GetSubjects(subjects);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
     EXPECT_TRUE(subjects.IsEmpty());
 
