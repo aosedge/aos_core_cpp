@@ -385,7 +385,7 @@ std::string CNI::ResultToJSON(const Result& result) const
             Poco::JSON::Object ifaceObj;
 
             ifaceObj.set("name", iface.mName.CStr());
-            ifaceObj.set("mac", iface.mMac.CStr());
+            ifaceObj.set("mac", iface.mMAC.CStr());
 
             if (!iface.mSandbox.IsEmpty()) {
                 ifaceObj.set("sandbox", iface.mSandbox.CStr());
