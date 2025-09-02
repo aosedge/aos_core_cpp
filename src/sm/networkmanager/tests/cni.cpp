@@ -168,15 +168,15 @@ protected:
         ASSERT_EQ(result.mInterfaces.Size(), 3);
 
         EXPECT_STREQ(result.mInterfaces[0].mName.CStr(), "br-sp5f809a3c");
-        EXPECT_STREQ(result.mInterfaces[0].mMac.CStr(), "aa:e8:7d:cb:b9:89");
+        EXPECT_STREQ(result.mInterfaces[0].mMAC.CStr(), "aa:e8:7d:cb:b9:89");
         EXPECT_TRUE(result.mInterfaces[0].mSandbox.IsEmpty());
 
         EXPECT_STREQ(result.mInterfaces[1].mName.CStr(), "vethd5a0a2f5");
-        EXPECT_STREQ(result.mInterfaces[1].mMac.CStr(), "56:98:87:e7:53:84");
+        EXPECT_STREQ(result.mInterfaces[1].mMAC.CStr(), "56:98:87:e7:53:84");
         EXPECT_TRUE(result.mInterfaces[1].mSandbox.IsEmpty());
 
         EXPECT_STREQ(result.mInterfaces[2].mName.CStr(), "eth0");
-        EXPECT_STREQ(result.mInterfaces[2].mMac.CStr(), "36:69:cc:de:ba:35");
+        EXPECT_STREQ(result.mInterfaces[2].mMAC.CStr(), "36:69:cc:de:ba:35");
         EXPECT_STREQ(result.mInterfaces[2].mSandbox.CStr(), "/run/netns/b8f745c9-9d8c-453e-8098-a29b0b4b9774");
 
         ASSERT_EQ(result.mIPs.Size(), 1);
