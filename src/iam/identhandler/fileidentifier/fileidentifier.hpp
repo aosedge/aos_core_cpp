@@ -65,11 +65,11 @@ private:
     void  ReadSubjectsFromFile();
     Error ReadLineFromFile(const std::string& path, String& result) const;
 
-    config::FileIdentifierModuleParams                          mConfig;
-    identhandler::SubjectsObserverItf*                          mSubjectsObserver = nullptr;
-    StaticString<cSystemIDLen>                                  mSystemId;
-    StaticString<cUnitModelLen>                                 mUnitModel;
-    StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> mSubjects;
+    config::FileIdentifierModuleParams                        mConfig;
+    identhandler::SubjectsObserverItf*                        mSubjectsObserver = nullptr;
+    StaticString<cSystemIDLen>                                mSystemId;
+    StaticString<cUnitModelLen>                               mUnitModel;
+    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> mSubjects;
 };
 
 } // namespace aos::iam::fileidentifier

@@ -133,18 +133,18 @@ private:
     std::string              GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
-    std::shared_ptr<WSClientItf>                                mWsClientPtr;
-    identhandler::SubjectsObserverItf*                          mSubjectsObserver = nullptr;
-    crypto::UUIDItf*                                            mUUIDProvider     = nullptr;
-    VISSubscriptions                                            mSubscriptions;
-    StaticString<cSystemIDLen>                                  mSystemId;
-    StaticString<cUnitModelLen>                                 mUnitModel;
-    StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> mSubjects;
-    std::thread                                                 mHandleConnectionThread;
-    Poco::Event                                                 mWSClientIsConnected;
-    Poco::Event                                                 mStopHandleSubjectsChangedThread;
-    std::mutex                                                  mMutex;
-    config::IdentifierConfig                                    mConfig;
+    std::shared_ptr<WSClientItf>                              mWsClientPtr;
+    identhandler::SubjectsObserverItf*                        mSubjectsObserver = nullptr;
+    crypto::UUIDItf*                                          mUUIDProvider     = nullptr;
+    VISSubscriptions                                          mSubscriptions;
+    StaticString<cSystemIDLen>                                mSystemId;
+    StaticString<cUnitModelLen>                               mUnitModel;
+    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> mSubjects;
+    std::thread                                               mHandleConnectionThread;
+    Poco::Event                                               mWSClientIsConnected;
+    Poco::Event                                               mStopHandleSubjectsChangedThread;
+    std::mutex                                                mMutex;
+    config::IdentifierConfig                                  mConfig;
 };
 
 } // namespace aos::iam::visidentifier

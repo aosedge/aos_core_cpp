@@ -289,7 +289,7 @@ grpc::Status PublicMessageHandler::GetSubjects([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get subjects";
 
-    StaticArray<StaticString<cSubjectIDLen>, cMaxSubjectIDSize> subjects;
+    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> subjects;
 
     if (auto err = GetIdentHandler()->GetSubjects(subjects); !err.IsNone()) {
         LOG_ERR() << "Failed to get subjects: " << err;
