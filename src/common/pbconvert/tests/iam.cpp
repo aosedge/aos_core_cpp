@@ -38,11 +38,11 @@ CPUInfo CreateCPUInfo(const std::string& modelName)
 {
     CPUInfo result;
 
-    result.mModelName  = modelName.c_str();
-    result.mNumCores   = 4;
-    result.mNumThreads = 8;
-    result.mArch       = "arch";
-    result.mArchFamily.SetValue("arch-family");
+    result.mModelName              = modelName.c_str();
+    result.mNumCores               = 4;
+    result.mNumThreads             = 8;
+    result.mArchInfo.mArchitecture = "arch";
+    result.mArchInfo.mVariant.SetValue("arch-family");
 
     return result;
 }
@@ -131,8 +131,8 @@ TEST_F(PBConvertIAMTest, ConvertCPUInfoToProto)
     EXPECT_STREQ(result.model_name().c_str(), src.mModelName.CStr());
     EXPECT_EQ(result.num_cores(), src.mNumCores);
     EXPECT_EQ(result.num_threads(), src.mNumThreads);
-    EXPECT_STREQ(result.arch().c_str(), src.mArch.CStr());
-    EXPECT_STREQ(result.arch_family().c_str(), src.mArchFamily->CStr());
+    EXPECT_STREQ(result.arch().c_str(), src.mArchInfo.mArchitecture.CStr());
+    EXPECT_STREQ(result.arch_family().c_str(), src.mArchInfo.mVariant->CStr());
 }
 
 TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
@@ -177,8 +177,8 @@ TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
         EXPECT_STREQ(proto.model_name().c_str(), cpuInfo.mModelName.CStr());
         EXPECT_EQ(proto.num_cores(), cpuInfo.mNumCores);
         EXPECT_EQ(proto.num_threads(), cpuInfo.mNumThreads);
-        EXPECT_STREQ(proto.arch().c_str(), cpuInfo.mArch.CStr());
-        EXPECT_STREQ(proto.arch_family().c_str(), cpuInfo.mArchFamily->CStr());
+        EXPECT_STREQ(proto.arch().c_str(), cpuInfo.mArchInfo.mArchitecture.CStr());
+        EXPECT_STREQ(proto.arch_family().c_str(), cpuInfo.mArchInfo.mVariant->CStr());
     }
 }
 

@@ -396,10 +396,10 @@ Poco::JSON::Array Database::ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo)
         pocoItem.set("modelName", srcItem.mModelName.CStr());
         pocoItem.set("numCores", srcItem.mNumCores);
         pocoItem.set("numThreads", srcItem.mNumThreads);
-        pocoItem.set("arch", srcItem.mArch.CStr());
+        pocoItem.set("arch", srcItem.mArchInfo.mArchitecture.CStr());
 
-        if (srcItem.mArchFamily.HasValue()) {
-            pocoItem.set("archFamily", srcItem.mArchFamily->CStr());
+        if (srcItem.mArchInfo.mVariant.HasValue()) {
+            pocoItem.set("archFamily", srcItem.mArchInfo.mVariant->CStr());
         }
 
         if (srcItem.mMaxDMIPS.HasValue()) {
@@ -422,13 +422,13 @@ Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUIn
             return AOS_ERROR_WRAP(ErrorEnum::eFailed);
         }
 
-        dstItem.mModelName  = cpuInfo->getValue<std::string>("modelName").c_str();
-        dstItem.mNumCores   = cpuInfo->getValue<size_t>("numCores");
-        dstItem.mNumThreads = cpuInfo->getValue<size_t>("numThreads");
-        dstItem.mArch       = cpuInfo->getValue<std::string>("arch").c_str();
+        dstItem.mModelName              = cpuInfo->getValue<std::string>("modelName").c_str();
+        dstItem.mNumCores               = cpuInfo->getValue<size_t>("numCores");
+        dstItem.mNumThreads             = cpuInfo->getValue<size_t>("numThreads");
+        dstItem.mArchInfo.mArchitecture = cpuInfo->getValue<std::string>("arch").c_str();
 
         if (cpuInfo->has("archFamily")) {
-            dstItem.mArchFamily.SetValue(cpuInfo->getValue<std::string>("archFamily").c_str());
+            dstItem.mArchInfo.mVariant.SetValue(cpuInfo->getValue<std::string>("archFamily").c_str());
         }
 
         if (cpuInfo->has("maxDMIPS")) {
