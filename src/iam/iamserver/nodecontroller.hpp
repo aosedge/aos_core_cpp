@@ -63,13 +63,13 @@ public:
     /**
      * Creates instance.
      *
-     * @param allowedStatuses allowed node statuses.
+     * @param allowedStates allowed node states.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
      * @param streamRegistry stream registry.
      */
-    static NodeStreamHandler::Ptr Create(const std::vector<NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+    static NodeStreamHandler::Ptr Create(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
         grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     /**
@@ -172,14 +172,14 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
-    NodeStreamHandler(const std::vector<NodeStatus>& allowedStatuses, NodeServerReaderWriter* stream,
+    NodeStreamHandler(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
         grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
     Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
-    std::vector<NodeStatus>           mAllowedStatuses;
+    std::vector<NodeState>            mAllowedStates;
     NodeServerReaderWriter*           mStream         = nullptr;
     grpc::ServerContext*              mContext        = nullptr;
     iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
@@ -213,14 +213,14 @@ public:
      * Handles register node input/output streams.
      * This method is blocking and should be called in a separate thread.
      *
-     * @param allowedStatuses allowed node statuses.
+     * @param allowedStates allowed node states.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
      * @return grpc::Status.
      */
-    grpc::Status HandleRegisterNodeStream(const std::vector<NodeStatus>& allowedStatuses,
-        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
+    grpc::Status HandleRegisterNodeStream(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
+        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
 
     /**
      * Gets node stream handler by node id.

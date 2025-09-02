@@ -175,10 +175,10 @@ Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfo& dst)
     dst.mNodeType = src.node_type().c_str();
     dst.mName     = src.name().c_str();
 
-    NodeStatus nodeStatus;
-    nodeStatus.FromString(src.status().c_str());
+    NodeState nodeState;
+    nodeState.FromString(src.status().c_str());
 
-    dst.mStatus   = nodeStatus;
+    dst.mState    = nodeState;
     dst.mOSType   = src.os_type().c_str();
     dst.mMaxDMIPS = src.max_dmips();
     dst.mTotalRAM = src.total_ram();

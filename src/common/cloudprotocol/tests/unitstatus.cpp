@@ -64,7 +64,7 @@ TEST_F(CloudProtocolUnitStatus, UnitConfigStatus)
     status->mNodeInfo[0].mNodeID   = "node1";
     status->mNodeInfo[0].mNodeType = "type1";
     status->mNodeInfo[0].mName     = "Node 1";
-    status->mNodeInfo[0].mStatus   = NodeStatusEnum::eProvisioned;
+    status->mNodeInfo[0].mStatus   = NodeStateEnum::eProvisioned;
     status->mNodeInfo[0].mOSType   = "Linux";
     status->mNodeInfo[0].mCPUs.PushBack({"cpu1", 4, 8, "arch1", {}, 2000});
     status->mNodeInfo[0].mCPUs.PushBack({"cpu2", 4, 8, "arch2", {"arch f2"}, 4000});

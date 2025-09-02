@@ -31,10 +31,10 @@ namespace {
 
 #define TEST_TMP_DIR "test-tmp"
 
-const std::string cNodeIDPath             = TEST_TMP_DIR "/node-id";
-const std::string cProvisioningStatusPath = TEST_TMP_DIR "/provisioning-status";
-const std::string cCPUInfoPath            = TEST_TMP_DIR "/cpuinfo";
-const std::string cMemInfoPath            = TEST_TMP_DIR "/meminfo";
+const std::string cNodeIDPath            = TEST_TMP_DIR "/node-id";
+const std::string cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
+const std::string cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
+const std::string cMemInfoPath           = TEST_TMP_DIR "/meminfo";
 const std::array  cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
 constexpr auto    cNodeIDFileContent           = "node-id";
 constexpr auto    cCPUInfoFileContent          = R"(processor	: 0
@@ -74,8 +74,8 @@ constexpr auto    cCPUInfoFileCorruptedContent = "physical id		: number_is_expec
 constexpr auto    cEmptyProcFileContent        = R"()";
 constexpr auto    cMemInfoFileContent          = "MemTotal:       16384 kB";
 constexpr auto    cExpectedMemSizeBytes        = 16384 * 1024;
-const NodeStatus  cProvisionedStatus           = NodeStatusEnum::eProvisioned;
-const NodeStatus  cUnprovisionedStatus         = NodeStatusEnum::eUnprovisioned;
+const NodeState   cProvisionedState            = NodeStateEnum::eProvisioned;
+const NodeState   cUnprovisionedState          = NodeStateEnum::eUnprovisioned;
 
 /***********************************************************************************************************************
  * Static
@@ -85,7 +85,7 @@ iam::config::NodeInfoConfig CreateConfig()
 {
     iam::config::NodeInfoConfig config;
 
-    config.mProvisioningStatePath = cProvisioningStatusPath;
+    config.mProvisioningStatePath = cProvisioningStatePath;
     config.mCPUInfoPath           = cCPUInfoPath;
     config.mMemInfoPath           = cMemInfoPath;
     config.mNodeIDPath            = cNodeIDPath;
@@ -201,7 +201,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoFileNotFound)
     ASSERT_EQ(nodeInfo.mCPUs.Size(), 1) << "Invalid number of CPUs";
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1) << "Invalid number of cores";
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
-    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchInfo.mArchitecture.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
 }
 
 TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoCorrupted)
@@ -228,7 +228,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoCorrupted)
     ASSERT_EQ(nodeInfo.mCPUs.Size(), 1) << "Invalid number of CPUs";
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumCores, 1) << "Invalid number of cores";
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
-    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchInfo.mArchitecture.CStr(), GetCPUArch().c_str()) << "Invalid CPU architecture";
 }
 
 TEST_F(NodeInfoProviderTest, InitFailsIfConfigAttributesExceedMaxAllowed)
@@ -271,7 +271,8 @@ TEST_F(NodeInfoProviderTest, InitSucceedsOnNonStandardProcFile)
     EXPECT_EQ(nodeInfo.mCPUs[0].mNumThreads, 1) << "Invalid number of threads";
 
     const auto expectedCPUArch = GetCPUArch();
-    EXPECT_STREQ(nodeInfo.mCPUs[0].mArch.CStr(), expectedCPUArch.c_str()) << "Invalid CPU architecture";
+    EXPECT_STREQ(nodeInfo.mCPUs[0].mArchInfo.mArchitecture.CStr(), expectedCPUArch.c_str())
+        << "Invalid CPU architecture";
 }
 
 TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
@@ -319,7 +320,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
     ASSERT_EQ(nodeInfo.mCPUs.Size(), 3) << "Invalid number of CPUs";
 }
 
-TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStatusFromFile)
+TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStateFromFile)
 {
     const iam::config::NodeInfoConfig config = CreateConfig();
 
@@ -332,119 +333,120 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStatusFromFile)
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
 
-    EXPECT_EQ(nodeInfo.mStatus, cUnprovisionedStatus)
-        << "Expected unprovisioned status, got: " << nodeInfo.mStatus.ToString().CStr();
+    EXPECT_EQ(nodeInfo.mState, cUnprovisionedState)
+        << "Expected unprovisioned state, got: " << nodeInfo.mState.ToString().CStr();
 
-    std::ofstream file(cProvisioningStatusPath);
-    ASSERT_TRUE(file.is_open()) << "Failed to open provisioning status file, path = " << cProvisioningStatusPath;
+    std::ofstream file(cProvisioningStatePath);
+    ASSERT_TRUE(file.is_open()) << "Failed to open provisioning state file, path = " << cProvisioningStatePath;
 
-    file << cProvisionedStatus.ToString().CStr();
+    file << cProvisionedState.ToString().CStr();
     file.close();
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
 
-    EXPECT_EQ(nodeInfo.mStatus, cProvisionedStatus)
-        << "Expected provisioned status, got: " << nodeInfo.mStatus.ToString().CStr();
+    EXPECT_EQ(nodeInfo.mState, cProvisionedState)
+        << "Expected provisioned state, got: " << nodeInfo.mState.ToString().CStr();
 }
 
-TEST_F(NodeInfoProviderTest, SetNodeStatusFailsIfProvisioningStatusFileNotFound)
+TEST_F(NodeInfoProviderTest, SetNodeStateFailsIfProvisioningStateFileNotFound)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.SetNodeStatus(NodeStatusEnum::eProvisioned);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "SetNodeStatus should return not found error, err = " << err.Message();
+    auto err = provider.SetNodeState(NodeStateEnum::eProvisioned);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "SetNodeState should return not found error, err = " << err.Message();
 }
 
-TEST_F(NodeInfoProviderTest, SetNodeStatusSucceeds)
+TEST_F(NodeInfoProviderTest, SetNodeStateSucceeds)
 {
     NodeInfoProvider provider;
 
     iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-state";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
-    err = provider.SetNodeStatus(cProvisionedStatus);
-    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err = " << err.Message();
+    err = provider.SetNodeState(cProvisionedState);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err = " << err.Message();
 
     std::ifstream file(config.mProvisioningStatePath);
-    ASSERT_TRUE(file.is_open()) << "Failed to open provisioning status file, path = " << config.mProvisioningStatePath;
+    ASSERT_TRUE(file.is_open()) << "Failed to open provisioning state file, path = " << config.mProvisioningStatePath;
 
-    std::string status;
-    file >> status;
+    std::string state;
 
-    EXPECT_STREQ(status.c_str(), cProvisionedStatus.ToString().CStr());
+    file >> state;
+
+    EXPECT_STREQ(state.c_str(), cProvisionedState.ToString().CStr());
 }
 
-TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStatusNotChanged)
+TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStateNotChanged)
 {
-    iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
+    iam::nodeinfoprovider::NodeStateObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 
     iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-state";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
 
-    err = provider.SubscribeNodeStatusChanged(observer1);
-    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+    err = provider.SubscribeNodeStateChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStateChanged should succeed, err=" << err.Message();
 
-    err = provider.SubscribeNodeStatusChanged(observer2);
-    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+    err = provider.SubscribeNodeStateChanged(observer2);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStateChanged should succeed, err=" << err.Message();
 
-    EXPECT_CALL(observer1, OnNodeStatusChanged(_, _)).Times(0);
-    EXPECT_CALL(observer2, OnNodeStatusChanged(_, _)).Times(0);
+    EXPECT_CALL(observer1, OnNodeStateChanged(_, _)).Times(0);
+    EXPECT_CALL(observer2, OnNodeStateChanged(_, _)).Times(0);
 
-    err = provider.SetNodeStatus(cUnprovisionedStatus);
-    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
+    err = provider.SetNodeState(cUnprovisionedState);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 }
 
-TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStatusChange)
+TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStateChange)
 {
-    iam::nodeinfoprovider::NodeStatusObserverMock observer1, observer2;
+    iam::nodeinfoprovider::NodeStateObserverMock observer1, observer2;
 
     NodeInfoProvider provider;
 
     iam::config::NodeInfoConfig config = CreateConfig();
-    config.mProvisioningStatePath      = "test-tmp/test-provisioning-status";
+    config.mProvisioningStatePath      = "test-tmp/test-provisioning-state";
 
     std::remove(config.mProvisioningStatePath.c_str());
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
 
-    err = provider.SubscribeNodeStatusChanged(observer1);
-    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+    err = provider.SubscribeNodeStateChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStateChanged should succeed, err=" << err.Message();
 
-    err = provider.SubscribeNodeStatusChanged(observer2);
-    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStatusChanged should succeed, err=" << err.Message();
+    err = provider.SubscribeNodeStateChanged(observer2);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeNodeStateChanged should succeed, err=" << err.Message();
 
-    EXPECT_CALL(observer1, OnNodeStatusChanged(String(cNodeIDFileContent), cProvisionedStatus))
+    EXPECT_CALL(observer1, OnNodeStateChanged(String(cNodeIDFileContent), cProvisionedState))
         .WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(observer2, OnNodeStatusChanged(String(cNodeIDFileContent), cProvisionedStatus))
+    EXPECT_CALL(observer2, OnNodeStateChanged(String(cNodeIDFileContent), cProvisionedState))
         .WillOnce(Return(ErrorEnum::eNone));
 
-    err = provider.SetNodeStatus(cProvisionedStatus);
-    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
+    err = provider.SetNodeState(cProvisionedState);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 
     // unsubscribe observer1
-    err = provider.UnsubscribeNodeStatusChanged(observer1);
-    ASSERT_TRUE(err.IsNone()) << "UnsubscribeNodeStatusChanged should succeed, err=" << err.Message();
+    err = provider.UnsubscribeNodeStateChanged(observer1);
+    ASSERT_TRUE(err.IsNone()) << "UnsubscribeNodeStateChanged should succeed, err=" << err.Message();
 
-    EXPECT_CALL(observer1, OnNodeStatusChanged(_, _)).Times(0);
-    EXPECT_CALL(observer2, OnNodeStatusChanged(String(cNodeIDFileContent), cUnprovisionedStatus))
+    EXPECT_CALL(observer1, OnNodeStateChanged(_, _)).Times(0);
+    EXPECT_CALL(observer2, OnNodeStateChanged(String(cNodeIDFileContent), cUnprovisionedState))
         .WillOnce(Return(ErrorEnum::eNone));
 
-    err = provider.SetNodeStatus(cUnprovisionedStatus);
-    EXPECT_TRUE(err.IsNone()) << "SetNodeStatus should succeed, err=" << err.Message();
+    err = provider.SetNodeState(cUnprovisionedState);
+    EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 }
 
 } // namespace aos::iam::nodeinfoprovider

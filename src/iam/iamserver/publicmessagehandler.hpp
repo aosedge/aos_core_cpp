@@ -106,7 +106,7 @@ protected:
     NodeController*                             GetNodeController() { return mNodeController; }
     NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
-    Error                                       SetNodeStatus(const std::string& nodeID, const NodeStatus& status);
+    Error                                       SetNodeState(const std::string& nodeID, const NodeState& state);
     bool                                        ProcessOnThisNode(const std::string& nodeID);
 
     template <typename R>
@@ -133,7 +133,7 @@ protected:
 
 private:
     static constexpr auto       cIamAPIVersion       = 5;
-    static constexpr std::array cAllowedStatuses     = {NodeStatusEnum::eUnprovisioned};
+    static constexpr std::array cAllowedStates       = {NodeStateEnum::eUnprovisioned};
     static constexpr auto       cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto       cRequestRetryMaxTry  = 3;
 

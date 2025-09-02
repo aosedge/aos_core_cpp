@@ -336,7 +336,7 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)
 {
     Poco::JSON::Object object;
 
-    object.set("status", static_cast<int>(nodeInfo.mStatus.GetValue()));
+    object.set("state", static_cast<int>(nodeInfo.mState.GetValue()));
     object.set("type", nodeInfo.mNodeType.CStr());
     object.set("name", nodeInfo.mName.CStr());
     object.set("osType", nodeInfo.mOSType.CStr());
@@ -351,7 +351,7 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)
 
 Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, NodeInfo& dst)
 {
-    dst.mStatus   = static_cast<NodeStatusEnum>(object.getValue<int>("status"));
+    dst.mState    = static_cast<NodeStateEnum>(object.getValue<int>("state"));
     dst.mNodeType = object.getValue<std::string>("type").c_str();
     dst.mName     = object.getValue<std::string>("name").c_str();
     dst.mOSType   = object.getValue<std::string>("osType").c_str();

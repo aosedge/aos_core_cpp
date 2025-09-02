@@ -72,7 +72,7 @@ iamanager::v5::NodeInfo ConvertToProto(const NodeInfo& src)
     result.set_node_id(src.mNodeID.CStr());
     result.set_node_type(src.mNodeType.CStr());
     result.set_name(src.mName.CStr());
-    result.set_status(src.mStatus.ToString().CStr());
+    result.set_status(src.mState.ToString().CStr());
     result.set_os_type(src.mOSType.CStr());
     result.set_max_dmips(src.mMaxDMIPS);
     result.set_total_ram(src.mTotalRAM);

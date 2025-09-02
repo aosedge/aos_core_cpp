@@ -119,25 +119,25 @@ Error PublicServiceHandler::GetNodeInfo(NodeInfo& nodeInfo) const
     return ErrorEnum::eNone;
 }
 
-Error PublicServiceHandler::SetNodeStatus(const NodeStatus& status)
+Error PublicServiceHandler::SetNodeState(const NodeState& state)
 {
-    LOG_DBG() << "Setting node status: status=" << status;
+    LOG_DBG() << "Setting node state: state=" << state;
 
     return ErrorEnum::eNotSupported;
 }
 
-Error PublicServiceHandler::SubscribeNodeStatusChanged(
-    [[maybe_unused]] iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+Error PublicServiceHandler::SubscribeNodeStateChanged(
+    [[maybe_unused]] iam::nodeinfoprovider::NodeStateObserverItf& observer)
 {
-    LOG_DBG() << "Subscribing to node status changed";
+    LOG_DBG() << "Subscribing to node state changed";
 
     return ErrorEnum::eNotSupported;
 }
 
-Error PublicServiceHandler::UnsubscribeNodeStatusChanged(
-    [[maybe_unused]] iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+Error PublicServiceHandler::UnsubscribeNodeStateChanged(
+    [[maybe_unused]] iam::nodeinfoprovider::NodeStateObserverItf& observer)
 {
-    LOG_DBG() << "Unsubscribing from node status changed";
+    LOG_DBG() << "Unsubscribing from node state changed";
 
     return ErrorEnum::eNotSupported;
 }
