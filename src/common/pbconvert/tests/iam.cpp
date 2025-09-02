@@ -54,7 +54,7 @@ NodeInfo CreateNodeInfo()
     result.mNodeID   = "node-id";
     result.mNodeType = "node-type";
     result.mName     = "name";
-    result.mStatus   = NodeStatusEnum::eProvisioned;
+    result.mState    = NodeStateEnum::eProvisioned;
     result.mOSType   = "os-type";
     result.mMaxDMIPS = 1024;
     result.mTotalRAM = 2048;
@@ -143,7 +143,7 @@ TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
     EXPECT_STREQ(result.node_id().c_str(), src.mNodeID.CStr());
     EXPECT_STREQ(result.node_type().c_str(), src.mNodeType.CStr());
     EXPECT_STREQ(result.name().c_str(), src.mName.CStr());
-    EXPECT_STREQ(result.status().c_str(), src.mStatus.ToString().CStr());
+    EXPECT_STREQ(result.status().c_str(), src.mState.ToString().CStr());
     EXPECT_STREQ(result.os_type().c_str(), src.mOSType.CStr());
     EXPECT_EQ(result.max_dmips(), src.mMaxDMIPS);
     EXPECT_EQ(result.total_ram(), src.mTotalRAM);

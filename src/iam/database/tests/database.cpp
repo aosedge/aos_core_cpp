@@ -70,7 +70,7 @@ NodeInfo DefaultNodeInfo(const char* id = "node0")
     nodeInfo.mNodeID   = id;
     nodeInfo.mNodeType = "main";
     nodeInfo.mName     = "node0";
-    nodeInfo.mStatus   = NodeStatusEnum::eProvisioned;
+    nodeInfo.mState    = NodeStateEnum::eProvisioned;
     nodeInfo.mOSType   = "linux";
     FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);

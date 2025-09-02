@@ -138,9 +138,9 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), NodeStatusEnum::ePaused);
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
 
         return ErrorEnum::eNone;
     }));
@@ -165,9 +165,9 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), NodeStatusEnum::ePaused);
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
 
         return ErrorEnum::eFailed;
     }));
@@ -192,9 +192,9 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), NodeStatusEnum::eProvisioned);
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
 
         return ErrorEnum::eNone;
     }));
@@ -219,9 +219,9 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeStatus).WillOnce(Invoke([](const String& nodeID, NodeStatus status) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(status.GetValue(), NodeStatusEnum::eProvisioned);
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
 
         return ErrorEnum::eFailed;
     }));

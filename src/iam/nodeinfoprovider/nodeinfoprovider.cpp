@@ -34,22 +34,22 @@ Error GetOSType(String& osType)
     return osType.Assign(buffer.sysname);
 }
 
-RetWithError<NodeStatus> GetNodeStatus(const std::string& path)
+RetWithError<NodeState> GetNodeState(const std::string& path)
 {
     std::ifstream file;
 
     if (file.open(path); !file.is_open()) {
         // .provisionstate file doesn't exist => state unprovisioned
-        return {NodeStatusEnum::eUnprovisioned, ErrorEnum::eNone};
+        return {NodeStateEnum::eUnprovisioned, ErrorEnum::eNone};
     }
 
     std::string line;
     std::getline(file, line);
 
-    NodeStatus nodeStatus;
-    auto       err = nodeStatus.FromString(line.c_str());
+    NodeState nodeState;
+    auto      err = nodeState.FromString(line.c_str());
 
-    return {nodeStatus, err};
+    return {nodeState, err};
 }
 
 Error GetNodeID(const std::string& path, String& nodeID)
@@ -113,7 +113,7 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
     }
 
     // cppcheck-suppress unusedScopedObject
-    Tie(mNodeInfo.mStatus, err) = GetNodeStatus(mProvisioningStatusPath);
+    Tie(mNodeInfo.mState, err) = GetNodeState(mProvisioningStatusPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -125,32 +125,32 @@ Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
 {
     std::lock_guard lock {mMutex};
 
-    Error      err;
-    NodeStatus status;
+    Error     err;
+    NodeState state;
 
     // cppcheck-suppress unusedScopedObject
-    Tie(status, err) = GetNodeStatus(mProvisioningStatusPath);
+    Tie(state, err) = GetNodeState(mProvisioningStatusPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    nodeInfo         = mNodeInfo;
-    nodeInfo.mStatus = status;
+    nodeInfo        = mNodeInfo;
+    nodeInfo.mState = state;
 
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::SetNodeStatus(const NodeStatus& status)
+Error NodeInfoProvider::SetNodeState(const NodeState& state)
 {
     std::lock_guard lock {mMutex};
 
-    if (status == mNodeInfo.mStatus) {
-        LOG_DBG() << "Node status is not changed: status=" << status.ToString();
+    if (state == mNodeInfo.mState) {
+        LOG_DBG() << "Node state is not changed: state=" << state.ToString();
 
         return ErrorEnum::eNone;
     }
 
-    if (status == NodeStatusEnum::eUnprovisioned) {
+    if (state == NodeStateEnum::eUnprovisioned) {
         std::filesystem::remove(mProvisioningStatusPath);
     } else {
         std::ofstream file;
@@ -161,25 +161,25 @@ Error NodeInfoProvider::SetNodeStatus(const NodeStatus& status)
             return ErrorEnum::eNotFound;
         }
 
-        file << status.ToString().CStr();
+        file << state.ToString().CStr();
     }
 
-    mNodeInfo.mStatus = status;
+    mNodeInfo.mState = state;
 
-    LOG_DBG() << "Node status updated: status=" << status.ToString();
+    LOG_DBG() << "Node state updated: state=" << state.ToString();
 
-    if (auto err = NotifyNodeStatusChanged(); !err.IsNone()) {
-        return AOS_ERROR_WRAP(Error(err, "failed to notify node status changed subscribers"));
+    if (auto err = NotifyNodeStateChanged(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(Error(err, "failed to notify node state changed subscribers"));
     }
 
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::SubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+Error NodeInfoProvider::SubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Subscribe node status changed observer";
+    LOG_DBG() << "Subscribe node state changed observer";
 
     try {
         mObservers.insert(&observer);
@@ -190,11 +190,11 @@ Error NodeInfoProvider::SubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeSt
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::UnsubscribeNodeStatusChanged(iam::nodeinfoprovider::NodeStatusObserverItf& observer)
+Error NodeInfoProvider::UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Unsubscribe node status changed observer";
+    LOG_DBG() << "Unsubscribe node state changed observer";
 
     mObservers.erase(&observer);
 
@@ -255,15 +255,15 @@ Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& con
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::NotifyNodeStatusChanged()
+Error NodeInfoProvider::NotifyNodeStateChanged()
 {
     Error err;
 
     for (auto observer : mObservers) {
-        LOG_DBG() << "Notify node status changed observer: nodeID=" << mNodeInfo.mNodeID.CStr()
-                  << ", status=" << mNodeInfo.mStatus.ToString();
+        LOG_DBG() << "Notify node state changed observer: nodeID=" << mNodeInfo.mNodeID.CStr()
+                  << ", state=" << mNodeInfo.mState.ToString();
 
-        auto errNotify = observer->OnNodeStatusChanged(mNodeInfo.mNodeID, mNodeInfo.mStatus);
+        auto errNotify = observer->OnNodeStateChanged(mNodeInfo.mNodeID, mNodeInfo.mState);
         if (err.IsNone() && !errNotify.IsNone()) {
             err = errNotify;
         }
