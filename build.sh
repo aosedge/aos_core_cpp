@@ -45,12 +45,6 @@ clean_build() {
     print_next_step "Clean artifacts"
 
     rm -rf ./build/
-    conan remove 'gtest*' -c
-    conan remove 'grpc*' -c
-    conan remove 'poco*' -c
-    conan remove 'libcu*' -c
-    conan remove 'opens*' -c
-    conan remove 'pkcs11provider*' -c
 }
 
 conan_setup() {
