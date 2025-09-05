@@ -73,6 +73,9 @@ Error SecureChannel::Connect()
 {
     LOG_DBG() << "Connect to secure channel: port=" << mPort;
 
+    std::unique_lock rlock {mReadMutex};
+    std::unique_lock wlock {mWriteMutex};
+
     if (mConnected) {
         return ErrorEnum::eNone;
     }
@@ -149,6 +152,8 @@ Error SecureChannel::Connect()
 
 Error SecureChannel::Read(std::vector<uint8_t>& message)
 {
+    std::unique_lock rlock {mReadMutex};
+
     if (message.empty()) {
         return Error(ErrorEnum::eRuntime, "message buffer is empty");
     }
@@ -163,6 +168,8 @@ Error SecureChannel::Read(std::vector<uint8_t>& message)
 
 Error SecureChannel::Write(std::vector<uint8_t> message)
 {
+    std::unique_lock wlock {mWriteMutex};
+
     int bytesWritten = SSL_write(mSSL, message.data(), message.size());
     if (bytesWritten <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
@@ -174,6 +181,13 @@ Error SecureChannel::Write(std::vector<uint8_t> message)
 Error SecureChannel::Close()
 {
     LOG_DBG() << "Close secure channel: port=" << mPort;
+
+    if (auto err = mChannel->Close(); !err.IsNone()) {
+        return err;
+    }
+
+    std::unique_lock rlock {mReadMutex};
+    std::unique_lock wlock {mWriteMutex};
 
     if (!mConnected) {
         return ErrorEnum::eNone;
@@ -194,7 +208,7 @@ Error SecureChannel::Close()
 
     mBioMethod.reset(nullptr);
 
-    return mChannel->Close();
+    return ErrorEnum::eNone;
 }
 
 bool SecureChannel::IsConnected() const
@@ -332,6 +346,10 @@ int SecureChannel::CustomBIOWrite(BIO* bio, const char* buf, int len)
     std::vector<uint8_t> data(buf, buf + len);
     auto                 err = channel->mChannel->Write(std::move(data));
 
+    if (!channel->mSSL) {
+        return -1;
+    }
+
     return err.IsNone() ? len : -1;
 }
 
@@ -341,6 +359,10 @@ int SecureChannel::CustomBIORead(BIO* bio, char* buf, int len)
     std::vector<uint8_t> data(len);
 
     if (auto err = channel->mChannel->Read(data); !err.IsNone()) {
+        return -1;
+    }
+
+    if (!channel->mSSL) {
         return -1;
     }
 

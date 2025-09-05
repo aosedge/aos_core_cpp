@@ -19,6 +19,7 @@
 
 #include <common/utils/pkcs11helper.hpp>
 #include <mp/communication/communicationchannel.hpp>
+#include <mp/communication/securechannel.hpp>
 #include <mp/communication/types.hpp>
 #include <mp/communication/utils.hpp>
 
@@ -150,6 +151,9 @@ public:
 
     Error Connect() override
     {
+        std::unique_lock rlock {mReadMutex};
+        std::unique_lock wlock {mWriteMutex};
+
         if (mConnected) {
             return ErrorEnum::eNone;
         }
@@ -176,6 +180,8 @@ public:
 
     Error Read(std::vector<uint8_t>& message) override
     {
+        std::unique_lock rlock {mReadMutex};
+
         if (!mConnected || !mSSL) {
             return Error(ErrorEnum::eRuntime, "Not connected");
         }
@@ -190,6 +196,8 @@ public:
 
     Error Write(std::vector<uint8_t> message) override
     {
+        std::unique_lock wlock {mWriteMutex};
+
         if (!mConnected || !mSSL) {
             return Error(ErrorEnum::eRuntime, "Not connected");
         }
@@ -204,6 +212,13 @@ public:
 
     Error Close() override
     {
+        if (auto err = mChannel.Close(); !err.IsNone()) {
+            return err;
+        }
+
+        std::unique_lock rlock {mReadMutex};
+        std::unique_lock wlock {mWriteMutex};
+
         if (mConnected && mSSL) {
             SSL_shutdown(mSSL);
         }
@@ -220,10 +235,6 @@ public:
 
         mConnected = false;
 
-        if (auto err = mChannel.Close(); !err.IsNone()) {
-            return err;
-        }
-
         return ErrorEnum::eNone;
     }
 
@@ -233,14 +244,16 @@ private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
     static constexpr int  cMaxRetryCount     = 3;
 
-    CommChannelItf&   mChannel;
-    std::string       mKeyID;
-    std::string       mCertPEM;
-    std::string       mCaCertPath;
-    SSL_CTX*          mCtx       = nullptr;
-    SSL*              mSSL       = nullptr;
-    BIO_METHOD*       mBioMethod = nullptr;
-    std::atomic<bool> mConnected {false};
+    CommChannelItf&      mChannel;
+    std::string          mKeyID;
+    std::string          mCertPEM;
+    std::string          mCaCertPath;
+    SSL_CTX*             mCtx       = nullptr;
+    SSL*                 mSSL       = nullptr;
+    BIO_METHOD*          mBioMethod = nullptr;
+    std::atomic<bool>    mConnected {false};
+    std::recursive_mutex mReadMutex;
+    std::recursive_mutex mWriteMutex;
 
     Error AttemptConnect()
     {
@@ -377,6 +390,10 @@ private:
         std::vector<uint8_t> buffer(data, data + len);
         Error                err = pipe->mChannel.Write(buffer);
 
+        if (!pipe->mSSL) {
+            return -1;
+        }
+
         return err.IsNone() ? len : -1;
     }
 
@@ -387,6 +404,10 @@ private:
         auto                 err = pipe->mChannel.Read(buffer);
         if (!err.IsNone())
             return -1;
+
+        if (!pipe->mSSL) {
+            return -1;
+        }
 
         std::memcpy(data, buffer.data(), buffer.size());
 

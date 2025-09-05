@@ -105,6 +105,8 @@ private:
     SSL*                                                  mSSL {};
     std::unique_ptr<BIO_METHOD, decltype(&BIO_meth_free)> mBioMethod {nullptr, BIO_meth_free};
     std::atomic<bool>                                     mConnected {};
+    std::recursive_mutex                                  mReadMutex;
+    std::recursive_mutex                                  mWriteMutex;
 };
 
 /**
