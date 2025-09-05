@@ -282,7 +282,7 @@ private:
     {
         SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, nullptr);
 
-        auto [pkey, err] = LoadPrivateKey(mKeyID.c_str());
+        auto [pkey, err] = mp::communication::LoadPrivateKey(mKeyID.c_str());
         if (!err.IsNone()) {
             return err;
         }
@@ -327,31 +327,6 @@ private:
         }
 
         return ErrorEnum::eNone;
-    }
-
-    RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
-    {
-        auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
-        if (!createErr.IsNone()) {
-            return {nullptr, createErr};
-        }
-
-        auto [pem, encodeErr] = common::utils::PEMEncodePKCS11URL(pkcs11URL);
-        if (!encodeErr.IsNone()) {
-            return {nullptr, encodeErr};
-        }
-
-        auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
-        if (!bio) {
-            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
-        }
-
-        EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
-        if (!pkey) {
-            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
-        }
-
-        return {pkey, ErrorEnum::eNone};
     }
 
     Error SetupSSL()

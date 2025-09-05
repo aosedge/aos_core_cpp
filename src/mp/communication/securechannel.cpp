@@ -21,6 +21,28 @@
 namespace aos::mp::communication {
 
 /***********************************************************************************************************************
+ * Statics
+ **********************************************************************************************************************/
+namespace {
+
+std::string GetOpensslErrorString()
+{
+    std::ostringstream oss;
+    unsigned long      errCode;
+
+    while ((errCode = ERR_get_error()) != 0) {
+        char buf[256];
+
+        ERR_error_string_n(errCode, buf, sizeof(buf));
+        oss << buf << std::endl;
+    }
+
+    return oss.str();
+}
+
+} // namespace
+
+/***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
@@ -181,37 +203,15 @@ bool SecureChannel::IsConnected() const
 }
 
 /***********************************************************************************************************************
- * Private
+ * LoadPrivateKey implementation
  **********************************************************************************************************************/
 
-void SecureChannel::InitOpenssl()
+RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
 {
-    SSL_load_error_strings();
-    OpenSSL_add_ssl_algorithms();
-}
+    static std::mutex mutex;
 
-void SecureChannel::CleanupOpenssl()
-{
-    EVP_cleanup();
-}
+    std::lock_guard lock {mutex};
 
-std::string SecureChannel::GetOpensslErrorString()
-{
-    std::ostringstream oss;
-    unsigned long      errCode;
-
-    while ((errCode = ERR_get_error()) != 0) {
-        char buf[256];
-
-        ERR_error_string_n(errCode, buf, sizeof(buf));
-        oss << buf << std::endl;
-    }
-
-    return oss.str();
-}
-
-RetWithError<EVP_PKEY*> SecureChannel::LoadPrivateKey(const std::string& keyURL)
-{
     auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
     if (!createErr.IsNone()) {
         return {nullptr, createErr};
@@ -233,6 +233,21 @@ RetWithError<EVP_PKEY*> SecureChannel::LoadPrivateKey(const std::string& keyURL)
     }
 
     return {pkey, ErrorEnum::eNone};
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+void SecureChannel::InitOpenssl()
+{
+    SSL_load_error_strings();
+    OpenSSL_add_ssl_algorithms();
+}
+
+void SecureChannel::CleanupOpenssl()
+{
+    EVP_cleanup();
 }
 
 SSL_CTX* SecureChannel::CreateSSLContext(const SSL_METHOD* method)

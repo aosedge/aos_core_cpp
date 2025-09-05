@@ -88,12 +88,10 @@ private:
     static int  CustomBIORead(BIO* bio, char* buf, int len);
     static long CustomBIOCtrl(BIO* bio, int cmd, long num, void* ptr);
 
-    void                    InitOpenssl();
-    void                    CleanupOpenssl();
-    SSL_CTX*                CreateSSLContext(const SSL_METHOD* method);
-    Error                   ConfigureSSLContext(SSL_CTX* ctx);
-    std::string             GetOpensslErrorString();
-    RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL);
+    void     InitOpenssl();
+    void     CleanupOpenssl();
+    SSL_CTX* CreateSSLContext(const SSL_METHOD* method);
+    Error    ConfigureSSLContext(SSL_CTX* ctx);
 
     CommChannelItf*                       mChannel {};
     common::iamclient::TLSCredentialsItf* mCertProvider {};
@@ -108,6 +106,14 @@ private:
     std::unique_ptr<BIO_METHOD, decltype(&BIO_meth_free)> mBioMethod {nullptr, BIO_meth_free};
     std::atomic<bool>                                     mConnected {};
 };
+
+/**
+ * Loads private key from AOS URL and returns EVP_PKEY pointer.
+ *
+ * @param keyURL key URL.
+ * @return RetWithError<EVP_PKEY*>.
+ */
+RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL);
 
 } // namespace aos::mp::communication
 
