@@ -57,7 +57,7 @@ namespace aos::common::pbconvert {
  * @param src instance status to convert.
  * @return ::servicemanager::v4::InstanceStatus.
  */
-::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatus& src);
+::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatusObsolete& src);
 
 /**
  * Converts Aos instance filter to protobuf.
