@@ -123,7 +123,7 @@ public:
      * @param instances instances status array.
      * @return Error.
      */
-    Error InstancesRunStatus(const Array<InstanceStatus>& instances) override;
+    Error InstancesRunStatus(const Array<InstanceStatusObsolete>& instances) override;
 
     /**
      * Sends instances update status.
@@ -131,7 +131,7 @@ public:
      *
      * @return Error.
      */
-    Error InstancesUpdateStatus(const Array<InstanceStatus>& instances) override;
+    Error InstancesUpdateStatus(const Array<InstanceStatusObsolete>& instances) override;
 
     /**
      * Subscribes to cloud connection events.
@@ -164,7 +164,7 @@ private:
     StubPtr CreateStub(const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
 
     bool SendNodeConfigStatus(const String& version, const Error& configErr);
-    bool SendRunStatus(const Array<InstanceStatus>& instances);
+    bool SendRunStatus(const Array<InstanceStatusObsolete>& instances);
 
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
