@@ -250,7 +250,7 @@ Poco::JSON::Object::Ptr ServiceStatusToJSON(const ServiceStatus& status)
     return json;
 }
 
-Poco::JSON::Object::Ptr InstanceStatusToJSON(const InstanceStatus& status)
+Poco::JSON::Object::Ptr InstanceStatusToJSON(const InstanceStatusObsolete& status)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 

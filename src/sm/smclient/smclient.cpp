@@ -213,7 +213,7 @@ Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
     return ErrorEnum::eNone;
 }
 
-Error SMClient::InstancesRunStatus(const Array<InstanceStatus>& instances)
+Error SMClient::InstancesRunStatus(const Array<InstanceStatusObsolete>& instances)
 {
     std::lock_guard lock {mMutex};
 
@@ -224,7 +224,7 @@ Error SMClient::InstancesRunStatus(const Array<InstanceStatus>& instances)
     return ErrorEnum::eNone;
 }
 
-Error SMClient::InstancesUpdateStatus(const Array<InstanceStatus>& instances)
+Error SMClient::InstancesUpdateStatus(const Array<InstanceStatusObsolete>& instances)
 {
     std::lock_guard lock {mMutex};
 
@@ -309,7 +309,7 @@ bool SMClient::SendNodeConfigStatus(const String& version, const Error& configEr
     return mStream->Write(outgoingMsg);
 }
 
-bool SMClient::SendRunStatus(const Array<InstanceStatus>& instances)
+bool SMClient::SendRunStatus(const Array<InstanceStatusObsolete>& instances)
 {
     LOG_INF() << "Send run instances status";
 
@@ -359,7 +359,7 @@ bool SMClient::RegisterSM(const std::string& url)
             continue;
         }
 
-        auto lastRunStatus = std::make_unique<InstanceStatusStaticArray>();
+        auto lastRunStatus = std::make_unique<InstanceStatusObsoleteStaticArray>();
 
         if (auto err = mLauncher->GetCurrentRunStatus(*lastRunStatus); !err.IsNone()) {
             LOG_ERR() << "Can't get current run status: err=" << err;

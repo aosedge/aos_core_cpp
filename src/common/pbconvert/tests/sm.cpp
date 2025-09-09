@@ -171,7 +171,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToInstantMonitoring)
 
 TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 {
-    aos::InstanceStatus param;
+    aos::InstanceStatusObsolete param;
 
     param.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "subject-id", 1};
     param.mServiceVersion = "1.0.0";

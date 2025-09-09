@@ -184,7 +184,7 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatus& src)
+::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatusObsolete& src)
 {
     ::servicemanager::v4::InstanceStatus result;
 
