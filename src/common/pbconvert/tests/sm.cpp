@@ -323,7 +323,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceInfoToAos)
 
     param.mutable_network_parameters()->set_network_id("network-id");
 
-    aos::InstanceInfo result;
+    aos::InstanceInfoObsolete result;
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
