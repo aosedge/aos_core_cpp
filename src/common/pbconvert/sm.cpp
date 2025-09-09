@@ -264,7 +264,7 @@ Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkPa
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfo& dst)
+Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfoObsolete& dst)
 {
     dst.mInstanceIdent = ConvertToAos(val.instance());
     dst.mUID           = val.uid();
