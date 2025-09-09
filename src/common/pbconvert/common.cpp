@@ -39,7 +39,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
     return grpc::Status(grpc::StatusCode::INTERNAL, error.Message());
 }
 
-::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src)
+::common::v1::InstanceIdent ConvertToProto(const InstanceIdentObsolete& src)
 {
     ::common::v1::InstanceIdent result;
 
@@ -51,7 +51,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
 }
 
 iamanager::v5::RegisterInstanceRequest ConvertToProto(
-    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
+    const InstanceIdentObsolete& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     iamanager::v5::RegisterInstanceRequest result;
 
@@ -68,9 +68,9 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(
     return result;
 }
 
-InstanceIdent ConvertToAos(const ::common::v1::InstanceIdent& val)
+InstanceIdentObsolete ConvertToAos(const ::common::v1::InstanceIdent& val)
 {
-    InstanceIdent result;
+    InstanceIdentObsolete result;
 
     result.mServiceID = val.service_id().c_str();
     result.mSubjectID = val.subject_id().c_str();

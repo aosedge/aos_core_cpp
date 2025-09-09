@@ -30,7 +30,7 @@ Error PermissionsServiceHandler::Init(
 }
 
 RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandler::RegisterInstance(
-    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
+    const InstanceIdentObsolete& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     LOG_INF() << "Register instance: serviceID=" << instanceIdent.mServiceID
               << ", subjectID=" << instanceIdent.mSubjectID << ", instance=" << instanceIdent.mInstance;
@@ -56,7 +56,7 @@ RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandl
     }
 }
 
-Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanceIdent)
+Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdentObsolete& instanceIdent)
 {
     LOG_INF() << "Unregister instance: serviceID=" << instanceIdent.mServiceID
               << ", subjectID=" << instanceIdent.mSubjectID << ", instance=" << instanceIdent.mInstance;
@@ -85,7 +85,7 @@ Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanc
 }
 
 Error PermissionsServiceHandler::GetPermissions([[maybe_unused]] const String& secret,
-    [[maybe_unused]] const String& funcServerID, [[maybe_unused]] InstanceIdent& instanceIdent,
+    [[maybe_unused]] const String& funcServerID, [[maybe_unused]] InstanceIdentObsolete& instanceIdent,
     [[maybe_unused]] Array<FunctionPermissions>& servicePermissions)
 {
     LOG_INF() << "Get permissions: serviceID=" << instanceIdent.mServiceID << ", subjectID=" << instanceIdent.mSubjectID
