@@ -109,7 +109,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToAvarageMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
+    aos::InstanceIdentObsolete      instanceIdent {"service-id", "subject-id", 1};
     aos::monitoring::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
@@ -142,7 +142,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToInstantMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
+    aos::InstanceIdentObsolete      instanceIdent {"service-id", "subject-id", 1};
     aos::monitoring::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
@@ -173,7 +173,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 {
     aos::InstanceStatus param;
 
-    param.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
+    param.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "subject-id", 1};
     param.mServiceVersion = "1.0.0";
     param.mStatus         = aos::InstanceRunStateEnum::eActive;
     param.mError          = aos::ErrorEnum::eFailed;
@@ -780,7 +780,7 @@ TEST_F(PBConvertSMTest, ConvertServiceInstanceAlertToProto)
 
     aos::cloudprotocol::ServiceInstanceAlert alert {expectedTimestamp};
 
-    alert.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
+    alert.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "subject-id", 1};
     alert.mServiceVersion = "1.0.0";
     alert.mMessage        = "test-message";
 

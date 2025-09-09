@@ -83,7 +83,7 @@ TEST_F(PBConvertCommon, ConvertAosErrorToGrpcStatus)
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToProto)
 {
-    aos::InstanceIdent          param {"service-id", "subject-id", 1};
+    aos::InstanceIdentObsolete  param {"service-id", "subject-id", 1};
     ::common::v1::InstanceIdent result = aos::common::pbconvert::ConvertToProto(param);
 
     EXPECT_EQ(result.service_id(), param.mServiceID.CStr());

@@ -32,7 +32,7 @@ Error ToJSON(const Error& error, Poco::JSON::Object& json)
     return ErrorEnum::eNone;
 }
 
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdent& instanceIdent)
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdentObsolete& instanceIdent)
 {
     if (auto err = instanceIdent.mServiceID.Assign(json.GetValue<std::string>("serviceID").c_str()); !err.IsNone()) {
         return Error(err, "serviceID parsing failed");
@@ -47,7 +47,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdent& i
     return ErrorEnum::eNone;
 }
 
-Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
+Error ToJSON(const InstanceIdentObsolete& instanceIdent, Poco::JSON::Object& json)
 {
     json.set("serviceID", instanceIdent.mServiceID.CStr());
     json.set("subjectID", instanceIdent.mSubjectID.CStr());

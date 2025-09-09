@@ -55,7 +55,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error RemoveStorageStateInfo(const InstanceIdent& instanceIdent) override
+    Error RemoveStorageStateInfo(const InstanceIdentObsolete& instanceIdent) override
     {
         std::lock_guard lock {mMutex};
 
@@ -86,7 +86,8 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error GetStorageStateInfo(const InstanceIdent& instanceIdent, StorageStateInstanceInfo& storageStateInfo) override
+    Error GetStorageStateInfo(
+        const InstanceIdentObsolete& instanceIdent, StorageStateInstanceInfo& storageStateInfo) override
     {
         std::lock_guard lock {mMutex};
 
@@ -130,8 +131,8 @@ public:
     }
 
 private:
-    std::mutex                                        mMutex;
-    std::map<InstanceIdent, StorageStateInstanceInfo> mStorageStateInfos;
+    std::mutex                                                mMutex;
+    std::map<InstanceIdentObsolete, StorageStateInstanceInfo> mStorageStateInfos;
 };
 
 template <class T>
@@ -206,7 +207,7 @@ public:
 
     template <class T>
     Error WaitForMessage(
-        const InstanceIdent& instanceIdent, T& msg, std::chrono::milliseconds timeout = std::chrono::seconds(5))
+        const InstanceIdentObsolete& instanceIdent, T& msg, std::chrono::milliseconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
 
@@ -304,8 +305,8 @@ protected:
         return result.ByteArrayToHex(array);
     }
 
-    Error AddInstanceIdent(
-        const InstanceIdent& ident, const std::string& instanceID, const std::string& stateContent = "test state")
+    Error AddInstanceIdent(const InstanceIdentObsolete& ident, const std::string& instanceID,
+        const std::string& stateContent = "test state")
     {
         if (auto err = fs::WriteStringToFile(ToStatePath(instanceID).c_str(), stateContent.c_str(), 0600);
             !err.IsNone()) {
@@ -328,7 +329,7 @@ protected:
         return ErrorEnum::eNone;
     }
 
-    Error FillStateAcceptance(const InstanceIdent& instanceIdent, const std::string& stateContent,
+    Error FillStateAcceptance(const InstanceIdentObsolete& instanceIdent, const std::string& stateContent,
         cloudprotocol::StateResultEnum result, cloudprotocol::StateAcceptance& state)
     {
         state.mInstanceIdent = instanceIdent;
@@ -586,7 +587,7 @@ TEST_F(StorageStateTests, SetupSameInstance)
 
 TEST_F(StorageStateTests, GetInstanceCheckSum)
 {
-    const auto instanceIdent = InstanceIdent {"service1", "subject1", 0};
+    const auto instanceIdent = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = AddInstanceIdent(instanceIdent, "getchecksum-id", "getchecksum-content");
     ASSERT_TRUE(err.IsNone());
@@ -599,13 +600,13 @@ TEST_F(StorageStateTests, GetInstanceCheckSum)
     err = mStorageState.GetInstanceCheckSum(instanceIdent, storedChecksumStr);
     ASSERT_TRUE(err.IsNone()) << "Failed to get instance checksum: " << tests::utils::ErrorToStr(err);
 
-    err = mStorageState.GetInstanceCheckSum(InstanceIdent {"not exists", "not exists", 0}, storedChecksumStr);
+    err = mStorageState.GetInstanceCheckSum(InstanceIdentObsolete {"not exists", "not exists", 0}, storedChecksumStr);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Expected not found error, got: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(StorageStateTests, Cleanup)
 {
-    const auto instanceIdent = InstanceIdent {"service1", "subject1", 0};
+    const auto instanceIdent = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = AddInstanceIdent(instanceIdent, "cleanup-id", "cleanup-content");
 
@@ -629,7 +630,7 @@ TEST_F(StorageStateTests, Cleanup)
 
 TEST_F(StorageStateTests, Remove)
 {
-    const auto instanceIdent = InstanceIdent {"service1", "subject1", 0};
+    const auto instanceIdent = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = AddInstanceIdent(instanceIdent, "remove-id", "remove-content");
 
@@ -652,7 +653,7 @@ TEST_F(StorageStateTests, Remove)
 TEST_F(StorageStateTests, UpdateState)
 {
     constexpr auto newStateContent = "updated state content";
-    const auto     instanceIdent   = InstanceIdent {"service1", "subject1", 0};
+    const auto     instanceIdent   = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = AddInstanceIdent(instanceIdent, "updatestate-id", "outdated state content");
 
@@ -678,7 +679,7 @@ TEST_F(StorageStateTests, UpdateState)
         return info.mInstanceIdent == instanceIdent && info.mStateChecksum == checksum;
     })) << "Storage state info should be updated";
 
-    updateState->mInstanceIdent = InstanceIdent {"not exists", "not exists", 0};
+    updateState->mInstanceIdent = InstanceIdentObsolete {"not exists", "not exists", 0};
 
     err = mStorageState.UpdateState(*updateState);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound));
@@ -700,7 +701,7 @@ TEST_F(StorageStateTests, AcceptStateUnknownInstance)
 
 TEST_F(StorageStateTests, AcceptStateChecksumMismatch)
 {
-    const auto cInstanceIdent = InstanceIdent {"service1", "subject1", 0};
+    const auto cInstanceIdent = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = AddInstanceIdent(cInstanceIdent, "acceptstate-id", "initial state content");
 
@@ -719,7 +720,7 @@ TEST_F(StorageStateTests, AcceptStateChecksumMismatch)
 
 TEST_F(StorageStateTests, AcceptStateWithRejectedStatus)
 {
-    const auto cInstanceIdent = InstanceIdent {"service1", "subject1", 0};
+    const auto cInstanceIdent = InstanceIdentObsolete {"service1", "subject1", 0};
 
     auto err = mStorageState.Init(mConfig, mStorageStub, mCommunicationStub, mFSPlatformMock, mCryptoProvider);
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize storage state: " << tests::utils::ErrorToStr(err);

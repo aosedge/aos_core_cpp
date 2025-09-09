@@ -106,7 +106,7 @@ aos::InstanceStatusStaticArray CreateInstanceStatus()
     aos::InstanceStatusStaticArray instances;
 
     aos::InstanceStatus instance;
-    instance.mInstanceIdent  = aos::InstanceIdent {"service-id", "instance-id", 0};
+    instance.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "instance-id", 0};
     instance.mStatus         = aos::InstanceRunStateEnum::eActive;
     instance.mServiceVersion = "1.0.0";
 
