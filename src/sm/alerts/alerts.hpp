@@ -17,7 +17,7 @@ namespace aos::sm::alerts {
  * Service instance data.
  */
 struct ServiceInstanceData {
-    InstanceIdentObsolete     mInstanceIdent;
+    InstanceIdent             mInstanceIdent;
     StaticString<cVersionLen> mVersion;
 
     /**

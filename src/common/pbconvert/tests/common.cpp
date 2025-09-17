@@ -83,10 +83,10 @@ TEST_F(PBConvertCommon, ConvertAosErrorToGrpcStatus)
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToProto)
 {
-    aos::InstanceIdentObsolete  param {"service-id", "subject-id", 1};
+    aos::InstanceIdent          param {"service-id", "subject-id", 1};
     ::common::v1::InstanceIdent result = aos::common::pbconvert::ConvertToProto(param);
 
-    EXPECT_EQ(result.service_id(), param.mServiceID.CStr());
+    EXPECT_EQ(result.service_id(), param.mItemID.CStr());
     EXPECT_EQ(result.subject_id(), param.mSubjectID.CStr());
     EXPECT_EQ(result.instance(), param.mInstance);
 }
@@ -101,7 +101,7 @@ TEST_F(PBConvertCommon, ConvertInstanceIdentToAos)
 
     auto result = aos::common::pbconvert::ConvertToAos(param);
 
-    EXPECT_EQ(result.mServiceID, aos::String(param.service_id().c_str()));
+    EXPECT_EQ(result.mItemID, aos::String(param.service_id().c_str()));
     EXPECT_EQ(result.mSubjectID, aos::String(param.subject_id().c_str()));
     EXPECT_EQ(result.mInstance, param.instance());
 }

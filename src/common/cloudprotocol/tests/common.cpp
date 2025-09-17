@@ -53,12 +53,12 @@ TEST_F(CloudProtocolCommon, Error)
 
 TEST_F(CloudProtocolCommon, InstanceIdent)
 {
-    InstanceIdentObsolete instanceIdent {"service1", "subject1", 42};
+    InstanceIdent instanceIdent {"service1", "subject1", 42};
 
     auto json = Poco::makeShared<Poco::JSON::Object>();
     ASSERT_EQ(ToJSON(instanceIdent, *json), ErrorEnum::eNone);
 
-    InstanceIdentObsolete parsedInstanceIdent;
+    InstanceIdent parsedInstanceIdent;
     ASSERT_EQ(FromJSON(utils::CaseInsensitiveObjectWrapper(json), parsedInstanceIdent), ErrorEnum::eNone);
 
     ASSERT_EQ(instanceIdent, parsedInstanceIdent);
