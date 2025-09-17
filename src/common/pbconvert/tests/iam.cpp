@@ -54,7 +54,7 @@ NodeInfo CreateNodeInfo()
     result.mNodeID   = "node-id";
     result.mNodeType = "node-type";
     result.mName     = "name";
-    result.mState    = NodeStateEnum::eProvisioned;
+    result.mState    = NodeStateObsoleteEnum::eProvisioned;
     result.mOSType   = "os-type";
     result.mMaxDMIPS = 1024;
     result.mTotalRAM = 2048;

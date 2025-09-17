@@ -184,13 +184,13 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatusObsolete& src)
+::servicemanager::v4::InstanceStatus ConvertToProto(const InstanceStatus& src)
 {
     ::servicemanager::v4::InstanceStatus result;
 
     *result.mutable_instance() = ConvertToProto(src.mInstanceIdent);
-    result.set_service_version(src.mServiceVersion.CStr());
-    result.set_run_state(src.mStatus.ToString().CStr());
+    result.set_service_version(src.mVersion.CStr());
+    result.set_run_state(src.mState.ToString().CStr());
     SetErrorInfo(src.mError, result);
 
     return result;

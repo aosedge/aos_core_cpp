@@ -88,11 +88,11 @@ private:
     virtual std::shared_ptr<SystemdConnItf> CreateSystemdConn();
     virtual std::string                     GetSystemdDropInsDir() const;
 
-    void                           MonitorUnits();
-    Array<RunStatus>               GetRunningInstances() const;
-    Error                          SetRunParameters(const std::string& unitName, const RunParameters& params);
-    Error                          RemoveRunParameters(const std::string& unitName);
-    RetWithError<InstanceRunState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
+    void                        MonitorUnits();
+    Array<RunStatus>            GetRunningInstances() const;
+    Error                       SetRunParameters(const std::string& unitName, const RunParameters& params);
+    Error                       RemoveRunParameters(const std::string& unitName);
+    RetWithError<InstanceState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
 
     static std::string CreateSystemdUnitName(const String& instance);
     static std::string CreateInstanceID(const std::string& unitname);
@@ -104,7 +104,7 @@ private:
     };
 
     struct RunningUnitData {
-        InstanceRunState  mRunState;
+        InstanceState     mRunState;
         Optional<int32_t> mExitCode;
     };
 
