@@ -23,7 +23,7 @@ namespace aos::iam::iamserver {
  * Public
  **********************************************************************************************************************/
 
-NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<NodeState>& allowedStates,
+NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<NodeStateObsolete>& allowedStates,
     NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
     StreamRegistryItf* streamRegistry)
 {
@@ -273,8 +273,9 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
  * Private
  **********************************************************************************************************************/
 
-NodeStreamHandler::NodeStreamHandler(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
-    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
+NodeStreamHandler::NodeStreamHandler(const std::vector<NodeStateObsolete>& allowedStates,
+    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
+    StreamRegistryItf* streamRegistry)
     : mAllowedStates(allowedStates)
     , mStream(stream)
     , mContext(context)
@@ -320,7 +321,7 @@ Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
     LOG_DBG() << "Received node info: nodeID=" << info.node_id().c_str() << ", state=" << info.status().c_str();
 
-    auto nodeInfo = std::make_unique<NodeInfo>();
+    auto nodeInfo = std::make_unique<NodeInfoObsolete>();
 
     if (auto err = common::pbconvert::ConvertToAos(info, *nodeInfo); !err.IsNone()) {
         return err;
@@ -381,7 +382,7 @@ void NodeController::Close()
     mHandlers.clear();
 }
 
-grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<NodeState>& allowedStates,
+grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<NodeStateObsolete>& allowedStates,
     NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager)
 {
     {

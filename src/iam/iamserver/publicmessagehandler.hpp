@@ -72,7 +72,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfo& info) override;
+    void OnNodeInfoChange(const NodeInfoObsolete& info) override;
 
     /**
      * Node info removed notification.
@@ -104,9 +104,9 @@ protected:
     iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
     iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
     NodeController*                             GetNodeController() { return mNodeController; }
-    NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
+    NodeInfoObsolete&                           GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
-    Error                                       SetNodeState(const std::string& nodeID, const NodeState& state);
+    Error                                       SetNodeState(const std::string& nodeID, const NodeStateObsolete& state);
     bool                                        ProcessOnThisNode(const std::string& nodeID);
 
     template <typename R>
@@ -133,7 +133,7 @@ protected:
 
 private:
     static constexpr auto       cIamAPIVersion       = 5;
-    static constexpr std::array cAllowedStates       = {NodeStateEnum::eUnprovisioned};
+    static constexpr std::array cAllowedStates       = {NodeStateObsoleteEnum::eUnprovisioned};
     static constexpr auto       cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto       cRequestRetryMaxTry  = 3;
 
@@ -180,7 +180,7 @@ private:
     NodeController*                             mNodeController   = nullptr;
     StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
     StreamWriter<iamproto::Subjects>            mSubjectsChangedController;
-    NodeInfo                                    mNodeInfo;
+    NodeInfoObsolete                            mNodeInfo;
 
     std::vector<std::shared_ptr<CertWriter>> mCertWriters;
     std::mutex                               mCertWritersLock;

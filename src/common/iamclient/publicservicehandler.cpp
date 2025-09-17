@@ -99,7 +99,7 @@ Error PublicServiceHandler::GetCert(const String& certType, const Array<uint8_t>
     return ErrorEnum::eNone;
 }
 
-Error PublicServiceHandler::GetNodeInfo(NodeInfo& nodeInfo) const
+Error PublicServiceHandler::GetNodeInfo(NodeInfoObsolete& nodeInfo) const
 {
     LOG_DBG() << "Get node info";
 
@@ -119,7 +119,7 @@ Error PublicServiceHandler::GetNodeInfo(NodeInfo& nodeInfo) const
     return ErrorEnum::eNone;
 }
 
-Error PublicServiceHandler::SetNodeState(const NodeState& state)
+Error PublicServiceHandler::SetNodeState(const NodeStateObsolete& state)
 {
     LOG_DBG() << "Setting node state: state=" << state;
 

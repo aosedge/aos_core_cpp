@@ -52,7 +52,7 @@ iamanager::v5::CPUInfo ConvertToProto(const CPUInfo& src);
  * @param src aos node info.
  * @return iamanager::v5::NodeInfo.
  */
-iamanager::v5::NodeInfo ConvertToProto(const NodeInfo& src);
+iamanager::v5::NodeInfo ConvertToProto(const NodeInfoObsolete& src);
 
 /**
  * Converts aos serial number to protobuf.

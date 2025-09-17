@@ -100,7 +100,7 @@ TEST_F(IamClientTest, GetCertificate)
 
 TEST_F(IamClientTest, GetNodeInfo)
 {
-    aos::NodeInfo nodeInfo;
+    aos::NodeInfoObsolete nodeInfo;
 
     auto err = mClient->GetNodeInfo(nodeInfo);
 
@@ -109,7 +109,7 @@ TEST_F(IamClientTest, GetNodeInfo)
     EXPECT_STREQ(nodeInfo.mNodeID.CStr(), "node_id");
     EXPECT_STREQ(nodeInfo.mNodeType.CStr(), "node_type");
     EXPECT_STREQ(nodeInfo.mName.CStr(), "name");
-    EXPECT_EQ(nodeInfo.mState, aos::NodeStateEnum::eProvisioned);
+    EXPECT_EQ(nodeInfo.mState, aos::NodeStateObsoleteEnum::eProvisioned);
     EXPECT_STREQ(nodeInfo.mOSType.CStr(), "os_type");
 
     EXPECT_EQ(nodeInfo.mCPUs.Size(), 1);

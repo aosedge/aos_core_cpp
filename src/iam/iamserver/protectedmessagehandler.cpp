@@ -116,7 +116,7 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::ePaused); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::ePaused); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -146,7 +146,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -250,7 +250,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -288,7 +288,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eUnprovisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eUnprovisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -429,7 +429,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     Error      err         = ErrorEnum::eNone;
     const auto aosInstance = common::pbconvert::ConvertToAos(request->instance());
 
-    LOG_DBG() << "Process register instance: serviceID=" << aosInstance.mServiceID
+    LOG_DBG() << "Process register instance: serviceID=" << aosInstance.mItemID
               << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
 
     // Convert permissions
@@ -473,8 +473,8 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
 {
     const auto instance = common::pbconvert::ConvertToAos(request->instance());
 
-    LOG_DBG() << "Process unregister instance: serviceID=" << instance.mServiceID
-              << ", subjectID=" << instance.mSubjectID << ", instance=" << instance.mInstance;
+    LOG_DBG() << "Process unregister instance: serviceID=" << instance.mItemID << ", subjectID=" << instance.mSubjectID
+              << ", instance=" << instance.mInstance;
 
     if (auto err = GetPermHandler()->UnregisterInstance(instance); !err.IsNone()) {
         LOG_ERR() << "Unregister instance failed: error=" << err;

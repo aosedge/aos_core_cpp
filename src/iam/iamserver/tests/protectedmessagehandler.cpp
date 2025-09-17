@@ -95,7 +95,7 @@ void ProtectedMessageHandlerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
@@ -138,9 +138,9 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
+        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::ePaused);
 
         return ErrorEnum::eNone;
     }));
@@ -165,9 +165,9 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
+        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::ePaused);
 
         return ErrorEnum::eFailed;
     }));
@@ -192,9 +192,9 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
+        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::eProvisioned);
 
         return ErrorEnum::eNone;
     }));
@@ -219,9 +219,9 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
         EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
+        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::eProvisioned);
 
         return ErrorEnum::eFailed;
     }));

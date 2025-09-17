@@ -113,7 +113,7 @@ Error ConvertToAos(
  * @param[out] dst aos node info.
  * @return Error.
  */
-Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfo& dst);
+Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfoObsolete& dst);
 
 /**
  * Sets protobuf error message from aos.

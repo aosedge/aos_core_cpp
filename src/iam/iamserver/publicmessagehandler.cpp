@@ -64,7 +64,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 }
 
-void PublicMessageHandler::OnNodeInfoChange(const NodeInfo& info)
+void PublicMessageHandler::OnNodeInfoChange(const NodeInfoObsolete& info)
 {
     iamproto::NodeInfo nodeInfo = common::pbconvert::ConvertToProto(info);
 
@@ -123,7 +123,7 @@ void PublicMessageHandler::Close()
  * Protected
  **********************************************************************************************************************/
 
-Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeState& state)
+Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeStateObsolete& state)
 {
     if (ProcessOnThisNode(nodeID)) {
         if (auto err = mNodeInfoProvider->SetNodeState(state); !err.IsNone()) {
@@ -335,7 +335,7 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
     ::common::v1::InstanceIdent instanceIdent;
     iamproto::Permissions       permissions;
 
-    instanceIdent.set_service_id(aosInstanceIdent.mServiceID.CStr());
+    instanceIdent.set_service_id(aosInstanceIdent.mItemID.CStr());
     instanceIdent.set_subject_id(aosInstanceIdent.mSubjectID.CStr());
     instanceIdent.set_instance(aosInstanceIdent.mInstance);
 
@@ -378,7 +378,7 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get node info: nodeID=" << request->node_id().c_str();
 
-    auto nodeInfo = std::make_unique<NodeInfo>();
+    auto nodeInfo = std::make_unique<NodeInfoObsolete>();
 
     if (auto err = mNodeManager->GetNodeInfo(request->node_id().c_str(), *nodeInfo); !err.IsNone()) {
         LOG_ERR() << "Failed to get node info: err=" << err;

@@ -194,7 +194,7 @@ private:
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;
     bool                                                   mSecureConnection      = true;
-    NodeInfo                                               mNodeInfo;
+    NodeInfoObsolete                                       mNodeInfo;
     std::vector<ConnectionSubscriberItf*>                  mCloudConnectionSubscribers;
 
     std::unique_ptr<grpc::ClientContext> mCtx;

@@ -34,20 +34,21 @@ Error GetOSType(String& osType)
     return osType.Assign(buffer.sysname);
 }
 
-RetWithError<NodeState> GetNodeState(const std::string& path)
+RetWithError<NodeStateObsolete> GetNodeState(const std::string& path)
 {
     std::ifstream file;
 
     if (file.open(path); !file.is_open()) {
         // .provisionstate file doesn't exist => state unprovisioned
-        return {NodeStateEnum::eUnprovisioned, ErrorEnum::eNone};
+        return {NodeStateObsoleteEnum::eUnprovisioned, ErrorEnum::eNone};
     }
 
     std::string line;
     std::getline(file, line);
 
-    NodeState nodeState;
-    auto      err = nodeState.FromString(line.c_str());
+    NodeStateObsolete nodeState;
+
+    auto err = nodeState.FromString(line.c_str());
 
     return {nodeState, err};
 }
@@ -121,12 +122,12 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
+Error NodeInfoProvider::GetNodeInfo(NodeInfoObsolete& nodeInfo) const
 {
     std::lock_guard lock {mMutex};
 
-    Error     err;
-    NodeState state;
+    Error             err;
+    NodeStateObsolete state;
 
     // cppcheck-suppress unusedScopedObject
     Tie(state, err) = GetNodeState(mProvisioningStatusPath);
@@ -140,7 +141,7 @@ Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::SetNodeState(const NodeState& state)
+Error NodeInfoProvider::SetNodeState(const NodeStateObsolete& state)
 {
     std::lock_guard lock {mMutex};
 
@@ -150,7 +151,7 @@ Error NodeInfoProvider::SetNodeState(const NodeState& state)
         return ErrorEnum::eNone;
     }
 
-    if (state == NodeStateEnum::eUnprovisioned) {
+    if (state == NodeStateObsoleteEnum::eUnprovisioned) {
         std::filesystem::remove(mProvisioningStatusPath);
     } else {
         std::ofstream file;

@@ -31,13 +31,13 @@ namespace {
 
 #define TEST_TMP_DIR "test-tmp"
 
-const std::string cNodeIDPath            = TEST_TMP_DIR "/node-id";
-const std::string cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
-const std::string cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
-const std::string cMemInfoPath           = TEST_TMP_DIR "/meminfo";
-const std::array  cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
-constexpr auto    cNodeIDFileContent           = "node-id";
-constexpr auto    cCPUInfoFileContent          = R"(processor	: 0
+const std::string       cNodeIDPath            = TEST_TMP_DIR "/node-id";
+const std::string       cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
+const std::string       cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
+const std::string       cMemInfoPath           = TEST_TMP_DIR "/meminfo";
+const std::array        cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
+constexpr auto          cNodeIDFileContent           = "node-id";
+constexpr auto          cCPUInfoFileContent          = R"(processor	: 0
 cpu family	: 6
 model		: 141
 model name	: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
@@ -70,12 +70,12 @@ siblings	: 1
 core id		: 0
 cpu cores	: 1
 )";
-constexpr auto    cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
-constexpr auto    cEmptyProcFileContent        = R"()";
-constexpr auto    cMemInfoFileContent          = "MemTotal:       16384 kB";
-constexpr auto    cExpectedMemSizeBytes        = 16384 * 1024;
-const NodeState   cProvisionedState            = NodeStateEnum::eProvisioned;
-const NodeState   cUnprovisionedState          = NodeStateEnum::eUnprovisioned;
+constexpr auto          cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
+constexpr auto          cEmptyProcFileContent        = R"()";
+constexpr auto          cMemInfoFileContent          = "MemTotal:       16384 kB";
+constexpr auto          cExpectedMemSizeBytes        = 16384 * 1024;
+const NodeStateObsolete cProvisionedState            = NodeStateObsoleteEnum::eProvisioned;
+const NodeStateObsolete cUnprovisionedState          = NodeStateObsoleteEnum::eUnprovisioned;
 
 /***********************************************************************************************************************
  * Static
@@ -193,7 +193,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoFileNotFound)
     auto err = provider.Init(CreateConfig());
     EXPECT_TRUE(err.IsNone());
 
-    NodeInfo nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -220,7 +220,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoCorrupted)
     auto err = provider.Init(CreateConfig());
     EXPECT_TRUE(err.IsNone());
 
-    NodeInfo nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -261,7 +261,7 @@ TEST_F(NodeInfoProviderTest, InitSucceedsOnNonStandardProcFile)
     auto err = provider.Init(CreateConfig());
     ASSERT_TRUE(err.IsNone());
 
-    NodeInfo nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -280,7 +280,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
     const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    NodeInfo         nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -325,7 +325,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStateFromFile)
     const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    NodeInfo         nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -353,7 +353,7 @@ TEST_F(NodeInfoProviderTest, SetNodeStateFailsIfProvisioningStateFileNotFound)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.SetNodeState(NodeStateEnum::eProvisioned);
+    auto err = provider.SetNodeState(NodeStateObsoleteEnum::eProvisioned);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "SetNodeState should return not found error, err = " << err.Message();
 }
 

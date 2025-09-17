@@ -63,14 +63,14 @@ NodeAttribute CreateAttribute(const char* name, const char* value)
     return attribute;
 }
 
-NodeInfo DefaultNodeInfo(const char* id = "node0")
+NodeInfoObsolete DefaultNodeInfo(const char* id = "node0")
 {
-    NodeInfo nodeInfo;
+    NodeInfoObsolete nodeInfo;
 
     nodeInfo.mNodeID   = id;
     nodeInfo.mNodeType = "main";
     nodeInfo.mName     = "node0";
-    nodeInfo.mState    = NodeStateEnum::eProvisioned;
+    nodeInfo.mState    = NodeStateObsoleteEnum::eProvisioned;
     nodeInfo.mOSType   = "linux";
     FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
@@ -341,7 +341,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
 
     ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
 
-    NodeInfo resultNodeInfo;
+    NodeInfoObsolete resultNodeInfo;
     ASSERT_TRUE(mDB.GetNodeInfo(nodeInfo.mNodeID, resultNodeInfo).IsNone());
     ASSERT_EQ(resultNodeInfo, nodeInfo);
 }

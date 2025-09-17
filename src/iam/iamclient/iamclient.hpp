@@ -94,7 +94,7 @@ private:
     bool ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request);
     bool ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request);
 
-    Error CheckCurrentNodeState(const std::initializer_list<NodeState>& allowedStates);
+    Error CheckCurrentNodeState(const std::initializer_list<NodeStateObsolete>& allowedStates);
 
     bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
