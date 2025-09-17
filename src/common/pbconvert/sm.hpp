@@ -99,7 +99,7 @@ Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkPa
  * @param dst[out] Aos instance info.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfoObsolete& dst);
+Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfo& dst);
 
 /**
  * Converts protobuf instance filter to Aos.

@@ -532,10 +532,10 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
         }
     }
 
-    auto aosInstances = std::make_unique<InstanceInfoObsoleteStaticArray>();
+    auto aosInstances = std::make_unique<InstanceInfoStaticArray>();
 
     for (const auto& instance : request.instances()) {
-        auto instanceInfo = std::make_unique<InstanceInfoObsolete>();
+        auto instanceInfo = std::make_unique<InstanceInfo>();
 
         if (auto err = common::pbconvert::ConvertToAos(instance, *instanceInfo); !err.IsNone()) {
             LOG_ERR() << "Failed converting instance info: err=" << err;
