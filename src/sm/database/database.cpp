@@ -1073,7 +1073,7 @@ Error Database::GetJournalCursor(String& cursor) const
  * sm::loggging::InstanceIDProvider implementation
  **********************************************************************************************************************/
 
-RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudprotocol::InstanceFilter& filter)
+RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const InstanceFilter& filter)
 {
     LOG_DBG() << "Get instance IDs";
 
@@ -1083,7 +1083,7 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudproto
         std::string where;
 
         if (filter.mItemID.HasValue()) {
-            where += Poco::format("itemID = \"%s\"", std::string(filter.mItemID.GetValue().CStr()));
+            where += Poco::format("serviceID = \"%s\"", std::string(filter.mItemID.GetValue().CStr()));
         }
 
         if (filter.mSubjectID.HasValue()) {

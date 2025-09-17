@@ -65,7 +65,7 @@ namespace aos::common::pbconvert {
  * @param src Aos instance filter.
  * @return ::servicemanager::v4::InstanceFilter.
  */
-::servicemanager::v4::InstanceFilter ConvertToProto(const cloudprotocol::InstanceFilter& src);
+::servicemanager::v4::InstanceFilter ConvertToProto(const InstanceFilter& src);
 
 /**
  * Converts Aos env var status to protobuf.
@@ -108,7 +108,7 @@ Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfoOb
  * @param dst[out] Aos instance filter.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, cloudprotocol::InstanceFilter& dst);
+Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, InstanceFilter& dst);
 
 /**
  * Converts protobuf env var info to Aos.

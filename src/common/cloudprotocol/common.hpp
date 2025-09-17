@@ -60,7 +60,7 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json);
  * @param[out] instanceFilter instance filter object to fill.
  * @return Error.
  */
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::InstanceFilter& instanceFilter);
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::InstanceFilter& instanceFilter);
 
 /**
  * Converts InstanceFilter object to JSON object.
@@ -69,7 +69,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
  * @param[out] json JSON object to fill.
  * @return Error.
  */
-Error ToJSON(const aos::cloudprotocol::InstanceFilter& instanceFilter, Poco::JSON::Object& json);
+Error ToJSON(const aos::InstanceFilter& instanceFilter, Poco::JSON::Object& json);
 
 /**
  * Converts JSON object to Identifier object.
