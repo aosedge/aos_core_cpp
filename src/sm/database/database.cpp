@@ -77,8 +77,8 @@ Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
         Poco::JSON::Object object;
         Poco::JSON::Object instanceFilter;
 
-        if (envVarsInstanceInfo.mFilter.mServiceID.HasValue()) {
-            instanceFilter.set("serviceID", envVarsInstanceInfo.mFilter.mServiceID.GetValue().CStr());
+        if (envVarsInstanceInfo.mFilter.mItemID.HasValue()) {
+            instanceFilter.set("serviceID", envVarsInstanceInfo.mFilter.mItemID.GetValue().CStr());
         }
 
         if (envVarsInstanceInfo.mFilter.mSubjectID.HasValue()) {
@@ -121,7 +121,7 @@ void ConvertEnvVarsInfoFromJSON(
         const auto filter = object.GetObject("instanceFilter");
 
         if (filter.Has("serviceID")) {
-            result.mFilter.mServiceID.SetValue(filter.GetValue<std::string>("serviceID").c_str());
+            result.mFilter.mItemID.SetValue(filter.GetValue<std::string>("serviceID").c_str());
         }
 
         if (filter.Has("subjectID")) {
@@ -242,8 +242,7 @@ public:
     {
         result.mInstanceID = dbFields.get<Columns::eInstanceID>().c_str();
 
-        result.mInstanceInfo.mInstanceIdent.mServiceID = dbFields.get<Columns::eServiceID>().c_str();
-        result.mInstanceInfo.mInstanceIdent.mServiceID = dbFields.get<Columns::eServiceID>().c_str();
+        result.mInstanceInfo.mInstanceIdent.mItemID    = dbFields.get<Columns::eServiceID>().c_str();
         result.mInstanceInfo.mInstanceIdent.mSubjectID = dbFields.get<Columns::eSubjectID>().c_str();
         result.mInstanceInfo.mInstanceIdent.mInstance  = dbFields.get<Columns::eInstance>();
 
@@ -452,7 +451,7 @@ Error Database::AddInstance(const sm::launcher::InstanceData& instance)
             = common::utils::Stringify(ConvertNetworkParametersToJSON(instanceInfo.mNetworkParameters));
 
         *mSession << "INSERT INTO instances values(?, ?,  ?, ?, ?, ?, ?, ?, ?);", bind(instance.mInstanceID.CStr()),
-            bind(instanceInfo.mInstanceIdent.mServiceID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
+            bind(instanceInfo.mInstanceIdent.mItemID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
             bind(instanceInfo.mInstanceIdent.mInstance), bind(instanceInfo.mUID), bind(instanceInfo.mPriority),
             bind(instanceInfo.mStoragePath.CStr()), bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)),
             now;
@@ -478,7 +477,7 @@ Error Database::UpdateInstance(const sm::launcher::InstanceData& instance)
                      "serviceID = ?, subjectID = ?, instance = ?, "
                      "uid = ?, priority = ?, storagePath = ?, statePath = ?, network = ? "
                      "WHERE instanceID = ?;",
-            bind(instanceInfo.mInstanceIdent.mServiceID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
+            bind(instanceInfo.mInstanceIdent.mItemID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
             bind(instanceInfo.mInstanceIdent.mInstance), bind(instanceInfo.mUID), bind(instanceInfo.mPriority),
             bind(instanceInfo.mStoragePath.CStr()), bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)),
             bind(instance.mInstanceID.CStr());
@@ -1083,8 +1082,8 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const cloudproto
     try {
         std::string where;
 
-        if (filter.mServiceID.HasValue()) {
-            where += Poco::format("serviceID = \"%s\"", std::string(filter.mServiceID.GetValue().CStr()));
+        if (filter.mItemID.HasValue()) {
+            where += Poco::format("itemID = \"%s\"", std::string(filter.mItemID.GetValue().CStr()));
         }
 
         if (filter.mSubjectID.HasValue()) {
@@ -1141,13 +1140,13 @@ RetWithError<alerts::ServiceInstanceData> Database::GetInstanceInfoByID(const St
             return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
         }
 
-        result.mInstanceIdent.mServiceID = instanceIdent[0].get<0>().c_str();
+        result.mInstanceIdent.mItemID    = instanceIdent[0].get<0>().c_str();
         result.mInstanceIdent.mSubjectID = instanceIdent[0].get<1>().c_str();
         result.mInstanceIdent.mInstance  = instanceIdent[0].get<2>();
 
         auto serviceVersions = std::make_unique<sm::servicemanager::ServiceDataStaticArray>();
 
-        auto err = GetServiceVersions(result.mInstanceIdent.mServiceID, *serviceVersions);
+        auto err = GetServiceVersions(result.mInstanceIdent.mItemID, *serviceVersions);
         if (!err.IsNone()) {
             return {{}, AOS_ERROR_WRAP(err)};
         }

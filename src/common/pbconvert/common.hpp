@@ -41,7 +41,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error);
  * @param[out] dst protobuf instance ident.
  * @return ::common::v1::InstanceIdent.
  */
-::common::v1::InstanceIdent ConvertToProto(const InstanceIdentObsolete& src);
+::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src);
 
 /**
  * Converts aos instance permissions to protobuf.
@@ -51,7 +51,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error);
  * @return iamanager::v5::RegisterInstanceRequest.
  */
 iamanager::v5::RegisterInstanceRequest ConvertToProto(
-    const InstanceIdentObsolete& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions);
+    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions);
 
 /**
  * Converts protobuf instance ident to aos.
@@ -59,7 +59,7 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(
  * @param val protobuf instance ident.
  * @return InstanceIdent.
  */
-InstanceIdentObsolete ConvertToAos(const ::common::v1::InstanceIdent& val);
+InstanceIdent ConvertToAos(const ::common::v1::InstanceIdent& val);
 
 /**
  * Converts protobuf timestamp to aos.

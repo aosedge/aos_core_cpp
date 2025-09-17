@@ -177,7 +177,7 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     entry.mSystemdUnit = "/system.slice/system-aos@service.slice/aos-service@service0.service";
     entry.mMessage     = "Hello World";
 
-    ServiceInstanceData serviceInfo = {InstanceIdentObsolete {"service0", "service0", 0}, "0.0.0"};
+    ServiceInstanceData serviceInfo = {InstanceIdent {"service0", "service0", 0}, "0.0.0"};
 
     cloudprotocol::ServiceInstanceAlert alert;
 

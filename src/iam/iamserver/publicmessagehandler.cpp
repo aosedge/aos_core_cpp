@@ -321,8 +321,8 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
 {
     LOG_DBG() << "Process get permissions: funcServerID=" << request->functional_server_id().c_str();
 
-    InstanceIdentObsolete aosInstanceIdent;
-    auto                  aosInstancePerm = std::make_unique<StaticArray<FunctionPermissions, cFuncServiceMaxCount>>();
+    InstanceIdent aosInstanceIdent;
+    auto          aosInstancePerm = std::make_unique<StaticArray<FunctionPermissions, cFuncServiceMaxCount>>();
 
     if (auto err = GetPermHandler()->GetPermissions(
             request->secret().c_str(), request->functional_server_id().c_str(), aosInstanceIdent, *aosInstancePerm);

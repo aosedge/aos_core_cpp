@@ -73,7 +73,7 @@ public:
      * @param instanceIdent instance ident.
      * @return Error.
      */
-    Error Cleanup(const InstanceIdentObsolete& instanceIdent) override;
+    Error Cleanup(const InstanceIdent& instanceIdent) override;
 
     /**
      * Removes storage state instance.
@@ -81,7 +81,7 @@ public:
      * @param instanceIdent instance ident.
      * @return Error.
      */
-    Error Remove(const InstanceIdentObsolete& instanceIdent) override;
+    Error Remove(const InstanceIdent& instanceIdent) override;
 
     /**
      * Updates storage state with new state.
@@ -106,7 +106,7 @@ public:
      * @param checkSum[out] checksum.
      * @return Error
      */
-    Error GetInstanceCheckSum(const InstanceIdentObsolete& instanceIdent, String& checkSum) override;
+    Error GetInstanceCheckSum(const InstanceIdent& instanceIdent, String& checkSum) override;
 
     /**
      * Destructor.
@@ -119,7 +119,7 @@ private:
     static constexpr auto cHashAlgorithm      = crypto::HashEnum::eSHA3_224;
 
     struct State {
-        State(const InstanceIdentObsolete& instanceIdent, const String& filePath, size_t quota)
+        State(const InstanceIdent& instanceIdent, const String& filePath, size_t quota)
             : mInstanceIdent(instanceIdent)
             , mFilePath(filePath)
             , mQuota(quota)
@@ -129,7 +129,7 @@ private:
         State(State&&)            = default;
         State& operator=(State&&) = default;
 
-        InstanceIdentObsolete                 mInstanceIdent;
+        InstanceIdent                         mInstanceIdent;
         StaticString<cFilePathLen>            mFilePath;
         size_t                                mQuota = {};
         StaticString<crypto::cSHA2DigestSize> mChecksum;
@@ -150,14 +150,14 @@ private:
     Error CheckChecksumAndSendUpdateRequest(const State& state);
     Error CreateStateFileIfNotExist(const String& path, const SetupParams& params);
     Error SetupStateWatching(const String& path, const SetupParams& params);
-    Error StartStateWatching(const InstanceIdentObsolete& instanceIdent, const String& path, size_t quota);
-    Error StopStateWatching(const InstanceIdentObsolete& instanceIdent);
+    Error StartStateWatching(const InstanceIdent& instanceIdent, const String& path, size_t quota);
+    Error StopStateWatching(const InstanceIdent& instanceIdent);
     Error SetQuotas(const SetupParams& setupParams);
     void  NotifyStateChanged(Poco::Timer& timer);
-    Error RemoveFromSystem(const String& instanceID, const InstanceIdentObsolete& instanceIdent);
+    Error RemoveFromSystem(const String& instanceID, const InstanceIdent& instanceIdent);
     bool  QuotasAreEqual(const StorageStateInstanceInfo& lhs, const SetupParams& rhs) const;
     Error ValidateChecksum(const String& text, const String& checksum);
-    Error SendInstanceStateRequest(const InstanceIdentObsolete& instanceIdent);
+    Error SendInstanceStateRequest(const InstanceIdent& instanceIdent);
     StaticString<cFilePathLen> GetStatePath(const String& instanceID) const;
     StaticString<cFilePathLen> GetStoragePath(const String& instanceID) const;
     Error                      CalculateChecksum(const String& data, String& checksum);

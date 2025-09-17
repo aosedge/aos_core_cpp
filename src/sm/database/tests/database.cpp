@@ -52,12 +52,11 @@ aos::NetworkParameters CreateNetworkParameters()
     return params;
 }
 
-aos::InstanceIdentObsolete CreateInstanceIdent(
-    const std::string& serviceID, const std::string& subjectID, uint32_t instance)
+aos::InstanceIdent CreateInstanceIdent(const std::string& serviceID, const std::string& subjectID, uint32_t instance)
 {
-    aos::InstanceIdentObsolete ident;
+    aos::InstanceIdent ident;
 
-    ident.mServiceID = serviceID.c_str();
+    ident.mItemID    = serviceID.c_str();
     ident.mSubjectID = subjectID.c_str();
     ident.mInstance  = instance;
 
@@ -93,7 +92,7 @@ aos::cloudprotocol::InstanceFilter CreateInstanceFilter(
     return instanceFilter;
 }
 
-aos::sm::launcher::InstanceData CreateInstanceData(const aos::String& id, const aos::InstanceIdentObsolete& ident)
+aos::sm::launcher::InstanceData CreateInstanceData(const aos::String& id, const aos::InstanceIdent& ident)
 {
     aos::sm::launcher::InstanceData instance = {};
 

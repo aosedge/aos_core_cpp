@@ -42,7 +42,7 @@ Error ToJSON(const Error& error, Poco::JSON::Object& json);
  * @param[out] instanceIdent instance ident object to fill.
  * @return Error.
  */
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdentObsolete& instanceIdent);
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdent& instanceIdent);
 
 /**
  * Converts InstanceIdent object to JSON object.
@@ -51,7 +51,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, InstanceIdentObs
  * @param[out] json JSON object to fill.
  * @return Error.
  */
-Error ToJSON(const InstanceIdentObsolete& instanceIdent, Poco::JSON::Object& json);
+Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json);
 
 /**
  * Converts JSON object to InstanceFilter object.

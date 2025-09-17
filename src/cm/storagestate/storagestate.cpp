@@ -174,7 +174,7 @@ Error StorageState::Setup(const SetupParams& setupParams, String& storagePath, S
     return ErrorEnum::eNone;
 }
 
-Error StorageState::Cleanup(const InstanceIdentObsolete& instanceIdent)
+Error StorageState::Cleanup(const InstanceIdent& instanceIdent)
 {
     std::lock_guard lock {mMutex};
 
@@ -183,7 +183,7 @@ Error StorageState::Cleanup(const InstanceIdentObsolete& instanceIdent)
     return StopStateWatching(instanceIdent);
 }
 
-Error StorageState::Remove(const InstanceIdentObsolete& instanceIdent)
+Error StorageState::Remove(const InstanceIdent& instanceIdent)
 {
     LOG_DBG() << "Remove storage and state" << Log::Field("instanceIdent", instanceIdent);
 
@@ -291,7 +291,7 @@ Error StorageState::AcceptState(const cloudprotocol::StateAcceptance& state)
     return ErrorEnum::eNone;
 }
 
-Error StorageState::GetInstanceCheckSum(const InstanceIdentObsolete& instanceIdent, String& checkSum)
+Error StorageState::GetInstanceCheckSum(const InstanceIdent& instanceIdent, String& checkSum)
 {
     std::lock_guard lock {mMutex};
 
@@ -500,7 +500,7 @@ Error StorageState::SetupStateWatching(const String& path, const SetupParams& pa
     return ErrorEnum::eNone;
 }
 
-Error StorageState::StartStateWatching(const InstanceIdentObsolete& instanceIdent, const String& path, size_t quota)
+Error StorageState::StartStateWatching(const InstanceIdent& instanceIdent, const String& path, size_t quota)
 {
     LOG_DBG() << "Start state watching" << Log::Field("path", path);
 
@@ -513,7 +513,7 @@ Error StorageState::StartStateWatching(const InstanceIdentObsolete& instanceIden
     return ErrorEnum::eNone;
 }
 
-Error StorageState::StopStateWatching(const InstanceIdentObsolete& instanceIdent)
+Error StorageState::StopStateWatching(const InstanceIdent& instanceIdent)
 {
     LOG_DBG() << "Stop state watching" << instanceIdent;
 
@@ -607,7 +607,7 @@ void StorageState::NotifyStateChanged(Poco::Timer& timer)
     }
 }
 
-Error StorageState::RemoveFromSystem(const String& instanceID, const InstanceIdentObsolete& instanceIdent)
+Error StorageState::RemoveFromSystem(const String& instanceID, const InstanceIdent& instanceIdent)
 {
     const auto statePath   = GetStatePath(instanceID);
     const auto storagePath = GetStoragePath(instanceID);
@@ -651,7 +651,7 @@ Error StorageState::ValidateChecksum(const String& text, const String& checksum)
     return ErrorEnum::eNone;
 }
 
-Error StorageState::SendInstanceStateRequest(const InstanceIdentObsolete& instanceIdent)
+Error StorageState::SendInstanceStateRequest(const InstanceIdent& instanceIdent)
 {
     LOG_DBG() << "Send instance state request" << Log::Field("instanceIdent", instanceIdent);
 

@@ -182,8 +182,9 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
 
 TEST_F(IamClientTest, RegisterUnregisterInstance)
 {
-    aos::InstanceIdentObsolete instanceIdent;
-    instanceIdent.mServiceID = "service_id";
+    aos::InstanceIdent instanceIdent;
+
+    instanceIdent.mItemID    = "service_id";
     instanceIdent.mSubjectID = "subject_id";
     instanceIdent.mInstance  = 1;
 

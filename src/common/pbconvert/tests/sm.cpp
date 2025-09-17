@@ -109,7 +109,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToAvarageMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdentObsolete      instanceIdent {"service-id", "subject-id", 1};
+    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
     aos::monitoring::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
@@ -127,7 +127,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToAvarageMonitoring)
         const auto& instanceMonitoring   = param.mServiceInstances[i];
         const auto& pbInstanceMonitoring = result.instances_monitoring(i);
 
-        EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().service_id().c_str()), instanceIdent.mServiceID);
+        EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().service_id().c_str()), instanceIdent.mItemID);
         EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().subject_id().c_str()), instanceIdent.mSubjectID);
         EXPECT_EQ(pbInstanceMonitoring.instance().instance(), instanceIdent.mInstance);
 
@@ -142,7 +142,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToInstantMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdentObsolete      instanceIdent {"service-id", "subject-id", 1};
+    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
     aos::monitoring::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
@@ -160,7 +160,7 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToInstantMonitoring)
         const auto& instanceMonitoring   = param.mServiceInstances[i];
         const auto& pbInstanceMonitoring = result.instances_monitoring(i);
 
-        EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().service_id().c_str()), instanceIdent.mServiceID);
+        EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().service_id().c_str()), instanceIdent.mItemID);
         EXPECT_EQ(aos::String(pbInstanceMonitoring.instance().subject_id().c_str()), instanceIdent.mSubjectID);
         EXPECT_EQ(pbInstanceMonitoring.instance().instance(), instanceIdent.mInstance);
 
@@ -173,14 +173,14 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 {
     aos::InstanceStatusObsolete param;
 
-    param.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "subject-id", 1};
+    param.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
     param.mServiceVersion = "1.0.0";
     param.mStatus         = aos::InstanceRunStateEnum::eActive;
     param.mError          = aos::ErrorEnum::eFailed;
 
     ::servicemanager::v4::InstanceStatus result = aos::common::pbconvert::ConvertToProto(param);
 
-    EXPECT_EQ(aos::String(result.instance().service_id().c_str()), param.mInstanceIdent.mServiceID);
+    EXPECT_EQ(aos::String(result.instance().service_id().c_str()), param.mInstanceIdent.mItemID);
     EXPECT_EQ(aos::String(result.instance().subject_id().c_str()), param.mInstanceIdent.mSubjectID);
     EXPECT_EQ(result.instance().instance(), param.mInstanceIdent.mInstance);
 
@@ -327,7 +327,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceInfoToAos)
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
-    EXPECT_EQ(result.mInstanceIdent.mServiceID, aos::String(param.instance().service_id().c_str()));
+    EXPECT_EQ(result.mInstanceIdent.mItemID, aos::String(param.instance().service_id().c_str()));
     EXPECT_EQ(result.mInstanceIdent.mSubjectID, aos::String(param.instance().subject_id().c_str()));
     EXPECT_EQ(result.mInstanceIdent.mInstance, param.instance().instance());
 
@@ -780,7 +780,7 @@ TEST_F(PBConvertSMTest, ConvertServiceInstanceAlertToProto)
 
     aos::cloudprotocol::ServiceInstanceAlert alert {expectedTimestamp};
 
-    alert.mInstanceIdent  = aos::InstanceIdentObsolete {"service-id", "subject-id", 1};
+    alert.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
     alert.mServiceVersion = "1.0.0";
     alert.mMessage        = "test-message";
 
@@ -791,7 +791,7 @@ TEST_F(PBConvertSMTest, ConvertServiceInstanceAlertToProto)
     ASSERT_TRUE(result.has_instance_alert());
 
     EXPECT_EQ(result.tag(), "serviceInstanceAlert");
-    EXPECT_EQ(aos::String(result.instance_alert().instance().service_id().c_str()), alert.mInstanceIdent.mServiceID);
+    EXPECT_EQ(aos::String(result.instance_alert().instance().service_id().c_str()), alert.mInstanceIdent.mItemID);
     EXPECT_EQ(aos::String(result.instance_alert().instance().subject_id().c_str()), alert.mInstanceIdent.mSubjectID);
     EXPECT_EQ(result.instance_alert().instance().instance(), alert.mInstanceIdent.mInstance);
     EXPECT_EQ(aos::String(result.instance_alert().service_version().c_str()), alert.mServiceVersion);
