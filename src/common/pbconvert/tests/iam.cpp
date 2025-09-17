@@ -47,9 +47,9 @@ CPUInfo CreateCPUInfo(const std::string& modelName)
     return result;
 }
 
-NodeInfo CreateNodeInfo()
+NodeInfoObsolete CreateNodeInfo()
 {
-    NodeInfo result;
+    NodeInfoObsolete result;
 
     result.mNodeID   = "node-id";
     result.mNodeType = "node-type";

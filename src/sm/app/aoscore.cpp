@@ -45,7 +45,7 @@ void AosCore::Init(const std::string& configFile)
     err = mIAMClientPublic.Init(mConfig.mIAMClientConfig, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public IAM client");
 
-    auto nodeInfo = std::make_shared<NodeInfo>();
+    auto nodeInfo = std::make_shared<NodeInfoObsolete>();
 
     err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
     AOS_ERROR_CHECK_AND_THROW(err, "can't get node info");

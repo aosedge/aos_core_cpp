@@ -54,9 +54,9 @@ bool operator==(const smproto::NodeConfigStatus& lhs, const smproto::NodeConfigS
 
 namespace {
 
-aos::NodeInfo CreateNodeInfo()
+aos::NodeInfoObsolete CreateNodeInfo()
 {
-    aos::NodeInfo result;
+    aos::NodeInfoObsolete result;
 
     result.mNodeID = "test-node-id";
 
@@ -411,7 +411,7 @@ protected:
         auto server = CreateServer(config.mCMServerURL);
         auto client = CreateClient(config);
 
-        NodeInfo                                nodeInfo          = CreateNodeInfo();
+        NodeInfoObsolete                        nodeInfo          = CreateNodeInfo();
         RetWithError<StaticString<cVersionLen>> nodeConfigVersion = {"1.0.0", ErrorEnum::eNone};
         smproto::NodeConfigStatus               expNodeConfigVersion;
 

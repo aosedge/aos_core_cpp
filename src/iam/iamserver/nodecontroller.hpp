@@ -69,8 +69,9 @@ public:
      * @param nodeManager node manager.
      * @param streamRegistry stream registry.
      */
-    static NodeStreamHandler::Ptr Create(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
+    static NodeStreamHandler::Ptr Create(const std::vector<NodeStateObsolete>& allowedStates,
+        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
+        StreamRegistryItf* streamRegistry);
 
     /**
      * Destructor.
@@ -172,14 +173,14 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
-    NodeStreamHandler(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
+    NodeStreamHandler(const std::vector<NodeStateObsolete>& allowedStates, NodeServerReaderWriter* stream,
         grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
     Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
-    std::vector<NodeState>            mAllowedStates;
+    std::vector<NodeStateObsolete>    mAllowedStates;
     NodeServerReaderWriter*           mStream         = nullptr;
     grpc::ServerContext*              mContext        = nullptr;
     iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
@@ -219,8 +220,8 @@ public:
      * @param nodeManager node manager.
      * @return grpc::Status.
      */
-    grpc::Status HandleRegisterNodeStream(const std::vector<NodeState>& allowedStates, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
+    grpc::Status HandleRegisterNodeStream(const std::vector<NodeStateObsolete>& allowedStates,
+        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
 
     /**
      * Gets node stream handler by node id.

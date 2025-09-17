@@ -86,7 +86,7 @@ void PublicMessageHandlerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
@@ -539,7 +539,7 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
 
     request.set_node_id("test-node-id");
 
-    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const String& nodeID, NodeInfo& nodeInfo) {
+    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const String& nodeID, NodeInfoObsolete& nodeInfo) {
         nodeInfo.mNodeID = nodeID;
         nodeInfo.mName   = "test-name";
 
@@ -584,7 +584,8 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    NodeInfo nodeInfo;
+    NodeInfoObsolete nodeInfo;
+
     nodeInfo.mNodeID = "test-node-id";
     nodeInfo.mName   = "test-name";
 
