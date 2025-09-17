@@ -40,8 +40,7 @@ public:
      * @returns RetWithError<StaticString<cSecretLen>>.
      */
     RetWithError<StaticString<iam::permhandler::cSecretLen>> RegisterInstance(
-        const InstanceIdentObsolete&             instanceIdent,
-        const Array<FunctionServicePermissions>& instancePermissions) override;
+        const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions) override;
 
     /**
      * Unregisters instance deletes service instance with permissions from cache.
@@ -49,7 +48,7 @@ public:
      * @param instanceIdent instance identification.
      * @returns Error.
      */
-    Error UnregisterInstance(const InstanceIdentObsolete& instanceIdent) override;
+    Error UnregisterInstance(const InstanceIdent& instanceIdent) override;
 
     /**
      * Returns instance ident and permissions by secret and functional server ID.
@@ -60,7 +59,7 @@ public:
      * @param[out] servicePermissions result service permission.
      * @returns Error.
      */
-    Error GetPermissions(const String& secret, const String& funcServerID, InstanceIdentObsolete& instanceIdent,
+    Error GetPermissions(const String& secret, const String& funcServerID, InstanceIdent& instanceIdent,
         Array<FunctionPermissions>& servicePermissions) override;
 
 private:

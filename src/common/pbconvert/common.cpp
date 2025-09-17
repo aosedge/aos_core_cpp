@@ -39,11 +39,11 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
     return grpc::Status(grpc::StatusCode::INTERNAL, error.Message());
 }
 
-::common::v1::InstanceIdent ConvertToProto(const InstanceIdentObsolete& src)
+::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src)
 {
     ::common::v1::InstanceIdent result;
 
-    result.set_service_id(src.mServiceID.CStr());
+    result.set_service_id(src.mItemID.CStr());
     result.set_subject_id(src.mSubjectID.CStr());
     result.set_instance(src.mInstance);
 
@@ -51,7 +51,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
 }
 
 iamanager::v5::RegisterInstanceRequest ConvertToProto(
-    const InstanceIdentObsolete& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
+    const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     iamanager::v5::RegisterInstanceRequest result;
 
@@ -68,11 +68,11 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(
     return result;
 }
 
-InstanceIdentObsolete ConvertToAos(const ::common::v1::InstanceIdent& val)
+InstanceIdent ConvertToAos(const ::common::v1::InstanceIdent& val)
 {
-    InstanceIdentObsolete result;
+    InstanceIdent result;
 
-    result.mServiceID = val.service_id().c_str();
+    result.mItemID    = val.service_id().c_str();
     result.mSubjectID = val.subject_id().c_str();
     result.mInstance  = val.instance();
 
