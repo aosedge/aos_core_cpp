@@ -435,7 +435,7 @@ TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
     request.set_node_id("node0");
 
     EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
 
     auto status = clientStub->CreateKey(&context, request, &response);
 

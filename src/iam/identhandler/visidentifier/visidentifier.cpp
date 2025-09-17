@@ -95,7 +95,7 @@ Error VISIdentifier::Stop()
     return ErrorEnum::eNone;
 }
 
-RetWithError<StaticString<cSystemIDLen>> VISIdentifier::GetSystemID()
+RetWithError<StaticString<cIDLen>> VISIdentifier::GetSystemID()
 {
     std::lock_guard lock(mMutex);
 
@@ -159,7 +159,7 @@ RetWithError<StaticString<cUnitModelLen>> VISIdentifier::GetUnitModel()
     return mUnitModel;
 }
 
-Error VISIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
+Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
 {
     std::lock_guard lock(mMutex);
 
@@ -340,7 +340,7 @@ void VISIdentifier::HandleConnection()
 Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 {
     try {
-        StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> newSubjects;
+        StaticArray<StaticString<cIDLen>, cMaxNumSubjects> newSubjects;
 
         const auto responseSubjects = GetValueArrayByPath(value, cSubjectsVISPath);
 
