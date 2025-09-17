@@ -169,7 +169,7 @@ Database::~Database()
  * nodemanager::NodeInfoStorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::SetNodeInfo(const NodeInfo& info)
+Error Database::SetNodeInfo(const NodeInfoObsolete& info)
 {
     try {
         Poco::JSON::Object pocoNodeInfo;
@@ -184,7 +184,7 @@ Error Database::SetNodeInfo(const NodeInfo& info)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) const
+Error Database::GetNodeInfo(const String& nodeID, NodeInfoObsolete& nodeInfo) const
 {
     try {
         Poco::Data::Statement       statement {*mSession};
@@ -332,7 +332,7 @@ void Database::FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertI
         certInfo.get<CertColumns::eNotAfter>() % Time::cSeconds.Nanoseconds());
 }
 
-Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)
+Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfoObsolete& nodeInfo)
 {
     Poco::JSON::Object object;
 
@@ -349,9 +349,9 @@ Poco::JSON::Object Database::ConvertNodeInfoToJSON(const NodeInfo& nodeInfo)
     return object;
 }
 
-Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, NodeInfo& dst)
+Error Database::ConvertNodeInfoFromJSON(const Poco::JSON::Object& object, NodeInfoObsolete& dst)
 {
-    dst.mState    = static_cast<NodeStateEnum>(object.getValue<int>("state"));
+    dst.mState    = static_cast<NodeStateObsoleteEnum>(object.getValue<int>("state"));
     dst.mNodeType = object.getValue<std::string>("type").c_str();
     dst.mName     = object.getValue<std::string>("name").c_str();
     dst.mOSType   = object.getValue<std::string>("osType").c_str();

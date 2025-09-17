@@ -118,7 +118,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfo& info) override;
+    void OnNodeInfoChange(const NodeInfoObsolete& info) override;
 
     /**
      * Node info removed notification.

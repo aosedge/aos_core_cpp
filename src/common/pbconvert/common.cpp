@@ -169,13 +169,13 @@ Error ConvertToAos(
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfo& dst)
+Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfoObsolete& dst)
 {
     dst.mNodeID   = src.node_id().c_str();
     dst.mNodeType = src.node_type().c_str();
     dst.mName     = src.name().c_str();
 
-    NodeState nodeState;
+    NodeStateObsolete nodeState;
     nodeState.FromString(src.status().c_str());
 
     dst.mState    = nodeState;

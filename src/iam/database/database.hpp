@@ -98,7 +98,7 @@ public:
      * @param info node info.
      * @return Error.
      */
-    Error SetNodeInfo(const NodeInfo& info) override;
+    Error SetNodeInfo(const NodeInfoObsolete& info) override;
 
     /**
      * Returns node info.
@@ -107,7 +107,7 @@ public:
      * @param[out] nodeInfo result node identifier.
      * @return Error.
      */
-    Error GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) const override;
+    Error GetNodeInfo(const String& nodeID, NodeInfoObsolete& nodeInfo) const override;
 
     /**
      * Returns ids for all the node in the manager.
@@ -147,8 +147,8 @@ private:
     CertInfo ToAosCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo);
     void     FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertInfo& result);
 
-    static Poco::JSON::Object ConvertNodeInfoToJSON(const NodeInfo& nodeInfo);
-    static Error              ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, NodeInfo& dst);
+    static Poco::JSON::Object ConvertNodeInfoToJSON(const NodeInfoObsolete& nodeInfo);
+    static Error              ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, NodeInfoObsolete& dst);
 
     static Poco::JSON::Array ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo);
     static Error             ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUInfo>& dst);

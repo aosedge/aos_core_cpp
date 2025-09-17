@@ -65,7 +65,7 @@ iamanager::v5::CPUInfo ConvertToProto(const CPUInfo& src)
     return result;
 }
 
-iamanager::v5::NodeInfo ConvertToProto(const NodeInfo& src)
+iamanager::v5::NodeInfo ConvertToProto(const NodeInfoObsolete& src)
 {
     iamanager::v5::NodeInfo result;
 

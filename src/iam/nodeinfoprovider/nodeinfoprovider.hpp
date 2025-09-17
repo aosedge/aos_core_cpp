@@ -37,7 +37,7 @@ public:
      * @param[out] nodeInfo node info
      * @return Error
      */
-    Error GetNodeInfo(NodeInfo& nodeInfo) const override;
+    Error GetNodeInfo(NodeInfoObsolete& nodeInfo) const override;
 
     /**
      * Sets node state.
@@ -45,7 +45,7 @@ public:
      * @param state node state.
      * @return Error.
      */
-    Error SetNodeState(const NodeState& state) override;
+    Error SetNodeState(const NodeStateObsolete& state) override;
 
     /**
      * Subscribes on node state changed event.
@@ -73,7 +73,7 @@ private:
     std::unordered_set<iam::nodeinfoprovider::NodeStateObserverItf*> mObservers;
     std::string                                                      mMemInfoPath;
     std::string                                                      mProvisioningStatusPath;
-    NodeInfo                                                         mNodeInfo;
+    NodeInfoObsolete                                                 mNodeInfo;
 };
 
 } // namespace aos::iam::nodeinfoprovider

@@ -144,7 +144,7 @@ public:
      * @param[out] nodeInfo node info
      * @return Error
      */
-    Error GetNodeInfo(NodeInfo& nodeInfo) const override;
+    Error GetNodeInfo(NodeInfoObsolete& nodeInfo) const override;
 
     /**
      * Sets the node state.
@@ -152,7 +152,7 @@ public:
      * @param state node state.
      * @return Error.
      */
-    Error SetNodeState(const NodeState& state) override;
+    Error SetNodeState(const NodeStateObsolete& state) override;
 
     /**
      * Subscribes on node state changed event.

@@ -106,7 +106,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     mCertHandler      = &certHandler;
 
     Error err;
-    auto  nodeInfo = std::make_unique<NodeInfo>();
+    auto  nodeInfo = std::make_unique<NodeInfoObsolete>();
 
     if (err = nodeInfoProvider.GetNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -254,7 +254,7 @@ Error IAMServer::OnEncryptDisk(const String& password)
     return ExecCommand("Encrypt disk", mConfig.mDiskEncryptionCmdArgs);
 }
 
-void IAMServer::OnNodeInfoChange(const NodeInfo& info)
+void IAMServer::OnNodeInfoChange(const NodeInfoObsolete& info)
 {
     LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", state=" << info.mState;
 
