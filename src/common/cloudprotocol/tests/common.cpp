@@ -67,10 +67,10 @@ TEST_F(CloudProtocolCommon, InstanceIdent)
 TEST_F(CloudProtocolCommon, InstanceFilter)
 {
     const std::array instanceFilters = {
-        aos::cloudprotocol::InstanceFilter {{}, {}, {}},
-        aos::cloudprotocol::InstanceFilter {{"service1"}, {}, {}},
-        aos::cloudprotocol::InstanceFilter {{"service1"}, {"subject1"}, {}},
-        aos::cloudprotocol::InstanceFilter {{"service1"}, {"subject1"}, 42},
+        aos::InstanceFilter {{}, {}, {}},
+        aos::InstanceFilter {{"service1"}, {}, {}},
+        aos::InstanceFilter {{"service1"}, {"subject1"}, {}},
+        aos::InstanceFilter {{"service1"}, {"subject1"}, 42},
     };
 
     for (const auto& filter : instanceFilters) {
@@ -78,7 +78,7 @@ TEST_F(CloudProtocolCommon, InstanceFilter)
 
         EXPECT_EQ(ToJSON(filter, *json), ErrorEnum::eNone);
 
-        aos::cloudprotocol::InstanceFilter parsedFilter;
+        aos::InstanceFilter parsedFilter;
         EXPECT_TRUE(FromJSON(utils::CaseInsensitiveObjectWrapper(json), parsedFilter).IsNone());
 
         EXPECT_EQ(filter, parsedFilter);

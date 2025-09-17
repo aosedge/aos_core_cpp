@@ -196,12 +196,12 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-::servicemanager::v4::InstanceFilter ConvertToProto(const cloudprotocol::InstanceFilter& src)
+::servicemanager::v4::InstanceFilter ConvertToProto(const InstanceFilter& src)
 {
     ::servicemanager::v4::InstanceFilter result;
 
-    if (src.mServiceID.HasValue()) {
-        result.set_service_id(src.mServiceID.GetValue().CStr());
+    if (src.mItemID.HasValue()) {
+        result.set_service_id(src.mItemID.GetValue().CStr());
     }
 
     if (src.mSubjectID.HasValue()) {
@@ -279,10 +279,10 @@ Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfoOb
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, cloudprotocol::InstanceFilter& dst)
+Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, InstanceFilter& dst)
 {
     if (const auto& serviceID = val.service_id(); !serviceID.empty()) {
-        dst.mServiceID.SetValue(String(serviceID.c_str()));
+        dst.mItemID.SetValue(String(serviceID.c_str()));
     }
 
     if (const auto& subjectID = val.subject_id(); !subjectID.empty()) {
@@ -308,7 +308,7 @@ Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::E
 Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotocol::EnvVarsInstanceInfoArray& dst)
 {
     for (const auto& envVar : src.env_vars()) {
-        cloudprotocol::InstanceFilter instanceFilter;
+        InstanceFilter instanceFilter;
 
         if (auto err = ConvertToAos(envVar.instance_filter(), instanceFilter); !err.IsNone()) {
             return err;
