@@ -30,7 +30,7 @@ public:
      * @param filter service instance filter.
      * @return RetWithError<std::vector<std::string>>.
      */
-    virtual RetWithError<std::vector<std::string>> GetInstanceIDs(const cloudprotocol::InstanceFilter& filter) = 0;
+    virtual RetWithError<std::vector<std::string>> GetInstanceIDs(const InstanceFilter& filter) = 0;
 
     /**
      * Destructor.

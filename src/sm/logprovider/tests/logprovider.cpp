@@ -83,12 +83,11 @@ protected:
     std::condition_variable mLogReceived;
 };
 
-cloudprotocol::InstanceFilter CreateInstanceFilter(
-    const std::string& serviceID, const std::string& subjectID, uint64_t instance)
+InstanceFilter CreateInstanceFilter(const std::string& serviceID, const std::string& subjectID, uint64_t instance)
 {
-    cloudprotocol::InstanceFilter filter;
+    InstanceFilter filter;
 
-    filter.mServiceID.EmplaceValue(serviceID.c_str());
+    filter.mItemID.EmplaceValue(serviceID.c_str());
     filter.mSubjectID.EmplaceValue(subjectID.c_str());
     filter.mInstance.EmplaceValue(instance);
 

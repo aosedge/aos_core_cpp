@@ -968,7 +968,7 @@ TEST_F(SMClientTest, OverrideEnvVarsSucceeds)
     auto [server, client] = InitTest();
 
     aos::cloudprotocol::EnvVarsInstanceStatus expectedStatus;
-    expectedStatus.mFilter.mServiceID.SetValue("service-id");
+    expectedStatus.mFilter.mItemID.SetValue("service-id");
     expectedStatus.mStatuses.PushBack({"var-name", aos::ErrorEnum::eNone});
 
     EXPECT_CALL(*server, OnOverrideEnvVarStatus).WillOnce(Invoke([&](const smproto::OverrideEnvVarStatus& status) {

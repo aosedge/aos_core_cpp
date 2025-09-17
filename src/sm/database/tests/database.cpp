@@ -72,13 +72,12 @@ aos::Optional<aos::Time> CreateTimeOpt(bool createNullOpt = false)
     return {aos::Time::Now()};
 }
 
-aos::cloudprotocol::InstanceFilter CreateInstanceFilter(
-    const std::string& serviceID, const std::string& subjectID, int instance)
+aos::InstanceFilter CreateInstanceFilter(const std::string& serviceID, const std::string& subjectID, int instance)
 {
-    aos::cloudprotocol::InstanceFilter instanceFilter;
+    aos::InstanceFilter instanceFilter;
 
     if (!serviceID.empty()) {
-        instanceFilter.mServiceID.SetValue(serviceID.c_str());
+        instanceFilter.mItemID.SetValue(serviceID.c_str());
     }
 
     if (!subjectID.empty()) {
@@ -742,9 +741,9 @@ TEST_F(DatabaseTest, GetInstanceIDsOk)
     EXPECT_TRUE(mDB.AddInstance(instance1).IsNone());
     EXPECT_TRUE(mDB.AddInstance(instance2).IsNone());
 
-    aos::cloudprotocol::InstanceFilter filter;
+    aos::InstanceFilter filter;
 
-    filter.mServiceID.SetValue(serviceID);
+    filter.mItemID.SetValue(serviceID);
     filter.mSubjectID.SetValue("subject");
 
     auto [instanceIDs, err] = mDB.GetInstanceIDs(filter);
@@ -758,9 +757,9 @@ TEST_F(DatabaseTest, GetInstanceIDsNOK)
 
     constexpr auto serviceID = "service-1";
 
-    aos::cloudprotocol::InstanceFilter filter;
+    aos::InstanceFilter filter;
 
-    filter.mServiceID.SetValue(serviceID);
+    filter.mItemID.SetValue(serviceID);
 
     auto [instanceIDs, err] = mDB.GetInstanceIDs(filter);
     EXPECT_FALSE(err.IsNone());

@@ -56,7 +56,7 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
     return ErrorEnum::eNone;
 }
 
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::InstanceFilter& instanceFilter)
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::InstanceFilter& instanceFilter)
 {
     if (json.Has("serviceID")) {
         instanceFilter.mServiceID.EmplaceValue();
@@ -83,7 +83,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
     return ErrorEnum::eNone;
 }
 
-Error ToJSON(const aos::cloudprotocol::InstanceFilter& instanceFilter, Poco::JSON::Object& json)
+Error ToJSON(const aos::InstanceFilter& instanceFilter, Poco::JSON::Object& json)
 {
     try {
         if (instanceFilter.mServiceID.HasValue()) {

@@ -196,7 +196,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceFilterToProto)
     aos::Optional<aos::StaticString<aos::cIDLen>> subjectIDNullopt {};
     aos::Optional<uint64_t>                       instanceNullopt {};
 
-    aos::cloudprotocol::InstanceFilter params[] = {
+    aos::InstanceFilter params[] = {
         {serviceIDNullopt, subjectIDNullopt, instanceNullopt},
         {serviceIDNullopt, {"subject-id"}, {1}},
         {{"service-id"}, subjectIDNullopt, {1}},
@@ -211,8 +211,8 @@ TEST_F(PBConvertSMTest, ConvertInstanceFilterToProto)
 
         ::servicemanager::v4::InstanceFilter result = aos::common::pbconvert::ConvertToProto(param);
 
-        if (param.mServiceID.HasValue()) {
-            EXPECT_EQ(result.service_id(), param.mServiceID.GetValue().CStr());
+        if (param.mItemID.HasValue()) {
+            EXPECT_EQ(result.service_id(), param.mItemID.GetValue().CStr());
         } else {
             EXPECT_TRUE(result.service_id().empty());
         }
@@ -363,14 +363,14 @@ TEST_F(PBConvertSMTest, ConvertInstanceFilterToAos)
         pbParam.set_subject_id(param.subjectID);
         pbParam.set_instance(param.instance);
 
-        aos::cloudprotocol::InstanceFilter result;
+        aos::InstanceFilter result;
 
         EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(pbParam, result).IsNone());
 
         if (!param.serviceID.empty()) {
-            EXPECT_EQ(result.mServiceID.GetValue(), aos::String(param.serviceID.c_str()));
+            EXPECT_EQ(result.mItemID.GetValue(), aos::String(param.serviceID.c_str()));
         } else {
-            EXPECT_FALSE(result.mServiceID.HasValue());
+            EXPECT_FALSE(result.mItemID.HasValue());
         }
 
         if (!param.subjectID.empty()) {
@@ -424,7 +424,7 @@ TEST_F(PBConvertSMTest, ConvertOverrideEnvVarsToAosSucceeds)
 
     ASSERT_EQ(result.Size(), 1);
 
-    EXPECT_EQ(result[0].mFilter.mServiceID.GetValue(), aos::String("service-id"));
+    EXPECT_EQ(result[0].mFilter.mItemID.GetValue(), aos::String("service-id"));
     EXPECT_FALSE(result[0].mFilter.mInstance.HasValue());
     EXPECT_FALSE(result[0].mFilter.mSubjectID.HasValue());
 
@@ -546,14 +546,14 @@ TEST_F(PBConvertSMTest, ConvertInstanceLogRequestToAos)
 {
     ::servicemanager::v4::InstanceLogRequest param;
 
-    aos::cloudprotocol::InstanceFilter instanceFilter;
-    instanceFilter.mServiceID.SetValue("service-id");
+    aos::InstanceFilter instanceFilter;
+    instanceFilter.mItemID.SetValue("service-id");
     instanceFilter.mInstance.SetValue(1);
 
     param.set_log_id("log-id");
     param.mutable_from()->set_seconds(100);
     param.mutable_till()->set_seconds(200);
-    param.mutable_instance_filter()->set_service_id(instanceFilter.mServiceID.GetValue().CStr());
+    param.mutable_instance_filter()->set_service_id(instanceFilter.mItemID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
     aos::cloudprotocol::RequestLog result;
@@ -571,14 +571,15 @@ TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
 {
     ::servicemanager::v4::InstanceCrashLogRequest param;
 
-    aos::cloudprotocol::InstanceFilter instanceFilter;
-    instanceFilter.mServiceID.SetValue("service-id");
+    aos::InstanceFilter instanceFilter;
+
+    instanceFilter.mItemID.SetValue("service-id");
     instanceFilter.mInstance.SetValue(1);
 
     param.set_log_id("log-id");
     param.mutable_from()->set_seconds(100);
     param.mutable_till()->set_seconds(200);
-    param.mutable_instance_filter()->set_service_id(instanceFilter.mServiceID.GetValue().CStr());
+    param.mutable_instance_filter()->set_service_id(instanceFilter.mItemID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
     aos::cloudprotocol::RequestLog result;

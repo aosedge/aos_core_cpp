@@ -20,8 +20,7 @@ namespace aos::sm::logprovider {
  */
 class InstanceIDProviderMock : public InstanceIDProviderItf {
 public:
-    MOCK_METHOD(RetWithError<std::vector<std::string>>, GetInstanceIDs, (const cloudprotocol::InstanceFilter& filter),
-        (override));
+    MOCK_METHOD(RetWithError<std::vector<std::string>>, GetInstanceIDs, (const InstanceFilter& filter), (override));
 };
 
 /**
