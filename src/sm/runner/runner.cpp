@@ -25,12 +25,12 @@ namespace aos::sm::runner {
 
 namespace {
 
-inline InstanceRunState ToInstanceState(UnitState state)
+inline InstanceState ToInstanceState(UnitState state)
 {
     if (state.GetValue() == UnitStateEnum::eActive) {
-        return InstanceRunStateEnum::eActive;
+        return InstanceStateEnum::eActive;
     } else {
-        return InstanceRunStateEnum::eFailed;
+        return InstanceStateEnum::eFailed;
     }
 }
 
@@ -118,7 +118,7 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     RunStatus status = {};
 
     status.mInstanceID = instanceID;
-    status.mState      = InstanceRunStateEnum::eFailed;
+    status.mState      = InstanceStateEnum::eFailed;
 
     // Fix run parameters.
     RunParameters fixedParams = params;
@@ -304,13 +304,13 @@ Error Runner::RemoveRunParameters(const std::string& unitName)
     return fs::RemoveAll(parametersDir.c_str());
 }
 
-RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& unitName, Duration startInterval)
+RetWithError<InstanceState> Runner::GetStartingUnitState(const std::string& unitName, Duration startInterval)
 {
     const auto timeout = std::chrono::milliseconds(startInterval.Milliseconds());
 
     auto [initialStatus, err] = mSystemd->GetUnitStatus(unitName);
     if (!err.IsNone()) {
-        return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(Error(err, "failed to get unit status"))};
+        return {InstanceStateEnum::eFailed, AOS_ERROR_WRAP(Error(err, "failed to get unit status"))};
     }
 
     {
@@ -331,12 +331,12 @@ RetWithError<InstanceRunState> Runner::GetStartingUnitState(const std::string& u
             const auto errMsg = "failed to start unit";
             err = exitCode.HasValue() ? Error(exitCode.GetValue(), errMsg) : Error(ErrorEnum::eFailed, errMsg);
 
-            return {InstanceRunStateEnum::eFailed, AOS_ERROR_WRAP(err)};
+            return {InstanceStateEnum::eFailed, AOS_ERROR_WRAP(err)};
         }
 
-        mRunningUnits[unitName] = RunningUnitData {InstanceRunStateEnum::eActive, exitCode};
+        mRunningUnits[unitName] = RunningUnitData {InstanceStateEnum::eActive, exitCode};
 
-        return {InstanceRunStateEnum::eActive, ErrorEnum::eNone};
+        return {InstanceStateEnum::eActive, ErrorEnum::eNone};
     }
 }
 

@@ -101,14 +101,14 @@ aos::cloudprotocol::PushLog CreatePushLog()
     return log;
 }
 
-aos::InstanceStatusObsoleteStaticArray CreateInstanceStatus()
+aos::InstanceStatusStaticArray CreateInstanceStatus()
 {
-    aos::InstanceStatusObsoleteStaticArray instances;
+    aos::InstanceStatusStaticArray instances;
+    aos::InstanceStatus            instance;
 
-    aos::InstanceStatusObsolete instance;
-    instance.mInstanceIdent  = aos::InstanceIdent {"service-id", "instance-id", 0};
-    instance.mStatus         = aos::InstanceRunStateEnum::eActive;
-    instance.mServiceVersion = "1.0.0";
+    instance.mInstanceIdent = aos::InstanceIdent {"service-id", "instance-id", 0};
+    instance.mState         = aos::InstanceStateEnum::eActive;
+    instance.mVersion       = "1.0.0";
 
     instances.PushBack(instance);
 

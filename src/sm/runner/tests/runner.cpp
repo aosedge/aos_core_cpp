@@ -80,13 +80,13 @@ TEST_F(RunnerTest, StartInstance)
 
     StaticArray<RunStatus, 1> expectedInstances;
 
-    expectedInstances.PushBack(RunStatus {"service0", InstanceRunStateEnum::eActive, Error()});
+    expectedInstances.PushBack(RunStatus {"service0", InstanceStateEnum::eActive, Error()});
 
     EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(expectedInstances)).Times(1);
 
     mRunner.Start();
 
-    const auto expectedRes = RunStatus {"service0", InstanceRunStateEnum::eActive, ErrorEnum::eNone};
+    const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eActive, ErrorEnum::eNone};
 
     EXPECT_EQ(mRunner.StartInstance("service0", cRuntimeDir.c_str(), params), expectedRes);
 
@@ -109,7 +109,7 @@ TEST_F(RunnerTest, StartUnitFailed)
 
     mRunner.Start();
 
-    const auto expectedRes = RunStatus {"service0", InstanceRunStateEnum::eFailed, ErrorEnum::eFailed};
+    const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eFailed, ErrorEnum::eFailed};
 
     EXPECT_EQ(mRunner.StartInstance("service0", cRuntimeDir.c_str(), params), expectedRes);
 
@@ -128,7 +128,7 @@ TEST_F(RunnerTest, GetUnitStatusFailed)
     EXPECT_CALL(*mRunner.mSystemd, GetUnitStatus("aos-service@service0.service"))
         .WillOnce(Return(RetWithError<UnitStatus>(status, err)));
 
-    const auto expectedRes = RunStatus {"service0", InstanceRunStateEnum::eFailed, ErrorEnum::eFailed};
+    const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eFailed, ErrorEnum::eFailed};
 
     EXPECT_EQ(mRunner.StartInstance("service0", cRuntimeDir.c_str(), params), expectedRes);
 
@@ -144,7 +144,7 @@ TEST_F(RunnerTest, ListUnitsFailed)
     EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _))
         .WillOnce(Return(ErrorEnum::eFailed));
 
-    const auto expectedRes = RunStatus {"service0", InstanceRunStateEnum::eFailed, ErrorEnum::eFailed};
+    const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eFailed, ErrorEnum::eFailed};
 
     EXPECT_EQ(mRunner.StartInstance("service0", cRuntimeDir.c_str(), params), expectedRes);
 
