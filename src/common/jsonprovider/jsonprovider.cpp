@@ -97,7 +97,7 @@ void HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Host& host)
     AOS_ERROR_CHECK_AND_THROW(err, "parsed hostName length exceeds application limit");
 }
 
-void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ResourceInfo& resourceInfo)
+void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ResourceInfoObsolete& resourceInfo)
 {
     auto err = resourceInfo.mName.Assign(object.GetValue<std::string>("name").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "parsed name length exceeds application limit");
@@ -137,7 +137,7 @@ void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Res
     });
 }
 
-void ResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<ResourceInfo>& outResources)
+void ResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<ResourceInfoObsolete>& outResources)
 {
     utils::ForEach(object, "resources", [&outResources](const auto& value) {
         auto err = outResources.EmplaceBack();
@@ -199,7 +199,7 @@ Poco::JSON::Array::Ptr HostsToJson(const Array<Host>& hosts)
     return array;
 }
 
-Poco::JSON::Array::Ptr ResourcesToJson(const Array<ResourceInfo>& resources)
+Poco::JSON::Array::Ptr ResourcesToJson(const Array<ResourceInfoObsolete>& resources)
 {
     auto array = Poco::makeShared<Poco::JSON::Array>();
 
