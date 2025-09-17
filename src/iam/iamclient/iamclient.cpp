@@ -442,10 +442,10 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
 
 bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
 {
-    const String               nodeID   = request.node_id().c_str();
-    const String               certType = request.type().c_str();
-    StaticString<cSystemIDLen> subject  = request.subject().c_str();
-    const String               password = request.password().c_str();
+    const String         nodeID   = request.node_id().c_str();
+    const String         certType = request.type().c_str();
+    StaticString<cIDLen> subject  = request.subject().c_str();
+    const String         password = request.password().c_str();
 
     LOG_DBG() << "Process create key request: type=" << certType << ", subject=" << subject;
 

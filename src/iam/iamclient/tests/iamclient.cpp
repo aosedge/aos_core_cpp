@@ -765,7 +765,7 @@ TEST_F(IAMClientTest, CreateKey)
     EXPECT_CALL(mProvisionManager, CreateKey(cCertType, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cCertType.CStr()), _, ::common::v1::ErrorInfo()));
     EXPECT_CALL(mIdentHandler, GetSystemID())
-        .WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSubject, ErrorEnum::eNone)));
+        .WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSubject, ErrorEnum::eNone)));
 
     server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());
     server->WaitResponse();

@@ -129,7 +129,7 @@ public:
 
 private:
     // identhandler::SubjectsObserverItf interface
-    Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) override;
+    Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
 
     // certhandler::CertReceiverItf interface
     void OnCertChanged(const certhandler::CertInfo& info) override;

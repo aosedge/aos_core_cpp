@@ -192,9 +192,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 
 TEST_F(PBConvertSMTest, ConvertInstanceFilterToProto)
 {
-    aos::Optional<aos::StaticString<aos::cServiceIDLen>> serviceIDNullopt {};
-    aos::Optional<aos::StaticString<aos::cSubjectIDLen>> subjectIDNullopt {};
-    aos::Optional<uint64_t>                              instanceNullopt {};
+    aos::Optional<aos::StaticString<aos::cIDLen>> serviceIDNullopt {};
+    aos::Optional<aos::StaticString<aos::cIDLen>> subjectIDNullopt {};
+    aos::Optional<uint64_t>                       instanceNullopt {};
 
     aos::cloudprotocol::InstanceFilter params[] = {
         {serviceIDNullopt, subjectIDNullopt, instanceNullopt},

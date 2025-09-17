@@ -39,7 +39,7 @@ public:
      *
      * @returns RetWithError<StaticString>.
      */
-    RetWithError<StaticString<cSystemIDLen>> GetSystemID() override;
+    RetWithError<StaticString<cIDLen>> GetSystemID() override;
 
     /**
      * Returns unit model.
@@ -54,7 +54,7 @@ public:
      * @param[out] subjects result subjects.
      * @returns Error.
      */
-    Error GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects) override;
+    Error GetSubjects(Array<StaticString<cIDLen>>& subjects) override;
 
     /**
      * Destroys object instance.
@@ -65,11 +65,11 @@ private:
     void  ReadSubjectsFromFile();
     Error ReadLineFromFile(const std::string& path, String& result) const;
 
-    config::FileIdentifierModuleParams                        mConfig;
-    identhandler::SubjectsObserverItf*                        mSubjectsObserver = nullptr;
-    StaticString<cSystemIDLen>                                mSystemId;
-    StaticString<cUnitModelLen>                               mUnitModel;
-    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> mSubjects;
+    config::FileIdentifierModuleParams                 mConfig;
+    identhandler::SubjectsObserverItf*                 mSubjectsObserver = nullptr;
+    StaticString<cIDLen>                               mSystemId;
+    StaticString<cUnitModelLen>                        mUnitModel;
+    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
 };
 
 } // namespace aos::iam::fileidentifier

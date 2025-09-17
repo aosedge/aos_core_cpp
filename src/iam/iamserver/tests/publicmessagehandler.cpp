@@ -301,7 +301,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoSucceeds)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
     EXPECT_CALL(mIdentHandler, GetUnitModel).WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>(cUnitModel)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
@@ -323,7 +323,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnSystemId)
     iamproto::SystemInfo    response;
 
     EXPECT_CALL(mIdentHandler, GetSystemID)
-        .WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>("", ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<cIDLen>>("", ErrorEnum::eFailed)));
     EXPECT_CALL(mIdentHandler, GetUnitModel).Times(0);
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
@@ -340,7 +340,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cSystemIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
     EXPECT_CALL(mIdentHandler, GetUnitModel)
         .WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>("", ErrorEnum::eFailed)));
 
@@ -351,7 +351,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
 
 TEST_F(PublicMessageHandlerTest, GetSubjectsSucceeds)
 {
-    StaticArray<StaticString<cSubjectIDLen>, 10> subjects;
+    StaticArray<StaticString<cIDLen>, 10> subjects;
 
     auto clientStub = CreateClientStub<iamproto::IAMPublicIdentityService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
@@ -404,7 +404,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeSubjectsChanged)
     const auto clientReader = clientStub->SubscribeSubjectsChanged(&context, request);
     ASSERT_NE(clientReader, nullptr) << "Failed to create client reader";
 
-    StaticArray<StaticString<cSubjectIDLen>, 3> newSubjects;
+    StaticArray<StaticString<cIDLen>, 3> newSubjects;
     for (const auto& subject : cSubjects) {
         EXPECT_TRUE(newSubjects.PushBack(subject.c_str()).IsNone());
     }

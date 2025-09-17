@@ -84,9 +84,9 @@ public:
 
 TEST_F(PBConvertIAMTest, ConvertSubjectsToProto)
 {
-    const StaticString<cSubjectIDLen> subjects[] = {"subject-id-1", "subject-id-2"};
+    const StaticString<cIDLen> subjects[] = {"subject-id-1", "subject-id-2"};
 
-    iamanager::v5::Subjects result = ConvertToProto(Array<StaticString<cSubjectIDLen>>(subjects, std::size(subjects)));
+    iamanager::v5::Subjects result = ConvertToProto(Array<StaticString<cIDLen>>(subjects, std::size(subjects)));
 
     ASSERT_EQ(result.subjects_size(), std::size(subjects));
 

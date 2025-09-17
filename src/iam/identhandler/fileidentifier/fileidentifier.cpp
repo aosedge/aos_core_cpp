@@ -45,7 +45,7 @@ Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler:
     return ErrorEnum::eNone;
 }
 
-RetWithError<StaticString<cSystemIDLen>> FileIdentifier::GetSystemID()
+RetWithError<StaticString<cIDLen>> FileIdentifier::GetSystemID()
 {
     LOG_DBG() << "Get system ID: id=" << mSystemId.CStr();
 
@@ -59,7 +59,7 @@ RetWithError<StaticString<cUnitModelLen>> FileIdentifier::GetUnitModel()
     return {mUnitModel};
 }
 
-Error FileIdentifier::GetSubjects(Array<StaticString<cSubjectIDLen>>& subjects)
+Error FileIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
 {
     if (auto err = subjects.Assign(mSubjects); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);

@@ -274,7 +274,7 @@ void IAMServer::OnNodeRemoved(const String& id)
  * Private
  **********************************************************************************************************************/
 
-Error IAMServer::SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages)
+Error IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& messages)
 {
     auto err = mPublicMessageHandler.SubjectsChanged(messages);
     if (!err.IsNone()) {

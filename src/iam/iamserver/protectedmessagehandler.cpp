@@ -309,7 +309,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", type=" << certType;
 
-    StaticString<cSystemIDLen> subject = request->subject().c_str();
+    StaticString<cIDLen> subject = request->subject().c_str();
 
     if (subject.IsEmpty() && !GetIdentHandler()) {
         Error err(ErrorEnum::eNotFound, "Subject can't be empty");

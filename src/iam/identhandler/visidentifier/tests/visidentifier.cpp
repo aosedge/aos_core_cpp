@@ -172,7 +172,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 {
     ExpectStartSucceeded();
 
-    StaticArray<StaticString<cSubjectIDLen>, 3> subjects;
+    StaticArray<StaticString<cIDLen>, 3> subjects;
 
     EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
         .Times(1)
@@ -202,7 +202,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
 {
     ExpectStartSucceeded();
 
-    StaticArray<StaticString<cSubjectIDLen>, 3> subjects;
+    StaticArray<StaticString<cIDLen>, 3> subjects;
 
     EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
         .Times(1)
@@ -331,8 +331,8 @@ TEST_F(VisidentifierTest, GetSystemIDSucceeds)
             return {str.cbegin(), str.cend()};
         }));
 
-    StaticString<cSystemIDLen> systemId;
-    Error                      err;
+    StaticString<cIDLen> systemId;
+    Error                err;
 
     Tie(systemId, err) = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.IsNone()) << err.Message();
@@ -368,8 +368,8 @@ TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
             return {str.cbegin(), str.cend()};
         }));
 
-    StaticString<cSystemIDLen> systemId;
-    Error                      err;
+    StaticString<cIDLen> systemId;
+    Error                err;
 
     Tie(systemId, err) = mVisIdentifier.GetSystemID();
     EXPECT_TRUE(err.IsNone()) << err.Message();
@@ -390,7 +390,7 @@ TEST_F(VisidentifierTest, GetSystemIDExceedsMaxSize)
             response.set("action", "get");
             response.set("requestId", "requestId");
             response.set("timestamp", 0);
-            response.set("value", std::string(cSystemIDLen + 1, '1'));
+            response.set("value", std::string(cIDLen + 1, '1'));
 
             std::ostringstream jsonStream;
             Poco::JSON::Stringifier::stringify(response, jsonStream);
@@ -476,8 +476,8 @@ TEST_F(VisidentifierTest, GetSubjectsRequestFailed)
             throw WSException("mock");
         }));
 
-    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> subjects;
-    const auto                                                err = mVisIdentifier.GetSubjects(subjects);
+    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
+    const auto                                         err = mVisIdentifier.GetSubjects(subjects);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
     EXPECT_TRUE(subjects.IsEmpty());
 

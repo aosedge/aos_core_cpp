@@ -9,7 +9,7 @@
 
 namespace aos::common::pbconvert {
 
-iamanager::v5::Subjects ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src)
+iamanager::v5::Subjects ConvertToProto(const Array<StaticString<cIDLen>>& src)
 {
     iamanager::v5::Subjects result;
 
