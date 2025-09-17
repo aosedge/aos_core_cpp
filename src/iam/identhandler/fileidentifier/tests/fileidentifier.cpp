@@ -131,7 +131,7 @@ TEST_F(FileIdentifierTest, InitFailsOnSubjectLenExceedsAppLimit)
     FileIdentifier identifier;
 
     if (std::ofstream f(cSubjectsPath); f) {
-        f << "subject" << std::string(cSubjectIDLen, 'a') << std::endl;
+        f << "subject" << std::string(cIDLen, 'a') << std::endl;
     }
 
     auto err = identifier.Init(mConfig, mSubjectsObserverMock);
@@ -169,7 +169,7 @@ TEST_F(FileIdentifierTest, GetSubjects)
     const auto err = identifier.Init(mConfig, mSubjectsObserverMock);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    StaticArray<StaticString<cSubjectIDLen>, cMaxNumSubjects> subjects;
+    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
 
     const auto subjectsErr = identifier.GetSubjects(subjects);
     ASSERT_TRUE(subjectsErr.IsNone()) << subjectsErr.Message();

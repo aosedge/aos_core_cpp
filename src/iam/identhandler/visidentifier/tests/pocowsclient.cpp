@@ -223,13 +223,13 @@ TEST_F(PocoWSClientTests, VisidentifierGetSubjects)
 
     const std::vector<std::string> testSubjects {"1", "2", "3"};
     VISParams::Instance().Set("Attribute.Aos.Subjects", testSubjects);
-    StaticArray<StaticString<cSubjectIDLen>, 3> expectedSubjects;
+    StaticArray<StaticString<cIDLen>, 3> expectedSubjects;
 
     for (const auto& testSubject : testSubjects) {
         expectedSubjects.PushBack(testSubject.c_str());
     }
 
-    StaticArray<StaticString<cSubjectIDLen>, 3> receivedSubjects;
+    StaticArray<StaticString<cIDLen>, 3> receivedSubjects;
 
     const auto err = visIdentifier.GetSubjects(receivedSubjects);
     ASSERT_TRUE(err.IsNone()) << err.Message();

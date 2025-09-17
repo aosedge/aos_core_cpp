@@ -87,7 +87,7 @@ public:
      * @param[in] messages subject changed messages.
      * @returns Error.
      */
-    Error SubjectsChanged(const Array<StaticString<cSubjectIDLen>>& messages) override;
+    Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
 
     /**
      * Start public message handler.

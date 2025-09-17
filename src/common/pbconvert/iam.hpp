@@ -20,7 +20,7 @@ namespace aos::common::pbconvert {
  * @param src aos subjects.
  * @return iamanager::v5::Subjects.
  */
-iamanager::v5::Subjects ConvertToProto(const Array<StaticString<cSubjectIDLen>>& src);
+iamanager::v5::Subjects ConvertToProto(const Array<StaticString<cIDLen>>& src);
 
 /**
  * Converts aos node attribute to protobuf node attribute.
