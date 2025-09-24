@@ -13,6 +13,9 @@
 #include <common/utils/fsplatform.hpp>
 #include <common/utils/utils.hpp>
 
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
+
 namespace aos::common::utils::test {
 
 /***********************************************************************************************************************
@@ -152,6 +155,50 @@ TEST_F(DISABLED_FSPlatformTest, GetMountPointInvalidPath)
 {
     auto [result, err] = mFsplatform.GetMountPoint(String("/nonexistent/path"));
     ASSERT_TRUE(!err.IsNone()) << "Should fail for nonexistent path";
+}
+
+TEST(FSPlatformTest, ChangeDirectoryOwner)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    const auto root = std::filesystem::path("changeOwner") / "change-dir-owner-test";
+
+    std::filesystem::create_directories(root);
+
+    if (getuid() != 0 && getgid() != 0) {
+        auto err = fsPlatform.ChangeOwner(root.c_str(), 0, 0);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
+    }
+
+    auto err = fsPlatform.ChangeOwner(root.c_str(), getuid(), getgid());
+    EXPECT_TRUE(err.IsNone()) << "Failed to change directory owner: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.ChangeOwner((root / "non_existent_dir").c_str(), getuid(), getgid());
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
+}
+
+TEST(FSPlatformTest, ChangeFileOwner)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    const auto file = std::filesystem::path("changeOwner") / "change-file-owner-test.txt";
+
+    fs::WriteStringToFile(file.c_str(), "Test content", 0644);
+
+    if (getuid() != 0 && getgid() != 0) {
+        auto err = fsPlatform.ChangeOwner(file.c_str(), 0, 0);
+        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
+    }
+
+    auto err = fsPlatform.ChangeOwner(file.c_str(), getuid(), getgid());
+    EXPECT_TRUE(err.IsNone()) << "Failed to change file owner: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.ChangeOwner(file.string().append("-not-exists").c_str(), getuid(), getgid());
+    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::common::utils::test

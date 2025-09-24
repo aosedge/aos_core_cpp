@@ -55,6 +55,16 @@ public:
      */
     Error SetUserQuota(const String& path, size_t quota, size_t uid) const override;
 
+    /**
+     * Changes the owner of a file or directory.
+     *
+     * @param path path to the file or directory.
+     * @param uid new user ID.
+     * @param gid new group ID.
+     * @return Error.
+     */
+    Error ChangeOwner(const String& path, uint32_t uid, uint32_t gid) const override;
+
 private:
     static constexpr size_t cStatBlockSize = 512;
     static constexpr auto   cMtabPath      = "/proc/mounts";

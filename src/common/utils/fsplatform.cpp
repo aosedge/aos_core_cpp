@@ -13,6 +13,7 @@
 
 #include <core/common/tools/fs.hpp>
 
+#include "exception.hpp"
 #include "fsplatform.hpp"
 
 namespace aos::common::utils {
@@ -94,6 +95,31 @@ Error FSPlatform::SetUserQuota(const String& path, size_t quota, size_t uid) con
         = quotactl(QCMD(Q_SETQUOTA, USRQUOTA), path.CStr(), static_cast<int>(uid), reinterpret_cast<char*>(&dq));
         res == -1) {
         return Error(errno);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error FSPlatform::ChangeOwner(const String& path, uint32_t uid, uint32_t gid) const
+{
+    try {
+        auto changeOwner = [](const char* filePath, uint32_t uid, uint32_t gid) {
+            if (chown(filePath, uid, gid) == -1) {
+                AOS_ERROR_THROW(errno, "can't change file owner");
+            }
+        };
+
+        changeOwner(path.CStr(), uid, gid);
+
+        if (std::filesystem::is_regular_file(path.CStr())) {
+            return ErrorEnum::eNone;
+        }
+
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(path.CStr())) {
+            changeOwner(entry.path().c_str(), uid, gid);
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
