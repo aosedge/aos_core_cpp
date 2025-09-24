@@ -14,8 +14,10 @@
 #include <sys/inotify.h>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include <core/common/tools/error.hpp>
+#include <core/common/tools/fs.hpp>
 #include <core/common/tools/time.hpp>
 
 namespace aos::common::utils {
@@ -37,9 +39,20 @@ public:
 };
 
 /**
+ * Interface to watch file system events.
+ */
+class FSWatcherItf {
+public:
+    /**
+     * Destructor.
+     */
+    virtual ~FSWatcherItf() = default;
+};
+
+/**
  * File system watcher.
  */
-class FSWatcher : public NonCopyable {
+class FSWatcher : public fs::FSWatcherItf, public NonCopyable {
 public:
     /**
      * Constructs file system watcher.
@@ -53,6 +66,11 @@ public:
         , mFlags(flags)
     {
     }
+
+    /**
+     * Destructor.
+     */
+    ~FSWatcher();
 
     /**
      * Initializes file system watcher.
@@ -82,7 +100,7 @@ public:
      * @param subscriber subscriber object.
      * @return Error.
      */
-    Error Subscribe(const std::string& path, FSEventSubscriber& subscriber);
+    Error Subscribe(const String& path, fs::FSEventSubscriberItf& subscriber) override;
 
     /**
      * Unsubscribes subscriber.
@@ -91,21 +109,17 @@ public:
      * @param subscriber subscriber to unsubscribe.
      * @return Error.
      */
-    Error Unsubscribe(const std::string& path, FSEventSubscriber& subscriber);
-
-    /**
-     * Destructor.
-     */
-    ~FSWatcher();
+    Error Unsubscribe(const String& path, fs::FSEventSubscriberItf& subscriber) override;
 
 private:
-    void Run();
-    void ClearWatchedContexts();
+    void                     Run();
+    void                     ClearWatchedContexts();
+    std::vector<fs::FSEvent> ToFSEvent(uint32_t mask) const;
 
     struct Context {
-        int                             mFD = -1;
-        std::vector<FSEventSubscriber*> mSubscribers;
-        uint32_t                        mMask = 0;
+        int                                    mFD = -1;
+        std::vector<fs::FSEventSubscriberItf*> mSubscribers;
+        uint32_t                               mMask = 0;
     };
 
     Duration                                 mPollTimeout;
