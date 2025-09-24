@@ -9,6 +9,7 @@
 
 #include <core/common/crypto/crypto.hpp>
 #include <core/common/tools/error.hpp>
+#include <core/common/tools/fs.hpp>
 #include <core/sm/image/imagehandler.hpp>
 
 namespace aos::sm::image {
@@ -25,11 +26,13 @@ public:
      * @param layerSpaceAllocator layer space allocator.
      * @param serviceSpaceAllocator service space allocator.
      * @param ociSpec OCI spec.
+     * @param fsPlatform filesystem platform.
      * @param uid default user id.
      * @return Error.
      */
     Error Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocatorItf& layerSpaceAllocator,
-        spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec, uint32_t uid = 0);
+        spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec,
+        fs::FSPlatformItf& fsPlatform, uint32_t uid = 0);
 
     /**
      * Installs layer from the provided archive.
@@ -90,6 +93,7 @@ private:
     spaceallocator::SpaceAllocatorItf* mLayerSpaceAllocator   = nullptr;
     spaceallocator::SpaceAllocatorItf* mServiceSpaceAllocator = nullptr;
     mutable oci::OCISpecItf*           mOCISpec               = nullptr;
+    fs::FSPlatformItf*                 mFSPlatform            = nullptr;
     uint32_t                           mUID                   = 0;
 };
 
