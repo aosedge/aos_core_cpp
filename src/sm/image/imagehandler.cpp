@@ -112,7 +112,8 @@ std::set<std::filesystem::path> GetAllFilesByPath(const std::filesystem::path& p
  **********************************************************************************************************************/
 
 Error ImageHandler::Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocatorItf& layerSpaceAllocator,
-    spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec, uint32_t uid)
+    spaceallocator::SpaceAllocatorItf& serviceSpaceAllocator, oci::OCISpecItf& ociSpec, fs::FSPlatformItf& fsPlatform,
+    uint32_t uid)
 {
     LOG_DBG() << "Init image handler";
 
@@ -120,6 +121,7 @@ Error ImageHandler::Init(crypto::HasherItf& hasher, spaceallocator::SpaceAllocat
     mLayerSpaceAllocator   = &layerSpaceAllocator;
     mServiceSpaceAllocator = &serviceSpaceAllocator;
     mOCISpec               = &ociSpec;
+    mFSPlatform            = &fsPlatform;
     mUID                   = uid;
 
     return ErrorEnum::eNone;
@@ -520,7 +522,7 @@ Error ImageHandler::PrepareServiceFS(const String& baseDir, const ServiceInfo& s
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = common::utils::ChangeOwner(tmpRootFS, mUID, service.mGID); !err.IsNone()) {
+    if (err = mFSPlatform->ChangeOwner(tmpRootFS.c_str(), mUID, service.mGID); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to change service rootfs owner"));
     }
 

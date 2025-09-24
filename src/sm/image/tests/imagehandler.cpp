@@ -22,6 +22,7 @@
 #include <core/common/tests/stubs/spaceallocatorstub.hpp>
 #include <core/common/tests/utils/log.hpp>
 
+#include <common/utils/fsplatform.hpp>
 #include <common/utils/json.hpp>
 #include <sm/image/imagehandler.hpp>
 
@@ -326,6 +327,7 @@ protected:
     oci::OCISpecMock                   mOCISpec;
     spaceallocator::SpaceAllocatorStub mSpaceAllocator;
     ImageHandler                       mImageHandler;
+    common::utils::FSPlatform          mFsplatform;
 };
 
 /***********************************************************************************************************************
@@ -338,7 +340,8 @@ TEST_F(ImageTest, InstallLayer)
 
     ASSERT_TRUE(err.IsNone());
 
-    ASSERT_TRUE(mImageHandler.Init(mCryptoProvider, mSpaceAllocator, mSpaceAllocator, mOCISpec, getuid()).IsNone());
+    ASSERT_TRUE(mImageHandler.Init(mCryptoProvider, mSpaceAllocator, mSpaceAllocator, mOCISpec, mFsplatform, getuid())
+                    .IsNone());
 
     UniquePtr<aos::spaceallocator::SpaceItf> space;
 
@@ -374,7 +377,8 @@ TEST_F(ImageTest, InstallService)
 
     ASSERT_TRUE(err.IsNone());
 
-    ASSERT_TRUE(mImageHandler.Init(mCryptoProvider, mSpaceAllocator, mSpaceAllocator, mOCISpec, getuid()).IsNone());
+    ASSERT_TRUE(mImageHandler.Init(mCryptoProvider, mSpaceAllocator, mSpaceAllocator, mOCISpec, mFsplatform, getuid())
+                    .IsNone());
 
     UniquePtr<aos::spaceallocator::SpaceItf> space;
 

@@ -118,7 +118,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize image handler
 
-    err = mImageHandler.Init(mCryptoProvider, mLayersSpaceAllocator, mServicesSpaceAllocator, mOCISpec);
+    err = mImageHandler.Init(mCryptoProvider, mLayersSpaceAllocator, mServicesSpaceAllocator, mOCISpec, mPlatformFS);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image handler");
 
     // Initialize service manager
