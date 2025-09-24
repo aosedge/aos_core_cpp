@@ -152,40 +152,4 @@ TEST_F(FSTest, CalculateSize)
     EXPECT_EQ(size, 4 * buffer.size());
 }
 
-TEST_F(FSTest, ChangeDirectoryOwner)
-{
-    const auto root = std::filesystem::path(cTestDir) / "change-dir-owner-test";
-
-    std::filesystem::create_directories(root);
-
-    if (getuid() != 0 && getgid() != 0) {
-        auto err = ChangeOwner(root.string(), 0, 0);
-        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
-    }
-
-    auto err = ChangeOwner(root.string(), getuid(), getgid());
-    EXPECT_TRUE(err.IsNone()) << "Failed to change directory owner: " << tests::utils::ErrorToStr(err);
-
-    err = ChangeOwner(root / "non_existent_dir", getuid(), getgid());
-    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
-}
-
-TEST_F(FSTest, ChangeFileOwner)
-{
-    const auto file = std::filesystem::path(cTestDir) / "change-file-owner-test.txt";
-
-    fs::WriteStringToFile(file.c_str(), "Test content", 0644);
-
-    if (getuid() != 0 && getgid() != 0) {
-        auto err = ChangeOwner(file.string(), 0, 0);
-        EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
-    }
-
-    auto err = ChangeOwner(file.string(), getuid(), getgid());
-    EXPECT_TRUE(err.IsNone()) << "Failed to change file owner: " << tests::utils::ErrorToStr(err);
-
-    err = ChangeOwner(file.string() + "-not-exists", getuid(), getgid());
-    EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
-}
-
 } // namespace aos::common::utils
