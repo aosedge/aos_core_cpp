@@ -36,6 +36,17 @@ namespace aos::common::utils {
  * Public
  **********************************************************************************************************************/
 
+FSWatcher::~FSWatcher()
+{
+    LOG_DBG() << "Destroy file system watcher";
+
+    ClearWatchedContexts();
+
+    if (mInotifyFd >= 0) {
+        close(mInotifyFd);
+    }
+}
+
 Error FSWatcher::Init()
 {
     LOG_DBG() << "Initialize file system watcher";
@@ -112,23 +123,23 @@ Error FSWatcher::Stop()
     return ErrorEnum::eNone;
 }
 
-Error FSWatcher::Subscribe(const std::string& path, FSEventSubscriber& subscriber)
+Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscriber)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Start watching" << Log::Field("path", path.c_str());
+    LOG_DBG() << "Start watching" << Log::Field("path", path);
 
-    if (mWatchContexts.find(path) == mWatchContexts.end()) {
-        int wd = inotify_add_watch(mInotifyFd, path.c_str(), mFlags);
+    if (mWatchContexts.find(path.CStr()) == mWatchContexts.end()) {
+        int wd = inotify_add_watch(mInotifyFd, path.CStr(), mFlags);
         if (wd < 0) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
         }
 
-        mWatchContexts[path].mFD   = wd;
-        mWatchContexts[path].mMask = mFlags;
+        mWatchContexts[path.CStr()].mFD   = wd;
+        mWatchContexts[path.CStr()].mMask = mFlags;
     }
 
-    auto& subscribers = mWatchContexts[path].mSubscribers;
+    auto& subscribers = mWatchContexts[path.CStr()].mSubscribers;
 
     if (std::find(subscribers.begin(), subscribers.end(), &subscriber) != subscribers.end()) {
         return ErrorEnum::eAlreadyExist;
@@ -139,13 +150,13 @@ Error FSWatcher::Subscribe(const std::string& path, FSEventSubscriber& subscribe
     return ErrorEnum::eNone;
 }
 
-Error FSWatcher::Unsubscribe(const std::string& path, FSEventSubscriber& subscriber)
+Error FSWatcher::Unsubscribe(const String& path, fs::FSEventSubscriberItf& subscriber)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Unsubscribe fs event subscriber" << Log::Field("path", path.c_str());
+    LOG_DBG() << "Unsubscribe fs event subscriber" << Log::Field("path", path);
 
-    auto it = mWatchContexts.find(path);
+    auto it = mWatchContexts.find(path.CStr());
     if (it == mWatchContexts.end()) {
         return ErrorEnum::eNotFound;
     }
@@ -166,17 +177,6 @@ Error FSWatcher::Unsubscribe(const std::string& path, FSEventSubscriber& subscri
     mWatchContexts.erase(it);
 
     return ErrorEnum::eNone;
-}
-
-FSWatcher::~FSWatcher()
-{
-    LOG_DBG() << "Destroy file system watcher";
-
-    ClearWatchedContexts();
-
-    if (mInotifyFd >= 0) {
-        close(mInotifyFd);
-    }
 }
 
 /***********************************************************************************************************************
@@ -232,12 +232,19 @@ void FSWatcher::Run()
                 continue;
             }
 
+            auto fsEvents = ToFSEvent(event->mask);
+
+            if (fsEvents.empty()) {
+                LOG_WRN() << "Unsupported fs event mask" << Log::Field("mask", event->mask);
+                continue;
+            }
+
             for (auto* subscriber : it->second.mSubscribers) {
                 if (subscriber == nullptr) {
                     continue;
                 }
 
-                subscriber->OnFSEvent(it->first, event->mask);
+                subscriber->OnFSEvent(it->first.c_str(), Array<fs::FSEvent>(&fsEvents.front(), fsEvents.size()));
             }
         }
     }
@@ -267,6 +274,33 @@ void FSWatcher::ClearWatchedContexts()
 
         mEpollFd = -1;
     }
+}
+
+std::vector<fs::FSEvent> FSWatcher::ToFSEvent(uint32_t mask) const
+{
+    std::vector<fs::FSEvent> events;
+
+    if (mask & IN_ACCESS) {
+        events.push_back(fs::FSEventEnum::eAccess);
+    }
+
+    if (mask & IN_MODIFY) {
+        events.push_back(fs::FSEventEnum::eModify);
+    }
+
+    if (mask & (IN_CLOSE_WRITE | IN_CLOSE_NOWRITE)) {
+        events.push_back(fs::FSEventEnum::eClose);
+    }
+
+    if (mask & (IN_CREATE | IN_MOVED_TO)) {
+        events.push_back(fs::FSEventEnum::eCreate);
+    }
+
+    if (mask & (IN_DELETE | IN_MOVED_FROM)) {
+        events.push_back(fs::FSEventEnum::eDelete);
+    }
+
+    return events;
 }
 
 } // namespace aos::common::utils

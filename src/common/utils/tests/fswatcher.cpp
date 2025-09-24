@@ -33,7 +33,7 @@ constexpr auto cInodeMask = IN_MODIFY;
 /**
  * FS event subscriber stub class.
  */
-class FSEventSubscriberStub : public FSEventSubscriber {
+class FSEventSubscriberStub : public fs::FSEventSubscriberItf {
 public:
     FSEventSubscriberStub()
     {
@@ -41,30 +41,30 @@ public:
         mID              = ++id;
     }
 
-    void OnFSEvent(const std::string& path, uint32_t mask) override
+    void OnFSEvent(const String& path, const Array<fs::FSEvent>& events) override
     {
         std::lock_guard lock {mMutex};
 
-        LOG_DBG() << "On FSEvent called" << Log::Field("path", path.c_str()) << Log::Field("mask", mask)
+        LOG_DBG() << "On FSEvent called" << Log::Field("path", path) << Log::Field("eventsCount", events.Size())
                   << Log::Field("id", mID);
 
-        mEvents.push_back(path);
+        mEvents.push_back(path.CStr());
         mCondVar.notify_one();
     }
 
-    Error WaitForEvent(const std::string& path, std::chrono::milliseconds timeout = std::chrono::seconds(5))
+    Error WaitForEvent(const String& path, std::chrono::milliseconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
 
         if (!mCondVar.wait_for(lock, timeout, [this, &path]() {
-                auto it = std::find(mEvents.begin(), mEvents.end(), path);
+                auto it = std::find(mEvents.begin(), mEvents.end(), path.CStr());
 
                 return it != mEvents.end();
             })) {
             return ErrorEnum::eTimeout;
         }
 
-        auto it = std::find(mEvents.begin(), mEvents.end(), path);
+        auto it = std::find(mEvents.begin(), mEvents.end(), path.CStr());
 
         mEvents.erase(it);
 
@@ -80,25 +80,25 @@ private:
 
 struct TestParams {
     TestParams(const std::string& fileName, size_t subscribers = 1)
-        : mFileName(fileName)
+        : mFileName(fileName.c_str())
         , mSubscribers(subscribers)
     {
-        mFileStream = std::ofstream(mFileName);
+        mFileStream = std::ofstream(mFileName.CStr());
         if (!mFileStream.is_open()) {
-            throw std::runtime_error("Failed to open test file: " + mFileName);
+            throw std::runtime_error(std::string("Failed to open test file: ").append(mFileName.CStr()));
         }
     }
 
     void RemoveFile()
     {
         mFileStream.close();
-        std::filesystem::remove(mFileName);
+        std::filesystem::remove(mFileName.CStr());
     }
 
     void WriteToFile(const std::string& content)
     {
         if (!mFileStream.is_open()) {
-            throw std::runtime_error("File stream is not open: " + mFileName);
+            throw std::runtime_error(std::string("File stream is not open: ").append(mFileName.CStr()));
         }
 
         mFileStream << content << std::endl;
@@ -107,7 +107,7 @@ struct TestParams {
     Error WaitForNotification(std::chrono::milliseconds timeout = std::chrono::seconds(5))
     {
         for (auto& subscriber : mSubscribers) {
-            auto err = subscriber.WaitForEvent(mFileName, timeout);
+            auto err = subscriber.WaitForEvent(mFileName.CStr(), timeout);
             if (!err.IsNone()) {
                 return err;
             }
@@ -115,7 +115,7 @@ struct TestParams {
         return ErrorEnum::eNone;
     }
 
-    std::string                      mFileName;
+    StaticString<cFilePathLen>       mFileName;
     std::ofstream                    mFileStream;
     std::list<FSEventSubscriberStub> mSubscribers;
 };
