@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/fs.hpp>
 #include <core/iam/tests/mocks/identhandlermock.hpp>
 
 #include <iam/identhandler/fileidentifier/fileidentifier.hpp>
