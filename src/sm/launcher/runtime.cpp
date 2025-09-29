@@ -156,7 +156,12 @@ oci::LinuxDevice DeviceFromPath(const fs::path& path)
     auto devPath = path;
 
     if (fs::is_symlink(path)) {
-        devPath = fs::read_symlink(path);
+        auto target = fs::read_symlink(path);
+        if (target.is_relative()) {
+            devPath = (path.parent_path() / target).lexically_normal();
+        } else {
+            devPath = target;
+        }
     }
 
     struct stat sb;
