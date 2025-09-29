@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <sm/launcher/runtime.hpp>
 
@@ -76,6 +77,58 @@ TEST_F(LauncherTest, CreateHostFSWhiteouts)
 
         EXPECT_EQ(hostBinds.Find(item.c_str()), hostBinds.end());
     }
+}
+
+TEST_F(LauncherTest, PopulateHostDevices)
+{
+    const auto cRootDevicePath     = fs::path(cTestDirRoot) / "dev";
+    const auto cTestDeviceFullPath = cRootDevicePath / "device1";
+
+    if (!fs::exists(cRootDevicePath)) {
+        fs::create_directories(cRootDevicePath);
+    }
+
+    if (auto res = mknod(cTestDeviceFullPath.c_str(), S_IFCHR, 0); res != 0) {
+        FAIL() << "Can't create test device node: " << strerror(errno);
+    }
+
+    StaticArray<oci::LinuxDevice, 1> devices;
+
+    auto err = mRuntime.PopulateHostDevices(cTestDeviceFullPath.c_str(), devices);
+    EXPECT_TRUE(err.IsNone()) << "failed: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(devices.Size(), 1);
+    EXPECT_STREQ(devices.Front().mPath.CStr(), cTestDeviceFullPath.c_str());
+}
+
+TEST_F(LauncherTest, PopulateHostDevicesSymlink)
+{
+    const auto cRootDevicePath     = fs::path(cTestDirRoot) / "dev";
+    const auto cTestDeviceFullPath = cRootDevicePath / "device1";
+
+    if (!fs::exists(cRootDevicePath)) {
+        fs::create_directories(cRootDevicePath);
+    }
+
+    if (auto res = mknod(cTestDeviceFullPath.c_str(), S_IFCHR, 0); res != 0) {
+        FAIL() << "Can't create test device node: " << strerror(errno);
+    }
+
+    const auto currentPath = fs::current_path();
+
+    fs::current_path(cRootDevicePath);
+
+    fs::create_symlink("device1", "link");
+
+    fs::current_path(currentPath);
+
+    StaticArray<oci::LinuxDevice, 1> devices;
+
+    auto err = mRuntime.PopulateHostDevices((cRootDevicePath / "link").c_str(), devices);
+    EXPECT_TRUE(err.IsNone()) << "failed: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(devices.Size(), 1);
+    EXPECT_STREQ(devices.Front().mPath.CStr(), cTestDeviceFullPath.c_str());
 }
 
 } // namespace aos::sm::launcher
