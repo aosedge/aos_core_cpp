@@ -22,33 +22,6 @@
 
 namespace aos::common::utils {
 
-class FSEventSubscriber {
-public:
-    /**
-     * Called when file system event occurs for a specified path.
-     *
-     * @param path path to the file or directory that triggered the event.
-     * @param mask bitmask of events that occurred, e.g., IN_MODIFY, IN_CREATE, IN_DELETE.
-     */
-    virtual void OnFSEvent(const std::string& path, uint32_t mask) = 0;
-
-    /**
-     * Destructor.
-     */
-    virtual ~FSEventSubscriber() = default;
-};
-
-/**
- * Interface to watch file system events.
- */
-class FSWatcherItf {
-public:
-    /**
-     * Destructor.
-     */
-    virtual ~FSWatcherItf() = default;
-};
-
 /**
  * File system watcher.
  */
