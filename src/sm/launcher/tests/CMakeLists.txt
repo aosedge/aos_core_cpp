@@ -16,7 +16,7 @@ set(SOURCES runtime.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::launcher GTest::gmock_main)
+set(LIBRARIES aos::sm::launcher aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
