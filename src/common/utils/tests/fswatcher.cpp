@@ -21,14 +21,17 @@
 #include <common/utils/utils.hpp>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 namespace aos::common::utils::test {
 
 namespace {
 
-const auto     cTestDir   = std::filesystem::path("fswatcher_test_dir");
-const auto     cFilePath  = cTestDir / "testfile.txt";
-constexpr auto cInodeMask = IN_MODIFY;
+const auto                     cTestDir       = std::filesystem::path("fswatcher_test_dir");
+const auto                     cFilePath      = cTestDir / "testfile.txt";
+const std::vector<fs::FSEvent> cWatchedEvents = {fs::FSEventEnum::eModify};
+const auto                     cPollTimeout   = Time::cMilliseconds * 100;
+const auto                     cNotifyTimeout = 3 * cPollTimeout;
 
 /**
  * FS event subscriber stub class.
@@ -48,34 +51,31 @@ public:
         LOG_DBG() << "On FSEvent called" << Log::Field("path", path) << Log::Field("eventsCount", events.Size())
                   << Log::Field("id", mID);
 
-        mEvents.push_back(path.CStr());
+        mEvents[path.CStr()] = {events.begin(), events.end()};
         mCondVar.notify_one();
     }
 
-    Error WaitForEvent(const String& path, std::chrono::milliseconds timeout = std::chrono::seconds(5))
+    Error WaitForEvent(const String& path, std::vector<fs::FSEvent>& events,
+        std::chrono::milliseconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
 
-        if (!mCondVar.wait_for(lock, timeout, [this, &path]() {
-                auto it = std::find(mEvents.begin(), mEvents.end(), path.CStr());
-
-                return it != mEvents.end();
-            })) {
+        if (!mCondVar.wait_for(lock, timeout, [this, &path]() { return mEvents.count(path.CStr()) > 0; })) {
             return ErrorEnum::eTimeout;
         }
 
-        auto it = std::find(mEvents.begin(), mEvents.end(), path.CStr());
+        events = mEvents[path.CStr()];
 
-        mEvents.erase(it);
+        mEvents.erase(path.CStr());
 
         return ErrorEnum::eNone;
     }
 
 private:
-    size_t                   mID = {};
-    std::vector<std::string> mEvents;
-    std::mutex               mMutex;
-    std::condition_variable  mCondVar;
+    size_t                                          mID = {};
+    std::map<std::string, std::vector<fs::FSEvent>> mEvents;
+    std::mutex                                      mMutex;
+    std::condition_variable                         mCondVar;
 };
 
 struct TestParams {
@@ -83,31 +83,30 @@ struct TestParams {
         : mFileName(fileName.c_str())
         , mSubscribers(subscribers)
     {
-        mFileStream = std::ofstream(mFileName.CStr());
-        if (!mFileStream.is_open()) {
-            throw std::runtime_error(std::string("Failed to open test file: ").append(mFileName.CStr()));
-        }
     }
 
-    void RemoveFile()
+    void CreateFile()
     {
-        mFileStream.close();
-        std::filesystem::remove(mFileName.CStr());
+        if (!std::filesystem::exists(mFileName.CStr())) {
+            std::ofstream file(mFileName.CStr());
+        }
     }
 
     void WriteToFile(const std::string& content)
     {
-        if (!mFileStream.is_open()) {
-            throw std::runtime_error(std::string("File stream is not open: ").append(mFileName.CStr()));
+        auto file = std::ofstream(mFileName.CStr());
+        if (!file.is_open()) {
+            throw std::runtime_error(std::string("Failed to open test file: ").append(mFileName.CStr()));
         }
 
-        mFileStream << content << std::endl;
+        file << content;
     }
 
-    Error WaitForNotification(std::chrono::milliseconds timeout = std::chrono::seconds(5))
+    Error WaitForNotification(
+        std::vector<fs::FSEvent>& events, std::chrono::milliseconds timeout = std::chrono::seconds(5))
     {
         for (auto& subscriber : mSubscribers) {
-            auto err = subscriber.WaitForEvent(mFileName.CStr(), timeout);
+            auto err = subscriber.WaitForEvent(mFileName.CStr(), events, timeout);
             if (!err.IsNone()) {
                 return err;
             }
@@ -116,7 +115,6 @@ struct TestParams {
     }
 
     StaticString<cFilePathLen>       mFileName;
-    std::ofstream                    mFileStream;
     std::list<FSEventSubscriberStub> mSubscribers;
 };
 
@@ -136,7 +134,7 @@ class FSWatcherTest : public ::testing::Test {
     void TearDown() override { std::filesystem::remove_all(cTestDir); }
 
 protected:
-    FSWatcher mFSWatcher {Time::cMilliseconds * 100, 3, cInodeMask};
+    FSWatcher mFSWatcher;
 };
 
 /***********************************************************************************************************************
@@ -145,7 +143,7 @@ protected:
 
 TEST_F(FSWatcherTest, StopStart)
 {
-    ASSERT_TRUE(mFSWatcher.Init().IsNone());
+    ASSERT_TRUE(mFSWatcher.Init(cPollTimeout, cWatchedEvents).IsNone());
 
     ASSERT_TRUE(mFSWatcher.Stop().Is(ErrorEnum::eWrongState));
 
@@ -158,14 +156,16 @@ TEST_F(FSWatcherTest, StopStart)
 
 TEST_F(FSWatcherTest, StartFailsIfObjectNotInitialized)
 {
-    ASSERT_TRUE(mFSWatcher.Start().Is(ErrorEnum::eFailed));
+    auto err = mFSWatcher.Start();
+    EXPECT_FALSE(err.IsNone()) << "unexpected error: " << tests::utils::ErrorToStr(err);
 
-    ASSERT_TRUE(mFSWatcher.Stop().Is(ErrorEnum::eWrongState));
+    err = mFSWatcher.Stop();
+    EXPECT_FALSE(err.IsNone()) << "unexpected error: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(FSWatcherTest, WatchMultipleFiles)
 {
-    ASSERT_TRUE(mFSWatcher.Init().IsNone());
+    ASSERT_TRUE(mFSWatcher.Init(cPollTimeout, cWatchedEvents).IsNone());
 
     ASSERT_TRUE(mFSWatcher.Start().IsNone());
 
@@ -176,6 +176,8 @@ TEST_F(FSWatcherTest, WatchMultipleFiles)
     };
 
     for (auto& param : params) {
+        param.CreateFile();
+
         for (auto& subscriber : param.mSubscribers) {
             ASSERT_TRUE(mFSWatcher.Subscribe(param.mFileName, subscriber).IsNone());
         }
@@ -186,8 +188,12 @@ TEST_F(FSWatcherTest, WatchMultipleFiles)
     }
 
     for (auto& param : params) {
-        auto err = param.WaitForNotification();
+        std::vector<fs::FSEvent> events;
+
+        auto err = param.WaitForNotification(events);
         EXPECT_TRUE(err.IsNone());
+
+        EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eModify), events.end());
     }
 
     for (auto& param : params) {
@@ -207,8 +213,12 @@ TEST_F(FSWatcherTest, WatchMultipleFiles)
     }
 
     for (auto& param : params) {
-        auto err = param.WaitForNotification();
+        std::vector<fs::FSEvent> events;
+
+        auto err = param.WaitForNotification(events);
         EXPECT_TRUE(err.IsNone());
+
+        EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eModify), events.end());
 
         for (auto& subscriber : param.mSubscribers) {
             EXPECT_TRUE(mFSWatcher.Unsubscribe(param.mFileName, subscriber).IsNone());
@@ -216,6 +226,92 @@ TEST_F(FSWatcherTest, WatchMultipleFiles)
     }
 
     ASSERT_TRUE(mFSWatcher.Stop().IsNone());
+}
+
+TEST_F(FSWatcherTest, BufferedNotification)
+{
+    const std::vector<fs::FSEvent> cWatchedEvents = {fs::FSEventEnum::eModify, fs::FSEventEnum::eClose};
+
+    FSBufferedWatcher watcher;
+
+    ASSERT_TRUE(watcher.Init(Time::cMilliseconds * 100, Time::cSeconds, cWatchedEvents).IsNone());
+
+    ASSERT_TRUE(watcher.Start().IsNone());
+
+    auto param = TestParams((cTestDir / "file1.txt").string(), 3);
+
+    param.CreateFile();
+
+    for (auto& subscriber : param.mSubscribers) {
+        auto err = watcher.Subscribe(param.mFileName, subscriber);
+        ASSERT_TRUE(err.IsNone()) << "subscribe failed: " << tests::utils::ErrorToStr(err);
+    }
+
+    param.WriteToFile("Notification 1");
+    param.WriteToFile("Notification 2");
+    param.WriteToFile("Notification 3");
+
+    std::vector<fs::FSEvent> events;
+
+    auto err = param.WaitForNotification(events);
+    EXPECT_TRUE(err.IsNone());
+
+    EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eModify), events.end());
+    EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eClose), events.end());
+
+    for (auto& subscriber : param.mSubscribers) {
+        EXPECT_TRUE(watcher.Unsubscribe(param.mFileName, subscriber).IsNone());
+    }
+
+    ASSERT_TRUE(watcher.Stop().IsNone());
+}
+
+TEST_F(FSWatcherTest, BufferedNotificationNotSentBeforeTimeout)
+{
+    constexpr auto                 cNotifyTimeout = Time::cSeconds * 2;
+    const std::vector<fs::FSEvent> cWatchedEvents = {fs::FSEventEnum::eModify, fs::FSEventEnum::eClose};
+
+    FSBufferedWatcher watcher;
+
+    ASSERT_TRUE(watcher.Init(Time::cMilliseconds * 100, cNotifyTimeout, cWatchedEvents).IsNone());
+
+    ASSERT_TRUE(watcher.Start().IsNone());
+
+    auto param = TestParams((cTestDir / "file1.txt").string(), 1);
+
+    param.CreateFile();
+
+    for (auto& subscriber : param.mSubscribers) {
+        auto err = watcher.Subscribe(param.mFileName, subscriber);
+        ASSERT_TRUE(err.IsNone()) << "subscribe failed: " << tests::utils::ErrorToStr(err);
+    }
+
+    param.WriteToFile("Notification 1");
+    param.WriteToFile("Notification 2");
+    param.WriteToFile("Notification 3");
+
+    std::vector<fs::FSEvent> events;
+
+    auto err = param.WaitForNotification(events, std::chrono::milliseconds(100));
+    EXPECT_TRUE(err.Is(ErrorEnum::eTimeout));
+
+    err = param.WaitForNotification(events, std::chrono::milliseconds(100));
+    EXPECT_TRUE(err.Is(ErrorEnum::eTimeout));
+
+    err = param.WaitForNotification(events, std::chrono::milliseconds(100));
+    EXPECT_TRUE(err.Is(ErrorEnum::eTimeout));
+
+    err = param.WaitForNotification(events, std::chrono::milliseconds(2 * cNotifyTimeout.Milliseconds()));
+    EXPECT_TRUE(err.IsNone());
+
+    EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eModify), events.end());
+    EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eClose), events.end());
+
+    for (auto& subscriber : param.mSubscribers) {
+        EXPECT_TRUE(watcher.Unsubscribe(param.mFileName, subscriber).IsNone());
+    }
+
+    ASSERT_TRUE(watcher.Stop().IsNone());
 }
 
 } // namespace aos::common::utils::test
