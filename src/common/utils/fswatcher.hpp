@@ -19,6 +19,7 @@
 #include <core/common/tools/error.hpp>
 #include <core/common/tools/fs.hpp>
 #include <core/common/tools/time.hpp>
+#include <core/common/tools/timer.hpp>
 
 namespace aos::common::utils {
 
@@ -28,29 +29,13 @@ namespace aos::common::utils {
 class FSWatcher : public fs::FSWatcherItf, public NonCopyable {
 public:
     /**
-     * Constructs file system watcher.
-     *
-     * @param pollTimeout poll timeout duration.
-     * @param maxPollEvents maximum number of poll events to process in one iteration.
-     */
-    explicit FSWatcher(Duration pollTimeout = Time::cSeconds * 5, size_t maxPollEvents = 1, size_t flags = IN_MODIFY)
-        : mPollTimeout(pollTimeout)
-        , mMaxPollEvents(maxPollEvents)
-        , mFlags(flags)
-    {
-    }
-
-    /**
-     * Destructor.
-     */
-    ~FSWatcher();
-
-    /**
      * Initializes file system watcher.
      *
+     * @param pollTimeout poll timeout duration.
+     * @param events list of fs events to watch.
      * @return Error.
      */
-    Error Init();
+    Error Init(Duration pollTimeout, const std::vector<fs::FSEvent>& events);
 
     /**
      * Starts file system watcher.
@@ -84,27 +69,77 @@ public:
      */
     Error Unsubscribe(const String& path, fs::FSEventSubscriberItf& subscriber) override;
 
+protected:
+    virtual Error StartImpl();
+    virtual Error StopImpl();
+    virtual Error UnsubscribeImpl(const String& path, fs::FSEventSubscriberItf& subscriber);
+
 private:
+    static constexpr size_t cMaxPollEvents = 16;
+    static constexpr auto   cWaitTimeout   = std::chrono::seconds(1);
+
     void                     Run();
+    virtual void             NotifySubscribers(const std::vector<fs::FSEventSubscriberItf*>& subscribers,
+                    const std::vector<fs::FSEvent>& events, const std::string& path);
     void                     ClearWatchedContexts();
     std::vector<fs::FSEvent> ToFSEvent(uint32_t mask) const;
+    size_t                   ToInotifyMask(const std::vector<fs::FSEvent>& events) const;
 
     struct Context {
-        int                                    mFD = -1;
+        int                                    mFD {-1};
         std::vector<fs::FSEventSubscriberItf*> mSubscribers;
-        uint32_t                               mMask = 0;
     };
 
-    Duration                                 mPollTimeout;
-    size_t                                   mMaxPollEvents = 1;
-    size_t                                   mFlags         = IN_MODIFY;
-    int                                      mInotifyFd     = -1;
-    int                                      mEpollFd       = -1;
-    bool                                     mRunning       = false;
+    Duration                                 mPollTimeout {};
+    size_t                                   mFlags {};
+    int                                      mInotifyFd {-1};
+    int                                      mEpollFd {-1};
+    std::atomic_bool                         mRunning {};
+    bool                                     mInitialized {};
     std::thread                              mThread;
     std::mutex                               mMutex;
     std::condition_variable                  mCondVar;
     std::unordered_map<std::string, Context> mWatchContexts;
+    Timer                                    mTimer;
+};
+
+/**
+ * File system buffered watcher.
+ */
+class FSBufferedWatcher : public FSWatcher {
+public:
+    /**
+     * Initializes file system watcher.
+     *
+     * @param pollTimeout poll timeout duration.
+     * @param notifyTimeout notify timeout duration.
+     * @param events list of fs events to watch.
+     * @return Error.
+     */
+    Error Init(Duration pollTimeout, Duration notifyTimeout, const std::vector<fs::FSEvent>& events);
+
+protected:
+    Error StartImpl() override;
+    Error StopImpl() override;
+    Error UnsubscribeImpl(const String& path, fs::FSEventSubscriberItf& subscriber) override;
+
+private:
+    void NotifySubscribers(const std::vector<fs::FSEventSubscriberItf*>& subscribers,
+        const std::vector<fs::FSEvent>& events, const std::string& path) override;
+    void Run();
+
+    struct NotifyContext {
+        std::vector<fs::FSEventSubscriberItf*> mSubscribers;
+        std::vector<fs::FSEvent>               mEvents;
+        Time                                   mLastEventTime;
+    };
+
+    std::atomic_bool                               mRunning {};
+    std::mutex                                     mMutex;
+    std::thread                                    mNotifyThread;
+    std::condition_variable                        mCondVar;
+    Duration                                       mNotifyTimeout;
+    std::unordered_map<std::string, NotifyContext> mNotifyContexts;
 };
 
 } // namespace aos::common::utils
