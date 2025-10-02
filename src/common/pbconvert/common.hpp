@@ -10,7 +10,7 @@
 #include <google/protobuf/timestamp.pb.h>
 
 #include <core/common/tools/optional.hpp>
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 
 #include <common/v1/common.grpc.pb.h>

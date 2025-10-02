@@ -14,7 +14,7 @@
 
 #include <Poco/Event.h>
 
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
