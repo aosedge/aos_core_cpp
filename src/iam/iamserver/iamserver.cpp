@@ -18,7 +18,7 @@
 #include <core/common/crypto/crypto.hpp>
 #include <core/common/crypto/cryptoutils.hpp>
 #include <core/common/tools/string.hpp>
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
 #include <common/logger/logmodule.hpp>
