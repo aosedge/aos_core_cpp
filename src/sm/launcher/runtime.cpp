@@ -189,7 +189,7 @@ oci::LinuxDevice DeviceFromPath(const fs::path& path)
     }
 
     return oci::LinuxDevice {
-        devPath.c_str(), type, major(sb.st_rdev), minor(sb.st_rdev), sb.st_mode & ~S_IFMT, sb.st_uid, sb.st_gid};
+        path.c_str(), type, major(sb.st_rdev), minor(sb.st_rdev), sb.st_mode & ~S_IFMT, sb.st_uid, sb.st_gid};
 }
 
 } // namespace

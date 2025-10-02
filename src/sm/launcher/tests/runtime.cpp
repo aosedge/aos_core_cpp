@@ -128,7 +128,7 @@ TEST_F(LauncherTest, PopulateHostDevicesSymlink)
     EXPECT_TRUE(err.IsNone()) << "failed: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(devices.Size(), 1);
-    EXPECT_STREQ(devices.Front().mPath.CStr(), cTestDeviceFullPath.c_str());
+    EXPECT_STREQ(devices.Front().mPath.CStr(), (cRootDevicePath / "link").c_str());
 }
 
 } // namespace aos::sm::launcher
