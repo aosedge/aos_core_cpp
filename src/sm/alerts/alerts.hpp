@@ -9,7 +9,7 @@
 
 #include <core/common/alerts/alerts.hpp>
 #include <core/common/cloudprotocol/alerts.hpp>
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 
 namespace aos::sm::alerts {
 

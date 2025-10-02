@@ -16,7 +16,7 @@
 #include <thread>
 
 #include <core/common/tools/time.hpp>
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 
 #include "systemdconn.hpp"
 

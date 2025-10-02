@@ -11,7 +11,7 @@
 #include <core/common/cloudprotocol/envvars.hpp>
 #include <core/common/cloudprotocol/log.hpp>
 #include <core/common/monitoring/monitoring.hpp>
-#include <core/common/types/types.hpp>
+#include <core/common/types/obsolete.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
