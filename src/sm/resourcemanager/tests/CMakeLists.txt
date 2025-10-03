@@ -16,7 +16,7 @@ set(SOURCES resourcemanager.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::resourcemanager GTest::gmock_main)
+set(LIBRARIES aos::sm::resourcemanager aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
