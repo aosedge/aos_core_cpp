@@ -41,9 +41,21 @@ Error HostDeviceManager::Init()
 
 Error HostDeviceManager::CheckDevice(const String& device) const
 {
-    auto it = mDevices.find(device.CStr());
+    StaticArray<StaticString<cFilePathLen>, 2> devices;
 
-    return it != mDevices.end() ? ErrorEnum::eNone : ErrorEnum::eNotFound;
+    if (auto err = device.Split(devices, ':'); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (devices.IsEmpty()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+    }
+
+    if (mDevices.find(devices[0].CStr()) == mDevices.end()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error HostDeviceManager::CheckGroup(const String& group) const
