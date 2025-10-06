@@ -24,7 +24,7 @@ namespace aos::common::cloudprotocol {
  * @param[out] nodeConfig node config object to fill.
  * @return Error.
  */
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::NodeConfig& nodeConfig);
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::NodeConfig& nodeConfig);
 
 /**
  * Converts node config object to JSON object.
@@ -33,7 +33,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
  * @param[out] json JSON object to fill.
  * @return Error.
  */
-Error ToJSON(const aos::cloudprotocol::NodeConfig& nodeConfig, Poco::JSON::Object& json);
+Error ToJSON(const aos::NodeConfig& nodeConfig, Poco::JSON::Object& json);
 
 /**
  * Converts JSON object to desired status object.
