@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include <sstream>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
@@ -46,6 +47,32 @@ void ImageConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos:
     config.mWorkingDir    = workingDir.c_str();
 }
 
+void ImageSpecFromJSONObject(const utils::CaseInsensitiveObjectWrapper& wrapper, aos::oci::ImageSpec& imageSpec)
+{
+    if (wrapper.Has("config")) {
+        ImageConfigFromJSON(wrapper.GetObject("config"), imageSpec.mConfig);
+    }
+
+    const auto author       = wrapper.GetValue<std::string>("author");
+    const auto architecture = wrapper.GetValue<std::string>("architecture");
+    const auto os           = wrapper.GetValue<std::string>("os");
+    const auto osVersion    = wrapper.GetValue<std::string>("osVersion");
+    const auto variant      = wrapper.GetValue<std::string>("variant");
+
+    imageSpec.mAuthor       = author.c_str();
+    imageSpec.mArchitecture = architecture.c_str();
+    imageSpec.mOS           = os.c_str();
+    imageSpec.mOSVersion    = osVersion.c_str();
+    imageSpec.mVariant      = variant.c_str();
+
+    if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
+        Error err;
+        // cppcheck-suppress unusedScopedObject
+        Tie(imageSpec.mCreated, err) = utils::FromUTCString(created->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
+    }
+}
+
 Poco::JSON::Object ImageConfigToJSON(const aos::oci::ImageConfig& config)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
@@ -75,7 +102,7 @@ Poco::JSON::Object ImageConfigToJSON(const aos::oci::ImageConfig& config)
  * Public
  **********************************************************************************************************************/
 
-Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
+Error OCISpec::ImageSpecFromFile(const String& path, aos::oci::ImageSpec& imageSpec)
 {
     try {
         std::ifstream file(path.CStr());
@@ -90,28 +117,26 @@ Error OCISpec::LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec)
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        if (wrapper.Has("config")) {
-            ImageConfigFromJSON(wrapper.GetObject("config"), imageSpec.mConfig);
-        }
+        ImageSpecFromJSONObject(wrapper, imageSpec);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
 
-        const auto author       = wrapper.GetValue<std::string>("author");
-        const auto architecture = wrapper.GetValue<std::string>("architecture");
-        const auto os           = wrapper.GetValue<std::string>("os");
-        const auto osVersion    = wrapper.GetValue<std::string>("osVersion");
-        const auto variant      = wrapper.GetValue<std::string>("variant");
+    return ErrorEnum::eNone;
+}
 
-        imageSpec.mAuthor       = author.c_str();
-        imageSpec.mArchitecture = architecture.c_str();
-        imageSpec.mOS           = os.c_str();
-        imageSpec.mOSVersion    = osVersion.c_str();
-        imageSpec.mVariant      = variant.c_str();
+Error OCISpec::ImageSpecFromJSON(const String& json, aos::oci::ImageSpec& imageSpec)
+{
+    try {
+        std::istringstream stream(json.CStr());
 
-        if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
-            // cppcheck-suppress unusedScopedObject
-            Tie(imageSpec.mCreated, err) = utils::FromUTCString(created->c_str());
-            AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
-        }
+        auto [var, err] = utils::ParseJson(stream);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
 
+        Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
+        utils::CaseInsensitiveObjectWrapper wrapper(object);
+
+        ImageSpecFromJSONObject(wrapper, imageSpec);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
