@@ -83,7 +83,8 @@ private:
     Error ValidateServiceConfig(const String& path, const String& digest) const;
     Error ValidateService(const String& path, const oci::ImageManifest& manifest) const;
     Error ValidateDigest(const String& path, const String& digest) const;
-    RetWithError<StaticArray<uint8_t, cSHA256Size>> CalculateHash(const String& path, crypto::Hash algorithm) const;
+    RetWithError<StaticArray<uint8_t, crypto::cSHA256Size>> CalculateHash(
+        const String& path, crypto::Hash algorithm) const;
     Error CheckFileInfo(const String& path, uint64_t size, const Array<uint8_t>& sha256) const;
     Error UnpackArchive(const String& source, const String& destination) const;
     Error PrepareServiceFS(const String& baseDir, const ServiceInfo& service, oci::ImageManifest& manifest,

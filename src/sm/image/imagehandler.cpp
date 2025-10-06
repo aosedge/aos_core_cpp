@@ -426,10 +426,10 @@ Error ImageHandler::CheckFileInfo(const String& path, uint64_t size, const Array
     return (sha256 == calculatedSHA256) ? ErrorEnum::eNone : ErrorEnum::eInvalidChecksum;
 }
 
-RetWithError<StaticArray<uint8_t, cSHA256Size>> ImageHandler::CalculateHash(
+RetWithError<StaticArray<uint8_t, crypto::cSHA256Size>> ImageHandler::CalculateHash(
     const String& path, crypto::Hash algorithm) const
 {
-    StaticArray<uint8_t, cSHA256Size> hash;
+    StaticArray<uint8_t, crypto::cSHA256Size> hash;
 
     try {
         auto [hasher, err] = mHasher->CreateHash(algorithm);
