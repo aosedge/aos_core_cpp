@@ -178,7 +178,7 @@ Error SMClient::SendMonitoringData(const monitoring::NodeMonitoringData& monitor
     return ErrorEnum::eNone;
 }
 
-Error SMClient::SendAlert(const cloudprotocol::AlertVariant& alert)
+Error SMClient::SendAlert(const AlertVariant& alert)
 {
     std::lock_guard lock {mMutex};
 

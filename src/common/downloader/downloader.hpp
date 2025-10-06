@@ -45,13 +45,10 @@ public:
      *
      * @param url URL.
      * @param path path to file.
-     * @param targetType target type.
-     * @param targetID target ID.
-     * @param version version.
+     * @param imageID image ID.
      * @return Error.
      */
-    Error Download(const String& url, const String& path, cloudprotocol::DownloadTarget targetType,
-        const String& targetID = "", const String& version = "") override;
+    Error Download(const String& url, const String& path, const String& imageID = "") override;
 
 private:
     constexpr static std::chrono::milliseconds cDelay {1000};
@@ -59,12 +56,11 @@ private:
     constexpr static int                       cMaxRetryCount {3};
     constexpr static int                       cTimeoutSec {10};
 
-    Error Download(const String& url, const String& path);
+    Error DownloadImage(const String& url, const String& path);
     Error CopyFile(const Poco::URI& uri, const String& outfilename);
     Error RetryDownload(const String& url, const String& path);
-    void  PrepareDownloadAlert(cloudprotocol::DownloadAlert& alert, const std::string& msg,
-         const std::string& downloadedBytes = "", const std::string& totalBytes = "");
-    void SendAlert(const std::string& msg, const std::string& downloadedBytes = "", const std::string& totalBytes = "");
+    void  SendAlert(DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason = "",
+         Error error = ErrorEnum::eNone);
 
     static int XferInfoCallback(
         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
@@ -77,9 +73,9 @@ private:
     std::chrono::steady_clock::time_point mLastProgressTime;
     std::chrono::seconds                  mProgressInterval {std::chrono::seconds {30}};
     curl_off_t                            mExistingOffset {0};
-    std::string                           mTargetID;
-    std::string                           mVersion;
-    cloudprotocol::DownloadTarget         mTargetType;
+    curl_off_t                            mTotalSize {0};
+    curl_off_t                            mDownloadedSize {0};
+    std::string                           mImageID;
     std::string                           mURL;
 
     aos::alerts::SenderItf* mSender {nullptr};

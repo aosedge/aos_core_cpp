@@ -8,8 +8,7 @@
 #define AOS_SM_ALERTS_ALERTS_HPP_
 
 #include <core/common/alerts/alerts.hpp>
-#include <core/common/cloudprotocol/alerts.hpp>
-#include <core/common/types/obsolete.hpp>
+#include <core/common/types/alerts.hpp>
 
 namespace aos::sm::alerts {
 

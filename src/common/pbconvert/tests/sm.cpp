@@ -595,14 +595,14 @@ TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
 
 TEST_F(PBConvertSMTest, ConvertSystemAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time         expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant param;
+    aos::SystemAlert  alert;
 
-    aos::cloudprotocol::AlertVariant param;
+    alert.mTimestamp = expectedTimestamp;
+    alert.mMessage   = "test-message";
 
-    aos::cloudprotocol::SystemAlert alert {expectedTimestamp};
-    alert.mMessage = "test-message";
-
-    param.SetValue<aos::cloudprotocol::SystemAlert>(alert);
+    param.SetValue<aos::SystemAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -617,15 +617,15 @@ TEST_F(PBConvertSMTest, ConvertSystemAlertToProto)
 
 TEST_F(PBConvertSMTest, ConvertCoreAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time         expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant param;
+    aos::CoreAlert    alert;
 
-    aos::cloudprotocol::AlertVariant param;
-
-    aos::cloudprotocol::CoreAlert alert {expectedTimestamp};
+    alert.mTimestamp     = expectedTimestamp;
     alert.mMessage       = "test-message";
-    alert.mCoreComponent = aos::cloudprotocol::CoreComponentEnum::eCommunicationManager;
+    alert.mCoreComponent = aos::CoreComponentEnum::eCM;
 
-    param.SetValue<aos::cloudprotocol::CoreAlert>(alert);
+    param.SetValue<aos::CoreAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -642,15 +642,15 @@ TEST_F(PBConvertSMTest, ConvertCoreAlertToProto)
 
 TEST_F(PBConvertSMTest, ConvertSystemQuotaAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time             expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant     param;
+    aos::SystemQuotaAlert alert;
 
-    aos::cloudprotocol::AlertVariant param;
-
-    aos::cloudprotocol::SystemQuotaAlert alert {expectedTimestamp};
+    alert.mTimestamp = expectedTimestamp;
     alert.mParameter = "test-param";
     alert.mValue     = 10;
 
-    param.SetValue<aos::cloudprotocol::SystemQuotaAlert>(alert);
+    param.SetValue<aos::SystemQuotaAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -667,16 +667,16 @@ TEST_F(PBConvertSMTest, ConvertSystemQuotaAlertToProto)
 
 TEST_F(PBConvertSMTest, ConvertInstanceQuotaAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time               expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant       param;
+    aos::InstanceQuotaAlert alert;
 
-    aos::cloudprotocol::AlertVariant param;
-
-    aos::cloudprotocol::InstanceQuotaAlert alert {expectedTimestamp};
+    alert.mTimestamp = expectedTimestamp;
     alert.mParameter = "test-param";
     alert.mValue     = 10;
-    alert.mStatus    = aos::cloudprotocol::AlertStatusEnum::eContinue;
+    alert.mState     = aos::QuotaAlertStateEnum::eContinue;
 
-    param.SetValue<aos::cloudprotocol::InstanceQuotaAlert>(alert);
+    param.SetValue<aos::InstanceQuotaAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -689,81 +689,43 @@ TEST_F(PBConvertSMTest, ConvertInstanceQuotaAlertToProto)
 
     EXPECT_EQ(aos::String(pbAlert.parameter().c_str()), alert.mParameter);
     EXPECT_EQ(pbAlert.value(), alert.mValue);
-    EXPECT_EQ(aos::String(pbAlert.status().c_str()), alert.mStatus.ToString());
+    EXPECT_EQ(aos::String(pbAlert.status().c_str()), alert.mState.ToString());
 }
 
-TEST_F(PBConvertSMTest, ConvertDeviceAllocateAlertToProto)
+TEST_F(PBConvertSMTest, ConvertResourceAllocateAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time                  expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant          param;
+    aos::ResourceAllocateAlert alert;
 
-    aos::cloudprotocol::AlertVariant param;
+    alert.mTimestamp = expectedTimestamp;
+    alert.mResource  = "test-resource";
+    alert.mMessage   = "test-message";
 
-    aos::cloudprotocol::DeviceAllocateAlert alert {expectedTimestamp};
-    alert.mDevice  = "test-device";
-    alert.mMessage = "test-message";
-
-    param.SetValue<aos::cloudprotocol::DeviceAllocateAlert>(alert);
+    param.SetValue<aos::ResourceAllocateAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
     ASSERT_TRUE(result.has_device_allocate_alert());
 
-    EXPECT_EQ(result.tag(), "deviceAllocateAlert");
+    EXPECT_EQ(result.tag(), "resourceAllocateAlert");
     CompareTimestamps(alert.mTimestamp, result.timestamp());
 
     const auto& pbAlert = result.device_allocate_alert();
 
-    EXPECT_EQ(aos::String(pbAlert.device().c_str()), alert.mDevice);
+    EXPECT_EQ(aos::String(pbAlert.device().c_str()), alert.mResource);
     EXPECT_EQ(aos::String(pbAlert.message().c_str()), alert.mMessage);
-}
-
-TEST_F(PBConvertSMTest, ConvertResourceValidateAlertToProto)
-{
-    aos::Time  expectedTimestamp = aos::Time::Now();
-    aos::Error expectedErrors[]  = {
-        aos::Error {aos::ErrorEnum::eFailed, "failed error"},
-        aos::Error {aos::ErrorEnum::eRuntime, "runtime error"},
-        aos::Error {aos::ErrorEnum::eNone},
-    };
-
-    aos::cloudprotocol::AlertVariant param;
-
-    aos::cloudprotocol::ResourceValidateAlert alert {expectedTimestamp};
-    alert.mName   = "test-name";
-    alert.mErrors = aos::Array<aos::Error>(expectedErrors, std::size(expectedErrors));
-
-    param.SetValue<aos::cloudprotocol::ResourceValidateAlert>(alert);
-
-    ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
-
-    ASSERT_TRUE(result.has_resource_validate_alert());
-
-    EXPECT_EQ(result.tag(), "resourceValidateAlert");
-    CompareTimestamps(alert.mTimestamp, result.timestamp());
-
-    const auto& pbAlert = result.resource_validate_alert();
-    EXPECT_EQ(aos::String(pbAlert.name().c_str()), alert.mName);
-
-    ASSERT_EQ(pbAlert.errors_size(), std::size(expectedErrors));
-
-    for (size_t i = 0; i < std::size(expectedErrors); ++i) {
-        const auto& pbError = pbAlert.errors(i);
-        const auto& error   = expectedErrors[i];
-
-        EXPECT_EQ(pbError.aos_code(), static_cast<int32_t>(error.Value()));
-        EXPECT_EQ(aos::String(pbError.message().c_str()), error.Message());
-    }
 }
 
 TEST_F(PBConvertSMTest, ConvertDownloadAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time          expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant  param;
+    aos::DownloadAlert alert;
 
-    aos::cloudprotocol::AlertVariant param;
+    alert.mTimestamp = expectedTimestamp;
 
-    aos::cloudprotocol::DownloadAlert alert {expectedTimestamp};
-
-    param.SetValue<aos::cloudprotocol::DownloadAlert>(alert);
+    param.SetValue<aos::DownloadAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -773,29 +735,28 @@ TEST_F(PBConvertSMTest, ConvertDownloadAlertToProto)
     CompareTimestamps(alert.mTimestamp, result.timestamp());
 }
 
-TEST_F(PBConvertSMTest, ConvertServiceInstanceAlertToProto)
+TEST_F(PBConvertSMTest, ConvertInstanceAlertToProto)
 {
-    aos::Time expectedTimestamp = aos::Time::Now();
+    aos::Time          expectedTimestamp = aos::Time::Now();
+    aos::AlertVariant  param;
+    aos::InstanceAlert alert;
 
-    aos::cloudprotocol::AlertVariant param;
+    alert.mTimestamp                       = expectedTimestamp;
+    static_cast<aos::InstanceIdent>(alert) = aos::InstanceIdent {"service-id", "subject-id", 1};
+    alert.mVersion                         = "1.0.0";
+    alert.mMessage                         = "test-message";
 
-    aos::cloudprotocol::ServiceInstanceAlert alert {expectedTimestamp};
-
-    alert.mInstanceIdent  = aos::InstanceIdent {"service-id", "subject-id", 1};
-    alert.mServiceVersion = "1.0.0";
-    alert.mMessage        = "test-message";
-
-    param.SetValue<aos::cloudprotocol::ServiceInstanceAlert>(alert);
+    param.SetValue<aos::InstanceAlert>(alert);
 
     ::servicemanager::v4::Alert result = aos::common::pbconvert::ConvertToProto(param);
 
     ASSERT_TRUE(result.has_instance_alert());
 
-    EXPECT_EQ(result.tag(), "serviceInstanceAlert");
-    EXPECT_EQ(aos::String(result.instance_alert().instance().service_id().c_str()), alert.mInstanceIdent.mItemID);
-    EXPECT_EQ(aos::String(result.instance_alert().instance().subject_id().c_str()), alert.mInstanceIdent.mSubjectID);
-    EXPECT_EQ(result.instance_alert().instance().instance(), alert.mInstanceIdent.mInstance);
-    EXPECT_EQ(aos::String(result.instance_alert().service_version().c_str()), alert.mServiceVersion);
+    EXPECT_EQ(result.tag(), "updateItemInstanceAlert");
+    EXPECT_EQ(aos::String(result.instance_alert().instance().service_id().c_str()), alert.mItemID);
+    EXPECT_EQ(aos::String(result.instance_alert().instance().subject_id().c_str()), alert.mSubjectID);
+    EXPECT_EQ(result.instance_alert().instance().instance(), alert.mInstance);
+    EXPECT_EQ(aos::String(result.instance_alert().service_version().c_str()), alert.mVersion);
     EXPECT_EQ(aos::String(result.instance_alert().message().c_str()), alert.mMessage);
 
     CompareTimestamps(alert.mTimestamp, result.timestamp());

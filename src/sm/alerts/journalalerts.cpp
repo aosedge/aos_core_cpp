@@ -18,6 +18,16 @@ namespace aos::sm::alerts {
  * Statics
  **********************************************************************************************************************/
 
+const std::unordered_map<std::string, CoreComponentType::Enum> JournalAlerts::cCoreComponentServices = {
+    {"aos-cm.service", CoreComponentType::Enum::eCM},
+    {"aos-sm.service", CoreComponentType::Enum::eSM},
+    {"aos-iam.service", CoreComponentType::Enum::eIAM},
+};
+
+/***********************************************************************************************************************
+ * Public
+ **********************************************************************************************************************/
+
 Error JournalAlerts::Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf& instanceInfoProvider,
     StorageItf& storage, aos::alerts::SenderItf& sender)
 {
@@ -217,15 +227,16 @@ void JournalAlerts::ProcessJournal()
             unit = entry.mSystemdCGroup;
         }
 
-        cloudprotocol::AlertVariant item;
-        if (auto serviceAlert = GetServiceInstanceAlert(entry, unit); serviceAlert.has_value()) {
-            item.SetValue<cloudprotocol::ServiceInstanceAlert>(*serviceAlert);
+        AlertVariant item;
+
+        if (auto instanceAlert = GetInstanceAlert(entry, unit); instanceAlert.has_value()) {
+            item.SetValue<InstanceAlert>(*instanceAlert);
             mSender->SendAlert(item);
         } else if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
-            item.SetValue<cloudprotocol::CoreAlert>(*compAlert);
+            item.SetValue<CoreAlert>(*compAlert);
             mSender->SendAlert(item);
         } else if (auto systemAlert = GetSystemAlert(entry); systemAlert.has_value()) {
-            item.SetValue<cloudprotocol::SystemAlert>(*systemAlert);
+            item.SetValue<SystemAlert>(*systemAlert);
             mSender->SendAlert(item);
         }
     }
@@ -254,8 +265,7 @@ bool JournalAlerts::ShouldFilterOutAlert(const std::string& msg) const
     });
 }
 
-std::optional<cloudprotocol::ServiceInstanceAlert> JournalAlerts::GetServiceInstanceAlert(
-    const utils::JournalEntry& entry, const std::string& unit)
+std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::JournalEntry& entry, const std::string& unit)
 {
     if (mInstanceInfoProvider == nullptr) {
         return std::nullopt;
@@ -266,10 +276,12 @@ std::optional<cloudprotocol::ServiceInstanceAlert> JournalAlerts::GetServiceInst
         auto [instanceInfo, err] = mInstanceInfoProvider->GetInstanceInfoByID(instanceID.c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't get instance info for unit: " + unit);
 
-        auto alert = cloudprotocol::ServiceInstanceAlert(entry.mRealTime);
+        InstanceAlert alert;
 
-        alert.mInstanceIdent  = instanceInfo.mInstanceIdent;
-        alert.mServiceVersion = instanceInfo.mVersion;
+        alert.mTimestamp                   = entry.mRealTime;
+        static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
+        alert.mVersion                     = instanceInfo.mVersion;
+
         WriteAlertMsg(entry.mMessage, alert.mMessage);
 
         return alert;
@@ -278,15 +290,15 @@ std::optional<cloudprotocol::ServiceInstanceAlert> JournalAlerts::GetServiceInst
     return std::nullopt;
 }
 
-std::optional<cloudprotocol::CoreAlert> JournalAlerts::GetCoreComponentAlert(
-    const utils::JournalEntry& entry, const std::string& unit)
+std::optional<CoreAlert> JournalAlerts::GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit)
 {
-    for (const auto& component : cloudprotocol::CoreComponentType::GetStrings()) {
-        // cppcheck-suppress useStlAlgorithm
-        if (unit.find(component) != std::string::npos) {
-            auto alert = cloudprotocol::CoreAlert(entry.mRealTime);
+    for (const auto& it : cCoreComponentServices) {
+        if (unit.find(it.first) != std::string::npos) {
+            CoreAlert alert;
 
-            std::ignore = alert.mCoreComponent.FromString(component);
+            alert.mTimestamp     = entry.mRealTime;
+            alert.mCoreComponent = it.second;
+
             WriteAlertMsg(entry.mMessage, alert.mMessage);
 
             return alert;
@@ -296,9 +308,12 @@ std::optional<cloudprotocol::CoreAlert> JournalAlerts::GetCoreComponentAlert(
     return std::nullopt;
 }
 
-std::optional<cloudprotocol::SystemAlert> JournalAlerts::GetSystemAlert(const utils::JournalEntry& entry)
+std::optional<SystemAlert> JournalAlerts::GetSystemAlert(const utils::JournalEntry& entry)
 {
-    auto alert = cloudprotocol::SystemAlert(entry.mRealTime);
+    SystemAlert alert;
+
+    alert.mTimestamp = entry.mRealTime;
+
     WriteAlertMsg(entry.mMessage, alert.mMessage);
 
     return alert;

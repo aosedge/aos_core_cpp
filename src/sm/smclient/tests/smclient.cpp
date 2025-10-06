@@ -76,15 +76,14 @@ aos::monitoring::NodeMonitoringData CreateNodeMonitoringData()
     return monitoringData;
 }
 
-aos::cloudprotocol::AlertVariant CreateAlert()
+aos::AlertVariant CreateAlert()
 {
-    aos::cloudprotocol::AlertVariant result;
-
-    aos::cloudprotocol::SystemAlert systemAlert;
+    aos::AlertVariant result;
+    aos::SystemAlert  systemAlert;
 
     systemAlert.mMessage = "test-message";
 
-    result.SetValue<aos::cloudprotocol::SystemAlert>(systemAlert);
+    result.SetValue<aos::SystemAlert>(systemAlert);
 
     return result;
 }

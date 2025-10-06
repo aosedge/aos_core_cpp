@@ -7,10 +7,10 @@
 #ifndef AOS_COMMON_PBCONVERT_SM_HPP_
 #define AOS_COMMON_PBCONVERT_SM_HPP_
 
-#include <core/common/cloudprotocol/alerts.hpp>
 #include <core/common/cloudprotocol/envvars.hpp>
 #include <core/common/cloudprotocol/log.hpp>
 #include <core/common/monitoring/monitoring.hpp>
+#include <core/common/types/alerts.hpp>
 #include <core/common/types/obsolete.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
@@ -81,7 +81,7 @@ namespace aos::common::pbconvert {
  * @param src Aos alert.
  * @return ::servicemanager::v4::Alert.
  */
-::servicemanager::v4::Alert ConvertToProto(const cloudprotocol::AlertVariant& src);
+::servicemanager::v4::Alert ConvertToProto(const AlertVariant& src);
 
 /**
  * Converts protobuf network parameters to Aos.
