@@ -179,11 +179,11 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
 
     ServiceInstanceData serviceInfo = {InstanceIdent {"service0", "service0", 0}, "0.0.0"};
 
-    cloudprotocol::ServiceInstanceAlert alert;
+    InstanceAlert alert;
 
-    alert.mInstanceIdent  = serviceInfo.mInstanceIdent;
-    alert.mServiceVersion = serviceInfo.mVersion;
-    alert.mMessage        = entry.mMessage.c_str();
+    static_cast<InstanceIdent&>(alert) = serviceInfo.mInstanceIdent;
+    alert.mVersion                     = serviceInfo.mVersion;
+    alert.mMessage                     = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
     EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"))).WillOnce(Return(serviceInfo));
@@ -204,13 +204,13 @@ TEST_F(JournalAlertsTest, SendCoreAlert)
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
     EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
-    utils::JournalEntry      entry = {};
-    cloudprotocol::CoreAlert alert;
+    utils::JournalEntry entry = {};
+    CoreAlert           alert;
 
-    entry.mSystemdUnit = "aos-updatemanager.service";
+    entry.mSystemdUnit = "aos-cm.service";
     entry.mMessage     = "Hello World";
 
-    alert.mCoreComponent = cloudprotocol::CoreComponentEnum::eUpdateManager;
+    alert.mCoreComponent = CoreComponentEnum::eCM;
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
@@ -249,8 +249,8 @@ TEST_F(JournalAlertsTest, SendSystemAlert)
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
     EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
-    utils::JournalEntry        entry = {};
-    cloudprotocol::SystemAlert alert;
+    utils::JournalEntry entry = {};
+    SystemAlert         alert;
 
     entry.mSystemdUnit = "init.service";
     entry.mMessage     = "Hello World";
@@ -273,14 +273,14 @@ TEST_F(JournalAlertsTest, InitScopeTest)
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
     EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
-    utils::JournalEntry      entry = {};
-    cloudprotocol::CoreAlert alert;
+    utils::JournalEntry entry = {};
+    CoreAlert           alert;
 
     entry.mSystemdUnit = "init.scope";
-    entry.mUnit        = "aos-updatemanager.service";
+    entry.mUnit        = "aos-cm.service";
     entry.mMessage     = "Hello World";
 
-    alert.mCoreComponent = cloudprotocol::CoreComponentEnum::eUpdateManager;
+    alert.mCoreComponent = CoreComponentEnum::eCM;
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
@@ -299,14 +299,14 @@ TEST_F(JournalAlertsTest, EmptySystemdUnit)
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillOnce(Return(true)).WillRepeatedly(Return(false));
     EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
 
-    utils::JournalEntry      entry = {};
-    cloudprotocol::CoreAlert alert;
+    utils::JournalEntry entry = {};
+    CoreAlert           alert;
 
     entry.mSystemdUnit   = "";
-    entry.mSystemdCGroup = "/system.slice/system-aos@service.slice/aos-updatemanager.service";
+    entry.mSystemdCGroup = "/system.slice/system-aos@service.slice/aos-cm.service";
     entry.mMessage       = "Hello World";
 
-    alert.mCoreComponent = cloudprotocol::CoreComponentEnum::eUpdateManager;
+    alert.mCoreComponent = CoreComponentEnum::eCM;
     alert.mMessage       = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));

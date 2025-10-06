@@ -7,11 +7,12 @@
 #ifndef AOS_SM_ALERTS_JOURNALALERTS_HPP_
 #define AOS_SM_ALERTS_JOURNALALERTS_HPP_
 
-#include <Poco/Timer.h>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include <Poco/Timer.h>
 
 #include <sm/config/config.hpp>
 #include <sm/utils/journal.hpp>
@@ -48,10 +49,11 @@ public:
     Error Stop();
 
 private:
-    static constexpr auto cWaitJournalTimeout = std::chrono::seconds(1);
-    static constexpr auto cCursorSavePeriod   = 10 * 1000; // ms.
-    static constexpr auto cAosServicePrefix   = "aos-service@";
-    static constexpr auto cJournalCursorLen   = 128;
+    static constexpr auto                                                 cWaitJournalTimeout = std::chrono::seconds(1);
+    static constexpr auto                                                 cCursorSavePeriod   = 10 * 1000; // ms.
+    static constexpr auto                                                 cAosServicePrefix   = "aos-service@";
+    static constexpr auto                                                 cJournalCursorLen   = 128;
+    static const std::unordered_map<std::string, CoreComponentType::Enum> cCoreComponentServices;
 
     // to be overridden in unit tests.
     virtual std::shared_ptr<utils::JournalItf> CreateJournal();
@@ -64,13 +66,11 @@ private:
     void RecoverJournalError();
     bool ShouldFilterOutAlert(const std::string& msg) const;
 
-    std::optional<cloudprotocol::ServiceInstanceAlert> GetServiceInstanceAlert(
-        const utils::JournalEntry& entry, const std::string& unit);
-    std::optional<cloudprotocol::CoreAlert> GetCoreComponentAlert(
-        const utils::JournalEntry& entry, const std::string& unit);
-    std::optional<cloudprotocol::SystemAlert> GetSystemAlert(const utils::JournalEntry& entry);
-    std::string                               ParseInstanceID(const std::string& unit);
-    void                                      WriteAlertMsg(const std::string& src, String& dst);
+    std::optional<InstanceAlert> GetInstanceAlert(const utils::JournalEntry& entry, const std::string& unit);
+    std::optional<CoreAlert>     GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit);
+    std::optional<SystemAlert>   GetSystemAlert(const utils::JournalEntry& entry);
+    std::string                  ParseInstanceID(const std::string& unit);
+    void                         WriteAlertMsg(const std::string& src, String& dst);
 
     common::config::JournalAlerts mConfig               = {};
     InstanceInfoProviderItf*      mInstanceInfoProvider = nullptr;
