@@ -177,7 +177,7 @@ RetWithError<StaticString<cFilePathLen>> ImageHandler::InstallLayer(const String
     auto contentDescriptor = std::make_unique<oci::ContentDescriptor>();
     auto manifestPath      = std::filesystem::path(extractDir) / cLayerManifestFile;
 
-    if (err = mOCISpec->LoadContentDescriptor(manifestPath.c_str(), *contentDescriptor); !err.IsNone()) {
+    if (err = mOCISpec->ContentDescriptorFromFile(manifestPath.c_str(), *contentDescriptor); !err.IsNone()) {
         result.mError = AOS_ERROR_WRAP(Error(err, "failed to load content descriptor"));
         return result;
     }
@@ -334,7 +334,7 @@ Error ImageHandler::ValidateServiceConfig(const String& path, const String& dige
 
     auto serviceConfig = std::make_unique<oci::ServiceConfig>();
 
-    if (auto err = mOCISpec->LoadServiceConfig(serviceConfigPath.c_str(), *serviceConfig); !err.IsNone()) {
+    if (auto err = mOCISpec->ServiceConfigFromFile(serviceConfigPath.c_str(), *serviceConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to load service config"));
     }
 

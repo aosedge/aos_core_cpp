@@ -23,7 +23,16 @@ public:
      * @param descriptor[out]  content descriptor.
      * @return Error.
      */
-    Error LoadContentDescriptor(const String& path, aos::oci::ContentDescriptor& descriptor) override;
+    Error ContentDescriptorFromFile(const String& path, aos::oci::ContentDescriptor& descriptor) override;
+
+    /**
+     * Loads OCI content descriptor from json string.
+     *
+     * @param json json string.
+     * @param descriptor[out]  content descriptor.
+     * @return Error.
+     */
+    Error ContentDescriptorFromJSON(const String& json, aos::oci::ContentDescriptor& descriptor) override;
 
     /**
      * Saves OCI content descriptor.
@@ -59,7 +68,16 @@ public:
      * @param[out] imageSpec image spec.
      * @return Error.
      */
-    Error LoadImageSpec(const String& path, aos::oci::ImageSpec& imageSpec) override;
+    Error ImageSpecFromFile(const String& path, aos::oci::ImageSpec& imageSpec) override;
+
+    /**
+     * Loads OCI image spec from json string.
+     *
+     * @param json json string.
+     * @param[out] imageSpec image spec.
+     * @return Error.
+     */
+    Error ImageSpecFromJSON(const String& json, aos::oci::ImageSpec& imageSpec) override;
 
     /**
      * Saves OCI image spec.
@@ -95,7 +113,16 @@ public:
      * @param serviceConfig service config.
      * @return Error.
      */
-    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
+    Error ServiceConfigFromFile(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
+
+    /**
+     * Loads Aos service config from json string.
+     *
+     * @param json json string.
+     * @param serviceConfig service config.
+     * @return Error.
+     */
+    Error ServiceConfigFromJSON(const String& json, aos::oci::ServiceConfig& serviceConfig) override;
 
     /**
      * Saves Aos service config.

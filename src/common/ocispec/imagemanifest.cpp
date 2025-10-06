@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include <sstream>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
@@ -20,7 +21,7 @@ namespace aos::common::oci {
 
 namespace {
 
-void ContentDescriptorFromJSON(
+void ContentDescriptorFromJSONObject(
     const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ContentDescriptor& descriptor)
 {
     const auto mediaType = object.GetValue<std::string>("mediaType");
@@ -32,7 +33,7 @@ void ContentDescriptorFromJSON(
     descriptor.mSize      = size;
 }
 
-Poco::JSON::Object ContentDescriptorToJSON(const aos::oci::ContentDescriptor& descriptor)
+Poco::JSON::Object ContentDescriptorToJSONObject(const aos::oci::ContentDescriptor& descriptor)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
@@ -49,7 +50,7 @@ Poco::JSON::Object ContentDescriptorToJSON(const aos::oci::ContentDescriptor& de
  * Public
  **********************************************************************************************************************/
 
-Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescriptor& descriptor)
+Error OCISpec::ContentDescriptorFromFile(const String& path, aos::oci::ContentDescriptor& descriptor)
 {
     try {
         std::ifstream file(path.CStr());
@@ -64,7 +65,26 @@ Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescri
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        ContentDescriptorFromJSON(wrapper, descriptor);
+        ContentDescriptorFromJSONObject(wrapper, descriptor);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error OCISpec::ContentDescriptorFromJSON(const String& json, aos::oci::ContentDescriptor& descriptor)
+{
+    try {
+        std::istringstream stream(json.CStr());
+
+        auto [var, err] = utils::ParseJson(stream);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
+
+        Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
+        utils::CaseInsensitiveObjectWrapper wrapper(object);
+
+        ContentDescriptorFromJSONObject(wrapper, descriptor);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
@@ -75,7 +95,7 @@ Error OCISpec::LoadContentDescriptor(const String& path, aos::oci::ContentDescri
 Error OCISpec::SaveContentDescriptor(const String& path, const aos::oci::ContentDescriptor& descriptor)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(ContentDescriptorToJSON(descriptor));
+        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(ContentDescriptorToJSONObject(descriptor));
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
         AOS_ERROR_CHECK_AND_THROW(err, "failed to write json to file");
@@ -104,14 +124,14 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
         manifest.mSchemaVersion = wrapper.GetValue<int>("schemaVersion");
 
         if (wrapper.Has("config")) {
-            ContentDescriptorFromJSON(wrapper.GetObject("config"), manifest.mConfig);
+            ContentDescriptorFromJSONObject(wrapper.GetObject("config"), manifest.mConfig);
         }
 
         if (wrapper.Has("layers")) {
             auto layers = utils::GetArrayValue<aos::oci::ContentDescriptor>(wrapper, "layers", [](const auto& value) {
                 aos::oci::ContentDescriptor descriptor;
 
-                ContentDescriptorFromJSON(utils::CaseInsensitiveObjectWrapper(value), descriptor);
+                ContentDescriptorFromJSONObject(utils::CaseInsensitiveObjectWrapper(value), descriptor);
 
                 return descriptor;
             });
@@ -125,7 +145,7 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
         if (wrapper.Has("aosService")) {
             manifest.mAosService.SetValue({});
 
-            ContentDescriptorFromJSON(wrapper.GetObject("aosService"), *manifest.mAosService);
+            ContentDescriptorFromJSONObject(wrapper.GetObject("aosService"), *manifest.mAosService);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
@@ -140,17 +160,17 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
         Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
 
         object->set("schemaVersion", manifest.mSchemaVersion);
-        object->set("config", ContentDescriptorToJSON(manifest.mConfig));
+        object->set("config", ContentDescriptorToJSONObject(manifest.mConfig));
 
         if (manifest.mAosService.HasValue()) {
-            object->set("aosService", ContentDescriptorToJSON(*manifest.mAosService));
+            object->set("aosService", ContentDescriptorToJSONObject(*manifest.mAosService));
         }
 
         if (!manifest.mLayers.IsEmpty()) {
             Poco::JSON::Array layers;
 
             for (const auto& layer : manifest.mLayers) {
-                layers.add(ContentDescriptorToJSON(layer));
+                layers.add(ContentDescriptorToJSONObject(layer));
             }
 
             object->set("layers", std::move(layers));
