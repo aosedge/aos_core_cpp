@@ -14,7 +14,6 @@
 #include <grpcpp/security/credentials.h>
 
 #include <core/common/alerts/alerts.hpp>
-#include <core/common/cloudprotocol/alerts.hpp>
 #include <core/common/connectionprovider/connectionprovider.hpp>
 #include <core/common/crypto/crypto.hpp>
 #include <core/common/crypto/cryptoutils.hpp>
@@ -107,7 +106,7 @@ public:
      * @param alert alert variant.
      * @return Error.
      */
-    Error SendAlert(const cloudprotocol::AlertVariant& alert) override;
+    Error SendAlert(const AlertVariant& alert) override;
 
     /**
      * On log received event handler.

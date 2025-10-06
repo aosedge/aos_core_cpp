@@ -9,8 +9,8 @@
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
 
-#include <core/common/cloudprotocol/alerts.hpp>
 #include <core/common/cloudprotocol/log.hpp>
+#include <core/common/types/alerts.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
@@ -311,8 +311,7 @@ Error CMConnection::Download(const std::string& url, uint64_t requestID, const s
 
     auto outfileName = std::filesystem::path(mDownloadDir).append(GetFileNameFromURL(url)).string();
 
-    if (auto err = mDownloader->Download(url.c_str(), outfileName.c_str(), cloudprotocol::DownloadTargetEnum::eService);
-        !err.IsNone()) {
+    if (auto err = mDownloader->Download(url.c_str(), outfileName.c_str()); !err.IsNone()) {
         if (auto errSend = SendFailedImageContentResponse(requestID, err); !errSend.IsNone()) {
             return errSend;
         }

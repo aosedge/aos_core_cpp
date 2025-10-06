@@ -88,8 +88,7 @@ TEST_F(DownloaderTest, Download)
 {
     StartServer();
 
-    auto err = mDownloader.Download(
-        "http://localhost:8000/test_file.dat", mFilePath.c_str(), aos::cloudprotocol::DownloadTargetEnum::eService);
+    auto err = mDownloader.Download("http://localhost:8000/test_file.dat", mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -104,8 +103,7 @@ TEST_F(DownloaderTest, Download)
 
 TEST_F(DownloaderTest, DownloadFileScheme)
 {
-    auto err = mDownloader.Download(
-        "file://test_file.dat", mFilePath.c_str(), aos::cloudprotocol::DownloadTargetEnum::eService);
+    auto err = mDownloader.Download("file://test_file.dat", mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -128,8 +126,7 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 
     EXPECT_CALL(mAlertSender, SendAlert(_)).Times(6);
 
-    auto err = mDownloader.Download("http://localhost:8001/large_test_file.dat", mFilePath.c_str(),
-        aos::cloudprotocol::DownloadTargetEnum::eService);
+    auto err = mDownloader.Download("http://localhost:8001/large_test_file.dat", mFilePath.c_str());
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(mFilePath));

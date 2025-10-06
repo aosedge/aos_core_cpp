@@ -8,7 +8,7 @@
 #include <fstream>
 #include <thread>
 
-#include <core/common/cloudprotocol/alerts.hpp>
+#include <core/common/types/alerts.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -39,17 +39,13 @@ Downloader::~Downloader()
     mCondVar.notify_all();
 }
 
-Error Downloader::Download(const String& url, const String& path, cloudprotocol::DownloadTarget targetType,
-    const String& targetID, const String& version)
+Error Downloader::Download(const String& url, const String& path, const String& imageID)
 {
     LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path)
-              << Log::Field("targetType", targetType) << Log::Field("targetID", targetID)
-              << Log::Field("version", version);
+              << Log::Field("imageID", imageID);
 
-    mTargetType = targetType;
-    mTargetID   = targetID.CStr();
-    mVersion    = version.CStr();
-    mURL        = url.CStr();
+    mImageID = imageID.CStr();
+    mURL     = url.CStr();
 
     return RetryDownload(url, path);
 }
@@ -58,7 +54,7 @@ Error Downloader::Download(const String& url, const String& path, cloudprotocol:
  * Private
  **********************************************************************************************************************/
 
-Error Downloader::Download(const String& url, const String& path)
+Error Downloader::DownloadImage(const String& url, const String& path)
 {
     Poco::URI uri(url.CStr());
     if (uri.getScheme() == "file") {
@@ -107,22 +103,26 @@ Error Downloader::Download(const String& url, const String& path)
     }
 
     if (auto res = curl_easy_perform(curl.get()); res != CURLE_OK) {
+        Error err;
+
         if (res == CURLE_HTTP_RETURNED_ERROR) {
             long code = 0;
 
             curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &code);
 
             LOG_ERR() << "HTTP error: " << Log::Field("HTTP_CODE", code);
+
+            err = Error(code, curl_easy_strerror(res));
+        } else {
+            err = Error(ErrorEnum::eFailed, curl_easy_strerror(res));
         }
 
-        std::string msg = curl_easy_strerror(res);
+        SendAlert(DownloadStateEnum::eInterrupted, mDownloadedSize, mTotalSize, curl_easy_strerror(res), err);
 
-        SendAlert("Download interrupted reason: " + msg);
-
-        return Error(ErrorEnum::eFailed, msg.c_str());
+        return err;
     }
 
-    SendAlert("Download completed");
+    SendAlert(DownloadStateEnum::eFinished, mDownloadedSize, mTotalSize);
 
     return ErrorEnum::eNone;
 }
@@ -158,7 +158,7 @@ Error Downloader::RetryDownload(const String& url, const String& path)
     for (int retryCount = 0; (retryCount < cMaxRetryCount) && (!mShutdown); ++retryCount) {
         LOG_DBG() << "Downloading: url=" << url << ", retry=" << retryCount;
 
-        if (err = Download(url, path); err.IsNone()) {
+        if (err = DownloadImage(url, path); err.IsNone()) {
             LOG_DBG() << "Download success: url=" << url;
 
             return ErrorEnum::eNone;
@@ -199,38 +199,41 @@ int Downloader::OnProgress(
 
     mLastProgressTime = now;
 
-    curl_off_t nowBytes = mExistingOffset + dlnow;
+    mDownloadedSize = mExistingOffset + dlnow;
+    mTotalSize      = dltotal;
 
-    LOG_DBG() << "Download progress" << Log::Field("complete", nowBytes) << Log::Field("total", dltotal);
+    LOG_DBG() << "Download progress" << Log::Field("downloaded", mDownloadedSize) << Log::Field("total", mTotalSize);
 
-    SendAlert("Download status", std::to_string(nowBytes), std::to_string(dltotal));
+    SendAlert(DownloadStateEnum::eStarted, mDownloadedSize, mTotalSize);
 
     return 0;
 }
 
-void Downloader::PrepareDownloadAlert(cloudprotocol::DownloadAlert& alert, const std::string& msg,
-    const std::string& downloadedBytes, const std::string& totalBytes)
-{
-    alert.mTargetType      = mTargetType;
-    alert.mTargetID        = mTargetID.c_str();
-    alert.mVersion         = mVersion.c_str();
-    alert.mURL             = mURL.c_str();
-    alert.mMessage         = msg.c_str();
-    alert.mDownloadedBytes = downloadedBytes.c_str();
-    alert.mTotalBytes      = totalBytes.c_str();
-}
-
-void Downloader::SendAlert(const std::string& msg, const std::string& downloadedBytes, const std::string& totalBytes)
+void Downloader::SendAlert(
+    DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason, Error error)
 {
     if (!mSender) {
         return;
     }
 
-    cloudprotocol::DownloadAlert alert;
-    cloudprotocol::AlertVariant  param;
+    DownloadAlert alert;
 
-    PrepareDownloadAlert(alert, msg, downloadedBytes, totalBytes);
-    param.SetValue<cloudprotocol::DownloadAlert>(alert);
+    alert.mImageID         = mImageID.c_str();
+    alert.mURL             = mURL.c_str();
+    alert.mState           = state;
+    alert.mDownloadedBytes = downloadedBytes;
+    alert.mTotalBytes      = totalBytes;
+
+    if (!reason.empty()) {
+        alert.mReason.SetValue(reason.c_str());
+    }
+
+    alert.mError = error;
+
+    AlertVariant param;
+
+    param.SetValue<DownloadAlert>(alert);
+
     mSender->SendAlert(param);
 }
 

@@ -11,7 +11,6 @@
 #include <optional>
 #include <string>
 
-#include <core/common/cloudprotocol/alerts.hpp>
 #include <core/sm/launcher/launcher.hpp>
 #include <core/sm/layermanager/layermanager.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>

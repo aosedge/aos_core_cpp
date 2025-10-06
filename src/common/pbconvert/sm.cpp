@@ -27,7 +27,7 @@ google::protobuf::RepeatedPtrField<::servicemanager::v4::InstanceMonitoring> Con
 
 class AlertVisitor : public aos::StaticVisitor<::servicemanager::v4::Alert> {
 public:
-    Res Visit(const aos::cloudprotocol::SystemAlert& val) const
+    Res Visit(const aos::SystemAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_system_alert();
@@ -37,7 +37,7 @@ public:
         return result;
     }
 
-    Res Visit(const aos::cloudprotocol::CoreAlert& val) const
+    Res Visit(const aos::CoreAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_core_alert();
@@ -48,73 +48,62 @@ public:
         return result;
     }
 
-    Res Visit(const aos::cloudprotocol::SystemQuotaAlert& val) const
+    Res Visit(const aos::SystemQuotaAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_system_quota_alert();
 
         pbAlert.set_parameter(val.mParameter.CStr());
         pbAlert.set_value(val.mValue);
-        pbAlert.set_status(val.mStatus.ToString().CStr());
+        pbAlert.set_status(val.mState.ToString().CStr());
 
         return result;
     }
 
-    Res Visit(const aos::cloudprotocol::InstanceQuotaAlert& val) const
+    Res Visit(const aos::InstanceQuotaAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_instance_quota_alert();
 
-        *pbAlert.mutable_instance() = aos::common::pbconvert::ConvertToProto(val.mInstanceIdent);
+        *pbAlert.mutable_instance()
+            = aos::common::pbconvert::ConvertToProto(static_cast<const aos::InstanceIdent&>(val));
         pbAlert.set_parameter(val.mParameter.CStr());
         pbAlert.set_value(val.mValue);
-        pbAlert.set_status(val.mStatus.ToString().CStr());
+        pbAlert.set_status(val.mState.ToString().CStr());
 
         return result;
     }
 
-    Res Visit(const aos::cloudprotocol::DeviceAllocateAlert& val) const
+    Res Visit(const aos::ResourceAllocateAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_device_allocate_alert();
 
-        *pbAlert.mutable_instance() = aos::common::pbconvert::ConvertToProto(val.mInstanceIdent);
-        pbAlert.set_device(val.mDevice.CStr());
+        *pbAlert.mutable_instance()
+            = aos::common::pbconvert::ConvertToProto(static_cast<const aos::InstanceIdent&>(val));
+        pbAlert.set_device(val.mResource.CStr());
         pbAlert.set_message(val.mMessage.CStr());
 
         return result;
     }
 
-    Res Visit(const aos::cloudprotocol::ResourceValidateAlert& val) const
-    {
-        Res   result  = CreateAlert(val);
-        auto& pbAlert = *result.mutable_resource_validate_alert();
+    Res Visit(const aos::DownloadAlert& val) const { return CreateAlert(val); }
 
-        pbAlert.set_name(val.mName.CStr());
-
-        for (const auto& error : val.mErrors) {
-            *pbAlert.add_errors() = aos::common::pbconvert::ConvertAosErrorToProto(error);
-        }
-
-        return result;
-    }
-
-    Res Visit(const aos::cloudprotocol::DownloadAlert& val) const { return CreateAlert(val); }
-
-    Res Visit(const aos::cloudprotocol::ServiceInstanceAlert& val) const
+    Res Visit(const aos::InstanceAlert& val) const
     {
         Res   result  = CreateAlert(val);
         auto& pbAlert = *result.mutable_instance_alert();
 
-        *pbAlert.mutable_instance() = aos::common::pbconvert::ConvertToProto(val.mInstanceIdent);
-        pbAlert.set_service_version(val.mServiceVersion.CStr());
+        *pbAlert.mutable_instance()
+            = aos::common::pbconvert::ConvertToProto(static_cast<const aos::InstanceIdent&>(val));
+        pbAlert.set_service_version(val.mVersion.CStr());
         pbAlert.set_message(val.mMessage.CStr());
 
         return result;
     }
 
 private:
-    Res CreateAlert(const aos::cloudprotocol::AlertItem& src) const
+    Res CreateAlert(const aos::AlertItem& src) const
     {
         Res pbAlert;
 
@@ -227,7 +216,7 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-::servicemanager::v4::Alert ConvertToProto(const cloudprotocol::AlertVariant& src)
+::servicemanager::v4::Alert ConvertToProto(const AlertVariant& src)
 {
     AlertVisitor visitor;
 
