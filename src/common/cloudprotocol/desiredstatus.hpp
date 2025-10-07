@@ -11,7 +11,7 @@
 
 #include <Poco/JSON/Object.h>
 
-#include <core/common/cloudprotocol/desiredstatus.hpp>
+#include <core/common/types/desiredstatus.hpp>
 
 #include <common/utils/json.hpp>
 
@@ -42,7 +42,7 @@ Error ToJSON(const aos::NodeConfig& nodeConfig, Poco::JSON::Object& json);
  * @param[out] desiredStatus desired status object to fill.
  * @return Error.
  */
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::DesiredStatus& desiredStatus);
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::DesiredStatus& desiredStatus);
 
 /**
  * Converts DeltaUnitStatus object to JSON object.
@@ -51,7 +51,7 @@ Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotoc
  * @param[out] json JSON object to fill.
  * @return Error.
  */
-Error ToJSON(const aos::cloudprotocol::DesiredStatus& desiredStatus, Poco::JSON::Object& json);
+Error ToJSON(const aos::DesiredStatus& desiredStatus, Poco::JSON::Object& json);
 
 } // namespace aos::common::cloudprotocol
 
