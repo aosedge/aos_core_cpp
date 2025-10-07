@@ -444,7 +444,7 @@ Error Database::ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUIn
     return ErrorEnum::eNone;
 }
 
-Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const Array<PartitionInfo>& partitionInfo)
+Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const Array<PartitionInfoObsolete>& partitionInfo)
 {
     Poco::JSON::Array dst;
 
@@ -467,10 +467,10 @@ Poco::JSON::Array Database::ConvertPartitionInfoToJSON(const Array<PartitionInfo
     return dst;
 }
 
-Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfo>& dst)
+Error Database::ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfoObsolete>& dst)
 {
     for (const auto& srcItem : src) {
-        PartitionInfo dstItem;
+        PartitionInfoObsolete dstItem;
 
         const auto partitionInfo = srcItem.extract<Poco::JSON::Object::Ptr>();
         if (partitionInfo == nullptr) {

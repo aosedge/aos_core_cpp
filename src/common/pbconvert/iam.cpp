@@ -30,7 +30,7 @@ iamanager::v5::NodeAttribute ConvertToProto(const NodeAttribute& src)
     return result;
 }
 
-iamanager::v5::PartitionInfo ConvertToProto(const PartitionInfo& src)
+iamanager::v5::PartitionInfo ConvertToProto(const PartitionInfoObsolete& src)
 {
     iamanager::v5::PartitionInfo result;
 
