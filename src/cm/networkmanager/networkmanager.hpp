@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 #include <core/cm/networkmanager/itf/networkmanager.hpp>
-#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/array.hpp>
 
 #include "ipsubnet.hpp"

@@ -15,8 +15,8 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <core/common/crypto/crypto.hpp>
-#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/string.hpp>
 #include <core/common/types/obsolete.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
@@ -92,7 +92,7 @@ Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cm
 
 Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
     identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
-    crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
     certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)

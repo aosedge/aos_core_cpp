@@ -20,7 +20,7 @@
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/WebSocket.h>
 
-#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 
 #include <iam/config/config.hpp>
 #include <iam/identhandler/visidentifier/wsclient.hpp>

@@ -15,7 +15,6 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <core/common/crypto/cryptoutils.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identhandler.hpp>

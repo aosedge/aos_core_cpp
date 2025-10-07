@@ -6,8 +6,6 @@
  */
 #include <regex>
 
-#include <core/common/crypto/cryptoutils.hpp>
-
 #include "exception.hpp"
 #include "pk11uri.hpp"
 #include "pkcs11helper.hpp"

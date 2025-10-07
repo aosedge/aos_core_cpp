@@ -12,7 +12,7 @@
 
 #include <sys/socket.h>
 
-#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
 #include "utils.hpp"

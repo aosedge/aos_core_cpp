@@ -8,7 +8,6 @@
 
 #include <common/network/utils.hpp>
 #include <common/utils/exception.hpp>
-#include <core/common/crypto/crypto.hpp>
 #include <sm/logger/logmodule.hpp>
 
 #include "networkmanager.hpp"

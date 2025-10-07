@@ -18,7 +18,8 @@
 
 #include <grpcpp/security/credentials.h>
 
-#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/error.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
