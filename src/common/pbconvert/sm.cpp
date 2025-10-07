@@ -205,7 +205,7 @@ namespace aos::common::pbconvert {
     return result;
 }
 
-::servicemanager::v4::EnvVarStatus ConvertToProto(const cloudprotocol::EnvVarStatus& src)
+::servicemanager::v4::EnvVarStatus ConvertToProto(const EnvVarStatus& src)
 {
     ::servicemanager::v4::EnvVarStatus result;
 
@@ -285,7 +285,7 @@ Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, InstanceFilt
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::EnvVarInfo& dst)
+Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, EnvVarInfo& dst)
 {
     dst.mName  = String(val.name().c_str());
     dst.mValue = String(val.value().c_str());
@@ -294,7 +294,7 @@ Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::E
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotocol::EnvVarsInstanceInfoArray& dst)
+Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, EnvVarsInstanceInfoArray& dst)
 {
     for (const auto& envVar : src.env_vars()) {
         InstanceFilter instanceFilter;
@@ -303,10 +303,10 @@ Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotoc
             return err;
         }
 
-        auto variables = std::make_unique<cloudprotocol::EnvVarInfoArray>();
+        auto variables = std::make_unique<EnvVarInfoArray>();
 
         for (const auto& var : envVar.variables()) {
-            cloudprotocol::EnvVarInfo envVarInfo;
+            EnvVarInfo envVarInfo;
 
             if (auto err = ConvertToAos(var, envVarInfo); !err.IsNone()) {
                 return err;
