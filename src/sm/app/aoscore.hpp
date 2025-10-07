@@ -9,6 +9,7 @@
 
 #include <optional>
 
+#include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/monitoring/resourcemonitor.hpp>
 #include <core/sm/launcher/launcher.hpp>

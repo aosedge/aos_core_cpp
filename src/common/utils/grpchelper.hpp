@@ -11,8 +11,8 @@
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/server_credentials.h>
 
-#include <core/common/crypto/crypto.hpp>
-#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
 namespace aos::common::utils {

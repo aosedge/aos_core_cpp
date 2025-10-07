@@ -7,7 +7,7 @@
 #ifndef AOS_COMMON_PBCONVERT_IAM_HPP_
 #define AOS_COMMON_PBCONVERT_IAM_HPP_
 
-#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/itf/x509.hpp>
 #include <core/common/types/obsolete.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>

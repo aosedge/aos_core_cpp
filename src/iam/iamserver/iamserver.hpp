@@ -15,7 +15,7 @@
 
 #include <grpcpp/server_builder.h>
 
-#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identhandler.hpp>
@@ -62,7 +62,7 @@ public:
      */
     Error Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
         identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
-        crypto::CertLoader& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
         certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         bool provisioningMode);
@@ -139,7 +139,7 @@ private:
     void CreateProtectedServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);
 
     config::IAMServerConfig      mConfig         = {};
-    crypto::CertLoader*          mCertLoader     = nullptr;
+    crypto::CertLoaderItf*       mCertLoader     = nullptr;
     crypto::x509::ProviderItf*   mCryptoProvider = nullptr;
     certhandler::CertHandlerItf* mCertHandler    = nullptr;
 

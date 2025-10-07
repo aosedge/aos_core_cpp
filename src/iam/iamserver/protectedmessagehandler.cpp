@@ -7,8 +7,7 @@
 
 #include <memory>
 
-#include <core/common/crypto/crypto.hpp>
-#include <core/common/crypto/cryptoutils.hpp>
+#include <core/common/crypto/itf/x509.hpp>
 #include <core/common/tools/string.hpp>
 #include <core/common/types/obsolete.hpp>
 #include <core/iam/certhandler/certhandler.hpp>

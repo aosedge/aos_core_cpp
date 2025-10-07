@@ -13,8 +13,8 @@
 #include <openssl/err.h>
 #include <openssl/trace.h>
 
+#include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
-#include <core/common/crypto/cryptoutils.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tools/fs.hpp>
