@@ -36,7 +36,7 @@ iamanager::v5::NodeAttribute ConvertToProto(const NodeAttribute& src);
  * @param src aos partition info.
  * @return iamanager::v5::PartitionInfo.
  */
-iamanager::v5::PartitionInfo ConvertToProto(const PartitionInfo& src);
+iamanager::v5::PartitionInfo ConvertToProto(const PartitionInfoObsolete& src);
 
 /**
  * Converts aos cpu info to protobuf cpu info.

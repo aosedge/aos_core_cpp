@@ -40,9 +40,9 @@ CPUInfo CreateCPUInfo()
     return cpuInfo;
 }
 
-PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
+PartitionInfoObsolete CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
 {
-    PartitionInfo partitionInfo;
+    PartitionInfoObsolete partitionInfo;
 
     partitionInfo.mName = name;
     FillArray(types, partitionInfo.mTypes);

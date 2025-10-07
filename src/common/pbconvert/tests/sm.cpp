@@ -24,9 +24,9 @@ void CompareTimestamps(const aos::Time& lhs, const google::protobuf::Timestamp& 
     EXPECT_EQ(lhs.UnixTime().tv_nsec, rhs.nanos());
 }
 
-aos::PartitionInfo CreatePartition(const aos::String& name, size_t usedSize)
+aos::PartitionInfoObsolete CreatePartition(const aos::String& name, size_t usedSize)
 {
-    aos::PartitionInfo result;
+    aos::PartitionInfoObsolete result;
 
     result.mName     = name;
     result.mUsedSize = usedSize;

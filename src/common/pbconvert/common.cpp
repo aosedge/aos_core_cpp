@@ -129,10 +129,10 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
 }
 
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoStaticArray& dst)
+    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoObsoleteArray& dst)
 {
     for (const auto& srcPartition : src) {
-        PartitionInfo dstPartition;
+        PartitionInfoObsolete dstPartition;
 
         dstPartition.mName      = srcPartition.name().c_str();
         dstPartition.mPath      = srcPartition.path().c_str();

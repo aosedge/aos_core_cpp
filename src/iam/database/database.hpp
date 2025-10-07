@@ -153,8 +153,8 @@ private:
     static Poco::JSON::Array ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo);
     static Error             ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUInfo>& dst);
 
-    static Poco::JSON::Array ConvertPartitionInfoToJSON(const Array<PartitionInfo>& partitionInfo);
-    static Error             ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfo>& dst);
+    static Poco::JSON::Array ConvertPartitionInfoToJSON(const Array<PartitionInfoObsolete>& partitionInfo);
+    static Error ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfoObsolete>& dst);
 
     static Poco::JSON::Array ConvertAttributesToJSON(const Array<NodeAttribute>& attributes);
     static Error             ConvertAttributesFromJSON(const Poco::JSON::Array& src, Array<NodeAttribute>& dst);

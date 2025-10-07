@@ -94,7 +94,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoStaticArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoObsoleteArray& dst);
 
 /**
  * Converts protobuf node attributes to aos.

@@ -20,11 +20,11 @@ namespace {
  * Static
  **********************************************************************************************************************/
 
-PartitionInfo CreatePartitionInfo(const std::string& name)
+PartitionInfoObsolete CreatePartitionInfo(const std::string& name)
 {
     const StaticString<cPartitionTypeLen> types[] = {"type-1", "type-2"};
 
-    PartitionInfo result;
+    PartitionInfoObsolete result;
 
     result.mName      = name.c_str();
     result.mTotalSize = 1024;
