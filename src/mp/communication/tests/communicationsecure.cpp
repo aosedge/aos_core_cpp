@@ -581,13 +581,13 @@ TEST_F(CommunicationSecureManagerTest, TestSendLog)
     EXPECT_EQ(mCMSecurePipe->Connect(), ErrorEnum::eNone);
 
     struct LogData {
-        std::string              mLogId;
-        std::string              mLogMessage;
-        cloudprotocol::LogStatus mStatus;
+        std::string mLogId;
+        std::string mLogMessage;
+        LogStatus   mStatus;
     } testLogData[] = {
-        {"id1", "test log message1\n", cloudprotocol::LogStatusEnum::eOk},
-        {"id1", "test log message2\n", cloudprotocol::LogStatusEnum::eOk},
-        {"id1", "", cloudprotocol::LogStatusEnum::eEmpty},
+        {"id1", "test log message1\n", LogStatusEnum::eOK},
+        {"id1", "test log message2\n", LogStatusEnum::eOK},
+        {"id1", "", LogStatusEnum::eEmpty},
     };
 
     for (const auto& logData : testLogData) {
@@ -614,8 +614,7 @@ TEST_F(CommunicationSecureManagerTest, TestSendLog)
 
     EXPECT_EQ(outgoingMsg.SMOutgoingMessage_case(), servicemanager::v4::SMOutgoingMessages::kLog);
     EXPECT_EQ(outgoingMsg.log().log_id(), "id1");
-    EXPECT_EQ(
-        outgoingMsg.log().status(), cloudprotocol::LogStatus(cloudprotocol::LogStatusEnum::eOk).ToString().CStr());
+    EXPECT_EQ(outgoingMsg.log().status(), LogStatus(LogStatusEnum::eOK).ToString().CStr());
 
     mCommManager->Stop();
     mCommManagerClient->Close();

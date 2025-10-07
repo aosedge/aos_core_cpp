@@ -7,10 +7,10 @@
 #ifndef AOS_COMMON_PBCONVERT_SM_HPP_
 #define AOS_COMMON_PBCONVERT_SM_HPP_
 
-#include <core/common/cloudprotocol/log.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/types/alerts.hpp>
 #include <core/common/types/envvars.hpp>
+#include <core/common/types/log.hpp>
 #include <core/common/types/obsolete.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
@@ -24,7 +24,7 @@ namespace aos::common::pbconvert {
  * @param src push log to convert.
  * @return ::servicemanager::v4::LogData.
  */
-::servicemanager::v4::LogData ConvertToProto(const cloudprotocol::PushLog& src);
+::servicemanager::v4::LogData ConvertToProto(const PushLog& src);
 
 /**
  * Converts Aos monitoring data to protobuf.
@@ -153,7 +153,7 @@ Error ConvertToAos(const ::servicemanager::v4::LayerInfo& val, LayerInfo& dst);
  * @param dst[out] Aos log request.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudprotocol::RequestLog& dst);
+Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, RequestLog& dst);
 
 /**
  * Converts instance log request to Aos.
@@ -162,7 +162,7 @@ Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudproto
  * @param dst[out] Aos log request.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, cloudprotocol::RequestLog& dst);
+Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, RequestLog& dst);
 
 /**
  * Converts instance crash log request to Aos.
@@ -171,7 +171,7 @@ Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, cloudpro
  * @param dst[out] Aos log request.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, cloudprotocol::RequestLog& dst);
+Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, RequestLog& dst);
 
 } // namespace aos::common::pbconvert
 

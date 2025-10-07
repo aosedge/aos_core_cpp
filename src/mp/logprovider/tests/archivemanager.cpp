@@ -27,8 +27,8 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cLogID       = "test_log";
-const auto     cStatusOk    = cloudprotocol::LogStatus(cloudprotocol::LogStatusEnum::eOk);
-const auto     cStatusEmpty = cloudprotocol::LogStatus(cloudprotocol::LogStatusEnum::eEmpty);
+const auto     cStatusOk    = LogStatus(LogStatusEnum::eOK);
+const auto     cStatusEmpty = LogStatus(LogStatusEnum::eEmpty);
 
 /***********************************************************************************************************************
  * Static
@@ -87,7 +87,7 @@ std::vector<servicemanager::v4::LogData> CreateLogChunks(
  */
 class LogObserverStub : public aos::sm::logprovider::LogObserverItf {
 public:
-    Error OnLogReceived(const cloudprotocol::PushLog& log) override
+    Error OnLogReceived(const PushLog& log) override
     {
         std::unique_lock<std::mutex> lock(mMutex);
 
@@ -97,8 +97,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error WaitLogReceived(
-        cloudprotocol::PushLog& log, std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
+    Error WaitLogReceived(PushLog& log, std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
     {
         std::unique_lock<std::mutex> lock(mMutex);
 
@@ -115,9 +114,9 @@ public:
     }
 
 private:
-    std::mutex                         mMutex;
-    std::condition_variable            mCondVar;
-    std::queue<cloudprotocol::PushLog> mLogQueue;
+    std::mutex              mMutex;
+    std::condition_variable mCondVar;
+    std::queue<PushLog>     mLogQueue;
 };
 
 } // namespace
@@ -160,7 +159,7 @@ TEST_F(ArchiveManagerTest, HandleLogChunks)
         EXPECT_EQ(mArchiveManager.HandleLog(std::make_shared<servicemanager::v4::LogData>(log)), ErrorEnum::eNone);
     }
 
-    auto receivedLog = std::make_shared<cloudprotocol::PushLog>();
+    auto receivedLog = std::make_shared<PushLog>();
 
     EXPECT_EQ(mLogObserver.WaitLogReceived(*receivedLog), ErrorEnum::eNone);
     EXPECT_STREQ(receivedLog->mLogID.CStr(), cLogID);
@@ -184,7 +183,7 @@ TEST_F(ArchiveManagerTest, HandleEmpty)
 
     EXPECT_EQ(mArchiveManager.HandleLog(log), ErrorEnum::eNone);
 
-    auto receivedLog = std::make_shared<cloudprotocol::PushLog>();
+    auto receivedLog = std::make_shared<PushLog>();
 
     EXPECT_EQ(mLogObserver.WaitLogReceived(*receivedLog), ErrorEnum::eNone);
     EXPECT_STREQ(receivedLog->mLogID.CStr(), cLogID);

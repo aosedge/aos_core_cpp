@@ -78,7 +78,7 @@ public:
      * @param request log request.
      * @return bool.
      */
-    Error GetInstanceLog(const cloudprotocol::RequestLog& request) override;
+    Error GetInstanceLog(const RequestLog& request) override;
 
     /**
      * Returns service instance crash log.
@@ -86,7 +86,7 @@ public:
      * @param request log request.
      * @return bool.
      */
-    Error GetInstanceCrashLog(const cloudprotocol::RequestLog& request) override;
+    Error GetInstanceCrashLog(const RequestLog& request) override;
 
     /**
      * Returns system log.
@@ -94,7 +94,7 @@ public:
      * @param request log request.
      * @return bool.
      */
-    Error GetSystemLog(const cloudprotocol::RequestLog& request) override;
+    Error GetSystemLog(const RequestLog& request) override;
 
     /**
      * Subscribes on logs.
@@ -116,29 +116,29 @@ private:
     static constexpr auto cAOSServicePrefix = "aos-service@";
 
     struct GetLogRequest {
-        std::vector<std::string>               mInstanceIDs;
-        StaticString<cloudprotocol::cLogIDLen> mLogID;
-        Optional<Time>                         mFrom, mTill;
-        bool                                   mCrashLog = false;
+        std::vector<std::string> mInstanceIDs;
+        StaticString<cLogIDLen>  mLogID;
+        Optional<Time>           mFrom, mTill;
+        bool                     mCrashLog = false;
     };
 
     std::shared_ptr<common::logprovider::Archivator> CreateArchivator();
     // to be overridden in unit tests.
     virtual std::shared_ptr<utils::JournalItf> CreateJournal();
 
-    void ScheduleGetLog(const std::vector<std::string>& instanceIDs,
-        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+    void ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+        const Optional<Time>& from, const Optional<Time>& till);
 
-    void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
-        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+    void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+        const Optional<Time>& from, const Optional<Time>& till);
 
     void ProcessLogs();
 
-    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cloudprotocol::cLogIDLen>& logID,
+    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
         const Optional<Time>& from, const Optional<Time>& till);
 
-    void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
-        const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till);
+    void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+        const Optional<Time>& from, const Optional<Time>& till);
 
     void SendErrorResponse(const String& logID, const std::string& errorMsg);
     void SendEmptyResponse(const String& logID, const std::string& errorMsg);

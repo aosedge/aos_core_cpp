@@ -28,7 +28,7 @@ public:
  */
 class LogObserverMock : public aos::sm::logprovider::LogObserverItf {
 public:
-    MOCK_METHOD(aos::Error, OnLogReceived, (const aos::cloudprotocol::PushLog&), (override));
+    MOCK_METHOD(aos::Error, OnLogReceived, (const aos::PushLog&), (override));
 };
 
 /**
@@ -36,9 +36,9 @@ public:
  */
 class LogProviderMock : public aos::sm::logprovider::LogProviderItf {
 public:
-    MOCK_METHOD(aos::Error, GetInstanceLog, (const aos::cloudprotocol::RequestLog&), (override));
-    MOCK_METHOD(aos::Error, GetInstanceCrashLog, (const aos::cloudprotocol::RequestLog&), (override));
-    MOCK_METHOD(aos::Error, GetSystemLog, (const aos::cloudprotocol::RequestLog&), (override));
+    MOCK_METHOD(aos::Error, GetInstanceLog, (const aos::RequestLog&), (override));
+    MOCK_METHOD(aos::Error, GetInstanceCrashLog, (const aos::RequestLog&), (override));
+    MOCK_METHOD(aos::Error, GetSystemLog, (const aos::RequestLog&), (override));
     MOCK_METHOD(aos::Error, Subscribe, (aos::sm::logprovider::LogObserverItf&), (override));
     MOCK_METHOD(aos::Error, Unsubscribe, (aos::sm::logprovider::LogObserverItf&), (override));
 };

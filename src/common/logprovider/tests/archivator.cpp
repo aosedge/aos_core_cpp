@@ -42,7 +42,7 @@ std::string DecompressGZIP(const std::string& compressedData)
  */
 class LogObserverMock : public sm::logprovider::LogObserverItf {
 public:
-    MOCK_METHOD(Error, OnLogReceived, (const cloudprotocol::PushLog& log), (override));
+    MOCK_METHOD(Error, OnLogReceived, (const PushLog& log), (override));
 };
 
 class ArchivatorTest : public Test {
@@ -61,11 +61,11 @@ TEST_F(ArchivatorTest, ArchiveEmpty)
 
     Archivator archivator(mLogObserver, mConfig);
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([](const cloudprotocol::PushLog& log) {
+    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([](const PushLog& log) {
         EXPECT_STREQ(log.mLogID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, 1);
         EXPECT_EQ(log.mPart, 1);
-        EXPECT_EQ(log.mStatus, cloudprotocol::LogStatusEnum::eEmpty);
+        EXPECT_EQ(log.mStatus, LogStatusEnum::eEmpty);
         EXPECT_TRUE(log.mContent.IsEmpty());
 
         return ErrorEnum::eNone;
@@ -91,18 +91,17 @@ TEST_F(ArchivatorTest, ArchiveChunks)
         EXPECT_EQ(archivator.AddLog(logMessage), ErrorEnum::eNone);
     }
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_))
-        .WillOnce(Invoke([&expectedUncompressedString](const cloudprotocol::PushLog& log) {
-            EXPECT_STREQ(log.mLogID.CStr(), cLogID);
-            EXPECT_EQ(log.mPartsCount, 1);
-            EXPECT_EQ(log.mPart, 1);
-            EXPECT_EQ(log.mStatus, cloudprotocol::LogStatusEnum::eOk);
+    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([&expectedUncompressedString](const PushLog& log) {
+        EXPECT_STREQ(log.mLogID.CStr(), cLogID);
+        EXPECT_EQ(log.mPartsCount, 1);
+        EXPECT_EQ(log.mPart, 1);
+        EXPECT_EQ(log.mStatus, LogStatusEnum::eOK);
 
-            auto decompressed = DecompressGZIP(std::string(log.mContent.begin(), log.mContent.end()));
-            EXPECT_EQ(decompressed, expectedUncompressedString);
+        auto decompressed = DecompressGZIP(std::string(log.mContent.begin(), log.mContent.end()));
+        EXPECT_EQ(decompressed, expectedUncompressedString);
 
-            return ErrorEnum::eNone;
-        }));
+        return ErrorEnum::eNone;
+    }));
 
     EXPECT_EQ(archivator.SendLog(cLogID), ErrorEnum::eNone);
 }
@@ -122,9 +121,9 @@ TEST_F(ArchivatorTest, ArchiveLongChunks)
         EXPECT_EQ(archivator.AddLog(logMessage), ErrorEnum::eNone);
     }
 
-    std::vector<cloudprotocol::PushLog> pushedLogs;
+    std::vector<PushLog> pushedLogs;
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillRepeatedly(Invoke([&pushedLogs](const cloudprotocol::PushLog& log) {
+    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillRepeatedly(Invoke([&pushedLogs](const PushLog& log) {
         pushedLogs.push_back(log);
 
         return ErrorEnum::eNone;
@@ -140,7 +139,7 @@ TEST_F(ArchivatorTest, ArchiveLongChunks)
         EXPECT_STREQ(log.mLogID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, logMessages.size());
         EXPECT_EQ(log.mPart, i + 1);
-        EXPECT_EQ(log.mStatus, cloudprotocol::LogStatusEnum::eOk);
+        EXPECT_EQ(log.mStatus, LogStatusEnum::eOK);
 
         auto decompressed = DecompressGZIP(std::string(log.mContent.begin(), log.mContent.end()));
         EXPECT_EQ(decompressed, logMessages[i]);

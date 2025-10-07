@@ -88,9 +88,9 @@ aos::AlertVariant CreateAlert()
     return result;
 }
 
-aos::cloudprotocol::PushLog CreatePushLog()
+aos::PushLog CreatePushLog()
 {
-    aos::cloudprotocol::PushLog log;
+    aos::PushLog log;
 
     log.mContent    = "test log";
     log.mLogID      = "test-log-id";

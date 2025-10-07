@@ -123,7 +123,7 @@ void LogUploadOptionsFromJSON(
  * Public
  **********************************************************************************************************************/
 
-Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::PushLog& pushLog)
+Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::PushLog& pushLog)
 {
     try {
         auto err = pushLog.mNodeID.Assign(json.GetValue<std::string>("nodeId").c_str());

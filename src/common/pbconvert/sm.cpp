@@ -118,7 +118,7 @@ private:
 
 namespace aos::common::pbconvert {
 
-::servicemanager::v4::LogData ConvertToProto(const cloudprotocol::PushLog& src)
+::servicemanager::v4::LogData ConvertToProto(const PushLog& src)
 {
     ::servicemanager::v4::LogData result;
 
@@ -128,7 +128,7 @@ namespace aos::common::pbconvert {
     result.set_data(std::string(src.mContent.CStr(), src.mContent.Size()));
     result.set_status(src.mStatus.ToString().CStr());
 
-    SetErrorInfo(src.mErrorInfo, result);
+    SetErrorInfo(src.mError, result);
 
     return result;
 }
@@ -350,7 +350,7 @@ Error ConvertToAos(const ::servicemanager::v4::LayerInfo& val, LayerInfo& dst)
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudprotocol::RequestLog& dst)
+Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, RequestLog& dst)
 {
     dst.mLogID        = String(val.log_id().c_str());
     dst.mFilter.mFrom = ConvertToAos(val.from());
@@ -359,26 +359,26 @@ Error ConvertToAos(const ::servicemanager::v4::SystemLogRequest& val, cloudproto
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, cloudprotocol::RequestLog& dst)
+Error ConvertToAos(const ::servicemanager::v4::InstanceLogRequest& val, RequestLog& dst)
 {
     dst.mLogID        = String(val.log_id().c_str());
     dst.mFilter.mFrom = ConvertToAos(val.from());
     dst.mFilter.mTill = ConvertToAos(val.till());
 
-    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter.mInstanceFilter); !err.IsNone()) {
+    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter); !err.IsNone()) {
         return err;
     }
 
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, cloudprotocol::RequestLog& dst)
+Error ConvertToAos(const ::servicemanager::v4::InstanceCrashLogRequest& val, RequestLog& dst)
 {
     dst.mLogID        = String(val.log_id().c_str());
     dst.mFilter.mFrom = ConvertToAos(val.from());
     dst.mFilter.mTill = ConvertToAos(val.till());
 
-    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter.mInstanceFilter); !err.IsNone()) {
+    if (auto err = ConvertToAos(val.instance_filter(), dst.mFilter); !err.IsNone()) {
         return err;
     }
 
