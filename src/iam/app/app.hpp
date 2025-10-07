@@ -10,6 +10,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
+#include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/certhandler/certprovider.hpp>

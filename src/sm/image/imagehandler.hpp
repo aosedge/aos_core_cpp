@@ -7,7 +7,7 @@
 #ifndef AOS_SM_IMAGE_IMAGEHANDLER_HPP_
 #define AOS_SM_IMAGE_IMAGEHANDLER_HPP_
 
-#include <core/common/crypto/crypto.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/tools/fs.hpp>
 #include <core/sm/image/imagehandler.hpp>

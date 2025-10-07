@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <openssl/engine.h>
 
+#include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
 #include <core/common/tests/utils/log.hpp>
