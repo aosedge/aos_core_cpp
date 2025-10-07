@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include <core/cm/imagemanager/itf/imageunpacker.hpp>
 #include <core/common/tools/error.hpp>
 
 namespace aos::common::utils {
@@ -56,6 +57,37 @@ Error ValidateDigest(const Digest& digest);
  * @return std::string.
  */
 RetWithError<std::string> HashDir(const std::string& dir);
+
+/**
+ * Image unpacker interface.
+ */
+class ImageUnpacker : public cm::imagemanager::ImageUnpackerItf {
+public:
+    /**
+     * Returns the size of the uncompressed file in the archive.
+     *
+     * @param path path to the archive file.
+     * @param filePath path to the file in the archive.
+     * @return RetWithError<size_t>.
+     */
+    RetWithError<size_t> GetUncompressedFileSize(const String& path, const String& filePath) override;
+
+    /**
+     * Extracts a file from an archive.
+     *
+     * @param archivePath path to the archive file.
+     * @param filePath path to the file in the archive.
+     * @param outputPath path to the output file.
+     * @return Error.
+     */
+    Error ExtractFileFromArchive(const String& archivePath, const String& filePath, const String& outputPath) override;
+
+private:
+    static constexpr auto cFilePermissionStrLen     = 10;
+    static constexpr auto cFilePermissionTokenIndex = 0;
+    static constexpr auto cFileSizeTokenIndex       = 2;
+    static constexpr auto cFileNameTokenIndex       = 5;
+};
 
 } // namespace aos::common::utils
 
