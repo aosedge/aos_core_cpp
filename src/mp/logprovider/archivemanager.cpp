@@ -108,7 +108,7 @@ Error ArchiveManager::Archive(std::shared_ptr<servicemanager::v4::LogData> log)
         ? std::make_shared<ArchiveContext>(log->log_id(), *mLogReceiver, mConfig)
         : *it;
 
-    if (GetLogStatus(log) == cloudprotocol::LogStatusEnum::eOk) {
+    if (GetLogStatus(log) == LogStatusEnum::eOK) {
         if (it == mArchiveContexts.end()) {
             mArchiveContexts.push_back(archiveContext);
         }
@@ -174,9 +174,9 @@ Error ArchiveManager::SendFinalChunk(std::shared_ptr<ArchiveContext> archiveCont
     return archiveContext->mArchivator.SendLog(archiveContext->mLogID.c_str());
 }
 
-cloudprotocol::LogStatus ArchiveManager::GetLogStatus(const std::shared_ptr<servicemanager::v4::LogData>& log) const
+LogStatus ArchiveManager::GetLogStatus(const std::shared_ptr<servicemanager::v4::LogData>& log) const
 {
-    cloudprotocol::LogStatus status;
+    LogStatus status;
 
     status.FromString(log->status().c_str());
 

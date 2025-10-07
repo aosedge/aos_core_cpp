@@ -14,8 +14,8 @@
 
 #include <Poco/DeflatingStream.h>
 
-#include <core/common/cloudprotocol/log.hpp>
 #include <core/common/logprovider/config.hpp>
+#include <core/common/types/log.hpp>
 #include <core/sm/logprovider/logprovider.hpp>
 
 namespace aos::common::logprovider {
@@ -47,7 +47,7 @@ public:
      * @param logID log ID.
      * @return Error.
      */
-    Error SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID);
+    Error SendLog(const StaticString<cLogIDLen>& logID);
 
 private:
     void  CreateCompressionStream();

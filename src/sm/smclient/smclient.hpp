@@ -114,7 +114,7 @@ public:
      * @param log log.
      * @return Error.
      */
-    Error OnLogReceived(const cloudprotocol::PushLog& log) override;
+    Error OnLogReceived(const PushLog& log) override;
 
     /**
      * Sends instances run status.

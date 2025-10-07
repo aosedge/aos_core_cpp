@@ -69,11 +69,11 @@ LogProvider::~LogProvider()
     Stop();
 }
 
-Error LogProvider::GetInstanceLog(const cloudprotocol::RequestLog& request)
+Error LogProvider::GetInstanceLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance log: logID=" << request.mLogID;
 
-    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(request.mFilter.mInstanceFilter);
+    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(static_cast<const InstanceFilter&>(request.mFilter));
     if (!err.IsNone()) {
         SendErrorResponse(request.mLogID, err.Message());
 
@@ -93,11 +93,11 @@ Error LogProvider::GetInstanceLog(const cloudprotocol::RequestLog& request)
     return ErrorEnum::eNone;
 }
 
-Error LogProvider::GetInstanceCrashLog(const cloudprotocol::RequestLog& request)
+Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance crash log: logID=" << request.mLogID;
 
-    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(request.mFilter.mInstanceFilter);
+    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(static_cast<const InstanceFilter&>(request.mFilter));
     if (!err.IsNone()) {
         SendErrorResponse(request.mLogID, err.Message());
 
@@ -117,7 +117,7 @@ Error LogProvider::GetInstanceCrashLog(const cloudprotocol::RequestLog& request)
     return ErrorEnum::eNone;
 }
 
-Error LogProvider::GetSystemLog(const cloudprotocol::RequestLog& request)
+Error LogProvider::GetSystemLog(const RequestLog& request)
 {
     LOG_DBG() << "Get system log: logID=" << request.mLogID;
 
@@ -160,8 +160,8 @@ std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
     return std::make_shared<utils::Journal>();
 }
 
-void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
@@ -170,8 +170,8 @@ void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
     mCondVar.notify_one();
 }
 
-void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
@@ -218,8 +218,8 @@ void LogProvider::ProcessLogs()
     }
 }
 
-void LogProvider::GetLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    const Optional<Time>& from, const Optional<Time>& till)
 {
     if (!mLogReceiver) {
         return;
@@ -243,8 +243,8 @@ void LogProvider::GetLog(const std::vector<std::string>& instanceIDs,
     AOS_ERROR_CHECK_AND_THROW(archivator->SendLog(logID), "sending log failed");
 }
 
-void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<cloudprotocol::cLogIDLen>& logID, const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    const Optional<Time>& from, const Optional<Time>& till)
 {
     if (!mLogReceiver) {
         return;
@@ -281,11 +281,11 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
 
 void LogProvider::SendErrorResponse(const String& logID, const std::string& errorMsg)
 {
-    auto response = std::make_unique<cloudprotocol::PushLog>();
+    auto response = std::make_unique<PushLog>();
 
     response->mLogID      = logID;
-    response->mStatus     = cloudprotocol::LogStatusEnum::eError;
-    response->mErrorInfo  = Error(ErrorEnum::eFailed, errorMsg.c_str());
+    response->mStatus     = LogStatusEnum::eError;
+    response->mError      = Error(ErrorEnum::eFailed, errorMsg.c_str());
     response->mPartsCount = 0;
     response->mPart       = 0;
 
@@ -296,13 +296,13 @@ void LogProvider::SendErrorResponse(const String& logID, const std::string& erro
 
 void LogProvider::SendEmptyResponse(const String& logID, const std::string& errorMsg)
 {
-    auto response = std::make_unique<cloudprotocol::PushLog>();
+    auto response = std::make_unique<PushLog>();
 
     response->mLogID      = logID;
-    response->mStatus     = cloudprotocol::LogStatusEnum::eAbsent;
+    response->mStatus     = LogStatusEnum::eAbsent;
     response->mPartsCount = 1;
     response->mPart       = 1;
-    response->mErrorInfo  = Error(ErrorEnum::eNone, errorMsg.c_str());
+    response->mError      = Error(ErrorEnum::eNone, errorMsg.c_str());
 
     if (mLogReceiver) {
         mLogReceiver->OnLogReceived(*response);

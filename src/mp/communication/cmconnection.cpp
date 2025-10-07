@@ -9,8 +9,8 @@
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
 
-#include <core/common/cloudprotocol/log.hpp>
 #include <core/common/types/alerts.hpp>
+#include <core/common/types/log.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
@@ -137,7 +137,7 @@ Error CMConnection::Stop()
 }
 
 // cppcheck-suppress unusedFunction
-Error CMConnection::OnLogReceived(const cloudprotocol::PushLog& log)
+Error CMConnection::OnLogReceived(const PushLog& log)
 {
     LOG_DBG() << "On log received: id=" << log.mLogID << ", status=" << log.mStatus << ", part=" << log.mPart
               << ", count=" << log.mPartsCount << ", size=" << log.mContent.Size();
