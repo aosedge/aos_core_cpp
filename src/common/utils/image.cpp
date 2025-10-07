@@ -206,4 +206,85 @@ RetWithError<std::string> HashDir(const std::string& dir)
     return "sha256:" + Poco::DigestEngine::digestToHex(h.digest());
 }
 
+RetWithError<size_t> ImageUnpacker::GetUncompressedFileSize(const String& path, const String& filePath)
+{
+    Poco::Process::Args args;
+
+    args.push_back("-tzvf");
+    args.push_back(path.CStr());
+
+    Poco::Pipe          outPipe;
+    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
+
+    Poco::PipeInputStream istr(outPipe);
+
+    size_t fileSize {};
+    bool   fileFound {};
+
+    try {
+        std::string line;
+
+        while (std::getline(istr, line)) {
+            Poco::StringTokenizer tokenizer(
+                line, " ", Poco::StringTokenizer::TOK_IGNORE_EMPTY | Poco::StringTokenizer::TOK_TRIM);
+
+            if (tokenizer.count() <= cFileNameTokenIndex
+                || tokenizer[cFilePermissionTokenIndex].length() != cFilePermissionStrLen) {
+                continue;
+            }
+
+            if (tokenizer[cFileNameTokenIndex] == filePath.CStr()) {
+                fileSize  = std::stoull(tokenizer[cFileSizeTokenIndex]);
+                fileFound = true;
+                break;
+            }
+        }
+    } catch (const std::exception& e) {
+        ph.wait();
+
+        return {0, AOS_ERROR_WRAP(ToAosError(e, ErrorEnum::eFailed))};
+    }
+
+    if (int rc = ph.wait(); rc != 0) {
+        std::string output;
+        Poco::StreamCopier::copyToString(istr, output);
+
+        return {0, Error(ErrorEnum::eFailed, output.c_str())};
+    }
+
+    if (!fileFound) {
+        return {0, Error(ErrorEnum::eNotFound, "file not found in archive")};
+    }
+
+    return fileSize;
+}
+
+Error ImageUnpacker::ExtractFileFromArchive(const String& archivePath, const String& filePath, const String& outputPath)
+{
+    if (!fs::exists(archivePath.CStr())) {
+        return Error(ErrorEnum::eNotFound, "archive does not exist");
+    }
+
+    Poco::Process::Args args;
+
+    args.push_back("-xzf");
+    args.push_back(archivePath.CStr());
+    args.push_back("-C");
+    args.push_back(outputPath.CStr());
+    args.push_back(filePath.CStr());
+
+    Poco::Pipe          outPipe;
+    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
+
+    if (int rc = ph.wait(); rc != 0) {
+        std::string           output;
+        Poco::PipeInputStream istr(outPipe);
+        Poco::StreamCopier::copyToString(istr, output);
+
+        return Error(ErrorEnum::eFailed, output.c_str());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::utils

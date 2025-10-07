@@ -189,4 +189,146 @@ TEST(HashDirTest, HashDir)
     fs::remove_all(dir);
 }
 
+TEST(ImageUnpackerTest, GetUncompressedFileSizeSuccess)
+{
+    std::string archivePath     = "test_archive_size.tar.gz";
+    std::string contentFilePath = "test_content_size.txt";
+    std::string fileContent     = "This is a test content for file size";
+
+    createTestTarFile(archivePath, contentFilePath, fileContent);
+
+    ImageUnpacker unpacker;
+    auto [size, err] = unpacker.GetUncompressedFileSize(archivePath.c_str(), contentFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone()) << err.StrValue();
+    EXPECT_EQ(size, fileContent.length());
+
+    fs::remove(archivePath);
+}
+
+TEST(ImageUnpackerTest, GetUncompressedFileSizeFileNotFound)
+{
+    std::string archivePath     = "test_archive_notfound.tar.gz";
+    std::string contentFilePath = "test_content_notfound.txt";
+    std::string fileContent     = "Test content";
+
+    createTestTarFile(archivePath, contentFilePath, fileContent);
+
+    ImageUnpacker unpacker;
+    auto [size, err] = unpacker.GetUncompressedFileSize(archivePath.c_str(), "non_existent_file.txt");
+
+    EXPECT_EQ(err, ErrorEnum::eNotFound);
+    EXPECT_EQ(size, 0);
+
+    fs::remove(archivePath);
+}
+
+TEST(ImageUnpackerTest, GetUncompressedFileSizeArchiveNotFound)
+{
+    ImageUnpacker unpacker;
+    auto [size, err] = unpacker.GetUncompressedFileSize("non_existent_archive.tar.gz", "some_file.txt");
+
+    EXPECT_EQ(err, ErrorEnum::eFailed);
+    EXPECT_EQ(size, 0);
+}
+
+TEST(ImageUnpackerTest, ExtractFileFromArchiveSuccess)
+{
+    std::string archivePath = "test_archive_extract.tar.gz";
+    std::string sourceDir   = "test_source_dir";
+    std::string destination = "test_extract_dir";
+
+    // Create source directory structure with multiple files
+    fs::create_directory(sourceDir);
+    fs::create_directory(sourceDir + "/subdir");
+
+    std::string file1Content = "Content of file1";
+    std::string file2Content = "Content of file2";
+    std::string file3Content = "Content of file3 in subdir";
+
+    std::ofstream ofs1(sourceDir + "/file1.txt");
+    ofs1 << file1Content;
+    ofs1.close();
+
+    std::ofstream ofs2(sourceDir + "/file2.txt");
+    ofs2 << file2Content;
+    ofs2.close();
+
+    std::ofstream ofs3(sourceDir + "/subdir/file3.txt");
+    ofs3 << file3Content;
+    ofs3.close();
+
+    Poco::Process::Args args;
+    args.push_back("czf");
+    args.push_back(archivePath);
+    args.push_back("-C");
+    args.push_back(sourceDir);
+    args.push_back("file1.txt");
+    args.push_back("file2.txt");
+    args.push_back("subdir");
+
+    Poco::Pipe          outPipe;
+    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
+    int                 rc = ph.wait();
+
+    ASSERT_EQ(rc, 0) << "Failed to create test archive";
+
+    fs::create_directory(destination);
+
+    ImageUnpacker unpacker;
+
+    auto err = unpacker.ExtractFileFromArchive(archivePath.c_str(), "file1.txt", destination.c_str());
+
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+    EXPECT_TRUE(fs::exists(destination + "/file1.txt"));
+
+    std::ifstream ifs1(destination + "/file1.txt");
+    std::string   extractedContent1((std::istreambuf_iterator<char>(ifs1)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(extractedContent1, file1Content);
+
+    EXPECT_FALSE(fs::exists(destination + "/file2.txt"));
+
+    err = unpacker.ExtractFileFromArchive(archivePath.c_str(), "subdir/file3.txt", destination.c_str());
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+    EXPECT_TRUE(fs::exists(destination + "/subdir/file3.txt"));
+
+    std::ifstream ifs3(destination + "/subdir/file3.txt");
+    std::string   extractedContent3((std::istreambuf_iterator<char>(ifs3)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(extractedContent3, file3Content);
+
+    EXPECT_FALSE(fs::exists(destination + "/file2.txt"));
+
+    fs::remove(archivePath);
+    fs::remove_all(sourceDir);
+    fs::remove_all(destination);
+}
+
+TEST(ImageUnpackerTest, ExtractFileFromArchiveFileNotFound)
+{
+    std::string archivePath     = "test_archive_extract_notfound.tar.gz";
+    std::string contentFilePath = "test_content.txt";
+    std::string destination     = "test_extract_notfound_dir";
+    std::string fileContent     = "Test content";
+
+    createTestTarFile(archivePath, contentFilePath, fileContent);
+
+    fs::create_directory(destination);
+
+    ImageUnpacker unpacker;
+    auto err = unpacker.ExtractFileFromArchive(archivePath.c_str(), "non_existent_file.txt", destination.c_str());
+
+    EXPECT_EQ(err, ErrorEnum::eFailed);
+
+    fs::remove(archivePath);
+    fs::remove_all(destination);
+}
+
+TEST(ImageUnpackerTest, ExtractFileFromArchiveArchiveNotFound)
+{
+    ImageUnpacker unpacker;
+    auto          err = unpacker.ExtractFileFromArchive("non_existent_archive.tar.gz", "some_file.txt", "some_dir");
+
+    EXPECT_EQ(err, ErrorEnum::eNotFound);
+}
+
 } // namespace aos::common::utils
