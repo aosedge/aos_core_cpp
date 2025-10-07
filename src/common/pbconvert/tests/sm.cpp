@@ -233,7 +233,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceFilterToProto)
 
 TEST_F(PBConvertSMTest, ConvertEnvVarStatusToProto)
 {
-    aos::cloudprotocol::EnvVarStatus params[] = {
+    aos::EnvVarStatus params[] = {
         {"name1", aos::Error {aos::ErrorEnum::eFailed, "failed error"}},
         {"name2", aos::Error {aos::ErrorEnum::eRuntime, "runtime error"}},
         {"name3", aos::Error {aos::ErrorEnum::eNone}},
@@ -395,7 +395,7 @@ TEST_F(PBConvertSMTest, ConvertEnvVarInfoToAos)
     param.set_value("value");
     param.mutable_ttl()->set_seconds(1);
 
-    aos::cloudprotocol::EnvVarInfo result;
+    aos::EnvVarInfo result;
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
@@ -417,16 +417,16 @@ TEST_F(PBConvertSMTest, ConvertOverrideEnvVarsToAosSucceeds)
     instanceEnvVariables.set_value("value");
     instanceEnvVariables.mutable_ttl()->set_seconds(1);
 
-    aos::cloudprotocol::EnvVarsInstanceInfoArray result;
+    aos::EnvVarsInstanceInfoArray result;
 
     auto err = aos::common::pbconvert::ConvertToAos(param, result);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     ASSERT_EQ(result.Size(), 1);
 
-    EXPECT_EQ(result[0].mFilter.mItemID.GetValue(), aos::String("service-id"));
-    EXPECT_FALSE(result[0].mFilter.mInstance.HasValue());
-    EXPECT_FALSE(result[0].mFilter.mSubjectID.HasValue());
+    EXPECT_EQ(result[0].mItemID.GetValue(), aos::String("service-id"));
+    EXPECT_FALSE(result[0].mInstance.HasValue());
+    EXPECT_FALSE(result[0].mSubjectID.HasValue());
 
     ASSERT_EQ(result[0].mVariables.Size(), 1);
 
@@ -450,7 +450,7 @@ TEST_F(PBConvertSMTest, ConvertOverrideEnvVarsToAosReturnsErrorOnInstanceEnvVarL
         instanceEnvVariables.mutable_ttl()->set_seconds(1);
     }
 
-    aos::cloudprotocol::EnvVarsInstanceInfoArray result;
+    aos::EnvVarsInstanceInfoArray result;
 
     auto err = aos::common::pbconvert::ConvertToAos(param, result);
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << err.Message();
@@ -471,7 +471,7 @@ TEST_F(PBConvertSMTest, ConvertOverrideEnvVarsToAosReturnsErrorOnInstancesLimitE
         instanceEnvVariables.mutable_ttl()->set_seconds(1);
     }
 
-    aos::cloudprotocol::EnvVarsInstanceInfoArray result;
+    aos::EnvVarsInstanceInfoArray result;
 
     auto err = aos::common::pbconvert::ConvertToAos(param, result);
     ASSERT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << err.Message();

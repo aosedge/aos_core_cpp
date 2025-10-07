@@ -7,10 +7,10 @@
 #ifndef AOS_COMMON_PBCONVERT_SM_HPP_
 #define AOS_COMMON_PBCONVERT_SM_HPP_
 
-#include <core/common/cloudprotocol/envvars.hpp>
 #include <core/common/cloudprotocol/log.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/types/alerts.hpp>
+#include <core/common/types/envvars.hpp>
 #include <core/common/types/obsolete.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
@@ -73,7 +73,7 @@ namespace aos::common::pbconvert {
  * @param src Aos env var status.
  * @return ::servicemanager::v4::EnvVarStatus.
  */
-::servicemanager::v4::EnvVarStatus ConvertToProto(const cloudprotocol::EnvVarStatus& src);
+::servicemanager::v4::EnvVarStatus ConvertToProto(const EnvVarStatus& src);
 
 /**
  * Converts Aos alerts to protobuf.
@@ -117,7 +117,7 @@ Error ConvertToAos(const ::servicemanager::v4::InstanceFilter& val, InstanceFilt
  * @param dst[out] Aos env var info.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::EnvVarInfo& dst);
+Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, EnvVarInfo& dst);
 
 /**
  * Converts protobuf env vars instance info to Aos.
@@ -126,7 +126,7 @@ Error ConvertToAos(const ::servicemanager::v4::EnvVarInfo& val, cloudprotocol::E
  * @param dst[out] Aos env vars instance info array.
  * @return Error.
  */
-Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, cloudprotocol::EnvVarsInstanceInfoArray& dst);
+Error ConvertToAos(const ::servicemanager::v4::OverrideEnvVars& src, EnvVarsInstanceInfoArray& dst);
 
 /**
  * Converts service info to Aos.

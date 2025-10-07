@@ -23,7 +23,7 @@ namespace {
  * Static
  **********************************************************************************************************************/
 
-Poco::JSON::Object::Ptr EnvVarInfoToJSON(const aos::cloudprotocol::EnvVarInfo& envVar)
+Poco::JSON::Object::Ptr EnvVarInfoToJSON(const aos::EnvVarInfo& envVar)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -40,7 +40,7 @@ Poco::JSON::Object::Ptr EnvVarInfoToJSON(const aos::cloudprotocol::EnvVarInfo& e
     return json;
 }
 
-void EnvVarInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::EnvVarInfo& envVar)
+void EnvVarInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::EnvVarInfo& envVar)
 {
     auto err = envVar.mName.Assign(json.GetValue<std::string>("name").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "failed to unparse environment variable name");
@@ -56,7 +56,7 @@ void EnvVarInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cl
     }
 }
 
-Poco::JSON::Object::Ptr EnvVarsInstanceInfoToJSON(const aos::cloudprotocol::EnvVarsInstanceInfo& envVar)
+Poco::JSON::Object::Ptr EnvVarsInstanceInfoToJSON(const aos::EnvVarsInstanceInfo& envVar)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -68,8 +68,7 @@ Poco::JSON::Object::Ptr EnvVarsInstanceInfoToJSON(const aos::cloudprotocol::EnvV
     return json;
 }
 
-void EnvVarsInstanceInfoFromJSON(
-    const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::EnvVarsInstanceInfo& envVar)
+void EnvVarsInstanceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::EnvVarsInstanceInfo& envVar)
 {
     auto err = FromJSON(json, envVar.mFilter);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert JSON to filter");
@@ -82,7 +81,7 @@ void EnvVarsInstanceInfoFromJSON(
     });
 }
 
-Poco::JSON::Object::Ptr EnvVarStatusToJSON(const aos::cloudprotocol::EnvVarStatus& envVar)
+Poco::JSON::Object::Ptr EnvVarStatusToJSON(const aos::EnvVarStatus& envVar)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -100,7 +99,7 @@ Poco::JSON::Object::Ptr EnvVarStatusToJSON(const aos::cloudprotocol::EnvVarStatu
     return json;
 }
 
-void EnvVarStatusFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::EnvVarStatus& envVar)
+void EnvVarStatusFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::EnvVarStatus& envVar)
 {
     auto err = envVar.mName.Assign(json.GetValue<std::string>("name").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "failed to unparse environment variable name");
@@ -111,7 +110,7 @@ void EnvVarStatusFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::
     }
 }
 
-Poco::JSON::Object::Ptr EnvVarsInstanceStatusToJSON(const aos::cloudprotocol::EnvVarsInstanceStatus& envVar)
+Poco::JSON::Object::Ptr EnvVarsInstanceStatusToJSON(const aos::EnvVarsInstanceStatus& envVar)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -123,8 +122,7 @@ Poco::JSON::Object::Ptr EnvVarsInstanceStatusToJSON(const aos::cloudprotocol::En
     return json;
 }
 
-void EnvVarsInstanceStatusFromJSON(
-    const utils::CaseInsensitiveObjectWrapper& json, aos::cloudprotocol::EnvVarsInstanceStatus& envVar)
+void EnvVarsInstanceStatusFromJSON(const utils::CaseInsensitiveObjectWrapper& json, aos::EnvVarsInstanceStatus& envVar)
 {
     auto err = FromJSON(json, envVar.mFilter);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert JSON to filter");

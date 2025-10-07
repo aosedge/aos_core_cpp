@@ -644,7 +644,7 @@ bool SMClient::ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request)
 {
     LOG_INF() << "Process override env vars";
 
-    auto                        envVarsInstanceInfos = std::make_unique<cloudprotocol::EnvVarsInstanceInfoArray>();
+    auto                        envVarsInstanceInfos = std::make_unique<EnvVarsInstanceInfoArray>();
     smproto::SMOutgoingMessages outgoingMsg;
 
     auto& response = *outgoingMsg.mutable_override_env_var_status();
@@ -656,7 +656,7 @@ bool SMClient::ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request)
         return mStream->Write(outgoingMsg);
     }
 
-    auto envVarStatuses = std::make_unique<cloudprotocol::EnvVarsInstanceStatusArray>();
+    auto envVarStatuses = std::make_unique<EnvVarsInstanceStatusArray>();
 
     err = mLauncher->OverrideEnvVars(*envVarsInstanceInfos, *envVarStatuses);
     if (!err.IsNone()) {
@@ -668,7 +668,13 @@ bool SMClient::ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request)
     for (const auto& status : *envVarStatuses) {
         auto& envVarStatus = *response.add_env_vars_status();
 
-        *envVarStatus.mutable_instance_filter() = common::pbconvert::ConvertToProto(status.mFilter);
+        InstanceFilter filter;
+
+        filter.mItemID.SetValue(status.mItemID);
+        filter.mSubjectID.SetValue(status.mSubjectID);
+        filter.mInstance.SetValue(status.mInstance);
+
+        *envVarStatus.mutable_instance_filter() = common::pbconvert::ConvertToProto(filter);
 
         for (const auto& env : status.mStatuses) {
             *envVarStatus.add_statuses() = common::pbconvert::ConvertToProto(env);

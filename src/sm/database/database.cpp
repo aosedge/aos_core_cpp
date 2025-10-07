@@ -47,9 +47,9 @@ Time ConvertTimestamp(uint64_t timestamp)
     return Time::Unix(seconds, nanos);
 }
 
-cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
+EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    cloudprotocol::EnvVarInfo envVar;
+    EnvVarInfo envVar;
 
     envVar.mTTL.Reset();
 
@@ -68,8 +68,7 @@ cloudprotocol::EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseIns
     return envVar;
 }
 
-Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
-    const Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
+Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(const Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     Poco::JSON::Array result;
 
@@ -77,16 +76,16 @@ Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
         Poco::JSON::Object object;
         Poco::JSON::Object instanceFilter;
 
-        if (envVarsInstanceInfo.mFilter.mItemID.HasValue()) {
-            instanceFilter.set("serviceID", envVarsInstanceInfo.mFilter.mItemID.GetValue().CStr());
+        if (envVarsInstanceInfo.mItemID.HasValue()) {
+            instanceFilter.set("serviceID", envVarsInstanceInfo.mItemID.GetValue().CStr());
         }
 
-        if (envVarsInstanceInfo.mFilter.mSubjectID.HasValue()) {
-            instanceFilter.set("subjectID", envVarsInstanceInfo.mFilter.mSubjectID.GetValue().CStr());
+        if (envVarsInstanceInfo.mSubjectID.HasValue()) {
+            instanceFilter.set("subjectID", envVarsInstanceInfo.mSubjectID.GetValue().CStr());
         }
 
-        if (envVarsInstanceInfo.mFilter.mInstance.HasValue()) {
-            instanceFilter.set("instance", envVarsInstanceInfo.mFilter.mInstance.GetValue());
+        if (envVarsInstanceInfo.mInstance.HasValue()) {
+            instanceFilter.set("instance", envVarsInstanceInfo.mInstance.GetValue());
         }
 
         object.set("instanceFilter", instanceFilter);
@@ -114,30 +113,29 @@ Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(
     return result;
 }
 
-void ConvertEnvVarsInfoFromJSON(
-    const common::utils::CaseInsensitiveObjectWrapper& object, cloudprotocol::EnvVarsInstanceInfo& result)
+void ConvertEnvVarsInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, EnvVarsInstanceInfo& result)
 {
     if (object.Has("instanceFilter")) {
         const auto filter = object.GetObject("instanceFilter");
 
         if (filter.Has("serviceID")) {
-            result.mFilter.mItemID.SetValue(filter.GetValue<std::string>("serviceID").c_str());
+            result.mItemID.SetValue(filter.GetValue<std::string>("serviceID").c_str());
         }
 
         if (filter.Has("subjectID")) {
-            result.mFilter.mSubjectID.SetValue(filter.GetValue<std::string>("subjectID").c_str());
+            result.mSubjectID.SetValue(filter.GetValue<std::string>("subjectID").c_str());
         }
 
         if (filter.Has("instance")) {
-            result.mFilter.mInstance.SetValue(filter.GetValue<uint32_t>("instance"));
+            result.mInstance.SetValue(filter.GetValue<uint32_t>("instance"));
         }
     }
 
-    const auto envVars = common::utils::GetArrayValue<cloudprotocol::EnvVarInfo>(
-        object, "envVars", [&](const Poco::Dynamic::Var& value) {
-            return ConvertEnvVarInfoFromJSON(
-                common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
-        });
+    const auto envVars
+        = common::utils::GetArrayValue<EnvVarInfo>(object, "envVars", [&](const Poco::Dynamic::Var& value) {
+              return ConvertEnvVarInfoFromJSON(
+                  common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+          });
 
     for (auto& envVar : envVars) {
         auto err = result.mVariables.PushBack(Move(envVar));
@@ -145,8 +143,7 @@ void ConvertEnvVarsInfoFromJSON(
     }
 }
 
-Error ConvertEnvVarsInstanceInfoArrayFromJSON(
-    const std::string& src, Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
+Error ConvertEnvVarsInstanceInfoArrayFromJSON(const std::string& src, Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     if (src.empty()) {
         return ErrorEnum::eNone;
@@ -172,7 +169,7 @@ Error ConvertEnvVarsInstanceInfoArrayFromJSON(
                 continue;
             }
 
-            auto envVarsInfo = std::make_unique<cloudprotocol::EnvVarsInstanceInfo>();
+            auto envVarsInfo = std::make_unique<EnvVarsInstanceInfo>();
 
             ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr), *envVarsInfo);
 
@@ -570,7 +567,7 @@ Error Database::SetOperationVersion(uint64_t version)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetOverrideEnvVars(Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos) const
+Error Database::GetOverrideEnvVars(Array<EnvVarsInstanceInfo>& envVarsInstanceInfos) const
 {
     LOG_DBG() << "Get override env vars";
 
@@ -587,7 +584,7 @@ Error Database::GetOverrideEnvVars(Array<cloudprotocol::EnvVarsInstanceInfo>& en
     return ErrorEnum::eNone;
 }
 
-Error Database::SetOverrideEnvVars(const Array<cloudprotocol::EnvVarsInstanceInfo>& envVarsInstanceInfos)
+Error Database::SetOverrideEnvVars(const Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
 {
     LOG_DBG() << "Set override env vars";
 

@@ -310,18 +310,18 @@ TEST_F(DatabaseTest, OverrideEnvVars)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
-    aos::cloudprotocol::EnvVarInfoArray envVars;
+    aos::EnvVarInfoArray envVars;
     envVars.PushBack({"key1", "value1", CreateTimeOpt()});
     envVars.PushBack({"key2", "value2", CreateTimeOpt(cCreateNullOptTime)});
 
-    aos::cloudprotocol::EnvVarsInstanceInfoArray envVarsInstanceInfo;
+    aos::EnvVarsInstanceInfoArray envVarsInstanceInfo;
     envVarsInstanceInfo.PushBack({CreateInstanceFilter("service", "subject", 1), envVars});
     envVarsInstanceInfo.PushBack({CreateInstanceFilter("", "subject", -1), envVars});
     envVarsInstanceInfo.PushBack({CreateInstanceFilter("", "", -1), envVars});
 
     ASSERT_TRUE(mDB.SetOverrideEnvVars(envVarsInstanceInfo).IsNone());
 
-    aos::cloudprotocol::EnvVarsInstanceInfoArray result;
+    aos::EnvVarsInstanceInfoArray result;
 
     ASSERT_TRUE(mDB.GetOverrideEnvVars(result).IsNone());
 
