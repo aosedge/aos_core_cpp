@@ -187,9 +187,9 @@ AlertRules CreateAlerts()
     return alerts;
 }
 
-aos::cloudprotocol::ResourceRatios CreateResourceRatios()
+aos::ResourceRatios CreateResourceRatios()
 {
-    aos::cloudprotocol::ResourceRatios ratios;
+    aos::ResourceRatios ratios;
 
     ratios.mCPU.SetValue(50);
     ratios.mRAM.SetValue(51);
