@@ -40,7 +40,7 @@ Error Archivator::AddLog(const std::string& message)
     return ErrorEnum::eNone;
 }
 
-Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
+Error Archivator::SendLog(const StaticString<cLogIDLen>& logID)
 {
     mCompressionStream->close();
 
@@ -54,12 +54,12 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
         LOG_DBG() << "Push log: "
                   << "part=" << part << ", size=0";
 
-        auto emptyLog = std::make_unique<cloudprotocol::PushLog>();
+        auto emptyLog = std::make_unique<PushLog>();
 
         emptyLog->mLogID      = logID;
         emptyLog->mPartsCount = part;
         emptyLog->mPart       = part;
-        emptyLog->mStatus     = cloudprotocol::LogStatusEnum::eEmpty;
+        emptyLog->mStatus     = LogStatusEnum::eEmpty;
 
         mLogReceiver.OnLogReceived(*emptyLog);
 
@@ -72,12 +72,12 @@ Error Archivator::SendLog(const StaticString<cloudprotocol::cLogIDLen>& logID)
 
         LOG_DBG() << "Push log: part=" << part << ", size=" << data.size();
 
-        auto logPart = std::make_unique<cloudprotocol::PushLog>();
+        auto logPart = std::make_unique<PushLog>();
 
         logPart->mLogID      = logID;
         logPart->mPartsCount = mLogStreams.size();
         logPart->mPart       = part;
-        logPart->mStatus     = cloudprotocol::LogStatusEnum::eOk;
+        logPart->mStatus     = LogStatusEnum::eOK;
 
         auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
         if (!err.IsNone()) {

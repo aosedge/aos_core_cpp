@@ -54,9 +54,9 @@ public:
 protected:
     static constexpr auto cAOSServiceSlicePrefix = "/system.slice/system-aos@service.slice/";
 
-    std::function<Error(const cloudprotocol::PushLog&)> GetLogReceivedNotifier()
+    std::function<Error(const PushLog&)> GetLogReceivedNotifier()
     {
-        auto notifier = [this](const cloudprotocol::PushLog& log) {
+        auto notifier = [this](const PushLog& log) {
             (void)log;
 
             mLogReceived.notify_all();
@@ -120,13 +120,13 @@ MATCHER_P5(MatchPushLog, logID, partsCount, part, content, status, "PushLog matc
 MATCHER_P(MatchEmptyPushLog, logID, "PushLog empty matcher")
 {
     return (arg.mLogID == logID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
-        && arg.mStatus == cloudprotocol::LogStatusEnum::eEmpty);
+        && arg.mStatus == LogStatusEnum::eEmpty);
 }
 
 MATCHER_P(MatchAbsentPushLog, logID, "PushLog absent matcher")
 {
     return (arg.mLogID == logID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
-        && arg.mStatus == cloudprotocol::LogStatusEnum::eAbsent);
+        && arg.mStatus == LogStatusEnum::eAbsent);
 }
 
 /***********************************************************************************************************************
@@ -143,16 +143,15 @@ TEST_F(LogProviderTest, GetServiceLog)
 
     mLogProvider.mJournal.AddMessage("This is log", unitName, "");
 
-    cloudprotocol::RequestLog request = {};
-    request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    RequestLog request = {};
+    request.mLogID     = "log0";
+    request.mFilter    = LogFilter {instanceFilter, from, till};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
 
-    EXPECT_CALL(
-        mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "This is log", cloudprotocol::LogStatusEnum::eOk)))
+    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "This is log", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
 
@@ -171,16 +170,16 @@ TEST_F(LogProviderTest, GetBigServiceLog)
         mLogProvider.mJournal.AddMessage("Hello World", unitName, "");
     }
 
-    cloudprotocol::RequestLog request = {};
-    request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    RequestLog request = {};
+    request.mLogID     = "log0";
+    request.mFilter    = LogFilter {instanceFilter, from, till};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 1U, "", cloudprotocol::LogStatusEnum::eOk)));
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 2U, "", cloudprotocol::LogStatusEnum::eOk)))
+    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 1U, "", LogStatusEnum::eOK)));
+    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 2U, "", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
@@ -197,12 +196,11 @@ TEST_F(LogProviderTest, GetSystemLog)
         mLogProvider.mJournal.AddMessage("Hello World", "logger", "");
     }
 
-    cloudprotocol::RequestLog request = {};
-    request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, {}};
+    RequestLog request = {};
+    request.mLogID     = "log0";
+    request.mFilter    = LogFilter {{}, from, till};
 
-    EXPECT_CALL(
-        mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "Hello World", cloudprotocol::LogStatusEnum::eOk)))
+    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "Hello World", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetSystemLog(request).IsNone());
@@ -217,9 +215,9 @@ TEST_F(LogProviderTest, GetEmptyLog)
 
     auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
 
-    cloudprotocol::RequestLog request = {};
-    request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    RequestLog request = {};
+    request.mLogID     = "log0";
+    request.mFilter    = LogFilter {instanceFilter, from, till};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
@@ -247,18 +245,18 @@ TEST_F(LogProviderTest, GetCrashLog)
     sleep(1);
     mLogProvider.mJournal.AddMessage("skip log", unitName, cAOSServiceSlicePrefix + unitName);
 
-    cloudprotocol::RequestLog request = {};
-    request.mLogID                    = "log0";
-    request.mFilter                   = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    RequestLog request = {};
+    request.mLogID     = "log0";
+    request.mFilter    = LogFilter {instanceFilter, from, till};
 
     std::vector<std::string> instanceIDs = {"logservice0"};
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
 
     EXPECT_CALL(mLogObserver,
-        OnLogReceived(AllOf(MatchPushLog("log0", 1U, 1U, "somelog1", cloudprotocol::LogStatusEnum::eOk),
-            MatchPushLog("log0", 1U, 1U, "somelog3", cloudprotocol::LogStatusEnum::eOk),
-            MatchPushLog("log0", 1U, 1U, "process exited", cloudprotocol::LogStatusEnum::eOk))))
+        OnLogReceived(AllOf(MatchPushLog("log0", 1U, 1U, "somelog1", LogStatusEnum::eOK),
+            MatchPushLog("log0", 1U, 1U, "somelog3", LogStatusEnum::eOK),
+            MatchPushLog("log0", 1U, 1U, "process exited", LogStatusEnum::eOK))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceCrashLog(request).IsNone());
@@ -275,15 +273,15 @@ TEST_F(LogProviderTest, GetInstanceIDsFailed)
     auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
     auto unitName       = std::string("aos-service@logservice0.service");
 
-    cloudprotocol::RequestLog request = {};
+    RequestLog request = {};
 
     request.mLogID  = "log0";
-    request.mFilter = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    request.mFilter = LogFilter {instanceFilter, from, till};
 
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eFailed)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&cloudprotocol::PushLog::mErrorInfo, Error(ErrorEnum::eFailed))))
+    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_FALSE(mLogProvider.GetInstanceCrashLog(request).IsNone());
@@ -293,7 +291,7 @@ TEST_F(LogProviderTest, GetInstanceIDsFailed)
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eFailed)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&cloudprotocol::PushLog::mErrorInfo, Error(ErrorEnum::eFailed))))
+    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_FALSE(mLogProvider.GetInstanceLog(request).IsNone());
@@ -310,10 +308,10 @@ TEST_F(LogProviderTest, EmptyInstanceIDs)
     auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
     auto unitName       = std::string("aos-service@logservice0.service");
 
-    cloudprotocol::RequestLog request = {};
+    RequestLog request = {};
 
     request.mLogID  = "log0";
-    request.mFilter = cloudprotocol::LogFilter {from, till, {}, instanceFilter};
+    request.mFilter = LogFilter {instanceFilter, from, till};
 
     EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
         .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));

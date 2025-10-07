@@ -79,11 +79,11 @@ private:
         common::logprovider::Archivator mArchivator;
     };
 
-    void                     Run();
-    void                     CleanupOutdatedArchives(Poco::Timer& timer);
-    Error                    Archive(std::shared_ptr<servicemanager::v4::LogData> log);
-    Error                    SendFinalChunk(std::shared_ptr<ArchiveContext> archiveContext);
-    cloudprotocol::LogStatus GetLogStatus(const std::shared_ptr<servicemanager::v4::LogData>& log) const;
+    void      Run();
+    void      CleanupOutdatedArchives(Poco::Timer& timer);
+    Error     Archive(std::shared_ptr<servicemanager::v4::LogData> log);
+    Error     SendFinalChunk(std::shared_ptr<ArchiveContext> archiveContext);
+    LogStatus GetLogStatus(const std::shared_ptr<servicemanager::v4::LogData>& log) const;
 
     Poco::Timer                                              mTimer;
     bool                                                     mStopped = true;

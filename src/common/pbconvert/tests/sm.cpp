@@ -52,14 +52,14 @@ public:
 
 TEST_F(PBConvertSMTest, ConvertPushLogToProto)
 {
-    aos::cloudprotocol::PushLog param;
+    aos::PushLog param;
 
     param.mLogID      = "log-id";
     param.mPartsCount = 2;
     param.mPart       = 2;
     param.mContent    = "content";
-    param.mStatus     = aos::cloudprotocol::LogStatusEnum::eOk;
-    param.mErrorInfo  = aos::ErrorEnum::eNone;
+    param.mStatus     = aos::LogStatusEnum::eOK;
+    param.mError      = aos::ErrorEnum::eNone;
 
     ::servicemanager::v4::LogData result = aos::common::pbconvert::ConvertToProto(param);
 
@@ -533,7 +533,7 @@ TEST_F(PBConvertSMTest, ConvertSystemLogRequestToAos)
     param.mutable_from()->set_seconds(100);
     param.mutable_till()->set_seconds(200);
 
-    aos::cloudprotocol::RequestLog result;
+    aos::RequestLog result;
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
@@ -556,7 +556,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceLogRequestToAos)
     param.mutable_instance_filter()->set_service_id(instanceFilter.mItemID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
-    aos::cloudprotocol::RequestLog result;
+    aos::RequestLog result;
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
@@ -564,7 +564,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceLogRequestToAos)
     EXPECT_EQ(result.mFilter.mFrom, aos::Time::Unix(100, 0));
     EXPECT_EQ(result.mFilter.mTill, aos::Time::Unix(200, 0));
 
-    EXPECT_EQ(result.mFilter.mInstanceFilter, instanceFilter);
+    EXPECT_EQ(static_cast<const aos::InstanceFilter&>(result.mFilter), instanceFilter);
 }
 
 TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
@@ -582,7 +582,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
     param.mutable_instance_filter()->set_service_id(instanceFilter.mItemID.GetValue().CStr());
     param.mutable_instance_filter()->set_instance(instanceFilter.mInstance.GetValue());
 
-    aos::cloudprotocol::RequestLog result;
+    aos::RequestLog result;
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
@@ -590,7 +590,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceCrashLogRequestToAos)
     EXPECT_EQ(result.mFilter.mFrom, aos::Time::Unix(100, 0));
     EXPECT_EQ(result.mFilter.mTill, aos::Time::Unix(200, 0));
 
-    EXPECT_EQ(result.mFilter.mInstanceFilter, instanceFilter);
+    EXPECT_EQ(static_cast<const aos::InstanceFilter&>(result.mFilter), instanceFilter);
 }
 
 TEST_F(PBConvertSMTest, ConvertSystemAlertToProto)

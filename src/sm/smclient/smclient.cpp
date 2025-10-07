@@ -196,7 +196,7 @@ Error SMClient::SendAlert(const AlertVariant& alert)
     return ErrorEnum::eNone;
 }
 
-Error SMClient::OnLogReceived(const cloudprotocol::PushLog& log)
+Error SMClient::OnLogReceived(const PushLog& log)
 {
     std::lock_guard lock {mMutex};
 
@@ -587,7 +587,7 @@ bool SMClient::ProcessGetSystemLogRequest(const smproto::SystemLogRequest& reque
 {
     LOG_INF() << "Process get system log request: logID=" << request.log_id().c_str();
 
-    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
+    auto logRequest = std::make_unique<aos::RequestLog>();
 
     if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting system log request: err=" << err;
@@ -606,7 +606,7 @@ bool SMClient::ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& r
 {
     LOG_INF() << "Process get instance log request: logID=" << request.log_id().c_str();
 
-    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
+    auto logRequest = std::make_unique<aos::RequestLog>();
 
     if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting instance log request: err=" << err;
@@ -625,7 +625,7 @@ bool SMClient::ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLog
 {
     LOG_INF() << "Process get instance crash log request: logID=" << request.log_id().c_str();
 
-    auto logRequest = std::make_unique<aos::cloudprotocol::RequestLog>();
+    auto logRequest = std::make_unique<aos::RequestLog>();
 
     if (auto err = common::pbconvert::ConvertToAos(request, *logRequest); !err.IsNone()) {
         LOG_ERR() << "Failed converting instance crash log request: err=" << err;

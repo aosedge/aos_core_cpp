@@ -9,8 +9,8 @@
 
 #include <Poco/JSON/Parser.h>
 
-#include <core/common/cloudprotocol/log.hpp>
 #include <core/common/tools/fs.hpp>
+#include <core/common/types/log.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
@@ -46,7 +46,7 @@ std::filesystem::path JoinPath(const std::string& base, const std::string& entry
 
 void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, logprovider::Config& config)
 {
-    config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cloudprotocol::cLogContentLen);
+    config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cLogContentLen);
     config.mMaxPartCount = object.GetValue<uint64_t>("maxPartCount", 80);
 }
 

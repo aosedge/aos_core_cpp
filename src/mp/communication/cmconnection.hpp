@@ -75,7 +75,7 @@ public:
      * @param log log.
      * @return Error.
      */
-    Error OnLogReceived(const cloudprotocol::PushLog& log) override;
+    Error OnLogReceived(const PushLog& log) override;
 
 private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
