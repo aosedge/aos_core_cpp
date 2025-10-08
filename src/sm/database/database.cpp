@@ -1138,7 +1138,7 @@ RetWithError<alerts::ServiceInstanceData> Database::GetInstanceInfoByID(const St
         result.mInstanceIdent.mSubjectID = instanceIdent[0].get<1>().c_str();
         result.mInstanceIdent.mInstance  = instanceIdent[0].get<2>();
 
-        auto serviceVersions = std::make_unique<sm::servicemanager::ServiceDataStaticArray>();
+        auto serviceVersions = std::make_unique<sm::servicemanager::ServiceDataArray>();
 
         auto err = GetServiceVersions(result.mInstanceIdent.mItemID, *serviceVersions);
         if (!err.IsNone()) {
