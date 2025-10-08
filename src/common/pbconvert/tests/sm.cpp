@@ -173,16 +173,16 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusToProto)
 {
     aos::InstanceStatus param;
 
-    param.mInstanceIdent = aos::InstanceIdent {"service-id", "subject-id", 1};
-    param.mVersion       = "1.0.0";
-    param.mState         = aos::InstanceStateEnum::eActive;
-    param.mError         = aos::ErrorEnum::eFailed;
+    static_cast<aos::InstanceIdent&>(param) = aos::InstanceIdent {"service-id", "subject-id", 1};
+    param.mVersion                          = "1.0.0";
+    param.mState                            = aos::InstanceStateEnum::eActive;
+    param.mError                            = aos::ErrorEnum::eFailed;
 
     ::servicemanager::v4::InstanceStatus result = aos::common::pbconvert::ConvertToProto(param);
 
-    EXPECT_EQ(aos::String(result.instance().service_id().c_str()), param.mInstanceIdent.mItemID);
-    EXPECT_EQ(aos::String(result.instance().subject_id().c_str()), param.mInstanceIdent.mSubjectID);
-    EXPECT_EQ(result.instance().instance(), param.mInstanceIdent.mInstance);
+    EXPECT_EQ(aos::String(result.instance().service_id().c_str()), param.mItemID);
+    EXPECT_EQ(aos::String(result.instance().subject_id().c_str()), param.mSubjectID);
+    EXPECT_EQ(result.instance().instance(), param.mInstance);
 
     EXPECT_EQ(aos::String(result.service_version().c_str()), param.mVersion);
     EXPECT_EQ(aos::String(result.run_state().c_str()), param.mState.ToString());
@@ -327,9 +327,9 @@ TEST_F(PBConvertSMTest, ConvertInstanceInfoToAos)
 
     EXPECT_TRUE(aos::common::pbconvert::ConvertToAos(param, result).IsNone());
 
-    EXPECT_EQ(result.mInstanceIdent.mItemID, aos::String(param.instance().service_id().c_str()));
-    EXPECT_EQ(result.mInstanceIdent.mSubjectID, aos::String(param.instance().subject_id().c_str()));
-    EXPECT_EQ(result.mInstanceIdent.mInstance, param.instance().instance());
+    EXPECT_EQ(result.mItemID, aos::String(param.instance().service_id().c_str()));
+    EXPECT_EQ(result.mSubjectID, aos::String(param.instance().subject_id().c_str()));
+    EXPECT_EQ(result.mInstance, param.instance().instance());
 
     EXPECT_EQ(result.mUID, param.uid());
     EXPECT_EQ(result.mStoragePath, aos::String(param.storage_path().c_str()));

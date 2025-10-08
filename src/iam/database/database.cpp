@@ -218,7 +218,7 @@ Error Database::GetNodeInfo(const String& nodeID, NodeInfoObsolete& nodeInfo) co
     return ErrorEnum::eNone;
 }
 
-Error Database::GetAllNodeIds(Array<StaticString<cNodeIDLen>>& ids) const
+Error Database::GetAllNodeIds(Array<StaticString<cIDLen>>& ids) const
 {
     try {
         Poco::Data::Statement    statement {*mSession};

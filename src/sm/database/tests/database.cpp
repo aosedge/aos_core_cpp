@@ -95,13 +95,12 @@ aos::sm::launcher::InstanceData CreateInstanceData(const aos::String& id, const 
 {
     aos::sm::launcher::InstanceData instance = {};
 
-    instance.mInstanceID = id;
-
-    instance.mInstanceInfo.mInstanceIdent = ident;
-    instance.mInstanceInfo.mUID           = 10;
-    instance.mInstanceInfo.mPriority      = 20;
-    instance.mInstanceInfo.mStoragePath   = "storage-path";
-    instance.mInstanceInfo.mStatePath     = "state-path";
+    instance.mInstanceID                                     = id;
+    static_cast<aos::InstanceIdent&>(instance.mInstanceInfo) = ident;
+    instance.mInstanceInfo.mUID                              = 10;
+    instance.mInstanceInfo.mPriority                         = 20;
+    instance.mInstanceInfo.mStoragePath                      = "storage-path";
+    instance.mInstanceInfo.mStatePath                        = "state-path";
 
     return instance;
 }

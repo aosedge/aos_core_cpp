@@ -239,10 +239,9 @@ public:
     {
         result.mInstanceID = dbFields.get<Columns::eInstanceID>().c_str();
 
-        result.mInstanceInfo.mInstanceIdent.mItemID    = dbFields.get<Columns::eServiceID>().c_str();
-        result.mInstanceInfo.mInstanceIdent.mSubjectID = dbFields.get<Columns::eSubjectID>().c_str();
-        result.mInstanceInfo.mInstanceIdent.mInstance  = dbFields.get<Columns::eInstance>();
-
+        result.mInstanceInfo.mItemID      = dbFields.get<Columns::eServiceID>().c_str();
+        result.mInstanceInfo.mSubjectID   = dbFields.get<Columns::eSubjectID>().c_str();
+        result.mInstanceInfo.mInstance    = dbFields.get<Columns::eInstance>();
         result.mInstanceInfo.mUID         = dbFields.get<Columns::eUID>();
         result.mInstanceInfo.mPriority    = dbFields.get<Columns::ePriority>();
         result.mInstanceInfo.mStoragePath = dbFields.get<Columns::eStoragePath>().c_str();
@@ -448,10 +447,9 @@ Error Database::AddInstance(const sm::launcher::InstanceData& instance)
             = common::utils::Stringify(ConvertNetworkParametersToJSON(instanceInfo.mNetworkParameters));
 
         *mSession << "INSERT INTO instances values(?, ?,  ?, ?, ?, ?, ?, ?, ?);", bind(instance.mInstanceID.CStr()),
-            bind(instanceInfo.mInstanceIdent.mItemID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
-            bind(instanceInfo.mInstanceIdent.mInstance), bind(instanceInfo.mUID), bind(instanceInfo.mPriority),
-            bind(instanceInfo.mStoragePath.CStr()), bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)),
-            now;
+            bind(instanceInfo.mItemID.CStr()), bind(instanceInfo.mSubjectID.CStr()), bind(instanceInfo.mInstance),
+            bind(instanceInfo.mUID), bind(instanceInfo.mPriority), bind(instanceInfo.mStoragePath.CStr()),
+            bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -474,10 +472,9 @@ Error Database::UpdateInstance(const sm::launcher::InstanceData& instance)
                      "serviceID = ?, subjectID = ?, instance = ?, "
                      "uid = ?, priority = ?, storagePath = ?, statePath = ?, network = ? "
                      "WHERE instanceID = ?;",
-            bind(instanceInfo.mInstanceIdent.mItemID.CStr()), bind(instanceInfo.mInstanceIdent.mSubjectID.CStr()),
-            bind(instanceInfo.mInstanceIdent.mInstance), bind(instanceInfo.mUID), bind(instanceInfo.mPriority),
-            bind(instanceInfo.mStoragePath.CStr()), bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)),
-            bind(instance.mInstanceID.CStr());
+            bind(instanceInfo.mItemID.CStr()), bind(instanceInfo.mSubjectID.CStr()), bind(instanceInfo.mInstance),
+            bind(instanceInfo.mUID), bind(instanceInfo.mPriority), bind(instanceInfo.mStoragePath.CStr()),
+            bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)), bind(instance.mInstanceID.CStr());
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
