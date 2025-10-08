@@ -177,7 +177,7 @@ namespace aos::common::pbconvert {
 {
     ::servicemanager::v4::InstanceStatus result;
 
-    *result.mutable_instance() = ConvertToProto(src.mInstanceIdent);
+    *result.mutable_instance() = ConvertToProto(static_cast<const InstanceIdent&>(src));
     result.set_service_version(src.mVersion.CStr());
     result.set_run_state(src.mState.ToString().CStr());
     SetErrorInfo(src.mError, result);
@@ -255,11 +255,11 @@ Error ConvertToAos(const ::servicemanager::v4::NetworkParameters& val, NetworkPa
 
 Error ConvertToAos(const ::servicemanager::v4::InstanceInfo& val, InstanceInfo& dst)
 {
-    dst.mInstanceIdent = ConvertToAos(val.instance());
-    dst.mUID           = val.uid();
-    dst.mPriority      = val.priority();
-    dst.mStoragePath   = String(val.storage_path().c_str());
-    dst.mStatePath     = String(val.state_path().c_str());
+    static_cast<InstanceIdent&>(dst) = ConvertToAos(val.instance());
+    dst.mUID                         = val.uid();
+    dst.mPriority                    = val.priority();
+    dst.mStoragePath                 = String(val.storage_path().c_str());
+    dst.mStatePath                   = String(val.state_path().c_str());
 
     if (auto err = ConvertToAos(val.network_parameters(), dst.mNetworkParameters); !err.IsNone()) {
         return err;

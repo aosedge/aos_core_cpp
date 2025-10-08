@@ -29,7 +29,7 @@ struct ExposedPort {
  */
 struct Instance {
     StaticString<cIDLen>                                       mNetworkID;
-    StaticString<cNodeIDLen>                                   mNodeID;
+    StaticString<cIDLen>                                       mNodeID;
     aos::InstanceIdent                                         mInstanceIdent;
     StaticString<cIPLen>                                       mIP;
     StaticArray<ExposedPort, cMaxNumExposedPorts>              mExposedPorts;
@@ -40,8 +40,8 @@ struct Instance {
  * Host.
  */
 struct Host {
-    StaticString<cNodeIDLen> mNodeID;
-    StaticString<cIPLen>     mIP;
+    StaticString<cIDLen> mNodeID;
+    StaticString<cIPLen> mIP;
 };
 
 /**
