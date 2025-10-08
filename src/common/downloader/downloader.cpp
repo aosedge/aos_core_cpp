@@ -210,7 +210,7 @@ int Downloader::OnProgress(
 }
 
 void Downloader::SendAlert(
-    DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason, Error error)
+    DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason, const Error& error)
 {
     if (!mSender) {
         return;
