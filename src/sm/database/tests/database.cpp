@@ -222,7 +222,7 @@ TEST_F(DatabaseTest, GetAllInstances)
 
     ASSERT_TRUE(mDB.AddInstance(instance).IsNone());
 
-    aos::sm::launcher::InstanceDataStaticArray result;
+    aos::sm::launcher::InstanceDataArray result;
 
     ASSERT_TRUE(mDB.GetAllInstances(result).IsNone());
 
@@ -241,7 +241,7 @@ TEST_F(DatabaseTest, GetAllInstancesExceedsLimit)
         ASSERT_TRUE(mDB.AddInstance(instance).IsNone());
     }
 
-    aos::sm::launcher::InstanceDataStaticArray result;
+    aos::sm::launcher::InstanceDataArray result;
 
     EXPECT_TRUE(mDB.GetAllInstances(result).Is(aos::ErrorEnum::eNoMemory));
 }
@@ -299,7 +299,7 @@ TEST_F(DatabaseTest, TablesAreDroppedIfOperationVersionMismatch)
     ASSERT_TRUE(err.IsNone());
     ASSERT_EQ(dbOperationVersion, aos::sm::launcher::Launcher::cOperationVersion);
 
-    aos::sm::launcher::InstanceDataStaticArray result;
+    aos::sm::launcher::InstanceDataArray result;
 
     ASSERT_TRUE(dbPtr->GetAllInstances(result).IsNone());
     ASSERT_TRUE(result.IsEmpty());
@@ -353,7 +353,7 @@ TEST_F(DatabaseTest, AddAndGetService)
     ASSERT_TRUE(mDB.AddService(serviceV1).IsNone());
     ASSERT_TRUE(mDB.AddService(serviceV2).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetServiceVersions(serviceID, result).IsNone());
 
@@ -369,7 +369,7 @@ TEST_F(DatabaseTest, GetServiceReturnsNotFound)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetServiceVersions("unknown", result).Is(aos::ErrorEnum::eNotFound));
     ASSERT_TRUE(result.IsEmpty());
@@ -389,7 +389,7 @@ TEST_F(DatabaseTest, UpdateService)
 
     ASSERT_TRUE(mDB.UpdateService(service).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetServiceVersions(service.mServiceID, result).IsNone());
 
@@ -412,7 +412,7 @@ TEST_F(DatabaseTest, UpdateServiceVersionFails)
 
     ASSERT_FALSE(mDB.UpdateService(updatedService).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetServiceVersions(service.mServiceID, result).IsNone());
 
@@ -430,7 +430,7 @@ TEST_F(DatabaseTest, RemoveServiceSucceeds)
 
     ASSERT_TRUE(mDB.RemoveService(service.mServiceID, service.mVersion).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetServiceVersions(service.mServiceID, result).Is(aos::ErrorEnum::eNotFound));
 
@@ -441,7 +441,7 @@ TEST_F(DatabaseTest, GetAllServicesSucceeds)
 {
     ASSERT_TRUE(mDB.Init(sWorkingDir, mMigrationConfig).IsNone());
 
-    aos::sm::servicemanager::ServiceDataStaticArray services;
+    aos::sm::servicemanager::ServiceDataArray services;
     services.PushBack(CreateServiceData("service-1", "0.0.1"));
     services.PushBack(CreateServiceData("service-1", "0.0.2"));
     services.PushBack(CreateServiceData("service-2", "0.0.1"));
@@ -450,7 +450,7 @@ TEST_F(DatabaseTest, GetAllServicesSucceeds)
         ASSERT_TRUE(mDB.AddService(service).IsNone());
     }
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetAllServices(result).IsNone());
 
@@ -468,7 +468,7 @@ TEST_F(DatabaseTest, GetAllServicesExceedsApplicationLimit)
         ASSERT_TRUE(mDB.AddService(services.back()).IsNone());
     }
 
-    aos::sm::servicemanager::ServiceDataStaticArray result;
+    aos::sm::servicemanager::ServiceDataArray result;
 
     ASSERT_TRUE(mDB.GetAllServices(result).Is(aos::ErrorEnum::eNoMemory));
 }

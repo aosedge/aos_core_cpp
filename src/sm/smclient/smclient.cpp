@@ -499,7 +499,7 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
 {
     LOG_INF() << "Process run instances";
 
-    auto aosServices = std::make_unique<ServiceInfoStaticArray>();
+    auto aosServices = std::make_unique<ServiceInfoArray>();
 
     for (const auto& service : request.services()) {
         auto serviceInfo = std::make_unique<ServiceInfo>();
@@ -515,7 +515,7 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
         }
     }
 
-    auto aosLayers = std::make_unique<LayerInfoStaticArray>();
+    auto aosLayers = std::make_unique<LayerInfoArray>();
 
     for (const auto& layer : request.layers()) {
         auto layerInfo = std::make_unique<LayerInfo>();
