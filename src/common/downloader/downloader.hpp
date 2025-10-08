@@ -60,7 +60,7 @@ private:
     Error CopyFile(const Poco::URI& uri, const String& outfilename);
     Error RetryDownload(const String& url, const String& path);
     void  SendAlert(DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason = "",
-         Error error = ErrorEnum::eNone);
+         const Error& error = ErrorEnum::eNone);
 
     static int XferInfoCallback(
         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
