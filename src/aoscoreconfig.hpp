@@ -10,11 +10,11 @@
 /**
  * File/directory path len.
  */
-#define AOS_CONFIG_TYPES_FILE_PATH_LEN 512
+#define AOS_CONFIG_FILE_PATH_LEN 512
 
 /**
  * URL len.
  */
-#define AOS_CONFIG_TYPES_URL_LEN 512
+#define AOS_CONFIG_URL_LEN 512
 
 #endif
