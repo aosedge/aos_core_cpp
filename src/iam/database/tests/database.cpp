@@ -358,7 +358,7 @@ TEST_F(DatabaseTest, GetAllNodeIds)
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
 
-    StaticArray<StaticString<cNodeIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
+    StaticArray<StaticString<cIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
     FillArray({node0.mNodeID, node1.mNodeID, node2.mNodeID}, expectedNodeIds);
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
@@ -377,7 +377,7 @@ TEST_F(DatabaseTest, GetAllNodeIdsNotEnoughMemory)
     ASSERT_TRUE(mDB.SetNodeInfo(node1).IsNone());
     ASSERT_TRUE(mDB.SetNodeInfo(node2).IsNone());
 
-    StaticArray<StaticString<cNodeIDLen>, 2> resultNodeIds;
+    StaticArray<StaticString<cIDLen>, 2> resultNodeIds;
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).Is(ErrorEnum::eNoMemory));
 }
@@ -396,7 +396,7 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
 
     ASSERT_TRUE(mDB.RemoveNodeInfo(node1.mNodeID).IsNone());
 
-    StaticArray<StaticString<cNodeIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
+    StaticArray<StaticString<cIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
     FillArray({node0.mNodeID, node2.mNodeID}, expectedNodeIds);
 
     ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());

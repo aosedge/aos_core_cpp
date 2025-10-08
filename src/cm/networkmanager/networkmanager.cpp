@@ -39,7 +39,7 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, Sende
 
     mIpSubnet.Init();
 
-    auto networks = std::make_unique<StaticArray<Network, cMaxNumServiceProviders>>();
+    auto networks = std::make_unique<StaticArray<Network, cMaxNumOwners>>();
 
     if (auto err = mStorage->GetNetworks(*networks); !err.IsNone()) {
         return err;
@@ -49,7 +49,7 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, Sende
         NetworkState networkState;
         networkState.mNetwork = network;
 
-        auto hosts = std::make_unique<StaticArray<Host, cMaxNumNodes * cMaxNumServiceProviders>>();
+        auto hosts = std::make_unique<StaticArray<Host, cMaxNumNodes * cMaxNumOwners>>();
 
         if (auto err = mStorage->GetHosts(network.mNetworkID, *hosts); !err.IsNone()) {
             return err;

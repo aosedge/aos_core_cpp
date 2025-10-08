@@ -359,7 +359,7 @@ bool SMClient::RegisterSM(const std::string& url)
             continue;
         }
 
-        auto lastRunStatus = std::make_unique<InstanceStatusStaticArray>();
+        auto lastRunStatus = std::make_unique<InstanceStatusArray>();
 
         if (auto err = mLauncher->GetCurrentRunStatus(*lastRunStatus); !err.IsNone()) {
             LOG_ERR() << "Can't get current run status: err=" << err;
@@ -532,7 +532,7 @@ bool SMClient::ProcessRunInstances(const smproto::RunInstances& request)
         }
     }
 
-    auto aosInstances = std::make_unique<InstanceInfoStaticArray>();
+    auto aosInstances = std::make_unique<InstanceInfoArray>();
 
     for (const auto& instance : request.instances()) {
         auto instanceInfo = std::make_unique<InstanceInfo>();

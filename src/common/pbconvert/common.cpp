@@ -102,7 +102,7 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time)
     return result;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoStaticArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoArray& dst)
 {
     for (const auto& srcCPU : src) {
         CPUInfo dstCPU;
@@ -152,8 +152,7 @@ Error ConvertToAos(
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeStaticArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeArray& dst)
 {
     for (const auto& srcAttribute : src) {
         NodeAttribute dstAttribute;

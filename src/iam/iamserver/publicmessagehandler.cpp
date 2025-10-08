@@ -358,7 +358,7 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
 {
     LOG_DBG() << "Public message handler. Process get all node IDs";
 
-    StaticArray<StaticString<cNodeIDLen>, cMaxNumNodes> nodeIDs;
+    StaticArray<StaticString<cIDLen>, cMaxNumNodes> nodeIDs;
 
     if (auto err = mNodeManager->GetAllNodeIds(nodeIDs); !err.IsNone()) {
         LOG_ERR() << "Failed to get all node IDs: err=" << err;

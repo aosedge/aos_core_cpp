@@ -490,11 +490,11 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
 
     EXPECT_EQ(response.ids_size(), 0);
 
-    StaticArray<StaticString<cNodeIDLen>, cMaxNumNodes> nodeIDs;
+    StaticArray<StaticString<cIDLen>, cMaxNumNodes> nodeIDs;
     nodeIDs.PushBack("node0");
     nodeIDs.PushBack("node1");
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Invoke([&nodeIDs](Array<StaticString<cNodeIDLen>>& out) {
+    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Invoke([&nodeIDs](Array<StaticString<cIDLen>>& out) {
         out = nodeIDs;
 
         return ErrorEnum::eNone;

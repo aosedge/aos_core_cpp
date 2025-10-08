@@ -10,8 +10,8 @@
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/types/alerts.hpp>
 #include <core/common/types/envvars.hpp>
+#include <core/common/types/instance.hpp>
 #include <core/common/types/log.hpp>
-#include <core/common/types/obsolete.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
 
 #include <servicemanager/v4/servicemanager.grpc.pb.h>

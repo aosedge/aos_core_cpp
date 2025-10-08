@@ -100,14 +100,14 @@ aos::PushLog CreatePushLog()
     return log;
 }
 
-aos::InstanceStatusStaticArray CreateInstanceStatus()
+aos::InstanceStatusArray CreateInstanceStatus()
 {
-    aos::InstanceStatusStaticArray instances;
-    aos::InstanceStatus            instance;
+    aos::InstanceStatusArray instances;
+    aos::InstanceStatus      instance;
 
-    instance.mInstanceIdent = aos::InstanceIdent {"service-id", "instance-id", 0};
-    instance.mState         = aos::InstanceStateEnum::eActive;
-    instance.mVersion       = "1.0.0";
+    static_cast<aos::InstanceIdent&>(instance) = aos::InstanceIdent {"service-id", "instance-id", 0};
+    instance.mState                            = aos::InstanceStateEnum::eActive;
+    instance.mVersion                          = "1.0.0";
 
     instances.PushBack(instance);
 

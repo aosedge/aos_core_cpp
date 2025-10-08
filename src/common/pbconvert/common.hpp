@@ -84,7 +84,7 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time);
  * @param[out] dst aos cpus.
  * @return Error.
  */
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoStaticArray& dst);
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoArray& dst);
 
 /**
  * Converts protobuf partitions to aos.
@@ -104,7 +104,7 @@ Error ConvertToAos(
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeStaticArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeArray& dst);
 
 /**
  * Converts protobuf node info to aos.
