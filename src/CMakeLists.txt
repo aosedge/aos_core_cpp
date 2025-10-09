@@ -17,8 +17,21 @@ add_definitions(-include ${CMAKE_CURRENT_SOURCE_DIR}/aoscoreconfig.hpp)
 
 include(AddModule)
 
+set(WITH_TEST_TOOLS ${WITH_TEST})
+set(WITH_TEST_ORIGINAL ${WITH_TEST})
+set(WITH_TEST
+    OFF
+    CACHE BOOL "Disable tests for external projects" FORCE
+)
+
 add_subdirectory(${AOS_CORE_API_DIR} aos_core_api)
 add_subdirectory(${AOS_CORE_LIB_DIR}/src aos_core_lib)
+
+set(WITH_TEST
+    ${WITH_TEST_ORIGINAL}
+    CACHE BOOL "Restore tests for external projects" FORCE
+)
+unset(WITH_TEST_ORIGINAL)
 
 # ######################################################################################################################
 # Target properties
