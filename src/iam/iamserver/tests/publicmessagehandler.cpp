@@ -12,10 +12,10 @@
 
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/mocks/certprovidermock.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 #include <core/iam/tests/mocks/permhandlermock.hpp>
@@ -70,7 +70,7 @@ protected:
     std::unique_ptr<grpc::Server> mPublicServer;
 
     // mocks
-    identhandler::IdentHandlerMock         mIdentHandler;
+    iamclient::IdentProviderMock           mIdentProvider;
     permhandler::PermHandlerMock           mPermHandler;
     nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     nodemanager::NodeManagerMock           mNodeManager;
@@ -97,7 +97,7 @@ void PublicMessageHandlerTest::SetUp()
     }));
 
     auto err = mPublicMessageHandler.Init(
-        mNodeController, mIdentHandler, mPermHandler, mNodeInfoProvider, mNodeManager, mCertProvider);
+        mNodeController, mIdentProvider, mPermHandler, mNodeInfoProvider, mNodeManager, mCertProvider);
 
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();
 
@@ -302,8 +302,8 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoSucceeds)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
-    EXPECT_CALL(mIdentHandler, GetUnitModel).WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>(cUnitModel)));
+    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentProvider, GetUnitModel).WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>(cUnitModel)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -323,9 +323,9 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnSystemId)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID)
+    EXPECT_CALL(mIdentProvider, GetSystemID)
         .WillOnce(Return(RetWithError<StaticString<cIDLen>>("", ErrorEnum::eFailed)));
-    EXPECT_CALL(mIdentHandler, GetUnitModel).Times(0);
+    EXPECT_CALL(mIdentProvider, GetUnitModel).Times(0);
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -341,8 +341,8 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentHandler, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
-    EXPECT_CALL(mIdentHandler, GetUnitModel)
+    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentProvider, GetUnitModel)
         .WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>("", ErrorEnum::eFailed)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
@@ -361,7 +361,7 @@ TEST_F(PublicMessageHandlerTest, GetSubjectsSucceeds)
     google::protobuf::Empty request;
     iamproto::Subjects      response;
 
-    EXPECT_CALL(mIdentHandler, GetSubjects).WillOnce(Invoke([&subjects](auto& out) {
+    EXPECT_CALL(mIdentProvider, GetSubjects).WillOnce(Invoke([&subjects](auto& out) {
         out = subjects;
 
         return ErrorEnum::eNone;
@@ -384,7 +384,7 @@ TEST_F(PublicMessageHandlerTest, GetSubjectsFails)
     google::protobuf::Empty request;
     iamproto::Subjects      response;
 
-    EXPECT_CALL(mIdentHandler, GetSubjects).WillOnce(Return(ErrorEnum::eFailed));
+    EXPECT_CALL(mIdentProvider, GetSubjects).WillOnce(Return(ErrorEnum::eFailed));
 
     const auto status = clientStub->GetSubjects(&context, request, &response);
 

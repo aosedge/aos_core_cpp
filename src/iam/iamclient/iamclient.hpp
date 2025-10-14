@@ -17,9 +17,9 @@
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
@@ -41,7 +41,7 @@ public:
      * Initializes IAM client instance.
      *
      * @param config client configuration.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      * @param certLoader certificate loader.
@@ -50,7 +50,7 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns Error.
      */
-    Error Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
+    Error Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
@@ -101,7 +101,7 @@ private:
         const Array<uint8_t>& serial, const Error& error);
     bool SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
 
-    identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
+    aos::iamclient::IdentProviderItf*      mIdentProvider    = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
     aos::iamclient::CertProviderItf*       mCertProvider     = nullptr;
     crypto::CertLoaderItf*                 mCertLoader       = nullptr;
