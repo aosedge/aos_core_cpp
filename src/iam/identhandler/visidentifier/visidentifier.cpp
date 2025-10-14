@@ -63,14 +63,12 @@ VISIdentifier::VISIdentifier()
 {
 }
 
-Error VISIdentifier::Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
-    crypto::UUIDItf& uuidProvider)
+Error VISIdentifier::Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider)
 {
     LOG_DBG() << "Initializing VIS identifier";
 
-    mConfig           = config;
-    mSubjectsObserver = &subjectsObserver;
-    mUUIDProvider     = &uuidProvider;
+    mConfig       = config;
+    mUUIDProvider = &uuidProvider;
 
     return ErrorEnum::eNone;
 }
@@ -354,7 +352,9 @@ Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 
         if (mSubjects != newSubjects) {
             mSubjects = std::move(newSubjects);
-            mSubjectsObserver->SubjectsChanged(mSubjects);
+            if (mSubjectsListener) {
+                mSubjectsListener->SubjectsChanged(mSubjects);
+            }
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to handle subjects subscription: error = " << e.what();

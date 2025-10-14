@@ -34,7 +34,7 @@ const Error cStreamNotFoundError = {ErrorEnum::eNotFound, "stream not found"};
  * Public
  **********************************************************************************************************************/
 
-Error ProtectedMessageHandler::Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
+Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::IdentProviderItf& identProvider,
     iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
     iam::provisionmanager::ProvisionManagerItf& provisionManager)
@@ -44,7 +44,7 @@ Error ProtectedMessageHandler::Init(NodeController& nodeController, iam::identha
     mProvisionManager = &provisionManager;
 
     return PublicMessageHandler::Init(
-        nodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider);
+        nodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider);
 }
 
 // cppcheck-suppress duplInheritedMember
@@ -310,7 +310,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     StaticString<cIDLen> subject = request->subject().c_str();
 
-    if (subject.IsEmpty() && !GetIdentHandler()) {
+    if (subject.IsEmpty() && !GetIdentProvider()) {
         Error err(ErrorEnum::eNotFound, "Subject can't be empty");
 
         LOG_ERR() << "Create key failed: error=" << err;
@@ -322,8 +322,8 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     Error err = ErrorEnum::eNone;
 
-    if (subject.IsEmpty() && GetIdentHandler()) {
-        Tie(subject, err) = GetIdentHandler()->GetSystemID();
+    if (subject.IsEmpty() && GetIdentProvider()) {
+        Tie(subject, err) = GetIdentProvider()->GetSystemID();
         if (!err.IsNone()) {
             LOG_ERR() << "Get system ID failed: error=" << err;
 

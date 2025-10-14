@@ -9,9 +9,9 @@
 #include <Poco/JSON/Object.h>
 #include <gmock/gmock.h>
 
+#include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tools/fs.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 
 #include <iam/identhandler/fileidentifier/fileidentifier.hpp>
 
@@ -67,8 +67,8 @@ protected:
         mConfig.mParams = object;
     }
 
-    identhandler::SubjectsObserverMock mSubjectsObserverMock;
-    config::IdentifierConfig           mConfig;
+    iamclient::SubjectsListenerMock mSubjectsListenerMock;
+    config::IdentifierConfig        mConfig;
 };
 
 /***********************************************************************************************************************
@@ -79,7 +79,7 @@ TEST_F(FileIdentifierTest, InitFailsOnEmptyConfig)
 {
     FileIdentifier identifier;
 
-    const auto err = identifier.Init(config::IdentifierConfig {}, mSubjectsObserverMock);
+    const auto err = identifier.Init(config::IdentifierConfig {});
     ASSERT_FALSE(err.IsNone()) << err.Message();
 }
 
@@ -89,7 +89,7 @@ TEST_F(FileIdentifierTest, InitFailsOnSystemIDFileMissing)
 
     fs::Remove(cSystemIDPath);
 
-    auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    auto err = identifier.Init(mConfig);
     ASSERT_EQ(err.Value(), ErrorEnum::eNotFound);
 }
 
@@ -99,7 +99,7 @@ TEST_F(FileIdentifierTest, InitFailsOnUnitModelFileMissing)
 
     fs::Remove(cUnitModelPath);
 
-    auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    auto err = identifier.Init(mConfig);
     ASSERT_EQ(err.Value(), ErrorEnum::eNotFound);
 }
 
@@ -109,7 +109,7 @@ TEST_F(FileIdentifierTest, InitSucceedsOnSubjectsFileMissing)
 
     fs::Remove(cSubjectsPath);
 
-    auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    auto err = identifier.Init(mConfig);
     ASSERT_EQ(err.Value(), ErrorEnum::eNone);
 }
 
@@ -123,7 +123,7 @@ TEST_F(FileIdentifierTest, InitFailsOnSubjectsCountExceedsAppLimit)
         }
     }
 
-    auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    auto err = identifier.Init(mConfig);
     ASSERT_EQ(err.Value(), ErrorEnum::eNoMemory);
 }
 
@@ -135,7 +135,7 @@ TEST_F(FileIdentifierTest, InitFailsOnSubjectLenExceedsAppLimit)
         f << "subject" << std::string(cIDLen, 'a') << std::endl;
     }
 
-    auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    auto err = identifier.Init(mConfig);
     ASSERT_EQ(err.Value(), ErrorEnum::eNoMemory);
 }
 
@@ -143,7 +143,7 @@ TEST_F(FileIdentifierTest, GetSystemID)
 {
     FileIdentifier identifier;
 
-    const auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    const auto err = identifier.Init(mConfig);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     const auto [systemID, systemIDErr] = identifier.GetSystemID();
@@ -155,7 +155,7 @@ TEST_F(FileIdentifierTest, GetUnitModel)
 {
     FileIdentifier identifier;
 
-    const auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    const auto err = identifier.Init(mConfig);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     const auto [unitModel, unitModelErr] = identifier.GetUnitModel();
@@ -167,7 +167,7 @@ TEST_F(FileIdentifierTest, GetSubjects)
 {
     FileIdentifier identifier;
 
-    const auto err = identifier.Init(mConfig, mSubjectsObserverMock);
+    const auto err = identifier.Init(mConfig);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;

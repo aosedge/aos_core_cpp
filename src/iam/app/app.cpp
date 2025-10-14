@@ -454,7 +454,7 @@ Error App::InitIdentifierModule(const config::IdentifierConfig& config)
     if (config.mPlugin == "fileidentifier") {
         auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
 
-        if (auto err = fileIdentifier->Init(config, mIAMServer); !err.IsNone()) {
+        if (auto err = fileIdentifier->Init(config); !err.IsNone()) {
             return err;
         }
 
@@ -462,12 +462,14 @@ Error App::InitIdentifierModule(const config::IdentifierConfig& config)
     } else if (config.mPlugin == "visidentifier") {
         auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
 
-        if (auto err = visIdentifier->Init(config, mIAMServer, mCryptoProvider); !err.IsNone()) {
+        if (auto err = visIdentifier->Init(config, mCryptoProvider); !err.IsNone()) {
             return err;
         }
 
         mIdentifier = std::move(visIdentifier);
     }
+
+    mIdentifier->SubscribeListener(mIAMServer);
 
     return ErrorEnum::eNone;
 }

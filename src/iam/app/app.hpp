@@ -14,6 +14,7 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/certhandler/certprovider.hpp>
+#include <core/iam/identhandler/identmodule.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
@@ -62,16 +63,16 @@ private:
     pkcs11::PKCS11Manager         mPKCS11Manager;
     std::vector<std::pair<std::unique_ptr<certhandler::HSMItf>, std::unique_ptr<certhandler::CertModule>>> mCertModules;
     database::Database                                                                                     mDatabase;
-    nodeinfoprovider::NodeInfoProvider             mNodeInfoProvider;
-    nodemanager::NodeManager                       mNodeManager;
-    certhandler::CertProvider                      mCertProvider;
-    provisionmanager::ProvisionManager             mProvisionManager;
-    iamserver::IAMServer                           mIAMServer;
-    common::logger::Logger                         mLogger;
-    std::unique_ptr<permhandler::PermHandler>      mPermHandler;
-    std::unique_ptr<iamclient::IAMClient>          mIAMClient;
-    std::unique_ptr<identhandler::IdentHandlerItf> mIdentifier;
-    aos::common::utils::CleanupManager             mCleanupManager;
+    nodeinfoprovider::NodeInfoProvider            mNodeInfoProvider;
+    nodemanager::NodeManager                      mNodeManager;
+    certhandler::CertProvider                     mCertProvider;
+    provisionmanager::ProvisionManager            mProvisionManager;
+    iamserver::IAMServer                          mIAMServer;
+    common::logger::Logger                        mLogger;
+    std::unique_ptr<permhandler::PermHandler>     mPermHandler;
+    std::unique_ptr<iamclient::IAMClient>         mIAMClient;
+    std::unique_ptr<identhandler::IdentModuleItf> mIdentifier;
+    aos::common::utils::CleanupManager            mCleanupManager;
 
     bool        mStopProcessing = false;
     bool        mProvisioning   = false;

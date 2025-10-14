@@ -17,7 +17,7 @@ namespace aos::iam::fileidentifier {
  * Public
  **********************************************************************************************************************/
 
-Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver)
+Error FileIdentifier::Init(const config::IdentifierConfig& config)
 {
     LOG_DBG() << "Initialize file identifier";
 
@@ -28,8 +28,6 @@ Error FileIdentifier::Init(const config::IdentifierConfig& config, identhandler:
         if (!err.IsNone()) {
             return err;
         }
-
-        mSubjectsObserver = &subjectsObserver;
 
         err = ReadLineFromFile(mConfig.mSystemIDPath, mSystemId);
         AOS_ERROR_CHECK_AND_THROW(err, "can't set system id");

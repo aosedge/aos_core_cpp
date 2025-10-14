@@ -11,10 +11,10 @@
 
 #include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/mocks/cryptomock.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/tests/mocks/certhandlermock.hpp>
 #include <core/iam/tests/mocks/certloadermock.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
@@ -440,7 +440,7 @@ protected:
         auto client = std::make_unique<IAMClient>();
 
         assert(client
-                   ->Init(config, &mIdentHandler, mCertProvider, mProvisionManager, mCertLoader, mCryptoProvider,
+                   ->Init(config, &mIdentProvider, mCertProvider, mProvisionManager, mCertLoader, mCryptoProvider,
                        mNodeInfoProvider, provisionMode)
                    .IsNone());
 
@@ -477,7 +477,7 @@ protected:
     const String                  cPassword    = "admin";
     const ::common::v1::ErrorInfo cErrorInfoOK = ::common::v1::ErrorInfo();
 
-    iam::identhandler::IdentHandlerMock         mIdentHandler;
+    aos::iamclient::IdentProviderMock           mIdentProvider;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
     aos::iamclient::CertProviderMock            mCertProvider;
     crypto::CertLoaderMock                      mCertLoader;
@@ -764,7 +764,7 @@ TEST_F(IAMClientTest, CreateKey)
     // CreateKey
     EXPECT_CALL(mProvisionManager, CreateKey(cCertType, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cCertType.CStr()), _, ::common::v1::ErrorInfo()));
-    EXPECT_CALL(mIdentHandler, GetSystemID())
+    EXPECT_CALL(mIdentProvider, GetSystemID())
         .WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSubject, ErrorEnum::eNone)));
 
     server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());

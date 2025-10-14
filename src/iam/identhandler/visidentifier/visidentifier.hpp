@@ -17,7 +17,7 @@
 #include <Poco/Dynamic/Var.h>
 #include <Poco/Event.h>
 
-#include <core/iam/identhandler/identhandler.hpp>
+#include <core/iam/identhandler/identmodule.hpp>
 
 #include <iam/config/config.hpp>
 #include <iam/identhandler/visidentifier/wsclient.hpp>
@@ -57,7 +57,7 @@ private:
 /**
  * VIS Identifier.
  */
-class VISIdentifier : public iam::identhandler::IdentHandlerItf {
+class VISIdentifier : public identhandler::IdentModuleItf {
 public:
     /**
      * Creates a new object instance.
@@ -72,8 +72,7 @@ public:
      * @param uuidProvider UUID provider.
      * @return Error.
      */
-    Error Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver,
-        crypto::UUIDItf& uuidProvider);
+    Error Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider);
 
     /**
      * Starts vis identifier.
@@ -111,6 +110,40 @@ public:
      */
     Error GetSubjects(Array<StaticString<cIDLen>>& subjects) override;
 
+    /**
+     * Subscribes subjects listener.
+     *
+     * @param subjectsListener subjects listener.
+     * @returns Error.
+     */
+    Error SubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
+    {
+        if (mSubjectsListener != nullptr) {
+            return ErrorEnum::eAlreadyExist;
+        }
+
+        mSubjectsListener = &subjectsListener;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
+     * Unsubscribes subjects listener.
+     *
+     * @param subjectsListener subjects listener.
+     * @returns Error.
+     */
+    Error UnsubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
+    {
+        if (mSubjectsListener != &subjectsListener) {
+            return ErrorEnum::eNotFound;
+        }
+
+        mSubjectsListener = nullptr;
+
+        return ErrorEnum::eNone;
+    }
+
 protected:
     virtual Error  InitWSClient(const config::IdentifierConfig& config);
     void           SetWSClient(WSClientItfPtr wsClient);
@@ -134,7 +167,7 @@ private:
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
-    identhandler::SubjectsObserverItf*                 mSubjectsObserver = nullptr;
+    iamclient::SubjectsListenerItf*                    mSubjectsListener = nullptr;
     crypto::UUIDItf*                                   mUUIDProvider     = nullptr;
     VISSubscriptions                                   mSubscriptions;
     StaticString<cIDLen>                               mSystemId;
