@@ -8,8 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
-#include <core/iam/tests/mocks/certhandlermock.hpp>
 
 #include <common/iamclient/permservicehandler.hpp>
 #include <common/iamclient/publicservicehandler.hpp>
@@ -37,8 +37,8 @@ protected:
         mClient.emplace();
         mPermServiceHandler.emplace();
 
-        auto getMTLSCredentials = [this](const aos::iam::certhandler::CertInfo& certInfo, const aos::String&,
-                                      aos::crypto::CertLoaderItf&, aos::crypto::x509::ProviderItf&) {
+        auto getMTLSCredentials = [this](const aos::CertInfo& certInfo, const aos::String&, aos::crypto::CertLoaderItf&,
+                                      aos::crypto::x509::ProviderItf&) {
             mCertInfo = certInfo;
 
             return nullptr;
@@ -59,7 +59,7 @@ protected:
     aos::crypto::x509::ProviderItf*          mCryptoProvider {};
     TLSCredentialsMock                       mTLSCredentialsMock {};
     Config                                   mConfig {};
-    aos::iam::certhandler::CertInfo          mCertInfo {};
+    aos::CertInfo                            mCertInfo {};
 };
 
 /***********************************************************************************************************************
@@ -68,7 +68,7 @@ protected:
 
 TEST_F(IamClientTest, GetClientMTLSConfig)
 {
-    aos::iam::certhandler::CertInfo certInfo;
+    aos::CertInfo certInfo;
     certInfo.mCertURL = "client_cert";
     certInfo.mKeyURL  = "client_key";
 
@@ -83,13 +83,13 @@ TEST_F(IamClientTest, GetClientMTLSConfig)
 
 TEST_F(IamClientTest, GetCertificate)
 {
-    aos::iam::certhandler::CertInfo certInfo;
+    aos::CertInfo certInfo;
     certInfo.mCertURL = "client_cert";
     certInfo.mKeyURL  = "client_key";
 
     mIAMServerStub->SetCertInfo(certInfo);
 
-    aos::iam::certhandler::CertInfo requestCertInfo;
+    aos::CertInfo requestCertInfo;
 
     auto err = mClient->GetCert("client_cert_type", {}, {}, requestCertInfo);
 
@@ -137,16 +137,16 @@ TEST_F(IamClientTest, GetNodeInfo)
 
 TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
 {
-    aos::iam::certhandler::CertReceiverMock subscriber1;
-    aos::iam::certhandler::CertReceiverMock subscriber2;
+    aos::iamclient::CertListenerMock subscriber1;
+    aos::iamclient::CertListenerMock subscriber2;
 
     iamanager::v5::CertInfo certInfo;
     certInfo.set_type("client_cert_type");
     certInfo.set_cert_url("client_cert");
     certInfo.set_key_url("client_key");
 
-    mClient->SubscribeCertChanged("client_cert_type", subscriber1);
-    mClient->SubscribeCertChanged("client_cert_type", subscriber2);
+    mClient->SubscribeListener("client_cert_type", subscriber1);
+    mClient->SubscribeListener("client_cert_type", subscriber2);
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
@@ -155,7 +155,7 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
     EXPECT_CALL(subscriber1, OnCertChanged(_)).Times(1);
     EXPECT_CALL(subscriber2, OnCertChanged(_)).Times(1);
 
-    aos::iam::certhandler::CertInfo requestCertInfo;
+    aos::CertInfo requestCertInfo;
 
     auto err = mClient->GetCert("client_cert_type", {}, {}, requestCertInfo);
 
@@ -163,7 +163,7 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
     EXPECT_EQ(requestCertInfo.mCertURL, "client_cert");
     EXPECT_EQ(requestCertInfo.mKeyURL, "client_key");
 
-    mClient->UnsubscribeCertChanged(subscriber1);
+    mClient->UnsubscribeListener(subscriber1);
 
     mIAMServerStub->SendCertChangedInfo(certInfo);
 
@@ -176,7 +176,7 @@ TEST_F(IamClientTest, SubscribeCertChangedAndGetCertificate_MultiSubscription)
     EXPECT_EQ(requestCertInfo.mCertURL, "client_cert");
     EXPECT_EQ(requestCertInfo.mKeyURL, "client_key");
 
-    mClient->UnsubscribeCertChanged(subscriber2);
+    mClient->UnsubscribeListener(subscriber2);
     mIAMServerStub->Close();
 }
 

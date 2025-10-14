@@ -16,9 +16,9 @@
 
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
@@ -35,7 +35,7 @@ using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterfac
 /**
  * GRPC IAM client.
  */
-class IAMClient : private certhandler::CertReceiverItf {
+class IAMClient : private aos::iamclient::CertListenerItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -51,7 +51,7 @@ public:
      * @returns Error.
      */
     Error Init(const config::IAMClientConfig& config, identhandler::IdentHandlerItf* identHandler,
-        certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+        aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
 
@@ -70,7 +70,7 @@ public:
     Error Stop();
 
 private:
-    void OnCertChanged(const certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
     using StreamPtr = std::unique_ptr<
         grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
@@ -103,7 +103,7 @@ private:
 
     identhandler::IdentHandlerItf*         mIdentHandler     = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    certhandler::CertProviderItf*          mCertProvider     = nullptr;
+    aos::iamclient::CertProviderItf*       mCertProvider     = nullptr;
     crypto::CertLoaderItf*                 mCertLoader       = nullptr;
     crypto::x509::ProviderItf*             mCryptoProvider   = nullptr;
     nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;

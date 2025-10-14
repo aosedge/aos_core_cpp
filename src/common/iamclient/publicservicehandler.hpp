@@ -15,8 +15,8 @@
 
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/tools/error.hpp>
-#include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 #include <iamanager/v5/iamanager.grpc.pb.h>
@@ -33,7 +33,7 @@ struct Config {
     std::string mCACert;
 };
 
-class TLSCredentialsItf : public iam::certhandler::CertProviderItf {
+class TLSCredentialsItf : public aos::iamclient::CertProviderItf {
 public:
     /**
      * Gets MTLS configuration.
@@ -60,9 +60,8 @@ public:
 /**
  * MTLS credentials function.
  */
-using MTLSCredentialsFunc
-    = std::function<std::shared_ptr<grpc::ChannelCredentials>(const iam::certhandler::CertInfo& certInfo,
-        const String& rootCA, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)>;
+using MTLSCredentialsFunc = std::function<std::shared_ptr<grpc::ChannelCredentials>(const CertInfo& certInfo,
+    const String& rootCA, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)>;
 
 /**
  * Public service handler.
@@ -119,24 +118,24 @@ public:
      * @returns Error.
      */
     virtual Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
-        iam::certhandler::CertInfo& resCert) const override;
+        CertInfo& resCert) const override;
 
     /**
-     * Subscribes certificates receiver.
+     * Subscribes certificates listener.
      *
      * @param certType certificate type.
-     * @param certReceiver certificate receiver.
+     * @param certListener certificate listener.
      * @returns Error.
      */
-    Error SubscribeCertChanged(const String& certType, iam::certhandler::CertReceiverItf& certReceiver) override;
+    Error SubscribeListener(const String& certType, aos::iamclient::CertListenerItf& certListener) override;
 
     /**
-     * Unsubscribes certificate receiver.
+     * Unsubscribes certificate listener.
      *
-     * @param certReceiver certificate receiver.
+     * @param certListener certificate listener.
      * @returns Error.
      */
-    Error UnsubscribeCertChanged(iam::certhandler::CertReceiverItf& certReceiver) override;
+    Error UnsubscribeListener(aos::iamclient::CertListenerItf& certListener) override;
 
     /**
      * Gets the node info object.
@@ -183,7 +182,7 @@ private:
         std::future<void>                    mFuture;
         bool                                 mClose {};
 
-        std::unordered_set<iam::certhandler::CertReceiverItf*> mSubscribers;
+        std::unordered_set<aos::iamclient::CertListenerItf*> mSubscribers;
     };
 
     static constexpr auto cIAMPublicServiceTimeout = std::chrono::seconds(10);

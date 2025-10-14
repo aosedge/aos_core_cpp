@@ -71,7 +71,7 @@ void CMClient::OnDisconnected()
 }
 
 // cppcheck-suppress unusedFunction
-void CMClient::OnCertChanged([[maybe_unused]] const iam::certhandler::CertInfo& info)
+void CMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
     LOG_DBG() << "Certificate changed";
 
@@ -164,7 +164,7 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CMClient::CreateCredenti
         return {grpc::InsecureChannelCredentials(), ErrorEnum::eNone};
     }
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     return mCertProvider->GetMTLSClientCredentials(mCertStorage.c_str());
 }

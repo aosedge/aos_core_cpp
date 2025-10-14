@@ -775,7 +775,7 @@ TEST_F(CMClientTest, CertChanged)
     mCMClient->OnConnected();
     EXPECT_TRUE(mSMService->WaitForConnection());
 
-    mCMClient->OnCertChanged(iam::certhandler::CertInfo {});
+    mCMClient->OnCertChanged(CertInfo {});
 
     EXPECT_TRUE(mSMService->WaitForDisconnection());
     EXPECT_TRUE(mSMService->WaitForConnection());

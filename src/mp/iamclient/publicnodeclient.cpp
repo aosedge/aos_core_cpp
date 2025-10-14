@@ -64,7 +64,7 @@ void PublicNodeClient::OnDisconnected()
     Close();
 }
 
-void PublicNodeClient::OnCertChanged([[maybe_unused]] const iam::certhandler::CertInfo& info)
+void PublicNodeClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
     LOG_DBG() << "Certificate changed";
 

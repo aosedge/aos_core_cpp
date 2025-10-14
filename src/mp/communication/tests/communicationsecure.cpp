@@ -62,7 +62,7 @@ public:
     }
 
     Error GetCert(const String& certType, [[maybe_unused]] const Array<uint8_t>& issuer,
-        [[maybe_unused]] const Array<uint8_t>& serial, iam::certhandler::CertInfo& resCert) const
+        [[maybe_unused]] const Array<uint8_t>& serial, CertInfo& resCert) const
     {
         mCertCalled = true;
         mCondVar.notify_all();
@@ -72,13 +72,13 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error SubscribeCertChanged([[maybe_unused]] const String& certType,
-        [[maybe_unused]] iam::certhandler::CertReceiverItf&   subscriber) override
+    Error SubscribeListener(
+        [[maybe_unused]] const String& certType, [[maybe_unused]] iamclient::CertListenerItf& listener) override
     {
         return ErrorEnum::eNone;
     }
 
-    Error UnsubscribeCertChanged([[maybe_unused]] iam::certhandler::CertReceiverItf& subscriber) override
+    Error UnsubscribeListener([[maybe_unused]] iamclient::CertListenerItf& listener) override
     {
         return ErrorEnum::eNone;
     }
@@ -148,7 +148,7 @@ protected:
 
         mClient.emplace("localhost", 30001);
 
-        iam::certhandler::CertInfo certInfo;
+        CertInfo certInfo;
         mCertHandler.GetCertificate("client", {}, {}, certInfo);
         auto [keyURI, errPkcs] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, ErrorEnum::eNone);
@@ -206,7 +206,7 @@ protected:
     }
 
     void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
-        const String& intermCertPath, uint64_t serial, iam::certhandler::CertInfo& certInfo)
+        const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
     {
         StaticString<crypto::cCSRPEMLen> csr;
         ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
@@ -251,8 +251,8 @@ protected:
     crypto::DefaultCryptoProvider  mCryptoProvider;
     crypto::CertLoader             mCertLoader;
     iam::certhandler::CertHandler  mCertHandler;
-    iam::certhandler::CertInfo     mClientInfo;
-    iam::certhandler::CertInfo     mServerInfo;
+    CertInfo                       mClientInfo;
+    CertInfo                       mServerInfo;
     common::downloader::Downloader mDownloader;
     std::optional<CertProvider>    mCertProvider;
     std::string                    mKeyURI;
@@ -643,7 +643,7 @@ TEST_F(CommunicationSecureManagerTest, TestCertChange)
 
     EXPECT_TRUE(mCertProvider->IsCertCalled());
 
-    mCommManager->OnCertChanged(iam::certhandler::CertInfo {});
+    mCommManager->OnCertChanged(CertInfo {});
     mIAMSecurePipe->Close();
     mCertProvider->ResetCertCalled();
 

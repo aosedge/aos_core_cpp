@@ -125,7 +125,7 @@ private:
 
     std::unique_ptr<grpc::Server>      mServer;
     std::string                        mCertType;
-    aos::iam::certhandler::CertInfo    mCertInfo;
+    aos::CertInfo                      mCertInfo;
     iamanager::v5::IAMOutgoingMessages mOutgoingMsg;
 
     grpc::ServerReaderWriter<iamanager::v5::IAMIncomingMessages, iamanager::v5::IAMOutgoingMessages>* mStream {};
