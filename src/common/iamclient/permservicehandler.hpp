@@ -39,7 +39,7 @@ public:
      * @param instancePermissions instance permissions.
      * @returns RetWithError<StaticString<cSecretLen>>.
      */
-    RetWithError<StaticString<iam::permhandler::cSecretLen>> RegisterInstance(
+    RetWithError<StaticString<cSecretLen>> RegisterInstance(
         const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions) override;
 
     /**
