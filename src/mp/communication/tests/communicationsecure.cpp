@@ -67,7 +67,7 @@ public:
         mCertCalled = true;
         mCondVar.notify_all();
 
-        mCertHandler.GetCertificate(certType, {}, {}, resCert);
+        mCertHandler.GetCert(certType, {}, {}, resCert);
 
         return ErrorEnum::eNone;
     }
@@ -149,7 +149,7 @@ protected:
         mClient.emplace("localhost", 30001);
 
         CertInfo certInfo;
-        mCertHandler.GetCertificate("client", {}, {}, certInfo);
+        mCertHandler.GetCert("client", {}, {}, certInfo);
         auto [keyURI, errPkcs] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, ErrorEnum::eNone);
 
