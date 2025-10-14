@@ -17,8 +17,8 @@
 
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
@@ -36,7 +36,7 @@ namespace aos::iam::iamserver {
  * IAM GRPC server
  */
 class IAMServer : public nodemanager::NodeInfoListenerItf,
-                  public identhandler::SubjectsObserverItf,
+                  public aos::iamclient::SubjectsListenerItf,
                   public provisionmanager::ProvisionManagerCallbackItf,
                   private aos::iamclient::CertListenerItf {
 public:
@@ -50,7 +50,7 @@ public:
      *
      * @param config server configuration.
      * @param certHandler certificate handler.
-     * @param identHandler identification handler.
+     * @param identProvider identification provider.
      * @param permHandler permission handler.
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
@@ -61,7 +61,7 @@ public:
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
     Error Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
-        identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
+        aos::iamclient::IdentProviderItf& identProvider, permhandler::PermHandlerItf& permHandler,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,

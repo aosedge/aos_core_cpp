@@ -8,7 +8,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
-#include <core/iam/tests/mocks/identhandlermock.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
 
 #include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
@@ -51,7 +51,7 @@ protected:
     const config::VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
     WSClientEvent                                  mWSClientEvent;
-    iam::identhandler::SubjectsObserverMock        mVISSubjectsObserverMock;
+    iamclient::SubjectsListenerMock                mVISSubjectsListenerMock;
     std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
     WSClientMockPtr                                mWSClientItfMockPtr {std::make_shared<StrictMock<WSClientMock>>()};
     TestVISIdentifier                              mVisIdentifier;
@@ -78,6 +78,7 @@ protected:
         mConfig.mParams = object;
 
         mVisIdentifier.SetWSClient(mWSClientItfMockPtr);
+        mVisIdentifier.SubscribeListener(mVISSubjectsListenerMock);
 
         mCryptoProvider = std::make_unique<crypto::DefaultCryptoProvider>();
         ASSERT_TRUE(mCryptoProvider->Init().IsNone()) << "Failed to initialize crypto provider";
@@ -132,7 +133,7 @@ protected:
         EXPECT_CALL(mVisIdentifier, InitWSClient).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mWSClientItfMockPtr, WaitForEvent).WillOnce(Invoke([this]() { return mWSClientEvent.Wait(); }));
 
-        ASSERT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+        ASSERT_TRUE(mVisIdentifier.Init(mConfig, *mCryptoProvider).IsNone());
 
         ASSERT_TRUE(mVisIdentifier.Start().IsNone());
 
@@ -163,7 +164,8 @@ protected:
 TEST_F(VisidentifierTest, InitFailsOnEmptyConfig)
 {
     VISIdentifier identifier;
-    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+
+    ASSERT_TRUE(identifier.Init(config::IdentifierConfig {}, *mCryptoProvider).IsNone());
 
     EXPECT_FALSE(identifier.Start().IsNone());
 }
@@ -174,7 +176,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 
     StaticArray<StaticString<cIDLen>, 3> subjects;
 
-    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
+    EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged)
         .Times(1)
         .WillOnce(Invoke([&subjects](const auto& newSubjects) {
             subjects = newSubjects;
@@ -191,7 +193,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedAndObserverIsNotified)
 
     // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
-        EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+        EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged).Times(0);
         mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
 
@@ -204,7 +206,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
 
     StaticArray<StaticString<cIDLen>, 3> subjects;
 
-    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged)
+    EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged)
         .Times(1)
         .WillOnce(Invoke([&subjects](const auto& newSubjects) {
             subjects = newSubjects;
@@ -222,7 +224,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationNestedJsonReceivedAndObserverI
 
     // Observer is notified only if subscription json contains new value
     for (size_t i {0}; i < 3; ++i) {
-        EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+        EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged).Times(0);
         mVisIdentifier.HandleSubscription(cSubscriptionNotificationJson);
     }
 
@@ -233,7 +235,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedUnknownSubscriptionId)
 {
     ExpectStartSucceeded();
 
-    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged).Times(0);
 
     mVisIdentifier.HandleSubscription(
         R"({"action":"subscription","subscriptionId":"unknown-subscriptionId","value":[11,12,13], "timestamp": 0})");
@@ -245,7 +247,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationReceivedInvalidPayload)
 {
     ExpectStartSucceeded();
 
-    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged).Times(0);
 
     ASSERT_NO_THROW(mVisIdentifier.HandleSubscription(R"({cActionTagName})"));
 
@@ -256,7 +258,7 @@ TEST_F(VisidentifierTest, SubscriptionNotificationValueExceedsMaxLimit)
 {
     ExpectStartSucceeded();
 
-    EXPECT_CALL(mVISSubjectsObserverMock, SubjectsChanged).Times(0);
+    EXPECT_CALL(mVISSubjectsListenerMock, SubjectsChanged).Times(0);
 
     Poco::JSON::Object notification;
 
@@ -299,7 +301,7 @@ TEST_F(VisidentifierTest, ReconnectOnFailSendFrame)
             return {str.cbegin(), str.cend()};
         }));
 
-    EXPECT_TRUE(mVisIdentifier.Init(mConfig, mVISSubjectsObserverMock, *mCryptoProvider).IsNone());
+    EXPECT_TRUE(mVisIdentifier.Init(mConfig, *mCryptoProvider).IsNone());
     EXPECT_TRUE(mVisIdentifier.Start().IsNone());
 
     mVisIdentifier.WaitUntilConnected();
@@ -477,7 +479,8 @@ TEST_F(VisidentifierTest, GetSubjectsRequestFailed)
         }));
 
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
-    const auto                                         err = mVisIdentifier.GetSubjects(subjects);
+
+    const auto err = mVisIdentifier.GetSubjects(subjects);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed));
     EXPECT_TRUE(subjects.IsEmpty());
 

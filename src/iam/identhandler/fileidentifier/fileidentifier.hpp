@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <core/iam/identhandler/identhandler.hpp>
+#include <core/iam/identhandler/identmodule.hpp>
 
 #include <iam/config/config.hpp>
 
@@ -18,7 +18,7 @@ namespace aos::iam::fileidentifier {
 /**
  * File Identifier.
  */
-class FileIdentifier : public identhandler::IdentHandlerItf {
+class FileIdentifier : public identhandler::IdentModuleItf {
 public:
     /**
      * Creates a new object instance.
@@ -29,10 +29,23 @@ public:
      * Initializes file identifier.
      *
      * @param config config object.
-     * @param subjectsObserver subject observer.
      * @return Error.
      */
-    Error Init(const config::IdentifierConfig& config, identhandler::SubjectsObserverItf& subjectsObserver);
+    Error Init(const config::IdentifierConfig& config);
+
+    /**
+     * Starts file identifier.
+     *
+     * @return Error.
+     */
+    Error Start() override { return ErrorEnum::eNone; };
+
+    /**
+     * Stops file identifier.
+     *
+     * @return Error.
+     */
+    Error Stop() override { return ErrorEnum::eNone; };
 
     /**
      * Returns System ID.
@@ -57,6 +70,40 @@ public:
     Error GetSubjects(Array<StaticString<cIDLen>>& subjects) override;
 
     /**
+     * Subscribes subjects listener.
+     *
+     * @param subjectsListener subjects listener.
+     * @returns Error.
+     */
+    Error SubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
+    {
+        if (mSubjectsListener != nullptr) {
+            return ErrorEnum::eAlreadyExist;
+        }
+
+        mSubjectsListener = &subjectsListener;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
+     * Unsubscribes subjects listener.
+     *
+     * @param subjectsListener subjects listener.
+     * @returns Error.
+     */
+    Error UnsubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
+    {
+        if (mSubjectsListener != &subjectsListener) {
+            return ErrorEnum::eNotFound;
+        }
+
+        mSubjectsListener = nullptr;
+
+        return ErrorEnum::eNone;
+    }
+
+    /**
      * Destroys object instance.
      */
     ~FileIdentifier() override = default;
@@ -66,7 +113,7 @@ private:
     Error ReadLineFromFile(const std::string& path, String& result) const;
 
     config::FileIdentifierModuleParams                 mConfig;
-    identhandler::SubjectsObserverItf*                 mSubjectsObserver = nullptr;
+    iamclient::SubjectsListenerItf*                    mSubjectsListener = nullptr;
     StaticString<cIDLen>                               mSystemId;
     StaticString<cUnitModelLen>                        mUnitModel;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;

@@ -91,7 +91,7 @@ Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cm
  **********************************************************************************************************************/
 
 Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
-    identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
+    iamclient::IdentProviderItf& identProvider, permhandler::PermHandlerItf& permHandler,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
     iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
@@ -117,13 +117,13 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     }
 
     if (err = mPublicMessageHandler.Init(
-            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider);
+            mNodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     if (err = mProtectedMessageHandler.Init(
-            mNodeController, identHandler, permHandler, nodeInfoProvider, nodeManager, certProvider, provisionManager);
+            mNodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider, provisionManager);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
