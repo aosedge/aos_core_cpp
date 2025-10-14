@@ -263,18 +263,15 @@ void App::Init()
     err = mProvisionManager.Init(mIAMServer, mCertHandler);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
-    err = mCertProvider.Init(mCertHandler);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert provider");
-
     err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
-        mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertProvider, mProvisionManager, mProvisioning);
+        mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
     const auto& clientConfig = config.mValue.mIAMClient;
     if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
         mIAMClient = std::make_unique<iamclient::IAMClient>();
 
-        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertProvider, mProvisionManager, mCertLoader,
+        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertHandler, mProvisionManager, mCertLoader,
             mCryptoProvider, mNodeInfoProvider, mProvisioning);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }

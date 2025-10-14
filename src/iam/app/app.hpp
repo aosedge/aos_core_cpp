@@ -13,7 +13,6 @@
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identmodule.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
@@ -65,7 +64,6 @@ private:
     database::Database                                                                                     mDatabase;
     nodeinfoprovider::NodeInfoProvider            mNodeInfoProvider;
     nodemanager::NodeManager                      mNodeManager;
-    certhandler::CertProvider                     mCertProvider;
     provisionmanager::ProvisionManager            mProvisionManager;
     iamserver::IAMServer                          mIAMServer;
     common::logger::Logger                        mLogger;

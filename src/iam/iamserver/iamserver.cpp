@@ -132,7 +132,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
         if (!mProvisioningMode) {
             CertInfo certInfo;
 
-            err = certHandler.GetCertificate(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
+            err = certHandler.GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
             if (!err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
