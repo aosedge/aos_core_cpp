@@ -100,7 +100,7 @@ Error PermissionsServiceHandler::GetPermissions([[maybe_unused]] const String& s
 
 std::shared_ptr<grpc::ChannelCredentials> PermissionsServiceHandler::CreateCredentials()
 {
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     auto [credential, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
     if (!err.IsNone()) {

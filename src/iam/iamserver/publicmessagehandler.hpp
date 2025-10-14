@@ -15,8 +15,8 @@
 
 #include <grpcpp/server_builder.h>
 
+#include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
@@ -57,7 +57,7 @@ public:
      */
     Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
         iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider);
+        iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider);
 
     /**
      * Registers grpc services.
@@ -175,7 +175,7 @@ private:
     iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
     iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
     iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
-    iam::certhandler::CertProviderItf*          mCertProvider     = nullptr;
+    aos::iamclient::CertProviderItf*            mCertProvider     = nullptr;
     NodeController*                             mNodeController   = nullptr;
     StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
     StreamWriter<iamproto::Subjects>            mSubjectsChangedController;

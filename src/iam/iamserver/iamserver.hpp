@@ -16,8 +16,8 @@
 #include <grpcpp/server_builder.h>
 
 #include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/certhandler/certprovider.hpp>
 #include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
@@ -38,7 +38,7 @@ namespace aos::iam::iamserver {
 class IAMServer : public nodemanager::NodeInfoListenerItf,
                   public identhandler::SubjectsObserverItf,
                   public provisionmanager::ProvisionManagerCallbackItf,
-                  private certhandler::CertReceiverItf {
+                  private aos::iamclient::CertListenerItf {
 public:
     /**
      * Constructor.
@@ -64,7 +64,7 @@ public:
         identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
-        certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+        aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         bool provisioningMode);
 
     /**
@@ -132,7 +132,7 @@ private:
     Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
 
     // certhandler::CertReceiverItf interface
-    void OnCertChanged(const certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
     // creating routines
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);

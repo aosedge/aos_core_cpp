@@ -44,7 +44,7 @@ Error PublicServiceHandler::Init(const Config& cfg, crypto::CertLoaderItf& certL
 RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::GetMTLSClientCredentials(
     const String& certStorage)
 {
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     LOG_DBG() << "Get MTLS config: certStorage=" << certStorage;
 
@@ -66,8 +66,8 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicServiceHandler::Ge
     return {nullptr, ErrorEnum::eNone};
 }
 
-Error PublicServiceHandler::GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
-    iam::certhandler::CertInfo& resCert) const
+Error PublicServiceHandler::GetCert(
+    const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial, CertInfo& resCert) const
 {
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cIAMPublicServiceTimeout);
@@ -170,8 +170,7 @@ PublicServiceHandler::~PublicServiceHandler()
     }
 }
 
-Error PublicServiceHandler::SubscribeCertChanged(
-    const String& certType, iam::certhandler::CertReceiverItf& certReceiver)
+Error PublicServiceHandler::SubscribeListener(const String& certType, aos::iamclient::CertListenerItf& certListener)
 {
     std::lock_guard lock {mMutex};
 
@@ -179,7 +178,7 @@ Error PublicServiceHandler::SubscribeCertChanged(
 
     auto& subscription = mSubscriptions[certType.CStr()];
 
-    if (!subscription.mSubscribers.insert(&certReceiver).second) {
+    if (!subscription.mSubscribers.insert(&certListener).second) {
         return Error(ErrorEnum::eAlreadyExist, "subscriber already exists for this cert type");
     }
 
@@ -191,7 +190,7 @@ Error PublicServiceHandler::SubscribeCertChanged(
     return ErrorEnum::eNone;
 }
 
-Error PublicServiceHandler::UnsubscribeCertChanged(iam::certhandler::CertReceiverItf& certReceiver)
+Error PublicServiceHandler::UnsubscribeListener(aos::iamclient::CertListenerItf& certListener)
 {
     for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
         {
@@ -199,7 +198,7 @@ Error PublicServiceHandler::UnsubscribeCertChanged(iam::certhandler::CertReceive
 
             auto& subscription = it->second;
 
-            if (subscription.mSubscribers.erase(&certReceiver) != 0) {
+            if (subscription.mSubscribers.erase(&certListener) != 0) {
                 LOG_INF() << "Unsubscribe from certificate changed: certType=" << it->first.c_str();
             }
 
@@ -290,7 +289,7 @@ void PublicServiceHandler::RunTask(const std::string& certType, Subscription* su
                     std::lock_guard lock {mMutex};
 
                     for (auto subscriber : subscription->mSubscribers) {
-                        iam::certhandler::CertInfo iamCertInfo;
+                        CertInfo iamCertInfo;
 
                         iamCertInfo.mCertURL = certInfo.cert_url().c_str();
                         iamCertInfo.mKeyURL  = certInfo.key_url().c_str();

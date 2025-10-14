@@ -233,7 +233,7 @@ TEST_F(IamClientTest, CertChanged)
     mClient->OnConnected();
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    mClient->OnCertChanged(iam::certhandler::CertInfo {});
+    mClient->OnCertChanged(CertInfo {});
 
     EXPECT_TRUE(mIAMServerStub->WaitForDisconnection());
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());

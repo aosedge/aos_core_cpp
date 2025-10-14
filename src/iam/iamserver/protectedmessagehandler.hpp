@@ -54,7 +54,7 @@ public:
      */
     Error Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
         iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider,
+        iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider,
         iam::provisionmanager::ProvisionManagerItf& provisionManager);
 
     /**

@@ -26,7 +26,7 @@ namespace aos::mp::communication {
 /**
  * Communication manager class.
  */
-class CommunicationManager : public CommunicationManagerItf, public iam::certhandler::CertReceiverItf {
+class CommunicationManager : public CommunicationManagerItf, public iamclient::CertListenerItf {
 public:
     /**
      * Constructor.
@@ -114,7 +114,7 @@ public:
      *
      * @param certType Certificate type.
      */
-    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
 private:
     static constexpr auto                      cMaxMessageSize    = 64 * 1024; // 64 KB

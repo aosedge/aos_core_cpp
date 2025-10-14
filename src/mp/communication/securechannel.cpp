@@ -251,7 +251,7 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
 
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     if (auto err = mCertProvider->GetCert(mCertStorage.c_str(), {}, {}, certInfo); !err.IsNone()) {
         return err;

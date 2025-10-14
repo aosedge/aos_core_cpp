@@ -38,7 +38,7 @@ public:
      *
      * @param certInfo Certificate info.
      */
-    void SetCertInfo(const aos::iam::certhandler::CertInfo& certInfo) { mCertInfo = certInfo; }
+    void SetCertInfo(const aos::CertInfo& certInfo) { mCertInfo = certInfo; }
 
     /**
      * Send certificate changed info.
@@ -173,7 +173,7 @@ private:
 
     std::unique_ptr<grpc::Server>                mServer;
     std::string                                  mCertType;
-    aos::iam::certhandler::CertInfo              mCertInfo;
+    aos::CertInfo                                mCertInfo;
     grpc::ServerWriter<iamanager::v5::CertInfo>* mStream {};
     std::mutex                                   mLock;
     std::condition_variable                      mCV;

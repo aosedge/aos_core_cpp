@@ -49,7 +49,7 @@ public:
      * @param certInfo certificate information.
      * @return Error.
      */
-    Error AddCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo) override;
+    Error AddCertInfo(const String& certType, const aos::CertInfo& certInfo) override;
 
     /**
      * Returns information about certificate with specified issuer and serial number.
@@ -59,8 +59,7 @@ public:
      * @param cert result certificate.
      * @return Error.
      */
-    Error GetCertInfo(
-        const Array<uint8_t>& issuer, const Array<uint8_t>& serial, iam::certhandler::CertInfo& cert) override;
+    Error GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t>& serial, aos::CertInfo& cert) override;
 
     /**
      * Returns info for all certificates with specified certificate type.
@@ -69,7 +68,7 @@ public:
      * @param certsInfo result certificates info.
      * @return Error.
      */
-    Error GetCertsInfo(const String& certType, Array<iam::certhandler::CertInfo>& certsInfo) override;
+    Error GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo) override;
 
     /**
      * Removes certificate with specified certificate type and url.
@@ -143,9 +142,9 @@ private:
     void CreateMigrationData(const config::DatabaseConfig& config);
     void DropMigrationData();
 
-    void     CreateTables();
-    CertInfo ToAosCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo);
-    void     FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertInfo& result);
+    void CreateTables();
+    void FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result);
+    void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
 
     static Poco::JSON::Object ConvertNodeInfoToJSON(const NodeInfoObsolete& nodeInfo);
     static Error              ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, NodeInfoObsolete& dst);

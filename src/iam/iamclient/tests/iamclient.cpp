@@ -9,11 +9,11 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/server_builder.h>
 
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/mocks/cryptomock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/tests/mocks/certhandlermock.hpp>
 #include <core/iam/tests/mocks/certloadermock.hpp>
-#include <core/iam/tests/mocks/certprovidermock.hpp>
 #include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
@@ -479,7 +479,7 @@ protected:
 
     iam::identhandler::IdentHandlerMock         mIdentHandler;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
-    iam::certhandler::CertProviderMock          mCertProvider;
+    aos::iamclient::CertProviderMock            mCertProvider;
     crypto::CertLoaderMock                      mCertLoader;
     crypto::x509::ProviderMock                  mCryptoProvider;
     iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
@@ -780,7 +780,7 @@ TEST_F(IAMClientTest, ApplyCert)
     NodeInfoObsolete nodeInfo = DefaultNodeInfo(NodeStateObsoleteEnum::eUnprovisioned);
 
     // ApplyCert
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     EXPECT_CALL(mProvisionManager, ApplyCert(cCertType, _, _))
         .WillOnce(DoAll(SetArgReferee<2>(certInfo), Return(ErrorEnum::eNone)));

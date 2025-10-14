@@ -24,7 +24,7 @@ namespace aos::iam::iamserver {
 
 Error PublicMessageHandler::Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
     iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider)
+    iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
 
@@ -194,7 +194,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, certInfo);
     if (!err.IsNone()) {
@@ -222,7 +222,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
         mCertWriters.push_back(certWriter);
     }
 
-    auto err = mCertProvider->SubscribeCertChanged(request->type().c_str(), *certWriter);
+    auto err = mCertProvider->SubscribeListener(request->type().c_str(), *certWriter);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
 
@@ -231,7 +231,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
     auto status = certWriter->HandleStream(context, writer);
 
-    err = mCertProvider->UnsubscribeCertChanged(*certWriter);
+    err = mCertProvider->UnsubscribeListener(*certWriter);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
 

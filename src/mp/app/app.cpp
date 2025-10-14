@@ -148,16 +148,16 @@ void App::Init()
     // Subscribe to certificate changed
 
     if (!mProvisioning) {
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mCertStorage.c_str(), mCMClient);
+        err = mPublicServiceHandler.SubscribeListener(mConfig.mCertStorage.c_str(), mCMClient);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
+        err = mPublicServiceHandler.SubscribeListener(mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeListener(mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
-        err = mPublicServiceHandler.SubscribeCertChanged(mConfig.mVChan.mSMCertStorage.c_str(), mCommunicationManager);
+        err = mPublicServiceHandler.SubscribeListener(mConfig.mVChan.mSMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
     }
 

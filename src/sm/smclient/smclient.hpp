@@ -41,7 +41,7 @@ using PublicNodeService = smproto::SMService;
 /**
  * GRPC service manager client.
  */
-class SMClient : public iam::certhandler::CertReceiverItf,
+class SMClient : public aos::iamclient::CertListenerItf,
                  public aos::monitoring::SenderItf,
                  public aos::alerts::SenderItf,
                  public sm::logprovider::LogObserverItf,
@@ -88,7 +88,7 @@ public:
      *
      * @param info certificate info.
      */
-    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
     /**
      * Sends monitoring data.
