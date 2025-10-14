@@ -17,20 +17,13 @@ namespace aos::common::iamclient {
 
 class MockCertProvider : public TLSCredentialsItf {
 public:
-    MOCK_METHOD(RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetMTLSClientCredentials,
-        (const String& certStorage), (override));
-
+    MOCK_METHOD(
+        RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetMTLSClientCredentials, (const String&), (override));
     MOCK_METHOD(RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetTLSClientCredentials, (), (override));
-
-    MOCK_METHOD(Error, GetCert,
-        (const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
-            iam::certhandler::CertInfo& certInfo),
-        (const, override));
-
-    MOCK_METHOD(Error, SubscribeCertChanged, (const String& certType, iam::certhandler::CertReceiverItf& subscriber),
-        (override));
-
-    MOCK_METHOD(Error, UnsubscribeCertChanged, (iam::certhandler::CertReceiverItf & subscriber), (override));
+    MOCK_METHOD(
+        Error, GetCert, (const String&, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&), (const, override));
+    MOCK_METHOD(Error, SubscribeListener, (const String&, aos::iamclient::CertListenerItf&), (override));
+    MOCK_METHOD(Error, UnsubscribeListener, (aos::iamclient::CertListenerItf&), (override));
 };
 
 } // namespace aos::common::iamclient

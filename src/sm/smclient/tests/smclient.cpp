@@ -427,8 +427,8 @@ protected:
         EXPECT_CALL(*server, OnNodeConfigStatus(expNodeConfigVersion)).Times(1);
 
         if (!provisionMode) {
-            EXPECT_CALL(mTLSCredentials, SubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
-            EXPECT_CALL(mTLSCredentials, UnsubscribeCertChanged).WillOnce(Return(ErrorEnum::eNone));
+            EXPECT_CALL(mTLSCredentials, SubscribeListener).WillOnce(Return(ErrorEnum::eNone));
+            EXPECT_CALL(mTLSCredentials, UnsubscribeListener).WillOnce(Return(ErrorEnum::eNone));
         }
 
         EXPECT_CALL(mLogProvider, Subscribe(_)).WillOnce(Return(Error()));

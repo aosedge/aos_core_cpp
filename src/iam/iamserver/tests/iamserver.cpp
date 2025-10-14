@@ -16,11 +16,11 @@
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tools/fs.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/tests/mocks/certprovidermock.hpp>
 #include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
@@ -72,8 +72,8 @@ protected:
     }
 
     IAMServer               mServer;
-    certhandler::CertInfo   mClientInfo;
-    certhandler::CertInfo   mServerInfo;
+    CertInfo                mClientInfo;
+    CertInfo                mServerInfo;
     config::IAMServerConfig mServerConfig;
     config::IAMClientConfig mClientConfig;
 
@@ -86,7 +86,7 @@ protected:
     permhandler::PermHandlerMock           mPermHandler;
     nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     nodemanager::NodeManagerMock           mNodeManager;
-    certhandler::CertProviderMock          mCertProvider;
+    iamclient::CertProviderMock            mCertProvider;
     provisionmanager::ProvisionManagerMock mProvisionManager;
 
 protected:
@@ -100,7 +100,7 @@ private:
     certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType);
     certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig();
     void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
-        const String& intermCertPath, uint64_t serial, certhandler::CertInfo& certInfo);
+        const String& intermCertPath, uint64_t serial, CertInfo& certInfo);
 
     config::IAMServerConfig GetServerConfig();
     config::IAMClientConfig GetClientConfig();
@@ -229,7 +229,7 @@ certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
 }
 
 void IAMServerTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
-    const String& intermCertPath, uint64_t serial, certhandler::CertInfo& certInfo)
+    const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
 {
     StaticString<crypto::cCSRPEMLen> csr;
     ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());

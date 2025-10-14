@@ -194,7 +194,7 @@ protected:
 
 TEST_F(DatabaseTest, AddCertInfo)
 {
-    iam::certhandler::CertInfo certInfo;
+    aos::CertInfo certInfo;
 
     certInfo.mIssuer   = StringToDN("issuer");
     certInfo.mSerial   = StringToDN("serial");
@@ -219,7 +219,7 @@ TEST_F(DatabaseTest, RemoveCertInfo)
 {
     EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfo;
+    aos::CertInfo certInfo;
 
     certInfo.mIssuer  = StringToDN("issuer");
     certInfo.mSerial  = StringToDN("serial");
@@ -236,7 +236,7 @@ TEST_F(DatabaseTest, RemoveAllCertsInfo)
 {
     EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     certInfo.mIssuer  = StringToDN("issuer");
     certInfo.mSerial  = StringToDN("serial");
@@ -260,7 +260,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 {
     EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfo {};
+    CertInfo certInfo {};
 
     EXPECT_EQ(mDB.GetCertInfo(certInfo.mIssuer, certInfo.mSerial, certInfo), ErrorEnum::eNotFound);
 
@@ -272,7 +272,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfo2;
+    CertInfo certInfo2;
 
     certInfo2.mIssuer   = StringToDN("issuer2");
     certInfo2.mSerial   = StringToDN("serial2");
@@ -282,7 +282,7 @@ TEST_F(DatabaseTest, GetCertInfo)
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo2), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfoStored {};
+    CertInfo certInfoStored {};
 
     EXPECT_EQ(mDB.GetCertInfo(certInfo.mIssuer, certInfo.mSerial, certInfoStored), ErrorEnum::eNone);
     EXPECT_EQ(certInfo, certInfoStored);
@@ -295,12 +295,12 @@ TEST_F(DatabaseTest, GetCertsInfo)
 {
     EXPECT_EQ(mDB.Init(mDatabaseConfig), ErrorEnum::eNone);
 
-    StaticArray<iam::certhandler::CertInfo, 2> certsInfo;
+    StaticArray<CertInfo, 2> certsInfo;
 
     EXPECT_EQ(mDB.GetCertsInfo("type", certsInfo), ErrorEnum::eNone);
     EXPECT_TRUE(certsInfo.IsEmpty());
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     certInfo.mIssuer   = StringToDN("issuer");
     certInfo.mSerial   = StringToDN("serial");
@@ -310,7 +310,7 @@ TEST_F(DatabaseTest, GetCertsInfo)
 
     EXPECT_EQ(mDB.AddCertInfo("type", certInfo), ErrorEnum::eNone);
 
-    iam::certhandler::CertInfo certInfo2;
+    CertInfo certInfo2;
 
     certInfo2.mIssuer   = StringToDN("issuer2");
     certInfo2.mSerial   = StringToDN("serial2");
@@ -326,7 +326,7 @@ TEST_F(DatabaseTest, GetCertsInfo)
     EXPECT_TRUE(certsInfo[0] == certInfo || certsInfo[1] == certInfo);
     EXPECT_TRUE(certsInfo[0] == certInfo2 || certsInfo[1] == certInfo2);
 
-    StaticArray<iam::certhandler::CertInfo, 1> certsInfoNotEnoughMemory;
+    StaticArray<CertInfo, 1> certsInfoNotEnoughMemory;
     EXPECT_EQ(mDB.GetCertsInfo("type", certsInfoNotEnoughMemory), ErrorEnum::eNoMemory);
 
     ASSERT_EQ(certsInfoNotEnoughMemory.Size(), 1);
@@ -437,7 +437,7 @@ TEST_F(DatabaseTest, MigrateVer0To1)
                                    "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-source="
         + mSMPinPath;
 
-    iam::certhandler::CertInfo certInfo {};
+    CertInfo certInfo {};
 
     ASSERT_TRUE(mDB.GetCertInfo(ToArray(cCM), ToArray(cCM), certInfo).IsNone());
     EXPECT_EQ(certInfo.mCertURL.CStr(), cCMVer1URL);
@@ -484,7 +484,7 @@ TEST_F(DatabaseTest, MigrateVer1To0)
         = "pkcs11:token=aoscore;object=cm;id=%2A%AD%9F%7E%2A%33%15%1F%22%39%F1%57%F4%E8%CF%3A?"
           "module-path=/usr/lib/softhsm/libsofthsm2.so&pin-value=ca3b303c3c3f572e87c97a753cc7f6";
 
-    iam::certhandler::CertInfo certInfo {};
+    CertInfo certInfo {};
 
     ASSERT_TRUE(mDB.GetCertInfo(ToArray(cCM), ToArray(cCM), certInfo).IsNone());
     EXPECT_EQ(certInfo.mCertURL.CStr(), cCMVer0URL);

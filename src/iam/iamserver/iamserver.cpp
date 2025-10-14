@@ -94,7 +94,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     identhandler::IdentHandlerItf& identHandler, permhandler::PermHandlerItf& permHandler,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
-    certhandler::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
+    iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)
 {
     LOG_DBG() << "IAM Server init";
@@ -130,7 +130,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
 
     try {
         if (!mProvisioningMode) {
-            certhandler::CertInfo certInfo;
+            CertInfo certInfo;
 
             err = certHandler.GetCertificate(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
             if (!err.IsNone()) {
@@ -165,7 +165,7 @@ Error IAMServer::Start()
     LOG_DBG() << "Start IAM server";
 
     if (!mProvisioningMode) {
-        auto err = mCertHandler->SubscribeCertChanged(String(mConfig.mCertStorage.c_str()), *this);
+        auto err = mCertHandler->SubscribeListener(String(mConfig.mCertStorage.c_str()), *this);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -195,7 +195,7 @@ Error IAMServer::Stop()
     Error err;
 
     if (!mProvisioningMode) {
-        err = mCertHandler->UnsubscribeCertChanged(*this);
+        err = mCertHandler->UnsubscribeListener(*this);
     }
 
     mNodeController.Close();
@@ -288,7 +288,7 @@ Error IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& messages)
     return ErrorEnum::eNone;
 }
 
-void IAMServer::OnCertChanged(const certhandler::CertInfo& info)
+void IAMServer::OnCertChanged(const CertInfo& info)
 {
     mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
     mProtectedCred

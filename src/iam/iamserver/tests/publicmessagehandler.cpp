@@ -11,10 +11,10 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/tests/mocks/certprovidermock.hpp>
 #include <core/iam/tests/mocks/identhandlermock.hpp>
 #include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
@@ -74,7 +74,7 @@ protected:
     permhandler::PermHandlerMock           mPermHandler;
     nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
     nodemanager::NodeManagerMock           mNodeManager;
-    certhandler::CertProviderMock          mCertProvider;
+    iamclient::CertProviderMock            mCertProvider;
     provisionmanager::ProvisionManagerMock mProvisionManager;
 
 private:
@@ -173,7 +173,7 @@ TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
     request.set_serial("58bdb46d06865f7f");
     request.set_type("test-type");
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
@@ -207,7 +207,7 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
     request.set_serial("58bdb46d06865f7f");
     request.set_type("test-type");
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
@@ -234,13 +234,13 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
 
     request.set_type("test-type");
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
-    EXPECT_CALL(mCertProvider, SubscribeCertChanged)
-        .WillOnce(Invoke([&certInfo](const String&, iam::certhandler::CertReceiverItf& receiver) {
-            receiver.OnCertChanged(certInfo);
+    EXPECT_CALL(mCertProvider, SubscribeListener)
+        .WillOnce(Invoke([&certInfo](const String&, iamclient::CertListenerItf& listener) {
+            listener.OnCertChanged(certInfo);
 
             return ErrorEnum::eNone;
         }));
@@ -272,8 +272,9 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
 
     request.set_type("test-type");
 
-    EXPECT_CALL(mCertProvider, SubscribeCertChanged)
-        .WillOnce(Invoke([](const String&, iam::certhandler::CertReceiverItf&) { return ErrorEnum::eFailed; }));
+    EXPECT_CALL(mCertProvider, SubscribeListener).WillOnce(Invoke([](const String&, iamclient::CertListenerItf&) {
+        return ErrorEnum::eFailed;
+    }));
 
     auto reader = clientStub->SubscribeCertChanged(&context, request);
 

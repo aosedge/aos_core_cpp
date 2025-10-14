@@ -32,9 +32,8 @@ static std::string CreateGRPCPKCS11PrivKeyURL(const String& keyURL)
     return pem;
 }
 
-static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
-    const iam::certhandler::CertInfo& certInfo, const String& rootCertPath, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider)
+static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(const CertInfo& certInfo,
+    const String& rootCertPath, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
@@ -51,8 +50,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSServerCertificates(
-    const iam::certhandler::CertInfo& certInfo, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider)
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "Load certificate by URL failed");
@@ -81,8 +79,8 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
 
 namespace aos::common::utils {
 
-std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
-    const String& rootCertPath, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const CertInfo& certInfo, const String& rootCertPath,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
 
@@ -98,8 +96,8 @@ std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const iam::cer
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::certhandler::CertInfo& certInfo,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetTLSServerCertificates(certInfo, certLoader, cryptoProvider);
 
@@ -113,8 +111,8 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(const iam::cert
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const aos::iam::certhandler::CertInfo& certInfo,
-    const String& rootCertPath, aos::crypto::CertLoaderItf& certLoader, aos::crypto::x509::ProviderItf& cryptoProvider)
+std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const CertInfo& certInfo, const String& rootCertPath,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
 

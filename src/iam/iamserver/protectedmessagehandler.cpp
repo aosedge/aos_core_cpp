@@ -36,7 +36,7 @@ const Error cStreamNotFoundError = {ErrorEnum::eNotFound, "stream not found"};
 
 Error ProtectedMessageHandler::Init(NodeController& nodeController, iam::identhandler::IdentHandlerItf& identHandler,
     iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-    iam::nodemanager::NodeManagerItf& nodeManager, iam::certhandler::CertProviderItf& certProvider,
+    iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
     iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
     LOG_DBG() << "Initialize message handler: handler=protected";
@@ -390,7 +390,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
 
     const auto pemCert = String(request->cert().c_str());
 
-    iam::certhandler::CertInfo certInfo;
+    CertInfo certInfo;
 
     if (auto err = mProvisionManager->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;

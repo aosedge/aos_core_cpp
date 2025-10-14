@@ -70,7 +70,7 @@ Error SMClient::Start()
 
         mCredentialList.push_back(creds);
 
-        if (err = mTLSCredentials->SubscribeCertChanged(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
+        if (err = mTLSCredentials->SubscribeListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
     } else {
@@ -115,7 +115,7 @@ Error SMClient::Stop()
         mLogProvider->Unsubscribe(*this);
 
         if (mSecureConnection) {
-            mTLSCredentials->UnsubscribeCertChanged(*this);
+            mTLSCredentials->UnsubscribeListener(*this);
         }
 
         if (mCtx) {
@@ -132,7 +132,7 @@ Error SMClient::Stop()
     return ErrorEnum::eNone;
 }
 
-void SMClient::OnCertChanged(const iam::certhandler::CertInfo& info)
+void SMClient::OnCertChanged(const CertInfo& info)
 {
     (void)info;
 

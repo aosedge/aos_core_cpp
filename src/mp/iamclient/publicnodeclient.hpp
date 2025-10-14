@@ -34,7 +34,7 @@ namespace aos::mp::iamclient {
 /**
  * Public node client interface.
  */
-class PublicNodeClient : public communication::HandlerItf, public iam::certhandler::CertReceiverItf {
+class PublicNodeClient : public communication::HandlerItf, public aos::iamclient::CertListenerItf {
 public:
     /**
      * Constructor.
@@ -82,7 +82,7 @@ public:
      *
      * @param certType Certificate type.
      */
-    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
 private:
     using StreamPtr = std::unique_ptr<

@@ -74,12 +74,16 @@ Error Database::Init(const config::DatabaseConfig& config)
  * certhandler::StorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::AddCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo)
+Error Database::AddCertInfo(const String& certType, const aos::CertInfo& certInfo)
 {
     try {
+        CertInfo dbCertInfo;
+
+        FromAosCertInfo(certType, certInfo, dbCertInfo);
+
         *mSession
             << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) VALUES (?, ?, ?, ?, ?, ?);",
-            bind(ToAosCertInfo(certType, certInfo)), now;
+            bind(dbCertInfo), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -110,8 +114,7 @@ Error Database::RemoveAllCertsInfo(const String& certType)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetCertInfo(
-    const Array<uint8_t>& issuer, const Array<uint8_t>& serial, iam::certhandler::CertInfo& cert)
+Error Database::GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t>& serial, aos::CertInfo& cert)
 {
     try {
         CertInfo              result;
@@ -125,7 +128,7 @@ Error Database::GetCertInfo(
             return ErrorEnum::eNotFound;
         }
 
-        FromAosCertInfo(result, cert);
+        ToAosCertInfo(result, cert);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -133,7 +136,7 @@ Error Database::GetCertInfo(
     return ErrorEnum::eNone;
 }
 
-Error Database::GetCertsInfo(const String& certType, Array<iam::certhandler::CertInfo>& certsInfo)
+Error Database::GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo)
 {
     try {
         std::vector<CertInfo> result;
@@ -141,9 +144,9 @@ Error Database::GetCertsInfo(const String& certType, Array<iam::certhandler::Cer
         *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(certType.CStr()), into(result), now;
 
         for (const auto& cert : result) {
-            iam::certhandler::CertInfo certInfo {};
+            aos::CertInfo certInfo {};
 
-            FromAosCertInfo(cert, certInfo);
+            ToAosCertInfo(cert, certInfo);
 
             if (auto err = certsInfo.PushBack(certInfo); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
@@ -304,21 +307,17 @@ void Database::CreateTables()
         now;
 }
 
-Database::CertInfo Database::ToAosCertInfo(const String& certType, const iam::certhandler::CertInfo& certInfo)
+void Database::FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result)
 {
-    CertInfo result;
-
     result.set<CertColumns::eType>(certType.CStr());
     result.set<CertColumns::eIssuer>(Poco::Data::BLOB {certInfo.mIssuer.Get(), certInfo.mIssuer.Size()});
     result.set<CertColumns::eSerial>(Poco::Data::BLOB {certInfo.mSerial.Get(), certInfo.mSerial.Size()});
     result.set<CertColumns::eCertURL>(certInfo.mCertURL.CStr());
     result.set<CertColumns::eKeyURL>(certInfo.mKeyURL.CStr());
     result.set<CertColumns::eNotAfter>(certInfo.mNotAfter.UnixNano());
-
-    return result;
 }
 
-void Database::FromAosCertInfo(const CertInfo& certInfo, iam::certhandler::CertInfo& result)
+void Database::ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result)
 {
     result.mIssuer = Array<uint8_t>(reinterpret_cast<const uint8_t*>(certInfo.get<CertColumns::eIssuer>().rawContent()),
         certInfo.get<CertColumns::eIssuer>().size());

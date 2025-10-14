@@ -37,7 +37,7 @@ namespace aos::mp::cmclient {
 /**
  * CMClient class.
  */
-class CMClient : public communication::HandlerItf, public iam::certhandler::CertReceiverItf {
+class CMClient : public communication::HandlerItf, public iamclient::CertListenerItf {
 public:
     /**
      *  Initializes CMClient.
@@ -84,7 +84,7 @@ public:
      *
      * @param certType Certificate type.
      */
-    void OnCertChanged(const iam::certhandler::CertInfo& info) override;
+    void OnCertChanged(const CertInfo& info) override;
 
 private:
     constexpr static auto cReconnectTimeout = std::chrono::seconds(3);
