@@ -515,8 +515,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceSucceeds)
     request.mutable_instance()->set_subject_id("subject-id-1");
     request.mutable_permissions()->operator[]("permission-1").mutable_permissions()->insert({"key", "value"});
 
-    EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(RetWithError<StaticString<iam::permhandler::cSecretLen>>("test-secret")));
+    EXPECT_CALL(mPermHandler, RegisterInstance).WillOnce(Return(RetWithError<StaticString<cSecretLen>>("test-secret")));
 
     const auto status = clientStub->RegisterInstance(&context, request, &response);
 
@@ -560,7 +559,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceFailsOnPermHandler)
     iamproto::RegisterInstanceResponse response;
 
     EXPECT_CALL(mPermHandler, RegisterInstance)
-        .WillOnce(Return(RetWithError<StaticString<iam::permhandler::cSecretLen>>("", ErrorEnum::eFailed)));
+        .WillOnce(Return(RetWithError<StaticString<cSecretLen>>("", ErrorEnum::eFailed)));
 
     auto status = clientStub->RegisterInstance(&context, request, &response);
 

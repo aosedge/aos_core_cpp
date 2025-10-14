@@ -29,7 +29,7 @@ Error PermissionsServiceHandler::Init(
     return ErrorEnum::eNone;
 }
 
-RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandler::RegisterInstance(
+RetWithError<StaticString<cSecretLen>> PermissionsServiceHandler::RegisterInstance(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     LOG_INF() << "Register instance: serviceID=" << instanceIdent.mItemID << ", subjectID=" << instanceIdent.mSubjectID
@@ -47,7 +47,7 @@ RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandl
         iamanager::v5::RegisterInstanceResponse response;
 
         if (auto status = stub->RegisterInstance(ctx.get(), request, &response); !status.ok()) {
-            return {StaticString<iam::permhandler::cSecretLen>(), ErrorEnum::eRuntime};
+            return {StaticString<cSecretLen>(), ErrorEnum::eRuntime};
         }
 
         return {response.secret().c_str(), ErrorEnum::eNone};
