@@ -22,6 +22,22 @@ namespace aos::cm::networkmanager {
 struct ExposedPort {
     StaticString<cProtocolNameLen> mProtocol;
     StaticString<cPortLen>         mPort;
+
+    /**
+     * Compares exposed ports.
+     *
+     * @param rhs other exposed port.
+     * @return bool.
+     */
+    bool operator==(const ExposedPort& rhs) const { return mProtocol == rhs.mProtocol && mPort == rhs.mPort; }
+
+    /**
+     * Compares exposed ports.
+     *
+     * @param rhs other exposed port.
+     * @return bool.
+     */
+    bool operator!=(const ExposedPort& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -34,6 +50,26 @@ struct Instance {
     StaticString<cIPLen>                                       mIP;
     StaticArray<ExposedPort, cMaxNumExposedPorts>              mExposedPorts;
     StaticArray<StaticString<cHostNameLen>, cMaxNumDNSServers> mDNSServers;
+
+    /**
+     * Compares instances.
+     *
+     * @param rhs other instance.
+     * @return bool.
+     */
+    bool operator==(const Instance& rhs) const
+    {
+        return mNetworkID == rhs.mNetworkID && mNodeID == rhs.mNodeID && mInstanceIdent == rhs.mInstanceIdent
+            && mIP == rhs.mIP && mExposedPorts == rhs.mExposedPorts && mDNSServers == rhs.mDNSServers;
+    }
+
+    /**
+     * Compares instances.
+     *
+     * @param rhs other instance.
+     * @return bool.
+     */
+    bool operator!=(const Instance& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -42,6 +78,22 @@ struct Instance {
 struct Host {
     StaticString<cIDLen> mNodeID;
     StaticString<cIPLen> mIP;
+
+    /**
+     * Compares hosts.
+     *
+     * @param rhs other host.
+     * @return bool.
+     */
+    bool operator==(const Host& rhs) const { return mNodeID == rhs.mNodeID && mIP == rhs.mIP; }
+
+    /**
+     * Compares hosts.
+     *
+     * @param rhs other host.
+     * @return bool.
+     */
+    bool operator!=(const Host& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -50,6 +102,25 @@ struct Host {
 struct HostInstances {
     Host                                        mHostInfo;
     std::unordered_map<InstanceIdent, Instance> mInstances;
+
+    /**
+     * Compares host instances.
+     *
+     * @param rhs other host instances.
+     * @return bool.
+     */
+    bool operator==(const HostInstances& rhs) const
+    {
+        return mHostInfo == rhs.mHostInfo && mInstances == rhs.mInstances;
+    }
+
+    /**
+     * Compares host instances.
+     *
+     * @param rhs other host instances.
+     * @return bool.
+     */
+    bool operator!=(const HostInstances& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -59,6 +130,25 @@ struct Network {
     StaticString<cIDLen>     mNetworkID;
     StaticString<cSubnetLen> mSubnet;
     uint64_t                 mVlanID;
+
+    /**
+     * Compares networks.
+     *
+     * @param rhs other network.
+     * @return bool.
+     */
+    bool operator==(const Network& rhs) const
+    {
+        return mNetworkID == rhs.mNetworkID && mSubnet == rhs.mSubnet && mVlanID == rhs.mVlanID;
+    }
+
+    /**
+     * Compares networks.
+     *
+     * @param rhs other network.
+     * @return bool.
+     */
+    bool operator!=(const Network& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -67,6 +157,25 @@ struct Network {
 struct NetworkState {
     Network                                        mNetwork;
     std::unordered_map<std::string, HostInstances> mHostInstances;
+
+    /**
+     * Compares network states.
+     *
+     * @param rhs other network state.
+     * @return bool.
+     */
+    bool operator==(const NetworkState& rhs) const
+    {
+        return mNetwork == rhs.mNetwork && mHostInstances == rhs.mHostInstances;
+    }
+
+    /**
+     * Compares network states.
+     *
+     * @param rhs other network state.
+     * @return bool.
+     */
+    bool operator!=(const NetworkState& rhs) const { return !(*this == rhs); }
 };
 
 /**
