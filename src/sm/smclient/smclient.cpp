@@ -24,7 +24,7 @@ namespace aos::sm::smclient {
  **********************************************************************************************************************/
 
 Error SMClient::Init(const Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
-    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    iamclient::IAMClientItf& iamClient, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
     sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
     sm::logprovider::LogProviderItf& logProvider, monitoring::ResourceMonitorItf& resourceMonitor,
     sm::launcher::LauncherItf& launcher, bool secureConnection)
@@ -33,6 +33,7 @@ Error SMClient::Init(const Config& config, common::iamclient::TLSCredentialsItf&
 
     mConfig           = config;
     mTLSCredentials   = &tlsCredentials;
+    mIAMClient        = &iamClient;
     mNodeInfoProvider = &nodeInfoProvider;
     mResourceManager  = &resourceManager;
     mNetworkManager   = &networkManager;
@@ -70,7 +71,7 @@ Error SMClient::Start()
 
         mCredentialList.push_back(creds);
 
-        if (err = mTLSCredentials->SubscribeCertChanged(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
+        if (err = mIAMClient->SubscribeCertChanged(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
     } else {
@@ -115,7 +116,7 @@ Error SMClient::Stop()
         mLogProvider->Unsubscribe(*this);
 
         if (mSecureConnection) {
-            mTLSCredentials->UnsubscribeCertChanged(*this);
+            mIAMClient->UnsubscribeCertChanged(*this);
         }
 
         if (mCtx) {

@@ -7,8 +7,9 @@
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
+#include <core/iam/certhandler/hsm.hpp>
 
-#include "permservicehandler.hpp"
+#include "permservice.hpp"
 
 namespace aos::common::iamclient {
 
@@ -16,7 +17,7 @@ namespace aos::common::iamclient {
  * Public
  **********************************************************************************************************************/
 
-Error PermissionsServiceHandler::Init(
+Error PermissionsService::Init(
     const std::string& IAMProtectedServerURL, const std::string& certStorage, TLSCredentialsItf& TLSCredentials)
 {
     LOG_DBG() << "Init permissions service handler: IAMProtectedServerURL=" << IAMProtectedServerURL.c_str()
@@ -29,7 +30,7 @@ Error PermissionsServiceHandler::Init(
     return ErrorEnum::eNone;
 }
 
-RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandler::RegisterInstance(
+RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsService::RegisterInstance(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
     LOG_INF() << "Register instance: serviceID=" << instanceIdent.mItemID << ", subjectID=" << instanceIdent.mSubjectID
@@ -56,7 +57,7 @@ RetWithError<StaticString<iam::permhandler::cSecretLen>> PermissionsServiceHandl
     }
 }
 
-Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanceIdent)
+Error PermissionsService::UnregisterInstance(const InstanceIdent& instanceIdent)
 {
     LOG_INF() << "Unregister instance: serviceID=" << instanceIdent.mItemID
               << ", subjectID=" << instanceIdent.mSubjectID << ", instance=" << instanceIdent.mInstance;
@@ -84,7 +85,7 @@ Error PermissionsServiceHandler::UnregisterInstance(const InstanceIdent& instanc
     }
 }
 
-Error PermissionsServiceHandler::GetPermissions([[maybe_unused]] const String& secret,
+Error PermissionsService::GetPermissions([[maybe_unused]] const String& secret,
     [[maybe_unused]] const String& funcServerID, [[maybe_unused]] InstanceIdent& instanceIdent,
     [[maybe_unused]] Array<FunctionPermissions>& servicePermissions)
 {
@@ -98,7 +99,7 @@ Error PermissionsServiceHandler::GetPermissions([[maybe_unused]] const String& s
  * Private
  **********************************************************************************************************************/
 
-std::shared_ptr<grpc::ChannelCredentials> PermissionsServiceHandler::CreateCredentials()
+std::shared_ptr<grpc::ChannelCredentials> PermissionsService::CreateCredentials()
 {
     iam::certhandler::CertInfo certInfo;
 

@@ -14,7 +14,7 @@ set(TARGET_NAME iamclient)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES permservicehandler.cpp publicservicehandler.cpp)
+set(SOURCES permservice.cpp publicservice.cpp tlscredentials.cpp subscriptionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries

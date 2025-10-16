@@ -41,17 +41,23 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     // Initialize IAM client
+    err = mTLSCredentials.Init(mConfig.mIAMClientConfig.mCACert, mPublicService, mCertLoader, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize tls credentials");
 
-    err = mIAMClientPublic.Init(mConfig.mIAMClientConfig, mCertLoader, mCryptoProvider);
+    err = mPublicService.Init(
+        mConfig.mIAMClientConfig.mIAMPublicServerURL, mConfig.mIAMClientConfig.mCACert, mTLSCredentials);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public service");
+
+    err = mPermissionsService.Init(mConfig.mIAMProtectedServerURL, mConfig.mCertStorage, mTLSCredentials);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize permissions service");
+
+    err = mIAMClient.Init(mPublicService, mPermissionsService);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize public IAM client");
 
     auto nodeInfo = std::make_shared<NodeInfoObsolete>();
 
-    err = mIAMClientPublic.GetNodeInfo(*nodeInfo);
+    err = mIAMClient.GetNodeInfo(*nodeInfo);
     AOS_ERROR_CHECK_AND_THROW(err, "can't get node info");
-
-    err = mIAMClientPermissions.Init(mConfig.mIAMProtectedServerURL, mConfig.mCertStorage, mIAMClientPublic);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize permissions IAM client");
 
     // Initialize host device manager
 
@@ -96,8 +102,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize resource monitor
 
-    err = mResourceMonitor.Init(mConfig.mMonitoring, mIAMClientPublic, mResourceManager, mResourceUsageProvider,
-        mSMClient, mSMClient, mSMClient);
+    err = mResourceMonitor.Init(
+        mConfig.mMonitoring, mIAMClient, mResourceManager, mResourceUsageProvider, mSMClient, mSMClient, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource monitor");
 
     // Initialize space allocators
@@ -140,15 +146,15 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize launcher
 
-    err = mLauncher.Init(mConfig.mLauncherConfig, mIAMClientPublic, mServiceManager, mLayerManager, mResourceManager,
-        mNetworkManager, mIAMClientPermissions, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient,
-        mDatabase, mCryptoProvider);
+    err = mLauncher.Init(mConfig.mLauncherConfig, mIAMClient, mServiceManager, mLayerManager, mResourceManager,
+        mNetworkManager, mIAMClient, mRunner, mRuntime, mResourceMonitor, mOCISpec, mSMClient, mSMClient, mDatabase,
+        mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize SM client
 
-    err = mSMClient.Init(mConfig.mSMClientConfig, mIAMClientPublic, mIAMClientPublic, mResourceManager, mNetworkManager,
-        mLogProvider, mResourceMonitor, mLauncher);
+    err = mSMClient.Init(mConfig.mSMClientConfig, mTLSCredentials, mIAMClient, mIAMClient, mResourceManager,
+        mNetworkManager, mLogProvider, mResourceMonitor, mLauncher);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
     // Initialize logprovider

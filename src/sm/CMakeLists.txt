@@ -33,6 +33,7 @@ add_subdirectory(networkmanager)
 add_subdirectory(resourcemanager)
 add_subdirectory(runner)
 add_subdirectory(smclient)
+add_subdirectory(iamclient)
 add_subdirectory(utils)
 
 # ######################################################################################################################

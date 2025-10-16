@@ -17,8 +17,9 @@
 #include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/downloader/downloader.hpp>
-#include <common/iamclient/permservicehandler.hpp>
-#include <common/iamclient/publicservicehandler.hpp>
+#include <common/iamclient/permservice.hpp>
+#include <common/iamclient/publicservice.hpp>
+#include <common/iamclient/tlscredentials.hpp>
 #include <common/jsonprovider/jsonprovider.hpp>
 #include <common/logger/logger.hpp>
 #include <common/network/interfacemanager.hpp>
@@ -29,6 +30,7 @@
 #include <common/utils/fsplatform.hpp>
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/database/database.hpp>
+#include <sm/iamclient/iamclient.hpp>
 #include <sm/image/imagehandler.hpp>
 #include <sm/launcher/runtime.hpp>
 #include <sm/logprovider/logprovider.hpp>
@@ -88,8 +90,10 @@ private:
     aos::spaceallocator::SpaceAllocator<cMaxNumLayers>   mDownloadLayersSpaceAllocator;
     aos::spaceallocator::SpaceAllocator<cMaxNumServices> mServicesSpaceAllocator;
     common::downloader::Downloader                       mDownloader;
-    common::iamclient::PermissionsServiceHandler         mIAMClientPermissions;
-    common::iamclient::PublicServiceHandler              mIAMClientPublic;
+    common::iamclient::PermissionsService                mPermissionsService;
+    common::iamclient::PublicService                     mPublicService;
+    common::iamclient::TLSCredentials                    mTLSCredentials;
+    iamclient::IAMClient                                 mIAMClient;
     common::jsonprovider::JSONProvider                   mJSONProvider;
     common::logger::Logger                               mLogger;
     common::oci::OCISpec                                 mOCISpec;

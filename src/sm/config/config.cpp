@@ -61,7 +61,7 @@ Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
     };
 }
 
-void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::iamclient::Config& config)
+void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, iamclient::Config& config)
 {
     config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
     config.mCACert             = object.GetValue<std::string>("caCert");

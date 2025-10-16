@@ -4,50 +4,25 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET_NAME app)
+set(TARGET_NAME iamclient)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES app.cpp aoscore.cpp main.cpp)
+set(SOURCES iamclient.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    aos::sm::config
-    aos::sm::database
-    aos::sm::iamclient
-    aos::sm::image
-    aos::sm::launcher
-    aos::sm::monitoring
-    aos::sm::resourcemanager
-    aos::sm::runner
-    aos::sm::networkmanager
-    aos::sm::alerts
-    aos::sm::smclient
-    aos::sm::logprovider
-    aos::common::iamclient
-    aos::common::jsonprovider
-    aos::common::logger
-    aos::common::downloader
-    aos::common::ocispec
-    aos::common::version
-    aos::core::common::monitoring
-    aos::core::common::version
-    aos::core::sm::layermanager
-    aos::core::sm::servicemanager
-    aos::core::sm::launcher
-    Poco::Util
-)
+set(LIBRARIES aos::common::iamclient)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_exec(
+add_module(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
@@ -59,8 +34,10 @@ add_exec(
     ${LIBRARIES}
 )
 
-# ######################################################################################################################
-# Install
-# ######################################################################################################################
+# # ######################################################################################################################
+# # Tests
+# # ######################################################################################################################
 
-install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
+# if(WITH_TEST)
+#     add_subdirectory(tests)
+# endif()

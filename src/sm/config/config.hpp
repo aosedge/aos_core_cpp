@@ -20,8 +20,8 @@
 #include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/config/config.hpp>
-#include <common/iamclient/publicservicehandler.hpp>
 #include <common/utils/time.hpp>
+#include <sm/iamclient/iamclient.hpp>
 #include <sm/smclient/config.hpp>
 
 namespace aos::sm::config {
@@ -34,7 +34,7 @@ namespace aos::sm::config {
  * Config instance.
  */
 struct Config {
-    common::iamclient::Config     mIAMClientConfig;
+    iamclient::Config             mIAMClientConfig;
     sm::layermanager::Config      mLayerManagerConfig;
     sm::servicemanager::Config    mServiceManagerConfig;
     sm::launcher::Config          mLauncherConfig;

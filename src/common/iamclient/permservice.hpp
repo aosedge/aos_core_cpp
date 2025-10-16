@@ -11,15 +11,14 @@
 #include <memory>
 #include <string>
 
-#include <core/iam/permhandler/permhandler.hpp>
-
-#include "publicservicehandler.hpp"
+#include "itf/permservice.hpp"
+#include "itf/tlscredentials.hpp"
 
 namespace aos::common::iamclient {
 /**
  * Permissions service handler.
  */
-class PermissionsServiceHandler : public iam::permhandler::PermHandlerItf {
+class PermissionsService : public PermissionsServiceItf {
 public:
     /**
      * Initializes permissions service handler.

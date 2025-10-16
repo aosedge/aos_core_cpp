@@ -13,6 +13,7 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
+#include <common/iamclient/itf/tlscredentials.hpp>
 #include <core/common/alerts/alerts.hpp>
 #include <core/common/connectionprovider/connectionprovider.hpp>
 #include <core/common/monitoring/monitoring.hpp>
@@ -26,9 +27,9 @@
 #include <core/sm/networkmanager/networkmanager.hpp>
 #include <core/sm/resourcemanager/resourcemanager.hpp>
 
-#include <servicemanager/v4/servicemanager.grpc.pb.h>
+#include <sm/iamclient/itf/iamclient.hpp>
 
-#include <common/iamclient/publicservicehandler.hpp>
+#include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 #include "config.hpp"
 
@@ -64,7 +65,7 @@ public:
      * @returns Error.
      */
     Error Init(const Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
-        iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+        iamclient::IAMClientItf& iamClient, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
         sm::logprovider::LogProviderItf& logProvider, aos::monitoring::ResourceMonitorItf& resourceMonitor,
         sm::launcher::LauncherItf& launcher, bool secureConnection = true);
@@ -187,6 +188,7 @@ private:
     sm::logprovider::LogProviderItf*            mLogProvider      = nullptr;
     aos::monitoring::ResourceMonitorItf*        mResourceMonitor  = nullptr;
     sm::launcher::LauncherItf*                  mLauncher         = nullptr;
+    iamclient::IAMClientItf*                    mIAMClient        = nullptr;
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;
