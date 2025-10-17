@@ -25,6 +25,7 @@ set(SOURCES
     provisioning.cpp
     servicediscovery.cpp
     state.cpp
+    unitstatus.cpp
 )
 
 # ######################################################################################################################
