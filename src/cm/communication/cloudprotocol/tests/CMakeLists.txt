@@ -23,6 +23,7 @@ set(SOURCES
     log.cpp
     monitoring.cpp
     provisioning.cpp
+    servicediscovery.cpp
 )
 
 # ######################################################################################################################
