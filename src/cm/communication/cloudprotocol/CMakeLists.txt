@@ -21,7 +21,15 @@ set(TARGET_NAME cloudprotocol)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES alerts.cpp certificates.cpp common.cpp desiredstatus.cpp envvars.cpp log.cpp)
+set(SOURCES
+    alerts.cpp
+    certificates.cpp
+    common.cpp
+    desiredstatus.cpp
+    envvars.cpp
+    log.cpp
+    monitoring.cpp
+)
 
 # ######################################################################################################################
 # Libraries
