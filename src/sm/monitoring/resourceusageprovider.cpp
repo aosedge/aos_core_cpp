@@ -107,7 +107,7 @@ Error ResourceUsageProvider::Init(sm::networkmanager::NetworkManagerItf& network
 }
 
 Error ResourceUsageProvider::GetNodeMonitoringData(
-    const String& nodeID, aos::monitoring::MonitoringData& monitoringData)
+    const String& nodeID, const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData)
 {
     LOG_DBG() << "Get node monitoring data: nodeID=" << nodeID;
 
@@ -124,13 +124,19 @@ Error ResourceUsageProvider::GetNodeMonitoringData(
     LOG_DBG() << "Get node monitoring data: CPU(%)=" << monitoringData.mCPU
               << ", RAM(K)=" << (monitoringData.mRAM / cKilobyte);
 
-    for (auto& partition : monitoringData.mPartitions) {
-        if (Tie(partition.mUsedSize, err) = GetSystemDiskUsage(partition.mPath); !err.IsNone()) {
+    for (const auto& partition : partitionInfos) {
+        err = monitoringData.mPartitions.EmplaceBack();
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (Tie(monitoringData.mPartitions.Back().mUsedSize, err) = GetSystemDiskUsage(partition.mPath);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
         LOG_DBG() << "Get node monitoring data: partition=" << partition.mName
-                  << ", used size(K)= " << partition.mUsedSize / cKilobyte;
+                  << ", used size(K)= " << monitoringData.mPartitions.Back().mUsedSize / cKilobyte;
     }
 
     if (mNetworkManager) {
@@ -157,17 +163,27 @@ Error ResourceUsageProvider::GetInstanceMonitoringData(
     LOG_DBG() << "Get instance monitoring data: id=" << instanceID << ", CPU(%)=" << monitoringData.mMonitoringData.mCPU
               << ", RAM(K)=" << (monitoringData.mMonitoringData.mRAM / cKilobyte);
 
-    for (auto& partition : monitoringData.mMonitoringData.mPartitions) {
-        Error err = ErrorEnum::eNone;
+    for (const auto& partition : monitoringData.mPartitions) {
+        auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack();
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
-        if (Tie(partition.mUsedSize, err) = GetInstanceDiskUsage(partition.mPath, monitoringData.mUID);
+        auto& partitionUsage = monitoringData.mMonitoringData.mPartitions.Back();
+
+        err = partitionUsage.mName.Assign(partition.mName);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (Tie(partitionUsage.mUsedSize, err) = GetInstanceDiskUsage(partition.mPath, monitoringData.mUID);
             !err.IsNone() && !err.Is(ErrorEnum::eNotSupported)) {
 
             return AOS_ERROR_WRAP(err);
         }
 
         LOG_DBG() << "Get instance monitoring data: id=" << instanceID << ", partition=" << partition.mName
-                  << ", used size(K)= " << partition.mUsedSize / cKilobyte;
+                  << ", used size(K)= " << partitionUsage.mUsedSize / cKilobyte;
     }
 
     if (mNetworkManager) {
@@ -360,8 +376,7 @@ RetWithError<uint64_t> ResourceUsageProvider::GetInstanceDiskUsage(const String&
     return static_cast<uint64_t>(quota.dqb_curspace);
 }
 
-Error ResourceUsageProvider::SetInstanceMonitoringData(
-    const String& instanceID, aos::monitoring::MonitoringData& monitoringData)
+Error ResourceUsageProvider::SetInstanceMonitoringData(const String& instanceID, MonitoringData& monitoringData)
 {
     auto it = mInstanceMonitoringCache.find(instanceID.CStr());
     if (it == mInstanceMonitoringCache.end()) {

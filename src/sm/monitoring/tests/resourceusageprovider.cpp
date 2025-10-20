@@ -29,31 +29,32 @@ public:
 
 TEST_F(ResourceUsageProviderTest, GetNodeMonitoringData)
 {
-    aos::monitoring::MonitoringData monitoringData;
+    auto monitoringData = std::make_unique<MonitoringData>();
+    auto partitionInfos = std::make_unique<PartitionInfoArray>();
 
     ASSERT_TRUE(mResourceUsageProvider.Init(mNetworkManager).IsNone());
 
-    monitoringData.mPartitions.PushBack({});
-    monitoringData.mPartitions[0].mName = "root";
-    monitoringData.mPartitions[0].mPath = "/";
+    partitionInfos->EmplaceBack();
+    partitionInfos->Back().mName = "root";
+    partitionInfos->Back().mPath = "/";
 
-    auto err = mResourceUsageProvider.GetNodeMonitoringData("nodeID", monitoringData);
+    auto err = mResourceUsageProvider.GetNodeMonitoringData("nodeID", *partitionInfos, *monitoringData);
     ASSERT_TRUE(err.IsNone());
 
-    ASSERT_GT(monitoringData.mCPU, 0);
-    ASSERT_GT(monitoringData.mRAM, 0);
+    ASSERT_GT(monitoringData->mCPU, 0);
+    ASSERT_GT(monitoringData->mRAM, 0);
 
-    ASSERT_EQ(monitoringData.mPartitions.Size(), 1);
-    ASSERT_GT(monitoringData.mPartitions[0].mUsedSize, 0);
+    ASSERT_EQ(monitoringData->mPartitions.Size(), 1);
+    ASSERT_GT(monitoringData->mPartitions[0].mUsedSize, 0);
 }
 
 TEST_F(ResourceUsageProviderTest, GetInstanceMonitoringData)
 {
-    aos::monitoring::InstanceMonitoringData monitoringData;
+    auto monitoringData = std::make_unique<aos::monitoring::InstanceMonitoringData>();
 
     ASSERT_TRUE(mResourceUsageProvider.Init(mNetworkManager).IsNone());
 
-    auto err = mResourceUsageProvider.GetInstanceMonitoringData("unknown instance", monitoringData);
+    auto err = mResourceUsageProvider.GetInstanceMonitoringData("unknown instance", *monitoringData);
     ASSERT_TRUE(err.Is(ErrorEnum::eNotFound));
 }
 

@@ -37,16 +37,18 @@ public:
      * Returns node monitoring data.
      *
      * @param nodeID node ident.
+     * @param partitionInfos partition infos.
      * @param[out] monitoringData monitoring data.
      * @return Error.
      */
-    Error GetNodeMonitoringData(const String& nodeID, aos::monitoring::MonitoringData& monitoringData) override;
+    Error GetNodeMonitoringData(
+        const String& nodeID, const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData) override;
 
     /**
      * Returns instance monitoring data.
      *
      * @param instanceID instance ID.
-     * @param[out] monitoringData monitoring data.
+     * @param[out] monitoringData instance monitoring data.
      * @return Error.
      */
     Error GetInstanceMonitoringData(
@@ -71,7 +73,7 @@ private:
     RetWithError<size_t>   GetInstanceCPUUsage(const String& instanceID);
     RetWithError<size_t>   GetInstanceRAMUsage(const String& instanceID);
     RetWithError<uint64_t> GetInstanceDiskUsage(const String& path, uint32_t uid);
-    Error SetInstanceMonitoringData(const String& instanceID, aos::monitoring::MonitoringData& monitoringData);
+    Error                  SetInstanceMonitoringData(const String& instanceID, MonitoringData& monitoringData);
 
     sm::networkmanager::NetworkManagerItf* mNetworkManager = nullptr;
     CPUUsage                               mPrevSysCPUUsage;

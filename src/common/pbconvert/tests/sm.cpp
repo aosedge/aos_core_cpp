@@ -24,9 +24,9 @@ void CompareTimestamps(const aos::Time& lhs, const google::protobuf::Timestamp& 
     EXPECT_EQ(lhs.UnixTime().tv_nsec, rhs.nanos());
 }
 
-aos::PartitionInfoObsolete CreatePartition(const aos::String& name, size_t usedSize)
+aos::PartitionUsage CreatePartition(const aos::String& name, size_t usedSize)
 {
-    aos::PartitionInfoObsolete result;
+    aos::PartitionUsage result;
 
     result.mName     = name;
     result.mUsedSize = usedSize;
@@ -73,8 +73,8 @@ TEST_F(PBConvertSMTest, ConvertPushLogToProto)
 
 TEST_F(PBConvertSMTest, ConvertMonitoringDataToProto)
 {
-    aos::monitoring::MonitoringData param;
-    aos::Time                       timestamp = aos::Time::Now();
+    aos::MonitoringData param;
+    aos::Time           timestamp = aos::Time::Now();
 
     param.mRAM      = 1;
     param.mCPU      = 2;
@@ -109,12 +109,12 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToAvarageMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
-    aos::monitoring::MonitoringData monitoringData;
+    aos::InstanceIdent  instanceIdent {"service-id", "subject-id", 1};
+    aos::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
 
-    param.mServiceInstances.PushBack({instanceIdent, monitoringData});
+    param.mServiceInstances.PushBack({instanceIdent, monitoringData, {}});
     param.mMonitoringData.mCPU = 2000;
 
     ::servicemanager::v4::AverageMonitoring result = aos::common::pbconvert::ConvertToProtoAvarageMonitoring(param);
@@ -142,12 +142,12 @@ TEST_F(PBConvertSMTest, ConvertNodeMonitoringDataToInstantMonitoring)
 
     param.mTimestamp = aos::Time::Now();
 
-    aos::InstanceIdent              instanceIdent {"service-id", "subject-id", 1};
-    aos::monitoring::MonitoringData monitoringData;
+    aos::InstanceIdent  instanceIdent {"service-id", "subject-id", 1};
+    aos::MonitoringData monitoringData;
 
     monitoringData.mCPU = 1000;
 
-    param.mServiceInstances.PushBack({instanceIdent, monitoringData});
+    param.mServiceInstances.PushBack({instanceIdent, monitoringData, {}});
     param.mMonitoringData.mCPU = 2000;
 
     ::servicemanager::v4::InstantMonitoring result = aos::common::pbconvert::ConvertToProtoInstantMonitoring(param);
