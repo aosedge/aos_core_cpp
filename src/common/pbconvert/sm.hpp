@@ -33,7 +33,7 @@ namespace aos::common::pbconvert {
  * @param timestamp monitoring data timestamp.
  * @return ::servicemanager::v4::MonitoringData.
  */
-::servicemanager::v4::MonitoringData ConvertToProto(const monitoring::MonitoringData& src, const Time& timestamp);
+::servicemanager::v4::MonitoringData ConvertToProto(const MonitoringData& src, const Time& timestamp);
 
 /**
  * Converts Aos node monitoring data to protobuf avarage monitoring.
