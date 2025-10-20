@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 #include <core/common/tools/fs.hpp>
 
 #include <common/ocispec/ocispec.hpp>
@@ -84,7 +85,7 @@ constexpr auto cServiceSpec       = R"(
     "created": "2024-12-31T23:59:59Z",
     "author": "Aos cloud",
     "architecture": "x86",
-    "balancingPolicy": "enabled",
+    "balancingPolicy": "disabled",
     "hostname": "test-hostname",
     "runners": [
         "crun",
@@ -398,8 +399,11 @@ TEST_F(OCISpecTest, ServiceConfigFromJSON)
     auto lhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
     auto rhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
 
-    ASSERT_TRUE(mOCISpec.ServiceConfigFromFile(cServiceSpecPath, *lhsServiceConfig).IsNone());
-    ASSERT_TRUE(mOCISpec.ServiceConfigFromJSON(cServiceSpec, *rhsServiceConfig).IsNone());
+    auto err = mOCISpec.ServiceConfigFromFile(cServiceSpecPath, *lhsServiceConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mOCISpec.ServiceConfigFromJSON(cServiceSpec, *rhsServiceConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     ASSERT_EQ(*lhsServiceConfig, *rhsServiceConfig);
 }

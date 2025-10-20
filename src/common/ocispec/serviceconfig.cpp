@@ -446,8 +446,10 @@ void ServiceConfigFromJSONObject(
         serviceConfig.mHostname.SetValue(hostname.c_str());
     }
 
-    const auto balancingPolicy     = wrapper.GetValue<std::string>("balancingPolicy");
-    serviceConfig.mBalancingPolicy = balancingPolicy.c_str();
+    if (auto balancingPolicy = wrapper.GetOptionalValue<std::string>("balancingPolicy"); balancingPolicy.has_value()) {
+        err = serviceConfig.mBalancingPolicy.FromString(balancingPolicy->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "balancing policy parsing error");
+    }
 
     const auto runners = utils::GetArrayValue<std::string>(wrapper, "runners");
     for (const auto& runner : runners) {
@@ -566,7 +568,7 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
             object->set("hostname", serviceConfig.mHostname->CStr());
         }
 
-        object->set("balancingPolicy", serviceConfig.mBalancingPolicy.CStr());
+        object->set("balancingPolicy", serviceConfig.mBalancingPolicy.ToString().CStr());
         object->set("runners", utils::ToJsonArray(serviceConfig.mRunners, ToStdString));
 
         if (auto runParametersObject = RunParametersToJSON(serviceConfig.mRunParameters);
