@@ -107,9 +107,9 @@ Error ResourceUsageProvider::Init(sm::networkmanager::NetworkManagerItf& network
 }
 
 Error ResourceUsageProvider::GetNodeMonitoringData(
-    const String& nodeID, const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData)
+    const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData)
 {
-    LOG_DBG() << "Get node monitoring data: nodeID=" << nodeID;
+    LOG_DBG() << "Get node monitoring data";
 
     Error err = ErrorEnum::eNone;
 

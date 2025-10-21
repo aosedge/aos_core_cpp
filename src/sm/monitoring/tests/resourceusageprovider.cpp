@@ -38,7 +38,7 @@ TEST_F(ResourceUsageProviderTest, GetNodeMonitoringData)
     partitionInfos->Back().mName = "root";
     partitionInfos->Back().mPath = "/";
 
-    auto err = mResourceUsageProvider.GetNodeMonitoringData("nodeID", *partitionInfos, *monitoringData);
+    auto err = mResourceUsageProvider.GetNodeMonitoringData(*partitionInfos, *monitoringData);
     ASSERT_TRUE(err.IsNone());
 
     ASSERT_GT(monitoringData->mCPU, 0);

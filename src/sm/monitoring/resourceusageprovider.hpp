@@ -36,13 +36,11 @@ public:
     /**
      * Returns node monitoring data.
      *
-     * @param nodeID node ident.
      * @param partitionInfos partition infos.
      * @param[out] monitoringData monitoring data.
      * @return Error.
      */
-    Error GetNodeMonitoringData(
-        const String& nodeID, const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData) override;
+    Error GetNodeMonitoringData(const Array<PartitionInfo>& partitionInfos, MonitoringData& monitoringData) override;
 
     /**
      * Returns instance monitoring data.
