@@ -130,7 +130,7 @@ if(WITH_COVERAGE)
 
     append_coverage_compiler_flags()
 
-    set(COVERAGE_EXCLUDES "build/*" "/usr/*")
+    set(COVERAGE_EXCLUDES "build/*" "src/*/*/tests/*" "/usr/*")
     set(GCOVR_ADDITIONAL_ARGS --gcov-ignore-parse-errors negative_hits.warn)
 
     setup_target_for_coverage_lcov(
