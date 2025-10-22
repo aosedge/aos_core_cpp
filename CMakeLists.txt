@@ -58,11 +58,17 @@ if(WITH_MP)
     set(WITH_AOS_PROTOCOL ON)
 endif()
 
-if(WITH_MP OR WITH_IAM)
+if(WITH_CM
+   OR WITH_MP
+   OR WITH_IAM
+)
     set(WITH_IAM_API ON)
 endif()
 
-if(WITH_MP OR WITH_SM)
+if(WITH_CM
+   OR WITH_MP
+   OR WITH_SM
+)
     set(WITH_SM_API ON)
 endif()
 
