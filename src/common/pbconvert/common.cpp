@@ -8,9 +8,9 @@
 
 namespace aos::common::pbconvert {
 
-::common::v1::ErrorInfo ConvertAosErrorToProto(const Error& error)
+::common::v2::ErrorInfo ConvertAosErrorToProto(const Error& error)
 {
-    ::common::v1::ErrorInfo result;
+    ::common::v2::ErrorInfo result;
 
     result.set_aos_code(static_cast<int32_t>(error.Value()));
     result.set_exit_code(error.Errno());
@@ -39,21 +39,21 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
     return grpc::Status(grpc::StatusCode::INTERNAL, error.Message());
 }
 
-::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src)
+::common::v2::InstanceIdent ConvertToProto(const InstanceIdent& src)
 {
-    ::common::v1::InstanceIdent result;
+    ::common::v2::InstanceIdent result;
 
-    result.set_service_id(src.mItemID.CStr());
+    result.set_item_id(src.mItemID.CStr());
     result.set_subject_id(src.mSubjectID.CStr());
     result.set_instance(src.mInstance);
 
     return result;
 }
 
-iamanager::v5::RegisterInstanceRequest ConvertToProto(
+iamanager::v6::RegisterInstanceRequest ConvertToProto(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
-    iamanager::v5::RegisterInstanceRequest result;
+    iamanager::v6::RegisterInstanceRequest result;
 
     result.mutable_instance()->CopyFrom(ConvertToProto(instanceIdent));
 
@@ -68,11 +68,11 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(
     return result;
 }
 
-InstanceIdent ConvertToAos(const ::common::v1::InstanceIdent& val)
+InstanceIdent ConvertToAos(const ::common::v2::InstanceIdent& val)
 {
     InstanceIdent result;
 
-    result.mItemID    = val.service_id().c_str();
+    result.mItemID    = val.item_id().c_str();
     result.mSubjectID = val.subject_id().c_str();
     result.mInstance  = val.instance();
 
@@ -102,7 +102,20 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time)
     return result;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoArray& dst)
+void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst)
+{
+    dst.set_os(src.mOS.CStr());
+
+    if (src.mVersion.HasValue()) {
+        dst.set_version(src.mVersion->CStr());
+    }
+
+    for (const auto& feature : src.mFeatures) {
+        dst.add_features(feature.CStr());
+    }
+}
+
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUInfo>& src, CPUInfoArray& dst)
 {
     for (const auto& srcCPU : src) {
         CPUInfo dstCPU;
@@ -110,10 +123,10 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
         dstCPU.mModelName              = srcCPU.model_name().c_str();
         dstCPU.mNumCores               = srcCPU.num_cores();
         dstCPU.mNumThreads             = srcCPU.num_threads();
-        dstCPU.mArchInfo.mArchitecture = srcCPU.arch().c_str();
+        dstCPU.mArchInfo.mArchitecture = srcCPU.arch_info().architecture().c_str();
 
-        if (!srcCPU.arch_family().empty()) {
-            dstCPU.mArchInfo.mVariant.SetValue(srcCPU.arch_family().c_str());
+        if (!srcCPU.arch_info().variant().empty()) {
+            dstCPU.mArchInfo.mVariant.SetValue(srcCPU.arch_info().variant().c_str());
         }
 
         if (srcCPU.max_dmips() > 0) {
@@ -128,11 +141,10 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoObsoleteArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::PartitionInfo>& src, PartitionInfoArray& dst)
 {
     for (const auto& srcPartition : src) {
-        PartitionInfoObsolete dstPartition;
+        PartitionInfo dstPartition;
 
         dstPartition.mName      = srcPartition.name().c_str();
         dstPartition.mPath      = srcPartition.path().c_str();
@@ -152,7 +164,7 @@ Error ConvertToAos(
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::NodeAttribute>& src, NodeAttributeArray& dst)
 {
     for (const auto& srcAttribute : src) {
         NodeAttribute dstAttribute;
@@ -168,19 +180,29 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::NodeA
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfoObsolete& dst)
+Error ConvertToAos(const iamanager::v6::NodeInfo& src, NodeInfo& dst)
 {
     dst.mNodeID   = src.node_id().c_str();
     dst.mNodeType = src.node_type().c_str();
-    dst.mName     = src.name().c_str();
+    dst.mTitle    = src.title().c_str();
 
-    NodeStateObsolete nodeState;
-    nodeState.FromString(src.status().c_str());
-
-    dst.mState    = nodeState;
-    dst.mOSType   = src.os_type().c_str();
     dst.mMaxDMIPS = src.max_dmips();
     dst.mTotalRAM = src.total_ram();
+
+    if (src.physical_ram() > 0) {
+        dst.mPhysicalRAM.SetValue(src.physical_ram());
+    }
+
+    dst.mOSInfo.mOS = src.os_info().os().c_str();
+    if (!src.os_info().version().empty()) {
+        dst.mOSInfo.mVersion.SetValue(src.os_info().version().c_str());
+    }
+
+    for (const auto& feature : src.os_info().features()) {
+        if (auto err = dst.mOSInfo.mFeatures.PushBack(feature.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
 
     if (auto err = ConvertToAos(src.cpus(), dst.mCPUs); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -192,6 +214,16 @@ Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfoObsolete& dst)
 
     if (auto err = ConvertToAos(src.attrs(), dst.mAttrs); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
+    }
+
+    dst.mProvisioned = src.provisioned();
+
+    dst.mState.FromString(src.state().c_str());
+
+    if (src.has_error()) {
+        dst.mError = Error(src.error().exit_code(), src.error().message().c_str());
+    } else {
+        dst.mError = ErrorEnum::eNone;
     }
 
     return ErrorEnum::eNone;

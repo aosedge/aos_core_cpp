@@ -9,12 +9,11 @@
 
 #include <google/protobuf/timestamp.pb.h>
 
+#include <common/v2/common.grpc.pb.h>
 #include <core/common/tools/optional.hpp>
-#include <core/common/types/obsolete.hpp>
+#include <core/common/types/common.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
-
-#include <common/v1/common.grpc.pb.h>
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 namespace aos::common::pbconvert {
 
@@ -22,9 +21,9 @@ namespace aos::common::pbconvert {
  * Converts aos error to protobuf error.
  *
  * @param error aos error.
- * @return iamanager::v5::ErrorInfo.
+ * @return iamanager::v2::ErrorInfo.
  */
-::common::v1::ErrorInfo ConvertAosErrorToProto(const Error& error);
+::common::v2::ErrorInfo ConvertAosErrorToProto(const Error& error);
 
 /**
  * Converts aos error to grpc status.
@@ -39,18 +38,18 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error);
  *
  * @param src instance ident to convert.
  * @param[out] dst protobuf instance ident.
- * @return ::common::v1::InstanceIdent.
+ * @return ::common::v2::InstanceIdent.
  */
-::common::v1::InstanceIdent ConvertToProto(const InstanceIdent& src);
+::common::v2::InstanceIdent ConvertToProto(const InstanceIdent& src);
 
 /**
  * Converts aos instance permissions to protobuf.
  *
  * @param instanceIdent instance ident.
  * @param instancePermissions instance permissions to convert.
- * @return iamanager::v5::RegisterInstanceRequest.
+ * @return iamanager::v6::RegisterInstanceRequest.
  */
-iamanager::v5::RegisterInstanceRequest ConvertToProto(
+iamanager::v6::RegisterInstanceRequest ConvertToProto(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions);
 
 /**
@@ -59,7 +58,7 @@ iamanager::v5::RegisterInstanceRequest ConvertToProto(
  * @param val protobuf instance ident.
  * @return InstanceIdent.
  */
-InstanceIdent ConvertToAos(const ::common::v1::InstanceIdent& val);
+InstanceIdent ConvertToAos(const ::common::v2::InstanceIdent& val);
 
 /**
  * Converts protobuf timestamp to aos.
@@ -78,13 +77,21 @@ Optional<Time> ConvertToAos(const google::protobuf::Timestamp& val);
 google::protobuf::Timestamp TimestampToPB(const aos::Time& time);
 
 /**
+ * Converts aos OSInfo to protobuf OSInfo.
+ *
+ * @param src aos OSInfo.
+ * @param[out] dst protobuf OSInfo.
+ */
+void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst);
+
+/**
  * Converts protobuf cpus to aos.
  *
  * @param src protobuf cpus.
  * @param[out] dst aos cpus.
  * @return Error.
  */
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUInfo>& src, CPUInfoArray& dst);
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUInfo>& src, CPUInfoArray& dst);
 
 /**
  * Converts protobuf partitions to aos.
@@ -94,7 +101,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v5::CPUIn
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::PartitionInfo>& src, PartitionInfoObsoleteArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v6::PartitionInfo>& src, PartitionInfoArray& dst);
 
 /**
  * Converts protobuf node attributes to aos.
@@ -104,7 +111,7 @@ Error ConvertToAos(
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v5::NodeAttribute>& src, NodeAttributeArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v6::NodeAttribute>& src, NodeAttributeArray& dst);
 
 /**
  * Converts protobuf node info to aos.
@@ -113,7 +120,7 @@ Error ConvertToAos(
  * @param[out] dst aos node info.
  * @return Error.
  */
-Error ConvertToAos(const iamanager::v5::NodeInfo& src, NodeInfoObsolete& dst);
+Error ConvertToAos(const iamanager::v6::NodeInfo& src, NodeInfo& dst);
 
 /**
  * Sets protobuf error message from aos.
