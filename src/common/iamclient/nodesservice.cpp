@@ -5,11 +5,11 @@
  */
 
 #include <grpcpp/grpcpp.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
-#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include "nodesservice.hpp"
 
