@@ -15,7 +15,17 @@ set(TARGET_NAME iamclient_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iamclient.cpp)
+set(SOURCES
+    certificateservice.cpp
+    nodesservice.cpp
+    permservice.cpp
+    provisioningservice.cpp
+    publiccertservice.cpp
+    publiccurrentnodeservice.cpp
+    publicidentityservice.cpp
+    publicnodeservice.cpp
+    publicpermservice.cpp
+)
 
 # ######################################################################################################################
 # Libraries
