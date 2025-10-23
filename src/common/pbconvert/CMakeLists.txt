@@ -20,10 +20,6 @@ if(WITH_IAM_API)
     list(APPEND SOURCES iam.cpp)
 endif()
 
-if(WITH_SM_API)
-    list(APPEND SOURCES sm.cpp)
-endif()
-
 # ######################################################################################################################
 # Compile options
 # ######################################################################################################################
@@ -38,10 +34,6 @@ set(LIBRARIES aos::common::utils Poco::Util)
 
 if(WITH_IAM_API)
     list(APPEND LIBRARIES aos::api::iam)
-endif()
-
-if(WITH_SM_API)
-    list(APPEND LIBRARIES aos::api::sm)
 endif()
 
 # ######################################################################################################################
