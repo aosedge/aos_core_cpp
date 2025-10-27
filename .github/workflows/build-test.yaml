@@ -54,11 +54,11 @@ jobs:
 
       - name: Test
         run: |
-          ./build.sh --aos-service cm coverage
+          ./build.sh coverage --aos-service cm
 
       - name: Static analysis
         run: |
-          ./build.sh --aos-service cm lint
+          ./build.sh lint --aos-service cm
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
