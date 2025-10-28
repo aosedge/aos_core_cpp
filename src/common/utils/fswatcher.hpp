@@ -98,6 +98,7 @@ private:
     bool                                     mInitialized {};
     std::thread                              mThread;
     std::mutex                               mMutex;
+    std::mutex                               mSubscribersMutex;
     std::condition_variable                  mCondVar;
     std::unordered_map<std::string, Context> mWatchContexts;
     Timer                                    mTimer;

@@ -72,7 +72,7 @@ Error FSWatcher::Stop()
 
 Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscriber)
 {
-    std::lock_guard lock {mMutex};
+    std::lock_guard lock {mSubscribersMutex};
 
     LOG_DBG() << "Start watching" << Log::Field("path", path);
 
@@ -98,7 +98,7 @@ Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscri
 
 Error FSWatcher::Unsubscribe(const String& path, fs::FSEventSubscriberItf& subscriber)
 {
-    std::lock_guard lock {mMutex};
+    std::lock_guard lock {mSubscribersMutex};
 
     LOG_DBG() << "Unsubscribe fs event subscriber" << Log::Field("path", path);
 
@@ -237,10 +237,7 @@ void FSWatcher::Run()
             notifications.emplace_back(event->wd, ToFSEvent(event->mask));
         }
 
-        std::unique_lock lock {mMutex, std::defer_lock};
-        if (!mCondVar.wait_for(lock, cWaitTimeout, [this] { return mRunning == true; })) {
-            continue;
-        }
+        std::lock_guard lock {mSubscribersMutex};
 
         for (const auto& [wd, wdEvents] : notifications) {
             auto it = std::find_if(
