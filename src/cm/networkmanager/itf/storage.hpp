@@ -263,7 +263,7 @@ public:
      * @param instanceIdent Instance identifier.
      * @return Error.
      */
-    virtual Error RemoveInstance(const InstanceIdent& instanceIdent) = 0;
+    virtual Error RemoveNetworkInstance(const InstanceIdent& instanceIdent) = 0;
 };
 
 } // namespace aos::cm::networkmanager

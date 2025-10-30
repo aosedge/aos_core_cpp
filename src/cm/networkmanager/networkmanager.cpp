@@ -587,7 +587,7 @@ void NetworkManager::RemoveInstanceNetwork(
     mIpSubnet.ReleaseIPToSubnet(networkID, IP);
     mHosts.erase(IP);
 
-    auto err = mStorage->RemoveInstance(instanceIdent);
+    auto err = mStorage->RemoveNetworkInstance(instanceIdent);
     AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
 }
 
