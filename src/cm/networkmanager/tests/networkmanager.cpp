@@ -473,7 +473,7 @@ TEST_F(CMNetworkManagerTest, RemoveInstanceNetworkParameters_Success)
             return ErrorEnum::eNone;
         }));
 
-    EXPECT_CALL(*mStorage, RemoveInstance(instanceIdent)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, RemoveNetworkInstance(instanceIdent)).WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
