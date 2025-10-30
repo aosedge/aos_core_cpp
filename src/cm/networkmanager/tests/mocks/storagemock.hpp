@@ -24,7 +24,7 @@ public:
         Error, GetInstances, (const String& networkID, const String& nodeID, Array<Instance>& instances), (override));
     MOCK_METHOD(Error, RemoveNetwork, (const String& networkID), (override));
     MOCK_METHOD(Error, RemoveHost, (const String& networkID, const String& nodeID), (override));
-    MOCK_METHOD(Error, RemoveInstance, (const InstanceIdent& instanceIdent), (override));
+    MOCK_METHOD(Error, RemoveNetworkInstance, (const InstanceIdent& instanceIdent), (override));
 };
 
 } // namespace aos::cm::networkmanager::tests
