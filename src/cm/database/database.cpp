@@ -275,6 +275,10 @@ Error Database::Init(const Config& config)
 
         const auto dbPath = Poco::Path(config.mWorkingDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
+
+        // Enable foreign key
+        *mSession << "PRAGMA foreign_keys = ON;", now;
+
         CreateTables();
 
         mDatabase.emplace(*mSession, config.mMigrationPath, config.mMergedMigrationPath);
@@ -537,15 +541,6 @@ Error Database::AddHost(const String& networkID, const networkmanager::Host& hos
     std::lock_guard lock {mMutex};
 
     try {
-        // Check if network exists
-        size_t count = 0;
-
-        *mSession << "SELECT COUNT(*) FROM networks WHERE networkID = ?;", bind(networkID.CStr()), into(count), now;
-
-        if (count == 0) {
-            return ErrorEnum::eNotFound;
-        }
-
         NetworkManagerHostRow row;
 
         FromAos(networkID, host, row);
@@ -562,26 +557,6 @@ Error Database::AddInstance(const networkmanager::Instance& instance)
     std::lock_guard lock {mMutex};
 
     try {
-        // Check if network exists
-        size_t networkCount = 0;
-
-        *mSession << "SELECT COUNT(*) FROM networks WHERE networkID = ?;", bind(instance.mNetworkID.CStr()),
-            into(networkCount), now;
-
-        if (networkCount == 0) {
-            return ErrorEnum::eNotFound;
-        }
-
-        // Check if host exists
-        size_t hostCount = 0;
-
-        *mSession << "SELECT COUNT(*) FROM hosts WHERE networkID = ? AND nodeID = ?;", bind(instance.mNetworkID.CStr()),
-            bind(instance.mNodeID.CStr()), into(hostCount), now;
-
-        if (hostCount == 0) {
-            return ErrorEnum::eNotFound;
-        }
-
         NetworkManagerInstanceRow row;
 
         FromAos(instance, row);
@@ -897,7 +872,8 @@ void Database::CreateTables()
                  "networkID TEXT,"
                  "nodeID TEXT,"
                  "ip TEXT,"
-                 "PRIMARY KEY(networkID,nodeID)"
+                 "PRIMARY KEY(networkID,nodeID),"
+                 "FOREIGN KEY(networkID) REFERENCES networks(networkID)"
                  ");",
         now;
 
@@ -912,7 +888,9 @@ void Database::CreateTables()
                  "ip TEXT,"
                  "exposedPorts TEXT,"
                  "dnsServers TEXT,"
-                 "PRIMARY KEY(itemID,subjectID,instance)"
+                 "PRIMARY KEY(itemID,subjectID,instance),"
+                 "FOREIGN KEY(networkID) REFERENCES networks(networkID),"
+                 "FOREIGN KEY(networkID,nodeID) REFERENCES hosts(networkID,nodeID)"
                  ");",
         now;
 
