@@ -53,9 +53,7 @@ constexpr auto cFullTestConfigJSON = R"({
 		"monitorConfig": {
 			"pollPeriod": "1s"
 		},
-		"sendPeriod": "5m",
-		"maxMessageSize": 1024,
-		"maxOfflineMessages": 25
+		"sendPeriod": "5m"
 	},
 	"alerts": {		
 		"sendPeriod": "20s",
@@ -178,8 +176,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 57);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
-    EXPECT_EQ(config.mMonitoring.mMaxOfflineMessages, 25);
-    EXPECT_EQ(config.mMonitoring.mMaxMessageSize, 1024);
 
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 20);
     EXPECT_EQ(config.mAlerts.mMaxMessageSize, 1024);
@@ -236,9 +232,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mDownloader.mMaxRetryDelay, aos::Time::cMinutes * 30);
     EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 100);
 
-    EXPECT_EQ(config.mMonitoring.mMaxOfflineMessages, 16);
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
-    EXPECT_EQ(config.mMonitoring.mMaxMessageSize, 65536);
 
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 10);
     EXPECT_EQ(config.mAlerts.mMaxMessageSize, 65536);
