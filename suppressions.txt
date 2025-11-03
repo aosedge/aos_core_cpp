@@ -1,7 +1,6 @@
 missingIncludeSystem
 unusedFunction
 syntaxError
-preprocessorErrorDirective
 unusedScopedObject
 *:*build/*
 *:*usr/include/*
