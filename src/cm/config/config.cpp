@@ -20,24 +20,22 @@ namespace aos::cm::config {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultServiceTTL                   = "30d";
-constexpr auto cDefaultLayerTTL                     = "30d";
-constexpr auto cDefaultUnitStatusSendTimeout        = "30s";
-constexpr auto cDefaultMaxConcurrentDownloads       = 4;
-constexpr auto cDefaultRetryDelay                   = "1m";
-constexpr auto cDefaultMaxRetryDelay                = "30m";
-constexpr auto cDefaultDownloadPartLimit            = 100;
-constexpr auto cDefaultUMControllerUpdateTTL        = "30d";
-constexpr auto cDefaultNodesConnectionTimeout       = "10m";
-constexpr auto cDefaultSMControllerUpdateTTL        = "30d";
-constexpr auto cDefaultAlertsSendPeriod             = "10s";
-constexpr auto cDefaultAlertsMaxMessageSize         = 65536;
-constexpr auto cDefaultAlertsMaxOfflineMessages     = 25;
-constexpr auto cDefaultMonitoringSendPeriod         = "1m";
-constexpr auto cDefaultMonitoringMaxMessageSize     = 65536;
-constexpr auto cDefaultMonitoringMaxOfflineMessages = 16;
-constexpr auto cDefaultMigrationPath                = "/usr/share/aos/communicationmanager/migration";
-constexpr auto cDefaultCertStorage                  = "/var/aos/crypt/cm/";
+constexpr auto cDefaultServiceTTL               = "30d";
+constexpr auto cDefaultLayerTTL                 = "30d";
+constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
+constexpr auto cDefaultMaxConcurrentDownloads   = 4;
+constexpr auto cDefaultRetryDelay               = "1m";
+constexpr auto cDefaultMaxRetryDelay            = "30m";
+constexpr auto cDefaultDownloadPartLimit        = 100;
+constexpr auto cDefaultUMControllerUpdateTTL    = "30d";
+constexpr auto cDefaultNodesConnectionTimeout   = "10m";
+constexpr auto cDefaultSMControllerUpdateTTL    = "30d";
+constexpr auto cDefaultAlertsSendPeriod         = "10s";
+constexpr auto cDefaultAlertsMaxMessageSize     = 65536;
+constexpr auto cDefaultAlertsMaxOfflineMessages = 25;
+constexpr auto cDefaultMonitoringSendPeriod     = "1m";
+constexpr auto cDefaultMigrationPath            = "/usr/share/aos/communicationmanager/migration";
+constexpr auto cDefaultCertStorage              = "/var/aos/crypt/cm/";
 
 /***********************************************************************************************************************
  * Static
@@ -66,16 +64,12 @@ void ParseUMControllerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
 
 void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
 {
-    auto err = common::config::ParseMonitoringConfig(object.GetObject("monitorConfig"), config.mMonitorConfig);
+    auto err = common::config::ParseMonitoringConfig(object.GetObject("monitorConfig"), config);
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing monitoring config");
-
-    config.mMaxOfflineMessages = object.GetValue<int>("maxOfflineMessages", cDefaultMonitoringMaxOfflineMessages);
 
     Tie(config.mSendPeriod, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("sendPeriod", cDefaultMonitoringSendPeriod));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
-
-    config.mMaxMessageSize = object.GetValue<int>("maxMessageSize", cDefaultMonitoringMaxMessageSize);
 }
 
 void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Alerts& config)

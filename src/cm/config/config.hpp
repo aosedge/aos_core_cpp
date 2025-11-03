@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <core/cm/monitoring/config.hpp>
 #include <core/common/monitoring/resourcemonitor.hpp>
 #include <core/common/tools/error.hpp>
 
@@ -43,12 +44,7 @@ struct UMController {
 /*
  * Monitoring configuration.
  */
-struct Monitoring {
-    monitoring::Config mMonitorConfig;
-    int                mMaxOfflineMessages;
-    Duration           mSendPeriod;
-    int                mMaxMessageSize;
-};
+struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
 
 /*
  * Alerts configuration.
