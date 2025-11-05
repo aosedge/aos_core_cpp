@@ -21,7 +21,7 @@ namespace aos::common::iamclient {
  **********************************************************************************************************************/
 
 Error PublicPermissionsService::Init(
-    std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
+    const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
 {
     LOG_DBG() << "Init public permissions service" << Log::Field("IAMPublicServerURL", iamPublicServerURL.c_str())
               << Log::Field("insecureConnection", insecureConnection);

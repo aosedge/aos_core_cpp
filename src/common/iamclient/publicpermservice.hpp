@@ -31,7 +31,8 @@ public:
      * @param insecureConnection whether to use insecure connection.
      * @return Error.
      */
-    Error Init(std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection = false);
+    Error Init(
+        const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection = false);
 
     /**
      * Returns instance ident and permissions by secret and functional server ID.
