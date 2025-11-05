@@ -21,9 +21,10 @@
 
 namespace aos::common::iamclient {
 
-// Type alias for NodeInfo subscription manager
-using NodeInfoSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCurrentNodeService::Stub,
-    aos::iamclient::CurrentNodeInfoListenerItf, iamanager::v6::NodeInfo, NodeInfo, google::protobuf::Empty>;
+// Type alias for CurrentNodeInfo subscription manager
+using CurrentNodeInfoSubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCurrentNodeService::Stub,
+        aos::iamclient::CurrentNodeInfoListenerItf, iamanager::v6::NodeInfo, NodeInfo, google::protobuf::Empty>;
 
 /**
  * Public current node service.
@@ -85,7 +86,7 @@ private:
     std::unique_ptr<iamanager::v6::IAMPublicCurrentNodeService::Stub> mStub;
     TLSCredentialsItf*                                                mTLSCredentials {};
     mutable std::mutex                                                mMutex;
-    std::unique_ptr<NodeInfoSubscriptionManager>                      mSubscriptionManager;
+    std::unique_ptr<CurrentNodeInfoSubscriptionManager>               mSubscriptionManager;
 };
 
 } // namespace aos::common::iamclient

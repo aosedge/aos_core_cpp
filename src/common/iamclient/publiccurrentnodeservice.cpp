@@ -117,7 +117,7 @@ Error PublicCurrentNodeService::SubscribeListener(aos::iamclient::CurrentNodeInf
             listener.OnCurrentNodeInfoChanged(nodeInfo);
         };
 
-        mSubscriptionManager = std::make_unique<NodeInfoSubscriptionManager>(mStub.get(), request,
+        mSubscriptionManager = std::make_unique<CurrentNodeInfoSubscriptionManager>(mStub.get(), request,
             &iamanager::v6::IAMPublicCurrentNodeService::Stub::SubscribeCurrentNodeChanged, convertFunc, notifyFunc,
             "CurrentNodeSubscription");
     }
