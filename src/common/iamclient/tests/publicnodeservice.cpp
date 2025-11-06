@@ -54,13 +54,13 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(PublicNodesServiceTest, GetAllNodeIds)
+TEST_F(PublicNodesServiceTest, GetAllNodeIDs)
 {
     mStub->SetNodeIds({"node1", "node2", "node3"});
 
     aos::StaticArray<aos::StaticString<aos::cIDLen>, 10> nodeIds;
 
-    auto err = mService->GetAllNodeIds(nodeIds);
+    auto err = mService->GetAllNodeIDs(nodeIds);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(nodeIds.Size(), 3);
