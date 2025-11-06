@@ -244,8 +244,7 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
 
         instanceJson->set("node", CreateAosIdentity({instanceStatus.mNodeID}));
         instanceJson->set("runtime", CreateAosIdentity({instanceStatus.mRuntimeID}));
-        instanceJson->set("archInfo", ArchInfoToJSON(instanceStatus.mArchInfo));
-        instanceJson->set("osInfo", OSInfoToJSON(instanceStatus.mOSInfo));
+        instanceJson->set("imageId", instanceStatus.mImageID.CStr());
         instanceJson->set("instance", instanceStatus.mInstance);
 
         if (!instanceStatus.mStateChecksum.IsEmpty()) {
