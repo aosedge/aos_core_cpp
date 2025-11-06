@@ -73,7 +73,7 @@ Error PublicNodesService::Reconnect()
     return ErrorEnum::eNone;
 }
 
-Error PublicNodesService::GetAllNodeIds(Array<StaticString<cIDLen>>& ids) const
+Error PublicNodesService::GetAllNodeIDs(Array<StaticString<cIDLen>>& ids) const
 {
     std::lock_guard lock {mMutex};
 
