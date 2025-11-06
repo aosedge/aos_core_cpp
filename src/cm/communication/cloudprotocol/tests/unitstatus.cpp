@@ -231,17 +231,13 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,"instances":[)"
                            R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1",)"
                            R"("instances":[{"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},)"
-                           R"("archInfo":{"architecture":"x86_64","variant":"variant1"},"osInfo":{"os":"Linux",)"
-                           R"("version":"5.10","features":["feature1","feature2"]},"instance":1,)"
-                           R"("stateChecksum":"12345678","state":"active"},)"
-                           R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},)"
-                           R"("archInfo":{"architecture":"x86_64","variant":"variant2"},"osInfo":{"os":"Linux",)"
-                           R"("version":"5.10","features":["feature1","feature2"]},"instance":2,"state":"failed",)"
-                           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+                           R"("imageId":"imageID1","instance":1,"stateChecksum":"12345678","state":"active"},)"
+                           R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"imageId":"imageID2",)"
+                           R"("instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
+                           R"("message":""}}]},)"
                            R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2",)"
                            R"("instances":[{"node":{"id":"nodeID2"},"runtime":{"id":"runtimeID2"},)"
-                           R"("archInfo":{"architecture":"arm64"},"osInfo":{"os":"Linux"},"instance":1,)"
-                           R"("state":"activating"}]}]})";
+                           R"("imageId":"imageID4","instance":1,"state":"activating"}]}]})";
 
     auto unitStatus = std::make_unique<UnitStatus>();
 
@@ -253,22 +249,20 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mVersion   = "version1";
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID1";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
     unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActive;
-    SetArchInfo("x86_64", {"variant1"}, unitStatus->mInstances->Back().mInstances.Back().mArchInfo);
-    SetOSInfo("Linux", {"5.10"}, {"feature1", "feature2"}, unitStatus->mInstances->Back().mInstances.Back().mOSInfo);
     SetChecksum("12345678", unitStatus->mInstances->Back().mInstances.Back().mStateChecksum);
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID2";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 2;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
     unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eFailed;
     unitStatus->mInstances->Back().mInstances.Back().mError     = ErrorEnum::eFailed;
-    SetArchInfo("x86_64", {"variant2"}, unitStatus->mInstances->Back().mInstances.Back().mArchInfo);
-    SetOSInfo("Linux", {"5.10"}, {"feature1", "feature2"}, unitStatus->mInstances->Back().mInstances.Back().mOSInfo);
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID    = "itemID2";
@@ -276,12 +270,11 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mVersion   = "version2";
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID4";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID2";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID2";
     unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActivating;
-    SetArchInfo("arm64", {}, unitStatus->mInstances->Back().mInstances.Back().mArchInfo);
-    SetOSInfo("Linux", {}, {}, unitStatus->mInstances->Back().mInstances.Back().mOSInfo);
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
