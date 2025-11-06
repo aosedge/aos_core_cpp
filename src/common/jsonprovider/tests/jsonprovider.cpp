@@ -21,95 +21,9 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cTestNodeConfigJSON = R"({
-    "devices": [
-        {
-            "groups": [
-                "group1",
-                "group2"
-            ],
-            "hostDevices": [
-                "hostDevice1",
-                "hostDevice2"
-            ],
-            "name": "device1",
-            "sharedCount": 1
-        },
-        {
-            "groups": [
-                "group3",
-                "group4"
-            ],
-            "hostDevices": [
-                "hostDevice3",
-                "hostDevice4"
-            ],
-            "name": "device2",
-            "sharedCount": 2
-        }
-    ],
-    "resources": [
-        {
-            "name": "resource1",
-            "groups": ["g1", "g2"],
-            "mounts": [
-                {
-                    "destination": "d1",
-                    "type": "type1",
-                    "source": "source1",
-                    "options": ["option1", "option2"]
-                },
-                {
-                    "destination": "d2",
-                    "type": "type2",
-                    "source": "source2",
-                    "options": ["option3", "option4"]
-                }
-            ],
-            "env": ["env1", "env2"],
-            "hosts": [
-                {
-                    "ip": "10.0.0.100",
-                    "hostName": "host1"
-                },
-                {
-                    "ip": "10.0.0.101",
-                    "hostName": "host2"
-                }
-            ]
-        },
-        {
-            "name": "resource2",
-            "groups": ["g3", "g4"],
-            "mounts": [
-                {
-                    "destination": "d3",
-                    "type": "type3",
-                    "source": "source3",
-                    "options": ["option5", "option6"]
-                },
-                {
-                    "destination": "d4",
-                    "type": "type4",
-                    "source": "source4",
-                    "options": ["option7", "option8"]
-                }
-            ],
-            "env": ["env3", "env4"],
-            "hosts": [
-                {
-                    "ip": "10.0.0.102",
-                    "hostName": "host3"
-                },
-                {
-                    "ip": "10.0.0.103",
-                    "hostName": "host4"
-                }
-            ]
-        }
-    ],
-    "labels": [
-        "mainNode"
-    ],
+    "nodeId": "node-id",
+    "nodeType": "mainType",
+    "version": "1.0.0",
     "alertRules": {
         "ram": {
             "minTimeout": "PT1S",
@@ -152,20 +66,22 @@ constexpr auto cTestNodeConfigJSON = R"({
         "storage": 52,
         "state": 53
     },
-    "nodeType": "mainType",
-    "priority": 1,
-    "version": "1.0.0"
+    "labels": [
+        "mainNode"
+    ],
+    "priority": 1
 }
 
 )";
 
 constexpr auto cNodeConfigLabelOverflowBuffer = R"({
+    "nodeId": "node-id",
+    "nodeType": "mainType",
+    "version": "1.0.0",
     "labels": [
         "label that is expected to trigger no memory error due to its length"
     ],
-    "nodeType": "mainType",
-    "priority": 1,
-    "version": "1.0.0"
+    "priority": 1
 }
 )";
 
@@ -203,15 +119,13 @@ NodeConfig CreateNodeConfig()
 {
     NodeConfig nodeConfig;
 
-    nodeConfig.mVersion  = "1.0.0";
-    nodeConfig.mPriority = 1;
+    nodeConfig.mNodeID   = "node-id";
     nodeConfig.mNodeType = "mainType";
-
-    nodeConfig.mLabels.PushBack("mainNode");
-
+    nodeConfig.mVersion  = "1.0.0";
     nodeConfig.mAlertRules.SetValue(CreateAlerts());
-
     nodeConfig.mResourceRatios.SetValue(CreateResourceRatios());
+    nodeConfig.mLabels.PushBack("mainNode");
+    nodeConfig.mPriority = 1;
 
     return nodeConfig;
 }
@@ -256,6 +170,7 @@ void CompareNodeConfig(const NodeConfig& nodeConfig, const NodeConfig& expectedN
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
+
 class JSONProviderTest : public Test {
 public:
     void SetUp() override { tests::utils::InitLog(); }
