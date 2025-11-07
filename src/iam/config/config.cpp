@@ -274,21 +274,24 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
     return moduleParams;
 }
 
-RetWithError<FileIdentifierModuleParams> ParseFileIdentifierModuleParams(Poco::Dynamic::Var params)
+Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config)
 {
-    FileIdentifierModuleParams moduleParams;
-
     try {
         common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
 
-        moduleParams.mSystemIDPath  = object.GetValue<std::string>("systemIDPath");
-        moduleParams.mUnitModelPath = object.GetValue<std::string>("unitModelPath");
-        moduleParams.mSubjectsPath  = object.GetValue<std::string>("subjectsPath");
+        auto err = config.mSystemIDPath.Assign(object.GetValue<std::string>("systemIDPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse systemIDPath");
+
+        err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse unitModelPath");
+
+        err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse subjectsPath");
     } catch (const std::exception& e) {
-        return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
+        return common::utils::ToAosError(e);
     }
 
-    return moduleParams;
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::iam::config

@@ -16,6 +16,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <core/common/tools/error.hpp>
+#include <core/iam/identhandler/identmodules/fileidentifier/config.hpp>
 
 #include <common/utils/time.hpp>
 
@@ -54,15 +55,6 @@ struct VISIdentifierModuleParams {
     std::string mVISServer;
     std::string mCaCertFile;
     Duration    mWebSocketTimeout;
-};
-
-/*
- * File Identifier module parameters.
- */
-struct FileIdentifierModuleParams {
-    std::string mSystemIDPath;
-    std::string mUnitModelPath;
-    std::string mSubjectsPath;
 };
 
 /*
@@ -190,9 +182,10 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
  * Parses file identifier plugin parameters.
  *
  * @param var Poco::Dynamic::Var instance.
- * @return FileIdentifierModuleParams instance.
+ * @param[out] config parsed config.
+ * @return Error.
  */
-RetWithError<FileIdentifierModuleParams> ParseFileIdentifierModuleParams(Poco::Dynamic::Var params);
+Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config);
 
 } // namespace aos::iam::config
 
