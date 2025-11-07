@@ -19,7 +19,6 @@ set(SOURCES app.cpp main.cpp)
 set(LIBRARIES
     aos::iam::config
     aos::iam::database
-    aos::iam::fileidentifier
     aos::iam::iamclient
     aos::iam::iamserver
     aos::iam::nodeinfoprovider
