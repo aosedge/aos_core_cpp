@@ -10,6 +10,7 @@
 
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -89,18 +90,12 @@ public:
     Error Stop() override;
 
     /**
-     * Returns System ID.
+     * Returns System info.
      *
-     * @returns RetWithError<StaticString>.
+     * @param[out] info result system info.
+     * @returns Error.
      */
-    RetWithError<StaticString<cIDLen>> GetSystemID() override;
-
-    /**
-     * Returns unit model.
-     *
-     * @returns RetWithError<StaticString>.
-     */
-    RetWithError<StaticString<cUnitModelLen>> GetUnitModel() override;
+    Error GetSystemInfo(SystemInfo& info) override;
 
     /**
      * Returns subjects.
@@ -165,13 +160,14 @@ private:
     void                     Subscribe(const std::string& path, VISSubscriptions::Handler&& callback);
     std::string              GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
+    void                     SetSystemID(SystemInfo& info);
+    void                     SetUnitModelAndVersion(SystemInfo& info);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
     iamclient::SubjectsListenerItf*                    mSubjectsListener = nullptr;
     crypto::UUIDItf*                                   mUUIDProvider     = nullptr;
     VISSubscriptions                                   mSubscriptions;
-    StaticString<cIDLen>                               mSystemId;
-    StaticString<cUnitModelLen>                        mUnitModel;
+    std::optional<SystemInfo>                          mSystemInfo;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
     std::thread                                        mHandleConnectionThread;
     Poco::Event                                        mWSClientIsConnected;
