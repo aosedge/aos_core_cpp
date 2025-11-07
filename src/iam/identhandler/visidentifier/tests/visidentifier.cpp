@@ -24,6 +24,10 @@ namespace aos::iam::visidentifier {
 
 namespace {
 
+constexpr auto cExpectedSystemId = "systemID";
+constexpr auto cUnitModel        = "unitModel";
+constexpr auto cVersion          = "1.0.0";
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -313,43 +317,7 @@ TEST_F(VisidentifierTest, GetSystemIDSucceeds)
 {
     ExpectStartSucceeded();
 
-    const std::string cExpectedSystemId {"expectedSystemId"};
-
-    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
-    EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
-        .WillOnce(Invoke([&](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
-            Poco::JSON::Object response;
-
-            response.set("action", "get");
-            response.set("requestId", "requestId");
-            response.set("timestamp", 0);
-            response.set("value", cExpectedSystemId);
-
-            std::ostringstream jsonStream;
-            Poco::JSON::Stringifier::stringify(response, jsonStream);
-
-            const auto str = jsonStream.str();
-
-            return {str.cbegin(), str.cend()};
-        }));
-
-    StaticString<cIDLen> systemId;
-    Error                err;
-
-    Tie(systemId, err) = mVisIdentifier.GetSystemID();
-    EXPECT_TRUE(err.IsNone()) << err.Message();
-    EXPECT_STREQ(systemId.CStr(), cExpectedSystemId.c_str());
-
-    ExpectStopSucceeded();
-}
-
-TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
-{
-    ExpectStartSucceeded();
-
-    const std::string cExpectedSystemId {"expectedSystemId"};
-
-    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
+    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(2);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
         .WillOnce(Invoke([&](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
             Poco::JSON::Object valueTag;
@@ -368,19 +336,36 @@ TEST_F(VisidentifierTest, GetSystemIDNestedValueTagSucceeds)
             const auto str = jsonStream.str();
 
             return {str.cbegin(), str.cend()};
+        }))
+        .WillOnce(Invoke([&](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
+            Poco::JSON::Object response;
+
+            response.set("action", "get");
+            response.set("requestId", "requestId");
+            response.set("timestamp", 0);
+            response.set("value", std::string(cUnitModel).append(";").append(cVersion));
+
+            std::ostringstream jsonStream;
+            Poco::JSON::Stringifier::stringify(response, jsonStream);
+
+            const auto str = jsonStream.str();
+
+            return {str.cbegin(), str.cend()};
         }));
 
-    StaticString<cIDLen> systemId;
-    Error                err;
+    auto systemInfo = std::make_unique<SystemInfo>();
 
-    Tie(systemId, err) = mVisIdentifier.GetSystemID();
+    auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
     EXPECT_TRUE(err.IsNone()) << err.Message();
-    EXPECT_STREQ(systemId.CStr(), cExpectedSystemId.c_str());
+
+    EXPECT_STREQ(systemInfo->mSystemID.CStr(), cExpectedSystemId);
+    EXPECT_STREQ(systemInfo->mUnitModel.CStr(), cUnitModel);
+    EXPECT_STREQ(systemInfo->mVersion.CStr(), cVersion);
 
     ExpectStopSucceeded();
 }
 
-TEST_F(VisidentifierTest, GetSystemIDExceedsMaxSize)
+TEST_F(VisidentifierTest, GetSystemInfoSystemIDExceedsMaxSize)
 {
     ExpectStartSucceeded();
 
@@ -402,13 +387,15 @@ TEST_F(VisidentifierTest, GetSystemIDExceedsMaxSize)
             return {str.cbegin(), str.cend()};
         }));
 
-    const auto err = mVisIdentifier.GetSystemID();
-    EXPECT_TRUE(err.mError.Is(ErrorEnum::eNoMemory)) << err.mError.Message();
+    auto systemInfo = std::make_unique<SystemInfo>();
+
+    const auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << err.Message();
 
     ExpectStopSucceeded();
 }
 
-TEST_F(VisidentifierTest, GetSystemIDRequestFailed)
+TEST_F(VisidentifierTest, GetSystemInfoRequestFailed)
 {
     ExpectStartSucceeded();
 
@@ -418,18 +405,38 @@ TEST_F(VisidentifierTest, GetSystemIDRequestFailed)
             throw WSException("mock");
         }));
 
-    const auto err = mVisIdentifier.GetSystemID();
-    EXPECT_TRUE(err.mError.Is(ErrorEnum::eFailed)) << err.mError.Message();
+    auto systemInfo = std::make_unique<SystemInfo>();
+
+    const auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << err.Message();
 
     ExpectStopSucceeded();
 }
 
-TEST_F(VisidentifierTest, GetUnitModelExceedsMaxSize)
+TEST_F(VisidentifierTest, GetSystemInfoUnitModelExceedsMaxSize)
 {
     ExpectStartSucceeded();
 
-    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
+    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(2);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
+        .WillOnce(Invoke([&](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
+            Poco::JSON::Object valueTag;
+            valueTag.set("Attribute.Vehicle.VehicleIdentification.VIN", cExpectedSystemId);
+
+            Poco::JSON::Object response;
+
+            response.set("action", "get");
+            response.set("requestId", "requestId");
+            response.set("timestamp", 0);
+            response.set("value", valueTag);
+
+            std::ostringstream jsonStream;
+            Poco::JSON::Stringifier::stringify(response, jsonStream);
+
+            const auto str = jsonStream.str();
+
+            return {str.cbegin(), str.cend()};
+        }))
         .WillOnce(Invoke([](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
             Poco::JSON::Object response;
 
@@ -446,8 +453,10 @@ TEST_F(VisidentifierTest, GetUnitModelExceedsMaxSize)
             return {str.cbegin(), str.cend()};
         }));
 
-    const auto err = mVisIdentifier.GetUnitModel();
-    EXPECT_TRUE(err.mError.Is(ErrorEnum::eNoMemory)) << err.mError.Message();
+    auto systemInfo = std::make_unique<SystemInfo>();
+
+    const auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << err.Message();
 
     ExpectStopSucceeded();
 }
@@ -456,14 +465,34 @@ TEST_F(VisidentifierTest, GetUnitModelRequestFailed)
 {
     ExpectStartSucceeded();
 
-    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(1);
+    EXPECT_CALL(*mWSClientItfMockPtr, GenerateRequestID).Times(2);
     EXPECT_CALL(*mWSClientItfMockPtr, SendRequest)
+        .WillOnce(Invoke([&](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
+            Poco::JSON::Object valueTag;
+            valueTag.set("Attribute.Vehicle.VehicleIdentification.VIN", cExpectedSystemId);
+
+            Poco::JSON::Object response;
+
+            response.set("action", "get");
+            response.set("requestId", "requestId");
+            response.set("timestamp", 0);
+            response.set("value", valueTag);
+
+            std::ostringstream jsonStream;
+            Poco::JSON::Stringifier::stringify(response, jsonStream);
+
+            const auto str = jsonStream.str();
+
+            return {str.cbegin(), str.cend()};
+        }))
         .WillOnce(Invoke([](const std::string&, const WSClientItf::ByteArray&) -> WSClientItf::ByteArray {
             throw WSException("mock");
         }));
 
-    const auto err = mVisIdentifier.GetUnitModel();
-    EXPECT_TRUE(err.mError.Is(ErrorEnum::eFailed)) << err.mError.Message();
+    auto systemInfo = std::make_unique<SystemInfo>();
+
+    const auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << err.Message();
 
     ExpectStopSucceeded();
 }

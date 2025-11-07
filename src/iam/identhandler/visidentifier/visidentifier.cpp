@@ -93,68 +93,26 @@ Error VISIdentifier::Stop()
     return ErrorEnum::eNone;
 }
 
-RetWithError<StaticString<cIDLen>> VISIdentifier::GetSystemID()
+Error VISIdentifier::GetSystemInfo(SystemInfo& info)
 {
-    std::lock_guard lock(mMutex);
+    std::lock_guard lock {mMutex};
 
-    if (mSystemId.IsEmpty()) {
+    if (!mSystemInfo) {
+        mSystemInfo.emplace();
+
         try {
-            const VISMessage responseMessage(SendGetRequest(cVinVISPath));
-
-            if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
-            }
-
-            const auto systemId = GetValueByPath(responseMessage.GetJSON(), cVinVISPath);
-            if (systemId.empty()) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
-            }
-
-            if (systemId.size() > mSystemId.MaxSize()) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eNoMemory)};
-            }
-
-            mSystemId = systemId.c_str();
+            SetSystemID(*mSystemInfo);
+            SetUnitModelAndVersion(*mSystemInfo);
         } catch (const std::exception& e) {
-            LOG_ERR() << "Failed to get system ID: error = " << e.what();
+            mSystemInfo.reset();
 
-            return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
+            return AOS_ERROR_WRAP(common::utils::ToAosError(e));
         }
     }
 
-    return mSystemId;
-}
+    info = *mSystemInfo;
 
-RetWithError<StaticString<cUnitModelLen>> VISIdentifier::GetUnitModel()
-{
-    std::lock_guard lock(mMutex);
-
-    if (mUnitModel.IsEmpty()) {
-        try {
-            const VISMessage responseMessage(SendGetRequest(cUnitModelPath));
-
-            if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
-            }
-
-            const auto unitModel = GetValueByPath(responseMessage.GetJSON(), cUnitModelPath);
-            if (unitModel.empty()) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
-            }
-
-            if (unitModel.size() > mUnitModel.MaxSize()) {
-                return {{}, AOS_ERROR_WRAP(ErrorEnum::eNoMemory)};
-            }
-
-            mUnitModel = unitModel.c_str();
-        } catch (const std::exception& e) {
-            LOG_ERR() << "Failed to get unit model: error = " << e.what();
-
-            return {{}, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
-        }
-    }
-
-    return mUnitModel;
+    return ErrorEnum::eNone;
 }
 
 Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
@@ -306,8 +264,7 @@ void VISIdentifier::HandleConnection()
             Subscribe(
                 cSubjectsVISPath, std::bind(&VISIdentifier::HandleSubjectsSubscription, this, std::placeholders::_1));
 
-            mSystemId.Clear();
-            mUnitModel.Clear();
+            mSystemInfo.reset();
             mSubjects.Clear();
 
             mWSClientIsConnected.set();
@@ -443,6 +400,52 @@ std::vector<std::string> VISIdentifier::GetValueArrayByPath(
         [](const Poco::Dynamic::Var& i) { return i.convert<std::string>(); });
 
     return valueArray;
+}
+
+void VISIdentifier::SetSystemID(SystemInfo& info)
+{
+    const VISMessage response(SendGetRequest(cVinVISPath));
+
+    if (!response.Is(VISActionEnum::eGet)) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get systemID");
+    }
+
+    const auto systemId = GetValueByPath(response.GetJSON(), cVinVISPath);
+    if (systemId.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "systemID is empty");
+    }
+
+    auto err = info.mSystemID.Assign(systemId.c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err));
+}
+
+void VISIdentifier::SetUnitModelAndVersion(SystemInfo& info)
+{
+    const VISMessage response(SendGetRequest(cUnitModelPath));
+
+    if (!response.Is(VISActionEnum::eGet)) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get unit model");
+    }
+
+    const auto unitModel = GetValueByPath(response.GetJSON(), cUnitModelPath);
+    if (unitModel.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "unit model is empty");
+    }
+
+    StaticArray<StaticString<cIDLen>, 2> modelVersion;
+
+    auto err = String(unitModel.c_str()).Split(modelVersion, ';');
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err));
+
+    if (modelVersion.Size() != 2) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to parse unit model");
+    }
+
+    err = info.mUnitModel.Assign(modelVersion[0]);
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err));
+
+    err = info.mVersion.Assign(modelVersion[1]);
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err));
 }
 
 } // namespace aos::iam::visidentifier
