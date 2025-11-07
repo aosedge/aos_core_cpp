@@ -269,12 +269,14 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     params->set("unitModelPath", "test-unit-model-path");
     params->set("subjectsPath", "test-subjects-path");
 
-    auto [fileIdentifierParams, error] = ParseFileIdentifierModuleParams(params);
-    ASSERT_EQ(error, ErrorEnum::eNone);
+    auto fileIdentifierParams = std::make_unique<iam::identhandler::fileidentifier::Config>();
 
-    EXPECT_EQ(fileIdentifierParams.mSystemIDPath, "test-system-id-path");
-    EXPECT_EQ(fileIdentifierParams.mUnitModelPath, "test-unit-model-path");
-    EXPECT_EQ(fileIdentifierParams.mSubjectsPath, "test-subjects-path");
+    auto err = ParseFileIdentifierModuleParams(params, *fileIdentifierParams);
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
+    EXPECT_EQ(fileIdentifierParams->mSystemIDPath, "test-system-id-path");
+    EXPECT_EQ(fileIdentifierParams->mUnitModelPath, "test-unit-model-path");
+    EXPECT_EQ(fileIdentifierParams->mSubjectsPath, "test-subjects-path");
 }
 
 } // namespace aos::iam::config
