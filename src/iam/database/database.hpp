@@ -114,7 +114,7 @@ public:
      * @param ids result node identifiers.
      * @return Error.
      */
-    Error GetAllNodeIds(Array<StaticString<cIDLen>>& ids) const override;
+    Error GetAllNodeIDs(Array<StaticString<cIDLen>>& ids) const override;
 
     /**
      * Removes node info by its id.

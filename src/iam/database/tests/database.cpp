@@ -346,7 +346,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
     ASSERT_EQ(resultNodeInfo, nodeInfo);
 }
 
-TEST_F(DatabaseTest, GetAllNodeIds)
+TEST_F(DatabaseTest, GetAllNodeIDs)
 {
     const auto& node0 = DefaultNodeInfo("node0");
     const auto& node1 = DefaultNodeInfo("node1");
@@ -361,7 +361,7 @@ TEST_F(DatabaseTest, GetAllNodeIds)
     StaticArray<StaticString<cIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
     FillArray({node0.mNodeID, node1.mNodeID, node2.mNodeID}, expectedNodeIds);
 
-    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
+    ASSERT_TRUE(mDB.GetAllNodeIDs(resultNodeIds).IsNone());
     ASSERT_EQ(expectedNodeIds, resultNodeIds);
 }
 
@@ -379,7 +379,7 @@ TEST_F(DatabaseTest, GetAllNodeIdsNotEnoughMemory)
 
     StaticArray<StaticString<cIDLen>, 2> resultNodeIds;
 
-    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).Is(ErrorEnum::eNoMemory));
+    ASSERT_TRUE(mDB.GetAllNodeIDs(resultNodeIds).Is(ErrorEnum::eNoMemory));
 }
 
 TEST_F(DatabaseTest, RemoveNodeInfo)
@@ -399,7 +399,7 @@ TEST_F(DatabaseTest, RemoveNodeInfo)
     StaticArray<StaticString<cIDLen>, cMaxNumNodes> expectedNodeIds, resultNodeIds;
     FillArray({node0.mNodeID, node2.mNodeID}, expectedNodeIds);
 
-    ASSERT_TRUE(mDB.GetAllNodeIds(resultNodeIds).IsNone());
+    ASSERT_TRUE(mDB.GetAllNodeIDs(resultNodeIds).IsNone());
     ASSERT_EQ(expectedNodeIds, resultNodeIds);
 }
 
