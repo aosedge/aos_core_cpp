@@ -309,9 +309,8 @@ Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 
         if (mSubjects != newSubjects) {
             mSubjects = std::move(newSubjects);
-            if (mSubjectsListener) {
-                mSubjectsListener->SubjectsChanged(mSubjects);
-            }
+
+            NotifySubjectsChanged(mSubjects);
         }
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to handle subjects subscription: error = " << e.what();

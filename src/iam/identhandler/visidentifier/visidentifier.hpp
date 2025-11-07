@@ -105,40 +105,6 @@ public:
      */
     Error GetSubjects(Array<StaticString<cIDLen>>& subjects) override;
 
-    /**
-     * Subscribes subjects listener.
-     *
-     * @param subjectsListener subjects listener.
-     * @returns Error.
-     */
-    Error SubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
-    {
-        if (mSubjectsListener != nullptr) {
-            return ErrorEnum::eAlreadyExist;
-        }
-
-        mSubjectsListener = &subjectsListener;
-
-        return ErrorEnum::eNone;
-    }
-
-    /**
-     * Unsubscribes subjects listener.
-     *
-     * @param subjectsListener subjects listener.
-     * @returns Error.
-     */
-    Error UnsubscribeListener(iamclient::SubjectsListenerItf& subjectsListener) override
-    {
-        if (mSubjectsListener != &subjectsListener) {
-            return ErrorEnum::eNotFound;
-        }
-
-        mSubjectsListener = nullptr;
-
-        return ErrorEnum::eNone;
-    }
-
 protected:
     virtual Error  InitWSClient(const config::IdentifierConfig& config);
     void           SetWSClient(WSClientItfPtr wsClient);
@@ -164,8 +130,7 @@ private:
     void                     SetUnitModelAndVersion(SystemInfo& info);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
-    iamclient::SubjectsListenerItf*                    mSubjectsListener = nullptr;
-    crypto::UUIDItf*                                   mUUIDProvider     = nullptr;
+    crypto::UUIDItf*                                   mUUIDProvider {};
     VISSubscriptions                                   mSubscriptions;
     std::optional<SystemInfo>                          mSystemInfo;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
