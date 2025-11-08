@@ -41,6 +41,6 @@ add_module(
 # Tests
 # ######################################################################################################################
 
-# if(WITH_TEST)
-#     add_subdirectory(tests)
-# endif()
+if(WITH_TEST)
+    add_subdirectory(tests)
+endif()
