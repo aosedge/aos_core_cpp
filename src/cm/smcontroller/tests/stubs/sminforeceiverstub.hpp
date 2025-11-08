@@ -43,6 +43,9 @@ public:
         }
 
         mConnectedNodes.erase(it);
+        mSMInfos.erase(std::find_if(
+            mSMInfos.begin(), mSMInfos.end(), [&nodeID](const SMInfo& info) { return info.mNodeID == nodeID; }));
+
         mCV.notify_all();
     }
 
