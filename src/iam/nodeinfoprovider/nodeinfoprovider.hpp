@@ -37,43 +37,45 @@ public:
      * @param[out] nodeInfo node info
      * @return Error
      */
-    Error GetNodeInfo(NodeInfoObsolete& nodeInfo) const override;
+    Error GetNodeInfo(NodeInfo& nodeInfo) const override;
 
     /**
-     * Sets node state.
+     * Sets the node state.
      *
      * @param state node state.
+     * @param provisioned node provisioned flag.
      * @return Error.
      */
-    Error SetNodeState(const NodeStateObsolete& state) override;
+    Error SetNodeState(const NodeState& state, bool provisioned) override;
 
     /**
      * Subscribes on node state changed event.
      *
-     * @param observer node state changed observer.
-     * @return Error.
+     * @param observer node state changed observer
+     * @return Error
      */
-    Error SubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer) override;
+    Error SubscribeNodeStateChanged(NodeStateObserverItf& observer) override;
 
     /**
      * Unsubscribes from node state changed event.
      *
-     * @param observer node state changed observer.
-     * @return Error.
+     * @param observer node state changed observer
+     * @return Error
      */
-    Error UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer) override;
+    Error UnsubscribeNodeStateChanged(NodeStateObserverItf& observer) override;
 
 private:
-    Error InitOSType(const iam::config::NodeInfoConfig& config);
+    Error InitOSInfo(const iam::config::NodeInfoConfig& config);
     Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
     Error InitPartitionInfo(const iam::config::NodeInfoConfig& config);
+    Error ReadNodeState();
     Error NotifyNodeStateChanged();
 
     mutable std::mutex                                               mMutex;
     std::unordered_set<iam::nodeinfoprovider::NodeStateObserverItf*> mObservers;
     std::string                                                      mMemInfoPath;
     std::string                                                      mProvisioningStatusPath;
-    NodeInfoObsolete                                                 mNodeInfo;
+    NodeInfo                                                         mNodeInfo;
 };
 
 } // namespace aos::iam::nodeinfoprovider
