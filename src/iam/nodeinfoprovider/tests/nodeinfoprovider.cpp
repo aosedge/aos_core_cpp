@@ -31,13 +31,13 @@ namespace {
 
 #define TEST_TMP_DIR "test-tmp"
 
-const std::string       cNodeIDPath            = TEST_TMP_DIR "/node-id";
-const std::string       cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
-const std::string       cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
-const std::string       cMemInfoPath           = TEST_TMP_DIR "/meminfo";
-const std::array        cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
-constexpr auto          cNodeIDFileContent           = "node-id";
-constexpr auto          cCPUInfoFileContent          = R"(processor	: 0
+const std::string cNodeIDPath            = TEST_TMP_DIR "/node-id";
+const std::string cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
+const std::string cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
+const std::string cMemInfoPath           = TEST_TMP_DIR "/meminfo";
+const std::array  cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
+constexpr auto    cNodeIDFileContent           = "node-id";
+constexpr auto    cCPUInfoFileContent          = R"(processor	: 0
 cpu family	: 6
 model		: 141
 model name	: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
@@ -70,12 +70,12 @@ siblings	: 1
 core id		: 0
 cpu cores	: 1
 )";
-constexpr auto          cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
-constexpr auto          cEmptyProcFileContent        = R"()";
-constexpr auto          cMemInfoFileContent          = "MemTotal:       16384 kB";
-constexpr auto          cExpectedMemSizeBytes        = 16384 * 1024;
-const NodeStateObsolete cProvisionedState            = NodeStateObsoleteEnum::eProvisioned;
-const NodeStateObsolete cUnprovisionedState          = NodeStateObsoleteEnum::eUnprovisioned;
+constexpr auto    cCPUInfoFileCorruptedContent = "physical id		: number_is_expected_here";
+constexpr auto    cEmptyProcFileContent        = R"()";
+constexpr auto    cMemInfoFileContent          = "MemTotal:       16384 kB";
+constexpr auto    cExpectedMemSizeBytes        = 16384 * 1024;
+const NodeState   cProvisionedState            = NodeStateEnum::eOnline;
+const NodeState   cUnprovisionedState          = NodeStateEnum::eOffline;
 
 /***********************************************************************************************************************
  * Static
@@ -193,7 +193,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoFileNotFound)
     auto err = provider.Init(CreateConfig());
     EXPECT_TRUE(err.IsNone());
 
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -220,7 +220,7 @@ TEST_F(NodeInfoProviderTest, InitReturnsDefaultInfoCPUInfoCorrupted)
     auto err = provider.Init(CreateConfig());
     EXPECT_TRUE(err.IsNone());
 
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -261,7 +261,7 @@ TEST_F(NodeInfoProviderTest, InitSucceedsOnNonStandardProcFile)
     auto err = provider.Init(CreateConfig());
     ASSERT_TRUE(err.IsNone());
 
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     err = provider.GetNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetNodeInfo should succeed, err = " << err.Message();
@@ -280,7 +280,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
     const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    NodeInfoObsolete nodeInfo;
+    NodeInfo         nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -290,8 +290,8 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoSucceeds)
 
     EXPECT_STREQ(nodeInfo.mNodeID.CStr(), cNodeIDFileContent);
     EXPECT_STREQ(nodeInfo.mNodeType.CStr(), config.mNodeType.c_str());
-    EXPECT_STREQ(nodeInfo.mName.CStr(), config.mNodeName.c_str());
-    EXPECT_STREQ(nodeInfo.mOSType.CStr(), config.mOSType.c_str());
+    EXPECT_STREQ(nodeInfo.mTitle.CStr(), config.mNodeName.c_str());
+    EXPECT_STREQ(nodeInfo.mOSInfo.mOS.CStr(), config.mOSType.c_str());
     EXPECT_EQ(nodeInfo.mTotalRAM, cExpectedMemSizeBytes);
 
     // check partition info
@@ -325,7 +325,7 @@ TEST_F(NodeInfoProviderTest, GetNodeInfoReadsProvisioningStateFromFile)
     const iam::config::NodeInfoConfig config = CreateConfig();
 
     NodeInfoProvider provider;
-    NodeInfoObsolete nodeInfo;
+    NodeInfo         nodeInfo;
 
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
@@ -353,7 +353,7 @@ TEST_F(NodeInfoProviderTest, SetNodeStateFailsIfProvisioningStateFileNotFound)
 {
     NodeInfoProvider provider;
 
-    auto err = provider.SetNodeState(NodeStateObsoleteEnum::eProvisioned);
+    auto err = provider.SetNodeState(cProvisionedState, true);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "SetNodeState should return not found error, err = " << err.Message();
 }
 
@@ -369,7 +369,7 @@ TEST_F(NodeInfoProviderTest, SetNodeStateSucceeds)
     auto err = provider.Init(config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
-    err = provider.SetNodeState(cProvisionedState);
+    err = provider.SetNodeState(cProvisionedState, true);
     EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err = " << err.Message();
 
     std::ifstream file(config.mProvisioningStatePath);
@@ -405,7 +405,7 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotNotifiedIfStateNotChanged)
     EXPECT_CALL(observer1, OnNodeStateChanged(_, _)).Times(0);
     EXPECT_CALL(observer2, OnNodeStateChanged(_, _)).Times(0);
 
-    err = provider.SetNodeState(cUnprovisionedState);
+    err = provider.SetNodeState(cUnprovisionedState, false);
     EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 }
 
@@ -434,7 +434,7 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStateChange)
     EXPECT_CALL(observer2, OnNodeStateChanged(String(cNodeIDFileContent), cProvisionedState))
         .WillOnce(Return(ErrorEnum::eNone));
 
-    err = provider.SetNodeState(cProvisionedState);
+    err = provider.SetNodeState(cProvisionedState, true);
     EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 
     // unsubscribe observer1
@@ -445,7 +445,7 @@ TEST_F(NodeInfoProviderTest, ObserversAreNotifiedOnStateChange)
     EXPECT_CALL(observer2, OnNodeStateChanged(String(cNodeIDFileContent), cUnprovisionedState))
         .WillOnce(Return(ErrorEnum::eNone));
 
-    err = provider.SetNodeState(cUnprovisionedState);
+    err = provider.SetNodeState(cUnprovisionedState, false);
     EXPECT_TRUE(err.IsNone()) << "SetNodeState should succeed, err=" << err.Message();
 }
 

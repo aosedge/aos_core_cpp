@@ -23,7 +23,7 @@ namespace {
  * Static
  **********************************************************************************************************************/
 
-Error GetOSType(String& osType)
+Error SetOSInfo(OSInfo& info)
 {
     struct utsname buffer;
 
@@ -31,26 +31,38 @@ Error GetOSType(String& osType)
         return AOS_ERROR_WRAP(ErrorEnum::eFailed);
     }
 
-    return osType.Assign(buffer.sysname);
+    if (auto err = info.mOS.Assign(buffer.sysname); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (buffer.release[0] != '\0') {
+        info.mVersion.EmplaceValue();
+
+        if (auto err = info.mVersion->Assign(buffer.release); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
 }
 
-RetWithError<NodeStateObsolete> GetNodeState(const std::string& path)
+Error GetNodeState(const std::string& path, NodeState& state, bool& provisioned)
 {
     std::ifstream file;
 
     if (file.open(path); !file.is_open()) {
-        // .provisionstate file doesn't exist => state unprovisioned
-        return {NodeStateObsoleteEnum::eUnprovisioned, ErrorEnum::eNone};
+        state       = NodeStateEnum::eOffline;
+        provisioned = false;
+
+        return ErrorEnum::eNone;
     }
 
     std::string line;
     std::getline(file, line);
 
-    NodeStateObsolete nodeState;
+    provisioned = true;
 
-    auto err = nodeState.FromString(line.c_str());
-
-    return {nodeState, err};
+    return state.FromString(line.c_str());
 }
 
 Error GetNodeID(const std::string& path, String& nodeID)
@@ -86,13 +98,13 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = InitOSType(config); !err.IsNone()) {
+    if (err = InitOSInfo(config); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     mProvisioningStatusPath = config.mProvisioningStatePath;
     mNodeInfo.mNodeType     = config.mNodeType.c_str();
-    mNodeInfo.mName         = config.mNodeName.c_str();
+    mNodeInfo.mTitle        = config.mNodeName.c_str();
     mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
 
     // cppcheck-suppress unusedScopedObject
@@ -113,8 +125,7 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    // cppcheck-suppress unusedScopedObject
-    Tie(mNodeInfo.mState, err) = GetNodeState(mProvisioningStatusPath);
+    err = GetNodeState(mProvisioningStatusPath, mNodeInfo.mState, mNodeInfo.mProvisioned);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -122,42 +133,37 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::GetNodeInfo(NodeInfoObsolete& nodeInfo) const
+Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
 {
     std::lock_guard lock {mMutex};
 
-    Error             err;
-    NodeStateObsolete state;
+    nodeInfo = mNodeInfo;
 
-    // cppcheck-suppress unusedScopedObject
-    Tie(state, err) = GetNodeState(mProvisioningStatusPath);
-    if (!err.IsNone()) {
+    if (auto err = GetNodeState(mProvisioningStatusPath, nodeInfo.mState, nodeInfo.mProvisioned); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    nodeInfo        = mNodeInfo;
-    nodeInfo.mState = state;
 
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::SetNodeState(const NodeStateObsolete& state)
+Error NodeInfoProvider::SetNodeState(const NodeState& state, bool provisioned)
 {
     std::lock_guard lock {mMutex};
 
-    if (state == mNodeInfo.mState) {
-        LOG_DBG() << "Node state is not changed: state=" << state.ToString();
+    if (state == mNodeInfo.mState && provisioned == mNodeInfo.mProvisioned) {
+        LOG_DBG() << "Node state is not changed" << Log::Field("state", state)
+                  << Log::Field("provisioned", provisioned);
 
         return ErrorEnum::eNone;
     }
 
-    if (state == NodeStateObsoleteEnum::eUnprovisioned) {
+    if (!provisioned) {
         std::filesystem::remove(mProvisioningStatusPath);
     } else {
         std::ofstream file;
 
         if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
-            LOG_ERR() << "Provision status file open failed: path=" << mProvisioningStatusPath.c_str();
+            LOG_ERR() << "Provision status file open failed" << Log::Field("path", mProvisioningStatusPath.c_str());
 
             return ErrorEnum::eNotFound;
         }
@@ -165,9 +171,10 @@ Error NodeInfoProvider::SetNodeState(const NodeStateObsolete& state)
         file << state.ToString().CStr();
     }
 
-    mNodeInfo.mState = state;
+    mNodeInfo.mState       = state;
+    mNodeInfo.mProvisioned = provisioned;
 
-    LOG_DBG() << "Node state updated: state=" << state.ToString();
+    LOG_DBG() << "Node state updated" << Log::Field("state", state) << Log::Field("provisioned", provisioned);
 
     if (auto err = NotifyNodeStateChanged(); !err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "failed to notify node state changed subscribers"));
@@ -206,13 +213,17 @@ Error NodeInfoProvider::UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeS
  * Private
  **********************************************************************************************************************/
 
-Error NodeInfoProvider::InitOSType(const iam::config::NodeInfoConfig& config)
+Error NodeInfoProvider::InitOSInfo(const iam::config::NodeInfoConfig& config)
 {
-    if (!config.mOSType.empty()) {
-        return mNodeInfo.mOSType.Assign(config.mOSType.c_str());
+    if (auto err = SetOSInfo(mNodeInfo.mOSInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
-    return GetOSType(mNodeInfo.mOSType);
+    if (!config.mOSType.empty()) {
+        return mNodeInfo.mOSInfo.mOS.Assign(config.mOSType.c_str());
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& config)
@@ -229,27 +240,33 @@ Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& co
 Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& config)
 {
     for (const auto& partition : config.mPartitions) {
-        PartitionInfoObsolete partitionInfo = {};
+        if (auto err = mNodeInfo.mPartitions.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
-        partitionInfo.mName = partition.mName.c_str();
-        partitionInfo.mPath = partition.mPath.c_str();
+        PartitionInfo& partitionInfo = mNodeInfo.mPartitions.Back();
+
+        if (auto err = partitionInfo.mName.Assign(partition.mName.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = partitionInfo.mPath.Assign(partition.mPath.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         Error err;
 
         // cppcheck-suppress unusedScopedObject
         Tie(partitionInfo.mTotalSize, err) = utils::GetMountFSTotalSize(partition.mPath);
         if (!err.IsNone()) {
-            LOG_WRN() << "Failed to get total size for partition: path=" << partition.mPath.c_str() << ", err=" << err;
+            LOG_WRN() << "Failed to get total size for partition" << Log::Field("path", partition.mPath.c_str())
+                      << Log::Field(err);
         }
 
         for (const auto& type : partition.mTypes) {
-            if (err = partitionInfo.mTypes.PushBack(type.c_str()); !err.IsNone()) {
+            if (err = partitionInfo.mTypes.EmplaceBack(type.c_str()); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
-        }
-
-        if (err = mNodeInfo.mPartitions.PushBack(partitionInfo); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
         }
     }
 
