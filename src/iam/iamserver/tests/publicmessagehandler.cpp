@@ -86,7 +86,7 @@ void PublicMessageHandlerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
@@ -135,23 +135,23 @@ TEST_F(PublicMessageHandlerTest, GetAPIVersionSucceeds)
     ASSERT_TRUE(status.ok()) << "GetAPIVersion failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.version(), 5);
+    ASSERT_EQ(response.version(), 6);
 }
 
 /***********************************************************************************************************************
  * IAMPublicService tests
  **********************************************************************************************************************/
 
-TEST_F(PublicMessageHandlerTest, GetNodeInfo)
+TEST_F(PublicMessageHandlerTest, GetCurrentNodeInfo)
 {
-    auto clientStub = CreateClientStub<iamproto::IAMPublicService>();
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCurrentNodeService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
     grpc::ClientContext     context;
     google::protobuf::Empty request;
     iamproto::NodeInfo      response;
 
-    const auto status = clientStub->GetNodeInfo(&context, request, &response);
+    const auto status = clientStub->GetCurrentNodeInfo(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "GetNodeInfo failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
@@ -162,7 +162,7 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfo)
 
 TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
 {
-    auto clientStub = CreateClientStub<iamproto::IAMPublicService>();
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
     grpc::ClientContext      context;
@@ -196,7 +196,7 @@ TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
 
 TEST_F(PublicMessageHandlerTest, GetCertFails)
 {
-    auto clientStub = CreateClientStub<iamproto::IAMPublicService>();
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
     grpc::ClientContext      context;
@@ -225,12 +225,12 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
 
 TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
 {
-    auto clientStub = CreateClientStub<iamproto::IAMPublicService>();
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
     grpc::ClientContext                   context;
     iamproto::SubscribeCertChangedRequest request;
-    iamanager::v5::CertInfo               response;
+    iamanager::v6::CertInfo               response;
 
     request.set_type("test-type");
 
@@ -263,12 +263,12 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
 
 TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
 {
-    auto clientStub = CreateClientStub<iamproto::IAMPublicService>();
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
     grpc::ClientContext                   context;
     iamproto::SubscribeCertChangedRequest request;
-    iamanager::v5::CertInfo               response;
+    iamanager::v6::CertInfo               response;
 
     request.set_type("test-type");
 
@@ -302,8 +302,11 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoSucceeds)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
-    EXPECT_CALL(mIdentProvider, GetUnitModel).WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>(cUnitModel)));
+    auto systemInfo        = std::make_unique<SystemInfo>();
+    systemInfo->mSystemID  = cSystemID;
+    systemInfo->mUnitModel = cUnitModel;
+
+    EXPECT_CALL(mIdentProvider, GetSystemInfo).WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eNone)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -314,7 +317,7 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoSucceeds)
     ASSERT_EQ(response.unit_model(), cUnitModel);
 }
 
-TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnSystemId)
+TEST_F(PublicMessageHandlerTest, GetSystemInfoFails)
 {
     auto clientStub = CreateClientStub<iamproto::IAMPublicIdentityService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
@@ -323,27 +326,12 @@ TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnSystemId)
     google::protobuf::Empty request;
     iamproto::SystemInfo    response;
 
-    EXPECT_CALL(mIdentProvider, GetSystemID)
-        .WillOnce(Return(RetWithError<StaticString<cIDLen>>("", ErrorEnum::eFailed)));
-    EXPECT_CALL(mIdentProvider, GetUnitModel).Times(0);
+    auto systemInfo        = std::make_unique<SystemInfo>();
+    systemInfo->mSystemID  = cSystemID;
+    systemInfo->mUnitModel = cUnitModel;
 
-    const auto status = clientStub->GetSystemInfo(&context, request, &response);
-
-    ASSERT_FALSE(status.ok());
-}
-
-TEST_F(PublicMessageHandlerTest, GetSystemInfoFailsOnUnitModel)
-{
-    auto clientStub = CreateClientStub<iamproto::IAMPublicIdentityService>();
-    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
-
-    grpc::ClientContext     context;
-    google::protobuf::Empty request;
-    iamproto::SystemInfo    response;
-
-    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
-    EXPECT_CALL(mIdentProvider, GetUnitModel)
-        .WillOnce(Return(RetWithError<StaticString<cUnitModelLen>>("", ErrorEnum::eFailed)));
+    EXPECT_CALL(mIdentProvider, GetSystemInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eFailed)));
 
     const auto status = clientStub->GetSystemInfo(&context, request, &response);
 
@@ -482,7 +470,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
     iamproto::NodesID       response;
     grpc::ClientContext     context;
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNodeManager, GetAllNodeIDs).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->GetAllNodeIDs(&context, request, &response);
 
@@ -495,7 +483,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsSucceeds)
     nodeIDs.PushBack("node0");
     nodeIDs.PushBack("node1");
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Invoke([&nodeIDs](Array<StaticString<cIDLen>>& out) {
+    EXPECT_CALL(mNodeManager, GetAllNodeIDs).WillOnce(Invoke([&nodeIDs](Array<StaticString<cIDLen>>& out) {
         out = nodeIDs;
 
         return ErrorEnum::eNone;
@@ -522,7 +510,7 @@ TEST_F(PublicMessageHandlerTest, GetAllNodeIDsFails)
     iamproto::NodesID       response;
     grpc::ClientContext     context;
 
-    EXPECT_CALL(mNodeManager, GetAllNodeIds).WillOnce(Return(ErrorEnum::eFailed));
+    EXPECT_CALL(mNodeManager, GetAllNodeIDs).WillOnce(Return(ErrorEnum::eFailed));
 
     auto status = clientStub->GetAllNodeIDs(&context, request, &response);
 
@@ -540,9 +528,9 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
 
     request.set_node_id("test-node-id");
 
-    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const String& nodeID, NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeManager, GetNodeInfo).WillOnce(Invoke([](const String& nodeID, NodeInfo& nodeInfo) {
         nodeInfo.mNodeID = nodeID;
-        nodeInfo.mName   = "test-name";
+        nodeInfo.mTitle  = "test-title";
 
         return ErrorEnum::eNone;
     }));
@@ -553,7 +541,7 @@ TEST_F(PublicMessageHandlerTest, GetNodeInfoSucceeds)
                              << ", message = " << status.error_message();
 
     ASSERT_EQ(response.node_id(), "test-node-id");
-    ASSERT_EQ(response.name(), "test-name");
+    ASSERT_EQ(response.title(), "test-title");
 }
 
 TEST_F(PublicMessageHandlerTest, GetNodeInfoFails)
@@ -585,10 +573,10 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     nodeInfo.mNodeID = "test-node-id";
-    nodeInfo.mName   = "test-name";
+    nodeInfo.mTitle  = "test-title";
 
     mPublicMessageHandler.OnNodeInfoChange(nodeInfo);
 
@@ -596,7 +584,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
     ASSERT_TRUE(stream->Read(&response));
 
     EXPECT_EQ(response.node_id(), "test-node-id");
-    EXPECT_EQ(response.name(), "test-name");
+    EXPECT_EQ(response.title(), "test-title");
 
     context.TryCancel();
 

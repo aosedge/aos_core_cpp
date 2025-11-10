@@ -44,10 +44,11 @@ Error PublicMessageHandler::Init(NodeController& nodeController, iamclient::Iden
 
 void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 {
-    LOG_DBG() << "Register services: handler=public";
+    LOG_DBG() << "Register services" << Log::Field("handler", "public");
 
     builder.RegisterService(static_cast<iamanager::IAMVersionService::Service*>(this));
-    builder.RegisterService(static_cast<iamproto::IAMPublicService::Service*>(this));
+    builder.RegisterService(static_cast<iamproto::IAMPublicCurrentNodeService::Service*>(this));
+    builder.RegisterService(static_cast<iamproto::IAMPublicCertService::Service*>(this));
 
     if (GetPermHandler() != nullptr) {
         builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
@@ -62,11 +63,15 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 }
 
-void PublicMessageHandler::OnNodeInfoChange(const NodeInfoObsolete& info)
+void PublicMessageHandler::OnNodeInfoChange(const NodeInfo& info)
 {
-    iamproto::NodeInfo nodeInfo = common::pbconvert::ConvertToProto(info);
+    const auto pbInfo = common::pbconvert::ConvertToProto(info);
 
-    mNodeChangedController.WriteToStreams(nodeInfo);
+    if (info.mNodeID == mNodeInfo.mNodeID) {
+        mCurrentNodeChangedController.WriteToStreams(pbInfo);
+    }
+
+    mNodeChangedController.WriteToStreams(pbInfo);
 }
 
 void PublicMessageHandler::OnNodeRemoved(const String& nodeID)
@@ -74,15 +79,11 @@ void PublicMessageHandler::OnNodeRemoved(const String& nodeID)
     (void)nodeID;
 }
 
-Error PublicMessageHandler::SubjectsChanged(const Array<StaticString<cIDLen>>& messages)
+void PublicMessageHandler::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
 {
-    LOG_DBG() << "Process subjects changed";
+    LOG_DBG() << "Process subjects changed" << Log::Field("count", subjects.Size());
 
-    iamproto::Subjects subjects = common::pbconvert::ConvertToProto(messages);
-
-    mSubjectsChangedController.WriteToStreams(subjects);
-
-    return ErrorEnum::eNone;
+    mSubjectsChangedController.WriteToStreams(common::pbconvert::ConvertToProto(subjects));
 }
 
 void PublicMessageHandler::Start()
@@ -90,6 +91,7 @@ void PublicMessageHandler::Start()
     std::lock_guard lock {mMutex};
 
     mNodeChangedController.Start();
+    mCurrentNodeChangedController.Start();
     mSubjectsChangedController.Start();
     mClose = false;
 }
@@ -101,6 +103,7 @@ void PublicMessageHandler::Close()
     LOG_DBG() << "Close message handler: handler=public";
 
     mNodeChangedController.Close();
+    mCurrentNodeChangedController.Close();
     mSubjectsChangedController.Close();
 
     {
@@ -121,15 +124,15 @@ void PublicMessageHandler::Close()
  * Protected
  **********************************************************************************************************************/
 
-Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeStateObsolete& state)
+Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeState& state, bool provisioned)
 {
     if (ProcessOnThisNode(nodeID)) {
-        if (auto err = mNodeInfoProvider->SetNodeState(state); !err.IsNone()) {
+        if (auto err = mNodeInfoProvider->SetNodeState(state, provisioned); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    if (auto err = mNodeManager->SetNodeState(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), state);
+    if (auto err = mNodeManager->SetNodeState(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), state, provisioned);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -161,18 +164,30 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
 }
 
 /***********************************************************************************************************************
- * IAMPublicService implementation
+ * IAMPublicCurrentNodeService implementation
  **********************************************************************************************************************/
 
-grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerContext* context,
-    [[maybe_unused]] const google::protobuf::Empty* request, iamproto::NodeInfo* response)
+::grpc::Status PublicMessageHandler::GetCurrentNodeInfo([[maybe_unused]] ::grpc::ServerContext* context,
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v6::NodeInfo* response)
 {
-    LOG_DBG() << "Process get node info";
+    LOG_DBG() << "Process get current node info";
 
     *response = common::pbconvert::ConvertToProto(mNodeInfo);
 
     return grpc::Status::OK;
 }
+
+::grpc::Status PublicMessageHandler::SubscribeCurrentNodeChanged(::grpc::ServerContext* context,
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer)
+{
+    LOG_DBG() << "Process subscribe current node changed";
+
+    return mCurrentNodeChangedController.HandleStream(context, writer);
+}
+
+/***********************************************************************************************************************
+ * IAMPublicCertService implementation
+ **********************************************************************************************************************/
 
 grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::GetCertRequest* request, iamproto::CertInfo* response)
@@ -210,7 +225,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 }
 
 grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
-    const iamanager::v5::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v5::CertInfo>* writer)
+    const iamanager::v6::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v6::CertInfo>* writer)
 {
     LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
 
@@ -257,27 +272,21 @@ grpc::Status PublicMessageHandler::GetSystemInfo([[maybe_unused]] grpc::ServerCo
 {
     LOG_DBG() << "Process get system info";
 
-    StaticString<cIDLen> systemID;
-    Error                err;
+    auto systemInfo = std::make_unique<SystemInfo>();
 
-    Tie(systemID, err) = GetIdentProvider()->GetSystemID();
-    if (!err.IsNone()) {
-        LOG_ERR() << "Failed to get system ID: " << err;
+    if (!GetIdentProvider()) {
+        return grpc::Status(grpc::StatusCode::UNAVAILABLE, "ident provider is not available");
+    }
+
+    if (auto err = GetIdentProvider()->GetSystemInfo(*systemInfo); !err.IsNone()) {
+        LOG_ERR() << "Failed to get system info" << Log::Field(err);
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    StaticString<cUnitModelLen> boardModel;
-
-    Tie(boardModel, err) = GetIdentProvider()->GetUnitModel();
-    if (!err.IsNone()) {
-        LOG_ERR() << "Failed to get unit model: " << err;
-
-        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
-    }
-
-    response->set_system_id(systemID.CStr());
-    response->set_unit_model(boardModel.CStr());
+    response->set_system_id(systemInfo->mSystemID.CStr());
+    response->set_unit_model(systemInfo->mUnitModel.CStr());
+    response->set_version(systemInfo->mVersion.CStr());
 
     return grpc::Status::OK;
 }
@@ -288,6 +297,10 @@ grpc::Status PublicMessageHandler::GetSubjects([[maybe_unused]] grpc::ServerCont
     LOG_DBG() << "Process get subjects";
 
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
+
+    if (!GetIdentProvider()) {
+        return grpc::Status(grpc::StatusCode::UNAVAILABLE, "ident provider is not available");
+    }
 
     if (auto err = GetIdentProvider()->GetSubjects(subjects); !err.IsNone()) {
         LOG_ERR() << "Failed to get subjects: " << err;
@@ -330,10 +343,10 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    ::common::v1::InstanceIdent instanceIdent;
+    ::common::v2::InstanceIdent instanceIdent;
     iamproto::Permissions       permissions;
 
-    instanceIdent.set_service_id(aosInstanceIdent.mItemID.CStr());
+    instanceIdent.set_item_id(aosInstanceIdent.mItemID.CStr());
     instanceIdent.set_subject_id(aosInstanceIdent.mSubjectID.CStr());
     instanceIdent.set_instance(aosInstanceIdent.mInstance);
 
@@ -358,7 +371,7 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
 
     StaticArray<StaticString<cIDLen>, cMaxNumNodes> nodeIDs;
 
-    if (auto err = mNodeManager->GetAllNodeIds(nodeIDs); !err.IsNone()) {
+    if (auto err = mNodeManager->GetAllNodeIDs(nodeIDs); !err.IsNone()) {
         LOG_ERR() << "Failed to get all node IDs: err=" << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
@@ -376,7 +389,7 @@ grpc::Status PublicMessageHandler::GetNodeInfo([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get node info: nodeID=" << request->node_id().c_str();
 
-    auto nodeInfo = std::make_unique<NodeInfoObsolete>();
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
     if (auto err = mNodeManager->GetNodeInfo(request->node_id().c_str(), *nodeInfo); !err.IsNone()) {
         LOG_ERR() << "Failed to get node info: err=" << err;
@@ -402,8 +415,7 @@ grpc::Status PublicMessageHandler::RegisterNode(grpc::ServerContext*            
 {
     LOG_DBG() << "Process register node: handler=public";
 
-    return GetNodeController()->HandleRegisterNodeStream(
-        {cAllowedStates.cbegin(), cAllowedStates.cend()}, stream, context, GetNodeManager());
+    return GetNodeController()->HandleRegisterNodeStream(cProvisioned, stream, context, GetNodeManager());
 }
 
 } // namespace aos::iam::iamserver

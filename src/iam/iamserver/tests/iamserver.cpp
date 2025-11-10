@@ -90,7 +90,7 @@ protected:
     provisionmanager::ProvisionManagerMock mProvisionManager;
 
 protected:
-    static aos::NodeInfoObsolete GetNodeInfo();
+    static aos::NodeInfo GetNodeInfo();
 
 private:
     void SetUp() override;
@@ -135,7 +135,7 @@ void IAMServerTest::SetUp()
     mServerConfig = GetServerConfig();
     mClientConfig = GetClientConfig();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
@@ -193,9 +193,9 @@ config::IAMClientConfig IAMServerTest::GetClientConfig()
     return config;
 }
 
-NodeInfoObsolete IAMServerTest::GetNodeInfo()
+NodeInfo IAMServerTest::GetNodeInfo()
 {
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     nodeInfo.mNodeType = "iam-node-type";
 
@@ -312,7 +312,7 @@ TEST_F(IAMServerTest, OnNodeInfoChange)
     ASSERT_TRUE(err.IsNone()) << err.Message();
     ASSERT_TRUE(mServer.Start().IsNone());
 
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
     ASSERT_NO_THROW(mServer.OnNodeInfoChange(nodeInfo));
     ASSERT_TRUE(mServer.Stop().IsNone());
@@ -320,7 +320,7 @@ TEST_F(IAMServerTest, OnNodeInfoChange)
 
 TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
@@ -352,7 +352,7 @@ TEST_F(IAMServerTest, PublicIdentityServiceIsNotImplementedOnSecondaryNode)
 
 TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
@@ -384,7 +384,7 @@ TEST_F(IAMServerTest, PublicNodesServiceIsNotImplementedOnSecondaryNode)
 
 TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
@@ -416,7 +416,7 @@ TEST_F(IAMServerTest, CertificateServiceIsNotImplementedOnSecondaryNode)
 
 TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 
@@ -449,7 +449,7 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 
 TEST_F(IAMServerTest, NodesServiceIsNotImplementedOnSecondaryNode)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = GetNodeInfo().mNodeType;
 

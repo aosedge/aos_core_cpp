@@ -15,7 +15,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <iam/iamserver/nodecontroller.hpp>
 
@@ -29,8 +29,9 @@ namespace {
  * Static
  **********************************************************************************************************************/
 
-constexpr auto cServerURL         = "0.0.0.0:50051";
-const auto     cProvisionedStatus = NodeStateObsolete(NodeStateObsoleteEnum::eProvisioned);
+constexpr auto cServerURL        = "0.0.0.0:50051";
+const auto     cProvisionedState = NodeState(NodeStateEnum::eOnline);
+const auto     cProvisioned      = true;
 
 class TestServer : public iamproto::IAMPublicNodesService::Service {
 public:
@@ -47,8 +48,7 @@ public:
         grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override
     {
 
-        return mNodeController.HandleRegisterNodeStream(
-            {NodeStateObsoleteEnum::eProvisioned}, stream, context, &mNodeManager);
+        return mNodeController.HandleRegisterNodeStream(cProvisioned, stream, context, &mNodeManager);
     }
 
     void Start()
@@ -138,7 +138,8 @@ TEST_F(NodeControllerTest, RegisterNode)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -152,7 +153,8 @@ TEST_F(NodeControllerTest, RegisterNode2ClientsWithSameID)
         streams;
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     for (size_t i = 0; i < 2; ++i) {
         stubs.push_back(CreateClientStub(cServerURL));
@@ -186,7 +188,8 @@ TEST_F(NodeControllerTest, StartProvisioningFailsOnUnknownNodeID)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -202,7 +205,8 @@ TEST_F(NodeControllerTest, StartProvisioningFailsDueTimeout)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -239,7 +243,8 @@ TEST_F(NodeControllerTest, StartProvisioningSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     ASSERT_TRUE(stream->Write(mOutgoingMessage));
 
@@ -289,7 +294,8 @@ TEST_F(NodeControllerTest, FinishProvisioningSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -341,7 +347,8 @@ TEST_F(NodeControllerTest, DeprovisionSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -393,7 +400,8 @@ TEST_F(NodeControllerTest, PauseNodeSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -445,7 +453,8 @@ TEST_F(NodeControllerTest, ResumeNodeSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -497,7 +506,8 @@ TEST_F(NodeControllerTest, CreateKeySucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -549,7 +559,8 @@ TEST_F(NodeControllerTest, ApplyCertSucceeds)
     ASSERT_NE(stream, nullptr) << "Failed to create client stream";
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
-    mOutgoingMessage.mutable_node_info()->set_status(cProvisionedStatus.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
