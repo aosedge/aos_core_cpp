@@ -218,7 +218,7 @@ void IAMClient::ConnectionLoop() noexcept
 void IAMClient::HandleIncomingMessages() noexcept
 {
     try {
-        iamanager::v5::IAMIncomingMessages incomingMsg;
+        iamanager::v6::IAMIncomingMessages incomingMsg;
 
         while (mStream->Read(&incomingMsg)) {
             bool ok = true;
@@ -266,8 +266,8 @@ void IAMClient::HandleIncomingMessages() noexcept
 
 bool IAMClient::SendNodeInfo()
 {
-    auto                               nodeInfo = std::make_unique<NodeInfoObsolete>();
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    auto                               nodeInfo = std::make_unique<NodeInfo>();
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
 
     auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
@@ -288,14 +288,14 @@ bool IAMClient::SendNodeInfo()
     return isOK;
 }
 
-bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningRequest& request)
+bool IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request)
 {
     LOG_DBG() << "Process start provisioning request";
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
-    auto err = CheckCurrentNodeState({NodeStateObsoleteEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeState({}, false);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't start provisioning: wrong node state";
 
@@ -310,14 +310,14 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v5::StartProvisioningR
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisioningRequest& request)
+bool IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request)
 {
     LOG_DBG() << "Process finish provisioning request";
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
-    auto err = CheckCurrentNodeState({NodeStateObsoleteEnum::eUnprovisioned});
+    auto err = CheckCurrentNodeState({}, false);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't finish provisioning: wrong node state";
 
@@ -333,7 +333,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateObsoleteEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOnline, true);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -345,14 +345,14 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v5::FinishProvisionin
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& request)
+bool IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request)
 {
     LOG_DBG() << "Process deprovision request";
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
-    auto err = CheckCurrentNodeState({NodeStateObsoleteEnum::eProvisioned, NodeStateObsoleteEnum::ePaused});
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eOnline, NodeStateEnum::ePaused}}, true);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't deprovision: wrong node state";
 
@@ -368,7 +368,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateObsoleteEnum::eUnprovisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOffline, false);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -380,16 +380,16 @@ bool IAMClient::ProcessDeprovision(const iamanager::v5::DeprovisionRequest& requ
     return mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
+bool IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
 {
     LOG_DBG() << "Process pause node request";
 
     (void)request;
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
-    auto err = CheckCurrentNodeState({NodeStateObsoleteEnum::eProvisioned});
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eOnline}}, true);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't pause node: wrong node state";
 
@@ -398,7 +398,7 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateObsoleteEnum::ePaused);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::ePaused, true);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -410,16 +410,16 @@ bool IAMClient::ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request)
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& request)
+bool IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request)
 {
     LOG_DBG() << "Process resume node request";
 
     (void)request;
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
-    auto err = CheckCurrentNodeState({NodeStateObsoleteEnum::ePaused});
+    auto err = CheckCurrentNodeState({{NodeStateEnum::ePaused}}, true);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't resume node: wrong node state";
 
@@ -428,7 +428,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateObsoleteEnum::eProvisioned);
+    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOnline, true);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -440,7 +440,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& reques
     return SendNodeInfo() && mStream->Write(outgoingMsg);
 }
 
-bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
+bool IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
 {
     const String         nodeID   = request.node_id().c_str();
     const String         certType = request.type().c_str();
@@ -458,12 +458,16 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
     Error err = ErrorEnum::eNone;
 
     if (subject.IsEmpty() && mIdentProvider) {
-        Tie(subject, err) = mIdentProvider->GetSystemID();
+        auto systemInfo = std::make_unique<SystemInfo>();
+
+        err = mIdentProvider->GetSystemInfo(*systemInfo);
         if (!err.IsNone()) {
             LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
 
             return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(err));
         }
+
+        subject = systemInfo->mSystemID;
     }
 
     auto csr = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
@@ -473,7 +477,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request)
     return SendCreateKeyResponse(nodeID, certType, *csr, err);
 }
 
-bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
+bool IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
 {
     const String nodeID   = request.node_id().c_str();
     const String certType = request.type().c_str();
@@ -487,7 +491,7 @@ bool IAMClient::ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request)
     return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
 
-bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request)
+bool IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)
 {
     const String nodeID = request.node_id().c_str();
 
@@ -501,24 +505,33 @@ bool IAMClient::ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& re
     return SendGetCertTypesResponse(certTypes, err);
 }
 
-Error IAMClient::CheckCurrentNodeState(const std::initializer_list<NodeStateObsolete>& allowedStates)
+Error IAMClient::CheckCurrentNodeState(
+    const std::optional<std::initializer_list<NodeState>>& allowedStates, std::optional<bool> provisioned)
 {
-    auto nodeInfo = std::make_unique<NodeInfoObsolete>();
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
     auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    const bool isAllowed = std::any_of(allowedStates.begin(), allowedStates.end(),
-        [currentState = nodeInfo->mState](const NodeStateObsolete state) { return currentState == state; });
+    if (provisioned.has_value() && nodeInfo->mProvisioned != provisioned.value()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+    }
+
+    if (!allowedStates) {
+        return ErrorEnum::eNone;
+    }
+
+    const bool isAllowed = std::any_of(allowedStates->begin(), allowedStates->end(),
+        [currentState = nodeInfo->mState](const NodeState state) { return currentState == state; });
 
     return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }
 
 bool IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
 {
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
 
     response.set_node_id(nodeID.CStr());
@@ -533,7 +546,7 @@ bool IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, 
 bool IAMClient::SendApplyCertResponse(
     const String& nodeID, const String& type, const String& certURL, const Array<uint8_t>& serial, const Error& error)
 {
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_apply_cert_response();
 
     std::string protoSerial;
@@ -548,9 +561,10 @@ bool IAMClient::SendApplyCertResponse(
     }
 
     response.set_node_id(nodeID.CStr());
-    response.set_type(type.CStr());
-    response.set_cert_url(certURL.CStr());
-    response.set_serial(protoSerial);
+
+    response.mutable_cert_info()->set_type(type.CStr());
+    response.mutable_cert_info()->set_cert_url(certURL.CStr());
+    response.mutable_cert_info()->set_serial(protoSerial);
 
     common::pbconvert::SetErrorInfo(error, response);
 
@@ -561,7 +575,7 @@ bool IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& type
 {
     (void)error;
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_cert_types_response();
 
     for (const auto& type : types) {
