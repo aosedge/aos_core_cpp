@@ -23,11 +23,10 @@ namespace aos::iam::iamserver {
  * Public
  **********************************************************************************************************************/
 
-NodeStreamHandler::Ptr NodeStreamHandler::Create(const std::vector<NodeStateObsolete>& allowedStates,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
-    StreamRegistryItf* streamRegistry)
+NodeStreamHandler::Ptr NodeStreamHandler::Create(bool provisioned, NodeServerReaderWriter* stream,
+    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
 {
-    return NodeStreamHandler::Ptr(new NodeStreamHandler(allowedStates, stream, context, nodeManager, streamRegistry));
+    return NodeStreamHandler::Ptr(new NodeStreamHandler(provisioned, stream, context, nodeManager, streamRegistry));
 }
 
 NodeStreamHandler::~NodeStreamHandler()
@@ -273,10 +272,9 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
  * Private
  **********************************************************************************************************************/
 
-NodeStreamHandler::NodeStreamHandler(const std::vector<NodeStateObsolete>& allowedStates,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
-    StreamRegistryItf* streamRegistry)
-    : mAllowedStates(allowedStates)
+NodeStreamHandler::NodeStreamHandler(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
+    iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
+    : mProvisioned(provisioned)
     , mStream(stream)
     , mContext(context)
     , mNodeManager(nodeManager)
@@ -319,17 +317,18 @@ Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& reques
 
 Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
-    LOG_DBG() << "Received node info: nodeID=" << info.node_id().c_str() << ", state=" << info.status().c_str();
+    LOG_DBG() << "Received node info" << Log::Field("nodeID", info.node_id().c_str())
+              << Log::Field("state", info.state().c_str()) << Log::Field("provisioned", info.provisioned());
 
-    auto nodeInfo = std::make_unique<NodeInfoObsolete>();
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
     if (auto err = common::pbconvert::ConvertToAos(info, *nodeInfo); !err.IsNone()) {
         return err;
     }
 
-    if (std::find(mAllowedStates.cbegin(), mAllowedStates.cend(), nodeInfo->mState) == mAllowedStates.cend()) {
-        LOG_WRN() << "Node state is not in allowed list: nodeID=" << nodeInfo->mNodeID
-                  << ", state=" << nodeInfo->mState;
+    if (info.provisioned() != mProvisioned) {
+        LOG_WRN() << "Node is not allowed" << Log::Field("nodeID", info.node_id().c_str())
+                  << Log::Field("state", info.state().c_str()) << Log::Field("provisioned", info.provisioned());
 
         mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
 
@@ -382,8 +381,8 @@ void NodeController::Close()
     mHandlers.clear();
 }
 
-grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<NodeStateObsolete>& allowedStates,
-    NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager)
+grpc::Status NodeController::HandleRegisterNodeStream(bool provisioned, NodeServerReaderWriter* stream,
+    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager)
 {
     {
         std::lock_guard lock {mMutex};
@@ -396,7 +395,7 @@ grpc::Status NodeController::HandleRegisterNodeStream(const std::vector<NodeStat
     }
 
     auto handler = NodeStreamHandler::Create(
-        allowedStates, stream, context, nodeManager, static_cast<NodeStreamHandler::StreamRegistryItf*>(this));
+        provisioned, stream, context, nodeManager, static_cast<NodeStreamHandler::StreamRegistryItf*>(this));
 
     Store(handler);
 

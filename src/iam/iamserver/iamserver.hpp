@@ -23,7 +23,7 @@
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
@@ -118,7 +118,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfoObsolete& info) override;
+    void OnNodeInfoChange(const NodeInfo& info) override;
 
     /**
      * Node info removed notification.
@@ -129,7 +129,7 @@ public:
 
 private:
     // identhandler::SubjectsObserverItf interface
-    Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
+    void SubjectsChanged(const Array<StaticString<cIDLen>>& subjects) override;
 
     // certhandler::CertReceiverItf interface
     void OnCertChanged(const CertInfo& info) override;
