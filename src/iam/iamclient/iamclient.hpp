@@ -23,13 +23,13 @@
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
 namespace aos::iam::iamclient {
 
-using PublicNodeService        = iamanager::v5::IAMPublicNodesService;
+using PublicNodeService        = iamanager::v6::IAMPublicNodesService;
 using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterface>;
 
 /**
@@ -73,7 +73,7 @@ private:
     void OnCertChanged(const CertInfo& info) override;
 
     using StreamPtr = std::unique_ptr<
-        grpc::ClientReaderWriterInterface<iamanager::v5::IAMOutgoingMessages, iamanager::v5::IAMIncomingMessages>>;
+        grpc::ClientReaderWriterInterface<iamanager::v6::IAMOutgoingMessages, iamanager::v6::IAMIncomingMessages>>;
 
     std::unique_ptr<grpc::ClientContext> CreateClientContext();
     PublicNodeServiceStubPtr             CreateStub(
@@ -85,16 +85,17 @@ private:
     void HandleIncomingMessages() noexcept;
 
     bool SendNodeInfo();
-    bool ProcessStartProvisioning(const iamanager::v5::StartProvisioningRequest& request);
-    bool ProcessFinishProvisioning(const iamanager::v5::FinishProvisioningRequest& request);
-    bool ProcessDeprovision(const iamanager::v5::DeprovisionRequest& request);
-    bool ProcessPauseNode(const iamanager::v5::PauseNodeRequest& request);
-    bool ProcessResumeNode(const iamanager::v5::ResumeNodeRequest& request);
-    bool ProcessCreateKey(const iamanager::v5::CreateKeyRequest& request);
-    bool ProcessApplyCert(const iamanager::v5::ApplyCertRequest& request);
-    bool ProcessGetCertTypes(const iamanager::v5::GetCertTypesRequest& request);
+    bool ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
+    bool ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);
+    bool ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request);
+    bool ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request);
+    bool ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request);
+    bool ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request);
+    bool ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
+    bool ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
 
-    Error CheckCurrentNodeState(const std::initializer_list<NodeStateObsolete>& allowedStates);
+    Error CheckCurrentNodeState(
+        const std::optional<std::initializer_list<NodeState>>& allowedStates, std::optional<bool> provisioned);
 
     bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
