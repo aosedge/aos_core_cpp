@@ -46,19 +46,19 @@ jobs:
 
       - name: Build (Release)
         run: |
-          ./build.sh build --aos-service cm --build-type Release
+          ./build.sh build --aos-service cm --aos-service iam --build-type Release
 
       - name: Build (Debug)
         run: |
-          ./build.sh build --aos-service cm --ci --clean
+          ./build.sh build --aos-service cm --aos-service iam --ci --clean
 
       - name: Test
         run: |
-          ./build.sh coverage --aos-service cm
+          ./build.sh coverage --aos-service cm --aos-service iam
 
       - name: Static analysis
         run: |
-          ./build.sh lint --aos-service cm
+          ./build.sh lint --aos-service cm --aos-service iam
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4
