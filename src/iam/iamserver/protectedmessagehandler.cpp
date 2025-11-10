@@ -86,8 +86,7 @@ grpc::Status ProtectedMessageHandler::RegisterNode(grpc::ServerContext*         
 {
     LOG_DBG() << "Process register node: handler=protected";
 
-    return GetNodeController()->HandleRegisterNodeStream(
-        {cAllowedStates.cbegin(), cAllowedStates.cend()}, stream, context, GetNodeManager());
+    return GetNodeController()->HandleRegisterNodeStream(cProvisioned, stream, context, GetNodeManager());
 }
 
 /***********************************************************************************************************************
@@ -115,7 +114,7 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::ePaused); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::ePaused, true); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -145,7 +144,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eProvisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOnline, true); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -249,7 +248,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eProvisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOnline, true); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -287,7 +286,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateObsoleteEnum::eUnprovisioned); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOffline, false); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -308,9 +307,9 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", type=" << certType;
 
-    StaticString<cIDLen> subject = request->subject().c_str();
+    auto subject = request->subject();
 
-    if (subject.IsEmpty() && !GetIdentProvider()) {
+    if (subject.empty() && !GetIdentProvider()) {
         Error err(ErrorEnum::eNotFound, "Subject can't be empty");
 
         LOG_ERR() << "Create key failed: error=" << err;
@@ -320,17 +319,18 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
         return grpc::Status::OK;
     }
 
-    Error err = ErrorEnum::eNone;
+    if (subject.empty() && GetIdentProvider()) {
+        auto systemInfo = std::make_unique<SystemInfo>();
 
-    if (subject.IsEmpty() && GetIdentProvider()) {
-        Tie(subject, err) = GetIdentProvider()->GetSystemID();
-        if (!err.IsNone()) {
-            LOG_ERR() << "Get system ID failed: error=" << err;
+        if (auto err = GetIdentProvider()->GetSystemInfo(*systemInfo); !err.IsNone()) {
+            LOG_ERR() << "Get systemInfo failed" << Log::Field(err);
 
             common::pbconvert::SetErrorInfo(err, *response);
 
             return grpc::Status::OK;
         }
+
+        subject = systemInfo->mSystemID.CStr();
     }
 
     if (!ProcessOnThisNode(nodeID)) {
@@ -342,7 +342,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
             iamproto::CreateKeyRequest keyRequest = *request;
 
-            keyRequest.set_subject(subject.CStr());
+            keyRequest.set_subject(subject);
 
             return handler->CreateKey(&keyRequest, response, cDefaultTimeout);
         });
@@ -351,7 +351,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     const auto password = String(request->password().c_str());
     auto       csr      = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    if (err = mProvisionManager->CreateKey(certType, subject, password, *csr); !err.IsNone()) {
+    if (auto err = mProvisionManager->CreateKey(certType, subject.c_str(), password, *csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -375,7 +375,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ",type=" << certType;
 
     response->set_node_id(nodeID);
-    response->set_type(certType.CStr());
+    response->mutable_cert_info()->set_type(certType.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -412,8 +412,8 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
         return grpc::Status::OK;
     }
 
-    response->set_cert_url(certInfo.mCertURL.CStr());
-    response->set_serial(serial);
+    response->mutable_cert_info()->set_cert_url(certInfo.mCertURL.CStr());
+    response->mutable_cert_info()->set_serial(serial);
 
     return grpc::Status::OK;
 }
