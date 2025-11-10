@@ -97,7 +97,7 @@ public:
      * @param info node info.
      * @return Error.
      */
-    Error SetNodeInfo(const NodeInfoObsolete& info) override;
+    Error SetNodeInfo(const NodeInfo& info) override;
 
     /**
      * Returns node info.
@@ -106,7 +106,7 @@ public:
      * @param[out] nodeInfo result node identifier.
      * @return Error.
      */
-    Error GetNodeInfo(const String& nodeID, NodeInfoObsolete& nodeInfo) const override;
+    Error GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) const override;
 
     /**
      * Returns ids for all the node in the manager.
@@ -145,18 +145,6 @@ private:
     void CreateTables();
     void FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result);
     void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
-
-    static Poco::JSON::Object ConvertNodeInfoToJSON(const NodeInfoObsolete& nodeInfo);
-    static Error              ConvertNodeInfoFromJSON(const Poco::JSON::Object& src, NodeInfoObsolete& dst);
-
-    static Poco::JSON::Array ConvertCpuInfoToJSON(const Array<CPUInfo>& cpuInfo);
-    static Error             ConvertCpuInfoFromJSON(const Poco::JSON::Array& src, Array<CPUInfo>& dst);
-
-    static Poco::JSON::Array ConvertPartitionInfoToJSON(const Array<PartitionInfoObsolete>& partitionInfo);
-    static Error ConvertPartitionInfoFromJSON(const Poco::JSON::Array& src, Array<PartitionInfoObsolete>& dst);
-
-    static Poco::JSON::Array ConvertAttributesToJSON(const Array<NodeAttribute>& attributes);
-    static Error             ConvertAttributesFromJSON(const Poco::JSON::Array& src, Array<NodeAttribute>& dst);
 
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;

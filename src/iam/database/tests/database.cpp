@@ -40,15 +40,14 @@ CPUInfo CreateCPUInfo()
     return cpuInfo;
 }
 
-PartitionInfoObsolete CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
+PartitionInfo CreatePartitionInfo(const char* name, const std::initializer_list<const char*> types)
 {
-    PartitionInfoObsolete partitionInfo;
+    PartitionInfo partitionInfo;
 
     partitionInfo.mName = name;
     FillArray(types, partitionInfo.mTypes);
     partitionInfo.mTotalSize = 16169908;
     partitionInfo.mPath      = "/sys/kernel/tracing";
-    partitionInfo.mUsedSize  = 64156;
 
     return partitionInfo;
 }
@@ -63,15 +62,16 @@ NodeAttribute CreateAttribute(const char* name, const char* value)
     return attribute;
 }
 
-NodeInfoObsolete DefaultNodeInfo(const char* id = "node0")
+NodeInfo DefaultNodeInfo(const char* id = "node0")
 {
-    NodeInfoObsolete nodeInfo;
+    NodeInfo nodeInfo;
 
-    nodeInfo.mNodeID   = id;
-    nodeInfo.mNodeType = "main";
-    nodeInfo.mName     = "node0";
-    nodeInfo.mState    = NodeStateObsoleteEnum::eProvisioned;
-    nodeInfo.mOSType   = "linux";
+    nodeInfo.mNodeID      = id;
+    nodeInfo.mNodeType    = "main";
+    nodeInfo.mTitle       = "node0";
+    nodeInfo.mState       = NodeStateEnum::eOnline;
+    nodeInfo.mProvisioned = true;
+    nodeInfo.mOSInfo.mOS  = "linux";
     FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
     FillArray({CreatePartitionInfo("trace", {"tracefs"}), CreatePartitionInfo("tmp", {})}, nodeInfo.mPartitions);
     FillArray({CreateAttribute("attr1", "val1"), CreateAttribute("attr2", "val2")}, nodeInfo.mAttrs);
@@ -341,7 +341,7 @@ TEST_F(DatabaseTest, GetNodeInfo)
 
     ASSERT_TRUE(mDB.SetNodeInfo(nodeInfo).IsNone());
 
-    NodeInfoObsolete resultNodeInfo;
+    NodeInfo resultNodeInfo;
     ASSERT_TRUE(mDB.GetNodeInfo(nodeInfo.mNodeID, resultNodeInfo).IsNone());
     ASSERT_EQ(resultNodeInfo, nodeInfo);
 }
