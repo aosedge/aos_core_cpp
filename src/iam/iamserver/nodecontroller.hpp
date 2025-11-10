@@ -17,11 +17,11 @@
 #include <core/common/types/obsolete.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 namespace aos::iam::iamserver {
 
-namespace iamproto = iamanager::v5;
+namespace iamproto = iamanager::v6;
 
 using NodeServerReaderWriter = grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>;
 
@@ -63,15 +63,14 @@ public:
     /**
      * Creates instance.
      *
-     * @param allowedStates allowed node states.
+     * @param provisioned whether the node is provisioned.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
      * @param streamRegistry stream registry.
      */
-    static NodeStreamHandler::Ptr Create(const std::vector<NodeStateObsolete>& allowedStates,
-        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager,
-        StreamRegistryItf* streamRegistry);
+    static NodeStreamHandler::Ptr Create(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     /**
      * Destructor.
@@ -173,20 +172,20 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
-    NodeStreamHandler(const std::vector<NodeStateObsolete>& allowedStates, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
+    NodeStreamHandler(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
 
     Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
     Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
-    std::vector<NodeStateObsolete>    mAllowedStates;
-    NodeServerReaderWriter*           mStream         = nullptr;
-    grpc::ServerContext*              mContext        = nullptr;
-    iam::nodemanager::NodeManagerItf* mNodeManager    = nullptr;
-    StreamRegistryItf*                mStreamRegistry = nullptr;
+    bool                              mProvisioned {};
+    NodeServerReaderWriter*           mStream {};
+    grpc::ServerContext*              mContext {};
+    iam::nodemanager::NodeManagerItf* mNodeManager {};
+    StreamRegistryItf*                mStreamRegistry {};
     std::mutex                        mMutex;
-    std::atomic_bool                  mIsClosed = false;
+    std::atomic_bool                  mIsClosed {};
     PendingMessagesMap                mPendingMessages;
 };
 
@@ -214,14 +213,14 @@ public:
      * Handles register node input/output streams.
      * This method is blocking and should be called in a separate thread.
      *
-     * @param allowedStates allowed node states.
+     * @param provisioned whether the node is provisioned.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
      * @return grpc::Status.
      */
-    grpc::Status HandleRegisterNodeStream(const std::vector<NodeStateObsolete>& allowedStates,
-        NodeServerReaderWriter* stream, grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
+    grpc::Status HandleRegisterNodeStream(bool provisioned, NodeServerReaderWriter* stream,
+        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
 
     /**
      * Gets node stream handler by node id.
@@ -237,7 +236,7 @@ private:
     void Store(NodeStreamHandler::Ptr handler);
     void Remove(NodeStreamHandler::Ptr handler);
 
-    bool                                          mIsClosed = false;
+    bool                                          mIsClosed {};
     std::mutex                                    mMutex;
     std::map<NodeStreamHandler::Ptr, std::string> mHandlers;
 };

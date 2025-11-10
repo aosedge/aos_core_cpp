@@ -8,7 +8,7 @@
 #ifndef AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 #define AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 namespace aos::iam::iamserver {
 
@@ -111,7 +111,7 @@ private:
 /**
  * Sends certificate updates to GRPC streams.
  */
-class CertWriter : public StreamWriter<iamanager::v5::CertInfo>, public aos::iamclient::CertListenerItf {
+class CertWriter : public StreamWriter<iamanager::v6::CertInfo>, public aos::iamclient::CertListenerItf {
 public:
     /**
      * CertWriter constructor.
@@ -126,7 +126,7 @@ public:
 private:
     void OnCertChanged(const CertInfo& info) override
     {
-        iamanager::v5::CertInfo grpcCertInfo;
+        iamanager::v6::CertInfo grpcCertInfo;
 
         grpcCertInfo.set_type(mCertType);
         grpcCertInfo.set_key_url(info.mKeyURL.CStr());

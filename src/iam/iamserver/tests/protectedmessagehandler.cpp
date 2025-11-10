@@ -95,7 +95,7 @@ void ProtectedMessageHandlerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfoObsolete& nodeInfo) {
+    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
@@ -138,12 +138,14 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
-        EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::ePaused);
+    EXPECT_CALL(mNodeManager, SetNodeState)
+        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
+            EXPECT_EQ(nodeID, "node0");
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
+            EXPECT_TRUE(provisioned);
 
-        return ErrorEnum::eNone;
-    }));
+            return ErrorEnum::eNone;
+        }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
 
@@ -165,12 +167,14 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
-        EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::ePaused);
+    EXPECT_CALL(mNodeManager, SetNodeState)
+        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
+            EXPECT_EQ(nodeID, "node0");
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
+            EXPECT_TRUE(provisioned);
 
-        return ErrorEnum::eFailed;
-    }));
+            return ErrorEnum::eFailed;
+        }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
 
@@ -192,12 +196,14 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
-        EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::eProvisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState)
+        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
+            EXPECT_EQ(nodeID, "node0");
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::eOnline);
+            EXPECT_TRUE(provisioned);
 
-        return ErrorEnum::eNone;
-    }));
+            return ErrorEnum::eNone;
+        }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
 
@@ -219,12 +225,14 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeStateObsolete state) {
-        EXPECT_EQ(nodeID, "node0");
-        EXPECT_EQ(state.GetValue(), NodeStateObsoleteEnum::eProvisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState)
+        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
+            EXPECT_EQ(nodeID, "node0");
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::eOnline);
+            EXPECT_TRUE(provisioned);
 
-        return ErrorEnum::eFailed;
-    }));
+            return ErrorEnum::eFailed;
+        }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
 
@@ -434,8 +442,12 @@ TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
 
     request.set_node_id("node0");
 
+    auto systemInfo        = std::make_unique<SystemInfo>();
+    systemInfo->mSystemID  = cSystemID;
+    systemInfo->mUnitModel = cUnitModel;
+
     EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIdentProvider, GetSystemID).WillOnce(Return(RetWithError<StaticString<cIDLen>>(cSystemID)));
+    EXPECT_CALL(mIdentProvider, GetSystemInfo).WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eNone)));
 
     auto status = clientStub->CreateKey(&context, request, &response);
 
@@ -466,7 +478,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertSucceeds)
                              << ", message = " << status.error_message();
 
     EXPECT_EQ(response.node_id(), "node0");
-    EXPECT_EQ(response.type(), "cert-type");
+    EXPECT_EQ(response.cert_info().type(), "cert-type");
 
     EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
@@ -492,7 +504,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertFails)
                              << ", message = " << status.error_message();
 
     EXPECT_EQ(response.node_id(), "node0");
-    EXPECT_EQ(response.type(), "cert-type");
+    EXPECT_EQ(response.cert_info().type(), "cert-type");
 
     EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());
@@ -511,7 +523,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceSucceeds)
     iamproto::RegisterInstanceRequest  request;
     iamproto::RegisterInstanceResponse response;
 
-    request.mutable_instance()->set_service_id("service-id-1");
+    request.mutable_instance()->set_item_id("item-id-1");
     request.mutable_instance()->set_subject_id("subject-id-1");
     request.mutable_permissions()->operator[]("permission-1").mutable_permissions()->insert({"key", "value"});
 
@@ -534,7 +546,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceFailsNoMemory)
     iamproto::RegisterInstanceRequest  request;
     iamproto::RegisterInstanceResponse response;
 
-    request.mutable_instance()->set_service_id("service-id-1");
+    request.mutable_instance()->set_item_id("item-id-1");
     request.mutable_instance()->set_subject_id("subject-id-1");
 
     // fill permissions with more items than allowed

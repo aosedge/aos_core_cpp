@@ -106,7 +106,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     mCertHandler      = &certHandler;
 
     Error err;
-    auto  nodeInfo = std::make_unique<NodeInfoObsolete>();
+    auto  nodeInfo = std::make_unique<NodeInfo>();
 
     if (err = nodeInfoProvider.GetNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -254,7 +254,7 @@ Error IAMServer::OnEncryptDisk(const String& password)
     return ExecCommand("Encrypt disk", mConfig.mDiskEncryptionCmdArgs);
 }
 
-void IAMServer::OnNodeInfoChange(const NodeInfoObsolete& info)
+void IAMServer::OnNodeInfoChange(const NodeInfo& info)
 {
     LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", state=" << info.mState;
 
@@ -274,18 +274,10 @@ void IAMServer::OnNodeRemoved(const String& id)
  * Private
  **********************************************************************************************************************/
 
-Error IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& messages)
+void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
 {
-    auto err = mPublicMessageHandler.SubjectsChanged(messages);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (err = mProtectedMessageHandler.SubjectsChanged(messages); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
+    mPublicMessageHandler.SubjectsChanged(subjects);
+    mProtectedMessageHandler.SubjectsChanged(subjects);
 }
 
 void IAMServer::OnCertChanged(const CertInfo& info)

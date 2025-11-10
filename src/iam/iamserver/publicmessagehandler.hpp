@@ -17,12 +17,14 @@
 
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
+#include <core/common/iamclient/itf/nodeinfoprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 
 #include <common/pbconvert/common.hpp>
+#include <common/pbconvert/iam.hpp>
 #include <iamanager/version.grpc.pb.h>
 
 #include "nodecontroller.hpp"
@@ -36,7 +38,8 @@ namespace aos::iam::iamserver {
 class PublicMessageHandler :
     // public services
     protected iamanager::IAMVersionService::Service,
-    protected iamproto::IAMPublicService::Service,
+    protected iamproto::IAMPublicCurrentNodeService::Service,
+    protected iamproto::IAMPublicCertService::Service,
     protected iamproto::IAMPublicIdentityService::Service,
     protected iamproto::IAMPublicPermissionsService::Service,
     protected iamproto::IAMPublicNodesService::Service,
@@ -71,7 +74,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfoObsolete& info) override;
+    void OnNodeInfoChange(const NodeInfo& info) override;
 
     /**
      * Node info removed notification.
@@ -81,12 +84,12 @@ public:
     void OnNodeRemoved(const String& id) override;
 
     /**
-     * Subjects observer interface implementation.
+     * Notifies about subjects change.
      *
-     * @param[in] messages subject changed messages.
+     * @param subjects subject changed messages.
      * @returns Error.
      */
-    Error SubjectsChanged(const Array<StaticString<cIDLen>>& messages) override;
+    void SubjectsChanged(const Array<StaticString<cIDLen>>& subjects) override;
 
     /**
      * Start public message handler.
@@ -103,10 +106,10 @@ protected:
     iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
     iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
     NodeController*                             GetNodeController() { return mNodeController; }
-    NodeInfoObsolete&                           GetNodeInfo() { return mNodeInfo; }
+    NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
-    Error                                       SetNodeState(const std::string& nodeID, const NodeStateObsolete& state);
-    bool                                        ProcessOnThisNode(const std::string& nodeID);
+    Error SetNodeState(const std::string& nodeID, const NodeState& state, bool provisioned);
+    bool  ProcessOnThisNode(const std::string& nodeID);
 
     template <typename R>
     grpc::Status RequestWithRetry(R request)
@@ -131,23 +134,27 @@ protected:
     }
 
 private:
-    static constexpr auto       cIamAPIVersion       = 5;
-    static constexpr std::array cAllowedStates       = {NodeStateObsoleteEnum::eUnprovisioned};
-    static constexpr auto       cRequestRetryTimeout = std::chrono::seconds(10);
-    static constexpr auto       cRequestRetryMaxTry  = 3;
+    static constexpr auto cIamAPIVersion       = 6;
+    static constexpr auto cProvisioned         = false;
+    static constexpr auto cRequestRetryTimeout = std::chrono::seconds(10);
+    static constexpr auto cRequestRetryMaxTry  = 3;
 
     // IAMVersionService interface
     grpc::Status GetAPIVersion(
         grpc::ServerContext* context, const google::protobuf::Empty* request, iamanager::APIVersion* response) override;
 
-    // IAMPublicService interface
-    grpc::Status GetNodeInfo(
-        grpc::ServerContext* context, const google::protobuf::Empty* request, iamproto::NodeInfo* response) override;
-    grpc::Status GetCert(
-        grpc::ServerContext* context, const iamproto::GetCertRequest* request, iamproto::CertInfo* response) override;
-    grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
-        const iamanager::v5::SubscribeCertChangedRequest*  request,
-        grpc::ServerWriter<iamanager::v5::CertInfo>*       writer) override;
+    // IAMPublicCurrentNodeService interface
+    ::grpc::Status GetCurrentNodeInfo(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::iamanager::v6::NodeInfo* response) override;
+    ::grpc::Status SubscribeCurrentNodeChanged(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer) override;
+
+    // IAMPublicCertService interface
+    ::grpc::Status GetCert(::grpc::ServerContext* context, const ::iamanager::v6::GetCertRequest* request,
+        ::iamanager::v6::CertInfo* response) override;
+    ::grpc::Status SubscribeCertChanged(::grpc::ServerContext* context,
+        const ::iamanager::v6::SubscribeCertChangedRequest*    request,
+        ::grpc::ServerWriter<::iamanager::v6::CertInfo>*       writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(
@@ -177,9 +184,10 @@ private:
     iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
     aos::iamclient::CertProviderItf*            mCertProvider     = nullptr;
     NodeController*                             mNodeController   = nullptr;
+    StreamWriter<iamproto::NodeInfo>            mCurrentNodeChangedController;
     StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
     StreamWriter<iamproto::Subjects>            mSubjectsChangedController;
-    NodeInfoObsolete                            mNodeInfo;
+    NodeInfo                                    mNodeInfo;
 
     std::vector<std::shared_ptr<CertWriter>> mCertWriters;
     std::mutex                               mCertWritersLock;

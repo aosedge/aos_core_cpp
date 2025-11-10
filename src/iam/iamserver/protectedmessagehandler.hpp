@@ -20,7 +20,7 @@
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v5/iamanager.grpc.pb.h>
+#include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
@@ -78,9 +78,9 @@ public:
     void Close();
 
 private:
-    static constexpr auto       cDefaultTimeout      = std::chrono::minutes(1);
-    static constexpr auto       cProvisioningTimeout = std::chrono::minutes(5);
-    static constexpr std::array cAllowedStates = {NodeStateObsoleteEnum::eProvisioned, NodeStateObsoleteEnum::ePaused};
+    static constexpr auto cDefaultTimeout      = std::chrono::minutes(1);
+    static constexpr auto cProvisioningTimeout = std::chrono::minutes(5);
+    static constexpr auto cProvisioned         = true;
 
     // IAMPublicNodesService interface
     grpc::Status RegisterNode(grpc::ServerContext*                                              context,
