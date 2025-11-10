@@ -20,8 +20,7 @@
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 #include <iam/config/config.hpp>
-#include <iam/identhandler/fileidentifier/fileidentifier.hpp>
-#include <iam/identhandler/visidentifier/visidentifier.hpp>
+#include <iam/identhandler/identhandler.hpp>
 
 #include "app.hpp"
 
@@ -448,25 +447,11 @@ Error App::InitCertModules(const config::Config& config)
 
 Error App::InitIdentifierModule(const config::IdentifierConfig& config)
 {
-    if (config.mPlugin == "fileidentifier") {
-        auto fileIdentifier = std::make_unique<fileidentifier::FileIdentifier>();
+    mIdentifier = identhandler::InitializeIdentModule(config, mCryptoProvider);
 
-        if (auto err = fileIdentifier->Init(config); !err.IsNone()) {
-            return err;
-        }
-
-        mIdentifier = std::move(fileIdentifier);
-    } else if (config.mPlugin == "visidentifier") {
-        auto visIdentifier = std::make_unique<visidentifier::VISIdentifier>();
-
-        if (auto err = visIdentifier->Init(config, mCryptoProvider); !err.IsNone()) {
-            return err;
-        }
-
-        mIdentifier = std::move(visIdentifier);
+    if (mIdentifier) {
+        mIdentifier->SubscribeListener(mIAMServer);
     }
-
-    mIdentifier->SubscribeListener(mIAMServer);
 
     return ErrorEnum::eNone;
 }

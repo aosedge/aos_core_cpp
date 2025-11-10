@@ -21,8 +21,8 @@ set(LIBRARIES
     aos::iam::database
     aos::iam::iamclient
     aos::iam::iamserver
+    aos::iam::identhandler
     aos::iam::nodeinfoprovider
-    aos::iam::visidentifier
     aos::common::version
     aos::core::common::version
 )
