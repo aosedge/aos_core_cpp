@@ -75,7 +75,7 @@ void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::E
     }
 }
 
-std::string SerializeDNSServers(const Array<StaticString<cHostNameLen>>& dnsServers)
+std::string SerializeDNSServers(const Array<StaticString<cIPLen>>& dnsServers)
 {
     Poco::JSON::Array dnsJSON;
 
@@ -86,7 +86,7 @@ std::string SerializeDNSServers(const Array<StaticString<cHostNameLen>>& dnsServ
     return common::utils::Stringify(dnsJSON);
 }
 
-void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cHostNameLen>>& dnsServers)
+void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cIPLen>>& dnsServers)
 {
     Poco::JSON::Parser parser;
 

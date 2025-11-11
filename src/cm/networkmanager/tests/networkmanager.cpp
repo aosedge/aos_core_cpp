@@ -260,8 +260,8 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NewInstance_Succes
     String nodeID    = "node1";
 
     cm::networkmanager::NetworkServiceData instanceData;
-    NetworkParameters                      result1;
-    NetworkParameters                      result2;
+    InstanceNetworkParameters              result1;
+    InstanceNetworkParameters              result2;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
         Network network;
@@ -295,7 +295,6 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NewInstance_Succes
     EXPECT_TRUE(err.IsNone());
     EXPECT_EQ(result1.mNetworkID, "network1");
     EXPECT_EQ(result1.mSubnet, "172.17.0.0/16");
-    EXPECT_EQ(result1.mVlanID, 1000);
     EXPECT_EQ(result1.mDNSServers.Size(), 1);
     EXPECT_EQ(result1.mDNSServers[0], "8.8.8.8");
     EXPECT_FALSE(result1.mIP.IsEmpty());
@@ -311,7 +310,6 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NewInstance_Succes
 
     EXPECT_NE(result1.mIP, result2.mIP);
     EXPECT_EQ(result1.mSubnet, result2.mSubnet);
-    EXPECT_EQ(result1.mVlanID, result2.mVlanID);
     EXPECT_EQ(result1.mNetworkID, result2.mNetworkID);
     EXPECT_EQ(result2.mDNSServers.Size(), 1);
     EXPECT_EQ(result2.mDNSServers[0], "1.1.1.1");
@@ -328,7 +326,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_ExistingInstance_S
     String nodeID    = "node1";
 
     cm::networkmanager::NetworkServiceData instanceData;
-    NetworkParameters                      result;
+    InstanceNetworkParameters              result;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
         Network network;
@@ -367,7 +365,6 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_ExistingInstance_S
     EXPECT_TRUE(err.IsNone());
     EXPECT_EQ(result.mNetworkID, "network1");
     EXPECT_EQ(result.mSubnet, "172.17.0.0/16");
-    EXPECT_EQ(result.mVlanID, 1000);
     EXPECT_EQ(result.mIP, "172.17.0.10");
 }
 
@@ -382,7 +379,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NetworkNotFound_Er
     String nodeID    = "node1";
 
     cm::networkmanager::NetworkServiceData instanceData;
-    NetworkParameters                      result;
+    InstanceNetworkParameters              result;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mStorage, GetHosts(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
@@ -406,7 +403,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NodeNotFound_Error
     String nodeID    = "node_nonexistent";
 
     cm::networkmanager::NetworkServiceData instanceData;
-    NetworkParameters                      result;
+    InstanceNetworkParameters              result;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
         Network network;
@@ -483,7 +480,7 @@ TEST_F(CMNetworkManagerTest, RemoveInstanceNetworkParameters_Success)
 
     EXPECT_CALL(*mStorage, AddInstance(_)).WillOnce(Return(ErrorEnum::eNone));
 
-    NetworkParameters                      result;
+    InstanceNetworkParameters              result;
     cm::networkmanager::NetworkServiceData instanceData;
 
     EXPECT_CALL(*mDNSServer, GetIP()).WillOnce(Return("8.8.8.8"));
@@ -492,7 +489,6 @@ TEST_F(CMNetworkManagerTest, RemoveInstanceNetworkParameters_Success)
     EXPECT_TRUE(err.IsNone());
 
     EXPECT_EQ(result.mSubnet, "172.17.0.0/16");
-    EXPECT_EQ(result.mVlanID, 1000);
     EXPECT_EQ(result.mNetworkID, "network1");
     EXPECT_FALSE(result.mIP.IsEmpty());
     EXPECT_EQ(result.mDNSServers.Size(), 1);
@@ -596,7 +592,7 @@ TEST_F(CMNetworkManagerTest, RestartDNSServer_Success)
     cm::networkmanager::NetworkServiceData instanceData2;
     instanceData2.mHosts.PushBack("custom2.example.com");
 
-    NetworkParameters result1, result2;
+    InstanceNetworkParameters result1, result2;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
         Network network;
@@ -686,7 +682,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
     instanceData2.mAllowedConnections.PushBack("service1/8080/tcp");
     instanceData2.mAllowedConnections.PushBack("service1/9090/udp");
 
-    NetworkParameters result1, result2;
+    InstanceNetworkParameters result1, result2;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
         Network network1;
@@ -730,7 +726,6 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
 
     EXPECT_EQ(result1.mNetworkID, "network1");
     EXPECT_EQ(result1.mSubnet, "172.17.0.0/16");
-    EXPECT_EQ(result1.mVlanID, 1000);
     EXPECT_EQ(result1.mDNSServers.Size(), 1);
     EXPECT_EQ(result1.mDNSServers[0], "8.8.8.8");
     EXPECT_FALSE(result1.mIP.IsEmpty());
@@ -742,7 +737,6 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
 
     EXPECT_EQ(result2.mNetworkID, "network2");
     EXPECT_EQ(result2.mSubnet, "172.18.0.0/16");
-    EXPECT_EQ(result2.mVlanID, 2000);
     EXPECT_EQ(result2.mDNSServers.Size(), 1);
     EXPECT_EQ(result2.mDNSServers[0], "1.1.1.1");
     EXPECT_FALSE(result2.mIP.IsEmpty());
