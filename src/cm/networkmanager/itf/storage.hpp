@@ -44,12 +44,12 @@ struct ExposedPort {
  * Instance.
  */
 struct Instance {
-    StaticString<cIDLen>                                       mNetworkID;
-    StaticString<cIDLen>                                       mNodeID;
-    aos::InstanceIdent                                         mInstanceIdent;
-    StaticString<cIPLen>                                       mIP;
-    StaticArray<ExposedPort, cMaxNumExposedPorts>              mExposedPorts;
-    StaticArray<StaticString<cHostNameLen>, cMaxNumDNSServers> mDNSServers;
+    StaticString<cIDLen>                                 mNetworkID;
+    StaticString<cIDLen>                                 mNodeID;
+    aos::InstanceIdent                                   mInstanceIdent;
+    StaticString<cIPLen>                                 mIP;
+    StaticArray<ExposedPort, cMaxNumExposedPorts>        mExposedPorts;
+    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers> mDNSServers;
 
     /**
      * Compares instances.

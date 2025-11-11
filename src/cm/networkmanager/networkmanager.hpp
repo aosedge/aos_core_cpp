@@ -76,7 +76,7 @@ public:
      * @return Error.
      */
     Error PrepareInstanceNetworkParameters(const InstanceIdent& instanceIdent, const String& networkID,
-        const String& nodeID, const NetworkServiceData& networkData, NetworkParameters& result) override;
+        const String& nodeID, const NetworkServiceData& networkData, InstanceNetworkParameters& result) override;
 
     /**
      * Restarts DNS server.
@@ -109,7 +109,7 @@ private:
     bool         RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
     void  ParseAllowConnection(const String& connection, std::string& itemID, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const std::string& subnet, const String& ip,
-        const Array<StaticString<cConnectionNameLen>>& allowedConnections, NetworkParameters& result);
+        const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkParameters& result);
 
     Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
 

@@ -154,7 +154,7 @@ Error NetworkManager::UpdateProviderNetwork(const Array<StaticString<cIDLen>>& p
 }
 
 Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& instanceIdent, const String& networkID,
-    const String& nodeID, const NetworkServiceData& networkData, NetworkParameters& result)
+    const String& nodeID, const NetworkServiceData& networkData, InstanceNetworkParameters& result)
 {
     LOG_DBG() << "Preparing instance network parameters" << Log::Field("instanceIdent", instanceIdent)
               << Log::Field("networkID", networkID);
@@ -179,7 +179,6 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
 
         result.mNetworkID = networkID;
         result.mSubnet    = it->second.mNetwork.mSubnet;
-        result.mVlanID    = it->second.mNetwork.mVlanID;
 
         if (auto itInstance = itHost->second.mInstances.find(instanceIdent);
             itInstance != itHost->second.mInstances.end()) {
@@ -341,7 +340,7 @@ FirewallRule NetworkManager::GetInstanceRule(const std::string& itemID, const st
 }
 
 Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const String& ip,
-    const Array<StaticString<cConnectionNameLen>>& allowedConnections, NetworkParameters& result)
+    const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkParameters& result)
 {
     if (allowedConnections.IsEmpty()) {
         return ErrorEnum::eNone;
