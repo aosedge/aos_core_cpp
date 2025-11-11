@@ -25,7 +25,7 @@ public:
     /**
      * Destructor.
      */
-    ~CommChannelItf() = default;
+    virtual ~CommChannelItf() = default;
 
     /**
      * Connects to channel.

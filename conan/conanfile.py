@@ -15,13 +15,19 @@ class AosCoreCpp(ConanFile):
         self.requires("poco/1.13.2")
 
         pkcs11path = os.path.join(self.recipe_folder, "pkcs11provider-1.0.py")
+        softhsm2path = os.path.join(self.recipe_folder, "softhsm2.py")
 
         self.run(
             f"conan export {pkcs11path} --user user --channel stable",
             cwd=self.recipe_folder,
         )
+        self.run(
+            f"conan export {softhsm2path} --user user --channel stable",
+            cwd=self.recipe_folder,
+        )
 
         self.requires("pkcs11provider/1.0@user/stable")
+        self.requires("softhsm2/2.6.1@user/stable")
 
     def build_requirements(self):
         self.tool_requires("grpc/1.54.3")

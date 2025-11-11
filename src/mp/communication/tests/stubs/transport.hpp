@@ -19,6 +19,7 @@
 
 #include <common/utils/pkcs11helper.hpp>
 #include <mp/communication/communicationchannel.hpp>
+#include <mp/communication/securechannel.hpp>
 #include <mp/communication/types.hpp>
 #include <mp/communication/utils.hpp>
 
@@ -150,6 +151,9 @@ public:
 
     Error Connect() override
     {
+        std::unique_lock rlock {mReadMutex};
+        std::unique_lock wlock {mWriteMutex};
+
         if (mConnected) {
             return ErrorEnum::eNone;
         }
@@ -176,6 +180,8 @@ public:
 
     Error Read(std::vector<uint8_t>& message) override
     {
+        std::unique_lock rlock {mReadMutex};
+
         if (!mConnected || !mSSL) {
             return Error(ErrorEnum::eRuntime, "Not connected");
         }
@@ -190,6 +196,8 @@ public:
 
     Error Write(std::vector<uint8_t> message) override
     {
+        std::unique_lock wlock {mWriteMutex};
+
         if (!mConnected || !mSSL) {
             return Error(ErrorEnum::eRuntime, "Not connected");
         }
@@ -204,6 +212,13 @@ public:
 
     Error Close() override
     {
+        if (auto err = mChannel.Close(); !err.IsNone()) {
+            return err;
+        }
+
+        std::unique_lock rlock {mReadMutex};
+        std::unique_lock wlock {mWriteMutex};
+
         if (mConnected && mSSL) {
             SSL_shutdown(mSSL);
         }
@@ -220,10 +235,6 @@ public:
 
         mConnected = false;
 
-        if (auto err = mChannel.Close(); !err.IsNone()) {
-            return err;
-        }
-
         return ErrorEnum::eNone;
     }
 
@@ -233,14 +244,16 @@ private:
     static constexpr auto cConnectionTimeout = std::chrono::seconds(3);
     static constexpr int  cMaxRetryCount     = 3;
 
-    CommChannelItf&   mChannel;
-    std::string       mKeyID;
-    std::string       mCertPEM;
-    std::string       mCaCertPath;
-    SSL_CTX*          mCtx       = nullptr;
-    SSL*              mSSL       = nullptr;
-    BIO_METHOD*       mBioMethod = nullptr;
-    std::atomic<bool> mConnected {false};
+    CommChannelItf&      mChannel;
+    std::string          mKeyID;
+    std::string          mCertPEM;
+    std::string          mCaCertPath;
+    SSL_CTX*             mCtx       = nullptr;
+    SSL*                 mSSL       = nullptr;
+    BIO_METHOD*          mBioMethod = nullptr;
+    std::atomic<bool>    mConnected {false};
+    std::recursive_mutex mReadMutex;
+    std::recursive_mutex mWriteMutex;
 
     Error AttemptConnect()
     {
@@ -282,7 +295,7 @@ private:
     {
         SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, nullptr);
 
-        auto [pkey, err] = LoadPrivateKey(mKeyID.c_str());
+        auto [pkey, err] = mp::communication::LoadPrivateKey(mKeyID.c_str());
         if (!err.IsNone()) {
             return err;
         }
@@ -327,31 +340,6 @@ private:
         }
 
         return ErrorEnum::eNone;
-    }
-
-    RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
-    {
-        auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
-        if (!createErr.IsNone()) {
-            return {nullptr, createErr};
-        }
-
-        auto [pem, encodeErr] = common::utils::PEMEncodePKCS11URL(pkcs11URL);
-        if (!encodeErr.IsNone()) {
-            return {nullptr, encodeErr};
-        }
-
-        auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
-        if (!bio) {
-            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
-        }
-
-        EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
-        if (!pkey) {
-            return {nullptr, AOS_ERROR_WRAP(ErrorEnum::eRuntime)};
-        }
-
-        return {pkey, ErrorEnum::eNone};
     }
 
     Error SetupSSL()
@@ -402,6 +390,10 @@ private:
         std::vector<uint8_t> buffer(data, data + len);
         Error                err = pipe->mChannel.Write(buffer);
 
+        if (!pipe->mSSL) {
+            return -1;
+        }
+
         return err.IsNone() ? len : -1;
     }
 
@@ -412,6 +404,10 @@ private:
         auto                 err = pipe->mChannel.Read(buffer);
         if (!err.IsNone())
             return -1;
+
+        if (!pipe->mSSL) {
+            return -1;
+        }
 
         std::memcpy(data, buffer.data(), buffer.size());
 

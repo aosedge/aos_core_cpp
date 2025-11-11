@@ -16,7 +16,9 @@ class PKCS11Provider(ConanFile):
         self.requires("openssl/3.2.1")
 
     def configure(self):
+        self.options["openssl"].no_dso = False
         self.options["openssl"].shared = True
+
 
     def build_requirements(self):
         self.build_requires("meson/0.64.1")

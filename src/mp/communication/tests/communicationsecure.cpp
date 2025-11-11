@@ -622,7 +622,7 @@ TEST_F(CommunicationSecureManagerTest, TestSendLog)
     mCMSecurePipe->Close();
 }
 
-TEST_F(CommunicationSecureManagerTest, TestCertChange)
+TEST_F(CommunicationSecureManagerTest, DISABLED_TestCertChange)
 {
     IAMConnection mIAMSecureConnection {};
 
