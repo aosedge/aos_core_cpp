@@ -4,16 +4,19 @@ on:
   push:
     branches:
       - main
+      - develop
+      - feature*
 
   pull_request:
     branches:
+      - main
       - develop
-      - feature_*
+      - feature*
 
 jobs:
   formatting-check:
     name: Formatting Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run clang-format style check
@@ -27,3 +30,8 @@ jobs:
           pip install cmake_format
           find . \( \( -not -path '*/build/*' \) -name '*.cmake' -or -name 'CMakeLists.txt' \) \
             -exec cmake-format --check {} +;
+
+      - name: Run markdownlint check
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          globs: "**/*.md"
