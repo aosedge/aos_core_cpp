@@ -6,15 +6,15 @@ parameters to other modules.
 
 It implements the following interfaces:
 
-- [aos::cm::networkmanager::NetworkManagerItf]() — manager API for network operations;
+- [aos::cm::networkmanager::NetworkManagerItf][networkmanager-networkmanager-itf] — manager API for network operations;
 
 It requires the following interfaces:
 
-- [aos::cm::networkmanager::StorageItf]() — persistent storage for network state and allocations;
-- [aos::common::crypto::RandomItf]() — randomness source (e.g., VLAN ID generation);
-- [aos::cm::networkmanager::SenderItf]() — sends network configuration (IP, subnet, VLAN ID) to another component
-responsible for creating the VLAN network;
-- [aos::cm::networkmanager::DNSServerItf]() — local DNS management (hosts file, restart).
+- [aos::cm::networkmanager::StorageItf](itf/storage.hpp) — persistent storage for network state and allocations;
+- [aos::common::crypto::RandomItf][crypto-random-itf] — randomness source (e.g., VLAN ID generation);
+- [aos::cm::networkmanager::SenderItf](itf/sender.hpp) — sends network configuration (IP, subnet, VLAN ID) to another
+  component responsible for creating the VLAN network;
+- [aos::cm::networkmanager::DNSServerItf](itf/dnsserver.hpp) — local DNS management (hosts file, restart).
 
 ```mermaid
 classDiagram
@@ -136,3 +136,6 @@ Restarts the DNS server to apply hosts updates.
 - `UpdateHostsFile(hosts)` — updates the hosts file for provided name→IP mappings;
 - `Restart()` — restarts the DNS server process;
 - `GetIP()` — returns the current DNS IP address.
+
+[networkmanager-networkmanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/networkmanager/itf/networkmanager.hpp
+[crypto-random-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/crypto/itf/rand.hpp

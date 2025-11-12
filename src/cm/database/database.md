@@ -2,14 +2,15 @@
 
 ## Overview
 
-The CM (Communication Manager) Database class provides persistent storage for various CM modules. It implements multiple storage interfaces using SQLite as the backend database.
+The CM (Communication Manager) Database class provides persistent storage for various CM modules. It implements multiple
+storage interfaces using SQLite as the backend database.
 
 The `Database` class implements the following interfaces to persist data for different CM modules:
 
-- [aos::cm::storagestate::StorageItf]() — storage state interface;
-- [aos::cm::imagemanager::storage::StorageItf]() — image manager interface;
-- [aos::cm::networkmanager::StorageItf]() — network manager interface;
-- [aos::cm::launcher::StorageItf]() — launcher interface.
+- [aos::cm::storagestate::StorageItf][storagestate-storage-itf] - storage state interface;
+- [aos::cm::imagemanager::StorageItf][iamgemanager-storage-itf] - image manager interface;
+- [aos::cm::networkmanager::StorageItf](../networkmanager/itf/storage.hpp) - network manager interface;
+- [aos::cm::launcher::StorageItf][launcher-storage-itf] - launcher interface.
 
 ## Class Diagram
 
@@ -212,7 +213,8 @@ Helper functions in the anonymous namespace handle serialization:
 
 ## Migration Support
 
-The database uses the common migration framework to support schema evolution across versions. Migration files should be placed in the configured migration path.
+The database uses the common migration framework to support schema evolution across versions. Migration files should be
+placed in the configured migration path.
 
 ## Configuration
 
@@ -225,3 +227,7 @@ struct Config {
     std::string mMergedMigrationPath; // Merged migration output
 };
 ```
+
+[storagestate-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/storagestate/itf/storage.hpp
+[iamgemanager-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/imagemanager/itf/storage.hpp
+[launcher-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/launcher/itf/storage.hpp
