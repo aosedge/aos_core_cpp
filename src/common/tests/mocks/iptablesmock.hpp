@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_IPTABLESMOCK_HPP_
-#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_IPTABLESMOCK_HPP_
+#ifndef AOS_COMMON_TESTS_MOCKS_IPTABLESMOCK_HPP_
+#define AOS_COMMON_TESTS_MOCKS_IPTABLESMOCK_HPP_
 
 #include <gmock/gmock.h>
 
@@ -28,4 +28,4 @@ public:
 
 } // namespace aos::common::network
 
-#endif // NETWORKMANAGERMOCK_HPP
+#endif // AOS_COMMON_TESTS_MOCKS_IPTABLESMOCK_HPP_

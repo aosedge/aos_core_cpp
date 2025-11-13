@@ -15,8 +15,8 @@
 
 #include <sm/networkmanager/trafficmonitor.hpp>
 
-#include "mocks/iptablesmock.hpp"
-#include "mocks/storagemock.hpp"
+#include <common/tests/mocks/iptablesmock.hpp>
+#include <core/sm/tests/mocks/storagemock.hpp>
 
 using namespace testing;
 
@@ -26,7 +26,7 @@ protected:
     {
         aos::tests::utils::InitLog();
 
-        mStorage  = std::make_unique<StrictMock<MockStorage>>();
+        mStorage  = std::make_unique<StrictMock<aos::sm::networkmanager::StorageMock>>();
         mIPTables = std::make_unique<StrictMock<aos::common::network::MockIPTables>>();
         mMonitor  = std::make_unique<aos::sm::networkmanager::TrafficMonitor>();
     }
@@ -38,7 +38,7 @@ protected:
         EXPECT_EQ(mMonitor->Stop(), aos::ErrorEnum::eNone);
     }
 
-    std::unique_ptr<MockStorage>                             mStorage;
+    std::unique_ptr<aos::sm::networkmanager::StorageMock>    mStorage;
     std::unique_ptr<aos::common::network::MockIPTables>      mIPTables;
     std::unique_ptr<aos::sm::networkmanager::TrafficMonitor> mMonitor;
 };
