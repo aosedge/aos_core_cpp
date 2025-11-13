@@ -16,7 +16,7 @@
 #include <common/utils/json.hpp>
 #include <sm/networkmanager/cni.hpp>
 
-#include "mocks/cnimock.hpp"
+#include "mocks/execmock.hpp"
 
 using namespace aos;
 using namespace aos::sm::cni;
