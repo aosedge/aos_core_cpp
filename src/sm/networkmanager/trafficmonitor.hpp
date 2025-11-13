@@ -13,7 +13,8 @@
 
 #include <core/common/tools/error.hpp>
 #include <core/common/tools/timer.hpp>
-#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/networkmanager/itf/storage.hpp>
+#include <core/sm/networkmanager/itf/trafficmonitor.hpp>
 
 #include <common/network/iptables.hpp>
 #include <common/utils/time.hpp>
@@ -129,5 +130,7 @@ private:
     Duration                                        mUpdatePeriod {};
     bool                                            mStop {};
 };
+
 } // namespace aos::sm::networkmanager
+
 #endif // NETWORK_TRAFFICMONITOR_HPP
