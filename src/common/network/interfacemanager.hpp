@@ -13,7 +13,8 @@
 #include <sys/socket.h>
 
 #include <core/common/crypto/itf/crypto.hpp>
-#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/networkmanager/itf/interfacefactory.hpp>
+#include <core/sm/networkmanager/itf/interfacemanager.hpp>
 
 #include "utils.hpp"
 
@@ -189,14 +190,6 @@ public:
      * @return Error.
      */
     Error CreateVlan(const String& name, uint64_t vlanId) override;
-
-    // /**
-    //  * Gets route list.
-    //  *
-    //  * @param[out] routes routes.
-    //  * @return Error.
-    //  */
-    // Error GetRouteList(Array<RouteInfo>& routes) const;
 
     /**
      * Adds link.

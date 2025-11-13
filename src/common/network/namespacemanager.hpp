@@ -9,7 +9,8 @@
 
 #include <filesystem>
 
-#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/networkmanager/itf/interfacemanager.hpp>
+#include <core/sm/networkmanager/itf/namespacemanager.hpp>
 
 namespace aos::common::network {
 
