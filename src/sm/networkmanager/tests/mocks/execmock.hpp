@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_CNIMOCK_HPP_
-#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_CNIMOCK_HPP_
+#ifndef AOS_SM_NETWORKMANAGER_TESTS_MOCKS_EXECMOCK_HPP_
+#define AOS_SM_NETWORKMANAGER_TESTS_MOCKS_EXECMOCK_HPP_
 
 #include <gmock/gmock.h>
 
-#include <sm/networkmanager/cni.hpp>
+#include <sm/networkmanager/exec.hpp>
 
 namespace aos::sm::cni {
 
@@ -21,4 +21,4 @@ public:
 
 } // namespace aos::sm::cni
 
-#endif // AOS_CNI_MOCK_HPP_
+#endif // AOS_SM_NETWORKMANAGER_TESTS_MOCKS_EXECMOCK_HPP_
