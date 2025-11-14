@@ -183,7 +183,7 @@ Error ConvertEnvVarsInstanceInfoArrayFromJSON(const std::string& src, Array<EnvV
     return ErrorEnum::eNone;
 }
 
-Poco::JSON::Object ConvertNetworkParametersToJSON(const NetworkParameters& networkParameters)
+Poco::JSON::Object ConvertInstanceNetworkParametersToJSON(const InstanceNetworkParameters& networkParameters)
 {
     Poco::JSON::Object object;
     Poco::JSON::Array  dnsServers;
@@ -192,7 +192,6 @@ Poco::JSON::Object ConvertNetworkParametersToJSON(const NetworkParameters& netwo
     object.set("networkID", networkParameters.mNetworkID.CStr());
     object.set("subnet", networkParameters.mSubnet.CStr());
     object.set("ip", networkParameters.mIP.CStr());
-    object.set("vlanID", networkParameters.mVlanID);
 
     for (const auto& dnsServer : networkParameters.mDNSServers) {
         dnsServers.add(dnsServer.CStr());
@@ -216,13 +215,45 @@ Poco::JSON::Object ConvertNetworkParametersToJSON(const NetworkParameters& netwo
     return object;
 }
 
-Error ConvertNetworkParametersFromJSON(const Poco::JSON::Object& src, NetworkParameters& networkParameters)
+Error ConvertInstanceNetworkParametersFromJSON(
+    const Poco::JSON::Object& src, InstanceNetworkParameters& networkParameters)
 {
     try {
         networkParameters.mNetworkID = src.getValue<std::string>("networkID").c_str();
         networkParameters.mSubnet    = src.getValue<std::string>("subnet").c_str();
         networkParameters.mIP        = src.getValue<std::string>("ip").c_str();
-        networkParameters.mVlanID    = src.getValue<uint64_t>("vlanID");
+
+        if (src.has("dnsServers")) {
+            auto dnsServersArray = src.getArray("dnsServers");
+            if (!dnsServersArray.isNull()) {
+                for (size_t i = 0; i < dnsServersArray->size(); ++i) {
+                    auto dnsServer = dnsServersArray->getElement<std::string>(i);
+                    if (auto err = networkParameters.mDNSServers.PushBack(dnsServer.c_str()); !err.IsNone()) {
+                        return AOS_ERROR_WRAP(err);
+                    }
+                }
+            }
+        }
+
+        if (src.has("firewallRules")) {
+            auto firewallRulesArray = src.getArray("firewallRules");
+            if (!firewallRulesArray.isNull()) {
+                for (size_t i = 0; i < firewallRulesArray->size(); ++i) {
+                    auto ruleObj = firewallRulesArray->getObject(i);
+                    if (!ruleObj.isNull()) {
+                        FirewallRule rule;
+                        rule.mDstIP   = ruleObj->getValue<std::string>("dstIp").c_str();
+                        rule.mDstPort = ruleObj->getValue<std::string>("dstPort").c_str();
+                        rule.mProto   = ruleObj->getValue<std::string>("proto").c_str();
+                        rule.mSrcIP   = ruleObj->getValue<std::string>("srcIp").c_str();
+
+                        if (auto err = networkParameters.mFirewallRules.PushBack(rule); !err.IsNone()) {
+                            return AOS_ERROR_WRAP(err);
+                        }
+                    }
+                }
+            }
+        }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -259,7 +290,8 @@ public:
             AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse network json");
         }
 
-        ConvertNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);
+        auto err = ConvertInstanceNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to convert network parameters from JSON");
     }
 
 private:
@@ -444,7 +476,7 @@ Error Database::AddInstance(const sm::launcher::InstanceData& instance)
     try {
         const auto& instanceInfo = instance.mInstanceInfo;
         const auto  networkJson
-            = common::utils::Stringify(ConvertNetworkParametersToJSON(instanceInfo.mNetworkParameters));
+            = common::utils::Stringify(ConvertInstanceNetworkParametersToJSON(instanceInfo.mNetworkParameters));
 
         *mSession << "INSERT INTO instances values(?, ?,  ?, ?, ?, ?, ?, ?, ?);", bind(instance.mInstanceID.CStr()),
             bind(instanceInfo.mItemID.CStr()), bind(instanceInfo.mSubjectID.CStr()), bind(instanceInfo.mInstance),
@@ -464,7 +496,7 @@ Error Database::UpdateInstance(const sm::launcher::InstanceData& instance)
     try {
         const auto& instanceInfo = instance.mInstanceInfo;
         const auto  networkJson
-            = common::utils::Stringify(ConvertNetworkParametersToJSON(instanceInfo.mNetworkParameters));
+            = common::utils::Stringify(ConvertInstanceNetworkParametersToJSON(instanceInfo.mNetworkParameters));
 
         Poco::Data::Statement statement {*mSession};
 
