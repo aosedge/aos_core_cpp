@@ -24,14 +24,13 @@ constexpr auto cCreateNullOptTime = true;
 
 namespace {
 
-aos::NetworkParameters CreateNetworkParameters()
+aos::InstanceNetworkParameters CreateNetworkParameters()
 {
-    aos::NetworkParameters params;
+    aos::InstanceNetworkParameters params;
 
     params.mNetworkID = "networkID";
     params.mSubnet    = "subnet";
     params.mIP        = "ip";
-    params.mVlanID    = 1;
 
     params.mDNSServers.PushBack("dns1");
     params.mDNSServers.PushBack("dns2");
