@@ -13,7 +13,7 @@
 
 #include <core/sm/launcher/launcher.hpp>
 #include <core/sm/layermanager/layermanager.hpp>
-#include <core/sm/networkmanager/networkmanager.hpp>
+#include <core/sm/networkmanager/itf/storage.hpp>
 #include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/migration/migration.hpp>
