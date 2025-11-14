@@ -20,7 +20,7 @@
 #include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/config/config.hpp>
-#include <common/iamclient/publicservicehandler.hpp>
+#include <common/iamclient/config.hpp>
 #include <common/utils/time.hpp>
 #include <sm/smclient/config.hpp>
 
