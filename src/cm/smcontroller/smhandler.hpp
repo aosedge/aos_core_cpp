@@ -12,10 +12,10 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <vector>
 
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
+#include <common/utils/syncmessagesender.hpp>
 #include <core/cm/alerts/itf/receiver.hpp>
 #include <core/cm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/cm/launcher/itf/sender.hpp>
@@ -180,24 +180,23 @@ private:
     static constexpr auto cResponseTime = std::chrono::seconds(5);
 
     Error SendMessage(const servicemanager::v5::SMIncomingMessages& message);
-    Error SendMessageSync(
-        const servicemanager::v5::SMIncomingMessages& inMessage, servicemanager::v5::SMOutgoingMessages& outMessage);
 
     // Message processing methods
     Error ProcessMessages();
 
     Error ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo);
-    Error ProcessNodeConfigStatus(const servicemanager::v5::NodeConfigStatus& status);
     Error ProcessUpdateInstancesStatus(const servicemanager::v5::UpdateInstancesStatus& status);
     Error ProcessNodeInstancesStatus(const servicemanager::v5::NodeInstancesStatus& status);
     Error ProcessLogData(const servicemanager::v5::LogData& logData);
     Error ProcessInstantMonitoring(const servicemanager::v5::InstantMonitoring& monitoring);
-    Error ProcessAverageMonitoring(const servicemanager::v5::AverageMonitoring& monitoring);
     Error ProcessAlert(const servicemanager::v5::Alert& alert);
 
     grpc::ServerContext* mContext {};
     grpc::ServerReaderWriter<servicemanager::v5::SMIncomingMessages, servicemanager::v5::SMOutgoingMessages>*
-                                         mStream {};
+        mStream {};
+    common::utils::SyncMessageSender<servicemanager::v5::SMIncomingMessages, servicemanager::v5::SMOutgoingMessages>
+        mSyncMessageSender;
+
     alerts::ReceiverItf*                 mAlertsReceiver {};
     SenderItf*                           mLogSender {};
     launcher::SenderItf*                 mEnvVarsStatusSender {};
@@ -206,10 +205,9 @@ private:
     nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
     NodeConnectionStatusListenerItf*     mConnStatusListener {};
 
-    std::vector<Message*> mMessages;
-    std::mutex            mMutex;
-    bool                  mCredentialListUpdated {};
-    grpc::ServerContext*  mCtx {};
+    std::mutex           mMutex;
+    bool                 mCredentialListUpdated {};
+    grpc::ServerContext* mCtx {};
 
     std::thread       mProcessThread;
     std::atomic<bool> mStopProcessing {};
