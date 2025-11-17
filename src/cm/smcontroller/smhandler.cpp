@@ -40,6 +40,19 @@ void SMHandler::Start()
     LOG_INF() << "Start SM handler";
 
     mStopProcessing.store(false);
+
+    mSyncMessageSender.Init(mStream, cResponseTime);
+    mSyncMessageSender.RegisterResponseHandler(
+        [](const servicemanager::v5::SMOutgoingMessages& msg) { return msg.has_node_config_status(); },
+        [](const servicemanager::v5::SMOutgoingMessages& src, servicemanager::v5::SMOutgoingMessages& dst) {
+            dst.mutable_node_config_status()->CopyFrom(src.node_config_status());
+        });
+    mSyncMessageSender.RegisterResponseHandler(
+        [](const servicemanager::v5::SMOutgoingMessages& msg) { return msg.has_average_monitoring(); },
+        [](const servicemanager::v5::SMOutgoingMessages& src, servicemanager::v5::SMOutgoingMessages& dst) {
+            dst.mutable_average_monitoring()->CopyFrom(src.average_monitoring());
+        });
+
     mProcessThread = std::thread([this]() { ProcessMessages(); });
 }
 
@@ -78,7 +91,7 @@ Error SMHandler::GetNodeConfigStatus(NodeConfigStatus& status)
 
     auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
-    if (auto err = SendMessageSync(inMsg, outMsg); !err.IsNone()) {
+    if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
     }
 
@@ -103,7 +116,7 @@ Error SMHandler::CheckNodeConfig(const NodeConfig& config)
 
     auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
-    if (auto err = SendMessageSync(inMsg, outMsg); !err.IsNone()) {
+    if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
     }
 
@@ -124,7 +137,7 @@ Error SMHandler::UpdateNodeConfig(const NodeConfig& config)
 
     auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
-    if (auto err = SendMessageSync(inMsg, outMsg); !err.IsNone()) {
+    if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
     }
 
@@ -209,8 +222,6 @@ Error SMHandler::ProcessMessages()
 
             if (outgoingMsg.has_sm_info()) {
                 err = ProcessSMInfo(outgoingMsg.sm_info());
-            } else if (outgoingMsg.has_node_config_status()) {
-                err = ProcessNodeConfigStatus(outgoingMsg.node_config_status());
             } else if (outgoingMsg.has_update_instances_status()) {
                 err = ProcessUpdateInstancesStatus(outgoingMsg.update_instances_status());
             } else if (outgoingMsg.has_node_instances_status()) {
@@ -219,10 +230,10 @@ Error SMHandler::ProcessMessages()
                 err = ProcessLogData(outgoingMsg.log());
             } else if (outgoingMsg.has_instant_monitoring()) {
                 err = ProcessInstantMonitoring(outgoingMsg.instant_monitoring());
-            } else if (outgoingMsg.has_average_monitoring()) {
-                err = ProcessAverageMonitoring(outgoingMsg.average_monitoring());
             } else if (outgoingMsg.has_alert()) {
                 err = ProcessAlert(outgoingMsg.alert());
+            } else if (auto processErr = mSyncMessageSender.ProcessResponse(outgoingMsg); processErr.HasValue()) {
+                err = processErr.GetValue();
             } else {
                 LOG_WRN() << "Unknown message type received";
             }
@@ -251,43 +262,6 @@ Error SMHandler::SendMessage(const servicemanager::v5::SMIncomingMessages& messa
     return ErrorEnum::eNone;
 }
 
-Error SMHandler::SendMessageSync(
-    const servicemanager::v5::SMIncomingMessages& inMessage, servicemanager::v5::SMOutgoingMessages& outMessage)
-{
-    std::unique_lock lock {mMutex};
-
-    Message msg;
-
-    msg.mOutputMessage = &outMessage;
-    mMessages.push_back(&msg);
-
-    // Writes/Reads to the stream can be synchronized independently. According to:
-    // https://groups.google.com/g/grpc-io/c/G7FzRNQBWhU?pli=1
-    if (!mStream->Write(inMessage)) {
-        mMessages.erase(std::find(mMessages.begin(), mMessages.end(), &msg));
-
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to send message"));
-    }
-
-    // Receiving the message.
-    {
-        std::unique_lock msgLock {msg.mMutex};
-        lock.unlock();
-
-        msg.mCondVar.wait_for(msgLock, cResponseTime, [&msg] { return msg.mResponseReceived; });
-
-        lock.lock();
-    }
-
-    mMessages.erase(std::find(mMessages.begin(), mMessages.end(), &msg));
-
-    if (!msg.mResponseReceived) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "response timeout"));
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error SMHandler::ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo)
 {
     LOG_DBG() << "Process SM info" << Log::Field("nodeID", smInfo.node_id().c_str());
@@ -306,31 +280,6 @@ Error SMHandler::ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo)
 
     if (auto err = mSMInfoReceiver->OnSMInfoReceived(*aosSMInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error SMHandler::ProcessNodeConfigStatus(const servicemanager::v5::NodeConfigStatus& status)
-{
-    LOG_DBG() << "Process node config status" << Log::Field("nodeID", GetNodeID());
-
-    try {
-        std::lock_guard lock {mMutex};
-
-        for (auto* msg : mMessages) {
-            if (msg->mOutputMessage && msg->mOutputMessage->has_node_config_status()) {
-                std::lock_guard msgLock {msg->mMutex};
-
-                msg->mResponseReceived = true;
-                msg->mOutputMessage->mutable_node_config_status()->CopyFrom(status);
-                msg->mCondVar.notify_one();
-
-                break;
-            }
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -416,29 +365,6 @@ Error SMHandler::ProcessInstantMonitoring(const servicemanager::v5::InstantMonit
     return ErrorEnum::eNone;
 }
 
-Error SMHandler::ProcessAverageMonitoring(const servicemanager::v5::AverageMonitoring& monitoring)
-{
-    LOG_DBG() << "Process average monitoring" << Log::Field("nodeID", GetNodeID());
-
-    try {
-        std::lock_guard lock {mMutex};
-
-        for (auto* msg : mMessages) {
-            if (msg->mOutputMessage && msg->mOutputMessage->has_average_monitoring()) {
-                std::lock_guard msgLock {msg->mMutex};
-
-                msg->mResponseReceived = true;
-                msg->mOutputMessage->mutable_average_monitoring()->CopyFrom(monitoring);
-                msg->mCondVar.notify_one();
-            }
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error SMHandler::ProcessAlert(const servicemanager::v5::Alert& alert)
 {
     LOG_DBG() << "Process alert" << Log::Field("nodeID", GetNodeID());
@@ -485,7 +411,7 @@ Error SMHandler::GetAverageMonitoring(aos::monitoring::NodeMonitoringData& monit
     inMsg.mutable_get_average_monitoring();
     auto* averageMonitoring = outMsg.mutable_average_monitoring();
 
-    if (auto err = SendMessageSync(inMsg, outMsg); !err.IsNone()) {
+    if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
     }
 
