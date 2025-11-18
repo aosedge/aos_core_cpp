@@ -12,7 +12,7 @@
 #include <common/v2/common.grpc.pb.h>
 #include <core/common/tools/optional.hpp>
 #include <core/common/types/common.hpp>
-#include <core/iam/permhandler/permhandler.hpp>
+#include <core/common/types/permissions.hpp>
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
 namespace aos::common::pbconvert {
