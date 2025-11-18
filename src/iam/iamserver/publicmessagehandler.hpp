@@ -19,7 +19,7 @@
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/iamclient/itf/nodeinfoprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 
