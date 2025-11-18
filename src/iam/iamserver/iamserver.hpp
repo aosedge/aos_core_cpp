@@ -20,7 +20,7 @@
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
-#include <core/iam/permhandler/permhandler.hpp>
+#include <core/iam/permhandler/itf/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
