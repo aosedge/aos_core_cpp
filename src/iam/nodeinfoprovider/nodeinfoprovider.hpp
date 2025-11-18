@@ -12,7 +12,7 @@
 #include <string>
 #include <unordered_set>
 
-#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
 
 #include <iam/config/config.hpp>
 
