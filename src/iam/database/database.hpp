@@ -16,7 +16,7 @@
 #include <Poco/JSON/Object.h>
 
 #include <core/iam/certhandler/certmodule.hpp>
-#include <core/iam/nodemanager/nodemanager.hpp>
+#include <core/iam/nodemanager/itf/storage.hpp>
 
 #include <common/migration/migration.hpp>
 #include <iam/config/config.hpp>
