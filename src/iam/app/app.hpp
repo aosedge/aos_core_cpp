@@ -13,7 +13,7 @@
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/identhandler/identmodule.hpp>
+#include <core/iam/identhandler/itf/identmodule.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
