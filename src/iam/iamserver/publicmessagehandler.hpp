@@ -21,7 +21,7 @@
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
 #include <core/iam/nodemanager/itf/nodemanager.hpp>
-#include <core/iam/permhandler/permhandler.hpp>
+#include <core/iam/permhandler/itf/permhandler.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
