@@ -10,7 +10,7 @@
 #include <memory>
 
 #include <core/common/crypto/itf/uuid.hpp>
-#include <core/iam/identhandler/identmodule.hpp>
+#include <core/iam/identhandler/itf/identmodule.hpp>
 
 #include <iam/config/config.hpp>
 

@@ -18,7 +18,7 @@
 #include <Poco/Dynamic/Var.h>
 #include <Poco/Event.h>
 
-#include <core/iam/identhandler/identmodule.hpp>
+#include <core/iam/identhandler/itf/identmodule.hpp>
 
 #include <iam/config/config.hpp>
 #include <iam/identhandler/visidentifier/wsclient.hpp>
