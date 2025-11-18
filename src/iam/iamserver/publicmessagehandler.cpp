@@ -9,6 +9,7 @@
 
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
+#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/iam.hpp>
