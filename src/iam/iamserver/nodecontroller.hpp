@@ -14,7 +14,7 @@
 
 #include <Poco/Event.h>
 
-#include <core/iam/nodemanager/nodemanager.hpp>
+#include <core/iam/nodemanager/itf/nodemanager.hpp>
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
