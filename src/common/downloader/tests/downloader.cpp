@@ -74,10 +74,10 @@ protected:
         std::remove(mFilePath.c_str());
     }
 
-    std::optional<HTTPServer>                mServer;
-    aos::common::downloader::Downloader      mDownloader;
-    StrictMock<aos::alerts::AlertSenderMock> mAlertSender;
-    std::string                              mFilePath = "download/test_file.dat";
+    std::optional<HTTPServer>           mServer;
+    aos::common::downloader::Downloader mDownloader;
+    StrictMock<aos::alerts::SenderMock> mAlertSender;
+    std::string                         mFilePath = "download/test_file.dat";
 };
 
 /***********************************************************************************************************************
@@ -88,7 +88,7 @@ TEST_F(DownloaderTest, Download)
 {
     StartServer();
 
-    auto err = mDownloader.Download("http://localhost:8000/test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download("digest1", "http://localhost:8000/test_file.dat", mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -103,7 +103,7 @@ TEST_F(DownloaderTest, Download)
 
 TEST_F(DownloaderTest, DownloadFileScheme)
 {
-    auto err = mDownloader.Download("file://test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download("digest2", "file://test_file.dat", mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -126,7 +126,7 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 
     EXPECT_CALL(mAlertSender, SendAlert(_)).Times(6);
 
-    auto err = mDownloader.Download("http://localhost:8001/large_test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download("digest3", "http://localhost:8001/large_test_file.dat", mFilePath.c_str());
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(mFilePath));

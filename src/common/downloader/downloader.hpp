@@ -15,8 +15,8 @@
 #include <Poco/URI.h>
 #include <curl/curl.h>
 
-#include <core/common/alerts/alerts.hpp>
-#include <core/common/downloader/downloader.hpp>
+#include <core/common/alerts/itf/sender.hpp>
+#include <core/common/downloader/itf/downloader.hpp>
 
 namespace aos::common::downloader {
 
@@ -43,12 +43,21 @@ public:
     /**
      * Downloads file.
      *
+     * @param digest image digest.
      * @param url URL.
      * @param path path to file.
-     * @param imageID image ID.
      * @return Error.
      */
-    Error Download(const String& url, const String& path, const String& imageID = "") override;
+    Error Download(const String& digest, const String& url, const String& path) override;
+
+    /**
+     * Cancels ongoing download.
+     *
+     * @param digest image digest.
+     *
+     * @return Error.
+     */
+    Error Cancel(const String& digest) override;
 
 private:
     constexpr static std::chrono::milliseconds cDelay {1000};
@@ -75,7 +84,7 @@ private:
     curl_off_t                            mExistingOffset {0};
     curl_off_t                            mTotalSize {0};
     curl_off_t                            mDownloadedSize {0};
-    std::string                           mImageID;
+    std::string                           mDigest;
     std::string                           mURL;
 
     aos::alerts::SenderItf* mSender {nullptr};
