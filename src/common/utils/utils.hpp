@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <core/common/tools/error.hpp>
-#include <core/common/types/obsolete.hpp>
+#include <core/common/types/common.hpp>
 
 /***********************************************************************************************************************
  * std namespace
