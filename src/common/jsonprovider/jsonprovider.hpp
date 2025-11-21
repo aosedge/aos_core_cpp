@@ -7,14 +7,14 @@
 #ifndef AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
 #define AOS_COMMON_JSONPROVIDER_JSONPROVIDER_HPP_
 
-#include <core/sm/resourcemanager/resourcemanager.hpp>
+#include <core/common/nodeconfig/itf/jsonprovider.hpp>
 
 namespace aos::common::jsonprovider {
 
 /**
  * JSON provider.
  */
-class JSONProvider : public sm::resourcemanager::JSONProviderItf {
+class JSONProvider : public nodeconfig::JSONProviderItf {
 public:
     /**
      * Dumps config object into string.
@@ -23,7 +23,7 @@ public:
      * @param[out] json node config JSON string.
      * @return Error.
      */
-    Error NodeConfigToJSON(const sm::resourcemanager::NodeConfig& nodeConfig, String& json) const override;
+    Error NodeConfigToJSON(const NodeConfig& nodeConfig, String& json) const override;
 
     /**
      * Creates node config object from a JSON string.
@@ -32,7 +32,7 @@ public:
      * @param[out] nodeConfig node config object.
      * @return Error.
      */
-    Error NodeConfigFromJSON(const String& json, sm::resourcemanager::NodeConfig& nodeConfig) const override;
+    Error NodeConfigFromJSON(const String& json, NodeConfig& nodeConfig) const override;
 };
 
 } // namespace aos::common::jsonprovider
