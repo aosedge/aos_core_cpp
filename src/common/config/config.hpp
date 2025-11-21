@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <core/common/monitoring/resourcemonitor.hpp>
+#include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
 
 #include <common/utils/json.hpp>
