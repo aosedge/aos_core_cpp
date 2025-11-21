@@ -60,7 +60,7 @@ Poco::JSON::Object::Ptr DownloadAlertToJSON(const DownloadAlert& alert)
 {
     auto json = AlertItemToJSON(alert);
 
-    json->set("imageId", alert.mImageID.CStr());
+    json->set("digest", alert.mDigest.CStr());
     json->set("url", alert.mURL.CStr());
     json->set("downloadedBytes", alert.mDownloadedBytes);
     json->set("totalBytes", alert.mTotalBytes);
