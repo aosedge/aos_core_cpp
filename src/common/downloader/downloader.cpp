@@ -39,13 +39,12 @@ Downloader::~Downloader()
     mCondVar.notify_all();
 }
 
-Error Downloader::Download(const String& url, const String& path, const String& imageID)
+Error Downloader::Download(const String& digest, const String& url, const String& path)
 {
-    LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path)
-              << Log::Field("imageID", imageID);
+    LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path) << Log::Field("digest", digest);
 
-    mImageID = imageID.CStr();
-    mURL     = url.CStr();
+    mDigest = digest.CStr();
+    mURL    = url.CStr();
 
     return RetryDownload(url, path);
 }
@@ -235,6 +234,13 @@ void Downloader::SendAlert(
     param.SetValue<DownloadAlert>(alert);
 
     mSender->SendAlert(param);
+}
+
+Error Downloader::Cancel(const String& digest)
+{
+    (void)digest;
+
+    return ErrorEnum::eNotSupported;
 }
 
 } // namespace aos::common::downloader
