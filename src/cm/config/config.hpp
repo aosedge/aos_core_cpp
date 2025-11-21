@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <core/cm/monitoring/config.hpp>
-#include <core/common/monitoring/resourcemonitor.hpp>
+#include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
 
 #include <common/config/config.hpp>
