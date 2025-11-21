@@ -25,198 +25,6 @@ std::string ToStdString(const String& str)
     return str.CStr();
 }
 
-void DeviceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, DeviceInfo& deviceInfo)
-{
-    const auto name = object.GetValue<std::string>("name");
-
-    auto err = deviceInfo.mName.Assign(name.c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed name length exceeds application limit");
-
-    deviceInfo.mSharedCount = object.GetValue<size_t>("sharedCount");
-
-    const auto groups = utils::GetArrayValue<std::string>(object, "groups");
-
-    for (const auto& group : groups) {
-        err = deviceInfo.mGroups.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed groups count exceeds application limit");
-
-        err = deviceInfo.mGroups.Back().Assign(group.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed group length exceeds application limit");
-    }
-
-    const auto hostDevices = utils::GetArrayValue<std::string>(object, "hostDevices");
-
-    for (const auto& device : hostDevices) {
-        err = deviceInfo.mHostDevices.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed host devices count exceeds application limit");
-
-        err = deviceInfo.mHostDevices.Back().Assign(device.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed host device length exceeds application limit");
-    }
-}
-
-void DevicesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<DeviceInfo>& outDevices)
-{
-    utils::ForEach(object, "devices", [&outDevices](const auto& value) {
-        auto err = outDevices.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed devices count exceeds application limit");
-
-        DeviceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value), outDevices.Back());
-    });
-}
-
-void FileSystemMountFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Mount& mount)
-{
-    auto err = mount.mDestination.Assign(object.GetValue<std::string>("destination").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed destination length exceeds application limit");
-
-    err = mount.mType.Assign(object.GetValue<std::string>("type").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed type length exceeds application limit");
-
-    err = mount.mSource.Assign(object.GetValue<std::string>("source").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed source length exceeds application limit");
-
-    const auto options = utils::GetArrayValue<std::string>(object, "options");
-
-    for (const auto& option : options) {
-        err = mount.mOptions.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed options count exceeds application limit");
-
-        err = mount.mOptions.Back().Assign(option.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed option length exceeds application limit");
-    }
-}
-
-void HostFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Host& host)
-{
-    auto err = host.mIP.Assign(object.GetValue<std::string>("ip").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed ip length exceeds application limit");
-
-    err = host.mHostname.Assign(object.GetValue<std::string>("hostName").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed hostName length exceeds application limit");
-}
-
-void ResourceInfoFromJSON(const utils::CaseInsensitiveObjectWrapper& object, ResourceInfoObsolete& resourceInfo)
-{
-    auto err = resourceInfo.mName.Assign(object.GetValue<std::string>("name").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "parsed name length exceeds application limit");
-
-    const auto groups = utils::GetArrayValue<std::string>(object, "groups");
-
-    for (const auto& group : groups) {
-        err = resourceInfo.mGroups.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed groups count exceeds application limit");
-
-        err = resourceInfo.mGroups.Back().Assign(group.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed group length exceeds application limit");
-    }
-
-    utils::ForEach(object, "mounts", [&resourceInfo](const auto& value) {
-        auto err = resourceInfo.mMounts.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed mounts count exceeds application limit");
-
-        FileSystemMountFromJSON(utils::CaseInsensitiveObjectWrapper(value), resourceInfo.mMounts.Back());
-    });
-
-    const auto envs = utils::GetArrayValue<std::string>(object, "env");
-
-    for (const auto& env : envs) {
-        err = resourceInfo.mEnv.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed envs count exceeds application limit");
-
-        err = resourceInfo.mEnv.Back().Assign(env.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed env length exceeds application limit");
-    }
-
-    utils::ForEach(object, "hosts", [&resourceInfo](const auto& value) {
-        auto err = resourceInfo.mHosts.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed hosts count exceeds application limit");
-
-        HostFromJSON(utils::CaseInsensitiveObjectWrapper(value), resourceInfo.mHosts.Back());
-    });
-}
-
-void ResourcesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<ResourceInfoObsolete>& outResources)
-{
-    utils::ForEach(object, "resources", [&outResources](const auto& value) {
-        auto err = outResources.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed resources count exceeds application limit");
-
-        ResourceInfoFromJSON(utils::CaseInsensitiveObjectWrapper(value), outResources.Back());
-    });
-}
-
-Poco::JSON::Array::Ptr DevicesToJson(const Array<DeviceInfo>& devices)
-{
-    auto array = Poco::makeShared<Poco::JSON::Array>();
-
-    for (const auto& device : devices) {
-        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-        object->set("name", device.mName.CStr());
-        object->set("sharedCount", device.mSharedCount);
-        object->set("groups", utils::ToJsonArray(device.mGroups, ToStdString));
-        object->set("hostDevices", utils::ToJsonArray(device.mHostDevices, ToStdString));
-
-        array->add(object);
-    }
-
-    return array;
-}
-
-Poco::JSON::Array::Ptr MountsToJson(const Array<Mount>& mounts)
-{
-    auto array = Poco::makeShared<Poco::JSON::Array>();
-
-    for (const auto& mount : mounts) {
-        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-        object->set("destination", mount.mDestination.CStr());
-        object->set("type", mount.mType.CStr());
-        object->set("source", mount.mSource.CStr());
-        object->set("options", utils::ToJsonArray(mount.mOptions, ToStdString));
-
-        array->add(object);
-    }
-
-    return array;
-}
-
-Poco::JSON::Array::Ptr HostsToJson(const Array<Host>& hosts)
-{
-    auto array = Poco::makeShared<Poco::JSON::Array>();
-
-    for (const auto& host : hosts) {
-        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-        object->set("ip", host.mIP.CStr());
-        object->set("hostName", host.mHostname.CStr());
-
-        array->add(object);
-    }
-
-    return array;
-}
-
-Poco::JSON::Array::Ptr ResourcesToJson(const Array<ResourceInfoObsolete>& resources)
-{
-    auto array = Poco::makeShared<Poco::JSON::Array>();
-
-    for (const auto& resource : resources) {
-        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-        object->set("name", resource.mName.CStr());
-        object->set("groups", utils::ToJsonArray(resource.mGroups, ToStdString));
-        object->set("mounts", MountsToJson(resource.mMounts));
-        object->set("env", utils::ToJsonArray(resource.mEnv, ToStdString));
-        object->set("hosts", HostsToJson(resource.mHosts));
-
-        array->add(object);
-    }
-
-    return array;
-}
-
 AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     AlertRulePercents percents = {};
@@ -410,7 +218,7 @@ void LabelsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<Sta
  * Public
  **********************************************************************************************************************/
 
-Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& nodeConfig, String& json) const
+Error JSONProvider::NodeConfigToJSON(const NodeConfig& nodeConfig, String& json) const
 {
     try {
         auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
@@ -427,8 +235,6 @@ Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& node
             object->set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
         }
 
-        object->set("devices", DevicesToJson(nodeConfig.mDevices));
-        object->set("resources", ResourcesToJson(nodeConfig.mResources));
         object->set("labels", utils::ToJsonArray(nodeConfig.mLabels, ToStdString));
         object->set("priority", nodeConfig.mPriority);
 
@@ -440,7 +246,7 @@ Error JSONProvider::NodeConfigToJSON(const sm::resourcemanager::NodeConfig& node
     return ErrorEnum::eNone;
 }
 
-Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::NodeConfig& nodeConfig) const
+Error JSONProvider::NodeConfigFromJSON(const String& json, NodeConfig& nodeConfig) const
 {
     try {
         Poco::JSON::Parser                  parser;
@@ -464,8 +270,6 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, sm::resourcemanager::
             nodeConfig.mResourceRatios.SetValue(ResourceRatiosFromJSON(object.GetObject("resourceRatios")));
         }
 
-        DevicesFromJSON(object, nodeConfig.mDevices);
-        ResourcesFromJSON(object, nodeConfig.mResources);
         LabelsFromJSON(object, nodeConfig.mLabels);
 
         nodeConfig.mPriority = object.GetValue<uint32_t>("priority");
