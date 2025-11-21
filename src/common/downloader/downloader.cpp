@@ -217,7 +217,7 @@ void Downloader::SendAlert(
 
     DownloadAlert alert;
 
-    alert.mImageID         = mImageID.c_str();
+    alert.mDigest          = mDigest.c_str();
     alert.mURL             = mURL.c_str();
     alert.mState           = state;
     alert.mDownloadedBytes = downloadedBytes;
