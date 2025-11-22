@@ -20,11 +20,6 @@ namespace aos::common::oci {
 
 namespace {
 
-std::string ToStdString(const String& str)
-{
-    return str.CStr();
-}
-
 void CapabilitiesFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::LinuxCapabilities& capabilities)
 {
     if (object.Has("bounding")) {
@@ -68,23 +63,23 @@ Poco::JSON::Object CapabilitiesToJSON(const aos::oci::LinuxCapabilities& capabil
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
     if (!capabilities.mBounding.IsEmpty()) {
-        object.set("bounding", utils::ToJsonArray(capabilities.mBounding, ToStdString));
+        object.set("bounding", utils::ToJsonArray(capabilities.mBounding, utils::ToStdString));
     }
 
     if (!capabilities.mEffective.IsEmpty()) {
-        object.set("effective", utils::ToJsonArray(capabilities.mEffective, ToStdString));
+        object.set("effective", utils::ToJsonArray(capabilities.mEffective, utils::ToStdString));
     }
 
     if (!capabilities.mInheritable.IsEmpty()) {
-        object.set("inheritable", utils::ToJsonArray(capabilities.mInheritable, ToStdString));
+        object.set("inheritable", utils::ToJsonArray(capabilities.mInheritable, utils::ToStdString));
     }
 
     if (!capabilities.mPermitted.IsEmpty()) {
-        object.set("permitted", utils::ToJsonArray(capabilities.mPermitted, ToStdString));
+        object.set("permitted", utils::ToJsonArray(capabilities.mPermitted, utils::ToStdString));
     }
 
     if (!capabilities.mAmbient.IsEmpty()) {
-        object.set("ambient", utils::ToJsonArray(capabilities.mAmbient, ToStdString));
+        object.set("ambient", utils::ToJsonArray(capabilities.mAmbient, utils::ToStdString));
     }
 
     return object;
@@ -208,11 +203,11 @@ Poco::JSON::Object ProcessToJSON(const aos::oci::Process& process)
     object.set("user", UserToJSON(process.mUser));
 
     if (!process.mArgs.IsEmpty()) {
-        object.set("args", utils::ToJsonArray(process.mArgs, ToStdString));
+        object.set("args", utils::ToJsonArray(process.mArgs, utils::ToStdString));
     }
 
     if (!process.mEnv.IsEmpty()) {
-        object.set("env", utils::ToJsonArray(process.mEnv, ToStdString));
+        object.set("env", utils::ToJsonArray(process.mEnv, utils::ToStdString));
     }
 
     object.set("cwd", process.mCwd.CStr());
@@ -282,7 +277,7 @@ Poco::JSON::Object MountToJSON(const Mount& mount)
     }
 
     if (!mount.mOptions.IsEmpty()) {
-        object.set("options", utils::ToJsonArray(mount.mOptions, ToStdString));
+        object.set("options", utils::ToJsonArray(mount.mOptions, utils::ToStdString));
     }
 
     return object;
@@ -741,11 +736,11 @@ Poco::JSON::Object LinuxToJSON(const aos::oci::Linux& lnx)
     }
 
     if (!lnx.mMaskedPaths.IsEmpty()) {
-        object.set("maskedPaths", utils::ToJsonArray(lnx.mMaskedPaths, ToStdString));
+        object.set("maskedPaths", utils::ToJsonArray(lnx.mMaskedPaths, utils::ToStdString));
     }
 
     if (!lnx.mReadonlyPaths.IsEmpty()) {
-        object.set("readonlyPaths", utils::ToJsonArray(lnx.mReadonlyPaths, ToStdString));
+        object.set("readonlyPaths", utils::ToJsonArray(lnx.mReadonlyPaths, utils::ToStdString));
     }
 
     return object;
@@ -771,7 +766,7 @@ Poco::JSON::Object VMHypervisorToJSON(const aos::oci::VMHypervisor& hypervisor)
     object.set("path", hypervisor.mPath.CStr());
 
     if (!hypervisor.mParameters.IsEmpty()) {
-        object.set("parameters", utils::ToJsonArray(hypervisor.mParameters, ToStdString));
+        object.set("parameters", utils::ToJsonArray(hypervisor.mParameters, utils::ToStdString));
     }
 
     return object;
@@ -797,7 +792,7 @@ Poco::JSON::Object VMKernelToJSON(const aos::oci::VMKernel& kernel)
     object.set("path", kernel.mPath.CStr());
 
     if (!kernel.mParameters.IsEmpty()) {
-        object.set("parameters", utils::ToJsonArray(kernel.mParameters, ToStdString));
+        object.set("parameters", utils::ToJsonArray(kernel.mParameters, utils::ToStdString));
     }
 
     return object;
@@ -878,7 +873,7 @@ Poco::JSON::Object VMHWConfigToJSON(const aos::oci::VMHWConfig& hwConfig)
     }
 
     if (!hwConfig.mDTDevs.IsEmpty()) {
-        object.set("dtDevs", utils::ToJsonArray(hwConfig.mDTDevs, ToStdString));
+        object.set("dtDevs", utils::ToJsonArray(hwConfig.mDTDevs, utils::ToStdString));
     }
 
     if (!hwConfig.mIRQs.IsEmpty()) {
@@ -930,7 +925,7 @@ Poco::JSON::Object VMToJSON(const aos::oci::VM& vm)
  * Public
  **********************************************************************************************************************/
 
-Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec)
+Error OCISpec::LoadRuntimeConfig(const String& path, aos::oci::RuntimeConfig& runtimeConfig)
 {
     try {
         std::ifstream file(path.CStr());
@@ -945,40 +940,40 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        runtimeSpec.mOCIVersion = wrapper.GetValue<std::string>("ociVersion").c_str();
-        runtimeSpec.mHostname   = wrapper.GetValue<std::string>("hostname").c_str();
+        runtimeConfig.mOCIVersion = wrapper.GetValue<std::string>("ociVersion").c_str();
+        runtimeConfig.mHostname   = wrapper.GetValue<std::string>("hostname").c_str();
 
         if (wrapper.Has("process")) {
-            runtimeSpec.mProcess.EmplaceValue();
+            runtimeConfig.mProcess.EmplaceValue();
 
-            ProcessFromJSON(wrapper.GetObject("process"), *runtimeSpec.mProcess);
+            ProcessFromJSON(wrapper.GetObject("process"), *runtimeConfig.mProcess);
         }
 
         if (wrapper.Has("root")) {
-            runtimeSpec.mRoot.EmplaceValue();
+            runtimeConfig.mRoot.EmplaceValue();
 
-            RootFromJSON(wrapper.GetObject("root"), *runtimeSpec.mRoot);
+            RootFromJSON(wrapper.GetObject("root"), *runtimeConfig.mRoot);
         }
 
         if (wrapper.Has("mounts")) {
-            utils::ForEach(wrapper, "mounts", [&runtimeSpec](const auto& item) {
-                auto err = runtimeSpec.mMounts.EmplaceBack();
+            utils::ForEach(wrapper, "mounts", [&runtimeConfig](const auto& item) {
+                auto err = runtimeConfig.mMounts.EmplaceBack();
                 AOS_ERROR_CHECK_AND_THROW(err, "failed emplace back mount");
 
-                MountFromJSON(utils::CaseInsensitiveObjectWrapper(item), runtimeSpec.mMounts.Back());
+                MountFromJSON(utils::CaseInsensitiveObjectWrapper(item), runtimeConfig.mMounts.Back());
             });
         }
 
         if (wrapper.Has("linux")) {
-            runtimeSpec.mLinux.EmplaceValue();
+            runtimeConfig.mLinux.EmplaceValue();
 
-            LinuxFromJSON(wrapper.GetObject("linux"), *runtimeSpec.mLinux);
+            LinuxFromJSON(wrapper.GetObject("linux"), *runtimeConfig.mLinux);
         }
 
         if (wrapper.Has("vm")) {
-            runtimeSpec.mVM.EmplaceValue();
+            runtimeConfig.mVM.EmplaceValue();
 
-            VMFromJSON(wrapper.GetObject("vm"), *runtimeSpec.mVM);
+            VMFromJSON(wrapper.GetObject("vm"), *runtimeConfig.mVM);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
@@ -987,35 +982,35 @@ Error OCISpec::LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtim
     return ErrorEnum::eNone;
 }
 
-Error OCISpec::SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec)
+Error OCISpec::SaveRuntimeConfig(const String& path, const aos::oci::RuntimeConfig& runtimeConfig)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
+        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-        object->set("ociVersion", runtimeSpec.mOCIVersion.CStr());
+        object->set("ociVersion", runtimeConfig.mOCIVersion.CStr());
 
-        if (runtimeSpec.mProcess.HasValue()) {
-            object->set("process", ProcessToJSON(*runtimeSpec.mProcess));
+        if (runtimeConfig.mProcess.HasValue()) {
+            object->set("process", ProcessToJSON(*runtimeConfig.mProcess));
         }
 
-        if (runtimeSpec.mRoot.HasValue()) {
-            object->set("root", RootToJSON(runtimeSpec.mRoot.GetValue()));
+        if (runtimeConfig.mRoot.HasValue()) {
+            object->set("root", RootToJSON(runtimeConfig.mRoot.GetValue()));
         }
 
-        if (!runtimeSpec.mHostname.IsEmpty()) {
-            object->set("hostname", runtimeSpec.mHostname.CStr());
+        if (!runtimeConfig.mHostname.IsEmpty()) {
+            object->set("hostname", runtimeConfig.mHostname.CStr());
         }
 
-        if (!runtimeSpec.mMounts.IsEmpty()) {
-            object->set("mounts", utils::ToJsonArray(runtimeSpec.mMounts, MountToJSON));
+        if (!runtimeConfig.mMounts.IsEmpty()) {
+            object->set("mounts", utils::ToJsonArray(runtimeConfig.mMounts, MountToJSON));
         }
 
-        if (runtimeSpec.mLinux.HasValue()) {
-            object->set("linux", LinuxToJSON(runtimeSpec.mLinux.GetValue()));
+        if (runtimeConfig.mLinux.HasValue()) {
+            object->set("linux", LinuxToJSON(runtimeConfig.mLinux.GetValue()));
         }
 
-        if (runtimeSpec.mVM.HasValue()) {
-            object->set("vm", VMToJSON(runtimeSpec.mVM.GetValue()));
+        if (runtimeConfig.mVM.HasValue()) {
+            object->set("vm", VMToJSON(runtimeConfig.mVM.GetValue()));
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());

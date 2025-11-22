@@ -17,6 +17,11 @@
 
 namespace aos::common::utils {
 
+std::string ToStdString(const String& str)
+{
+    return str.CStr();
+}
+
 CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
     : mObject(object)
 {
