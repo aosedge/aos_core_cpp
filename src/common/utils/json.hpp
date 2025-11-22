@@ -21,6 +21,15 @@
 #include <core/common/tools/string.hpp>
 
 namespace aos::common::utils {
+
+/**
+ * Converts aos::String to std::string.
+ *
+ * @param str aos::String to convert.
+ * @return std::string.
+ */
+std::string ToStdString(const String& str);
+
 /**
  * Parses json string.
  *

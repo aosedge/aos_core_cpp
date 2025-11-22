@@ -7,7 +7,7 @@
 #ifndef AOS_COMMON_OCISPEC_OCISPEC_HPP_
 #define AOS_COMMON_OCISPEC_OCISPEC_HPP_
 
-#include <core/common/ocispec/ocispec.hpp>
+#include <core/common/ocispec/itf/ocispec.hpp>
 
 namespace aos::common::oci {
 
@@ -17,37 +17,28 @@ namespace aos::common::oci {
 class OCISpec : public aos::oci::OCISpecItf {
 public:
     /**
-     * Loads OCI content descriptor.
+     * Loads OCI image index.
      *
      * @param path file path.
-     * @param descriptor[out]  content descriptor.
+     * @param index image index.
      * @return Error.
      */
-    Error ContentDescriptorFromFile(const String& path, aos::oci::ContentDescriptor& descriptor) override;
+    Error LoadImageIndex(const String& path, aos::oci::ImageIndex& index) override;
 
     /**
-     * Loads OCI content descriptor from json string.
-     *
-     * @param json json string.
-     * @param descriptor[out]  content descriptor.
-     * @return Error.
-     */
-    Error ContentDescriptorFromJSON(const String& json, aos::oci::ContentDescriptor& descriptor) override;
-
-    /**
-     * Saves OCI content descriptor.
+     * Saves OCI image index.
      *
      * @param path file path.
-     * @param descriptor[out] content descriptor.
+     * @param index image index.
      * @return Error.
      */
-    Error SaveContentDescriptor(const String& path, const aos::oci::ContentDescriptor& descriptor) override;
+    Error SaveImageIndex(const String& path, const aos::oci::ImageIndex& index) override;
 
     /**
      * Loads OCI image manifest.
      *
      * @param path file path.
-     * @param[out] manifest image manifest.
+     * @param manifest image manifest.
      * @return Error.
      */
     Error LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest) override;
@@ -62,49 +53,22 @@ public:
     Error SaveImageManifest(const String& path, const aos::oci::ImageManifest& manifest) override;
 
     /**
-     * Loads OCI image spec.
+     * Loads OCI image config.
      *
      * @param path file path.
-     * @param[out] imageSpec image spec.
+     * @param imageConfig image config.
      * @return Error.
      */
-    Error ImageSpecFromFile(const String& path, aos::oci::ImageSpec& imageSpec) override;
+    Error LoadImageConfig(const String& path, aos::oci::ImageConfig& imageConfig) override;
 
     /**
-     * Loads OCI image spec from json string.
-     *
-     * @param json json string.
-     * @param[out] imageSpec image spec.
-     * @return Error.
-     */
-    Error ImageSpecFromJSON(const String& json, aos::oci::ImageSpec& imageSpec) override;
-
-    /**
-     * Saves OCI image spec.
+     * Saves OCI image config.
      *
      * @param path file path.
-     * @param imageSpec image spec.
+     * @param imageConfig image config.
      * @return Error.
      */
-    Error SaveImageSpec(const String& path, const aos::oci::ImageSpec& imageSpec) override;
-
-    /**
-     * Loads OCI runtime spec.
-     *
-     * @param path file path.
-     * @param[out] runtimeSpec runtime spec.
-     * @return Error.
-     */
-    Error LoadRuntimeSpec(const String& path, aos::oci::RuntimeSpec& runtimeSpec) override;
-
-    /**
-     * Saves OCI runtime spec.
-     *
-     * @param path file path.
-     * @param runtimeSpec runtime spec.
-     * @return Error.
-     */
-    Error SaveRuntimeSpec(const String& path, const aos::oci::RuntimeSpec& runtimeSpec) override;
+    Error SaveImageConfig(const String& path, const aos::oci::ImageConfig& imageConfig) override;
 
     /**
      * Loads Aos service config.
@@ -113,16 +77,7 @@ public:
      * @param serviceConfig service config.
      * @return Error.
      */
-    Error ServiceConfigFromFile(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
-
-    /**
-     * Loads Aos service config from json string.
-     *
-     * @param json json string.
-     * @param serviceConfig service config.
-     * @return Error.
-     */
-    Error ServiceConfigFromJSON(const String& json, aos::oci::ServiceConfig& serviceConfig) override;
+    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
 
     /**
      * Saves Aos service config.
@@ -132,6 +87,24 @@ public:
      * @return Error.
      */
     Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override;
+
+    /**
+     * Loads OCI runtime config.
+     *
+     * @param path file path.
+     * @param runtimeConfig runtime config.
+     * @return Error.
+     */
+    Error LoadRuntimeConfig(const String& path, aos::oci::RuntimeConfig& runtimeConfig) override;
+
+    /**
+     * Saves OCI runtime config.
+     *
+     * @param path file path.
+     * @param runtimeConfig runtime config.
+     * @return Error.
+     */
+    Error SaveRuntimeConfig(const String& path, const aos::oci::RuntimeConfig& runtimeConfig) override;
 };
 
 } // namespace aos::common::oci

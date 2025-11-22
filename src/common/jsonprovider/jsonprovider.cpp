@@ -20,11 +20,6 @@ namespace {
  * Statics
  **********************************************************************************************************************/
 
-std::string ToStdString(const String& str)
-{
-    return str.CStr();
-}
-
 AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     AlertRulePercents percents = {};
@@ -235,7 +230,7 @@ Error JSONProvider::NodeConfigToJSON(const NodeConfig& nodeConfig, String& json)
             object->set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
         }
 
-        object->set("labels", utils::ToJsonArray(nodeConfig.mLabels, ToStdString));
+        object->set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
         object->set("priority", nodeConfig.mPriority);
 
         json = utils::Stringify(object).c_str();

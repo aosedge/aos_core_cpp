@@ -21,11 +21,6 @@ namespace aos::common::oci {
 
 namespace {
 
-std::string ToStdString(const String& str)
-{
-    return str.CStr();
-}
-
 void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
     if (const auto startBurst = object.GetOptionalValue<long>("startBurst")) {
@@ -236,25 +231,6 @@ Poco::JSON::Object RequestedResourcesToJSON(const aos::oci::RequestedResources& 
     return object;
 }
 
-void ServiceDeviceFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ServiceDevice& serviceDevice)
-{
-    const auto device      = object.GetValue<std::string>("name");
-    const auto permissions = object.GetValue<std::string>("permissions");
-
-    serviceDevice.mDevice      = device.c_str();
-    serviceDevice.mPermissions = permissions.c_str();
-}
-
-Poco::JSON::Object ServiceDeviceToJSON(const aos::oci::ServiceDevice& device)
-{
-    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
-
-    object.set("name", device.mDevice.CStr());
-    object.set("permissions", device.mPermissions.CStr());
-
-    return object;
-}
-
 FunctionPermissions FunctionPermissionsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
 {
     const auto function    = object.GetValue<std::string>("function");
@@ -425,92 +401,13 @@ Poco::JSON::Object AlertRulesToJSON(const AlertRules& rules)
     return object;
 }
 
-void ServiceConfigFromJSONObject(
-    const utils::CaseInsensitiveObjectWrapper& wrapper, aos::oci::ServiceConfig& serviceConfig)
-{
-    Error err;
-
-    if (const auto created = wrapper.GetOptionalValue<std::string>("created"); created.has_value()) {
-        // cppcheck-suppress unusedScopedObject
-        Tie(serviceConfig.mCreated, err) = utils::FromUTCString(created->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
-    }
-
-    const auto author     = wrapper.GetValue<std::string>("author");
-    serviceConfig.mAuthor = author.c_str();
-
-    serviceConfig.mSkipResourceLimits = wrapper.GetValue<bool>("skipResourceLimits");
-
-    if (wrapper.Has("hostname")) {
-        const auto hostname = wrapper.GetValue<std::string>("hostname");
-        serviceConfig.mHostname.SetValue(hostname.c_str());
-    }
-
-    if (auto balancingPolicy = wrapper.GetOptionalValue<std::string>("balancingPolicy"); balancingPolicy.has_value()) {
-        err = serviceConfig.mBalancingPolicy.FromString(balancingPolicy->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "balancing policy parsing error");
-    }
-
-    const auto runners = utils::GetArrayValue<std::string>(wrapper, "runners");
-    for (const auto& runner : runners) {
-        err = serviceConfig.mRunners.PushBack(runner.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "runners parsing error");
-    }
-
-    if (wrapper.Has("runParameters")) {
-        RunParametersFromJSON(wrapper.GetObject("runParameters"), serviceConfig.mRunParameters);
-    }
-
-    if (wrapper.Has("sysctl")) {
-        SysctlFromJSON(wrapper.Get("sysctl"), serviceConfig.mSysctl);
-    }
-
-    if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL"); offlineTTLStr.has_value()) {
-        // cppcheck-suppress unusedScopedObject
-        Tie(serviceConfig.mOfflineTTL, err) = utils::ParseDuration(*offlineTTLStr);
-        AOS_ERROR_CHECK_AND_THROW(err, "offlineTTL parsing error");
-    }
-
-    if (wrapper.Has("quotas")) {
-        ServiceQuotasFromJSON(wrapper.GetObject("quotas"), serviceConfig.mQuotas);
-    }
-
-    if (wrapper.Has("requestedResources")) {
-        serviceConfig.mRequestedResources.SetValue(RequestedResourcesFromJSON(wrapper.GetObject("requestedResources")));
-    }
-
-    utils::ForEach(wrapper, "devices", [&serviceConfig](const auto& value) {
-        auto err = serviceConfig.mDevices.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "devices parsing error");
-
-        ServiceDeviceFromJSON(utils::CaseInsensitiveObjectWrapper(value), serviceConfig.mDevices.Back());
-    });
-
-    for (const auto& resource : utils::GetArrayValue<std::string>(wrapper, "resources")) {
-        err = serviceConfig.mResources.PushBack(resource.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "resources parsing error");
-    }
-
-    utils::ForEach(wrapper, "permissions", [&serviceConfig](const auto& value) {
-        auto err = serviceConfig.mPermissions.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
-
-        return FunctionServicePermissionsFromJSON(
-            utils::CaseInsensitiveObjectWrapper(value), serviceConfig.mPermissions.Back());
-    });
-
-    if (wrapper.Has("alertRules")) {
-        serviceConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
-    }
-}
-
 } // namespace
 
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-Error OCISpec::ServiceConfigFromFile(const String& path, aos::oci::ServiceConfig& serviceConfig)
+Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig)
 {
     try {
         std::ifstream file(path.CStr());
@@ -525,26 +422,70 @@ Error OCISpec::ServiceConfigFromFile(const String& path, aos::oci::ServiceConfig
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        ServiceConfigFromJSONObject(wrapper, serviceConfig);
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(utils::ToAosError(e));
-    }
+        if (const auto created = wrapper.GetOptionalValue<std::string>("created")) {
+            Tie(serviceConfig.mCreated, err) = utils::FromUTCString(created->c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
+        }
 
-    return ErrorEnum::eNone;
-}
+        const auto author     = wrapper.GetValue<std::string>("author");
+        serviceConfig.mAuthor = author.c_str();
 
-Error OCISpec::ServiceConfigFromJSON(const String& json, aos::oci::ServiceConfig& serviceConfig)
-{
-    try {
-        std::istringstream stream(json.CStr());
+        serviceConfig.mSkipResourceLimits = wrapper.GetValue<bool>("skipResourceLimits");
 
-        auto [var, err] = utils::ParseJson(stream);
-        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
+        if (wrapper.Has("hostname")) {
+            const auto hostname = wrapper.GetValue<std::string>("hostname");
+            serviceConfig.mHostname.SetValue(hostname.c_str());
+        }
 
-        Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
-        utils::CaseInsensitiveObjectWrapper wrapper(object);
+        if (auto balancingPolicy = wrapper.GetOptionalValue<std::string>("balancingPolicy")) {
+            err = serviceConfig.mBalancingPolicy.FromString(balancingPolicy->c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "balancing policy parsing error");
+        }
 
-        ServiceConfigFromJSONObject(wrapper, serviceConfig);
+        const auto runtimes = utils::GetArrayValue<std::string>(wrapper, "runtimes");
+        for (const auto& runtime : runtimes) {
+            err = serviceConfig.mRuntimes.PushBack(runtime.c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "runtimes parsing error");
+        }
+
+        if (wrapper.Has("runParameters")) {
+            RunParametersFromJSON(wrapper.GetObject("runParameters"), serviceConfig.mRunParameters);
+        }
+
+        if (wrapper.Has("sysctl")) {
+            SysctlFromJSON(wrapper.Get("sysctl"), serviceConfig.mSysctl);
+        }
+
+        if (const auto offlineTTLStr = wrapper.GetOptionalValue<std::string>("offlineTTL")) {
+            Tie(serviceConfig.mOfflineTTL, err) = utils::ParseDuration(*offlineTTLStr);
+            AOS_ERROR_CHECK_AND_THROW(err, "offlineTTL parsing error");
+        }
+
+        if (wrapper.Has("quotas")) {
+            ServiceQuotasFromJSON(wrapper.GetObject("quotas"), serviceConfig.mQuotas);
+        }
+
+        if (wrapper.Has("requestedResources")) {
+            serviceConfig.mRequestedResources.SetValue(
+                RequestedResourcesFromJSON(wrapper.GetObject("requestedResources")));
+        }
+
+        for (const auto& resource : utils::GetArrayValue<std::string>(wrapper, "resources")) {
+            err = serviceConfig.mResources.PushBack(resource.c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "resources parsing error");
+        }
+
+        utils::ForEach(wrapper, "permissions", [&serviceConfig](const auto& value) {
+            auto err = serviceConfig.mPermissions.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
+
+            return FunctionServicePermissionsFromJSON(
+                utils::CaseInsensitiveObjectWrapper(value), serviceConfig.mPermissions.Back());
+        });
+
+        if (wrapper.Has("alertRules")) {
+            serviceConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
+        }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
@@ -555,7 +496,7 @@ Error OCISpec::ServiceConfigFromJSON(const String& json, aos::oci::ServiceConfig
 Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig)
 {
     try {
-        Poco::JSON::Object::Ptr object = new Poco::JSON::Object(Poco::JSON_PRESERVE_KEY_ORDER);
+        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
         auto [created, err] = utils::ToUTCString(serviceConfig.mCreated);
         AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
@@ -569,7 +510,7 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
         }
 
         object->set("balancingPolicy", serviceConfig.mBalancingPolicy.ToString().CStr());
-        object->set("runners", utils::ToJsonArray(serviceConfig.mRunners, ToStdString));
+        object->set("runtimes", utils::ToJsonArray(serviceConfig.mRuntimes, utils::ToStdString));
 
         if (auto runParametersObject = RunParametersToJSON(serviceConfig.mRunParameters);
             runParametersObject.size() > 0) {
@@ -591,12 +532,8 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
             object->set("requestedResources", RequestedResourcesToJSON(serviceConfig.mRequestedResources.GetValue()));
         }
 
-        if (!serviceConfig.mDevices.IsEmpty()) {
-            object->set("devices", utils::ToJsonArray(serviceConfig.mDevices, ServiceDeviceToJSON));
-        }
-
         if (!serviceConfig.mResources.IsEmpty()) {
-            object->set("resources", utils::ToJsonArray(serviceConfig.mResources, ToStdString));
+            object->set("resources", utils::ToJsonArray(serviceConfig.mResources, utils::ToStdString));
         }
 
         if (!serviceConfig.mPermissions.IsEmpty()) {
