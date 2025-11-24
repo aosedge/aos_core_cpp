@@ -550,7 +550,7 @@ TEST_F(ProtectedMessageHandlerTest, RegisterInstanceFailsNoMemory)
     request.mutable_instance()->set_subject_id("subject-id-1");
 
     // fill permissions with more items than allowed
-    for (size_t i = 0; i < cMaxNumServices + 1; i++) {
+    for (size_t i = 0; i < cMaxNumUpdateItems + 1; i++) {
         (*request.mutable_permissions())[std::to_string(i)].mutable_permissions()->insert({"key", "value"});
     }
 

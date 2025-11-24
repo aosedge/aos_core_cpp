@@ -18,7 +18,6 @@
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/string.hpp>
-#include <core/common/types/obsolete.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
 #include <common/logger/logmodule.hpp>
