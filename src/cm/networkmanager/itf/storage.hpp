@@ -11,8 +11,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <core/common/types/network.hpp>
+
 #include <common/utils/utils.hpp>
-#include <core/common/types/obsolete.hpp>
 
 namespace aos::cm::networkmanager {
 
