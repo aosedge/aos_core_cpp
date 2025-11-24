@@ -11,8 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <core/common/types/obsolete.hpp>
-
 namespace aos::cm::networkmanager {
 
 using HostsMap = std::unordered_map<std::string, std::vector<std::string>>;

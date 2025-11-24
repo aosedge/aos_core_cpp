@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#include <core/common/types/obsolete.hpp>
+#include <core/common/types/network.hpp>
 
 namespace aos::cm::networkmanager {
 
