@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <core/common/types/obsolete.hpp>
+#include <core/common/types/common.hpp>
 
 namespace aos::iam::nodeinfoprovider::utils {
 

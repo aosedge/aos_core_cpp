@@ -9,7 +9,6 @@
 
 #include <core/common/crypto/itf/x509.hpp>
 #include <core/common/tools/string.hpp>
-#include <core/common/types/obsolete.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
 #include <common/logger/logmodule.hpp>
@@ -428,11 +427,11 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     Error      err         = ErrorEnum::eNone;
     const auto aosInstance = common::pbconvert::ConvertToAos(request->instance());
 
-    LOG_DBG() << "Process register instance: serviceID=" << aosInstance.mItemID
-              << ", subjectID=" << aosInstance.mSubjectID << ", instance=" << aosInstance.mInstance;
+    LOG_DBG() << "Process register instance: itemID=" << aosInstance.mItemID << ", subjectID=" << aosInstance.mSubjectID
+              << ", instance=" << aosInstance.mInstance;
 
     // Convert permissions
-    auto aosPermissions = std::make_unique<StaticArray<FunctionServicePermissions, cMaxNumServices>>();
+    auto aosPermissions = std::make_unique<StaticArray<FunctionServicePermissions, cMaxNumUpdateItems>>();
 
     for (const auto& [service, permissions] : request->permissions()) {
         if (err = aosPermissions->EmplaceBack(); !err.IsNone()) {
