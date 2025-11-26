@@ -58,7 +58,7 @@ std::unique_ptr<AlertVariant> CreateDownloadAlert(const Optional<String>& reason
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<DownloadAlert>();
 
-    alert->mImageID = "test_image_id";
+    alert->mDigest = "testDigest";
     alert->mURL.Assign("http://example.com/download");
     alert->mDownloadedBytes = 100;
     alert->mTotalBytes      = 1000;
@@ -160,10 +160,10 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"resourceAllocateAlert","item":{"id":"itemID"},)"
           R"("subject":{"id":"subjectID"},"instance":1,"node":{"id":"test_node"},)"
           R"("deviceId":"test_resource","message":"Test resource allocation alert message"},)"
-          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"downloadProgressAlert","imageId":"test_image_id",)"
+          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"downloadProgressAlert","digest":"testDigest",)"
           R"("url":"http://example.com/download","downloadedBytes":100,"totalBytes":1000,)"
           R"("state":"started"},)"
-          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"downloadProgressAlert","imageId":"test_image_id",)"
+          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"downloadProgressAlert","digest":"testDigest",)"
           R"("url":"http://example.com/download","downloadedBytes":100,"totalBytes":1000,)"
           R"("state":"started","reason":"test_reason","errorInfo":{"aosCode":1,"exitCode":0,)"
           R"("message":"test_error"}},)"
