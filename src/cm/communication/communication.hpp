@@ -34,7 +34,7 @@
 #include <core/common/types/certificates.hpp>
 #include <core/common/types/provisioning.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
 
 #include <core/cm/launcher/itf/envvarhandler.hpp>
 #include <core/cm/smcontroller/itf/logprovider.hpp>
@@ -108,6 +108,15 @@ public:
      * @return Error.
      */
     Error SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& statuses) override;
+
+    /**
+     * Returns blobs info.
+     *
+     * @param digests list of blob digests.
+     * @param[out] blobsInfo blobs info.
+     * @return Error.
+     */
+    Error GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo) override;
 
     /**
      * Sends monitoring.
