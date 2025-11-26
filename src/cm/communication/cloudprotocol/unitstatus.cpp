@@ -207,24 +207,16 @@ Poco::JSON::Object::Ptr UpdateItemToJSON(const UpdateItemStatus& status)
 
     json->set("item", CreateAosIdentity({status.mItemID}));
     json->set("version", status.mVersion.CStr());
+    json->set("state", status.mState.ToString().CStr());
 
-    json->set("statuses", common::utils::ToJsonArray(status.mStatuses, [](const ImageStatus& status) {
-        auto statusJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+    if (!status.mError.IsNone()) {
+        auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-        statusJson->set("imageId", status.mImageID.CStr());
-        statusJson->set("state", status.mState.ToString().CStr());
+        auto err = ToJSON(status.mError, *errorInfo);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't convert errorInfo to JSON");
 
-        if (!status.mError.IsNone()) {
-            auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-            auto err = ToJSON(status.mError, *errorInfo);
-            AOS_ERROR_CHECK_AND_THROW(err, "can't convert errorInfo to JSON");
-
-            statusJson->set("errorInfo", errorInfo);
-        }
-
-        return statusJson;
-    }));
+        json->set("errorInfo", errorInfo);
+    }
 
     return json;
 }
@@ -244,7 +236,6 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
 
         instanceJson->set("node", CreateAosIdentity({instanceStatus.mNodeID}));
         instanceJson->set("runtime", CreateAosIdentity({instanceStatus.mRuntimeID}));
-        instanceJson->set("imageId", instanceStatus.mImageID.CStr());
         instanceJson->set("instance", instanceStatus.mInstance);
 
         if (!instanceStatus.mStateChecksum.IsEmpty()) {
@@ -298,7 +289,7 @@ Error ToJSON(const UnitStatus& unitStatus, Poco::JSON::Object& json)
         }
 
         if (unitStatus.mUpdateItems.HasValue()) {
-            json.set("updateItems", common::utils::ToJsonArray(*unitStatus.mUpdateItems, UpdateItemToJSON));
+            json.set("items", common::utils::ToJsonArray(*unitStatus.mUpdateItems, UpdateItemToJSON));
         }
 
         if (unitStatus.mInstances.HasValue()) {
