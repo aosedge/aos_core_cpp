@@ -169,9 +169,7 @@ void NodeConfigFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json,
         LabelsFromJSON(json, nodeConfig.mLabels);
     }
 
-    if (const auto priority = json.GetOptionalValue<uint64_t>("priority"); priority.has_value()) {
-        nodeConfig.mPriority = *priority;
-    }
+    nodeConfig.mPriority = json.GetValue<uint64_t>("priority");
 }
 
 void UnitConfigFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, UnitConfig& unitConfig)
@@ -190,116 +188,6 @@ void UnitConfigFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json,
     });
 }
 
-void ArchInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, ArchInfo& archInfo)
-{
-    auto err = archInfo.mArchitecture.Assign(json.GetValue<std::string>("architecture").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse architecture");
-
-    if (const auto variant = json.GetOptionalValue<std::string>("variant"); variant.has_value()) {
-        archInfo.mVariant.EmplaceValue();
-
-        err = archInfo.mVariant->Assign(variant->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse arch variant");
-    }
-}
-
-void OSInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, OSInfo& osInfo)
-{
-    auto err = osInfo.mOS.Assign(json.GetValue<std::string>("os").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse os");
-
-    if (const auto version = json.GetOptionalValue<std::string>("version"); version.has_value()) {
-        osInfo.mVersion.EmplaceValue();
-
-        err = osInfo.mVersion->Assign(version->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse os version");
-    }
-
-    common::utils::ForEach(json, "features", [&osInfo](const Poco::Dynamic::Var& value) {
-        auto err = osInfo.mFeatures.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse os features");
-
-        err = osInfo.mFeatures.Back().Assign(value.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse os feature");
-    });
-}
-
-void ImageInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, ImageInfo& imageInfo)
-{
-    auto err = imageInfo.mImageID.Assign(json.GetValue<std::string>("id").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse image id");
-
-    ArchInfoFromJSON(json.GetObject("archInfo"), imageInfo.mArchInfo);
-    OSInfoFromJSON(json.GetObject("osInfo"), imageInfo.mOSInfo);
-}
-
-void DecryptInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, crypto::DecryptInfo& decryptInfo)
-{
-    auto err = decryptInfo.mBlockAlg.Assign(json.GetValue<std::string>("blockAlg").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockAlg");
-
-    const auto iv = Base64Decode(json.GetValue<std::string>("blockIv"));
-    err           = decryptInfo.mBlockIV.Assign(String(iv.c_str()).AsByteArray());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockIv");
-
-    const auto key = Base64Decode(json.GetValue<std::string>("blockKey"));
-    err            = decryptInfo.mBlockKey.Assign(String(key.c_str()).AsByteArray());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockKey");
-}
-
-void SignInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, crypto::SignInfo& signInfo)
-{
-    auto err = signInfo.mChainName.Assign(json.GetValue<std::string>("chainName").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo chainName");
-
-    err = signInfo.mAlg.Assign(json.GetValue<std::string>("alg").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo alg");
-
-    const auto value = Base64Decode(json.GetValue<std::string>("value"));
-    err              = signInfo.mValue.Assign(String(value.c_str()).AsByteArray());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo value");
-
-    const auto trustedTimestamp = json.GetOptionalValue<std::string>("trustedTimestamp");
-
-    if (!trustedTimestamp.has_value()) {
-        AOS_ERROR_THROW(ErrorEnum::eRuntime, "trustedTimestamp is missing in signInfo JSON");
-    }
-
-    Tie(signInfo.mTrustedTimestamp, err) = Time::UTC(trustedTimestamp->c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "trusted timestamp parsing error");
-
-    common::utils::ForEach(json, "ocspValues", [&signInfo](const Poco::Dynamic::Var& value) {
-        auto err = signInfo.mOCSPValues.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse ocsp value");
-
-        err = signInfo.mOCSPValues.Back().Assign(value.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse ocsp value");
-    });
-}
-
-void UpdateImageInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, UpdateImageInfo& updateImageInfo)
-{
-    ImageInfoFromJSON(json.GetObject("image"), updateImageInfo.mImage);
-
-    common::utils::ForEach(json, "urls", [&updateImageInfo](const Poco::Dynamic::Var& value) {
-        auto err = updateImageInfo.mURLs.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse image URL");
-
-        err = updateImageInfo.mURLs.Back().Assign(value.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse image URL");
-    });
-
-    const auto sha256 = json.GetValue<std::string>("sha256");
-
-    auto err = String(sha256.c_str()).HexToByteArray(updateImageInfo.mSHA256);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse image sha256");
-
-    updateImageInfo.mSize = json.GetValue<size_t>("size");
-
-    DecryptInfoFromJSON(json.GetObject("decryptInfo"), updateImageInfo.mDecryptInfo);
-    SignInfoFromJSON(json.GetObject("signInfo"), updateImageInfo.mSignInfo);
-}
-
 void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, UpdateItemInfo& updateItemInfo)
 {
     auto err = ParseAosIdentityID(json.GetObject("item"), updateItemInfo.mItemID);
@@ -311,12 +199,8 @@ void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
     err = ParseAosIdentityID(json.GetObject("owner"), updateItemInfo.mOwnerID);
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse owner");
 
-    common::utils::ForEach(json, "images", [&updateItemInfo](const auto& value) {
-        auto err = updateItemInfo.mImages.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse image");
-
-        UpdateImageInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(value), updateItemInfo.mImages.Back());
-    });
+    err = updateItemInfo.mIndexDigest.Assign(json.GetValue<std::string>("indexDigest").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse indexDigest");
 }
 
 void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredInstanceInfo& instance)
@@ -333,6 +217,15 @@ void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapp
     if (json.Has("labels")) {
         LabelsFromJSON(json, instance.mLabels);
     }
+}
+
+void SubjectInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, SubjectInfo& subject)
+{
+    auto err = ParseAosIdentityID(json.GetObject("identity"), subject.mSubjectID);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject identity");
+
+    err = subject.mSubjectType.FromString(json.GetValue<std::string>("type").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject type");
 }
 
 void CertificateInfoFromJSON(
@@ -399,6 +292,13 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredS
 
             DesiredInstanceInfoFromJSON(
                 common::utils::CaseInsensitiveObjectWrapper(value), desiredStatus.mInstances.Back());
+        });
+
+        common::utils::ForEach(json, "subjects", [&desiredStatus](const auto& value) {
+            auto err = desiredStatus.mSubjects.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
+
+            SubjectInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(value), desiredStatus.mSubjects.Back());
         });
 
         common::utils::ForEach(json, "certificates", [&desiredStatus](const auto& value) {
