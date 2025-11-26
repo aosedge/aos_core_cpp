@@ -185,13 +185,11 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
 
 TEST_F(CloudProtocolUnitStatus, Items)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,"updateItems":[)"
-                           R"({"item":{"id":"itemID1"},"version":"version1","statuses":[)"
-                           R"({"imageId":"imageID1","state":"downloading"},)"
-                           R"({"imageId":"imageID2","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
-                           R"("message":""}}]},)"
-                           R"({"item":{"id":"itemID2"},"version":"version1","statuses":[)"
-                           R"({"imageId":"imageID3","state":"installed"}]}]})";
+    constexpr auto cJSON
+        = R"({"messageType":"unitStatus","isDeltaInfo":false,"items":[)"
+          R"({"item":{"id":"itemID1"},"version":"version1","state":"downloading"},)"
+          R"({"item":{"id":"itemID2"},"version":"version1","state":"installed"},)"
+          R"({"item":{"id":"itemID3"},"version":"version1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":"test error"}}]})";
 
     auto unitStatus = std::make_unique<UnitStatus>();
 
@@ -200,23 +198,18 @@ TEST_F(CloudProtocolUnitStatus, Items)
     unitStatus->mUpdateItems->EmplaceBack();
     unitStatus->mUpdateItems->Back().mItemID  = "itemID1";
     unitStatus->mUpdateItems->Back().mVersion = "version1";
-
-    unitStatus->mUpdateItems->Back().mStatuses.EmplaceBack();
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mImageID = "imageID1";
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mState   = ImageStateEnum::eDownloading;
-
-    unitStatus->mUpdateItems->Back().mStatuses.EmplaceBack();
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mImageID = "imageID2";
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mState   = ImageStateEnum::eFailed;
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mError   = ErrorEnum::eFailed;
+    unitStatus->mUpdateItems->Back().mState   = ItemStateEnum::eDownloading;
 
     unitStatus->mUpdateItems->EmplaceBack();
     unitStatus->mUpdateItems->Back().mItemID  = "itemID2";
     unitStatus->mUpdateItems->Back().mVersion = "version1";
+    unitStatus->mUpdateItems->Back().mState   = ItemStateEnum::eInstalled;
 
-    unitStatus->mUpdateItems->Back().mStatuses.EmplaceBack();
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mImageID = "imageID3";
-    unitStatus->mUpdateItems->Back().mStatuses.Back().mState   = ImageStateEnum::eInstalled;
+    unitStatus->mUpdateItems->EmplaceBack();
+    unitStatus->mUpdateItems->Back().mItemID  = "itemID3";
+    unitStatus->mUpdateItems->Back().mVersion = "version1";
+    unitStatus->mUpdateItems->Back().mState   = ItemStateEnum::eFailed;
+    unitStatus->mUpdateItems->Back().mError   = Error(ErrorEnum::eFailed, "test error");
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -228,16 +221,13 @@ TEST_F(CloudProtocolUnitStatus, Items)
 
 TEST_F(CloudProtocolUnitStatus, Instances)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,"instances":[)"
-                           R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1",)"
-                           R"("instances":[{"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},)"
-                           R"("imageId":"imageID1","instance":1,"stateChecksum":"12345678","state":"active"},)"
-                           R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"imageId":"imageID2",)"
-                           R"("instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
-                           R"("message":""}}]},)"
-                           R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2",)"
-                           R"("instances":[{"node":{"id":"nodeID2"},"runtime":{"id":"runtimeID2"},)"
-                           R"("imageId":"imageID4","instance":1,"state":"activating"}]}]})";
+    constexpr auto cJSON
+        = R"({"messageType":"unitStatus","isDeltaInfo":false,"instances":[)"
+          R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
+          R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
+          R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+          R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2","instances":[)"
+          R"({"node":{"id":"nodeID2"},"runtime":{"id":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
 
     auto unitStatus = std::make_unique<UnitStatus>();
 
@@ -249,7 +239,6 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mVersion   = "version1";
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID1";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
@@ -257,7 +246,6 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     SetChecksum("12345678", unitStatus->mInstances->Back().mInstances.Back().mStateChecksum);
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID2";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 2;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
@@ -270,7 +258,6 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mVersion   = "version2";
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mImageID   = "imageID4";
     unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
     unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID2";
     unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID2";
