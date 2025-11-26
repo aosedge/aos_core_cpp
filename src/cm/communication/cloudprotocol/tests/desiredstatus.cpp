@@ -222,7 +222,7 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
     EXPECT_EQ(node1.mPriority, 20);
 }
 
-TEST_F(CloudProtocolDesiredStatus, Images)
+TEST_F(CloudProtocolDesiredStatus, Items)
 {
     constexpr auto cJSON = R"({
         "messageType": "desiredStatus",
@@ -235,46 +235,17 @@ TEST_F(CloudProtocolDesiredStatus, Images)
                 "owner": {
                     "id": "owner1"
                 },
-                "images": [
-                    {
-                        "image": {
-                            "id": "imageId1",
-                            "archInfo": {
-                                "architecture": "x86_64",
-                                "variant": "variant1"
-                            },
-                            "osInfo": {
-                                "os": "Linux",
-                                "version": "5.4.0",
-                                "features": [
-                                    "feature1",
-                                    "feature2"
-                                ]
-                            }
-                        },
-                        "urls": [
-                            "http://example.com/image1.bin",
-                            "http://backup.example.com/image1.bin"
-                        ],
-                        "sha256": "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80",
-                        "size": 1000,
-                        "decryptInfo": {
-                            "blockAlg": "AES256/CBC/pkcs7",
-                            "blockIv": "YmxvY2tJdg==",
-                            "blockKey": "YmxvY2tLZXk="
-                        },
-                        "signInfo": {
-                            "chainName": "chainName",
-                            "alg": "RSA/SHA256",
-                            "value": "dmFsdWU=",
-                            "trustedTimestamp": "2023-10-01T12:00:00Z",
-                            "ocspValues": [
-                                "ocspValue1",
-                                "ocspValue2"
-                            ]
-                        }
-                    }
-                ]
+                "indexDigest": "sha256:36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80"
+            },
+            {
+                "item": {
+                    "id": "item2"
+                },
+                "version": "1.2.3",
+                "owner": {
+                    "id": "owner2"
+                },
+                "indexDigest": "sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
             }
         ]
     })";
@@ -289,50 +260,19 @@ TEST_F(CloudProtocolDesiredStatus, Images)
     err = FromJSON(wrapper, *desiredStatus);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    ASSERT_EQ(desiredStatus->mUpdateItems.Size(), 1);
+    ASSERT_EQ(desiredStatus->mUpdateItems.Size(), 2);
 
-    const auto& item = desiredStatus->mUpdateItems[0];
-    EXPECT_STREQ(item.mItemID.CStr(), "item1");
-    EXPECT_STREQ(item.mOwnerID.CStr(), "owner1");
-    EXPECT_STREQ(item.mVersion.CStr(), "0.0.1");
+    const auto& item0 = desiredStatus->mUpdateItems[0];
+    EXPECT_STREQ(item0.mItemID.CStr(), "item1");
+    EXPECT_STREQ(item0.mOwnerID.CStr(), "owner1");
+    EXPECT_STREQ(item0.mVersion.CStr(), "0.0.1");
+    EXPECT_STREQ(item0.mIndexDigest.CStr(), "sha256:36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80");
 
-    ASSERT_EQ(item.mImages.Size(), 1);
-
-    const auto& image = item.mImages[0];
-    EXPECT_STREQ(image.mImage.mImageID.CStr(), "imageId1");
-
-    EXPECT_STREQ(image.mImage.mArchInfo.mArchitecture.CStr(), "x86_64");
-    EXPECT_STREQ(image.mImage.mArchInfo.mVariant->CStr(), "variant1");
-
-    EXPECT_STREQ(image.mImage.mOSInfo.mOS.CStr(), "Linux");
-    EXPECT_STREQ(image.mImage.mOSInfo.mVersion->CStr(), "5.4.0");
-    ASSERT_EQ(image.mImage.mOSInfo.mFeatures.Size(), 2);
-    EXPECT_STREQ(image.mImage.mOSInfo.mFeatures[0].CStr(), "feature1");
-    EXPECT_STREQ(image.mImage.mOSInfo.mFeatures[1].CStr(), "feature2");
-
-    ASSERT_EQ(image.mURLs.Size(), 2);
-    EXPECT_STREQ(image.mURLs[0].CStr(), "http://example.com/image1.bin");
-    EXPECT_STREQ(image.mURLs[1].CStr(), "http://backup.example.com/image1.bin");
-
-    StaticArray<uint8_t, crypto::cSHA256Size> expectedSHA256;
-
-    err = String("36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80").HexToByteArray(expectedSHA256);
-    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
-
-    EXPECT_EQ(image.mSHA256, expectedSHA256);
-    EXPECT_EQ(image.mSize, 1000);
-
-    EXPECT_STREQ(image.mDecryptInfo.mBlockAlg.CStr(), "AES256/CBC/pkcs7");
-    EXPECT_EQ(image.mDecryptInfo.mBlockIV, String("blockIv").AsByteArray());
-    EXPECT_EQ(image.mDecryptInfo.mBlockKey, String("blockKey").AsByteArray());
-
-    EXPECT_STREQ(image.mSignInfo.mChainName.CStr(), "chainName");
-    EXPECT_STREQ(image.mSignInfo.mAlg.CStr(), "RSA/SHA256");
-    EXPECT_EQ(image.mSignInfo.mValue, String("value").AsByteArray());
-    EXPECT_EQ(image.mSignInfo.mTrustedTimestamp, Time::UTC("2023-10-01T12:00:00Z").mValue);
-    ASSERT_EQ(image.mSignInfo.mOCSPValues.Size(), 2);
-    EXPECT_STREQ(image.mSignInfo.mOCSPValues[0].CStr(), "ocspValue1");
-    EXPECT_STREQ(image.mSignInfo.mOCSPValues[1].CStr(), "ocspValue2");
+    const auto& item1 = desiredStatus->mUpdateItems[1];
+    EXPECT_STREQ(item1.mItemID.CStr(), "item2");
+    EXPECT_STREQ(item1.mOwnerID.CStr(), "owner2");
+    EXPECT_STREQ(item1.mVersion.CStr(), "1.2.3");
+    EXPECT_STREQ(item1.mIndexDigest.CStr(), "sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd");
 }
 
 TEST_F(CloudProtocolDesiredStatus, Instances)
@@ -390,6 +330,45 @@ TEST_F(CloudProtocolDesiredStatus, Instances)
     EXPECT_EQ(instance1.mPriority, 0);
     EXPECT_EQ(instance1.mNumInstances, 0);
     ASSERT_EQ(instance1.mLabels.Size(), 0);
+}
+
+TEST_F(CloudProtocolDesiredStatus, Subjects)
+{
+    constexpr auto cJSON = R"({
+        "messageType": "desiredStatus",
+        "subjects": [
+            {
+                "identity": {
+                    "id": "subjectId1"
+                },
+                "type": "group"
+            },
+            {
+                "identity": {
+                    "id": "subjectId2"
+                },
+                "type": "user"
+            }
+        ]
+    })";
+
+    auto desiredStatus = std::make_unique<DesiredStatus>();
+
+    auto [jsonVar, err] = common::utils::ParseJson(cJSON);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    auto wrapper = common::utils::CaseInsensitiveObjectWrapper(jsonVar);
+
+    err = FromJSON(wrapper, *desiredStatus);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(desiredStatus->mSubjects.Size(), 2);
+
+    EXPECT_STREQ(desiredStatus->mSubjects[0].mSubjectID.CStr(), "subjectId1");
+    EXPECT_EQ(desiredStatus->mSubjects[0].mSubjectType.GetValue(), SubjectTypeEnum::eGroup);
+
+    EXPECT_STREQ(desiredStatus->mSubjects[1].mSubjectID.CStr(), "subjectId2");
+    EXPECT_EQ(desiredStatus->mSubjects[1].mSubjectType.GetValue(), SubjectTypeEnum::eUser);
 }
 
 TEST_F(CloudProtocolDesiredStatus, Certificates)
