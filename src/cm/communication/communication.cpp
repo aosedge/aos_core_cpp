@@ -294,6 +294,15 @@ Error Communication::SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& sta
     return ErrorEnum::eNone;
 }
 
+Error Communication::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo)
+{
+    (void)blobsInfo;
+
+    LOG_DBG() << "Get blobs" << Log::Field("count", digests.Size());
+
+    return ErrorEnum::eNotSupported;
+}
+
 Error Communication::SendMonitoring(const Monitoring& monitoring)
 {
     std::lock_guard lock {mMutex};
