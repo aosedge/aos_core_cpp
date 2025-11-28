@@ -21,6 +21,7 @@ namespace aos::cm::communication::cloudprotocol {
 class MessageTypeType {
 public:
     enum class Enum {
+        eAck,
         eAlerts,
         eDeprovisioningRequest,
         eDeprovisioningResponse,
@@ -31,6 +32,7 @@ public:
         eIssuedUnitCertificates,
         eIssueUnitCertificates,
         eMonitoringData,
+        eNack,
         eNewState,
         eOverrideEnvVars,
         eOverrideEnvVarsStatus,
@@ -48,6 +50,7 @@ public:
     static const Array<const char* const> GetStrings()
     {
         static const char* const sStrings[] = {
+            "ack",
             "alerts",
             "deprovisioningRequest",
             "deprovisioningResponse",
@@ -58,6 +61,7 @@ public:
             "issuedUnitCertificates",
             "issueUnitCertificates",
             "monitoringData",
+            "nack",
             "newState",
             "overrideEnvVars",
             "overrideEnvVarsStatus",

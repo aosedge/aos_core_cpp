@@ -32,6 +32,7 @@ set(SOURCES
     provisioning.cpp
     servicediscovery.cpp
     state.cpp
+    status.cpp
     unitstatus.cpp
 )
 
