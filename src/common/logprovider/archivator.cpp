@@ -40,7 +40,7 @@ Error Archivator::AddLog(const std::string& message)
     return ErrorEnum::eNone;
 }
 
-Error Archivator::SendLog(const StaticString<cLogIDLen>& logID)
+Error Archivator::SendLog(const String& correlationID)
 {
     mCompressionStream->close();
 
@@ -56,10 +56,10 @@ Error Archivator::SendLog(const StaticString<cLogIDLen>& logID)
 
         auto emptyLog = std::make_unique<PushLog>();
 
-        emptyLog->mLogID      = logID;
-        emptyLog->mPartsCount = part;
-        emptyLog->mPart       = part;
-        emptyLog->mStatus     = LogStatusEnum::eEmpty;
+        emptyLog->mCorrelationID = correlationID;
+        emptyLog->mPartsCount    = part;
+        emptyLog->mPart          = part;
+        emptyLog->mStatus        = LogStatusEnum::eEmpty;
 
         mLogReceiver.OnLogReceived(*emptyLog);
 
@@ -74,10 +74,10 @@ Error Archivator::SendLog(const StaticString<cLogIDLen>& logID)
 
         auto logPart = std::make_unique<PushLog>();
 
-        logPart->mLogID      = logID;
-        logPart->mPartsCount = mLogStreams.size();
-        logPart->mPart       = part;
-        logPart->mStatus     = LogStatusEnum::eOK;
+        logPart->mCorrelationID = correlationID;
+        logPart->mPartsCount    = mLogStreams.size();
+        logPart->mPart          = part;
+        logPart->mStatus        = LogStatusEnum::eOK;
 
         auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
         if (!err.IsNone()) {
