@@ -62,7 +62,7 @@ TEST_F(ArchivatorTest, ArchiveEmpty)
     Archivator archivator(mLogObserver, mConfig);
 
     EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([](const PushLog& log) {
-        EXPECT_STREQ(log.mLogID.CStr(), cLogID);
+        EXPECT_STREQ(log.mCorrelationID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, 1);
         EXPECT_EQ(log.mPart, 1);
         EXPECT_EQ(log.mStatus, LogStatusEnum::eEmpty);
@@ -92,7 +92,7 @@ TEST_F(ArchivatorTest, ArchiveChunks)
     }
 
     EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([&expectedUncompressedString](const PushLog& log) {
-        EXPECT_STREQ(log.mLogID.CStr(), cLogID);
+        EXPECT_STREQ(log.mCorrelationID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, 1);
         EXPECT_EQ(log.mPart, 1);
         EXPECT_EQ(log.mStatus, LogStatusEnum::eOK);
@@ -136,7 +136,7 @@ TEST_F(ArchivatorTest, ArchiveLongChunks)
     for (size_t i = 0; i < pushedLogs.size(); ++i) {
         const auto& log = pushedLogs[i];
 
-        EXPECT_STREQ(log.mLogID.CStr(), cLogID);
+        EXPECT_STREQ(log.mCorrelationID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, logMessages.size());
         EXPECT_EQ(log.mPart, i + 1);
         EXPECT_EQ(log.mStatus, LogStatusEnum::eOK);
