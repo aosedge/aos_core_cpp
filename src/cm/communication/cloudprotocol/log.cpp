@@ -76,7 +76,11 @@ Error ToJSON(const PushLog& pushLog, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
-        json.set("logId", pushLog.mLogID.CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(pushLog), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("node", CreateAosIdentity({pushLog.mNodeID}));
         json.set("part", pushLog.mPart);
         json.set("partsCount", pushLog.mPartsCount);
@@ -101,8 +105,8 @@ Error ToJSON(const PushLog& pushLog, Poco::JSON::Object& json)
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, RequestLog& requestLog)
 {
     try {
-        auto err = requestLog.mLogID.Assign(json.GetValue<std::string>("logId").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse logId");
+        auto err = FromJSON(json, static_cast<Protocol&>(requestLog));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
 
         err = requestLog.mLogType.FromString(json.GetValue<std::string>("logType").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse logType");
