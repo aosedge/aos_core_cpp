@@ -152,6 +152,11 @@ Error ToJSON(const Alerts& alerts, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(alerts), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("items", common::utils::ToJsonArray(alerts.mItems, [](const auto& item) {
             return item.ApplyVisitor(ToJSONVisitor());
         }));

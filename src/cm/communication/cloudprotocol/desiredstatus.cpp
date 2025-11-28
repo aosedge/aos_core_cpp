@@ -264,6 +264,10 @@ void CertificateChainFromJSON(
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredStatus& desiredStatus)
 {
     try {
+        if (auto err = FromJSON(json, static_cast<Protocol&>(desiredStatus)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         common::utils::ForEach(json, "nodes", [&desiredStatus](const auto& value) {
             auto err = desiredStatus.mNodes.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodes");

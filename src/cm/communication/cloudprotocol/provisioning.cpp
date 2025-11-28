@@ -23,6 +23,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, StartPro
         auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
 
+        err = FromJSON(json, static_cast<Protocol&>(request));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
+
         err = request.mPassword.Assign(json.GetValue<std::string>("password").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse password");
     } catch (const std::exception& e) {
@@ -38,6 +41,11 @@ Error ToJSON(const StartProvisioningResponse& response, Poco::JSON::Object& json
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(response), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("node", CreateAosIdentity({response.mNodeID}));
 
         if (!response.mError.IsNone()) {
@@ -69,6 +77,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, FinishPr
     try {
         auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+        err = FromJSON(json, static_cast<Protocol&>(request));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
 
         if (!json.Has("certificates")) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "certificates tag is required"));
@@ -102,6 +113,11 @@ Error ToJSON(const FinishProvisioningResponse& response, Poco::JSON::Object& jso
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(response), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("node", CreateAosIdentity({response.mNodeID}));
 
         if (!response.mError.IsNone()) {
@@ -125,6 +141,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Deprovis
         auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
 
+        err = FromJSON(json, static_cast<Protocol&>(request));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
+
         err = request.mPassword.Assign(json.GetValue<std::string>("password").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse password");
     } catch (const std::exception& e) {
@@ -140,6 +159,11 @@ Error ToJSON(const DeprovisioningResponse& response, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(response), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("node", CreateAosIdentity({response.mNodeID}));
 
         if (!response.mError.IsNone()) {

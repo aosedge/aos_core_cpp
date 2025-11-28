@@ -116,6 +116,11 @@ Error ToJSON(const Monitoring& monitoring, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(monitoring), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("nodes", common::utils::ToJsonArray(monitoring.mNodes, NodeMonitoringDataToJSON));
 
         if (!monitoring.mInstances.IsEmpty()) {

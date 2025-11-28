@@ -32,6 +32,7 @@ public:
 TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
 {
     const auto cJSON = R"({
+        "correlationID": "id",
         "node": {
             "id": "node1"
         },
@@ -48,18 +49,21 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
     err = FromJSON(wrapper, *request);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(request->mCorrelationID, "id");
     EXPECT_EQ(request->mNodeID, "node1");
     EXPECT_EQ(request->mPassword, "test_password");
 }
 
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","node":{"id":"node1"},)"
+    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
+                           R"("node":{"id":"node1"},)"
                            R"("csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
 
-    auto response     = std::make_unique<StartProvisioningResponse>();
-    response->mNodeID = "node1";
+    auto response            = std::make_unique<StartProvisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
 
     response->mCSRs.EmplaceBack();
     response->mCSRs.Back().mType = CertTypeEnum::eCM;
@@ -79,12 +83,14 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","node":{"id":"node1"},"errorInfo":)"
+    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
+                           R"("node":{"id":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""},"csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
 
-    auto response     = std::make_unique<StartProvisioningResponse>();
-    response->mNodeID = "node1";
+    auto response            = std::make_unique<StartProvisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
 
     response->mCSRs.EmplaceBack();
     response->mCSRs.Back().mType = CertTypeEnum::eCM;
@@ -107,6 +113,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithError)
 TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 {
     const auto cJSON = R"({
+        "correlationID": "id",
         "node": {
             "id": "node1"
         },
@@ -133,6 +140,8 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
     err = FromJSON(wrapper, *request);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(request->mCorrelationID, "id");
+
     EXPECT_EQ(request->mNodeID, "node1");
     ASSERT_EQ(request->mCertificates.Size(), 2);
 
@@ -147,10 +156,11 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","node":{"id":"node1"}})";
+    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationID":"id","node":{"id":"node1"}})";
 
-    auto response     = std::make_unique<FinishProvisioningResponse>();
-    response->mNodeID = "node1";
+    auto response            = std::make_unique<FinishProvisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -162,12 +172,14 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","node":{"id":"node1"},"errorInfo":)"
+    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationID":"id",)"
+                           R"("node":{"id":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 
-    auto response     = std::make_unique<FinishProvisioningResponse>();
-    response->mNodeID = "node1";
-    response->mError  = ErrorEnum::eFailed;
+    auto response            = std::make_unique<FinishProvisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
+    response->mError         = ErrorEnum::eFailed;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -180,6 +192,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithError)
 TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
 {
     const auto cJSON = R"({
+        "correlationID": "id",
         "node": {
             "id": "node1"
         },
@@ -196,16 +209,18 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
     err = FromJSON(wrapper, *request);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(request->mCorrelationID, "id");
     EXPECT_EQ(request->mNodeID, "node1");
     EXPECT_EQ(request->mPassword, "test_password");
 }
 
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","node":{"id":"node1"}})";
+    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationID":"id","node":{"id":"node1"}})";
 
-    auto response     = std::make_unique<DeprovisioningResponse>();
-    response->mNodeID = "node1";
+    auto response            = std::make_unique<DeprovisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -217,12 +232,14 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","node":{"id":"node1"},"errorInfo":)"
+    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationID":"id",)"
+                           R"("node":{"id":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 
-    auto response     = std::make_unique<DeprovisioningResponse>();
-    response->mNodeID = "node1";
-    response->mError  = ErrorEnum::eFailed;
+    auto response            = std::make_unique<DeprovisioningResponse>();
+    response->mCorrelationID = "id";
+    response->mNodeID        = "node1";
+    response->mError         = ErrorEnum::eFailed;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
