@@ -233,4 +233,32 @@ TEST_F(CloudProtocolCommon, InstanceFilterNoFilterTags)
     EXPECT_FALSE(instanceFilter.mInstance.HasValue());
 }
 
+TEST_F(CloudProtocolCommon, ProtocolToJSON)
+{
+    const auto     cProtocol = Protocol {"corr-id"};
+    constexpr auto cJSON     = R"({"correlationID":"corr-id"})";
+
+    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+    ASSERT_EQ(ToJSON(cProtocol, *json), ErrorEnum::eNone);
+
+    EXPECT_EQ(common::utils::Stringify(json), cJSON);
+}
+
+TEST_F(CloudProtocolCommon, ProtocolFromJSON)
+{
+    constexpr auto cJSON = R"({"correlationID":"corr-id"})";
+
+    auto [jsonVar, err] = common::utils::ParseJson(cJSON);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    common::utils::CaseInsensitiveObjectWrapper jsonWrapper(jsonVar);
+
+    Protocol protocol;
+
+    err = FromJSON(jsonWrapper, protocol);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_STREQ(protocol.mCorrelationID.CStr(), "corr-id");
+}
+
 } // namespace aos::cm::communication::cloudprotocol

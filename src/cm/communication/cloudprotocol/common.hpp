@@ -133,6 +133,24 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Instance
  */
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, InstanceFilter& instanceFilter);
 
+/**
+ * Converts protocol to JSON.
+ *
+ * @param protocol protocol to convert.
+ * @param[out] json JSON object to fill.
+ * @return Error.
+ */
+Error ToJSON(const Protocol& protocol, Poco::JSON::Object& json);
+
+/**
+ * Converts JSON object to protocol.
+ *
+ * @param json JSON object to convert.
+ * @param[out] protocol protocol to fill.
+ * @return Error.
+ */
+Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Protocol& protocol);
+
 } // namespace aos::cm::communication::cloudprotocol
 
 #endif
