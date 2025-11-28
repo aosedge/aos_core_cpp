@@ -23,6 +23,7 @@ public:
     enum class Enum {
         eAck,
         eAlerts,
+        eBlobUrls,
         eDeprovisioningRequest,
         eDeprovisioningResponse,
         eDesiredStatus,
@@ -38,6 +39,7 @@ public:
         eOverrideEnvVarsStatus,
         ePushLog,
         eRenewCertificatesNotification,
+        eRequestBlobUrls,
         eRequestLog,
         eStartProvisioningRequest,
         eStartProvisioningResponse,
@@ -52,6 +54,7 @@ public:
         static const char* const sStrings[] = {
             "ack",
             "alerts",
+            "blobUrls",
             "deprovisioningRequest",
             "deprovisioningResponse",
             "desiredStatus",
@@ -67,6 +70,7 @@ public:
             "overrideEnvVarsStatus",
             "pushLog",
             "renewCertificatesNotification",
+            "requestBlobUrls",
             "requestLog",
             "startProvisioningRequest",
             "startProvisioningResponse",
