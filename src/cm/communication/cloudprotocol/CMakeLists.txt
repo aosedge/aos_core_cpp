@@ -23,6 +23,7 @@ set(TARGET_NAME cloudprotocol)
 
 set(SOURCES
     alerts.cpp
+    blobs.cpp
     certificates.cpp
     common.cpp
     desiredstatus.cpp
