@@ -44,10 +44,10 @@ public:
     /**
      * Sends accumulated log parts to the listener.
      *
-     * @param logID log ID.
+     * @param correlationID correlation ID.
      * @return Error.
      */
-    Error SendLog(const StaticString<cLogIDLen>& logID);
+    Error SendLog(const String& correlationID);
 
 private:
     void  CreateCompressionStream();
