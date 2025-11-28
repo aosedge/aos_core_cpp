@@ -154,7 +154,7 @@ public:
 TEST_F(CloudProtocolAlerts, AlertsArray)
 {
     constexpr auto cJSON
-        = R"({"messageType":"alerts","items":[)"
+        = R"({"messageType":"alerts","correlationID":"id","items":[)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"coreAlert","node":{"id":"test_node"},)"
           R"("coreComponent":"CM","message":"Test core alert message"},)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"resourceAllocateAlert","item":{"id":"itemID"},)"
@@ -189,6 +189,7 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
     };
 
     auto alerts = std::make_unique<Alerts>();
+    alerts->mCorrelationID.Assign("id");
 
     for (const auto& alert : alertsArray) {
         auto err = alerts->mItems.PushBack(*alert);

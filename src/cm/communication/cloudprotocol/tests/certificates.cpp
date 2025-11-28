@@ -32,6 +32,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
 {
     constexpr auto cJSON = R"({
         "messageType": "renewCertificatesNotification",
+        "correlationID": "id",
         "certificates": [
             {
                 "type": "iam",
@@ -85,6 +86,8 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
     err = FromJSON(wrapper, *parsedNotification);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(parsedNotification->mCorrelationID, "id");
+
     ASSERT_EQ(parsedNotification->mCertificates.Size(), 3);
     ASSERT_EQ(parsedNotification->mUnitSecrets.mNodes.Size(), 2);
     ASSERT_EQ(parsedNotification->mUnitSecrets.mVersion, "v1.0.0");
@@ -115,6 +118,7 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
 {
     constexpr auto cJSON = R"({
         "messageType": "issuedUnitCertificates",
+        "correlationID": "id",
         "certificates": [
             {
                 "type": "iam",
@@ -150,6 +154,8 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
     err = FromJSON(wrapper, *parsedCertificates);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(parsedCertificates->mCorrelationID, "id");
+
     ASSERT_EQ(parsedCertificates->mCertificates.Size(), 3);
 
     EXPECT_EQ(parsedCertificates->mCertificates[0].mType, CertTypeEnum::eIAM);
@@ -167,11 +173,12 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
 
 TEST_F(CloudProtocolCertificates, IssueUnitCerts)
 {
-    constexpr auto cJSON = R"({"messageType":"issueUnitCertificates","requests":[)"
+    constexpr auto cJSON = R"({"messageType":"issueUnitCertificates","correlationID":"id","requests":[)"
                            R"({"type":"iam","node":{"id":"node1"},"csr":"csr_1"},)"
                            R"({"type":"offline","node":{"id":"node2"},"csr":"csr_2"}]})";
 
     auto unitCerts = std::make_unique<IssueUnitCerts>();
+    unitCerts->mCorrelationID.Assign("id");
 
     unitCerts->mRequests.EmplaceBack();
     unitCerts->mRequests.Back().mType   = CertTypeEnum::eIAM;
@@ -193,12 +200,14 @@ TEST_F(CloudProtocolCertificates, IssueUnitCerts)
 
 TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
 {
-    constexpr auto cJSON = R"({"messageType":"installUnitCertificatesConfirmation","certificates":[)"
-                           R"({"type":"iam","node":{"id":"node1"},"serial":"serial_1",)"
-                           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":"error_msg"}},)"
-                           R"({"type":"offline","node":{"id":"node2"},"serial":"serial_2"}]})";
+    constexpr auto cJSON
+        = R"({"messageType":"installUnitCertificatesConfirmation","correlationID":"id","certificates":[)"
+          R"({"type":"iam","node":{"id":"node1"},"serial":"serial_1",)"
+          R"("errorInfo":{"aosCode":1,"exitCode":0,"message":"error_msg"}},)"
+          R"({"type":"offline","node":{"id":"node2"},"serial":"serial_2"}]})";
 
     auto certsConfirmation = std::make_unique<InstallUnitCertsConfirmation>();
+    certsConfirmation->mCorrelationID.Assign("id");
 
     certsConfirmation->mCertificates.EmplaceBack();
     certsConfirmation->mCertificates.Back().mType   = CertTypeEnum::eIAM;

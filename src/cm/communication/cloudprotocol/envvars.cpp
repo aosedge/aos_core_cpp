@@ -80,6 +80,10 @@ void EnvVarsInstanceStatusToJSON(const EnvVarsInstanceStatus& status, Poco::JSON
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, OverrideEnvVarsRequest& envVars)
 {
     try {
+        if (auto err = FromJSON(json, static_cast<Protocol&>(envVars)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         common::utils::ForEach(json, "items", [&envVars](const auto& item) {
             auto err = envVars.mItems.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse environment variable");
@@ -99,6 +103,10 @@ Error ToJSON(const OverrideEnvVarsStatuses& envVars, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(envVars), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         auto statuses = Poco::makeShared<Poco::JSON::Array>(Poco::JSON_PRESERVE_KEY_ORDER);
 

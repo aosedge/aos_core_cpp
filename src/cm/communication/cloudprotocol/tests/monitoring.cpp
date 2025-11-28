@@ -81,7 +81,8 @@ void AddInstanceStateInfo(const Time& time, InstanceState state, InstanceStateIn
 
 TEST_F(CloudProtocolMonitoring, Monitoring)
 {
-    constexpr auto cJSON = R"({"messageType":"monitoringData","nodes":[{"node":{"id":"node1"},"nodeStates":[)"
+    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
+                           R"("nodes":[{"node":{"id":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
@@ -98,7 +99,8 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":4096,"cpu":21,"download":2000,)"
                            R"("upload":1000,"partitions":[{"name":"partition1","usedSize":210000}]}]}]})";
 
-    auto monitoring = std::make_unique<Monitoring>();
+    auto monitoring            = std::make_unique<Monitoring>();
+    monitoring->mCorrelationID = "id";
 
     monitoring->mNodes.EmplaceBack();
     monitoring->mNodes.Back().mNodeID = "node1";
@@ -141,7 +143,8 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 
 TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 {
-    constexpr auto cJSON = R"({"messageType":"monitoringData","nodes":[{"node":{"id":"node1"},"nodeStates":[)"
+    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
+                           R"("nodes":[{"node":{"id":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
@@ -151,7 +154,8 @@ TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":false,"state":"error"}],)"
                            R"("items":[]}]})";
 
-    auto monitoring = std::make_unique<Monitoring>();
+    auto monitoring            = std::make_unique<Monitoring>();
+    monitoring->mCorrelationID = "id";
 
     monitoring->mNodes.EmplaceBack();
     monitoring->mNodes.Back().mNodeID = "node1";

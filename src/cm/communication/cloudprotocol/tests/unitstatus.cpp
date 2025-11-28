@@ -63,12 +63,13 @@ public:
 
 TEST_F(CloudProtocolUnitStatus, UnitConfig)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,"unitConfig":[)"
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"unitConfig":[)"
                            R"({"version":"0.0.1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
                            R"("message":"error message"}},)"
                            R"({"version":"0.0.2","state":"installed"}]})";
 
-    auto unitStatus = std::make_unique<UnitStatus>();
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
 
     unitStatus->mUnitConfig.EmplaceValue();
 
@@ -91,7 +92,7 @@ TEST_F(CloudProtocolUnitStatus, UnitConfig)
 
 TEST_F(CloudProtocolUnitStatus, Nodes)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,"nodes":[)"
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"nodes":[)"
                            R"({"identity":{"id":"nodeID1"},"nodeGroupSubject":{"id":"type1","title":"title1"},)"
                            R"("maxDmips":10000,"physicalRam":8096,"totalRam":16384,"osInfo":{"os":"Linux",)"
                            R"("version":"5.10","features":["feature1","feature2"]},"cpus":[{"modelName":)"
@@ -109,7 +110,8 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
                            R"("features":["feature1","feature2"]},"provisioned":false,"state":"error",)"
                            R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]})";
 
-    auto unitStatus = std::make_unique<UnitStatus>();
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
 
     unitStatus->mNodes.EmplaceValue();
 
@@ -186,12 +188,13 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
 TEST_F(CloudProtocolUnitStatus, Items)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","isDeltaInfo":false,"items":[)"
+        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"items":[)"
           R"({"item":{"id":"itemID1"},"version":"version1","state":"downloading"},)"
           R"({"item":{"id":"itemID2"},"version":"version1","state":"installed"},)"
           R"({"item":{"id":"itemID3"},"version":"version1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":"test error"}}]})";
 
-    auto unitStatus = std::make_unique<UnitStatus>();
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
 
     unitStatus->mUpdateItems.EmplaceValue();
 
@@ -222,14 +225,15 @@ TEST_F(CloudProtocolUnitStatus, Items)
 TEST_F(CloudProtocolUnitStatus, Instances)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","isDeltaInfo":false,"instances":[)"
+        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"instances":[)"
           R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
           R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
           R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
           R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2","instances":[)"
           R"({"node":{"id":"nodeID2"},"runtime":{"id":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
 
-    auto unitStatus = std::make_unique<UnitStatus>();
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
 
     unitStatus->mInstances.EmplaceValue();
 
@@ -273,10 +277,11 @@ TEST_F(CloudProtocolUnitStatus, Instances)
 
 TEST_F(CloudProtocolUnitStatus, Subjects)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","isDeltaInfo":false,)"
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,)"
                            R"("subjects":[{"id":"subject1"},{"id":"subject2"}]})";
 
-    auto unitStatus = std::make_unique<UnitStatus>();
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
 
     unitStatus->mUnitSubjects.EmplaceValue();
 

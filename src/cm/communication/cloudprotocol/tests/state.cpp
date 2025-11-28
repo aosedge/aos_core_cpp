@@ -54,6 +54,7 @@ TEST_F(CloudProtocolState, StateAcceptance)
         "subject": {
             "id": "subject1"
         },
+        "correlationID": "correlation1",
         "instance": "10",
         "checksum": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "result": "accepted",
@@ -70,6 +71,7 @@ TEST_F(CloudProtocolState, StateAcceptance)
     err = FromJSON(wrapper, *state);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(state->mCorrelationID, "correlation1");
     EXPECT_EQ(state->mItemID, "item1");
     EXPECT_EQ(state->mSubjectID, "subject1");
     EXPECT_EQ(state->mInstance, 10);
@@ -87,6 +89,7 @@ TEST_F(CloudProtocolState, UpdateState)
         "subject": {
             "id": "subject1"
         },
+        "correlationID": "correlation1",
         "instance": "10",
         "stateChecksum": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "state": "test"
@@ -102,6 +105,7 @@ TEST_F(CloudProtocolState, UpdateState)
     err = FromJSON(wrapper, *state);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_EQ(state->mCorrelationID, "correlation1");
     EXPECT_EQ(state->mItemID, "item1");
     EXPECT_EQ(state->mSubjectID, "subject1");
     EXPECT_EQ(state->mInstance, 10);
@@ -112,16 +116,17 @@ TEST_F(CloudProtocolState, UpdateState)
 TEST_F(CloudProtocolState, NewState)
 {
     const auto cExpectedJSON
-        = R"({"messageType":"newState","item":{"id":"item1"},"subject":{"id":"subject1"},)"
+        = R"({"messageType":"newState","correlationID":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
           R"("instance":10,"stateChecksum":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",)"
           R"("state":"test"})";
 
-    auto state        = std::make_unique<NewState>();
-    state->mItemID    = "item1";
-    state->mSubjectID = "subject1";
-    state->mInstance  = 10;
-    state->mChecksum  = ToByteArray("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
-    state->mState     = "test";
+    auto state            = std::make_unique<NewState>();
+    state->mCorrelationID = "correlation1";
+    state->mItemID        = "item1";
+    state->mSubjectID     = "subject1";
+    state->mInstance      = 10;
+    state->mChecksum      = ToByteArray("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
+    state->mState         = "test";
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -133,14 +138,16 @@ TEST_F(CloudProtocolState, NewState)
 
 TEST_F(CloudProtocolState, StateRequest)
 {
-    const auto cExpectedJSON = R"({"messageType":"stateRequest","item":{"id":"item1"},"subject":{"id":"subject1"},)"
-                               R"("instance":10,"default":true})";
+    const auto cExpectedJSON
+        = R"({"messageType":"stateRequest","correlationID":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
+          R"("instance":10,"default":true})";
 
-    auto state        = std::make_unique<StateRequest>();
-    state->mItemID    = "item1";
-    state->mSubjectID = "subject1";
-    state->mInstance  = 10;
-    state->mDefault   = true;
+    auto state            = std::make_unique<StateRequest>();
+    state->mCorrelationID = "correlation1";
+    state->mItemID        = "item1";
+    state->mSubjectID     = "subject1";
+    state->mInstance      = 10;
+    state->mDefault       = true;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 

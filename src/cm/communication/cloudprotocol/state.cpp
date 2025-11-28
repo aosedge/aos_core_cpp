@@ -35,6 +35,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, StateAcc
         auto err = FromJSON(json, static_cast<InstanceIdent&>(state));
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse instance ident");
 
+        err = FromJSON(json, static_cast<Protocol&>(state));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse correlation ID");
+
         err = ToByteArray(json.GetValue<std::string>("checksum"), state.mChecksum);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse checksum");
 
@@ -56,6 +59,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, UpdateSt
         auto err = FromJSON(json, static_cast<InstanceIdent&>(state));
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse instance ident");
 
+        err = FromJSON(json, static_cast<Protocol&>(state));
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse correlation ID");
+
         err = ToByteArray(json.GetValue<std::string>("stateChecksum"), state.mChecksum);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse stateChecksum");
 
@@ -75,7 +81,10 @@ Error ToJSON(const NewState& state, Poco::JSON::Object& json)
     try {
         json.set("messageType", cMessageType.ToString().CStr());
 
-        auto err = ToJSON(static_cast<const InstanceIdent&>(state), json);
+        auto err = ToJSON(static_cast<const Protocol&>(state), json);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't convert correlation ID to JSON");
+
+        err = ToJSON(static_cast<const InstanceIdent&>(state), json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
         StaticString<2 * crypto::cSHA256Size> checksumStr;
@@ -99,7 +108,10 @@ Error ToJSON(const StateRequest& state, Poco::JSON::Object& json)
     try {
         json.set("messageType", cMessageType.ToString().CStr());
 
-        auto err = ToJSON(static_cast<const InstanceIdent&>(state), json);
+        auto err = ToJSON(static_cast<const Protocol&>(state), json);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't convert correlation ID to JSON");
+
+        err = ToJSON(static_cast<const InstanceIdent&>(state), json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
         json.set("default", state.mDefault);
