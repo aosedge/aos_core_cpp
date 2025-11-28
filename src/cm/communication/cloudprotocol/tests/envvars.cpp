@@ -33,6 +33,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
 {
     const auto cJSON = R"({
         "messageType": "overrideEnvVarsStatus",
+        "correlationID": "id",
             "items": [
                 {
                     "item": {
@@ -74,6 +75,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
     err = FromJSON(wrapper, *envVars);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_STREQ(envVars->mCorrelationID.CStr(), "id");
     ASSERT_EQ(envVars->mItems.Size(), 2);
 
     ASSERT_EQ(envVars->mItems[0].mVariables.Size(), 2);
@@ -97,14 +99,16 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
 
 TEST_F(CloudProtocolEnvVars, OverrideEnvVarsStatuses)
 {
-    constexpr auto cJSON = R"({"messageType":"overrideEnvVarsStatus","statuses":[{"item":{"id":"itemID"},)"
+    constexpr auto cJSON = R"({"messageType":"overrideEnvVarsStatus","correlationID":"id",)"
+                           R"("statuses":[{"item":{"id":"itemID"},)"
                            R"("subject":{"id":"subjectID"},"instance":0,"name":"var0","errorInfo":{"aosCode":1,)"
                            R"("exitCode":0,"message":""}},{"item":{"id":"itemID"},"subject":{"id":"subjectID"},)"
                            R"("instance":0,"name":"var1"},{"item":{"id":"itemID"},"subject":{"id":"subjectID"},)"
                            R"("instance":0,"name":"var2"},{"item":{"id":"itemID"},"subject":{"id":"subjectID"},)"
                            R"("instance":1,"name":"var0"}]})";
 
-    auto statuses = std::make_unique<OverrideEnvVarsStatuses>();
+    auto statuses            = std::make_unique<OverrideEnvVarsStatuses>();
+    statuses->mCorrelationID = "id";
 
     statuses->mStatuses.EmplaceBack();
     statuses->mStatuses.Back().mInstance  = 0;

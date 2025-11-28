@@ -100,6 +100,10 @@ void RenewCertDataFromJSON(const common::utils::CaseInsensitiveObjectWrapper& js
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, RenewCertsNotification& renewCertsNotification)
 {
     try {
+        if (auto err = FromJSON(json, static_cast<Protocol&>(renewCertsNotification)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         if (!json.Has("unitSecrets")) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "unitSecrets field is required"));
         }
@@ -123,6 +127,10 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, RenewCer
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, IssuedUnitCerts& issuedUnitCerts)
 {
     try {
+        if (auto err = FromJSON(json, static_cast<Protocol&>(issuedUnitCerts)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         common::utils::ForEach(json, "certificates", [&issuedUnitCerts](const auto& certJson) {
             auto err = issuedUnitCerts.mCertificates.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse certificate");
@@ -143,6 +151,11 @@ Error ToJSON(const IssueUnitCerts& issueUnitCerts, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(issueUnitCerts), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("requests", common::utils::ToJsonArray(issueUnitCerts.mRequests, [](const auto& request) {
             auto json = CertIdentToJSON(request);
 
@@ -163,6 +176,11 @@ Error ToJSON(const InstallUnitCertsConfirmation& confirmation, Poco::JSON::Objec
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(confirmation), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("certificates", common::utils::ToJsonArray(confirmation.mCertificates, [](const auto& certStatus) {
             auto certJson = CertIdentToJSON(certStatus);
 

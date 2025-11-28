@@ -278,6 +278,11 @@ Error ToJSON(const UnitStatus& unitStatus, Poco::JSON::Object& json)
 
     try {
         json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(unitStatus), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         json.set("isDeltaInfo", unitStatus.mIsDeltaInfo);
 
         if (unitStatus.mUnitConfig.HasValue()) {

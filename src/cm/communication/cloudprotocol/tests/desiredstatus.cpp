@@ -40,6 +40,7 @@ TEST_F(CloudProtocolDesiredStatus, Nodes)
 {
     constexpr auto cJSON = R"({
         "messageType": "desiredStatus",
+        "correlationID": "id",
         "nodes": [
             {
                 "item": {"id": "node-1"},
@@ -62,6 +63,7 @@ TEST_F(CloudProtocolDesiredStatus, Nodes)
     err = FromJSON(wrapper, *desiredStatus);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
+    EXPECT_STREQ(desiredStatus->mCorrelationID.CStr(), "id");
     ASSERT_EQ(desiredStatus->mNodes.Size(), 2);
 
     EXPECT_STREQ(desiredStatus->mNodes[0].mNodeID.CStr(), "node-1");
@@ -75,6 +77,7 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
 {
     constexpr auto cJSON = R"({
         "messageType": "desiredStatus",
+        "correlationID": "id",
         "unitConfig": {
             "version": "v1.0.0",
             "formatVersion": "1.0",

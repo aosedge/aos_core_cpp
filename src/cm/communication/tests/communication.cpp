@@ -406,12 +406,13 @@ TEST_F(CMCommunicationTest, SubscribeUnsubscribe)
 TEST_F(CMCommunicationTest, SendAlerts)
 {
     constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"alerts","items":[]}})";
+                                      R"("data":{"messageType":"alerts","correlationID":"id","items":[]}})";
 
     SubscribeAndWaitConnected();
 
     // cppcheck-suppress templateRecursion
-    auto alerts = std::make_unique<Alerts>();
+    auto alerts            = std::make_unique<Alerts>();
+    alerts->mCorrelationID = "id";
 
     auto err = mCommunication.SendAlerts(*alerts);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -424,12 +425,14 @@ TEST_F(CMCommunicationTest, SendAlerts)
 
 TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"overrideEnvVarsStatus","statuses":[]}})";
+    constexpr auto cExpectedMessage
+        = R"({"header":{"version":7,"systemId":"test_system_id"},)"
+          R"("data":{"messageType":"overrideEnvVarsStatus","correlationID":"id","statuses":[]}})";
 
     SubscribeAndWaitConnected();
 
-    auto statuses = std::make_unique<OverrideEnvVarsStatuses>();
+    auto statuses            = std::make_unique<OverrideEnvVarsStatuses>();
+    statuses->mCorrelationID = "id";
 
     auto err = mCommunication.SendOverrideEnvsStatuses(*statuses);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -452,11 +455,12 @@ TEST_F(CMCommunicationTest, GetBlobsInfo)
 TEST_F(CMCommunicationTest, SendMonitoring)
 {
     constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"monitoringData","nodes":[]}})";
+                                      R"("data":{"messageType":"monitoringData","correlationID":"id","nodes":[]}})";
 
     SubscribeAndWaitConnected();
 
-    auto monitoring = std::make_unique<Monitoring>();
+    auto monitoring            = std::make_unique<Monitoring>();
+    monitoring->mCorrelationID = "id";
 
     auto err = mCommunication.SendMonitoring(*monitoring);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -470,12 +474,13 @@ TEST_F(CMCommunicationTest, SendMonitoring)
 TEST_F(CMCommunicationTest, SendLog)
 {
     constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"pushLog","logId":"","node":{"id":""},)"
+                                      R"("data":{"messageType":"pushLog","correlationID":"id","node":{"id":""},)"
                                       R"("part":0,"partsCount":0,"content":"","status":"ok"}})";
 
     SubscribeAndWaitConnected();
 
-    auto log = std::make_unique<PushLog>();
+    auto log            = std::make_unique<PushLog>();
+    log->mCorrelationID = "id";
 
     auto err = mCommunication.SendLog(*log);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -489,12 +494,13 @@ TEST_F(CMCommunicationTest, SendLog)
 TEST_F(CMCommunicationTest, SendStateRequest)
 {
     constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"stateRequest","item":{"id":""},)"
+                                      R"("data":{"messageType":"stateRequest","correlationID":"id","item":{"id":""},)"
                                       R"("subject":{"id":""},"instance":0,"default":false}})";
 
     SubscribeAndWaitConnected();
 
-    auto request = std::make_unique<StateRequest>();
+    auto request            = std::make_unique<StateRequest>();
+    request->mCorrelationID = "id";
 
     auto err = mCommunication.SendStateRequest(*request);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -508,12 +514,13 @@ TEST_F(CMCommunicationTest, SendStateRequest)
 TEST_F(CMCommunicationTest, SendNewState)
 {
     constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"newState","item":{"id":""},)"
+                                      R"("data":{"messageType":"newState","correlationID":"id","item":{"id":""},)"
                                       R"("subject":{"id":""},"instance":0,"stateChecksum":"","state":""}})";
 
     SubscribeAndWaitConnected();
 
-    auto state = std::make_unique<NewState>();
+    auto state            = std::make_unique<NewState>();
+    state->mCorrelationID = "id";
 
     auto err = mCommunication.SendNewState(*state);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -660,7 +667,7 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
     })";
 
     constexpr auto cExpectedSentMsg = R"({"header":{"version":7,"systemId":"test_system_id"},"data":)"
-                                      R"({"messageType":"issueUnitCertificates","requests":[)"
+                                      R"({"messageType":"issueUnitCertificates","correlationID":"","requests":[)"
                                       R"({"type":"iam","node":{"id":"node0"},"csr":"csr_result_0"},)"
                                       R"({"type":"iam","node":{"id":"node1"},"csr":"csr_result_1"}]}})";
 
@@ -756,14 +763,15 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
         }
     })";
 
-    constexpr auto cExpectedSentMsg = R"({"header":{"version":7,"systemId":"test_system_id"},"data":)"
-                                      R"({"messageType":"installUnitCertificatesConfirmation","certificates":[)"
-                                      R"({"type":"cm","node":{"id":"node1"},"serial":"00"},)"
-                                      R"({"type":"iam","node":{"id":"node1"},"serial":"01"},)"
-                                      R"({"type":"cm","node":{"id":"node2"},"serial":"02"},)"
-                                      R"({"type":"iam","node":{"id":"node2"},"serial":"03"},)"
-                                      R"({"type":"cm","node":{"id":"node0"},"serial":"04"},)"
-                                      R"({"type":"iam","node":{"id":"node0"},"serial":"05"}]}})";
+    constexpr auto cExpectedSentMsg
+        = R"({"header":{"version":7,"systemId":"test_system_id"},"data":)"
+          R"({"messageType":"installUnitCertificatesConfirmation","correlationID":"","certificates":[)"
+          R"({"type":"cm","node":{"id":"node1"},"serial":"00"},)"
+          R"({"type":"iam","node":{"id":"node1"},"serial":"01"},)"
+          R"({"type":"cm","node":{"id":"node2"},"serial":"02"},)"
+          R"({"type":"iam","node":{"id":"node2"},"serial":"03"},)"
+          R"({"type":"cm","node":{"id":"node0"},"serial":"04"},)"
+          R"({"type":"iam","node":{"id":"node0"},"serial":"05"}]}})";
 
     SubscribeAndWaitConnected();
 
