@@ -33,7 +33,7 @@ TEST_F(CloudProtocolLog, RequestLog)
 {
     constexpr auto cJSON = R"({
         "messageType": "requestLog",
-        "logId": "logID",
+        "correlationID": "logID",
         "logType": "systemLog",
         "filter": {
             "from": "2024-01-01T12:00:00Z",
@@ -66,7 +66,7 @@ TEST_F(CloudProtocolLog, RequestLog)
     err = FromJSON(jsonWrapper, *requestLog);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_EQ(requestLog->mLogID, "logID");
+    EXPECT_EQ(requestLog->mCorrelationID, "logID");
     EXPECT_EQ(requestLog->mLogType.GetValue(), LogTypeEnum::eSystemLog);
     EXPECT_STREQ(requestLog->mFilter.mFrom->ToUTCString().mValue.CStr(), "2024-01-01T12:00:00Z");
     EXPECT_STREQ(requestLog->mFilter.mTill->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00Z");
@@ -82,19 +82,19 @@ TEST_F(CloudProtocolLog, RequestLog)
 
 TEST_F(CloudProtocolLog, PushLog)
 {
-    constexpr auto cJSON = R"({"messageType":"pushLog","logId":"logID","node":{"id":"nodeID"},)"
+    constexpr auto cJSON = R"({"messageType":"pushLog","correlationID":"logID","node":{"id":"nodeID"},)"
                            R"("part":1,"partsCount":10,"content":"log content","status":"error",)"
                            R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}})";
 
     auto pushLog = std::make_unique<PushLog>();
 
-    pushLog->mLogID      = "logID";
-    pushLog->mNodeID     = "nodeID";
-    pushLog->mPart       = 1;
-    pushLog->mPartsCount = 10;
-    pushLog->mContent    = "log content";
-    pushLog->mStatus     = LogStatusEnum::eError;
-    pushLog->mError      = ErrorEnum::eFailed;
+    pushLog->mCorrelationID = "logID";
+    pushLog->mNodeID        = "nodeID";
+    pushLog->mPart          = 1;
+    pushLog->mPartsCount    = 10;
+    pushLog->mContent       = "log content";
+    pushLog->mStatus        = LogStatusEnum::eError;
+    pushLog->mError         = ErrorEnum::eFailed;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
