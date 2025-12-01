@@ -103,6 +103,7 @@ struct Config {
     Duration                  mServiceTTL;
     Duration                  mLayerTTL;
     Duration                  mUnitStatusSendTimeout;
+    Duration                  mCloudResponseWaitTimeout;
 };
 
 /*******************************************************************************
