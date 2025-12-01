@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <future>
 #include <variant>
 
 #include <Poco/Net/NetException.h>
@@ -17,6 +18,7 @@
 #include <common/utils/retry.hpp>
 
 #include "cloudprotocol/alerts.hpp"
+#include "cloudprotocol/blobs.hpp"
 #include "cloudprotocol/certificates.hpp"
 #include "cloudprotocol/common.hpp"
 #include "cloudprotocol/desiredstatus.hpp"
@@ -38,9 +40,9 @@ namespace {
  * Types
  **********************************************************************************************************************/
 
-using RecievedMessageVariant
-    = std::variant<DesiredStatus, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
-        OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
+using RecievedMessageVariant = std::variant<cloudprotocol::Ack, cloudprotocol::Nack, BlobURLsInfo, DesiredStatus,
+    RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts, OverrideEnvVarsRequest,
+    StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
 
 /***********************************************************************************************************************
  * Statics
@@ -72,6 +74,27 @@ std::unique_ptr<RecievedMessageVariant> ParseMessage(const common::utils::CaseIn
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse message type");
 
     switch (type.GetValue()) {
+    case cloudprotocol::MessageTypeEnum::eAck: {
+        err = cloudprotocol::FromJSON(json, result->emplace<cloudprotocol::Ack>());
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        return result;
+    }
+
+    case cloudprotocol::MessageTypeEnum::eNack: {
+        err = cloudprotocol::FromJSON(json, result->emplace<cloudprotocol::Nack>());
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        return result;
+    }
+
+    case cloudprotocol::MessageTypeEnum::eBlobUrls: {
+        err = cloudprotocol::FromJSON(json, result->emplace<BlobURLsInfo>());
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        return result;
+    }
+
     case cloudprotocol::MessageTypeEnum::eDesiredStatus: {
         err = cloudprotocol::FromJSON(json, result->emplace<DesiredStatus>());
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -158,10 +181,10 @@ std::unique_ptr<RecievedMessageVariant> ParseMessage(const common::utils::CaseIn
 Error Communication::Init(const cm::config::Config& config,
     iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, iamclient::IdentProviderItf& identityProvider,
     iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, updatemanager::UpdateManagerItf& updateManager,
-    storagestate::StateHandlerItf& stateHandler, smcontroller::LogProviderItf& logProvider,
-    launcher::EnvVarHandlerItf& envVarHandler, iamclient::CertHandlerItf& certHandler,
-    iamclient::ProvisioningItf& provisioningHandler)
+    crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
+    updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
+    smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
+    iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler)
 {
     LOG_DBG() << "Initializing communication";
 
@@ -173,6 +196,7 @@ Error Communication::Init(const cm::config::Config& config,
     mCertProvider        = &certProvider;
     mCertLoader          = &certLoader;
     mCryptoProvider      = &cryptoProvider;
+    mUUIDProvider        = &uuidProvider;
     mUpdateManager       = &updateManager;
     mStateHandler        = &stateHandler;
     mLogProvider         = &logProvider;
@@ -213,8 +237,13 @@ Error Communication::Start()
         mMainNodeID = nodeInfo->mNodeID;
         mIsRunning  = true;
 
-        mConnectionThread = std::thread(&Communication::HandleConnection, this);
-        mSendThread       = std::thread(&Communication::HandleSendQueue, this);
+        mThreadPool.emplace_back(&Communication::HandleConnection, this);
+        mThreadPool.emplace_back(&Communication::HandleSendQueue, this);
+        mThreadPool.emplace_back(&Communication::HandleUnacknowledgedMessages, this);
+
+        for (std::size_t i = 0; i < cMessageHandlerThreads; ++i) {
+            mThreadPool.emplace_back(&Communication::HandleReceivedMessage, this);
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -240,12 +269,10 @@ Error Communication::Stop()
         mCondVar.notify_all();
     }
 
-    if (mConnectionThread.joinable()) {
-        mConnectionThread.join();
-    }
-
-    if (mSendThread.joinable()) {
-        mSendThread.join();
+    for (auto& thread : mThreadPool) {
+        if (thread.joinable()) {
+            thread.join();
+        }
     }
 
     {
@@ -262,12 +289,10 @@ Error Communication::Stop()
 
 Error Communication::SendAlerts(const Alerts& alerts)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send alerts";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(alerts), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(alerts), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -279,12 +304,10 @@ Error Communication::SendAlerts(const Alerts& alerts)
 
 Error Communication::SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& statuses)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send override env vars statuses";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(statuses), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(statuses), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -296,21 +319,51 @@ Error Communication::SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& sta
 
 Error Communication::GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo)
 {
-    (void)blobsInfo;
+    LOG_DBG() << "Get blobs info" << Log::Field("count", digests.Size());
 
-    LOG_DBG() << "Get blobs" << Log::Field("count", digests.Size());
+    auto request = std::make_unique<BlobURLsRequest>();
 
-    return ErrorEnum::eNotSupported;
+    if (auto err = request->mDigests.Assign(digests); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = GenerateUUID(request->mCorrelationID); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    std::string txn;
+
+    if (auto err = GenerateUUID(txn); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    payload->set("header", CreateMessageHeader(txn));
+    payload->set("data", std::move(CreateMessageData(*request)));
+
+    ResponseMessageVariantPtr response;
+
+    if (auto err = SendAndWaitResponse(Message(txn, payload, request->mCorrelationID.CStr()), response);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (const auto blobURLsInfo = std::get_if<BlobURLsInfo>(response.get()); blobURLsInfo) {
+        LOG_DBG() << "Received blob URLs info response";
+
+        return blobsInfo.Assign(blobURLsInfo->mItems);
+    }
+
+    return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "invalid response type"));
 }
 
 Error Communication::SendMonitoring(const Monitoring& monitoring)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send monitoring";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(monitoring), false); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(monitoring), false); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -322,12 +375,10 @@ Error Communication::SendMonitoring(const Monitoring& monitoring)
 
 Error Communication::SendLog(const PushLog& log)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send log";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(log), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(log), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -339,12 +390,10 @@ Error Communication::SendLog(const PushLog& log)
 
 Error Communication::SendStateRequest(const StateRequest& request)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send state request";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(request), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(request), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -356,12 +405,10 @@ Error Communication::SendStateRequest(const StateRequest& request)
 
 Error Communication::SendNewState(const NewState& state)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send new state";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(state), false); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(state), false); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -373,12 +420,10 @@ Error Communication::SendNewState(const NewState& state)
 
 Error Communication::SendUnitStatus(const UnitStatus& unitStatus)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Send unit status";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(unitStatus), false); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(unitStatus), false); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -682,15 +727,13 @@ Error Communication::ReceiveFrames()
             LOG_DBG() << "Received WebSocket frame" << Log::Field("size", n) << Log::Field("flags", flags);
 
             if (n > 0) {
-                std::string message(buffer.begin(), buffer.end());
+                std::lock_guard lock {mMutex};
 
-                buffer.resize(0);
-
-                if (auto err = HandleMessage(message); !err.IsNone()) {
-                    LOG_ERR() << "Failed to handle message" << Log::Field(err);
-                    continue;
-                }
+                mReceiveQueue.emplace(buffer.begin(), buffer.end());
+                mCondVar.notify_all();
             }
+
+            buffer.resize(0);
         } while (flags != 0 || n != 0);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -701,7 +744,7 @@ Error Communication::ReceiveFrames()
     return ErrorEnum::eNone;
 }
 
-Error Communication::CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message) const
+Error Communication::CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message, ResponseInfo& info) const
 {
     if (!message.Has("header")) {
         return Error(ErrorEnum::eInvalidArgument, "missing header");
@@ -721,6 +764,11 @@ Error Communication::CheckMessage(const common::utils::CaseInsensitiveObjectWrap
         return Error(ErrorEnum::eInvalidArgument, "systemID mismatch");
     }
 
+    const auto data = message.GetObject("data");
+
+    info.mTxn           = header.GetValue<std::string>("txn");
+    info.mCorrelationID = data.GetValue<std::string>("correlationId");
+
     return ErrorEnum::eNone;
 }
 
@@ -729,9 +777,13 @@ void Communication::HandleSendQueue()
     LOG_DBG() << "Start send queue handler thread";
 
     while (true) {
+        auto findItem = [](const Message& message) { return message.Timestamp() < Time::Now(); };
+
         std::unique_lock lock {mMutex};
 
-        mCondVar.wait(lock, [this] { return !mSendQueue.empty() || !mIsRunning; });
+        mCondVar.wait(lock, [this, findItem] {
+            return !mIsRunning || std::find_if(mSendQueue.begin(), mSendQueue.end(), findItem) != mSendQueue.end();
+        });
 
         if (!mIsRunning) {
             break;
@@ -741,15 +793,21 @@ void Communication::HandleSendQueue()
             continue;
         }
 
-        const auto& message = mSendQueue.front();
+        auto it = std::find_if(mSendQueue.begin(), mSendQueue.end(), findItem);
+        if (it == mSendQueue.end()) {
+            continue;
+        }
 
         try {
-            const auto sentBytes
-                = mWebSocket->sendFrame(message.data(), message.size(), Poco::Net::WebSocket::FRAME_TEXT);
+            auto data = it->Payload();
 
-            LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", message.c_str());
+            const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_TEXT);
 
-            mSendQueue.pop();
+            LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
+
+            mSentMessages.emplace(it->Txn(), *it);
+
+            mSendQueue.erase(it);
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
 
@@ -758,29 +816,98 @@ void Communication::HandleSendQueue()
     }
 }
 
+void Communication::HandleUnacknowledgedMessages()
+{
+    LOG_DBG() << "Start unacknowledged messages handler thread";
+
+    while (true) {
+        std::unique_lock lock {mMutex};
+
+        mCondVar.wait_for(lock, std::chrono::milliseconds(mConfig->mCloudResponseWaitTimeout.Milliseconds()),
+            [this] { return !mIsRunning || !mSentMessages.empty(); });
+
+        if (!mIsRunning) {
+            break;
+        }
+
+        const auto now = Time::Now();
+
+        for (auto it = mSentMessages.begin(); it != mSentMessages.end();) {
+            if (it->second.Timestamp().Add(mConfig->mCloudResponseWaitTimeout) > now) {
+                ++it;
+                continue;
+            }
+
+            if (!it->second.RetryAllowed()) {
+                LOG_ERR() << "Message delivery failed, max retries reached" << Log::Field("txn", it->first.c_str())
+                          << Log::Field("correlationID", it->second.CorrelationID().c_str());
+
+                mResponseHandlers.erase(it->second.CorrelationID());
+            } else {
+                LOG_WRN() << "Message not acknowledged, re-enqueueing" << Log::Field("txn", it->first.c_str())
+                          << Log::Field("correlationID", it->second.CorrelationID().c_str());
+
+                it->second.ResetTimestamp(now);
+                it->second.IncrementTries();
+
+                mSendQueue.push_back(std::move(it->second));
+                mCondVar.notify_all();
+            }
+
+            it = mSentMessages.erase(it);
+        }
+    }
+
+    LOG_DBG() << "Stop unacknowledged messages handler thread";
+}
+
+void Communication::HandleReceivedMessage()
+{
+    LOG_DBG() << "Start receive queue handler thread";
+
+    while (true) {
+        std::string message;
+
+        {
+            std::unique_lock lock {mMutex};
+
+            mCondVar.wait(lock, [this] { return !mReceiveQueue.empty() || !mIsRunning; });
+
+            if (!mIsRunning) {
+                break;
+            }
+
+            message = std::move(mReceiveQueue.front());
+            mReceiveQueue.pop();
+        }
+
+        if (auto err = HandleMessage(message); !err.IsNone()) {
+            LOG_ERR() << "Failed to handle received message" << Log::Field(err);
+        }
+    }
+}
+
 Error Communication::HandleMessage(const std::string& message)
 {
     LOG_DBG() << "Handle receive queue";
 
-    auto [objectVar, err] = common::utils::ParseJson(message);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    auto parseResult = common::utils::ParseJson(message);
+    if (!parseResult.mError.IsNone()) {
+        return AOS_ERROR_WRAP(parseResult.mError);
     }
 
-    auto object = common::utils::CaseInsensitiveObjectWrapper(objectVar);
+    ResponseInfo info;
 
-    err = CheckMessage(object);
-    if (!err.IsNone()) {
+    auto object = common::utils::CaseInsensitiveObjectWrapper(parseResult.mValue);
+
+    if (auto err = CheckMessage(object, info); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    auto data = object.GetObject("data");
 
     try {
-        auto messageVariant = ParseMessage(data);
+        auto messageVariant = ParseMessage(object.GetObject("data"));
 
-        std::visit([this](auto&& arg) { HandleMessage(arg); }, *messageVariant);
-
+        std::visit([this, &info](auto&& arg) { HandleMessage(info, arg); }, *messageVariant);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -788,108 +915,249 @@ Error Communication::HandleMessage(const std::string& message)
     return ErrorEnum::eNone;
 }
 
-Error Communication::ScheduleMessage(Poco::JSON::Object::Ptr data, bool important)
-{
-    if (!important && !mIsRunning) {
-        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
-    }
-
-    auto msg = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-    msg->set("header", CreateMessageHeader());
-    msg->set("data", std::move(data));
-
-    mSendQueue.push(common::utils::Stringify(msg));
-    mCondVar.notify_all();
-
-    return ErrorEnum::eNone;
-}
-
-Poco::JSON::Object::Ptr Communication::CreateMessageHeader() const
+Poco::JSON::Object::Ptr Communication::CreateMessageHeader(const std::string& txn) const
 {
     auto header = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     header->set("version", cProtocolVersion);
     header->set("systemId", mSystemInfo.mSystemID.CStr());
+    header->set("createdAt", Time::Now().ToUTCString().mValue.CStr());
+    header->set("txn", txn);
 
     return header;
 }
 
-void Communication::HandleMessage(const DesiredStatus& status)
+Error Communication::GenerateUUID(std::string& uuid) const
 {
-    LOG_DBG() << "Received desired status message";
+    auto uuidResult = mUUIDProvider->CreateUUIDv4();
+    if (!uuidResult.mError.IsNone()) {
+        return AOS_ERROR_WRAP(uuidResult.mError);
+    }
+
+    uuid = std::string(uuid::UUIDToString(uuidResult.mValue).CStr());
+
+    return ErrorEnum::eNone;
+}
+
+Error Communication::GenerateUUID(String& uuid) const
+{
+    std::string uuidStr;
+
+    if (auto err = GenerateUUID(uuidStr); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return uuid.Assign(uuidStr.c_str());
+}
+
+Error Communication::EnqueueMessage(
+    Poco::JSON::Object::Ptr data, bool important, OnResponseReceivedFunc onResponseReceived)
+{
+    if (!important && !mIsRunning) {
+        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+    }
+
+    std::string txn;
+
+    if (auto err = GenerateUUID(txn); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+    payload->set("header", CreateMessageHeader(txn));
+    payload->set("data", std::move(data));
+
+    return EnqueueMessage(Message(txn, std::move(payload)), onResponseReceived);
+}
+
+Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived)
+{
+    std::unique_lock lock {mMutex};
+
+    if (onResponseReceived) {
+        mResponseHandlers.emplace(msg.CorrelationID(), onResponseReceived);
+    }
+
+    mSendQueue.push_back(msg);
+    mCondVar.notify_all();
+
+    return ErrorEnum::eNone;
+}
+
+Error Communication::DequeueMessage(const Message& msg)
+{
+    std::lock_guard lock {mMutex};
+
+    mSentMessages.erase(msg.Txn());
+    mResponseHandlers.erase(msg.CorrelationID());
+
+    return ErrorEnum::eNone;
+}
+
+void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack)
+{
+    LOG_DBG() << "Received ack message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("correlationID", ack.mCorrelationID);
+
+    std::lock_guard lock {mMutex};
+
+    mSentMessages.erase(info.mTxn);
+}
+
+void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Nack& nack)
+{
+    std::unique_lock lock {mMutex};
+
+    mCondVar.wait(lock, [this, &info] { return mSentMessages.find(info.mTxn) != mSentMessages.end() || !mIsRunning; });
+
+    if (!mIsRunning) {
+        return;
+    }
+
+    LOG_DBG() << "Received nack message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("correlationID", info.mCorrelationID.c_str())
+              << Log::Field("retryAfter", nack.mRetryAfter.Milliseconds());
+
+    auto it = mSentMessages.find(info.mTxn);
+    if (it == mSentMessages.end()) {
+        LOG_WRN() << "No sent message found for nack" << Log::Field("txn", info.mTxn.c_str());
+        return;
+    }
+
+    auto msg = it->second;
+    msg.ResetTimestamp(Time::Now().Add(nack.mRetryAfter));
+
+    mSendQueue.push_back(std::move(msg));
+    mSentMessages.erase(it);
+
+    mCondVar.notify_all();
+}
+
+void Communication::HandleMessage(const ResponseInfo& info, const BlobURLsInfo& urls)
+{
+    LOG_DBG() << "Received blob URLs info message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("correlationID", info.mCorrelationID.c_str()) << Log::Field("count", urls.mItems.Size());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
+
+    OnResponseReceived(info, std::make_shared<ResponseMessageVariantPtr::element_type>(urls));
+}
+
+void Communication::HandleMessage(const ResponseInfo& info, const DesiredStatus& status)
+{
+    LOG_DBG() << "Received desired status message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mUpdateManager->ProcessDesiredStatus(status); !err.IsNone()) {
         LOG_ERR() << "Desired status processing failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const RequestLog& request)
+void Communication::HandleMessage(const ResponseInfo& info, const RequestLog& request)
 {
-    LOG_DBG() << "Received log request message";
+    LOG_DBG() << "Received log request message" << Log::Field("txn", info.mTxn.c_str());
 
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
     if (auto err = mLogProvider->RequestLog(request); !err.IsNone()) {
         LOG_ERR() << "Log request failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const StateAcceptance& state)
+void Communication::HandleMessage(const ResponseInfo& info, const StateAcceptance& state)
 {
-    LOG_DBG() << "Received state acceptance message";
+    LOG_DBG() << "Received state acceptance message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mStateHandler->AcceptState(state); !err.IsNone()) {
         LOG_ERR() << "State acceptance failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const UpdateState& state)
+void Communication::HandleMessage(const ResponseInfo& info, const UpdateState& state)
 {
-    LOG_DBG() << "Received update state message";
+    LOG_DBG() << "Received update state message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mStateHandler->UpdateState(state); !err.IsNone()) {
         LOG_ERR() << "State update failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const OverrideEnvVarsRequest& request)
+void Communication::HandleMessage(const ResponseInfo& info, const OverrideEnvVarsRequest& request)
 {
-    LOG_DBG() << "Received override env vars request message";
+    LOG_DBG() << "Received override env vars request message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mEnvVarHandler->OverrideEnvVars(request); !err.IsNone()) {
         LOG_ERR() << "Override env vars failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const StartProvisioningRequest& request)
+void Communication::HandleMessage(const ResponseInfo& info, const StartProvisioningRequest& request)
 {
-    LOG_DBG() << "Received start provisioning request message" << Log::Field("nodeID", request.mNodeID.CStr());
+    LOG_DBG() << "Received start provisioning request message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("nodeID", request.mNodeID.CStr());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mProvisioningHandler->StartProvisioning(request.mNodeID, request.mPassword); !err.IsNone()) {
         LOG_ERR() << "Start provisioning failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const FinishProvisioningRequest& request)
+void Communication::HandleMessage(const ResponseInfo& info, const FinishProvisioningRequest& request)
 {
-    LOG_DBG() << "Received finish provisioning request message" << Log::Field("nodeID", request.mNodeID.CStr());
+    LOG_DBG() << "Received finish provisioning request message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("nodeID", request.mNodeID.CStr());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mProvisioningHandler->FinishProvisioning(request.mNodeID, request.mPassword); !err.IsNone()) {
         LOG_ERR() << "Finish provisioning failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const DeprovisioningRequest& request)
+void Communication::HandleMessage(const ResponseInfo& info, const DeprovisioningRequest& request)
 {
-    LOG_DBG() << "Received deprovisioning request message" << Log::Field("nodeID", request.mNodeID.CStr());
+    LOG_DBG() << "Received deprovisioning request message" << Log::Field("txn", info.mTxn.c_str())
+              << Log::Field("nodeID", request.mNodeID.CStr());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (auto err = mProvisioningHandler->Deprovision(request.mNodeID, request.mPassword); !err.IsNone()) {
         LOG_ERR() << "Deprovisioning failed" << Log::Field(err);
     }
 }
 
-void Communication::HandleMessage(const RenewCertsNotification& notification)
+void Communication::HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification)
 {
-    LOG_DBG() << "Received renew certs notification message";
+    LOG_DBG() << "Received renew certs notification message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (notification.mCertificates.IsEmpty()) {
         LOG_WRN() << "No certificates to renew";
@@ -926,9 +1194,13 @@ void Communication::HandleMessage(const RenewCertsNotification& notification)
     }
 }
 
-void Communication::HandleMessage(const IssuedUnitCerts& certs)
+void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs)
 {
-    LOG_DBG() << "Received issued unit certs message";
+    LOG_DBG() << "Received issued unit certs message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
 
     if (certs.mCertificates.IsEmpty()) {
         LOG_WRN() << "No issued certificates received";
@@ -1008,12 +1280,53 @@ void Communication::HandleMessage(const IssuedUnitCerts& certs)
     }
 }
 
+Error Communication::SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response)
+{
+    std::promise<void> promise;
+    auto               future = promise.get_future();
+
+    if (auto err = EnqueueMessage(msg,
+            [&promise, &response](ResponseMessageVariantPtr message) {
+                response = std::move(message);
+
+                promise.set_value();
+            });
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (future.wait_for(std::chrono::milliseconds(mConfig->mCloudResponseWaitTimeout.Milliseconds()))
+        == std::future_status::timeout) {
+        DequeueMessage(msg);
+
+        return AOS_ERROR_WRAP(ErrorEnum::eTimeout);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Communication::SendAck(const std::string& txn)
+{
+    LOG_DBG() << "Send ack" << Log::Field("txn", txn.c_str());
+
+    auto msg = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    try {
+        msg->set("header", CreateMessageHeader(txn));
+        msg->set("data", std::move(CreateMessageData(cloudprotocol::Ack())));
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return EnqueueMessage(Message(txn, std::move(msg)));
+}
+
 Error Communication::SendIssueUnitCerts(const IssueUnitCerts& certs)
 {
     LOG_DBG() << "Send issue unit certs";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(certs), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(certs), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -1028,7 +1341,7 @@ Error Communication::SendInstallUnitCertsConfirmation(const InstallUnitCertsConf
     LOG_DBG() << "Send install unit certs confirmation";
 
     try {
-        if (auto err = ScheduleMessage(CreateMessageData(confirmation), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(confirmation), true); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
@@ -1036,6 +1349,32 @@ Error Communication::SendInstallUnitCertsConfirmation(const InstallUnitCertsConf
     }
 
     return ErrorEnum::eNone;
+}
+
+void Communication::OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message)
+{
+    OnResponseReceivedFunc callback;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        auto it = mResponseHandlers.find(info.mCorrelationID);
+        if (it == mResponseHandlers.end()) {
+            LOG_DBG() << "Message handler not found" << Log::Field("txn", info.mTxn.c_str())
+                      << Log::Field("correlationID", info.mCorrelationID.c_str());
+
+            return;
+        }
+
+        callback = std::move(it->second);
+
+        mResponseHandlers.erase(it);
+        mCondVar.notify_all();
+    }
+
+    if (callback) {
+        callback(std::move(message));
+    }
 }
 
 } // namespace aos::cm::communication
