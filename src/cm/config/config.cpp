@@ -23,6 +23,7 @@ namespace aos::cm::config {
 constexpr auto cDefaultServiceTTL               = "30d";
 constexpr auto cDefaultLayerTTL                 = "30d";
 constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
+constexpr auto cDefaultCloudResponseWaitTimeout = "10s";
 constexpr auto cDefaultMaxConcurrentDownloads   = 4;
 constexpr auto cDefaultRetryDelay               = "1m";
 constexpr auto cDefaultMaxRetryDelay            = "30m";
@@ -191,6 +192,10 @@ Error ParseConfig(const std::string& filename, Config& config)
         Tie(config.mUnitStatusSendTimeout, err) = common::utils::ParseDuration(
             object.GetValue<std::string>("unitStatusSendTimeout", cDefaultUnitStatusSendTimeout));
         AOS_ERROR_CHECK_AND_THROW(err, "error parsing unitStatusSendTimeout tag");
+
+        Tie(config.mCloudResponseWaitTimeout, err) = common::utils::ParseDuration(
+            object.GetValue<std::string>("cloudResponseWaitTimeout", cDefaultCloudResponseWaitTimeout));
+        AOS_ERROR_CHECK_AND_THROW(err, "error parsing cloudResponseWaitTimeout tag");
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

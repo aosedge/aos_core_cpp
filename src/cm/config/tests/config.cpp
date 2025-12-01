@@ -24,46 +24,47 @@ using namespace testing;
 namespace {
 
 constexpr auto cFullTestConfigJSON = R"({
-	"fcrypt" : {
-		"CACert" : "CACert",
-		"tpmDevice": "/dev/tpmrm0",
-		"pkcs11Library": "/path/to/pkcs11/library"
-	},
-	"certStorage": "/var/aos/crypt/cm/",
-	"storageDir" : "/var/aos/storage",
-	"stateDir" : "/var/aos/state",
-	"serviceDiscoveryUrl" : "www.aos.com",
-	"iamProtectedServerUrl" : "localhost:8089",
-	"iamPublicServerUrl" : "localhost:8090",
-	"cmServerUrl":"localhost:8094",
-	"workingDir" : "workingDir",
-	"imageStoreDir": "imagestoreDir",
-	"componentsDir": "componentDir",
-	"serviceTtlDays": "720h",
-	"layerTtlDays": "720h",
-	"unitConfigFile" : "/var/aos/aos_unit.cfg",
-	"downloader": {
-		"downloadDir": "/path/to/download",
-		"maxConcurrentDownloads": 10,
-		"retryDelay": "10s",
-		"maxRetryDelay": "30s",
-		"downloadPartLimit": 57
-	},
-	"monitoring": {
-		"monitorConfig": {
-			"pollPeriod": "1s"
-		},
-		"sendPeriod": "5m"
-	},
-	"alerts": {		
-		"sendPeriod": "20s",
-		"maxMessageSize": 1024,
-		"maxOfflineMessages": 32,
-		"journalAlerts": {
-			"filter": ["test", "regexp"]
-		}
-	},
-	"migration" : {
+    "fcrypt" : {
+        "CACert" : "CACert",
+        "tpmDevice": "/dev/tpmrm0",
+        "pkcs11Library": "/path/to/pkcs11/library"
+    },
+    "certStorage": "/var/aos/crypt/cm/",
+    "storageDir" : "/var/aos/storage",
+    "stateDir" : "/var/aos/state",
+    "serviceDiscoveryUrl" : "www.aos.com",
+    "iamProtectedServerUrl" : "localhost:8089",
+    "iamPublicServerUrl" : "localhost:8090",
+    "cmServerUrl":"localhost:8094",
+    "workingDir" : "workingDir",
+    "imageStoreDir": "imagestoreDir",
+    "componentsDir": "componentDir",
+    "serviceTtlDays": "720h",
+    "layerTtlDays": "720h",
+    "unitConfigFile" : "/var/aos/aos_unit.cfg",
+    "cloudResponseWaitTimeout": "3d",
+    "downloader": {
+        "downloadDir": "/path/to/download",
+        "maxConcurrentDownloads": 10,
+        "retryDelay": "10s",
+        "maxRetryDelay": "30s",
+        "downloadPartLimit": 57
+    },
+    "monitoring": {
+        "monitorConfig": {
+            "pollPeriod": "1s"
+        },
+        "sendPeriod": "5m"
+    },
+    "alerts": {		
+        "sendPeriod": "20s",
+        "maxMessageSize": 1024,
+        "maxOfflineMessages": 32,
+        "journalAlerts": {
+            "filter": ["test", "regexp"]
+        }
+    },
+    "migration" : {
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
         "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
     },
@@ -73,11 +74,11 @@ constexpr auto cFullTestConfigJSON = R"({
         "nodesConnectionTimeout" : "100s",
         "updateTtl" : "30h"
     },
-	"umController": {
-		"fileServerUrl" : "localhost:8092",
-		"cmServerUrl" : "localhost:8091",
-		"updateTtl" : "100h"
-	}
+    "umController": {
+        "fileServerUrl" : "localhost:8092",
+        "cmServerUrl" : "localhost:8091",
+        "updateTtl" : "100h"
+    }
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
@@ -168,6 +169,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     EXPECT_EQ(config.mServiceTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mLayerTTL, aos::Time::cHours * 24 * 30);
+    EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cDay * 3);
 
     EXPECT_EQ(config.mDownloader.mDownloadDir, "/path/to/download");
     EXPECT_EQ(config.mDownloader.mMaxConcurrentDownloads, 10);
@@ -225,6 +227,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mServiceTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mLayerTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 30);
+    EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cSeconds * 10);
 
     EXPECT_EQ(config.mDownloader.mDownloadDir, (std::filesystem::path("workingDir") / "download").string());
     EXPECT_EQ(config.mDownloader.mMaxConcurrentDownloads, 4);
