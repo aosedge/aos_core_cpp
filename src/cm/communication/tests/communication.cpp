@@ -5,6 +5,7 @@
  */
 
 #include <future>
+#include <regex>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -99,6 +100,53 @@ public:
     MOCK_METHOD(Error, Deprovision, (const String& nodeID, const String& password), (override));
 };
 
+class UUIDItfStub : public crypto::UUIDItf {
+public:
+    void SetUUID(const uuid::UUID& uuid)
+    {
+        std::lock_guard lock {mMutex};
+
+        mUUIDs.push_back(uuid);
+    }
+
+    void SetUUID(const String& uuidStr)
+    {
+        std::lock_guard lock {mMutex};
+
+        auto result = uuid::StringToUUID(uuidStr);
+        AOS_ERROR_CHECK_AND_THROW(result.mError, "Failed to convert string to UUID");
+
+        mUUIDs.push_back(result.mValue);
+    }
+
+    RetWithError<uuid::UUID> CreateUUIDv4()
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mUUIDs.empty()) {
+            return RetWithError<uuid::UUID>({}, ErrorEnum::eFailed);
+        }
+
+        if (mUUIDs.size() == 1) {
+            return RetWithError<uuid::UUID>(mUUIDs[0], ErrorEnum::eNone);
+        }
+
+        const auto uuid = mUUIDs[0];
+        mUUIDs.erase(mUUIDs.begin());
+
+        return RetWithError<uuid::UUID>(uuid, ErrorEnum::eNone);
+    }
+
+    RetWithError<uuid::UUID> CreateUUIDv5(const uuid::UUID&, const Array<uint8_t>&)
+    {
+        return RetWithError<uuid::UUID>({}, ErrorEnum::eNotSupported);
+    }
+
+private:
+    std::mutex              mMutex;
+    std::vector<uuid::UUID> mUUIDs;
+};
+
 std::string CreateDiscoveryResponse(const std::vector<std::string>& connectionInfo = {cWebSocketServiceURL})
 {
     auto responseJSON = Poco::makeShared<Poco::JSON::Object>();
@@ -131,9 +179,10 @@ public:
     {
         tests::utils::InitLog();
 
-        mConfig.mServiceDiscoveryURL = cDiscoveryServerURL;
-        mConfig.mCrypt.mCACert       = CERTIFICATES_CM_DIR "/ca.cer";
-        mConfig.mCertStorage         = "client";
+        mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
+        mConfig.mCrypt.mCACert            = CERTIFICATES_CM_DIR "/ca.cer";
+        mConfig.mCertStorage              = "client";
+        mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentityProvider, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
             info.mSystemID = mSystemID;
@@ -213,8 +262,8 @@ public:
         }));
 
         auto err = mCommunication.Init(mConfig, mNodeInfoProvider, mIdentityProvider, mCertProvider, mCertLoader,
-            mCryptoProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler, mCertHandlerMock,
-            mProvisioningMock);
+            mCryptoProvider, mUUIDProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler,
+            mCertHandlerMock, mProvisioningMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mCommunication.SubscribeListener(mConnectionSubscriber);
@@ -332,6 +381,7 @@ protected:
     CertInfo                      mClientInfo;
     CertInfo                      mServerInfo;
     crypto::DefaultCryptoProvider mCryptoProvider;
+    UUIDItfStub                   mUUIDProvider;
     iamclient::CertProviderStub   mCertProvider {mCertHandler};
     crypto::CertLoader            mCertLoader;
     Communication                 mCommunication;
@@ -403,12 +453,18 @@ TEST_F(CMCommunicationTest, SubscribeUnsubscribe)
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, SendAlerts)
+TEST_F(CMCommunicationTest, MessageIsRecentIfAckNotReceived)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"alerts","correlationID":"id","items":[]}})";
+    mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds * 500;
+
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"alerts","correlationID":"id","items":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
 
     // cppcheck-suppress templateRecursion
     auto alerts            = std::make_unique<Alerts>();
@@ -417,7 +473,39 @@ TEST_F(CMCommunicationTest, SendAlerts)
     auto err = mCommunication.SendAlerts(*alerts);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    for (size_t i = 0; i < 4; ++i) {
+        const auto message = mCloudReceivedMessages.Pop().value_or("");
+        EXPECT_TRUE(std::regex_match(message, cExpectedMessage))
+            << "Message does not match expected regex: " << message;
+    }
+
+    const auto message
+        = mCloudReceivedMessages.Pop(std::chrono::milliseconds(mConfig.mCloudResponseWaitTimeout.Milliseconds()));
+    EXPECT_FALSE(message.has_value()) << "No more messages expected, but received: " << message.value();
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, SendAlerts)
+{
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"alerts","correlationID":"id","items":\[\]\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    // cppcheck-suppress templateRecursion
+    auto alerts            = std::make_unique<Alerts>();
+    alerts->mCorrelationID = "id";
+
+    auto err = mCommunication.SendAlerts(*alerts);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_TRUE(std::regex_match(mCloudReceivedMessages.Pop().value_or(""), cExpectedMessage));
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -425,19 +513,41 @@ TEST_F(CMCommunicationTest, SendAlerts)
 
 TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
 {
-    constexpr auto cExpectedMessage
-        = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-          R"("data":{"messageType":"overrideEnvVarsStatus","correlationID":"id","statuses":[]}})";
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"overrideEnvVarsStatus","correlationID":"","statuses":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
-    auto statuses            = std::make_unique<OverrideEnvVarsStatuses>();
-    statuses->mCorrelationID = "id";
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto statuses = std::make_unique<OverrideEnvVarsStatuses>();
 
     auto err = mCommunication.SendOverrideEnvsStatuses(*statuses);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    EXPECT_TRUE(std::regex_match(mCloudReceivedMessages.Pop().value_or(""), cExpectedMessage));
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
+{
+    mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds;
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    StaticArray<StaticString<oci::cDigestLen>, 1> digests;
+    digests.EmplaceBack("sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b");
+
+    auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
+
+    auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eTimeout)) << tests::utils::ErrorToStr(err);
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -445,27 +555,118 @@ TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
 
 TEST_F(CMCommunicationTest, GetBlobsInfos)
 {
-    StaticArray<StaticString<oci::cDigestLen>, 2> digests;
-    auto                                          blobsInfo = std::make_unique<StaticArray<BlobInfo, 2>>();
+    constexpr auto cRequestCorrelationID = "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2";
+    constexpr auto cRequestTxnID         = "fb6e8461-2601-4f9a-8957-7ab4e52f304c";
+    constexpr auto cDigest               = "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b";
+    const auto     cExpectedMessage      = std::regex(
+        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                 R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                 R"("data":\{"messageType":"requestBlobUrls","correlationID":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
+                 R"("digests":\["sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"\]\}\}$)");
+    constexpr auto cCloudAck = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "txn": "fb6e8461-2601-4f9a-8957-7ab4e52f304c"
+        },
+        "data": {
+            "messageType": "ack"
+        }
+    })";
+    constexpr auto cResponse = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "txn": "f2df3016-de31-46e6-9ce8-9cde4ed7849f"
+        },
+        "data": {
+            "messageType": "blobUrls",
+            "correlationID": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "items": [
+                {
+                    "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+                    "urls": [
+                        "http://example.com/image1.bin",
+                        "http://backup.example.com/image1.bin"
+                    ],
+                    "sha256": "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80",
+                    "size": 1000,
+                    "decryptInfo": {
+                        "blockAlg": "AES256/CBC/pkcs7",
+                        "blockIv": "YmxvY2tJdg==",
+                        "blockKey": "YmxvY2tLZXk="
+                    },
+                    "signInfo": {
+                        "chainName": "chainName",
+                        "alg": "RSA/SHA256",
+                        "value": "dmFsdWU=",
+                        "trustedTimestamp": "2023-10-01T12:00:00Z",
+                        "ocspValues": [
+                            "ocspValue1",
+                            "ocspValue2"
+                        ]
+                    }
+                }
+            ]
+        }
+    })";
+    const auto     cExpectedAckMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"f2df3016-de31-46e6-9ce8-9cde4ed7849f"\},)"
+                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
 
-    auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotSupported)) << tests::utils::ErrorToStr(err);
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID(cRequestCorrelationID);
+    mUUIDProvider.SetUUID(cRequestTxnID);
+
+    StaticArray<StaticString<oci::cDigestLen>, 1> digests;
+    digests.EmplaceBack(cDigest);
+
+    auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
+
+    auto future = std::async(std::launch::async,
+        [this, &digests, &blobsInfo]() { return mCommunication.GetBlobsInfos(digests, *blobsInfo); });
+
+    const auto cUrlsRequest = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cUrlsRequest, cExpectedMessage)) << "Received message: " << cUrlsRequest;
+
+    mCloudSendMessageQueue.Push(cCloudAck);
+    mCloudSendMessageQueue.Push(cResponse);
+
+    auto err = future.get();
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(blobsInfo->Size(), 1);
+    const auto& blobInfo = (*blobsInfo)[0];
+
+    EXPECT_STREQ(blobInfo.mDigest.CStr(), cDigest);
+    EXPECT_EQ(blobInfo.mURLs.Size(), 2);
+
+    const auto cAck = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cAck, cExpectedAckMsg)) << "Received message: " << cAck;
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(CMCommunicationTest, SendMonitoring)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"monitoringData","correlationID":"id","nodes":[]}})";
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"monitoringData","correlationID":"","nodes":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
-    auto monitoring            = std::make_unique<Monitoring>();
-    monitoring->mCorrelationID = "id";
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto monitoring = std::make_unique<Monitoring>();
 
     auto err = mCommunication.SendMonitoring(*monitoring);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    EXPECT_TRUE(std::regex_match(mCloudReceivedMessages.Pop().value_or(""), cExpectedMessage));
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -473,19 +674,23 @@ TEST_F(CMCommunicationTest, SendMonitoring)
 
 TEST_F(CMCommunicationTest, SendLog)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"pushLog","correlationID":"id","node":{"id":""},)"
-                                      R"("part":0,"partsCount":0,"content":"","status":"ok"}})";
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"pushLog","correlationID":"","node":\{"id":""\},)"
+                     R"("part":0,"partsCount":0,"content":"","status":"ok"\}\}$)");
 
     SubscribeAndWaitConnected();
 
-    auto log            = std::make_unique<PushLog>();
-    log->mCorrelationID = "id";
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto log = std::make_unique<PushLog>();
 
     auto err = mCommunication.SendLog(*log);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedMessage)) << "Received message: " << cReceivedMessage;
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -493,19 +698,23 @@ TEST_F(CMCommunicationTest, SendLog)
 
 TEST_F(CMCommunicationTest, SendStateRequest)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"stateRequest","correlationID":"id","item":{"id":""},)"
-                                      R"("subject":{"id":""},"instance":0,"default":false}})";
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"stateRequest","correlationID":"","item":\{"id":""\},)"
+                     R"("subject":\{"id":""\},"instance":0,"default":false\}\}$)");
 
     SubscribeAndWaitConnected();
 
-    auto request            = std::make_unique<StateRequest>();
-    request->mCorrelationID = "id";
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto request = std::make_unique<StateRequest>();
 
     auto err = mCommunication.SendStateRequest(*request);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedMessage)) << "Received message: " << cReceivedMessage;
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -513,19 +722,23 @@ TEST_F(CMCommunicationTest, SendStateRequest)
 
 TEST_F(CMCommunicationTest, SendNewState)
 {
-    constexpr auto cExpectedMessage = R"({"header":{"version":7,"systemId":"test_system_id"},)"
-                                      R"("data":{"messageType":"newState","correlationID":"id","item":{"id":""},)"
-                                      R"("subject":{"id":""},"instance":0,"stateChecksum":"","state":""}})";
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"newState","correlationID":"","item":\{"id":""\},)"
+                     R"("subject":\{"id":""\},"instance":0,"stateChecksum":"","state":""\}\}$)");
 
     SubscribeAndWaitConnected();
 
-    auto state            = std::make_unique<NewState>();
-    state->mCorrelationID = "id";
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto state = std::make_unique<NewState>();
 
     auto err = mCommunication.SendNewState(*state);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_STREQ(mCloudReceivedMessages.Pop().value_or("").c_str(), cExpectedMessage);
+    const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedMessage)) << "Received message: " << cReceivedMessage;
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -536,7 +749,8 @@ TEST_F(CMCommunicationTest, ReceiveUpdateStateMessage)
     constexpr auto cMessage = R"({
         "header": {
             "systemID": "test_system_id",
-            "version": 7
+            "version": 7,
+            "txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"
         },
         "data": {
             "messageType": "updateState",
@@ -580,7 +794,8 @@ TEST_F(CMCommunicationTest, ReceiveStateAcceptanceMessage)
     constexpr auto cMessage = R"({
         "header": {
             "systemID": "test_system_id",
-            "version": 7
+            "version": 7,
+            "txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"
         },
         "data": {
             "messageType": "stateAcceptance",
@@ -626,7 +841,8 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
     constexpr auto cMessage = R"({
         "header": {
             "systemID": "test_system_id",
-            "version": 7
+            "version": 7,
+            "txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"
         },
         "data": {
             "messageType": "renewCertificatesNotification",
@@ -665,13 +881,20 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
             }
         }
     })";
-
-    constexpr auto cExpectedSentMsg = R"({"header":{"version":7,"systemId":"test_system_id"},"data":)"
-                                      R"({"messageType":"issueUnitCertificates","correlationID":"","requests":[)"
-                                      R"({"type":"iam","node":{"id":"node0"},"csr":"csr_result_0"},)"
-                                      R"({"type":"iam","node":{"id":"node1"},"csr":"csr_result_1"}]}})";
+    const auto     cExpectedAckMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
+    const auto cExpectedIssuedCertsRequestMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
+                     R"("data":\{"messageType":"issueUnitCertificates","correlationID":"","requests":\[)"
+                     R"(\{"type":"iam","node":\{"id":"node0"\},"csr":"csr_result_0"\},)"
+                     R"(\{"type":"iam","node":\{"id":"node1"\},"csr":"csr_result_1"\}]\}\}$)");
 
     SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("180d54e5-0bac-4d4e-a144-68de544cb3d8");
 
     size_t                          createKeyRequest = 0;
     std::vector<std::promise<void>> createKeyPromises(2);
@@ -699,8 +922,12 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
         EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
     }
 
-    const auto sentMessage = mCloudReceivedMessages.Pop();
-    EXPECT_STREQ(sentMessage.value_or("").c_str(), cExpectedSentMsg);
+    const auto cReceivedAckMsg = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedAckMsg, cExpectedAckMsg)) << "Received message: " << cReceivedAckMsg;
+
+    const auto cReceivedIssuedCertsRequestMsg = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedIssuedCertsRequestMsg, cExpectedIssuedCertsRequestMsg))
+        << "Received message: " << cReceivedIssuedCertsRequestMsg;
 
     auto err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -712,7 +939,8 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
     constexpr auto cMessage            = R"({
         "header": {
             "systemID": "test_system_id",
-            "version": 7
+            "version": 7,
+            "txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"
         },
         "data": {
             "messageType": "issuedUnitCertificates",
@@ -762,18 +990,24 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
             ]
         }
     })";
-
-    constexpr auto cExpectedSentMsg
-        = R"({"header":{"version":7,"systemId":"test_system_id"},"data":)"
-          R"({"messageType":"installUnitCertificatesConfirmation","correlationID":"","certificates":[)"
-          R"({"type":"cm","node":{"id":"node1"},"serial":"00"},)"
-          R"({"type":"iam","node":{"id":"node1"},"serial":"01"},)"
-          R"({"type":"cm","node":{"id":"node2"},"serial":"02"},)"
-          R"({"type":"iam","node":{"id":"node2"},"serial":"03"},)"
-          R"({"type":"cm","node":{"id":"node0"},"serial":"04"},)"
-          R"({"type":"iam","node":{"id":"node0"},"serial":"05"}]}})";
+    const auto     cExpectedAckMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
+    const auto cExpectedIssuedCertsRequestMsg = std::regex(
+        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+        R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
+        R"("data":\{"messageType":"installUnitCertificatesConfirmation","correlationID":"","certificates":\[)"
+        R"(\{"type":"cm","node":\{"id":"node1"\},"serial":"00"\},)"
+        R"(\{"type":"iam","node":\{"id":"node1"\},"serial":"01"\},)"
+        R"(\{"type":"cm","node":\{"id":"node2"\},"serial":"02"\},)"
+        R"(\{"type":"iam","node":\{"id":"node2"\},"serial":"03"\},)"
+        R"(\{"type":"cm","node":\{"id":"node0"\},"serial":"04"\},)"
+        R"(\{"type":"iam","node":\{"id":"node0"\},"serial":"05"\}]\}\}$)");
 
     SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("180d54e5-0bac-4d4e-a144-68de544cb3d8");
 
     size_t                          applyCertRequest = 0;
     std::vector<std::promise<void>> applyCertPromises(cExpectedCertsCount);
@@ -797,8 +1031,12 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
         EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
     }
 
-    const auto sentMessage = mCloudReceivedMessages.Pop();
-    EXPECT_STREQ(sentMessage.value_or("").c_str(), cExpectedSentMsg);
+    const auto cReceivedAckMsg = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedAckMsg, cExpectedAckMsg)) << "Received message: " << cReceivedAckMsg;
+
+    const auto cReceivedIssuedCertsRequestMsg = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedIssuedCertsRequestMsg, cExpectedIssuedCertsRequestMsg))
+        << "Received message: " << cReceivedIssuedCertsRequestMsg;
 
     auto err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);

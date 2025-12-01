@@ -20,6 +20,7 @@
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/WebSocket.h>
+#include <Poco/ThreadPool.h>
 #include <Poco/URI.h>
 
 #include <core/cm/communication/itf/communication.hpp>
@@ -46,6 +47,8 @@
 
 #include <cm/config/config.hpp>
 
+#include "cloudprotocol/status.hpp"
+
 namespace aos::cm::communication {
 
 /**
@@ -62,6 +65,7 @@ public:
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
+     * @param uuidProvider UUID provider.
      * @param updateManager update manager.
      * @param stateHandler storage state handler.
      * @param logProvider log provider.
@@ -72,7 +76,7 @@ public:
      */
     Error Init(const cm::config::Config& config, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
         iamclient::IdentProviderItf& identityProvider, iamclient::CertProviderItf& certProvider,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
         updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
         smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
         iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler
@@ -173,14 +177,50 @@ public:
     Error UnsubscribeListener(cloudconnection::ConnectionListenerItf& listener) override;
 
 private:
-    static constexpr auto cProtocolVersion     = 7;
-    static constexpr auto cSendTimeout         = Time::cSeconds * 5;
-    static constexpr auto cReconnectTries      = 5;
-    static constexpr auto cReconnectTimeout    = Time::cSeconds * 1;
-    static constexpr auto cMaxReconnectTimeout = 10 * Time::cMinutes;
+    static constexpr auto cProtocolVersion       = 7;
+    static constexpr auto cReconnectTries        = 5;
+    static constexpr auto cReconnectTimeout      = Time::cSeconds * 1;
+    static constexpr auto cMaxReconnectTimeout   = 10 * Time::cMinutes;
+    static constexpr auto cMessageHandlerThreads = 4;
 
-    using SessionPtr             = std::unique_ptr<Poco::Net::HTTPClientSession>;
-    using RecievedMessageVariant = std::variant<StateAcceptance, UpdateState>;
+    using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
+    using ResponseMessageVariant    = std::variant<BlobURLsInfo>;
+    using ResponseMessageVariantPtr = std::shared_ptr<ResponseMessageVariant>;
+    using OnResponseReceivedFunc    = std::function<void(ResponseMessageVariantPtr)>;
+
+    class Message {
+    public:
+        Message(const std::string& txn, Poco::JSON::Object::Ptr payload, const std::string& correlationID = {},
+            const Time& timestamp = Time::Now())
+            : mTxn(txn)
+            , mPayload(std::move(payload))
+            , mCorrelationID(correlationID)
+            , mTimestamp(timestamp)
+        {
+        }
+
+        const std::string& Txn() const { return mTxn; }
+        const std::string& CorrelationID() const { return mCorrelationID; }
+        std::string        Payload() const { return common::utils::Stringify(mPayload); }
+        const Time&        Timestamp() const { return mTimestamp; }
+        void               ResetTimestamp(const Time& time) { mTimestamp = time; }
+        bool               RetryAllowed() const { return mTries < cMaxTries; }
+        void               IncrementTries() { ++mTries; }
+
+    private:
+        static constexpr auto cMaxTries = 3;
+
+        std::string             mTxn;
+        Poco::JSON::Object::Ptr mPayload;
+        std::string             mCorrelationID;
+        Time                    mTimestamp {Time::Now()};
+        size_t                  mTries {};
+    };
+
+    struct ResponseInfo {
+        std::string mTxn;
+        std::string mCorrelationID;
+    };
 
     SessionPtr  CreateSession(const Poco::URI& uri);
     std::string CreateDiscoveryRequestBody() const;
@@ -191,28 +231,41 @@ private:
     Error       CloseConnection();
     Error       Disconnect();
     Error       ReceiveFrames();
-    Error       CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message) const;
+    Error       CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message, ResponseInfo& info) const;
     void        NotifyConnectionEstablished();
     void        NotifyConnectionLost();
     void        HandleConnection();
     void        HandleSendQueue();
+    void        HandleUnacknowledgedMessages();
+    void        HandleReceivedMessage();
     Error       HandleMessage(const std::string& message);
-    Error       ScheduleMessage(Poco::JSON::Object::Ptr data, bool important = false);
-    Poco::JSON::Object::Ptr CreateMessageHeader() const;
+    Poco::JSON::Object::Ptr CreateMessageHeader(const std::string& txn) const;
 
-    void HandleMessage(const DesiredStatus& status);
-    void HandleMessage(const RequestLog& request);
-    void HandleMessage(const StateAcceptance& state);
-    void HandleMessage(const UpdateState& state);
-    void HandleMessage(const OverrideEnvVarsRequest& request);
-    void HandleMessage(const StartProvisioningRequest& request);
-    void HandleMessage(const FinishProvisioningRequest& request);
-    void HandleMessage(const DeprovisioningRequest& request);
-    void HandleMessage(const RenewCertsNotification& notification);
-    void HandleMessage(const IssuedUnitCerts& certs);
+    Error GenerateUUID(std::string& uuid) const;
+    Error GenerateUUID(String& uuid) const;
+    Error EnqueueMessage(
+        Poco::JSON::Object::Ptr data, bool important = false, OnResponseReceivedFunc onResponseReceived = {});
+    Error EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived = {});
+    Error DequeueMessage(const Message& msg);
 
+    void  HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack);
+    void  HandleMessage(const ResponseInfo& info, const cloudprotocol::Nack& nack);
+    void  HandleMessage(const ResponseInfo& info, const BlobURLsInfo& urls);
+    void  HandleMessage(const ResponseInfo& info, const DesiredStatus& status);
+    void  HandleMessage(const ResponseInfo& info, const RequestLog& request);
+    void  HandleMessage(const ResponseInfo& info, const StateAcceptance& state);
+    void  HandleMessage(const ResponseInfo& info, const UpdateState& state);
+    void  HandleMessage(const ResponseInfo& info, const OverrideEnvVarsRequest& request);
+    void  HandleMessage(const ResponseInfo& info, const StartProvisioningRequest& request);
+    void  HandleMessage(const ResponseInfo& info, const FinishProvisioningRequest& request);
+    void  HandleMessage(const ResponseInfo& info, const DeprovisioningRequest& request);
+    void  HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification);
+    void  HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs);
+    Error SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response);
+    Error SendAck(const std::string& correlationID);
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);
     Error SendInstallUnitCertsConfirmation(const InstallUnitCertsConfirmation& confirmation);
+    void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
 
     const config::Config*                                mConfig {};
     iam::nodeinfoprovider::NodeInfoProviderItf*          mNodeInfoProvider {};
@@ -220,6 +273,7 @@ private:
     iamclient::CertProviderItf*                          mCertProvider {};
     crypto::CertLoaderItf*                               mCertLoader {};
     crypto::x509::ProviderItf*                           mCryptoProvider {};
+    crypto::UUIDItf*                                     mUUIDProvider {};
     updatemanager::UpdateManagerItf*                     mUpdateManager {};
     storagestate::StateHandlerItf*                       mStateHandler {};
     smcontroller::LogProviderItf*                        mLogProvider {};
@@ -240,10 +294,13 @@ private:
 
     Poco::Net::HTTPRequest  mCloudHttpRequest;
     Poco::Net::HTTPResponse mCloudHttpResponse;
-    std::thread             mConnectionThread;
 
-    std::queue<std::string> mSendQueue;
-    std::thread             mSendThread;
+    std::vector<Message>    mSendQueue;
+    std::queue<std::string> mReceiveQueue;
+
+    std::map<std::string, Message>                mSentMessages;
+    std::map<std::string, OnResponseReceivedFunc> mResponseHandlers;
+    std::vector<std::thread>                      mThreadPool;
 };
 
 } // namespace aos::cm::communication
