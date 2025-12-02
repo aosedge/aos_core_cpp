@@ -57,7 +57,7 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
         builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
     }
 
-    if (iam::nodeinfoprovider::IsMainNode(GetNodeInfo())) {
+    if (GetNodeInfo().IsMainNode()) {
         builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
         builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
         builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
@@ -143,7 +143,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOnline, true); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned, true); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -247,7 +247,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOnline, true); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned, true); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -285,7 +285,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eOffline, false); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eUnprovisioned, false); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
