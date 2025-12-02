@@ -30,7 +30,7 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cServerURL        = "0.0.0.0:50051";
-const auto     cProvisionedState = NodeState(NodeStateEnum::eOnline);
+const auto     cProvisionedState = NodeState(NodeStateEnum::eProvisioned);
 const auto     cProvisioned      = true;
 
 class TestServer : public iamproto::IAMPublicNodesService::Service {
@@ -139,7 +139,6 @@ TEST_F(NodeControllerTest, RegisterNode)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -154,7 +153,6 @@ TEST_F(NodeControllerTest, RegisterNode2ClientsWithSameID)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     for (size_t i = 0; i < 2; ++i) {
         stubs.push_back(CreateClientStub(cServerURL));
@@ -189,7 +187,6 @@ TEST_F(NodeControllerTest, StartProvisioningFailsOnUnknownNodeID)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -206,7 +203,6 @@ TEST_F(NodeControllerTest, StartProvisioningFailsDueTimeout)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -244,7 +240,6 @@ TEST_F(NodeControllerTest, StartProvisioningSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     ASSERT_TRUE(stream->Write(mOutgoingMessage));
 
@@ -295,7 +290,6 @@ TEST_F(NodeControllerTest, FinishProvisioningSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -348,7 +342,6 @@ TEST_F(NodeControllerTest, DeprovisionSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -401,7 +394,6 @@ TEST_F(NodeControllerTest, PauseNodeSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -454,7 +446,6 @@ TEST_F(NodeControllerTest, ResumeNodeSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -507,7 +498,6 @@ TEST_F(NodeControllerTest, CreateKeySucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 
@@ -560,7 +550,6 @@ TEST_F(NodeControllerTest, ApplyCertSucceeds)
 
     mOutgoingMessage.mutable_node_info()->set_node_id("node1");
     mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
-    mOutgoingMessage.mutable_node_info()->set_provisioned(cProvisioned);
 
     stream->Write(mOutgoingMessage);
 

@@ -318,7 +318,7 @@ Error NodeStreamHandler::SendMessage(const iamproto::IAMIncomingMessages& reques
 Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
 {
     LOG_DBG() << "Received node info" << Log::Field("nodeID", info.node_id().c_str())
-              << Log::Field("state", info.state().c_str()) << Log::Field("provisioned", info.provisioned());
+              << Log::Field("state", info.state().c_str());
 
     auto nodeInfo = std::make_unique<NodeInfo>();
 
@@ -326,9 +326,9 @@ Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return err;
     }
 
-    if (info.provisioned() != mProvisioned) {
+    if (nodeInfo->mState == NodeStateEnum::eUnprovisioned) {
         LOG_WRN() << "Node is not allowed" << Log::Field("nodeID", info.node_id().c_str())
-                  << Log::Field("state", info.state().c_str()) << Log::Field("provisioned", info.provisioned());
+                  << Log::Field("state", info.state().c_str());
 
         mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
 

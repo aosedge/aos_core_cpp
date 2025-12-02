@@ -9,7 +9,6 @@
 
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/pbconvert/iam.hpp>
@@ -54,7 +53,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
         builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
     }
 
-    if (iam::nodeinfoprovider::IsMainNode(mNodeInfo)) {
+    if (mNodeInfo.IsMainNode()) {
         if (GetIdentProvider() != nullptr) {
             builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
         }

@@ -199,7 +199,7 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
     EXPECT_CALL(mNodeManager, SetNodeState)
         .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
             EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::eOnline);
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
             EXPECT_TRUE(provisioned);
 
             return ErrorEnum::eNone;
@@ -228,7 +228,7 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
     EXPECT_CALL(mNodeManager, SetNodeState)
         .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
             EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::eOnline);
+            EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
             EXPECT_TRUE(provisioned);
 
             return ErrorEnum::eFailed;
