@@ -23,7 +23,7 @@
 
 namespace aos::iam::database {
 
-class Database : public iam::certhandler::StorageItf, public iam::nodemanager::NodeInfoStorageItf {
+class Database : public iam::certhandler::StorageItf, public iam::nodemanager::StorageItf {
 public:
     /**
      * Creates database instance.
