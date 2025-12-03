@@ -46,6 +46,7 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
     result.set_item_id(src.mItemID.CStr());
     result.set_subject_id(src.mSubjectID.CStr());
     result.set_instance(src.mInstance);
+    result.set_type(static_cast<::common::v2::ItemType>(src.mType.GetValue()));
 
     return result;
 }
@@ -75,6 +76,7 @@ InstanceIdent ConvertToAos(const ::common::v2::InstanceIdent& val)
     result.mItemID    = val.item_id().c_str();
     result.mSubjectID = val.subject_id().c_str();
     result.mInstance  = val.instance();
+    result.mType      = static_cast<UpdateItemTypeEnum>(val.type());
 
     return result;
 }
