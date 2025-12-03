@@ -294,7 +294,7 @@ Error Communication::SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& sta
     return ErrorEnum::eNone;
 }
 
-Error Communication::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo)
+Error Communication::GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo)
 {
     (void)blobsInfo;
 
