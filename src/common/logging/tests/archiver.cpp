@@ -14,11 +14,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <common/logprovider/archivator.hpp>
+#include <common/logging/archiver.hpp>
 
 using namespace testing;
 
-namespace aos::common::logprovider {
+namespace aos::common::logging {
 
 /***********************************************************************************************************************
  * Static
@@ -38,30 +38,30 @@ std::string DecompressGZIP(const std::string& compressedData)
 }
 
 /**
- * Log observer mock.
+ * Log sender mock.
  */
-class LogObserverMock : public sm::logprovider::LogObserverItf {
+class LogSenderMock : public aos::logging::SenderItf {
 public:
-    MOCK_METHOD(Error, OnLogReceived, (const PushLog& log), (override));
+    MOCK_METHOD(Error, SendLog, (const PushLog&), (override));
 };
 
-class ArchivatorTest : public Test {
+class ArchiverTest : public Test {
 public:
-    LogObserverMock          mLogObserver;
-    aos::logprovider::Config mConfig {1024, 5};
+    LogSenderMock        mLogSender;
+    aos::logging::Config mConfig {1024, 5};
 };
 
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ArchivatorTest, ArchiveEmpty)
+TEST_F(ArchiverTest, ArchiveEmpty)
 {
     const auto logMessage = std::string {};
 
-    Archivator archivator(mLogObserver, mConfig);
+    Archiver archiver(mLogSender, mConfig);
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([](const PushLog& log) {
+    EXPECT_CALL(mLogSender, SendLog(_)).WillOnce(Invoke([](const PushLog& log) {
         EXPECT_STREQ(log.mCorrelationID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, 1);
         EXPECT_EQ(log.mPart, 1);
@@ -71,10 +71,10 @@ TEST_F(ArchivatorTest, ArchiveEmpty)
         return ErrorEnum::eNone;
     }));
 
-    EXPECT_EQ(archivator.SendLog(cLogID), ErrorEnum::eNone);
+    EXPECT_EQ(archiver.SendLog(cLogID), ErrorEnum::eNone);
 }
 
-TEST_F(ArchivatorTest, ArchiveChunks)
+TEST_F(ArchiverTest, ArchiveChunks)
 {
     const std::vector<std::string> logMessages = {
         "Test log message 1",
@@ -85,13 +85,13 @@ TEST_F(ArchivatorTest, ArchiveChunks)
     };
     const auto expectedUncompressedString = std::accumulate(logMessages.begin(), logMessages.end(), std::string {});
 
-    Archivator archivator(mLogObserver, mConfig);
+    Archiver archiver(mLogSender, mConfig);
 
     for (const auto& logMessage : logMessages) {
-        EXPECT_EQ(archivator.AddLog(logMessage), ErrorEnum::eNone);
+        EXPECT_EQ(archiver.AddLog(logMessage), ErrorEnum::eNone);
     }
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillOnce(Invoke([&expectedUncompressedString](const PushLog& log) {
+    EXPECT_CALL(mLogSender, SendLog(_)).WillOnce(Invoke([&expectedUncompressedString](const PushLog& log) {
         EXPECT_STREQ(log.mCorrelationID.CStr(), cLogID);
         EXPECT_EQ(log.mPartsCount, 1);
         EXPECT_EQ(log.mPart, 1);
@@ -103,10 +103,10 @@ TEST_F(ArchivatorTest, ArchiveChunks)
         return ErrorEnum::eNone;
     }));
 
-    EXPECT_EQ(archivator.SendLog(cLogID), ErrorEnum::eNone);
+    EXPECT_EQ(archiver.SendLog(cLogID), ErrorEnum::eNone);
 }
 
-TEST_F(ArchivatorTest, ArchiveLongChunks)
+TEST_F(ArchiverTest, ArchiveLongChunks)
 {
     const std::vector<std::string> logMessages = {
         std::string(mConfig.mMaxPartSize, 'a'),
@@ -115,21 +115,21 @@ TEST_F(ArchivatorTest, ArchiveLongChunks)
         std::string(mConfig.mMaxPartSize, 'd'),
     };
 
-    Archivator archivator(mLogObserver, mConfig);
+    Archiver archiver(mLogSender, mConfig);
 
     for (const auto& logMessage : logMessages) {
-        EXPECT_EQ(archivator.AddLog(logMessage), ErrorEnum::eNone);
+        EXPECT_EQ(archiver.AddLog(logMessage), ErrorEnum::eNone);
     }
 
     std::vector<PushLog> pushedLogs;
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(_)).WillRepeatedly(Invoke([&pushedLogs](const PushLog& log) {
+    EXPECT_CALL(mLogSender, SendLog(_)).WillRepeatedly(Invoke([&pushedLogs](const PushLog& log) {
         pushedLogs.push_back(log);
 
         return ErrorEnum::eNone;
     }));
 
-    EXPECT_EQ(archivator.SendLog(cLogID), ErrorEnum::eNone);
+    EXPECT_EQ(archiver.SendLog(cLogID), ErrorEnum::eNone);
 
     EXPECT_EQ(pushedLogs.size(), logMessages.size());
 
@@ -146,4 +146,4 @@ TEST_F(ArchivatorTest, ArchiveLongChunks)
     }
 }
 
-} // namespace aos::common::logprovider
+} // namespace aos::common::logging

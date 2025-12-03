@@ -9,18 +9,18 @@
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 
-#include "archivator.hpp"
+#include "archiver.hpp"
 
-namespace aos::common::logprovider {
+namespace aos::common::logging {
 
-Archivator::Archivator(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config)
-    : mLogReceiver(logReceiver)
+Archiver::Archiver(aos::logging::SenderItf& logSender, const aos::logging::Config& config)
+    : mLogSender(logSender)
     , mConfig(config)
 {
     CreateCompressionStream();
 }
 
-Error Archivator::AddLog(const std::string& message)
+Error Archiver::AddLog(const std::string& message)
 {
     if (mPartCount >= mConfig.mMaxPartCount) {
         return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
@@ -40,7 +40,7 @@ Error Archivator::AddLog(const std::string& message)
     return ErrorEnum::eNone;
 }
 
-Error Archivator::SendLog(const String& correlationID)
+Error Archiver::SendLog(const String& correlationID)
 {
     mCompressionStream->close();
 
@@ -61,7 +61,7 @@ Error Archivator::SendLog(const String& correlationID)
         emptyLog->mPart          = part;
         emptyLog->mStatus        = LogStatusEnum::eEmpty;
 
-        mLogReceiver.OnLogReceived(*emptyLog);
+        mLogSender.SendLog(*emptyLog);
 
         return ErrorEnum::eNone;
     }
@@ -84,12 +84,12 @@ Error Archivator::SendLog(const String& correlationID)
             return AOS_ERROR_WRAP(err);
         }
 
-        mLogReceiver.OnLogReceived(*logPart);
+        mLogSender.SendLog(*logPart);
     }
 
     return ErrorEnum::eNone;
 }
-void Archivator::CreateCompressionStream()
+void Archiver::CreateCompressionStream()
 {
     auto& stream = mLogStreams.emplace_back();
 
@@ -101,7 +101,7 @@ void Archivator::CreateCompressionStream()
         stream, Poco::DeflatingStreamBuf::STREAM_GZIP, Z_BEST_COMPRESSION);
 }
 
-Error Archivator::AddLogPart()
+Error Archiver::AddLogPart()
 {
     try {
         mCompressionStream->close();
@@ -117,4 +117,4 @@ Error Archivator::AddLogPart()
     return ErrorEnum::eNone;
 }
 
-} // namespace aos::common::logprovider
+} // namespace aos::common::logging
