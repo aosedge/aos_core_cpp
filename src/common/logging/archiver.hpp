@@ -14,24 +14,24 @@
 
 #include <Poco/DeflatingStream.h>
 
-#include <core/common/logprovider/config.hpp>
+#include <core/common/logging/config.hpp>
+#include <core/common/logging/itf/sender.hpp>
 #include <core/common/types/log.hpp>
-#include <core/sm/logprovider/logprovider.hpp>
 
-namespace aos::common::logprovider {
+namespace aos::common::logging {
 
 /**
- * Log Archivator class.
+ * Log archiver class.
  */
-class Archivator {
+class Archiver {
 public:
     /**
      * Constructor.
      *
-     * @param logReceiver log receiver.
-     * @param config logprovider config.
+     * @param logSender log sender.
+     * @param config logging config.
      */
-    Archivator(sm::logprovider::LogObserverItf& logReceiver, const aos::logprovider::Config& config);
+    Archiver(aos::logging::SenderItf& logSender, const aos::logging::Config& config);
 
     /**
      * Adds log message to the archivator.
@@ -53,15 +53,15 @@ private:
     void  CreateCompressionStream();
     Error AddLogPart();
 
-    sm::logprovider::LogObserverItf& mLogReceiver;
-    aos::logprovider::Config         mConfig;
+    aos::logging::SenderItf& mLogSender;
+    aos::logging::Config     mConfig;
 
-    uint64_t                                     mPartCount = {};
-    uint64_t                                     mPartSize  = {};
+    size_t                                       mPartCount = {};
+    size_t                                       mPartSize  = {};
     std::vector<std::ostringstream>              mLogStreams;
     std::unique_ptr<Poco::DeflatingOutputStream> mCompressionStream;
 };
 
-} // namespace aos::common::logprovider
+} // namespace aos::common::logging
 
 #endif
