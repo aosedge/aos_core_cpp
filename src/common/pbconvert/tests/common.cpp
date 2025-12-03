@@ -83,12 +83,13 @@ TEST_F(PBConvertCommon, ConvertAosErrorToGrpcStatus)
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToProto)
 {
-    aos::InstanceIdent          param {"item-id", "subject-id", 1};
+    aos::InstanceIdent          param {"item-id", "subject-id", 1, aos::UpdateItemTypeEnum::eComponent};
     ::common::v2::InstanceIdent result = aos::common::pbconvert::ConvertToProto(param);
 
     EXPECT_EQ(result.item_id(), param.mItemID.CStr());
     EXPECT_EQ(result.subject_id(), param.mSubjectID.CStr());
     EXPECT_EQ(result.instance(), param.mInstance);
+    EXPECT_EQ(result.type(), ::common::v2::ItemType::COMPONENT);
 }
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToAos)
