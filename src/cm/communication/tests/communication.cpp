@@ -443,12 +443,12 @@ TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, GetBlobsInfo)
+TEST_F(CMCommunicationTest, GetBlobsInfos)
 {
     StaticArray<StaticString<oci::cDigestLen>, 2> digests;
     auto                                          blobsInfo = std::make_unique<StaticArray<BlobInfo, 2>>();
 
-    auto err = mCommunication.GetBlobsInfo(digests, *blobsInfo);
+    auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotSupported)) << tests::utils::ErrorToStr(err);
 }
 

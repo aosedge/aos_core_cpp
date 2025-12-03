@@ -46,8 +46,8 @@ TEST_F(CloudProtocolCommon, Error)
 TEST_F(CloudProtocolCommon, AosIdentity)
 {
     const std::vector<std::pair<Optional<String>, Optional<UpdateItemType>>> testCases = {
-        {String("test-id-1"), {UpdateItemTypeEnum::eLayer}},
-        {{}, {UpdateItemTypeEnum::eLayer}},
+        {String("test-id-1"), {UpdateItemTypeEnum::eService}},
+        {{}, {UpdateItemTypeEnum::eService}},
         {String("test-id-2"), {}},
         {{}, {}},
     };

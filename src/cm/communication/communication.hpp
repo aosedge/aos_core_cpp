@@ -116,7 +116,7 @@ public:
      * @param[out] blobsInfo blobs info.
      * @return Error.
      */
-    Error GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo) override;
+    Error GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo) override;
 
     /**
      * Sends monitoring.
