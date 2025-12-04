@@ -138,7 +138,11 @@ parse_arguments() {
             ;;
 
         --aos-service)
-            ARG_AOS_SERVICES="$2"
+            if [[ -n "$ARG_AOS_SERVICES" ]]; then
+                ARG_AOS_SERVICES="$ARG_AOS_SERVICES,$2"
+            else
+                ARG_AOS_SERVICES="$2"
+            fi
             shift 2
             ;;
 
