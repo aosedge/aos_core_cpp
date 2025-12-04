@@ -22,7 +22,11 @@ Poco::JSON::Object::Ptr CertIdentToJSON(const CertIdent& certIdent)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     json->set("type", certIdent.mType.ToString().CStr());
-    json->set("node", CreateAosIdentity({certIdent.mNodeID}));
+
+    AosIdentity identity;
+    identity.mCodename = certIdent.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
 
     return json;
 }
@@ -38,8 +42,17 @@ void CertIdentFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, 
         AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing node tag");
     }
 
-    auto err = ParseAosIdentityID(json.GetObject("node"), certIdent.mNodeID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse id");
+    AosIdentity identity;
+
+    auto err = ParseAosIdentity(json.GetObject("node"), identity);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+    if (!identity.mCodename.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+    }
+
+    err = certIdent.mNodeID.Assign(identity.mCodename->c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
 }
 
 void NodeSecretFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, NodeSecret& nodeSecret)
@@ -48,8 +61,17 @@ void NodeSecretFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json,
         AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing node tag");
     }
 
-    auto err = ParseAosIdentityID(json.GetObject("node"), nodeSecret.mNodeID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse id");
+    AosIdentity identity;
+
+    auto err = ParseAosIdentity(json.GetObject("node"), identity);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+    if (!identity.mCodename.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+    }
+
+    err = nodeSecret.mNodeID.Assign(identity.mCodename->c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
 
     err = nodeSecret.mSecret.Assign(json.GetValue<std::string>("secret").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse secret");

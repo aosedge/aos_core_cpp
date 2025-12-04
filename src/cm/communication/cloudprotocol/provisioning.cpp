@@ -20,8 +20,17 @@ namespace aos::cm::communication::cloudprotocol {
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, StartProvisioningRequest& request)
 {
     try {
-        auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(json.GetObject("node"), identity);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+        }
+
+        err = request.mNodeID.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
 
         err = FromJSON(json, static_cast<Protocol&>(request));
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
@@ -46,7 +55,10 @@ Error ToJSON(const StartProvisioningResponse& response, Poco::JSON::Object& json
             return AOS_ERROR_WRAP(err);
         }
 
-        json.set("node", CreateAosIdentity({response.mNodeID}));
+        AosIdentity identity;
+        identity.mCodename = response.mNodeID.CStr();
+
+        json.set("node", CreateAosIdentity(identity));
 
         if (!response.mError.IsNone()) {
             auto errorJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
@@ -75,8 +87,17 @@ Error ToJSON(const StartProvisioningResponse& response, Poco::JSON::Object& json
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, FinishProvisioningRequest& request)
 {
     try {
-        auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(json.GetObject("node"), identity);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+        }
+
+        err = request.mNodeID.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
 
         err = FromJSON(json, static_cast<Protocol&>(request));
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
@@ -118,7 +139,10 @@ Error ToJSON(const FinishProvisioningResponse& response, Poco::JSON::Object& jso
             return AOS_ERROR_WRAP(err);
         }
 
-        json.set("node", CreateAosIdentity({response.mNodeID}));
+        AosIdentity identity;
+        identity.mCodename = response.mNodeID.CStr();
+
+        json.set("node", CreateAosIdentity(identity));
 
         if (!response.mError.IsNone()) {
             auto errorJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
@@ -138,8 +162,17 @@ Error ToJSON(const FinishProvisioningResponse& response, Poco::JSON::Object& jso
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DeprovisioningRequest& request)
 {
     try {
-        auto err = ParseAosIdentityID(json.GetObject("node"), request.mNodeID);
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(json.GetObject("node"), identity);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+        }
+
+        err = request.mNodeID.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
 
         err = FromJSON(json, static_cast<Protocol&>(request));
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse protocol");
@@ -164,7 +197,10 @@ Error ToJSON(const DeprovisioningResponse& response, Poco::JSON::Object& json)
             return AOS_ERROR_WRAP(err);
         }
 
-        json.set("node", CreateAosIdentity({response.mNodeID}));
+        AosIdentity identity;
+        identity.mCodename = response.mNodeID.CStr();
+
+        json.set("node", CreateAosIdentity(identity));
 
         if (!response.mError.IsNone()) {
             auto errorJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);

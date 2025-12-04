@@ -92,23 +92,24 @@ TEST_F(CloudProtocolUnitStatus, UnitConfig)
 
 TEST_F(CloudProtocolUnitStatus, Nodes)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"nodes":[)"
-                           R"({"identity":{"id":"nodeID1"},"nodeGroupSubject":{"id":"type1","title":"title1"},)"
-                           R"("maxDmips":10000,"physicalRam":8096,"totalRam":16384,"osInfo":{"os":"Linux",)"
-                           R"("version":"5.10","features":["feature1","feature2"]},"cpus":[{"modelName":)"
-                           R"("Intel Xeon","totalNumCores":8,"totalNumThreads":16,"archInfo":{"architecture":)"
-                           R"("x86_64","variant":"variant1"},"maxDmips":5000}],"atts":{"attr1":"value1",)"
-                           R"("attr2":"value2"},"partitions":[{"name":"part1","types":["type1","type2"],)"
-                           R"("totalSize":1073741824}],"runtimes":[{"identity":{"id":"runtimeID1"},)"
-                           R"("runtimeType":"type1","archInfo":{"architecture":"x86_64","variant":"variant1"},)"
-                           R"("osInfo":{"os":"Linux","version":"5.10","features":["feature1","feature2"]},)"
-                           R"("maxDmips":2000,"allowedDmips":1000,"totalRam":4096,"allowedRam":2048,)"
-                           R"("maxInstances":10}],"resources":[{"name":"resourceID1","sharedCount":1},)"
-                           R"({"name":"resourceID2","sharedCount":2}],"provisioned":true,"state":"online"},)"
-                           R"({"identity":{"id":"nodeID2"},"nodeGroupSubject":{"id":"type2","title":"title2"},)"
-                           R"("maxDmips":20000,"totalRam":8096,"osInfo":{"os":"Linux","version":"5.10",)"
-                           R"("features":["feature1","feature2"]},"provisioned":false,"state":"error",)"
-                           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]})";
+    constexpr auto cJSON
+        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"nodes":[)"
+          R"({"identity":{"codename":"nodeID1","title":"title1"},"nodeGroupSubject":{"codename":"type1"},)"
+          R"("maxDmips":10000,"physicalRam":8096,"totalRam":16384,"osInfo":{"os":"Linux",)"
+          R"("version":"5.10","features":["feature1","feature2"]},"cpus":[{"modelName":)"
+          R"("Intel Xeon","totalNumCores":8,"totalNumThreads":16,"archInfo":{"architecture":)"
+          R"("x86_64","variant":"variant1"},"maxDmips":5000}],"atts":{"attr1":"value1",)"
+          R"("attr2":"value2"},"partitions":[{"name":"part1","types":["type1","type2"],)"
+          R"("totalSize":1073741824}],"runtimes":[{"identity":{"codename":"runtimeID1"},)"
+          R"("runtimeType":"type1","archInfo":{"architecture":"x86_64","variant":"variant1"},)"
+          R"("osInfo":{"os":"Linux","version":"5.10","features":["feature1","feature2"]},)"
+          R"("maxDmips":2000,"allowedDmips":1000,"totalRam":4096,"allowedRam":2048,)"
+          R"("maxInstances":10}],"resources":[{"name":"resourceID1","sharedCount":1},)"
+          R"({"name":"resourceID2","sharedCount":2}],"provisioned":true,"state":"online"},)"
+          R"({"identity":{"codename":"nodeID2","title":"title2"},"nodeGroupSubject":{"codename":"type2"},)"
+          R"("maxDmips":20000,"totalRam":8096,"osInfo":{"os":"Linux","version":"5.10",)"
+          R"("features":["feature1","feature2"]},"provisioned":false,"state":"error",)"
+          R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
     unitStatus->mCorrelationID = "id";
@@ -227,10 +228,10 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     constexpr auto cJSON
         = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"instances":[)"
           R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
-          R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
-          R"({"node":{"id":"nodeID1"},"runtime":{"id":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
+          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
           R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2","instances":[)"
-          R"({"node":{"id":"nodeID2"},"runtime":{"id":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
+          R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
     unitStatus->mCorrelationID = "id";
@@ -275,10 +276,64 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
 }
 
+TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
+{
+    constexpr auto cJSON
+        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"instances":[)"
+          R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
+          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
+          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+          R"({"item":{"codename":"itemID2"},"subject":{"codename":"subjectID2"},"version":"version2","instances":[)"
+          R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
+
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
+
+    unitStatus->mInstances.EmplaceValue();
+
+    unitStatus->mInstances->EmplaceBack();
+    unitStatus->mInstances->Back().mItemID    = "itemID1";
+    unitStatus->mInstances->Back().mSubjectID = "subjectID1";
+    unitStatus->mInstances->Back().mVersion   = "version1";
+
+    unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
+    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
+    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
+    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActive;
+    SetChecksum("12345678", unitStatus->mInstances->Back().mInstances.Back().mStateChecksum);
+
+    unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 2;
+    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
+    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
+    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eFailed;
+    unitStatus->mInstances->Back().mInstances.Back().mError     = ErrorEnum::eFailed;
+
+    unitStatus->mInstances->EmplaceBack();
+    unitStatus->mInstances->Back().mItemID    = "itemID2";
+    unitStatus->mInstances->Back().mSubjectID = "subjectID2";
+    unitStatus->mInstances->Back().mVersion   = "version2";
+
+    unitStatus->mInstances->Back().mInstances.EmplaceBack();
+    unitStatus->mInstances->Back().mInstances.Back().mPreinstalled = true;
+    unitStatus->mInstances->Back().mInstances.Back().mInstance     = 1;
+    unitStatus->mInstances->Back().mInstances.Back().mNodeID       = "nodeID2";
+    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID    = "runtimeID2";
+    unitStatus->mInstances->Back().mInstances.Back().mState        = InstanceStateEnum::eActivating;
+
+    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    auto err = ToJSON(*unitStatus, *json);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(common::utils::Stringify(json), cJSON);
+}
+
 TEST_F(CloudProtocolUnitStatus, Subjects)
 {
     constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,)"
-                           R"("subjects":[{"id":"subject1"},{"id":"subject2"}]})";
+                           R"("subjects":[{"codename":"subject1"},{"codename":"subject2"}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
     unitStatus->mCorrelationID = "id";

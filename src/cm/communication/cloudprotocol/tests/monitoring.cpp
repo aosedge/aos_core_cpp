@@ -82,16 +82,16 @@ void AddInstanceStateInfo(const Time& time, InstanceState state, InstanceStateIn
 TEST_F(CloudProtocolMonitoring, Monitoring)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
-                           R"("nodes":[{"node":{"id":"node1"},"nodeStates":[)"
+                           R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":false,"state":"error"}],)"
                            R"("items":[]}],"instances":[{"item":{"id":"instance1"},"subject":{"id":"subject1"},)"
-                           R"("instance":0,"node":{"id":"node1"},"itemStates":[)"
+                           R"("instance":0,"node":{"codename":"node1"},"itemStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"active"},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","state":"failed"}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":4096,"cpu":20,"download":2000,)"
@@ -144,13 +144,13 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
-                           R"("nodes":[{"node":{"id":"node1"},"nodeStates":[)"
+                           R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":false,"state":"error"}],)"
                            R"("items":[]}]})";
 

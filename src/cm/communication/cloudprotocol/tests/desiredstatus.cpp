@@ -43,11 +43,11 @@ TEST_F(CloudProtocolDesiredStatus, Nodes)
         "correlationID": "id",
         "nodes": [
             {
-                "item": {"id": "node-1"},
+                "item": {"codename": "node-1"},
                 "state": "provisioned"
             },
             {
-                "item": {"id": "node-2"},
+                "item": {"codename": "node-2"},
                 "state": "paused"
             }
         ]
@@ -84,10 +84,10 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
             "nodes": [
                 {
                     "nodeGroupSubject": {
-                        "id": "main"
+                        "codename": "main"
                     },
                     "node": {
-                        "id": "node-1"
+                        "codename": "node-1"
                     },
                     "alertRules": {
                         "cpu": {
@@ -139,10 +139,10 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
                 },
                 {
                     "nodeGroupSubject": {
-                        "id": "secondary"
+                        "codename": "secondary"
                     },
                     "node": {
-                        "id": "node-2"
+                        "codename": "node-2"
                     },
                     "priority": 20
                 }
@@ -342,13 +342,13 @@ TEST_F(CloudProtocolDesiredStatus, Subjects)
         "subjects": [
             {
                 "identity": {
-                    "id": "subjectId1"
+                    "codename": "subjectId1"
                 },
                 "type": "group"
             },
             {
                 "identity": {
-                    "id": "subjectId2"
+                    "codename": "subjectId2"
                 },
                 "type": "user"
             }

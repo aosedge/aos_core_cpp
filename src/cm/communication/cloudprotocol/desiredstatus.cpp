@@ -30,8 +30,17 @@ std::string Base64Decode(const std::string& encoded)
 
 void DesiredNodeStateInfoFromJson(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredNodeStateInfo& node)
 {
-    auto err = ParseAosIdentityID(json.GetObject("item"), node.mNodeID);
+    AosIdentity identity;
+
+    auto err = ParseAosIdentity(json.GetObject("item"), identity);
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+
+    if (!identity.mCodename.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "item codename is missing");
+    }
+
+    err = node.mNodeID.Assign(identity.mCodename->c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodeID");
 
     err = node.mState.FromString(json.GetValue<std::string>("state").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse state");
@@ -151,11 +160,33 @@ ResourceRatios ResourceRatiosFromJSON(const common::utils::CaseInsensitiveObject
 
 void NodeConfigFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, NodeConfig& nodeConfig)
 {
-    auto err = ParseAosIdentityID(json.GetObject("nodeGroupSubject"), nodeConfig.mNodeType);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodeGroupSubject");
+    {
+        AosIdentity identity;
 
-    err = ParseAosIdentityID(json.GetObject("node"), nodeConfig.mNodeID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+        auto err = ParseAosIdentity(json.GetObject("nodeGroupSubject"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodeGroupSubject");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "nodeGroupSubject codename is missing");
+        }
+
+        err = nodeConfig.mNodeType.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse codename");
+    }
+
+    {
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(json.GetObject("node"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+        }
+
+        err = nodeConfig.mNodeID.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodeID");
+    }
 
     if (json.Has("alertRules")) {
         nodeConfig.mAlertRules.EmplaceValue(AlertRulesFromJSON(json.GetObject("alertRules")));
@@ -190,14 +221,36 @@ void UnitConfigFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json,
 
 void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, UpdateItemInfo& updateItemInfo)
 {
-    auto err = ParseAosIdentityID(json.GetObject("item"), updateItemInfo.mItemID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+    {
+        AosIdentity identity;
 
-    err = updateItemInfo.mVersion.Assign(json.GetValue<std::string>("version").c_str());
+        auto err = ParseAosIdentity(json.GetObject("item"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+
+        if (!identity.mID.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item id is missing");
+        }
+
+        err = updateItemInfo.mItemID.Assign(identity.mID->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse itemID");
+    }
+
+    auto err = updateItemInfo.mVersion.Assign(json.GetValue<std::string>("version").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse version");
 
-    err = ParseAosIdentityID(json.GetObject("owner"), updateItemInfo.mOwnerID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse owner");
+    {
+        AosIdentity identity;
+
+        err = ParseAosIdentity(json.GetObject("owner"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse owner");
+
+        if (!identity.mID.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "owner id is missing");
+        }
+
+        err = updateItemInfo.mOwnerID.Assign(identity.mID->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse ownerID");
+    }
 
     err = updateItemInfo.mIndexDigest.Assign(json.GetValue<std::string>("indexDigest").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse indexDigest");
@@ -205,11 +258,33 @@ void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
 
 void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredInstanceInfo& instance)
 {
-    auto err = ParseAosIdentityID(json.GetObject("item"), instance.mItemID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+    {
+        AosIdentity identity;
 
-    err = ParseAosIdentityID(json.GetObject("subject"), instance.mSubjectID);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
+        auto err = ParseAosIdentity(json.GetObject("item"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+
+        if (!identity.mID.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item id is missing");
+        }
+
+        err = instance.mItemID.Assign(identity.mID->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse itemID");
+    }
+
+    {
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(json.GetObject("subject"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
+
+        if (!identity.mID.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject id is missing");
+        }
+
+        err = instance.mSubjectID.Assign(identity.mID->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse subjectID");
+    }
 
     instance.mPriority     = json.GetValue<size_t>("priority");
     instance.mNumInstances = json.GetValue<size_t>("numInstances");
@@ -221,8 +296,17 @@ void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapp
 
 void SubjectInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, SubjectInfo& subject)
 {
-    auto err = ParseAosIdentityID(json.GetObject("identity"), subject.mSubjectID);
+    AosIdentity identity;
+
+    auto err = ParseAosIdentity(json.GetObject("identity"), identity);
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject identity");
+
+    if (!identity.mCodename.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject codename is missing");
+    }
+
+    err = subject.mSubjectID.Assign(identity.mCodename->c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse subjectID");
 
     err = subject.mSubjectType.FromString(json.GetValue<std::string>("type").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject type");

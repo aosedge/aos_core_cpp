@@ -35,7 +35,10 @@ Poco::JSON::Object::Ptr CoreAlertToJSON(const CoreAlert& alert)
 {
     auto json = AlertItemToJSON(alert);
 
-    json->set("node", CreateAosIdentity({alert.mNodeID}));
+    AosIdentity identity;
+    identity.mCodename = alert.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
     json->set("coreComponent", alert.mCoreComponent.ToString().CStr());
     json->set("message", alert.mMessage.CStr());
 
@@ -49,7 +52,10 @@ Poco::JSON::Object::Ptr ResourceAllocateAlertToJSON(const ResourceAllocateAlert&
     auto err = ToJSON(static_cast<const InstanceIdent&>(alert), *json);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert instanceIdent to JSON");
 
-    json->set("node", CreateAosIdentity({alert.mNodeID}));
+    AosIdentity identity;
+    identity.mCodename = alert.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
     json->set("deviceId", alert.mResource.CStr());
     json->set("message", alert.mMessage.CStr());
 
@@ -112,7 +118,10 @@ Poco::JSON::Object::Ptr SystemAlertToJSON(const SystemAlert& alert)
 {
     auto json = AlertItemToJSON(alert);
 
-    json->set("node", CreateAosIdentity({alert.mNodeID}));
+    AosIdentity identity;
+    identity.mCodename = alert.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
     json->set("message", alert.mMessage.CStr());
 
     return json;
@@ -122,7 +131,10 @@ Poco::JSON::Object::Ptr SystemQuotaAlertToJSON(const SystemQuotaAlert& alert)
 {
     auto json = AlertItemToJSON(alert);
 
-    json->set("node", CreateAosIdentity({alert.mNodeID}));
+    AosIdentity identity;
+    identity.mCodename = alert.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
     json->set("parameter", alert.mParameter.CStr());
     json->set("value", alert.mValue);
 
