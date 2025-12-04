@@ -40,10 +40,10 @@ TEST_F(CloudProtocolLog, RequestLog)
             "till": "2024-01-31T12:00:00Z",
             "nodeIds": [
                 {
-                    "id": "node1"
+                    "codename": "node1"
                 },
                 {
-                    "id": "node2"
+                    "codename": "node2"
                 }
             ],
             "item": {
@@ -82,7 +82,7 @@ TEST_F(CloudProtocolLog, RequestLog)
 
 TEST_F(CloudProtocolLog, PushLog)
 {
-    constexpr auto cJSON = R"({"messageType":"pushLog","correlationID":"logID","node":{"id":"nodeID"},)"
+    constexpr auto cJSON = R"({"messageType":"pushLog","correlationID":"logID","node":{"codename":"nodeID"},)"
                            R"("part":1,"partsCount":10,"content":"log content","status":"error",)"
                            R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}})";
 

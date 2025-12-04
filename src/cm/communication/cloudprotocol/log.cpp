@@ -38,7 +38,17 @@ void LogFilterFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, 
         auto err = filter.mNodes.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW(err, "failed to add nodeID to log filter");
 
-        ParseAosIdentityID(common::utils::CaseInsensitiveObjectWrapper(itemJson), filter.mNodes.Back());
+        AosIdentity identity;
+
+        err = ParseAosIdentity(common::utils::CaseInsensitiveObjectWrapper(itemJson), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+        }
+
+        err = filter.mNodes.Back().Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
     });
 
     auto err = FromJSON(json, static_cast<InstanceFilter&>(filter));
@@ -81,7 +91,10 @@ Error ToJSON(const PushLog& pushLog, Poco::JSON::Object& json)
             return AOS_ERROR_WRAP(err);
         }
 
-        json.set("node", CreateAosIdentity({pushLog.mNodeID}));
+        AosIdentity identity;
+        identity.mCodename = pushLog.mNodeID.CStr();
+
+        json.set("node", CreateAosIdentity(identity));
         json.set("part", pushLog.mPart);
         json.set("partsCount", pushLog.mPartsCount);
         json.set("content", pushLog.mContent.CStr());

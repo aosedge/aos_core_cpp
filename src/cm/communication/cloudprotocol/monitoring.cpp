@@ -64,9 +64,12 @@ Poco::JSON::Object::Ptr NodeStateInfoToJSON(const NodeStateInfo& state)
 
 Poco::JSON::Object::Ptr NodeMonitoringDataToJSON(const NodeMonitoringData& node)
 {
+    AosIdentity identity;
+    identity.mCodename = node.mNodeID.CStr();
+
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("node", CreateAosIdentity({node.mNodeID}));
+    json->set("node", CreateAosIdentity(identity));
 
     if (!node.mStates.IsEmpty()) {
         json->set("nodeStates", common::utils::ToJsonArray(node.mStates, NodeStateInfoToJSON));
@@ -97,7 +100,10 @@ Poco::JSON::Object::Ptr InstanceMonitoringDataToJSON(const InstanceMonitoringDat
     auto err = ToJSON(static_cast<const InstanceIdent&>(instance), *json);
     AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
-    json->set("node", CreateAosIdentity({instance.mNodeID}));
+    AosIdentity identity;
+    identity.mCodename = instance.mNodeID.CStr();
+
+    json->set("node", CreateAosIdentity(identity));
     json->set("itemStates", common::utils::ToJsonArray(instance.mStates, InstanceStateInfoToJSON));
     json->set("items", common::utils::ToJsonArray(instance.mItems, MonitoringDataToJSON));
 

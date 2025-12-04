@@ -6,6 +6,7 @@
 
 #include <common/utils/exception.hpp>
 #include <common/utils/time.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "common.hpp"
 
@@ -33,30 +34,45 @@ Error ToJSON(const Error& error, Poco::JSON::Object& json)
     return ErrorEnum::eNone;
 }
 
-Poco::JSON::Object::Ptr CreateAosIdentity(const Optional<String>& id, const Optional<UpdateItemType>& type)
+Poco::JSON::Object::Ptr CreateAosIdentity(const AosIdentity& identity)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    if (id.HasValue()) {
-        json->set("id", id->CStr());
+    if (identity.mID.has_value()) {
+        json->set("id", *identity.mID);
     }
 
-    if (type.HasValue()) {
-        json->set("type", type->ToString().CStr());
+    if (identity.mType.has_value()) {
+        json->set("type", identity.mType->ToString().CStr());
+    }
+
+    if (identity.mCodename.has_value()) {
+        json->set("codename", *identity.mCodename);
+    }
+
+    if (identity.mTitle.has_value()) {
+        json->set("title", *identity.mTitle);
     }
 
     return json;
 }
 
-Error ParseAosIdentityID(const common::utils::CaseInsensitiveObjectWrapper& json, String& id)
+Error ParseAosIdentity(const common::utils::CaseInsensitiveObjectWrapper& json, AosIdentity& identity)
 {
     try {
-        if (!json.Has("id")) {
-            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing id tag");
-        }
+        identity.mID       = json.GetOptionalValue<std::string>("id");
+        identity.mCodename = json.GetOptionalValue<std::string>("codename");
+        identity.mTitle    = json.GetOptionalValue<std::string>("title");
 
-        auto err = id.Assign(json.GetValue<std::string>("id").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse id");
+        if (const auto type = json.GetOptionalValue<std::string>("type"); type.has_value()) {
+            identity.mType.emplace();
+
+            if (auto err = identity.mType->FromString(type->c_str()); !err.IsNone()) {
+                LOG_WRN() << "Failed to parse AosIdentity type" << Log::Field("type", type->c_str()) << Log::Field(err);
+
+                identity.mType.reset();
+            }
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -67,8 +83,20 @@ Error ParseAosIdentityID(const common::utils::CaseInsensitiveObjectWrapper& json
 Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
 {
     try {
-        json.set("item", CreateAosIdentity({instanceIdent.mItemID}));
-        json.set("subject", CreateAosIdentity({instanceIdent.mSubjectID}));
+        {
+            AosIdentity identity;
+
+            identity.mID = instanceIdent.mItemID.CStr();
+            json.set("item", CreateAosIdentity(identity));
+        }
+
+        {
+            AosIdentity identity;
+
+            identity.mID = instanceIdent.mSubjectID.CStr();
+            json.set("subject", CreateAosIdentity(identity));
+        }
+
         json.set("instance", instanceIdent.mInstance);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -80,22 +108,24 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, InstanceIdent& instanceIdent)
 {
     try {
-        if (!json.Has("item")) {
-            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing item tag");
+        {
+            AosIdentity identity;
+
+            auto err = ParseAosIdentity(json.GetObject("item"), identity);
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse item identity");
+
+            err = instanceIdent.mItemID.Assign(identity.mID.value_or("").c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse item ID");
         }
 
-        auto err = ParseAosIdentityID(json.GetObject("item"), instanceIdent.mItemID);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
+        {
+            AosIdentity identity;
 
-        if (!json.Has("subject")) {
-            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing subject tag");
-        }
+            auto err = ParseAosIdentity(json.GetObject("subject"), identity);
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject identity");
 
-        err = ParseAosIdentityID(json.GetObject("subject"), instanceIdent.mSubjectID);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
-
-        if (!json.Has("instance")) {
-            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing instance tag");
+            err = instanceIdent.mSubjectID.Assign(identity.mID.value_or("").c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject ID");
         }
 
         instanceIdent.mInstance = json.GetValue<uint64_t>("instance", 0);
@@ -112,17 +142,21 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Instance
         StaticString<cIDLen> id;
 
         if (json.Has("item")) {
-            auto err = ParseAosIdentityID(json.GetObject("item"), id);
+            AosIdentity identity;
+
+            auto err = ParseAosIdentity(json.GetObject("item"), identity);
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
 
-            instanceFilter.mItemID.SetValue(id);
+            instanceFilter.mItemID.SetValue(identity.mID.value_or("").c_str());
         }
 
         if (json.Has("subject")) {
-            auto err = ParseAosIdentityID(json.GetObject("subject"), id);
+            AosIdentity identity;
+
+            auto err = ParseAosIdentity(json.GetObject("subject"), identity);
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
 
-            instanceFilter.mSubjectID.SetValue(id);
+            instanceFilter.mSubjectID.SetValue(identity.mID.value_or("").c_str());
         }
 
         if (json.Has("instance")) {

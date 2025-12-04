@@ -18,6 +18,15 @@ using namespace testing;
 namespace aos::cm::communication::cloudprotocol {
 
 /***********************************************************************************************************************
+ * Operators
+ **********************************************************************************************************************/
+
+bool operator==(const AosIdentity& lhs, const AosIdentity& rhs)
+{
+    return lhs.mID == rhs.mID && lhs.mCodename == rhs.mCodename && lhs.mType == rhs.mType && lhs.mTitle == rhs.mTitle;
+}
+
+/***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
 
@@ -45,42 +54,27 @@ TEST_F(CloudProtocolCommon, Error)
 
 TEST_F(CloudProtocolCommon, AosIdentity)
 {
-    const std::vector<std::pair<Optional<String>, Optional<UpdateItemType>>> testCases = {
-        {String("test-id-1"), {UpdateItemTypeEnum::eService}},
-        {{}, {UpdateItemTypeEnum::eService}},
-        {String("test-id-2"), {}},
-        {{}, {}},
+    const std::vector<AosIdentity> testCases = {
+        {{"id"}, {"codename"}, {UpdateItemTypeEnum::eService}, {"title"}},
+        {{"id-only"}, {}, {}, {}},
+        {{}, {"codename-only"}, {}, {}},
+        {{}, {}, {UpdateItemTypeEnum::eComponent}, {}},
+        {{}, {}, {}, {"title-only"}},
+        {{}, {}, {}, {}},
     };
 
-    for (const auto& [idOpt, typeOpt] : testCases) {
-        auto json = CreateAosIdentity(idOpt, typeOpt);
+    for (const auto& identity : testCases) {
+        auto json = CreateAosIdentity(identity);
         ASSERT_TRUE(json);
 
         common::utils::CaseInsensitiveObjectWrapper jsonWrapper(json);
 
-        if (idOpt.HasValue()) {
-            EXPECT_TRUE(jsonWrapper.Has("id"));
-            EXPECT_EQ(jsonWrapper.GetValue<std::string>("id", "unexpected"), idOpt->CStr());
-        } else {
-            EXPECT_FALSE(jsonWrapper.Has("id"));
-        }
+        AosIdentity parsedIdentity;
 
-        if (typeOpt.HasValue()) {
-            EXPECT_TRUE(jsonWrapper.Has("type"));
-            EXPECT_EQ(jsonWrapper.GetValue<std::string>("type", "unexpected"), typeOpt->ToString().CStr());
-        } else {
-            EXPECT_FALSE(jsonWrapper.Has("type"));
-        }
+        auto err = ParseAosIdentity(jsonWrapper, parsedIdentity);
+        ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-        if (idOpt.HasValue()) {
-            StaticString<cIDLen> parsedID;
-
-            ASSERT_EQ(ParseAosIdentityID(jsonWrapper, parsedID), ErrorEnum::eNone);
-            EXPECT_EQ(parsedID, idOpt.GetValue());
-        } else {
-            StaticString<cIDLen> parsedID;
-            EXPECT_EQ(ParseAosIdentityID(jsonWrapper, parsedID), ErrorEnum::eInvalidArgument);
-        }
+        EXPECT_EQ(parsedIdentity, identity);
     }
 }
 
@@ -88,12 +82,10 @@ TEST_F(CloudProtocolCommon, InstanceIdentFromJSON)
 {
     constexpr auto cJSON = R"({
         "item": {
-            "id": "item-id",
-            "type": "service"
+            "id": "item-id"
         },
         "subject": {
-            "id": "subject-id",
-            "type": "subject"
+            "id": "subject-id"
         },
         "instance": 42
     })";
