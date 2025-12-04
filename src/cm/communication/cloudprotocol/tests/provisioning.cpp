@@ -34,7 +34,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
     const auto cJSON = R"({
         "correlationID": "id",
         "node": {
-            "id": "node1"
+            "codename": "node1"
         },
         "password": "test_password"
     })";
@@ -57,7 +57,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 {
     constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
-                           R"("node":{"id":"node1"},)"
+                           R"("node":{"codename":"node1"},)"
                            R"("csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
 
@@ -84,7 +84,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithError)
 {
     constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
-                           R"("node":{"id":"node1"},"errorInfo":)"
+                           R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""},"csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
 
@@ -115,7 +115,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
     const auto cJSON = R"({
         "correlationID": "id",
         "node": {
-            "id": "node1"
+            "codename": "node1"
         },
         "certificates": [
             {
@@ -156,7 +156,8 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationID":"id","node":{"id":"node1"}})";
+    constexpr auto cJSON
+        = R"({"messageType":"finishProvisioningResponse","correlationID":"id","node":{"codename":"node1"}})";
 
     auto response            = std::make_unique<FinishProvisioningResponse>();
     response->mCorrelationID = "id";
@@ -173,7 +174,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithError)
 {
     constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationID":"id",)"
-                           R"("node":{"id":"node1"},"errorInfo":)"
+                           R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 
     auto response            = std::make_unique<FinishProvisioningResponse>();
@@ -194,7 +195,7 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
     const auto cJSON = R"({
         "correlationID": "id",
         "node": {
-            "id": "node1"
+            "codename": "node1"
         },
         "password": "test_password"
     })";
@@ -216,7 +217,8 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
 
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationID":"id","node":{"id":"node1"}})";
+    constexpr auto cJSON
+        = R"({"messageType":"deprovisioningResponse","correlationID":"id","node":{"codename":"node1"}})";
 
     auto response            = std::make_unique<DeprovisioningResponse>();
     response->mCorrelationID = "id";
@@ -233,7 +235,7 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithError)
 {
     constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationID":"id",)"
-                           R"("node":{"id":"node1"},"errorInfo":)"
+                           R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 
     auto response            = std::make_unique<DeprovisioningResponse>();

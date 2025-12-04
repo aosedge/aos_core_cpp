@@ -155,10 +155,10 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
 {
     constexpr auto cJSON
         = R"({"messageType":"alerts","correlationID":"id","items":[)"
-          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"coreAlert","node":{"id":"test_node"},)"
+          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"coreAlert","node":{"codename":"test_node"},)"
           R"("coreComponent":"CM","message":"Test core alert message"},)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"resourceAllocateAlert","item":{"id":"itemID"},)"
-          R"("subject":{"id":"subjectID"},"instance":1,"node":{"id":"test_node"},)"
+          R"("subject":{"id":"subjectID"},"instance":1,"node":{"codename":"test_node"},)"
           R"("deviceId":"test_resource","message":"Test resource allocation alert message"},)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"downloadProgressAlert","digest":"testDigest",)"
           R"("url":"http://example.com/download","downloadedBytes":100,"totalBytes":1000,)"
@@ -172,9 +172,9 @@ TEST_F(CloudProtocolAlerts, AlertsArray)
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"updateItemInstanceAlert","item":{"id":"itemID"},)"
           R"("subject":{"id":"subjectID"},"instance":1,"version":"1.0.0",)"
           R"("message":"Test service instance alert message"},)"
-          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"systemAlert","node":{"id":"test_node"},)"
+          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"systemAlert","node":{"codename":"test_node"},)"
           R"("message":"Test system alert message"},)"
-          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"systemQuotaAlert","node":{"id":"test_node"},)"
+          R"({"timestamp":"1970-01-01T00:00:00Z","tag":"systemQuotaAlert","node":{"codename":"test_node"},)"
           R"("parameter":"test_parameter","value":100}]})";
 
     const std::array alertsArray = {

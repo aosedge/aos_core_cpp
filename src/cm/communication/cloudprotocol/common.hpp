@@ -88,6 +88,16 @@ using MessageTypeEnum = MessageTypeType::Enum;
 using MessageType     = EnumStringer<MessageTypeType>;
 
 /**
+ * AOS identity structure.
+ */
+struct AosIdentity {
+    std::optional<std::string>    mID;
+    std::optional<std::string>    mCodename;
+    std::optional<UpdateItemType> mType;
+    std::optional<std::string>    mTitle;
+};
+
+/**
  * Converts Error object to JSON object.
  *
  * @param error Error object to convert.
@@ -99,20 +109,19 @@ Error ToJSON(const Error& error, Poco::JSON::Object& json);
 /**
  * Creates AosIdentity JSON object.
  *
- * @param id id to convert.
- * @param type type to convert.
+ * @param identity AosIdentity object to convert.
  * @return Poco::JSON::Object::Ptr.
  */
-Poco::JSON::Object::Ptr CreateAosIdentity(const Optional<String>& id, const Optional<UpdateItemType>& type = {});
+Poco::JSON::Object::Ptr CreateAosIdentity(const AosIdentity& identity);
 
 /**
- * Parses id from AosIdentity JSON object.
+ * Parses AosIdentity object from JSON.
  *
  * @param json json object representation.
- * @param[out] id id to fill.
+ * @param[out] identity object to fill.
  * @return Error.
  */
-Error ParseAosIdentityID(const common::utils::CaseInsensitiveObjectWrapper& json, String& id);
+Error ParseAosIdentity(const common::utils::CaseInsensitiveObjectWrapper& json, AosIdentity& identity);
 
 /**
  * Converts InstanceIdent object to JSON.

@@ -109,9 +109,12 @@ Poco::JSON::Object::Ptr NodeAttrsToJSON(const Array<NodeAttribute>& attrs)
 
 Poco::JSON::Object::Ptr RuntimeInfoToJSON(const RuntimeInfo& runtimeInfo)
 {
+    AosIdentity identity;
+    identity.mCodename = runtimeInfo.mRuntimeID.CStr();
+
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("identity", CreateAosIdentity({runtimeInfo.mRuntimeID}));
+    json->set("identity", CreateAosIdentity(identity));
     json->set("runtimeType", runtimeInfo.mRuntimeType.CStr());
     json->set("archInfo", ArchInfoToJSON(runtimeInfo.mArchInfo));
     json->set("osInfo", OSInfoToJSON(runtimeInfo.mOSInfo));
@@ -151,12 +154,21 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("identity", CreateAosIdentity({nodeInfo.mNodeID}));
+    {
+        AosIdentity identity;
+        identity.mCodename = nodeInfo.mNodeID.CStr();
+        identity.mTitle    = nodeInfo.mTitle.CStr();
 
-    auto nodeGroupSubject = CreateAosIdentity({nodeInfo.mNodeType});
-    nodeGroupSubject->set("title", nodeInfo.mTitle.CStr());
+        json->set("identity", CreateAosIdentity(identity));
+    }
 
-    json->set("nodeGroupSubject", nodeGroupSubject);
+    {
+        AosIdentity identity;
+        identity.mCodename = nodeInfo.mNodeType.CStr();
+
+        json->set("nodeGroupSubject", CreateAosIdentity(identity));
+    }
+
     json->set("maxDmips", nodeInfo.mMaxDMIPS);
 
     if (nodeInfo.mPhysicalRAM.HasValue()) {
@@ -203,9 +215,12 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 
 Poco::JSON::Object::Ptr UpdateItemToJSON(const UpdateItemStatus& status)
 {
+    AosIdentity identity;
+    identity.mID = status.mItemID.CStr();
+
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("item", CreateAosIdentity({status.mItemID}));
+    json->set("item", CreateAosIdentity(identity));
     json->set("version", status.mVersion.CStr());
     json->set("state", status.mState.ToString().CStr());
 
@@ -225,8 +240,34 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("item", CreateAosIdentity({statuses.mItemID}));
-    json->set("subject", CreateAosIdentity({statuses.mSubjectID}));
+    const auto isPreinstalled = statuses.mInstances.FindIf([](const UnitInstanceStatus& status) {
+        return status.mPreinstalled;
+    }) != statuses.mInstances.end();
+
+    {
+        AosIdentity identity;
+
+        if (isPreinstalled) {
+            identity.mCodename = statuses.mItemID.CStr();
+        } else {
+            identity.mID = statuses.mItemID.CStr();
+        }
+
+        json->set("item", CreateAosIdentity(identity));
+    }
+
+    {
+        AosIdentity identity;
+
+        if (isPreinstalled) {
+            identity.mCodename = statuses.mSubjectID.CStr();
+        } else {
+            identity.mID = statuses.mSubjectID.CStr();
+        }
+
+        json->set("subject", CreateAosIdentity(identity));
+    }
+
     json->set("version", statuses.mVersion.CStr());
 
     auto instancesJson = Poco::makeShared<Poco::JSON::Array>(Poco::JSON_PRESERVE_KEY_ORDER);
@@ -234,8 +275,20 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
     for (const auto& instanceStatus : statuses.mInstances) {
         auto instanceJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-        instanceJson->set("node", CreateAosIdentity({instanceStatus.mNodeID}));
-        instanceJson->set("runtime", CreateAosIdentity({instanceStatus.mRuntimeID}));
+        {
+            AosIdentity identity;
+            identity.mCodename = instanceStatus.mNodeID.CStr();
+
+            instanceJson->set("node", CreateAosIdentity(identity));
+        }
+
+        {
+            AosIdentity identity;
+            identity.mCodename = instanceStatus.mRuntimeID.CStr();
+
+            instanceJson->set("runtime", CreateAosIdentity(identity));
+        }
+
         instanceJson->set("instance", instanceStatus.mInstance);
 
         if (!instanceStatus.mStateChecksum.IsEmpty()) {
@@ -303,7 +356,10 @@ Error ToJSON(const UnitStatus& unitStatus, Poco::JSON::Object& json)
 
         if (unitStatus.mUnitSubjects.HasValue()) {
             json.set("subjects", common::utils::ToJsonArray(*unitStatus.mUnitSubjects, [](const auto& subject) {
-                return CreateAosIdentity({subject});
+                AosIdentity identity;
+                identity.mCodename = subject.CStr();
+
+                return CreateAosIdentity(identity);
             }));
         }
     } catch (const std::exception& e) {

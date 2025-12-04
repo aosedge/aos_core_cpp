@@ -37,14 +37,14 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
             {
                 "type": "iam",
                 "node": {
-                    "id": "node1"
+                    "codename": "node1"
                 },
                 "serial": "serial_1"
             },
             {
                 "type": "offline",
                 "node": {
-                    "id": "node2"
+                    "codename": "node2"
                 },
                 "serial": "serial_2",
                 "validTill": "2024-01-31T12:00:00Z"
@@ -52,7 +52,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
             {
                 "type": "cm",
                 "node": {
-                    "id": "node3"
+                    "codename": "node3"
                 },
                 "serial": ""
             }
@@ -62,13 +62,13 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
             "nodes": [
                 {
                     "node": {
-                        "id": "node1"
+                        "codename": "node1"
                     },
                     "secret": "secret_1"
                 },
                 {
                     "node": {
-                        "id": "node2"
+                        "codename": "node2"
                     },
                     "secret": "secret_2"
                 }
@@ -123,21 +123,21 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
             {
                 "type": "iam",
                 "node": {
-                    "id": "node1"
+                    "codename": "node1"
                 },
                 "certificateChain": "cert_chain_1"
             },
             {
                 "type": "offline",
                 "node": {
-                    "id": "node2"
+                    "codename": "node2"
                 },
                 "certificateChain": "cert_chain_2"
             },
             {
                 "type": "cm",
                 "node": {
-                    "id": "node3"
+                    "codename": "node3"
                 },
                 "certificateChain": ""
             }
@@ -174,8 +174,8 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
 TEST_F(CloudProtocolCertificates, IssueUnitCerts)
 {
     constexpr auto cJSON = R"({"messageType":"issueUnitCertificates","correlationID":"id","requests":[)"
-                           R"({"type":"iam","node":{"id":"node1"},"csr":"csr_1"},)"
-                           R"({"type":"offline","node":{"id":"node2"},"csr":"csr_2"}]})";
+                           R"({"type":"iam","node":{"codename":"node1"},"csr":"csr_1"},)"
+                           R"({"type":"offline","node":{"codename":"node2"},"csr":"csr_2"}]})";
 
     auto unitCerts = std::make_unique<IssueUnitCerts>();
     unitCerts->mCorrelationID.Assign("id");
@@ -202,9 +202,9 @@ TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
 {
     constexpr auto cJSON
         = R"({"messageType":"installUnitCertificatesConfirmation","correlationID":"id","certificates":[)"
-          R"({"type":"iam","node":{"id":"node1"},"serial":"serial_1",)"
+          R"({"type":"iam","node":{"codename":"node1"},"serial":"serial_1",)"
           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":"error_msg"}},)"
-          R"({"type":"offline","node":{"id":"node2"},"serial":"serial_2"}]})";
+          R"({"type":"offline","node":{"codename":"node2"},"serial":"serial_2"}]})";
 
     auto certsConfirmation = std::make_unique<InstallUnitCertsConfirmation>();
     certsConfirmation->mCorrelationID.Assign("id");
