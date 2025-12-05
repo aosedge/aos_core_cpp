@@ -138,3 +138,91 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 
     StopServer();
 }
+
+TEST_F(DownloaderTest, CancelDownload)
+{
+    const size_t fileSizeMB = 10;
+
+    CreateLargeFile("large_test_file.dat", fileSizeMB);
+
+    mDownloader.Init(&mAlertSender, std::chrono::seconds {1});
+
+    StartServer("large_test_file.dat", 8002, 100);
+
+    EXPECT_CALL(mAlertSender, SendAlert(_)).Times(AtLeast(1));
+
+    std::future<aos::Error> downloadFuture = std::async(std::launch::async, [this]() {
+        return mDownloader.Download("digest_cancel", "http://localhost:8002/large_test_file.dat", mFilePath.c_str());
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    auto cancelErr = mDownloader.Cancel("digest_cancel");
+    EXPECT_EQ(cancelErr, aos::ErrorEnum::eNone);
+
+    auto downloadErr = downloadFuture.get();
+    EXPECT_EQ(downloadErr, aos::ErrorEnum::eRuntime);
+
+    StopServer();
+}
+
+TEST_F(DownloaderTest, CancelNonExistentDownload)
+{
+    auto err = mDownloader.Cancel("non_existent_digest");
+    EXPECT_EQ(err, aos::ErrorEnum::eNotFound);
+}
+
+TEST_F(DownloaderTest, ParallelDownloads)
+{
+    CreateLargeFile("large_test_file.dat", 2);
+
+    StartServer("large_test_file.dat", 8003, 100);
+
+    std::future<aos::Error> download1 = std::async(std::launch::async, [this]() {
+        return mDownloader.Download(
+            "digest_parallel_1", "http://localhost:8003/large_test_file.dat", "download/file1.dat");
+    });
+
+    std::future<aos::Error> download2 = std::async(std::launch::async, [this]() {
+        return mDownloader.Download(
+            "digest_parallel_2", "http://localhost:8003/large_test_file.dat", "download/file2.dat");
+    });
+
+    auto err1 = download1.get();
+    auto err2 = download2.get();
+
+    EXPECT_EQ(err1, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err2, aos::ErrorEnum::eNone);
+
+    EXPECT_TRUE(std::filesystem::exists("download/file1.dat"));
+    EXPECT_TRUE(std::filesystem::exists("download/file2.dat"));
+
+    std::remove("download/file1.dat");
+    std::remove("download/file2.dat");
+
+    StopServer();
+}
+
+TEST_F(DownloaderTest, DuplicateDownload)
+{
+    CreateLargeFile("large_test_file.dat", 5);
+
+    StartServer("large_test_file.dat", 8004, 100);
+
+    std::future<aos::Error> download1 = std::async(std::launch::async, [this]() {
+        return mDownloader.Download("digest_dup", "http://localhost:8004/large_test_file.dat", "download/file_dup.dat");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    auto err2
+        = mDownloader.Download("digest_dup", "http://localhost:8004/large_test_file.dat", "download/file_dup2.dat");
+    EXPECT_EQ(err2, aos::ErrorEnum::eAlreadyExist);
+
+    auto err1 = download1.get();
+    EXPECT_EQ(err1, aos::ErrorEnum::eNone);
+
+    std::remove("download/file_dup.dat");
+
+    StopServer();
+}
