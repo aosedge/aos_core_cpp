@@ -7,10 +7,12 @@
 #ifndef AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 #define AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include <Poco/URI.h>
 #include <curl/curl.h>
@@ -65,29 +67,37 @@ private:
     constexpr static int                       cMaxRetryCount {3};
     constexpr static int                       cTimeoutSec {10};
 
-    Error DownloadImage(const String& url, const String& path);
+    struct ProgressContext {
+        Downloader*                           mDownloader {};
+        std::atomic<bool>*                    mCancelFlag {};
+        std::string                           mDigest;
+        std::string                           mURL;
+        std::chrono::steady_clock::time_point mLastProgressTime;
+        curl_off_t                            mExistingOffset {0};
+        curl_off_t                            mTotalSize {0};
+        curl_off_t                            mDownloadedSize {0};
+    };
+
+    Error DownloadImage(const String& url, const String& path, ProgressContext* context);
     Error CopyFile(const Poco::URI& uri, const String& outfilename);
-    Error RetryDownload(const String& url, const String& path);
-    void  SendAlert(DownloadState state, size_t downloadedBytes, size_t totalBytes, const std::string& reason = "",
-         const Error& error = ErrorEnum::eNone);
+    Error RetryDownload(const String& url, const String& path, ProgressContext* context);
+    void  SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
+         const std::string& reason = "", const Error& error = ErrorEnum::eNone);
 
     static int XferInfoCallback(
         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-    int OnProgress(curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
+    int OnProgress(
+        ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
     bool                    mShutdown {false};
     std::mutex              mMutex;
     std::condition_variable mCondVar;
 
-    std::chrono::steady_clock::time_point mLastProgressTime;
-    std::chrono::seconds                  mProgressInterval {std::chrono::seconds {30}};
-    curl_off_t                            mExistingOffset {0};
-    curl_off_t                            mTotalSize {0};
-    curl_off_t                            mDownloadedSize {0};
-    std::string                           mDigest;
-    std::string                           mURL;
+    std::chrono::seconds mProgressInterval {std::chrono::seconds {30}};
 
     aos::alerts::SenderItf* mSender {nullptr};
+
+    std::unordered_map<std::string, std::atomic<bool>> mCancelFlags;
 };
 
 } // namespace aos::common::downloader
