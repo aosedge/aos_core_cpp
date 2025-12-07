@@ -179,7 +179,7 @@ std::unique_ptr<RecievedMessageVariant> ParseMessage(const common::utils::CaseIn
  **********************************************************************************************************************/
 
 Error Communication::Init(const cm::config::Config& config,
-    iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, iamclient::IdentProviderItf& identityProvider,
+    iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, iamclient::IdentProviderItf& identityProvider,
     iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
     updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
@@ -190,19 +190,19 @@ Error Communication::Init(const cm::config::Config& config,
 
     Poco::Net::initializeSSL();
 
-    mConfig              = &config;
-    mNodeInfoProvider    = &nodeInfoProvider;
-    mIdentityProvider    = &identityProvider;
-    mCertProvider        = &certProvider;
-    mCertLoader          = &certLoader;
-    mCryptoProvider      = &cryptoProvider;
-    mUUIDProvider        = &uuidProvider;
-    mUpdateManager       = &updateManager;
-    mStateHandler        = &stateHandler;
-    mLogProvider         = &logProvider;
-    mEnvVarHandler       = &envVarHandler;
-    mCertHandler         = &certHandler;
-    mProvisioningHandler = &provisioningHandler;
+    mConfig                  = &config;
+    mCurrentNodeInfoProvider = &currentNodeInfoProvider;
+    mIdentityProvider        = &identityProvider;
+    mCertProvider            = &certProvider;
+    mCertLoader              = &certLoader;
+    mCryptoProvider          = &cryptoProvider;
+    mUUIDProvider            = &uuidProvider;
+    mUpdateManager           = &updateManager;
+    mStateHandler            = &stateHandler;
+    mLogProvider             = &logProvider;
+    mEnvVarHandler           = &envVarHandler;
+    mCertHandler             = &certHandler;
+    mProvisioningHandler     = &provisioningHandler;
 
     mCloudHttpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_GET);
     mCloudHttpRequest.setVersion(Poco::Net::HTTPMessage::HTTP_1_1);
@@ -230,7 +230,7 @@ Error Communication::Start()
 
         auto nodeInfo = std::make_unique<NodeInfo>();
 
-        if (auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo); !err.IsNone()) {
+        if (auto err = mCurrentNodeInfoProvider->GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
             return err;
         }
 
