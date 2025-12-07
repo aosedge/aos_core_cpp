@@ -53,7 +53,7 @@ public:
      * @param permHandler permission handler.
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
-     * @param nodeInfoProvider node info provider.
+     * @param currentNodeHandler current node handler.
      * @param nodeManager node manager.
      * @param cryptoProvider crypto provider.
      * @param provisionManager provision manager.
@@ -62,7 +62,7 @@ public:
     Error Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
         aos::iamclient::IdentProviderItf& identProvider, permhandler::PermHandlerItf& permHandler,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-        nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
+        currentnode::CurrentNodeHandlerItf& currentNodeHandler, nodemanager::NodeManagerItf& nodeManager,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         bool provisioningMode);
 

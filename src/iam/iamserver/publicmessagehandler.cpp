@@ -22,19 +22,19 @@ namespace aos::iam::iamserver {
  **********************************************************************************************************************/
 
 Error PublicMessageHandler::Init(NodeController& nodeController, iamclient::IdentProviderItf& identProvider,
-    iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider)
 {
     LOG_DBG() << "Initialize message handler: handler=public";
 
-    mNodeController   = &nodeController;
-    mIdentProvider    = &identProvider;
-    mPermHandler      = &permHandler;
-    mNodeInfoProvider = &nodeInfoProvider;
-    mNodeManager      = &nodeManager;
-    mCertProvider     = &certProvider;
+    mNodeController     = &nodeController;
+    mIdentProvider      = &identProvider;
+    mPermHandler        = &permHandler;
+    mCurrentNodeHandler = &currentNodeHandler;
+    mNodeManager        = &nodeManager;
+    mCertProvider       = &certProvider;
 
-    if (auto err = mNodeInfoProvider->GetNodeInfo(mNodeInfo); !err.IsNone()) {
+    if (auto err = mCurrentNodeHandler->GetCurrentNodeInfo(mNodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

@@ -19,7 +19,7 @@
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/iamclient/itf/nodeinfoprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
+#include <core/iam/currentnode/itf/currentnodehandler.hpp>
 #include <core/iam/nodemanager/itf/nodemanager.hpp>
 #include <core/iam/permhandler/itf/permhandler.hpp>
 
@@ -54,12 +54,12 @@ public:
      * @param nodeController node controller.
      * @param identProvider identification provider.
      * @param permHandler permission handler.
-     * @param nodeInfoProvider node info provider.
+     * @param currentNodeHandler current node handler.
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      */
     Error Init(NodeController& nodeController, aos::iamclient::IdentProviderItf& identProvider,
-        iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+        iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
         iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider);
 
     /**
@@ -102,12 +102,12 @@ public:
     void Close();
 
 protected:
-    aos::iamclient::IdentProviderItf*           GetIdentProvider() { return mIdentProvider; }
-    iam::permhandler::PermHandlerItf*           GetPermHandler() { return mPermHandler; }
-    iam::nodeinfoprovider::NodeInfoProviderItf* GetNodeInfoProvider() { return mNodeInfoProvider; }
-    NodeController*                             GetNodeController() { return mNodeController; }
-    NodeInfo&                                   GetNodeInfo() { return mNodeInfo; }
-    iam::nodemanager::NodeManagerItf*           GetNodeManager() { return mNodeManager; }
+    aos::iamclient::IdentProviderItf*        GetIdentProvider() { return mIdentProvider; }
+    iam::permhandler::PermHandlerItf*        GetPermHandler() { return mPermHandler; }
+    iam::currentnode::CurrentNodeHandlerItf* GetCurrentNodeHandler() { return mCurrentNodeHandler; }
+    NodeController*                          GetNodeController() { return mNodeController; }
+    NodeInfo&                                GetNodeInfo() { return mNodeInfo; }
+    iam::nodemanager::NodeManagerItf*        GetNodeManager() { return mNodeManager; }
     Error SetNodeState(const std::string& nodeID, const NodeState& state, bool provisioned);
     bool  ProcessOnThisNode(const std::string& nodeID);
 
@@ -178,16 +178,16 @@ private:
     grpc::Status RegisterNode(grpc::ServerContext*                                              context,
         grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override;
 
-    aos::iamclient::IdentProviderItf*           mIdentProvider    = nullptr;
-    iam::permhandler::PermHandlerItf*           mPermHandler      = nullptr;
-    iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
-    iam::nodemanager::NodeManagerItf*           mNodeManager      = nullptr;
-    aos::iamclient::CertProviderItf*            mCertProvider     = nullptr;
-    NodeController*                             mNodeController   = nullptr;
-    StreamWriter<iamproto::NodeInfo>            mCurrentNodeChangedController;
-    StreamWriter<iamproto::NodeInfo>            mNodeChangedController;
-    StreamWriter<iamproto::Subjects>            mSubjectsChangedController;
-    NodeInfo                                    mNodeInfo;
+    aos::iamclient::IdentProviderItf*        mIdentProvider      = nullptr;
+    iam::permhandler::PermHandlerItf*        mPermHandler        = nullptr;
+    iam::currentnode::CurrentNodeHandlerItf* mCurrentNodeHandler = nullptr;
+    iam::nodemanager::NodeManagerItf*        mNodeManager        = nullptr;
+    aos::iamclient::CertProviderItf*         mCertProvider       = nullptr;
+    NodeController*                          mNodeController     = nullptr;
+    StreamWriter<iamproto::NodeInfo>         mCurrentNodeChangedController;
+    StreamWriter<iamproto::NodeInfo>         mNodeChangedController;
+    StreamWriter<iamproto::Subjects>         mSubjectsChangedController;
+    NodeInfo                                 mNodeInfo;
 
     std::vector<std::shared_ptr<CertWriter>> mCertWriters;
     std::mutex                               mCertWritersLock;
