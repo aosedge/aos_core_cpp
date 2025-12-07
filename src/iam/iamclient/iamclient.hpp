@@ -20,7 +20,7 @@
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
+#include <core/iam/currentnode/itf/currentnodehandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
@@ -53,7 +53,7 @@ public:
     Error Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-        nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode);
+        currentnode::CurrentNodeHandlerItf& currentNodeHandler, bool provisioningMode);
 
     /**
      * Starts IAM client.
@@ -94,20 +94,19 @@ private:
     bool ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
     bool ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
 
-    Error CheckCurrentNodeState(
-        const std::optional<std::initializer_list<NodeState>>& allowedStates, std::optional<bool> provisioned);
+    Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
     bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
     bool SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
 
-    aos::iamclient::IdentProviderItf*      mIdentProvider    = nullptr;
-    provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
-    aos::iamclient::CertProviderItf*       mCertProvider     = nullptr;
-    crypto::CertLoaderItf*                 mCertLoader       = nullptr;
-    crypto::x509::ProviderItf*             mCryptoProvider   = nullptr;
-    nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
+    aos::iamclient::IdentProviderItf*      mIdentProvider      = nullptr;
+    provisionmanager::ProvisionManagerItf* mProvisionManager   = nullptr;
+    aos::iamclient::CertProviderItf*       mCertProvider       = nullptr;
+    crypto::CertLoaderItf*                 mCertLoader         = nullptr;
+    crypto::x509::ProviderItf*             mCryptoProvider     = nullptr;
+    currentnode::CurrentNodeHandlerItf*    mCurrentNodeHandler = nullptr;
 
     std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
     bool                                                   mCredentialListUpdated = false;

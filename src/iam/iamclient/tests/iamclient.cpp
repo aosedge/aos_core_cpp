@@ -15,7 +15,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/tests/mocks/certhandlermock.hpp>
 #include <core/iam/tests/mocks/certloadermock.hpp>
-#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
+#include <core/iam/tests/mocks/currentnodemock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
@@ -114,7 +114,7 @@ NodeAttribute CreateAttribute(const char* name, const char* value)
     return attribute;
 }
 
-NodeInfo DefaultNodeInfo(NodeState state = NodeStateEnum::eOnline, bool provisioned = true)
+NodeInfo DefaultNodeInfo(NodeState state = NodeStateEnum::eProvisioned, bool isConnected = true)
 {
     NodeInfo nodeInfo;
 
@@ -122,7 +122,7 @@ NodeInfo DefaultNodeInfo(NodeState state = NodeStateEnum::eOnline, bool provisio
     nodeInfo.mNodeType    = "main";
     nodeInfo.mTitle       = "title node0";
     nodeInfo.mState       = state;
-    nodeInfo.mProvisioned = provisioned;
+    nodeInfo.mIsConnected = isConnected;
 
     nodeInfo.mOSInfo.mOS = "linux";
     FillArray({CreateCPUInfo(), CreateCPUInfo(), CreateCPUInfo()}, nodeInfo.mCPUs);
@@ -169,7 +169,7 @@ iamanager::v6::NodeAttribute CreateAttributeProto(const char* name, const char* 
     return attribute;
 }
 
-iamanager::v6::NodeInfo DefaultNodeInfoProto(const std::string& state = "online", bool provisioned = true)
+iamanager::v6::NodeInfo DefaultNodeInfoProto(const std::string& state = "provisioned")
 {
     iamanager::v6::NodeInfo nodeInfo;
 
@@ -177,7 +177,6 @@ iamanager::v6::NodeInfo DefaultNodeInfoProto(const std::string& state = "online"
     nodeInfo.set_node_type("main");
     nodeInfo.set_title("title node0");
     nodeInfo.set_state(state);
-    nodeInfo.set_provisioned(provisioned);
     nodeInfo.mutable_os_info()->set_os("linux");
     FillArray({CreateCPUInfoProto(), CreateCPUInfoProto(), CreateCPUInfoProto()}, *nodeInfo.mutable_cpus());
     FillArray({CreatePartitionInfoProto("trace", {"tracefs"}), CreatePartitionInfoProto("tmp", {})},
@@ -444,7 +443,7 @@ protected:
 
         assert(client
                    ->Init(config, &mIdentProvider, mCertProvider, mProvisionManager, mCertLoader, mCryptoProvider,
-                       mNodeInfoProvider, provisionMode)
+                       mCurrentNodeHandler, provisionMode)
                    .IsNone());
 
         return client;
@@ -456,14 +455,14 @@ protected:
     }
 
     std::pair<std::unique_ptr<TestPublicNodeService>, std::unique_ptr<IAMClient>> InitTest(
-        const NodeState& state, bool provisioned, const config::IAMClientConfig& config = GetConfig())
+        const NodeState& state, const config::IAMClientConfig& config = GetConfig())
     {
         auto server = CreateServer(config.mMainIAMPublicServerURL);
 
-        NodeInfo                nodeInfo    = DefaultNodeInfo(state, provisioned);
-        iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto(state.ToString().CStr(), provisioned);
+        NodeInfo                nodeInfo    = DefaultNodeInfo(state);
+        iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto(state.ToString().CStr());
 
-        EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+        EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
             .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
         EXPECT_CALL(*server, OnNodeInfo(expNodeInfo));
 
@@ -485,7 +484,7 @@ protected:
     aos::iamclient::CertProviderMock            mCertProvider;
     crypto::CertLoaderMock                      mCertLoader;
     crypto::x509::ProviderMock                  mCryptoProvider;
-    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    iam::currentnode::CurrentNodeHandlerMock    mCurrentNodeHandler;
 };
 
 /***********************************************************************************************************************
@@ -496,7 +495,7 @@ TEST_F(IAMClientTest, InitFailed)
 {
     auto server = CreateServer(GetConfig().mMainIAMPublicServerURL);
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eFailed));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo).WillOnce(Return(ErrorEnum::eFailed));
     // There is no nodeInfo notification if provider failed to return it
     EXPECT_CALL(*server, OnNodeInfo(_)).Times(0);
 
@@ -510,7 +509,7 @@ TEST_F(IAMClientTest, InitFailed)
 
 TEST_F(IAMClientTest, ConnectionFailed)
 {
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo).WillOnce(Return(ErrorEnum::eNone));
 
     auto client = CreateClient(true);
     EXPECT_TRUE(client->Start().IsNone());
@@ -523,9 +522,9 @@ TEST_F(IAMClientTest, ConnectionFailed)
 TEST_F(IAMClientTest, Reconnect)
 {
     // Init
-    auto [server1, client]              = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo                nodeInfo    = DefaultNodeInfo(NodeStateEnum::eOffline, false);
-    iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto("offline", false);
+    auto [server1, client]              = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo                nodeInfo    = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
+    iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
     // close server
     server1.reset();
@@ -533,7 +532,8 @@ TEST_F(IAMClientTest, Reconnect)
     // open server & wait for notification
     auto server2 = CreateServer(GetConfig().mMainIAMPublicServerURL);
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
     EXPECT_CALL(*server2, OnNodeInfo(expNodeInfo));
 
     server2->WaitNodeInfo();
@@ -544,11 +544,12 @@ TEST_F(IAMClientTest, Reconnect)
 TEST_F(IAMClientTest, StartProvisioning)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // StartProvisioning
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
     EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*server, OnStartProvisioningResponse(cErrorInfoOK));
 
@@ -564,11 +565,12 @@ TEST_F(IAMClientTest, StartProvisioningExecFailed)
     auto config                      = GetConfig();
     config.mStartProvisioningCmdArgs = {"/bin/sh", "-c", "echo 'Hello World' && false"};
 
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false, config);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned, config);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // StartProvisioning
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
     EXPECT_CALL(mProvisionManager, StartProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eFailed));
     EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
@@ -581,11 +583,12 @@ TEST_F(IAMClientTest, StartProvisioningExecFailed)
 TEST_F(IAMClientTest, StartProvisioningWrongNodeState)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOnline, true);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOnline, true);
+    auto [server, client] = InitTest(NodeStateEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eProvisioned);
 
     // StartProvisioning
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(*server, OnStartProvisioningResponse(Not(cErrorInfoOK)));
 
@@ -598,15 +601,16 @@ TEST_F(IAMClientTest, StartProvisioningWrongNodeState)
 TEST_F(IAMClientTest, FinishProvisioning)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // FinishProvisioning
-    NodeInfo                provNodeInfo    = DefaultNodeInfo(NodeStateEnum::eOnline, true);
-    iamanager::v6::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("online", true);
+    NodeInfo                provNodeInfo    = DefaultNodeInfo(NodeStateEnum::eProvisioned);
+    iamanager::v6::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("provisioned");
 
-    EXPECT_CALL(mNodeInfoProvider, SetNodeState(NodeState(NodeStateEnum::eOnline), true));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eProvisioned)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(mProvisionManager, FinishProvisioning(cPassword)).WillOnce(Return(ErrorEnum::eNone));
 
@@ -621,11 +625,12 @@ TEST_F(IAMClientTest, FinishProvisioning)
 TEST_F(IAMClientTest, FinishProvisioningWrongNodeState)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOnline, true);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOnline, true);
+    auto [server, client] = InitTest(NodeStateEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eProvisioned);
 
     // FinishProvisioning
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
     EXPECT_CALL(*server, OnFinishProvisioningResponse(Not(cErrorInfoOK)));
 
     server->FinishProvisioningRequest(nodeInfo.mNodeID.CStr(), cPassword.CStr());
@@ -637,15 +642,16 @@ TEST_F(IAMClientTest, FinishProvisioningWrongNodeState)
 TEST_F(IAMClientTest, Deprovision)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOnline, true);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOnline, true);
+    auto [server, client] = InitTest(NodeStateEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eProvisioned);
 
     // Deprovision
-    NodeInfo                deprovNodeInfo    = DefaultNodeInfo(NodeStateEnum::eOffline, false);
-    iamanager::v6::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("offline", false);
+    NodeInfo                deprovNodeInfo    = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
+    iamanager::v6::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
-    EXPECT_CALL(mNodeInfoProvider, SetNodeState(NodeState(NodeStateEnum::eOffline), false));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eUnprovisioned)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(mProvisionManager, Deprovision(cPassword)).WillOnce(Return(ErrorEnum::eNone));
 
@@ -660,11 +666,12 @@ TEST_F(IAMClientTest, Deprovision)
 TEST_F(IAMClientTest, DeprovisionWrongNodeState)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // Deprovision
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(*server, OnDeprovisionResponse(Not(cErrorInfoOK)));
 
@@ -677,15 +684,15 @@ TEST_F(IAMClientTest, DeprovisionWrongNodeState)
 TEST_F(IAMClientTest, PauseNode)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOnline, true);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOnline, true);
+    auto [server, client] = InitTest(NodeStateEnum::eProvisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eProvisioned);
 
     // Pause
-    NodeInfo                pausedNodeInfo    = DefaultNodeInfo(NodeStateEnum::ePaused, true);
-    iamanager::v6::NodeInfo expPausedNodeInfo = DefaultNodeInfoProto("paused", true);
+    NodeInfo                pausedNodeInfo    = DefaultNodeInfo(NodeStateEnum::ePaused);
+    iamanager::v6::NodeInfo expPausedNodeInfo = DefaultNodeInfoProto("paused");
 
-    EXPECT_CALL(mNodeInfoProvider, SetNodeState(NodeState(NodeStateEnum::ePaused), true));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+    EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::ePaused)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
         .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
         .WillOnce(DoAll(SetArgReferee<0>(pausedNodeInfo), Return(ErrorEnum::eNone)));
 
@@ -702,11 +709,12 @@ TEST_F(IAMClientTest, PauseNode)
 TEST_F(IAMClientTest, PauseWrongNodeState)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // Pause
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(*server, OnPauseNodeResponse(Not(cErrorInfoOK)));
 
@@ -719,15 +727,15 @@ TEST_F(IAMClientTest, PauseWrongNodeState)
 TEST_F(IAMClientTest, ResumeNode)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::ePaused, true);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::ePaused, true);
+    auto [server, client] = InitTest(NodeStateEnum::ePaused);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::ePaused);
 
     // Resume
-    NodeInfo                resumedNodeInfo    = DefaultNodeInfo(NodeStateEnum::eOnline, true);
-    iamanager::v6::NodeInfo expResumedNodeInfo = DefaultNodeInfoProto("online", true);
+    NodeInfo                resumedNodeInfo    = DefaultNodeInfo(NodeStateEnum::eProvisioned);
+    iamanager::v6::NodeInfo expResumedNodeInfo = DefaultNodeInfoProto("provisioned");
 
-    EXPECT_CALL(mNodeInfoProvider, SetNodeState(NodeState(NodeStateEnum::eOnline), true));
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
+    EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eProvisioned)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
         .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)))
         .WillOnce(DoAll(SetArgReferee<0>(resumedNodeInfo), Return(ErrorEnum::eNone)));
 
@@ -744,11 +752,12 @@ TEST_F(IAMClientTest, ResumeNode)
 TEST_F(IAMClientTest, ResumeWrongNodeState)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // Resume
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
+        .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
 
     EXPECT_CALL(*server, OnResumeNodeResponse(Not(cErrorInfoOK)));
 
@@ -761,8 +770,8 @@ TEST_F(IAMClientTest, ResumeWrongNodeState)
 TEST_F(IAMClientTest, CreateKey)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     auto systemInfo       = std::make_unique<SystemInfo>();
     systemInfo->mSystemID = cSubject;
@@ -781,8 +790,8 @@ TEST_F(IAMClientTest, CreateKey)
 TEST_F(IAMClientTest, ApplyCert)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // ApplyCert
     CertInfo certInfo;
@@ -802,8 +811,8 @@ TEST_F(IAMClientTest, ApplyCert)
 TEST_F(IAMClientTest, GetCertTypes)
 {
     // Init
-    auto [server, client] = InitTest(NodeStateEnum::eOffline, false);
-    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eOffline, false);
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
     // GetCertTypes
     provisionmanager::CertTypes types;
