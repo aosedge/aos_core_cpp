@@ -34,7 +34,7 @@ const Error cStreamNotFoundError = {ErrorEnum::eNotFound, "stream not found"};
  **********************************************************************************************************************/
 
 Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::IdentProviderItf& identProvider,
-    iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
     iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
@@ -43,7 +43,7 @@ Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::I
     mProvisionManager = &provisionManager;
 
     return PublicMessageHandler::Init(
-        nodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider);
+        nodeController, identProvider, permHandler, currentNodeHandler, nodeManager, certProvider);
 }
 
 // cppcheck-suppress duplInheritedMember

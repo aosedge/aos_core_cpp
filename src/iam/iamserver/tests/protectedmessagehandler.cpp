@@ -13,7 +13,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
+#include <core/iam/tests/mocks/currentnodemock.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 #include <core/iam/tests/mocks/permhandlermock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
@@ -71,7 +71,7 @@ protected:
     // mocks
     iamclient::IdentProviderMock           mIdentProvider;
     permhandler::PermHandlerMock           mPermHandler;
-    nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
+    currentnode::CurrentNodeHandlerMock    mCurrentNodeHandler;
     nodemanager::NodeManagerMock           mNodeManager;
     provisionmanager::ProvisionManagerMock mProvisionManager;
     iamclient::CertProviderMock            mCertProvider;
@@ -95,17 +95,17 @@ void ProtectedMessageHandlerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo).WillRepeatedly(Invoke([&](NodeInfo& nodeInfo) {
         nodeInfo.mNodeID   = "node0";
         nodeInfo.mNodeType = "test-type";
         nodeInfo.mAttrs.PushBack({"MainNode", ""});
 
-        LOG_DBG() << "NodeInfoProvider::GetNodeInfo: " << nodeInfo.mNodeID.CStr() << ", " << nodeInfo.mNodeType.CStr();
-
+        LOG_DBG() << "CurrentNodeHandler::GetCurrentNodeInfo: " << nodeInfo.mNodeID.CStr() << ", "
+                  << nodeInfo.mNodeType.CStr();
         return ErrorEnum::eNone;
     }));
 
-    auto err = mServerHandler.Init(mNodeController, mIdentProvider, mPermHandler, mNodeInfoProvider, mNodeManager,
+    auto err = mServerHandler.Init(mNodeController, mIdentProvider, mPermHandler, mCurrentNodeHandler, mNodeManager,
         mCertProvider, mProvisionManager);
 
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();

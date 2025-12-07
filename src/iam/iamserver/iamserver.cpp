@@ -92,7 +92,7 @@ Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cm
 Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
     iamclient::IdentProviderItf& identProvider, permhandler::PermHandlerItf& permHandler,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, nodemanager::NodeManagerItf& nodeManager,
+    currentnode::CurrentNodeHandlerItf& currentNodeHandler, nodemanager::NodeManagerItf& nodeManager,
     iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)
 {
@@ -107,7 +107,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     Error err;
     auto  nodeInfo = std::make_unique<NodeInfo>();
 
-    if (err = nodeInfoProvider.GetNodeInfo(*nodeInfo); !err.IsNone()) {
+    if (err = currentNodeHandler.GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -116,13 +116,13 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     }
 
     if (err = mPublicMessageHandler.Init(
-            mNodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider);
+            mNodeController, identProvider, permHandler, currentNodeHandler, nodeManager, certProvider);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = mProtectedMessageHandler.Init(
-            mNodeController, identProvider, permHandler, nodeInfoProvider, nodeManager, certProvider, provisionManager);
+    if (err = mProtectedMessageHandler.Init(mNodeController, identProvider, permHandler, currentNodeHandler,
+            nodeManager, certProvider, provisionManager);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
