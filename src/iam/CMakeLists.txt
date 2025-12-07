@@ -33,9 +33,9 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_iam)
 # ######################################################################################################################
 
 add_subdirectory(config)
+add_subdirectory(currentnode)
 add_subdirectory(database)
-add_subdirectory(identhandler)
 add_subdirectory(iamclient)
 add_subdirectory(iamserver)
-add_subdirectory(nodeinfoprovider)
+add_subdirectory(identhandler)
 add_subdirectory(app)

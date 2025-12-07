@@ -12,10 +12,10 @@
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 
-#include "nodeinfoprovider.hpp"
+#include "currentnodehandler.hpp"
 #include "systeminfo.hpp"
 
-namespace aos::iam::nodeinfoprovider {
+namespace aos::iam::currentnode {
 
 namespace {
 
@@ -46,25 +46,6 @@ Error SetOSInfo(OSInfo& info)
     return ErrorEnum::eNone;
 }
 
-Error GetNodeState(const std::string& path, NodeState& state, bool& provisioned)
-{
-    std::ifstream file;
-
-    if (file.open(path); !file.is_open()) {
-        state       = NodeStateEnum::eOffline;
-        provisioned = false;
-
-        return ErrorEnum::eNone;
-    }
-
-    std::string line;
-    std::getline(file, line);
-
-    provisioned = true;
-
-    return state.FromString(line.c_str());
-}
-
 Error GetNodeID(const std::string& path, String& nodeID)
 {
     std::ifstream file;
@@ -90,9 +71,11 @@ Error GetNodeID(const std::string& path, String& nodeID)
  * Public
  **********************************************************************************************************************/
 
-Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
 {
     Error err;
+
+    LOG_INF() << "Initialize current node handler";
 
     if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mNodeID); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -125,72 +108,36 @@ Error NodeInfoProvider::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    err = GetNodeState(mProvisioningStatusPath, mNodeInfo.mState, mNodeInfo.mProvisioned);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (err = ReadNodeState(); !err.IsNone()) {
+        LOG_ERR() << "Failed to read node state" << Log::Field(err);
+
+        mNodeInfo.mState = NodeStateEnum::eError;
+        mNodeInfo.mError = err;
     }
 
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::GetNodeInfo(NodeInfo& nodeInfo) const
+Error CurrentNodeHandler::GetCurrentNodeInfo(NodeInfo& nodeInfo) const
 {
     std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get current node info" << Log::Field("nodeID", mNodeInfo.mNodeID)
+              << Log::Field("state", mNodeInfo.mState) << Log::Field("isConnected", mNodeInfo.mIsConnected);
 
     nodeInfo = mNodeInfo;
 
-    if (auto err = GetNodeState(mProvisioningStatusPath, nodeInfo.mState, nodeInfo.mProvisioned); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::SetNodeState(const NodeState& state, bool provisioned)
+Error CurrentNodeHandler::SubscribeListener(iamclient::CurrentNodeInfoListenerItf& listener)
 {
     std::lock_guard lock {mMutex};
 
-    if (state == mNodeInfo.mState && provisioned == mNodeInfo.mProvisioned) {
-        LOG_DBG() << "Node state is not changed" << Log::Field("state", state)
-                  << Log::Field("provisioned", provisioned);
-
-        return ErrorEnum::eNone;
-    }
-
-    if (!provisioned) {
-        std::filesystem::remove(mProvisioningStatusPath);
-    } else {
-        std::ofstream file;
-
-        if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
-            LOG_ERR() << "Provision status file open failed" << Log::Field("path", mProvisioningStatusPath.c_str());
-
-            return ErrorEnum::eNotFound;
-        }
-
-        file << state.ToString().CStr();
-    }
-
-    mNodeInfo.mState       = state;
-    mNodeInfo.mProvisioned = provisioned;
-
-    LOG_DBG() << "Node state updated" << Log::Field("state", state) << Log::Field("provisioned", provisioned);
-
-    if (auto err = NotifyNodeStateChanged(); !err.IsNone()) {
-        return AOS_ERROR_WRAP(Error(err, "failed to notify node state changed subscribers"));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error NodeInfoProvider::SubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer)
-{
-    std::lock_guard lock {mMutex};
-
-    LOG_DBG() << "Subscribe node state changed observer";
+    LOG_DBG() << "Subscribe current node info changed listener";
 
     try {
-        mObservers.insert(&observer);
+        mListeners.insert(&listener);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -198,13 +145,56 @@ Error NodeInfoProvider::SubscribeNodeStateChanged(iam::nodeinfoprovider::NodeSta
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeStateObserverItf& observer)
+Error CurrentNodeHandler::UnsubscribeListener(iamclient::CurrentNodeInfoListenerItf& listener)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Unsubscribe node state changed observer";
+    LOG_DBG() << "Unsubscribe current node info changed listener";
 
-    mObservers.erase(&observer);
+    mListeners.erase(&listener);
+
+    return ErrorEnum::eNone;
+}
+
+Error CurrentNodeHandler::SetState(NodeState state)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Set current node state" << Log::Field("nodeID", mNodeInfo.mNodeID) << Log::Field("state", state);
+
+    if (mNodeInfo.mState == state) {
+        LOG_DBG() << "Node is already in the requested state" << Log::Field("state", state);
+
+        return ErrorEnum::eNone;
+    }
+
+    if (auto err = UpdateProvisionFile(state); !err.IsNone()) {
+        return err;
+    }
+
+    mNodeInfo.mState = state;
+
+    NotifyNodeInfoChanged();
+
+    return ErrorEnum::eNone;
+}
+
+Error CurrentNodeHandler::SetConnected(bool isConnected)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Set current node connected" << Log::Field("nodeID", mNodeInfo.mNodeID)
+              << Log::Field("connected", isConnected);
+
+    if (mNodeInfo.mIsConnected == isConnected) {
+        LOG_DBG() << "Node is already in the requested connected state" << Log::Field("isConnected", isConnected);
+
+        return ErrorEnum::eNone;
+    }
+
+    mNodeInfo.mIsConnected = isConnected;
+
+    NotifyNodeInfoChanged();
 
     return ErrorEnum::eNone;
 }
@@ -213,7 +203,50 @@ Error NodeInfoProvider::UnsubscribeNodeStateChanged(iam::nodeinfoprovider::NodeS
  * Private
  **********************************************************************************************************************/
 
-Error NodeInfoProvider::InitOSInfo(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::ReadNodeState()
+{
+    std::ifstream file;
+
+    if (file.open(mProvisioningStatusPath); !file.is_open()) {
+        mNodeInfo.mState = NodeStateEnum::eUnprovisioned;
+
+        return ErrorEnum::eNone;
+    }
+
+    std::string line;
+
+    std::getline(file, line);
+
+    if (auto err = mNodeInfo.mState.FromString(line.c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error CurrentNodeHandler::UpdateProvisionFile(NodeState state)
+{
+    if (state == NodeStateEnum::eUnprovisioned) {
+        std::filesystem::remove(mProvisioningStatusPath);
+
+        return ErrorEnum::eNone;
+    }
+
+    std::ofstream file;
+
+    if (file.open(mProvisioningStatusPath, std::ios_base::out | std::ios_base::trunc); !file.is_open()) {
+        LOG_ERR() << "Provision status file open failed" << Log::Field("path", mProvisioningStatusPath.c_str());
+
+        return ErrorEnum::eNotFound;
+    }
+
+    file << state.ToString().CStr();
+    file.close();
+
+    return ErrorEnum::eNone;
+}
+
+Error CurrentNodeHandler::InitOSInfo(const iam::config::NodeInfoConfig& config)
 {
     if (auto err = SetOSInfo(mNodeInfo.mOSInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -226,7 +259,7 @@ Error NodeInfoProvider::InitOSInfo(const iam::config::NodeInfoConfig& config)
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::InitAtrributesInfo(const iam::config::NodeInfoConfig& config)
 {
     for (const auto& [name, value] : config.mAttrs) {
         if (auto err = mNodeInfo.mAttrs.PushBack(NodeAttribute {name.c_str(), value.c_str()}); !err.IsNone()) {
@@ -237,7 +270,7 @@ Error NodeInfoProvider::InitAtrributesInfo(const iam::config::NodeInfoConfig& co
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::InitPartitionInfo(const iam::config::NodeInfoConfig& config)
 {
     for (const auto& partition : config.mPartitions) {
         if (auto err = mNodeInfo.mPartitions.EmplaceBack(); !err.IsNone()) {
@@ -273,21 +306,14 @@ Error NodeInfoProvider::InitPartitionInfo(const iam::config::NodeInfoConfig& con
     return ErrorEnum::eNone;
 }
 
-Error NodeInfoProvider::NotifyNodeStateChanged()
+void CurrentNodeHandler::NotifyNodeInfoChanged()
 {
-    Error err;
+    for (auto listener : mListeners) {
+        LOG_DBG() << "Notify node info changed listeners" << Log::Field("nodeID", mNodeInfo.mNodeID)
+                  << Log::Field("state", mNodeInfo.mState);
 
-    for (auto observer : mObservers) {
-        LOG_DBG() << "Notify node state changed observer: nodeID=" << mNodeInfo.mNodeID.CStr()
-                  << ", state=" << mNodeInfo.mState.ToString();
-
-        auto errNotify = observer->OnNodeStateChanged(mNodeInfo.mNodeID, mNodeInfo.mState);
-        if (err.IsNone() && !errNotify.IsNone()) {
-            err = errNotify;
-        }
+        listener->OnCurrentNodeInfoChanged(mNodeInfo);
     }
-
-    return err;
 }
 
-} // namespace aos::iam::nodeinfoprovider
+} // namespace aos::iam::currentnode
