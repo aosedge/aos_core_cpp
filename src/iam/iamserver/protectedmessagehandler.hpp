@@ -46,13 +46,13 @@ public:
      * @param nodeController node controller.
      * @param identProvider identification provider.
      * @param permHandler permission handler.
-     * @param nodeInfoProvider node info provider.
+     * @param currentNodeHandler current node handler.
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
      */
     Error Init(NodeController& nodeController, aos::iamclient::IdentProviderItf& identProvider,
-        iam::permhandler::PermHandlerItf& permHandler, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+        iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
         iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider,
         iam::provisionmanager::ProvisionManagerItf& provisionManager);
 
