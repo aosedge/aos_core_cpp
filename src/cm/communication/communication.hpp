@@ -35,7 +35,6 @@
 #include <core/common/types/certificates.hpp>
 #include <core/common/types/provisioning.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/itf/nodeinfoprovider.hpp>
 
 #include <core/cm/launcher/itf/envvarhandler.hpp>
 #include <core/cm/smcontroller/itf/logprovider.hpp>
@@ -60,7 +59,7 @@ public:
      * Initializes communication object.
      *
      * @param config configuration.
-     * @param nodeInfoProvider node info provider.
+     * @param currentNodeInfoProvider current node info provider.
      * @param identityProvider identity provider.
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
@@ -74,7 +73,7 @@ public:
      * @param provisioningHandler provisioning handler.
      * @return Error.
      */
-    Error Init(const cm::config::Config& config, iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
+    Error Init(const cm::config::Config& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         iamclient::IdentProviderItf& identityProvider, iamclient::CertProviderItf& certProvider,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
         updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
@@ -268,7 +267,7 @@ private:
     void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
 
     const config::Config*                                mConfig {};
-    iam::nodeinfoprovider::NodeInfoProviderItf*          mNodeInfoProvider {};
+    iamclient::CurrentNodeInfoProviderItf*               mCurrentNodeInfoProvider {};
     iamclient::IdentProviderItf*                         mIdentityProvider {};
     iamclient::CertProviderItf*                          mCertProvider {};
     crypto::CertLoaderItf*                               mCertLoader {};
