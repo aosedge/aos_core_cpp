@@ -14,12 +14,12 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
 #include <core/common/tests/mocks/certprovidermock.hpp>
+#include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/common/tools/fs.hpp>
 #include <core/common/types/state.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
 
 #include <common/tests/stubs/storagestub.hpp>
 #include <common/utils/cryptohelper.hpp>
@@ -255,13 +255,13 @@ public:
 
     void SubscribeAndWaitConnected()
     {
-        EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillRepeatedly(Invoke([this](NodeInfo& info) {
+        EXPECT_CALL(mCurrentNodeInfoProvider, GetCurrentNodeInfo).WillRepeatedly(Invoke([this](NodeInfo& info) {
             info.mNodeID = mNodeID;
 
             return ErrorEnum::eNone;
         }));
 
-        auto err = mCommunication.Init(mConfig, mNodeInfoProvider, mIdentityProvider, mCertProvider, mCertLoader,
+        auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProvider, mIdentityProvider, mCertProvider, mCertLoader,
             mCryptoProvider, mUUIDProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler,
             mCertHandlerMock, mProvisioningMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -362,18 +362,18 @@ protected:
     MessageQueue mCloudReceivedMessages;
     MessageQueue mCloudSendMessageQueue;
 
-    StaticString<cIDLen>                        mSystemID = "test_system_id";
-    StaticString<cIDLen>                        mNodeID   = "node0";
-    config::Config                              mConfig;
-    ConnectionSubscriberStub                    mConnectionSubscriber;
-    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    IdentityProviderMock                        mIdentityProvider;
-    UpdateManagerMock                           mUpdateManager;
-    StateHandlerMock                            mStateHandler;
-    LogProviderMock                             mLogProvider;
-    EnvVarHandlerMock                           mEnvVarHandler;
-    CertHandlerMock                             mCertHandlerMock;
-    ProvisioningMock                            mProvisioningMock;
+    StaticString<cIDLen>                   mSystemID = "test_system_id";
+    StaticString<cIDLen>                   mNodeID   = "node0";
+    config::Config                         mConfig;
+    ConnectionSubscriberStub               mConnectionSubscriber;
+    iamclient::CurrentNodeInfoProviderMock mCurrentNodeInfoProvider;
+    IdentityProviderMock                   mIdentityProvider;
+    UpdateManagerMock                      mUpdateManager;
+    StateHandlerMock                       mStateHandler;
+    LogProviderMock                        mLogProvider;
+    EnvVarHandlerMock                      mEnvVarHandler;
+    CertHandlerMock                        mCertHandlerMock;
+    ProvisioningMock                       mProvisioningMock;
 
     std::optional<HTTPServer>     mDiscoveryServer;
     std::optional<HTTPServer>     mCloudServer;
