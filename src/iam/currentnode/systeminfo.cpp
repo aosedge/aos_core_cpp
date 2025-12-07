@@ -18,7 +18,7 @@
 
 #include "systeminfo.hpp"
 
-namespace aos::iam::nodeinfoprovider::utils {
+namespace aos::iam::currentnode::utils {
 
 namespace {
 
@@ -212,4 +212,4 @@ RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept
     return {stat.f_blocks * stat.f_bsize, ErrorEnum::eNone};
 }
 
-} // namespace aos::iam::nodeinfoprovider::utils
+} // namespace aos::iam::currentnode::utils

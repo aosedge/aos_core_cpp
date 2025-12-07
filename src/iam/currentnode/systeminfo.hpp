@@ -12,7 +12,7 @@
 
 #include <core/common/types/common.hpp>
 
-namespace aos::iam::nodeinfoprovider::utils {
+namespace aos::iam::currentnode::utils {
 
 /**
  * Gets CPU information from the specified file.
@@ -39,6 +39,6 @@ RetWithError<uint64_t> GetMemTotal(const std::string& path) noexcept;
  */
 RetWithError<uint64_t> GetMountFSTotalSize(const std::string& path) noexcept;
 
-} // namespace aos::iam::nodeinfoprovider::utils
+} // namespace aos::iam::currentnode::utils
 
 #endif

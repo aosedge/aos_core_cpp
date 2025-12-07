@@ -21,7 +21,7 @@ set(LIBRARIES
     aos::common::utils
     aos::api::iam
     aos::core::iam::certhandler
-    aos::core::iam::nodeinfoprovider
+    aos::core::iam::currentnode
     aos::core::iam::nodemanager
     aos::core::iam::provisionmanager
     Poco::Util

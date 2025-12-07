@@ -18,11 +18,11 @@ set(SOURCES app.cpp main.cpp)
 
 set(LIBRARIES
     aos::iam::config
+    aos::iam::currentnode
     aos::iam::database
     aos::iam::iamclient
     aos::iam::iamserver
     aos::iam::identhandler
-    aos::iam::nodeinfoprovider
     aos::common::version
     aos::core::common::version
 )
