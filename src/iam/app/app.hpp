@@ -20,10 +20,10 @@
 
 #include <common/logger/logger.hpp>
 #include <common/utils/cleanupmanager.hpp>
+#include <iam/currentnode/currentnodehandler.hpp>
 #include <iam/database/database.hpp>
 #include <iam/iamclient/iamclient.hpp>
 #include <iam/iamserver/iamserver.hpp>
-#include <iam/nodeinfoprovider/nodeinfoprovider.hpp>
 
 namespace aos::iam::app {
 
@@ -62,7 +62,7 @@ private:
     pkcs11::PKCS11Manager         mPKCS11Manager;
     std::vector<std::pair<std::unique_ptr<certhandler::HSMItf>, std::unique_ptr<certhandler::CertModule>>> mCertModules;
     database::Database                                                                                     mDatabase;
-    nodeinfoprovider::NodeInfoProvider            mNodeInfoProvider;
+    currentnode::CurrentNodeHandler               mCurrentNodeHandler;
     nodemanager::NodeManager                      mNodeManager;
     provisionmanager::ProvisionManager            mProvisionManager;
     iamserver::IAMServer                          mIAMServer;
