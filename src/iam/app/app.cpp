@@ -234,8 +234,8 @@ void App::Init()
     auto err = mDatabase.Init(config.mValue.mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
-    err = mNodeInfoProvider.Init(config.mValue.mNodeInfo);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
+    err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize current node handler");
 
     err = InitIdentifierModule(config.mValue.mIdentifier);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
@@ -263,7 +263,7 @@ void App::Init()
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
     err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
-        mCryptoProvider, mNodeInfoProvider, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
+        mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
     const auto& clientConfig = config.mValue.mIAMClient;
@@ -271,7 +271,7 @@ void App::Init()
         mIAMClient = std::make_unique<iamclient::IAMClient>();
 
         err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertHandler, mProvisionManager, mCertLoader,
-            mCryptoProvider, mNodeInfoProvider, mProvisioning);
+            mCryptoProvider, mCurrentNodeHandler, mProvisioning);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }
 }
