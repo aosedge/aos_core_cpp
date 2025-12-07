@@ -27,16 +27,16 @@ namespace aos::iam::iamclient {
 Error IAMClient::Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
     aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider, bool provisioningMode)
+    currentnode::CurrentNodeHandlerItf& currentNodeHandler, bool provisioningMode)
 {
-    mIdentProvider     = identProvider;
-    mNodeInfoProvider  = &nodeInfoProvider;
-    mCertProvider      = &certProvider;
-    mCertLoader        = &certLoader;
-    mCryptoProvider    = &cryptoProvider;
-    mProvisionManager  = &provisionManager;
-    mReconnectInterval = config.mNodeReconnectInterval;
-    mCACert            = config.mCACert;
+    mIdentProvider      = identProvider;
+    mCurrentNodeHandler = &currentNodeHandler;
+    mCertProvider       = &certProvider;
+    mCertLoader         = &certLoader;
+    mCryptoProvider     = &cryptoProvider;
+    mProvisionManager   = &provisionManager;
+    mReconnectInterval  = config.mNodeReconnectInterval;
+    mCACert             = config.mCACert;
 
     if (provisioningMode) {
         mCredentialList.push_back(grpc::InsecureChannelCredentials());
@@ -199,7 +199,11 @@ void IAMClient::ConnectionLoop() noexcept
         LOG_DBG() << "Connecting to IAMServer...";
 
         if (RegisterNode(mServerURL)) {
+            mCurrentNodeHandler->SetConnected(true);
+
             HandleIncomingMessages();
+
+            mCurrentNodeHandler->SetConnected(false);
 
             LOG_DBG() << "IAMClient connection closed";
         }
@@ -269,7 +273,7 @@ bool IAMClient::SendNodeInfo()
     auto                               nodeInfo = std::make_unique<NodeInfo>();
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
 
-    auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
+    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Can't get node info: error=" << err.Message();
 
@@ -295,7 +299,7 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningR
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
-    auto err = CheckCurrentNodeState({}, false);
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't start provisioning: wrong node state";
 
@@ -317,7 +321,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisionin
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
-    auto err = CheckCurrentNodeState({}, false);
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't finish provisioning: wrong node state";
 
@@ -333,7 +337,7 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisionin
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOnline, true);
+    err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -352,7 +356,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& requ
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
-    auto err = CheckCurrentNodeState({{NodeStateEnum::eOnline, NodeStateEnum::ePaused}}, true);
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned, NodeStateEnum::ePaused}});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't deprovision: wrong node state";
 
@@ -368,7 +372,7 @@ bool IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& requ
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOffline, false);
+    err = mCurrentNodeHandler->SetState(NodeStateEnum::eUnprovisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -389,7 +393,7 @@ bool IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
-    auto err = CheckCurrentNodeState({{NodeStateEnum::eOnline}}, true);
+    auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned}});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't pause node: wrong node state";
 
@@ -398,7 +402,7 @@ bool IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::ePaused, true);
+    err = mCurrentNodeHandler->SetState(NodeStateEnum::ePaused);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -419,7 +423,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& reques
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
-    auto err = CheckCurrentNodeState({{NodeStateEnum::ePaused}}, true);
+    auto err = CheckCurrentNodeState({{NodeStateEnum::ePaused}});
     if (!err.IsNone()) {
         LOG_ERR() << "Can't resume node: wrong node state";
 
@@ -428,7 +432,7 @@ bool IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& reques
         return mStream->Write(outgoingMsg);
     }
 
-    err = mNodeInfoProvider->SetNodeState(NodeStateEnum::eOnline, true);
+    err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
@@ -505,18 +509,13 @@ bool IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& re
     return SendGetCertTypesResponse(certTypes, err);
 }
 
-Error IAMClient::CheckCurrentNodeState(
-    const std::optional<std::initializer_list<NodeState>>& allowedStates, std::optional<bool> provisioned)
+Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
-    auto err = mNodeInfoProvider->GetNodeInfo(*nodeInfo);
+    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
-    }
-
-    if (provisioned.has_value() && nodeInfo->mProvisioned != provisioned.value()) {
-        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
     }
 
     if (!allowedStates) {
