@@ -97,8 +97,6 @@ iamanager::v6::NodeInfo ConvertToProto(const NodeInfo& src)
         *result.add_attrs() = ConvertToProto(attr);
     }
 
-    result.set_provisioned(src.mProvisioned);
-
     result.set_state(src.mState.ToString().CStr());
 
     if (!src.mError.IsNone()) {
