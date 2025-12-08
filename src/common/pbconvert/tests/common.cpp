@@ -177,8 +177,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAos)
     src.set_max_dmips(1000);
     src.set_total_ram(2048);
     src.set_physical_ram(4096);
-    src.set_provisioned(true);
-    src.set_state("online");
+    src.set_state("provisioned");
 
     // Set OSInfo
     auto* osInfo = src.mutable_os_info();
@@ -245,8 +244,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAos)
     EXPECT_EQ(dst.mTotalRAM, 2048);
     EXPECT_TRUE(dst.mPhysicalRAM.HasValue());
     EXPECT_EQ(*dst.mPhysicalRAM, 4096);
-    EXPECT_TRUE(dst.mProvisioned);
-    EXPECT_EQ(dst.mState, aos::NodeStateEnum::eOnline);
+    EXPECT_EQ(dst.mState, aos::NodeStateEnum::eProvisioned);
 
     // Verify OSInfo
     EXPECT_EQ(dst.mOSInfo.mOS, aos::String("linux"));
@@ -311,8 +309,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAosWithoutOptionalFields)
     src.set_title("minimal-title");
     src.set_max_dmips(100);
     src.set_total_ram(512);
-    src.set_provisioned(false);
-    src.set_state("offline");
+    src.set_state("paused");
 
     // Set minimal OSInfo
     auto* osInfo = src.mutable_os_info();
@@ -331,8 +328,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAosWithoutOptionalFields)
     EXPECT_EQ(dst.mMaxDMIPS, 100);
     EXPECT_EQ(dst.mTotalRAM, 512);
     EXPECT_FALSE(dst.mPhysicalRAM.HasValue());
-    EXPECT_FALSE(dst.mProvisioned);
-    EXPECT_EQ(dst.mState, aos::NodeStateEnum::eOffline);
+    EXPECT_EQ(dst.mState, aos::NodeStateEnum::ePaused);
 
     // Verify OSInfo
     EXPECT_EQ(dst.mOSInfo.mOS, aos::String("linux"));

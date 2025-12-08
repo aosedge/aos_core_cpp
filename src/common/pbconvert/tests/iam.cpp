@@ -57,8 +57,8 @@ NodeInfo CreateNodeInfo()
     result.mMaxDMIPS = 1024;
     result.mTotalRAM = 2048;
     result.mPhysicalRAM.SetValue(4096);
-    result.mProvisioned = true;
-    result.mState       = NodeStateEnum::eOnline;
+    result.mState       = NodeStateEnum::eProvisioned;
+    result.mIsConnected = true;
 
     result.mOSInfo.mOS = "linux";
     result.mOSInfo.mVersion.SetValue("5.10.0");
@@ -175,7 +175,6 @@ TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
     EXPECT_EQ(result.max_dmips(), src.mMaxDMIPS);
     EXPECT_EQ(result.total_ram(), src.mTotalRAM);
     EXPECT_EQ(result.physical_ram(), *src.mPhysicalRAM);
-    EXPECT_EQ(result.provisioned(), src.mProvisioned);
     EXPECT_STREQ(result.state().c_str(), src.mState.ToString().CStr());
 
     EXPECT_STREQ(result.os_info().os().c_str(), src.mOSInfo.mOS.CStr());
