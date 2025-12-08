@@ -253,8 +253,8 @@ Poco::JSON::Object::Ptr ToJSON(const NodeInfo& nodeInfo)
             "attrs", common::utils::ToJsonArray(nodeInfo.mAttrs, [](const auto& attr) { return ToJSON(attr); }));
     }
 
-    object->set("provisioned", nodeInfo.mProvisioned);
     object->set("state", nodeInfo.mState.ToString().CStr());
+    object->set("isConnected", nodeInfo.mIsConnected);
 
     if (!nodeInfo.mError.IsNone()) {
         object->set("error", ToJSON(nodeInfo.mError));
@@ -316,7 +316,7 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, NodeIn
         AOS_ERROR_CHECK_AND_THROW(!err.IsNone(), "can't parse Node attribute");
     });
 
-    dst.mProvisioned = object.GetValue<bool>("provisioned");
+    dst.mIsConnected = object.GetValue<bool>("isConnected");
 
     if (auto err = dst.mState.FromString(object.GetValue<std::string>("state").c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
