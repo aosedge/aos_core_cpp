@@ -218,9 +218,9 @@ Error ConvertToAos(const iamanager::v6::NodeInfo& src, NodeInfo& dst)
         return AOS_ERROR_WRAP(err);
     }
 
-    dst.mProvisioned = src.provisioned();
-
-    dst.mState.FromString(src.state().c_str());
+    if (auto err = dst.mState.FromString(src.state().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (src.has_error()) {
         dst.mError = Error(src.error().exit_code(), src.error().message().c_str());
