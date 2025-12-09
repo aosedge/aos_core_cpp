@@ -18,7 +18,7 @@
 #include <core/common/tools/time.hpp>
 #include <core/common/types/obsolete.hpp>
 
-#include "systemdconn.hpp"
+#include <sm/utils/systemdconn.hpp>
 
 namespace aos::sm::runner {
 
@@ -85,8 +85,8 @@ private:
     static constexpr auto cSystemdDropInsDir       = "/run/systemd/system";
     static constexpr auto cParametersFileName      = "parameters.conf";
 
-    virtual std::shared_ptr<SystemdConnItf> CreateSystemdConn();
-    virtual std::string                     GetSystemdDropInsDir() const;
+    virtual std::shared_ptr<utils::SystemdConnItf> CreateSystemdConn();
+    virtual std::string                            GetSystemdDropInsDir() const;
 
     void                        MonitorUnits();
     Array<RunStatus>            GetRunningInstances() const;
@@ -110,10 +110,10 @@ private:
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
-    std::shared_ptr<SystemdConnItf> mSystemd;
-    std::thread                     mMonitoringThread;
-    std::mutex                      mMutex;
-    std::condition_variable         mCondVar;
+    std::shared_ptr<utils::SystemdConnItf> mSystemd;
+    std::thread                            mMonitoringThread;
+    std::mutex                             mMutex;
+    std::condition_variable                mCondVar;
 
     std::map<std::string, StartingUnitData> mStartingUnits;
     std::map<std::string, RunningUnitData>  mRunningUnits;
