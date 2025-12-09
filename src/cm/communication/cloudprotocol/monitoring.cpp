@@ -56,8 +56,8 @@ Poco::JSON::Object::Ptr NodeStateInfoToJSON(const NodeStateInfo& state)
     AOS_ERROR_CHECK_AND_THROW(utcTime.mError, "can't convert time to UTC string");
 
     json->set("timestamp", utcTime.mValue.CStr());
-    json->set("provisioned", state.mProvisioned);
     json->set("state", state.mState.ToString().CStr());
+    json->set("isConnected", state.mIsConnected);
 
     return json;
 }

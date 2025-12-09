@@ -60,14 +60,14 @@ void AddMonitoringData(const Time& time, double cpu, size_t ram, size_t download
     }
 }
 
-void AddNodeStateInfo(const Time& time, bool provisioned, NodeState state, NodeStateInfoArray& states)
+void AddNodeStateInfo(const Time& time, NodeState state, bool isConnected, NodeStateInfoArray& states)
 {
     auto err = states.EmplaceBack();
     ASSERT_TRUE(err.IsNone()) << "Error: " << tests::utils::ErrorToStr(err);
 
     states.Back().mTimestamp   = time;
-    states.Back().mProvisioned = provisioned;
     states.Back().mState       = state;
+    states.Back().mIsConnected = isConnected;
 }
 
 void AddInstanceStateInfo(const Time& time, InstanceState state, InstanceStateInfoArray& states)
@@ -83,13 +83,13 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
+                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
+                           R"({"timestamp":"2024-01-31T12:01:00Z","state":"unprovisioned","isConnected":true}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":false,"state":"error"}],)"
+                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
                            R"("items":[]}],"instances":[{"item":{"id":"instance1"},"subject":{"id":"subject1"},)"
                            R"("instance":0,"node":{"codename":"node1"},"itemStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"active"},)"
@@ -107,16 +107,16 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 
     AddMonitoringData(cTime, 10, 2048, 1000, 500, {{"partition1", 100000}}, monitoring->mNodes.Back().mItems);
 
-    AddNodeStateInfo(cTime, true, NodeStateEnum::eOnline, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime, NodeStateEnum::eProvisioned, true, monitoring->mNodes.Back().mStates);
 
     AddMonitoringData(cTime.Add(Time::cMinutes), 11, 2048, 1000, 500, {}, monitoring->mNodes.Back().mItems);
 
-    AddNodeStateInfo(cTime.Add(Time::cMinutes), true, NodeStateEnum::eOffline, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime.Add(Time::cMinutes), NodeStateEnum::eUnprovisioned, true, monitoring->mNodes.Back().mStates);
 
     monitoring->mNodes.EmplaceBack();
     monitoring->mNodes.Back().mNodeID = "node2";
 
-    AddNodeStateInfo(cTime, false, NodeStateEnum::eError, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime, NodeStateEnum::eError, false, monitoring->mNodes.Back().mStates);
 
     monitoring->mInstances.EmplaceBack();
     monitoring->mInstances.Back().mNodeID    = "node1";
@@ -145,13 +145,13 @@ TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":true,"state":"online"},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","provisioned":true,"state":"offline"}],)"
+                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
+                           R"({"timestamp":"2024-01-31T12:01:00Z","state":"provisioned","isConnected":false}],)"
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","provisioned":false,"state":"error"}],)"
+                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
                            R"("items":[]}]})";
 
     auto monitoring            = std::make_unique<Monitoring>();
@@ -162,16 +162,16 @@ TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 
     AddMonitoringData(cTime, 10, 2048, 1000, 500, {{"partition1", 100000}}, monitoring->mNodes.Back().mItems);
 
-    AddNodeStateInfo(cTime, true, NodeStateEnum::eOnline, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime, NodeStateEnum::eProvisioned, true, monitoring->mNodes.Back().mStates);
 
     AddMonitoringData(cTime.Add(Time::cMinutes), 11, 2048, 1000, 500, {}, monitoring->mNodes.Back().mItems);
 
-    AddNodeStateInfo(cTime.Add(Time::cMinutes), true, NodeStateEnum::eOffline, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime.Add(Time::cMinutes), NodeStateEnum::eProvisioned, false, monitoring->mNodes.Back().mStates);
 
     monitoring->mNodes.EmplaceBack();
     monitoring->mNodes.Back().mNodeID = "node2";
 
-    AddNodeStateInfo(cTime, false, NodeStateEnum::eError, monitoring->mNodes.Back().mStates);
+    AddNodeStateInfo(cTime, NodeStateEnum::eError, false, monitoring->mNodes.Back().mStates);
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 

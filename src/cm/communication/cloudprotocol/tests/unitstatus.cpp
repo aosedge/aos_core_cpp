@@ -105,10 +105,10 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
           R"("osInfo":{"os":"Linux","version":"5.10","features":["feature1","feature2"]},)"
           R"("maxDmips":2000,"allowedDmips":1000,"totalRam":4096,"allowedRam":2048,)"
           R"("maxInstances":10}],"resources":[{"name":"resourceID1","sharedCount":1},)"
-          R"({"name":"resourceID2","sharedCount":2}],"provisioned":true,"state":"online"},)"
+          R"({"name":"resourceID2","sharedCount":2}],"state":"provisioned","isConnected":true},)"
           R"({"identity":{"codename":"nodeID2","title":"title2"},"nodeGroupSubject":{"codename":"type2"},)"
           R"("maxDmips":20000,"totalRam":8096,"osInfo":{"os":"Linux","version":"5.10",)"
-          R"("features":["feature1","feature2"]},"provisioned":false,"state":"error",)"
+          R"("features":["feature1","feature2"]},"state":"error","isConnected":false,)"
           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
@@ -164,8 +164,8 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
     unitStatus->mNodes->Back().mResources.Back().mName        = "resourceID2";
     unitStatus->mNodes->Back().mResources.Back().mSharedCount = 2;
 
-    unitStatus->mNodes->Back().mProvisioned = true;
-    unitStatus->mNodes->Back().mState       = NodeStateEnum::eOnline;
+    unitStatus->mNodes->Back().mState       = NodeStateEnum::eProvisioned;
+    unitStatus->mNodes->Back().mIsConnected = true;
 
     unitStatus->mNodes->EmplaceBack();
     unitStatus->mNodes->Back().mNodeID   = "nodeID2";
@@ -174,9 +174,9 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
     unitStatus->mNodes->Back().mMaxDMIPS = 20000;
     unitStatus->mNodes->Back().mTotalRAM = 8096;
     SetOSInfo("Linux", {"5.10"}, {"feature1", "feature2"}, unitStatus->mNodes->Back().mOSInfo);
-    unitStatus->mNodes->Back().mProvisioned = false;
     unitStatus->mNodes->Back().mState       = NodeStateEnum::eError;
     unitStatus->mNodes->Back().mError       = ErrorEnum::eFailed;
+    unitStatus->mNodes->Back().mIsConnected = false;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
