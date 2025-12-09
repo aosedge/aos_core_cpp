@@ -198,8 +198,8 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
         json->set("resources", common::utils::ToJsonArray(nodeInfo.mResources, ResourceInfoToJSON));
     }
 
-    json->set("provisioned", nodeInfo.mProvisioned);
     json->set("state", nodeInfo.mState.ToString().CStr());
+    json->set("isConnected", nodeInfo.mIsConnected);
 
     if (!nodeInfo.mError.IsNone()) {
         auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
