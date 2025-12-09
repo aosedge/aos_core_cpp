@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef AOS_SM_RUNNER_SYSTEMDCONN_HPP_
-#define AOS_SM_RUNNER_SYSTEMDCONN_HPP_
+#ifndef AOS_SM_UTILS_SYSTEMDCONN_HPP_
+#define AOS_SM_UTILS_SYSTEMDCONN_HPP_
 
 #include <mutex>
 #include <string>
@@ -13,10 +13,10 @@
 #include <vector>
 
 #include <core/common/tools/error.hpp>
+#include <core/common/tools/optional.hpp>
 #include <core/common/tools/time.hpp>
-#include <core/sm/runner/runner.hpp>
 
-namespace aos::sm::runner {
+namespace aos::sm::utils {
 
 /**
  * Unit state.
@@ -171,6 +171,6 @@ private:
     std::mutex mMutex;
 };
 
-} // namespace aos::sm::runner
+} // namespace aos::sm::utils
 
 #endif // SYSTEMDCONN_HPP_

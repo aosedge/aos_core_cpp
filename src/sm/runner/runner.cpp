@@ -197,9 +197,9 @@ Error Runner::StopInstance(const String& instanceID)
     return err;
 }
 
-std::shared_ptr<SystemdConnItf> Runner::CreateSystemdConn()
+std::shared_ptr<utils::SystemdConnItf> Runner::CreateSystemdConn()
 {
-    return std::make_shared<SystemdConn>();
+    return std::make_shared<utils::SystemdConn>();
 }
 
 std::string Runner::GetSystemdDropInsDir() const

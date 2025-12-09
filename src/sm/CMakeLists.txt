@@ -33,7 +33,7 @@ add_subdirectory(monitoring)
 add_subdirectory(resourcemanager)
 # add_subdirectory(runner)
 # add_subdirectory(smclient)
-# add_subdirectory(utils)
+add_subdirectory(utils)
 
 # ######################################################################################################################
 # Tests

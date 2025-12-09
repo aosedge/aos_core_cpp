@@ -16,7 +16,7 @@
 
 #include "systemdconn.hpp"
 
-namespace aos::sm::runner {
+namespace aos::sm::utils {
 
 /***********************************************************************************************************************
  * Statics
@@ -362,4 +362,4 @@ Optional<int32_t> SystemdConn::GetExitCode(const char* serviceName)
     }
 }
 
-} // namespace aos::sm::runner
+} // namespace aos::sm::utils
