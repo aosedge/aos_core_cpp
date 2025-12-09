@@ -28,6 +28,7 @@ public:
     IAMPublicNodesServiceStub()
     {
         grpc::ServerBuilder builder;
+
         builder.AddListeningPort("localhost:8007", grpc::InsecureServerCredentials());
         builder.RegisterService(this);
         mServer = builder.BuildAndStart();
@@ -43,25 +44,30 @@ public:
     void SetNodeIds(const std::vector<std::string>& nodeIds)
     {
         std::lock_guard lock {mMutex};
+
         mNodeIds = nodeIds;
     }
 
     void SetNodeInfo(const std::string& nodeID, const std::string& nodeType)
     {
         std::lock_guard lock {mMutex};
+
         mNodeInfos[nodeID] = nodeType;
     }
 
     bool SendNodeInfoChanged(const std::string& nodeID, const std::string& nodeType)
     {
         std::lock_guard lock {mMutex};
+
         if (!mWriter) {
             return false;
         }
 
         iamanager::v6::NodeInfo nodeInfo;
+
         nodeInfo.set_node_id(nodeID);
         nodeInfo.set_node_type(nodeType);
+        nodeInfo.set_state("provisioned");
 
         return mWriter->Write(nodeInfo);
     }
@@ -69,6 +75,7 @@ public:
     bool WaitForConnection(std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
+
         return mCV.wait_for(lock, timeout, [this] { return mWriter != nullptr; });
     }
 
@@ -96,6 +103,7 @@ public:
 
         response->set_node_id(request->node_id());
         response->set_node_type(it->second);
+        response->set_state("provisioned");
 
         return grpc::Status::OK;
     }
@@ -106,6 +114,7 @@ public:
     {
         {
             std::lock_guard lock {mMutex};
+
             mWriter = writer;
             mCV.notify_all();
         }
@@ -116,6 +125,7 @@ public:
 
         {
             std::lock_guard lock {mMutex};
+
             if (mWriter == writer) {
                 mWriter = nullptr;
             }

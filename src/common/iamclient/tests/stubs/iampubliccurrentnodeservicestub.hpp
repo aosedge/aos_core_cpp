@@ -41,6 +41,7 @@ public:
     void SetNodeInfo(const std::string& nodeID, const std::string& nodeType)
     {
         std::lock_guard lock {mMutex};
+
         mNodeID   = nodeID;
         mNodeType = nodeType;
     }
@@ -48,13 +49,16 @@ public:
     bool SendNodeInfoChanged(const std::string& nodeID, const std::string& nodeType)
     {
         std::unique_lock lock {mMutex};
+
         if (!mWriter) {
             return false;
         }
 
         iamanager::v6::NodeInfo nodeInfo;
+
         nodeInfo.set_node_id(nodeID);
         nodeInfo.set_node_type(nodeType);
+        nodeInfo.set_state("provisioned");
 
         return mWriter->Write(nodeInfo);
     }
@@ -62,12 +66,14 @@ public:
     bool WaitForConnection(std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
+
         return mCV.wait_for(lock, timeout, [this] { return mWriter != nullptr; });
     }
 
     std::string GetRequestedNodeID() const
     {
         std::lock_guard lock {mMutex};
+
         return mNodeID;
     }
 
@@ -78,6 +84,7 @@ public:
 
         response->set_node_id(mNodeID);
         response->set_node_type(mNodeType);
+        response->set_state("provisioned");
 
         return grpc::Status::OK;
     }
@@ -88,6 +95,7 @@ public:
     {
         {
             std::lock_guard lock {mMutex};
+
             mWriter = writer;
             mCV.notify_all();
         }
@@ -110,7 +118,7 @@ private:
     std::unique_ptr<grpc::Server>                mServer;
     mutable std::mutex                           mMutex;
     std::condition_variable                      mCV;
-    grpc::ServerWriter<iamanager::v6::NodeInfo>* mWriter {nullptr};
+    grpc::ServerWriter<iamanager::v6::NodeInfo>* mWriter {};
     std::string                                  mNodeID;
     std::string                                  mNodeType;
 };
