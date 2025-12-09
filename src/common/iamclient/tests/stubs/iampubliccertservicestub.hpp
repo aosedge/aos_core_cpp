@@ -56,9 +56,11 @@ public:
     bool WaitForConnection(const std::string& certType = "", std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
+
         if (certType.empty()) {
             return mCV.wait_for(lock, timeout, [this] { return !mWriters.empty(); });
         }
+
         return mCV.wait_for(lock, timeout, [this, &certType] { return mWriters.count(certType) > 0; });
     }
 
@@ -66,6 +68,7 @@ public:
     {
         {
             std::lock_guard lock {mMutex};
+
             mClose = true;
         }
 
@@ -80,6 +83,7 @@ private:
     std::unique_ptr<grpc::Server> CreateServer()
     {
         grpc::ServerBuilder builder;
+
         builder.AddListeningPort("localhost:8003", grpc::InsecureServerCredentials());
         builder.RegisterService(this);
         return builder.BuildAndStart();
@@ -105,6 +109,7 @@ private:
 
         {
             std::lock_guard lock {mMutex};
+
             mWriters[certType] = writer;
         }
 
@@ -116,7 +121,8 @@ private:
 
         {
             std::lock_guard lock {mMutex};
-            auto            it = mWriters.find(certType);
+
+            auto it = mWriters.find(certType);
             if (it != mWriters.end() && it->second == writer) {
                 mWriters.erase(it);
             }

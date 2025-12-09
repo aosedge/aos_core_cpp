@@ -38,12 +38,14 @@ public:
     void SetCSR(const std::string& csr)
     {
         std::lock_guard lock {mMutex};
+
         mCSR = csr;
     }
 
     void SetCertInfo(const std::string& certURL, const std::string& keyURL)
     {
         std::lock_guard lock {mMutex};
+
         mCertURL = certURL;
         mKeyURL  = keyURL;
     }
@@ -51,6 +53,7 @@ public:
     void SetError(int exitCode, const std::string& message)
     {
         std::lock_guard lock {mMutex};
+
         mHasError      = true;
         mErrorExitCode = exitCode;
         mErrorMessage  = message;
@@ -59,36 +62,42 @@ public:
     void ClearError()
     {
         std::lock_guard lock {mMutex};
+
         mHasError = false;
     }
 
     std::string GetLastNodeID() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastNodeID;
     }
 
     std::string GetLastCertType() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastCertType;
     }
 
     std::string GetLastSubject() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastSubject;
     }
 
     std::string GetLastPassword() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastPassword;
     }
 
     std::string GetLastPemCert() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastPemCert;
     }
 

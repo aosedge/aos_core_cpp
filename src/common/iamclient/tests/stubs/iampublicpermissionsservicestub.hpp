@@ -39,6 +39,7 @@ public:
     void SetInstanceIdent(const std::string& itemID, const std::string& subjectID, uint64_t instance)
     {
         std::lock_guard lock {mMutex};
+
         mItemID    = itemID;
         mSubjectID = subjectID;
         mInstance  = instance;
@@ -47,18 +48,21 @@ public:
     void SetPermissions(const std::vector<std::string>& funcIDs)
     {
         std::lock_guard lock {mMutex};
+
         mFuncIDs = funcIDs;
     }
 
     std::string GetLastSecret() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastSecret;
     }
 
     std::string GetLastFuncServerID() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastFuncServerID;
     }
 

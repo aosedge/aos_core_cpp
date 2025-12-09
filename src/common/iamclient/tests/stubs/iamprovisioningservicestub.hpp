@@ -38,12 +38,14 @@ public:
     void SetCertTypes(const std::vector<std::string>& certTypes)
     {
         std::lock_guard lock {mMutex};
+
         mCertTypes = certTypes;
     }
 
     void SetProvisioningError(int exitCode, const std::string& message)
     {
         std::lock_guard lock {mMutex};
+
         mHasError      = true;
         mErrorExitCode = exitCode;
         mErrorMessage  = message;
@@ -52,18 +54,21 @@ public:
     void ClearProvisioningError()
     {
         std::lock_guard lock {mMutex};
+
         mHasError = false;
     }
 
     std::string GetLastNodeID() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastNodeID;
     }
 
     std::string GetLastPassword() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastPassword;
     }
 

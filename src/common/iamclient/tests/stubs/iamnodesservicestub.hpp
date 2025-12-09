@@ -38,6 +38,7 @@ public:
     void SetError(int exitCode, const std::string& message)
     {
         std::lock_guard lock {mMutex};
+
         mHasError      = true;
         mErrorExitCode = exitCode;
         mErrorMessage  = message;
@@ -46,12 +47,14 @@ public:
     void ClearError()
     {
         std::lock_guard lock {mMutex};
+
         mHasError = false;
     }
 
     std::string GetLastNodeID() const
     {
         std::lock_guard lock {mMutex};
+
         return mLastNodeID;
     }
 
