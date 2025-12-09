@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,65 +8,67 @@
 #define AOS_SM_SMCLIENT_SMCLIENT_HPP_
 
 #include <condition_variable>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
-#include <core/common/alerts/alerts.hpp>
-#include <core/common/monitoring/monitoring.hpp>
-#include <core/common/tools/error.hpp>
-#include <core/common/tools/thread.hpp>
-#include <core/iam/certhandler/certhandler.hpp>
-#include <core/iam/nodeinfoprovider/nodeinfoprovider.hpp>
-#include <core/iam/provisionmanager/provisionmanager.hpp>
-#include <core/sm/launcher/launcher.hpp>
-#include <core/sm/logprovider/logprovider.hpp>
-#include <core/sm/networkmanager/networkmanager.hpp>
-#include <core/sm/resourcemanager/resourcemanager.hpp>
-
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
-#include <common/iamclient/publicservicehandler.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/instancestatusprovider/itf/instancestatusprovider.hpp>
+#include <core/common/monitoring/itf/monitoring.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/types/instance.hpp>
+#include <core/sm/launcher/itf/launcher.hpp>
+#include <core/sm/launcher/itf/runtimeinfoprovider.hpp>
+#include <core/sm/logging/itf/logprovider.hpp>
+#include <core/sm/networkmanager/itf/networkmanager.hpp>
+#include <core/sm/nodeconfig/itf/nodeconfighandler.hpp>
+#include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
+#include <core/sm/smclient/itf/smclient.hpp>
+
+#include <common/iamclient/itf/tlscredentials.hpp>
 
 #include "config.hpp"
 
-namespace smproto = servicemanager::v4;
+namespace smproto = servicemanager::v5;
 
 namespace aos::sm::smclient {
-
-using PublicNodeService = smproto::SMService;
 
 /**
  * GRPC service manager client.
  */
-class SMClient : public aos::iamclient::CertListenerItf,
-                 public aos::monitoring::SenderItf,
-                 public aos::alerts::SenderItf,
-                 public sm::logprovider::LogObserverItf,
-                 public sm::launcher::InstanceStatusReceiverItf,
-                 public ConnectionPublisherItf,
-                 private NonCopyable {
+class SMClient : public SMClientItf, public aos::iamclient::CertListenerItf, private NonCopyable {
 public:
     /**
      * Initializes SM client instance.
      *
      * @param config client configuration.
-     * @param tlcCredentials TLS credentials provider.
-     * @param nodeInfoProvider node info provider.
-     * @param resourceManager resource manager.
-     * @param networkManager network manager.
-     * @param logProvider log provider.
-     * @param resourceMonitor resource monitor.
+     * @param nodeID node ID.
+     * @param tlsCredentials TLS credentials.
+     * @param certProvider certificate provider.
+     * @param runtimeInfoProvider runtime info provider.
+     * @param resourceInfoProvider resource info provider.
+     * @param nodeConfigHandler node config handler.
      * @param launcher launcher.
-     * @param secureConnection flag indicating whether connection is secured.
-     * @returns Error.
+     * @param logProvider log provider.
+     * @param networkManager network manager.
+     * @param monitoring monitoring.
+     * @param instanceStatusProvider instance status provider.
+     * @param secureConnection secure connection flag.
+     * @return Error.
      */
-    Error Init(const Config& config, common::iamclient::TLSCredentialsItf& tlsCredentials,
-        iam::nodeinfoprovider::NodeInfoProviderItf& nodeInfoProvider,
-        sm::resourcemanager::ResourceManagerItf& resourceManager, sm::networkmanager::NetworkManagerItf& networkManager,
-        sm::logprovider::LogProviderItf& logProvider, aos::monitoring::ResourceMonitorItf& resourceMonitor,
-        sm::launcher::LauncherItf& launcher, bool secureConnection = true);
+    Error Init(const Config& config, const std::string& nodeID,
+        aos::common::iamclient::TLSCredentialsItf& tlsCredentials, aos::iamclient::CertProviderItf& certProvider,
+        launcher::RuntimeInfoProviderItf&         runtimeInfoProvider,
+        resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        nodeconfig::NodeConfigHandlerItf& nodeConfigHandler, launcher::LauncherItf& launcher,
+        logging::LogProviderItf& logProvider, networkmanager::NetworkManagerItf& networkManager,
+        aos::monitoring::MonitoringItf& monitoring, aos::instancestatusprovider::ProviderItf& instanceStatusProvider,
+        bool secureConnection = true);
 
     /**
      * Starts the client.
@@ -82,6 +84,8 @@ public:
      */
     Error Stop();
 
+    // aos::iamclient::CertListenerItf interface
+
     /**
      * Processes certificate updates.
      *
@@ -89,13 +93,7 @@ public:
      */
     void OnCertChanged(const CertInfo& info) override;
 
-    /**
-     * Sends monitoring data.
-     *
-     * @param monitoringData monitoring data.
-     * @return Error.
-     */
-    Error SendMonitoringData(const aos::monitoring::NodeMonitoringData& monitoringData) override;
+    // aos::alerts::SenderItf interface
 
     /**
      * Sends alert data.
@@ -105,43 +103,69 @@ public:
      */
     Error SendAlert(const AlertVariant& alert) override;
 
-    /**
-     * On log received event handler.
-     *
-     * @param log log.
-     * @return Error.
-     */
-    Error OnLogReceived(const PushLog& log) override;
+    // aos::monitoring::SenderItf interface
 
     /**
-     * Sends instances run status.
+     * Sends monitoring data.
      *
-     * @param instances instances status array.
+     * @param monitoringData monitoring data.
      * @return Error.
      */
-    Error InstancesRunStatus(const Array<InstanceStatus>& instances) override;
+    Error SendMonitoringData(const aos::monitoring::NodeMonitoringData& monitoringData) override;
+
+    // aos::logging::SenderItf interface
 
     /**
-     * Sends instances update status.
-     * @param instances instances status array.
+     * Sends log.
      *
+     * @param log log to send.
      * @return Error.
      */
-    Error InstancesUpdateStatus(const Array<InstanceStatus>& instances) override;
+    Error SendLog(const PushLog& log) override;
+
+    // aos::sm::launcher::SenderItf interface
+
+    /**
+     * Sends node instances statuses.
+     *
+     * @param statuses instances statuses.
+     */
+    void SendNodeInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
+
+    /**
+     * Sends update instances statuses.
+     *
+     * @param statuses instances statuses.
+     */
+    void SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
+
+    // aos::sm::imagemanager::BlobInfoProviderItf interface
+
+    /**
+     * Gets blobs info.
+     *
+     * @param digests list of blob digests.
+     * @param[out] urls blobs URLs.
+     * @return Error.
+     */
+    Error GetBlobsInfo(
+        const Array<StaticString<oci::cDigestLen>>& digests, Array<StaticString<cURLLen>>& urls) override;
+
+    // aos::cloudconnection::CloudConnectionItf interface
 
     /**
      * Subscribes to cloud connection events.
      *
-     * @param subscriber subscriber reference.
+     * @param listener listener reference.
      */
-    Error Subscribe(ConnectionSubscriberItf& subscriber) override;
+    Error SubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener) override;
 
     /**
      * Unsubscribes from cloud connection events.
      *
-     * @param subscriber subscriber reference.
+     * @param listener listener reference.
      */
-    void Unsubscribe(ConnectionSubscriberItf& subscriber) override;
+    Error UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener) override;
 
     /**
      * Destroys object instance.
@@ -149,9 +173,6 @@ public:
     ~SMClient() = default;
 
 private:
-    static constexpr auto cNumOnCertChangedThreads    = 1;
-    static constexpr auto cMaxNumOnCertChangedThreads = 1;
-
     using StubPtr = std::unique_ptr<smproto::SMService::StubInterface>;
     using StreamPtr
         = std::unique_ptr<grpc::ClientReaderWriterInterface<smproto::SMOutgoingMessages, smproto::SMIncomingMessages>>;
@@ -159,49 +180,35 @@ private:
     std::unique_ptr<grpc::ClientContext> CreateClientContext();
     StubPtr CreateStub(const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
 
-    bool SendNodeConfigStatus(const String& version, const Error& configErr);
-    bool SendRunStatus(const Array<InstanceStatus>& instances);
+    bool SendSMInfo();
+    bool SendNodeInstancesStatus();
 
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
-    void HandleIncomingMessages() noexcept;
 
-    bool ProcessGetNodeConfigStatus();
-    bool ProcessCheckNodeConfig(const smproto::CheckNodeConfig& request);
-    bool ProcessSetNodeConfig(const smproto::SetNodeConfig& request);
-    bool ProcessRunInstances(const smproto::RunInstances& request);
-    bool ProcessUpdateNetworks(const smproto::UpdateNetworks& request);
-    bool ProcessGetSystemLogRequest(const smproto::SystemLogRequest& request);
-    bool ProcessGetInstanceLogRequest(const smproto::InstanceLogRequest& request);
-    bool ProcessGetInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request);
-    bool ProcessOverrideEnvVars(const smproto::OverrideEnvVars& request);
-    bool ProcessGetAverageMonitoring();
-    bool ProcessConnectionStatus(const smproto::ConnectionStatus& request);
-
-    Config                                      mConfig           = {};
-    common::iamclient::TLSCredentialsItf*       mTLSCredentials   = nullptr;
-    iam::nodeinfoprovider::NodeInfoProviderItf* mNodeInfoProvider = nullptr;
-    sm::resourcemanager::ResourceManagerItf*    mResourceManager  = nullptr;
-    sm::networkmanager::NetworkManagerItf*      mNetworkManager   = nullptr;
-    sm::logprovider::LogProviderItf*            mLogProvider      = nullptr;
-    aos::monitoring::ResourceMonitorItf*        mResourceMonitor  = nullptr;
-    sm::launcher::LauncherItf*                  mLauncher         = nullptr;
-
-    std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
-    bool                                                   mCredentialListUpdated = false;
-    bool                                                   mSecureConnection      = true;
-    NodeInfoObsolete                                       mNodeInfo;
-    std::vector<ConnectionSubscriberItf*>                  mCloudConnectionSubscribers;
+    Config                                     mConfig {};
+    std::string                                mNodeID;
+    aos::common::iamclient::TLSCredentialsItf* mTLSCredentials {};
+    aos::iamclient::CertProviderItf*           mCertProvider {};
+    launcher::RuntimeInfoProviderItf*          mRuntimeInfoProvider {};
+    resourcemanager::ResourceInfoProviderItf*  mResourceInfoProvider {};
+    nodeconfig::NodeConfigHandlerItf*          mNodeConfigHandler {};
+    launcher::LauncherItf*                     mLauncher {};
+    logging::LogProviderItf*                   mLogProvider {};
+    networkmanager::NetworkManagerItf*         mNetworkManager {};
+    aos::monitoring::MonitoringItf*            mMonitoring {};
+    aos::instancestatusprovider::ProviderItf*  mInstanceStatusProvider {};
+    bool                                       mSecureConnection {};
+    std::shared_ptr<grpc::ChannelCredentials>  mCredentials;
 
     std::unique_ptr<grpc::ClientContext> mCtx;
     StreamPtr                            mStream;
     StubPtr                              mStub;
 
-    ThreadPool<cNumOnCertChangedThreads, cMaxNumOnCertChangedThreads> mCertChangedThreadPool;
-    std::thread                                                       mConnectionThread;
-    std::mutex                                                        mMutex;
-    bool                                                              mStopped = true;
-    std::condition_variable                                           mStoppedCV;
+    std::thread             mConnectionThread;
+    std::mutex              mMutex;
+    bool                    mStopped = true;
+    std::condition_variable mStoppedCV;
 };
 
 } // namespace aos::sm::smclient
