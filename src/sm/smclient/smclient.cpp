@@ -150,14 +150,48 @@ Error SMClient::SendLog(const PushLog& log)
     return ErrorEnum::eNone;
 }
 
-void SMClient::SendNodeInstancesStatuses(const Array<aos::InstanceStatus>& statuses)
+Error SMClient::SendNodeInstancesStatuses(const Array<aos::InstanceStatus>& statuses)
 {
-    (void)statuses;
+    std::lock_guard lock {mMutex};
+
+    if (!mStream) {
+        return Error(ErrorEnum::eFailed, "stream not available");
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    auto&                       nodeStatus = *outgoingMsg.mutable_node_instances_status();
+
+    for (const auto& status : statuses) {
+        common::pbconvert::ConvertToProto(status, *nodeStatus.add_instances());
+    }
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "can't send node instances statuses");
+    }
+
+    return ErrorEnum::eNone;
 }
 
-void SMClient::SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses)
+Error SMClient::SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses)
 {
-    (void)statuses;
+    std::lock_guard lock {mMutex};
+
+    if (!mStream) {
+        return Error(ErrorEnum::eFailed, "stream not available");
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    auto&                       updateStatus = *outgoingMsg.mutable_update_instances_status();
+
+    for (const auto& status : statuses) {
+        common::pbconvert::ConvertToProto(status, *updateStatus.add_instances());
+    }
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "can't send update instances statuses");
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error SMClient::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<StaticString<cURLLen>>& urls)

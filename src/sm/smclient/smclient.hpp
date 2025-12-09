@@ -129,15 +129,17 @@ public:
      * Sends node instances statuses.
      *
      * @param statuses instances statuses.
+     * @return Error.
      */
-    void SendNodeInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
+    Error SendNodeInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
 
     /**
      * Sends update instances statuses.
      *
      * @param statuses instances statuses.
+     * @return Error.
      */
-    void SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
+    Error SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
 
     // aos::sm::imagemanager::BlobInfoProviderItf interface
 
