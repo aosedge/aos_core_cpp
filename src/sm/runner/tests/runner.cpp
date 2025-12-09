@@ -32,7 +32,7 @@ std::filesystem::path GetRuntimeDir()
 
 class TestRunner : public Runner {
 public:
-    std::shared_ptr<SystemdConnItf> CreateSystemdConn() override { return mSystemd; }
+    std::shared_ptr<utils::SystemdConnItf> CreateSystemdConn() override { return mSystemd; }
 
     std::string GetSystemdDropInsDir() const override
     {
