@@ -128,7 +128,6 @@ protected:
 
 private:
     static constexpr auto cIAMAPIVersion       = 6;
-    static constexpr auto cProvisioned         = false;
     static constexpr auto cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto cRequestRetryMaxTry  = 3;
 
