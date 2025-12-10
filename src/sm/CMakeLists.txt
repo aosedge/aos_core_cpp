@@ -32,7 +32,7 @@ add_subdirectory(monitoring)
 # add_subdirectory(networkmanager)
 add_subdirectory(resourcemanager)
 # add_subdirectory(runner)
-# add_subdirectory(smclient)
+add_subdirectory(smclient)
 add_subdirectory(utils)
 
 # ######################################################################################################################
