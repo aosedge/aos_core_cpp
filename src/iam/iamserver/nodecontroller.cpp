@@ -31,15 +31,15 @@ NodeStreamHandler::Ptr NodeStreamHandler::Create(bool provisioned, NodeServerRea
 
 NodeStreamHandler::~NodeStreamHandler()
 {
+    if (mNodeID) {
+        mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
+    }
+
     Close();
 }
 
 void NodeStreamHandler::Close()
 {
-    if (mNodeID) {
-        mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
-    }
-
     if (mIsClosed.exchange(true)) {
         return;
     }
