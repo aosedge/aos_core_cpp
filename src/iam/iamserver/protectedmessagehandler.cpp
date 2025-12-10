@@ -85,7 +85,7 @@ grpc::Status ProtectedMessageHandler::RegisterNode(grpc::ServerContext*         
 {
     LOG_DBG() << "Process register node: handler=protected";
 
-    return GetNodeController()->HandleRegisterNodeStream(cProvisioned, stream, context, GetNodeManager());
+    return GetNodeController()->HandleRegisterNodeStream(stream, context, GetNodeManager(), false);
 }
 
 /***********************************************************************************************************************

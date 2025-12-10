@@ -415,7 +415,7 @@ grpc::Status PublicMessageHandler::RegisterNode(grpc::ServerContext*            
 {
     LOG_DBG() << "Process register node: handler=public";
 
-    return GetNodeController()->HandleRegisterNodeStream(cProvisioned, stream, context, GetNodeManager());
+    return GetNodeController()->HandleRegisterNodeStream(stream, context, GetNodeManager(), true);
 }
 
 } // namespace aos::iam::iamserver

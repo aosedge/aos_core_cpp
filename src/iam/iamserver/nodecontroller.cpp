@@ -23,10 +23,10 @@ namespace aos::iam::iamserver {
  * Public
  **********************************************************************************************************************/
 
-NodeStreamHandler::Ptr NodeStreamHandler::Create(bool provisioned, NodeServerReaderWriter* stream,
-    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
+NodeStreamHandler::Ptr NodeStreamHandler::Create(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+    iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry, bool isPublic)
 {
-    return NodeStreamHandler::Ptr(new NodeStreamHandler(provisioned, stream, context, nodeManager, streamRegistry));
+    return NodeStreamHandler::Ptr(new NodeStreamHandler(stream, context, nodeManager, streamRegistry, isPublic));
 }
 
 NodeStreamHandler::~NodeStreamHandler()
@@ -276,13 +276,13 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
  * Private
  **********************************************************************************************************************/
 
-NodeStreamHandler::NodeStreamHandler(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
-    iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry)
-    : mProvisioned(provisioned)
-    , mStream(stream)
+NodeStreamHandler::NodeStreamHandler(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+    iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry, bool isPublic)
+    : mStream(stream)
     , mContext(context)
     , mNodeManager(nodeManager)
     , mStreamRegistry(streamRegistry)
+    , mIsPublic(isPublic)
 {
 }
 
@@ -330,9 +330,10 @@ Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return err;
     }
 
-    if (nodeInfo->mState == NodeStateEnum::eUnprovisioned) {
-        LOG_WRN() << "Node is not allowed" << Log::Field("nodeID", info.node_id().c_str())
-                  << Log::Field("state", info.state().c_str());
+    if ((nodeInfo->mState != NodeStateEnum::eUnprovisioned && mIsPublic)
+        || (nodeInfo->mState == NodeStateEnum::eUnprovisioned && !mIsPublic)) {
+        LOG_WRN() << "Node in this state is not allowed" << Log::Field("nodeID", info.node_id().c_str())
+                  << Log::Field("state", info.state().c_str()) << Log::Field("isPublic", mIsPublic);
 
         mStreamRegistry->UnlinkNodeIDFromHandler(shared_from_this());
 
@@ -389,8 +390,8 @@ void NodeController::Close()
     mHandlers.clear();
 }
 
-grpc::Status NodeController::HandleRegisterNodeStream(bool provisioned, NodeServerReaderWriter* stream,
-    grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager)
+grpc::Status NodeController::HandleRegisterNodeStream(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+    iam::nodemanager::NodeManagerItf* nodeManager, bool isPublic)
 {
     {
         std::lock_guard lock {mMutex};
@@ -403,7 +404,7 @@ grpc::Status NodeController::HandleRegisterNodeStream(bool provisioned, NodeServ
     }
 
     auto handler = NodeStreamHandler::Create(
-        provisioned, stream, context, nodeManager, static_cast<NodeStreamHandler::StreamRegistryItf*>(this));
+        stream, context, nodeManager, static_cast<NodeStreamHandler::StreamRegistryItf*>(this), isPublic);
 
     Store(handler);
 
