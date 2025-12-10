@@ -258,7 +258,8 @@ Error IAMServer::OnEncryptDisk(const String& password)
 
 void IAMServer::OnNodeInfoChanged(const NodeInfo& info)
 {
-    LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", state=" << info.mState;
+    LOG_DBG() << "Process on node info changed" << Log::Field("nodeID", info.mNodeID)
+              << Log::Field("state", info.mState) << Log::Field("connected", info.mIsConnected);
 
     mPublicMessageHandler.OnNodeInfoChanged(info);
     mProtectedMessageHandler.OnNodeInfoChanged(info);
