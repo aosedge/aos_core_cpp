@@ -177,12 +177,12 @@ TEST_F(PublicMessageHandlerTest, SubscribeCurrentNodeChanged)
     nodeInfoChanged->mNodeType = "test-type-updated";
 
     // Node info change notification for another node - should be ignored.
-    mPublicMessageHandler.OnNodeInfoChange(*nodeInfoChanged);
+    mPublicMessageHandler.OnNodeInfoChanged(*nodeInfoChanged);
 
     nodeInfoChanged->mNodeID = "node0";
 
     // Node info change notification for this node - should be processed.
-    mPublicMessageHandler.OnNodeInfoChange(*nodeInfoChanged);
+    mPublicMessageHandler.OnNodeInfoChanged(*nodeInfoChanged);
 
     ASSERT_NE(reader.get(), nullptr) << "Failed to create stream reader";
 
@@ -624,7 +624,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeNodeChanged)
     nodeInfo.mNodeID = "test-node-id";
     nodeInfo.mTitle  = "test-title";
 
-    mPublicMessageHandler.OnNodeInfoChange(nodeInfo);
+    mPublicMessageHandler.OnNodeInfoChanged(nodeInfo);
 
     iamproto::NodeInfo response;
     ASSERT_TRUE(stream->Read(&response));

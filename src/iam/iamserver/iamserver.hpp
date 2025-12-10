@@ -34,7 +34,7 @@ namespace aos::iam::iamserver {
 /**
  * IAM GRPC server
  */
-class IAMServer : public nodemanager::NodeInfoListenerItf,
+class IAMServer : public aos::iamclient::NodeInfoListenerItf,
                   public aos::iamclient::SubjectsListenerItf,
                   public provisionmanager::ProvisionManagerCallbackItf,
                   private aos::iamclient::CertListenerItf {
@@ -117,14 +117,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfo& info) override;
-
-    /**
-     * Node info removed notification.
-     *
-     * @param id id of the node been removed.
-     */
-    void OnNodeRemoved(const String& id) override;
+    void OnNodeInfoChanged(const NodeInfo& info) override;
 
 private:
     // identhandler::SubjectsObserverItf interface

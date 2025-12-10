@@ -62,7 +62,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 }
 
-void PublicMessageHandler::OnNodeInfoChange(const NodeInfo& info)
+void PublicMessageHandler::OnNodeInfoChanged(const NodeInfo& info)
 {
     const auto pbInfo = common::pbconvert::ConvertToProto(info);
 
@@ -71,11 +71,6 @@ void PublicMessageHandler::OnNodeInfoChange(const NodeInfo& info)
     }
 
     mNodeChangedController.WriteToStreams(pbInfo);
-}
-
-void PublicMessageHandler::OnNodeRemoved(const String& nodeID)
-{
-    (void)nodeID;
 }
 
 void PublicMessageHandler::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
@@ -123,15 +118,15 @@ void PublicMessageHandler::Close()
  * Protected
  **********************************************************************************************************************/
 
-Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeState& state, bool provisioned)
+Error PublicMessageHandler::SetNodeState(const std::string& nodeID, const NodeState& state)
 {
     if (ProcessOnThisNode(nodeID)) {
-        if (auto err = mNodeInfoProvider->SetNodeState(state, provisioned); !err.IsNone()) {
+        if (auto err = mCurrentNodeHandler->SetState(state); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    if (auto err = mNodeManager->SetNodeState(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), state, provisioned);
+    if (auto err = mNodeManager->SetNodeState(nodeID.empty() ? mNodeInfo.mNodeID : nodeID.c_str(), state);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }

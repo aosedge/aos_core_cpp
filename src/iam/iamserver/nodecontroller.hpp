@@ -10,6 +10,7 @@
 
 #include <future>
 #include <map>
+#include <optional>
 #include <string>
 
 #include <Poco/Event.h>
@@ -81,7 +82,13 @@ public:
      */
     void Close();
 
+    /**
+     * Handles node stream.
+     *
+     * @return Error.
+     */
     Error HandleStream();
+
     /**
      * Sends get cert types request and waits for response with timeout.
      *
@@ -178,6 +185,7 @@ private:
         const std::chrono::seconds responseTimeout);
     Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
+    std::optional<std::string>        mNodeID;
     bool                              mProvisioned {};
     NodeServerReaderWriter*           mStream {};
     grpc::ServerContext*              mContext {};

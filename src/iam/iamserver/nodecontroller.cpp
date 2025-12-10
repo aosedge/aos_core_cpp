@@ -31,6 +31,10 @@ NodeStreamHandler::Ptr NodeStreamHandler::Create(bool provisioned, NodeServerRea
 
 NodeStreamHandler::~NodeStreamHandler()
 {
+    if (mNodeID) {
+        mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
+    }
+
     Close();
 }
 
@@ -335,9 +339,13 @@ Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return ErrorEnum::eNone;
     }
 
+    nodeInfo->mIsConnected = true;
+
     if (auto err = mNodeManager->SetNodeInfo(*nodeInfo); !err.IsNone()) {
         return err;
     }
+
+    mNodeID = info.node_id();
 
     mStreamRegistry->LinkNodeIDToHandler(info.node_id(), shared_from_this());
 

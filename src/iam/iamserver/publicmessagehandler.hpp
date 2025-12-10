@@ -43,9 +43,9 @@ class PublicMessageHandler :
     protected iamproto::IAMPublicIdentityService::Service,
     protected iamproto::IAMPublicPermissionsService::Service,
     protected iamproto::IAMPublicNodesService::Service,
-    // NodeInfo listener interface.
-    public iam::nodemanager::NodeInfoListenerItf,
-    // identhandler subject observer interface
+    // Node info listener interface
+    public aos::iamclient::NodeInfoListenerItf,
+    // Ident handler subject observer interface
     public aos::iamclient::SubjectsListenerItf {
 public:
     /**
@@ -74,14 +74,7 @@ public:
      *
      * @param info node info.
      */
-    void OnNodeInfoChange(const NodeInfo& info) override;
-
-    /**
-     * Node info removed notification.
-     *
-     * @param id id of the node been removed.
-     */
-    void OnNodeRemoved(const String& id) override;
+    void OnNodeInfoChanged(const NodeInfo& info) override;
 
     /**
      * Notifies about subjects change.
@@ -108,8 +101,8 @@ protected:
     NodeController*                          GetNodeController() { return mNodeController; }
     NodeInfo&                                GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*        GetNodeManager() { return mNodeManager; }
-    Error SetNodeState(const std::string& nodeID, const NodeState& state, bool provisioned);
-    bool  ProcessOnThisNode(const std::string& nodeID);
+    Error                                    SetNodeState(const std::string& nodeID, const NodeState& state);
+    bool                                     ProcessOnThisNode(const std::string& nodeID);
 
     template <typename R>
     grpc::Status RequestWithRetry(R request)

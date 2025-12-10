@@ -138,14 +138,12 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState)
-        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
-            EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
-            EXPECT_TRUE(provisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+        EXPECT_EQ(nodeID, "node0");
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
 
-            return ErrorEnum::eNone;
-        }));
+        return ErrorEnum::eNone;
+    }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
 
@@ -167,14 +165,12 @@ TEST_F(ProtectedMessageHandlerTest, PauseNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState)
-        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
-            EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
-            EXPECT_TRUE(provisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+        EXPECT_EQ(nodeID, "node0");
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::ePaused);
 
-            return ErrorEnum::eFailed;
-        }));
+        return ErrorEnum::eFailed;
+    }));
 
     auto status = clientStub->PauseNode(&context, request, &response);
 
@@ -196,14 +192,12 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeSucceeds)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState)
-        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
-            EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
-            EXPECT_TRUE(provisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+        EXPECT_EQ(nodeID, "node0");
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
 
-            return ErrorEnum::eNone;
-        }));
+        return ErrorEnum::eNone;
+    }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
 
@@ -225,14 +219,12 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mNodeManager, SetNodeState)
-        .WillOnce(Invoke([](const String& nodeID, NodeState state, bool provisioned) {
-            EXPECT_EQ(nodeID, "node0");
-            EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
-            EXPECT_TRUE(provisioned);
+    EXPECT_CALL(mNodeManager, SetNodeState).WillOnce(Invoke([](const String& nodeID, NodeState state) {
+        EXPECT_EQ(nodeID, "node0");
+        EXPECT_EQ(state.GetValue(), NodeStateEnum::eProvisioned);
 
-            return ErrorEnum::eFailed;
-        }));
+        return ErrorEnum::eFailed;
+    }));
 
     auto status = clientStub->ResumeNode(&context, request, &response);
 
