@@ -10,14 +10,18 @@
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 #include <core/cm/nodeinfoprovider/itf/sminforeceiver.hpp>
+#include <core/common/monitoring/itf/monitoringdata.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/types/alerts.hpp>
+#include <core/common/types/common.hpp>
 #include <core/common/types/envvars.hpp>
 #include <core/common/types/instance.hpp>
 #include <core/common/types/log.hpp>
 #include <core/common/types/monitoring.hpp>
 #include <core/common/types/network.hpp>
 #include <core/common/types/unitconfig.hpp>
+
+#include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 namespace aos::common::pbconvert {
 
@@ -162,6 +166,63 @@ Error ConvertFromProto(
  * @return Error
  */
 Error ConvertFromProto(const servicemanager::v5::SMInfo& src, aos::cm::nodeinfoprovider::SMInfo& dst);
+
+/**
+ * Converts aos runtime info to protobuf.
+ *
+ * @param src aos runtime info.
+ * @param[out] dst protobuf runtime info.
+ */
+void ConvertToProto(const RuntimeInfo& src, servicemanager::v5::RuntimeInfo& dst);
+
+/**
+ * Converts aos resource info to protobuf.
+ *
+ * @param src aos resource info.
+ * @param[out] dst protobuf resource info.
+ */
+void ConvertToProto(const ResourceInfo& src, servicemanager::v5::ResourceInfo& dst);
+
+/**
+ * Converts aos instance status to protobuf.
+ *
+ * @param src aos instance status.
+ * @param[out] dst protobuf instance status.
+ */
+void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatus& dst);
+
+/**
+ * Converts aos monitoring data to protobuf.
+ *
+ * @param src aos monitoring data.
+ * @param timestamp timestamp.
+ * @param[out] dst protobuf monitoring data.
+ */
+void ConvertToProto(const MonitoringData& src, const Time& timestamp, servicemanager::v5::MonitoringData& dst);
+
+/**
+ * Converts aos node monitoring data to protobuf instant monitoring.
+ *
+ * @param src aos node monitoring data.
+ * @param[out] dst protobuf instant monitoring.
+ */
+void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::InstantMonitoring& dst);
+
+/**
+ * Converts aos push log to protobuf log data.
+ *
+ * @param src aos push log.
+ * @param[out] dst protobuf log data.
+ */
+void ConvertToProto(const PushLog& src, servicemanager::v5::LogData& dst);
+
+/**
+ * Converts aos alert variant to protobuf alert.
+ *
+ * @param src aos alert variant.
+ * @param[out] dst protobuf alert.
+ */
+void ConvertToProto(const AlertVariant& src, servicemanager::v5::Alert& dst);
 
 } // namespace aos::common::pbconvert
 
