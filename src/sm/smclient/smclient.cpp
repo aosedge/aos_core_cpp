@@ -131,21 +131,60 @@ void SMClient::OnCertChanged(const CertInfo& info)
 
 Error SMClient::SendAlert(const AlertVariant& alert)
 {
-    (void)alert;
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Send alert" << Log::Field("alert", alert);
+
+    if (!mStream) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "stream not available"));
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    common::pbconvert::ConvertToProto(alert, *outgoingMsg.mutable_alert());
+
+    if (!mStream->Write(outgoingMsg)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send alert"));
+    }
 
     return ErrorEnum::eNone;
 }
 
 Error SMClient::SendMonitoringData(const aos::monitoring::NodeMonitoringData& monitoringData)
 {
-    (void)monitoringData;
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Send monitoring data";
+
+    if (!mStream) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "stream not available"));
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    common::pbconvert::ConvertToProto(monitoringData, *outgoingMsg.mutable_instant_monitoring());
+
+    if (!mStream->Write(outgoingMsg)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send monitoring data"));
+    }
 
     return ErrorEnum::eNone;
 }
 
 Error SMClient::SendLog(const PushLog& log)
 {
-    (void)log;
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Send log";
+
+    if (!mStream) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "stream not available"));
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    common::pbconvert::ConvertToProto(log, *outgoingMsg.mutable_log());
+
+    if (!mStream->Write(outgoingMsg)) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "can't send log"));
+    }
 
     return ErrorEnum::eNone;
 }
