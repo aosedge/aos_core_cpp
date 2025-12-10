@@ -111,8 +111,12 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = nodeManager.SetNodeInfo(*nodeInfo); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (nodeInfo->IsMainNode()) {
+        nodeInfo->mIsConnected = true;
+
+        if (err = nodeManager.SetNodeInfo(*nodeInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     if (err = mPublicMessageHandler.Init(
@@ -147,8 +151,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    if (err = nodeManager.SubscribeNodeInfoChange(static_cast<nodemanager::NodeInfoListenerItf&>(*this));
-        !err.IsNone()) {
+    if (err = nodeManager.SubscribeListener(static_cast<iamclient::NodeInfoListenerItf&>(*this)); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -253,20 +256,12 @@ Error IAMServer::OnEncryptDisk(const String& password)
     return ExecCommand("Encrypt disk", mConfig.mDiskEncryptionCmdArgs);
 }
 
-void IAMServer::OnNodeInfoChange(const NodeInfo& info)
+void IAMServer::OnNodeInfoChanged(const NodeInfo& info)
 {
     LOG_DBG() << "Process on node info changed: nodeID=" << info.mNodeID << ", state=" << info.mState;
 
-    mPublicMessageHandler.OnNodeInfoChange(info);
-    mProtectedMessageHandler.OnNodeInfoChange(info);
-}
-
-void IAMServer::OnNodeRemoved(const String& id)
-{
-    LOG_DBG() << "Process on node removed: nodeID=" << id;
-
-    mPublicMessageHandler.OnNodeRemoved(id);
-    mProtectedMessageHandler.OnNodeRemoved(id);
+    mPublicMessageHandler.OnNodeInfoChanged(info);
+    mProtectedMessageHandler.OnNodeInfoChanged(info);
 }
 
 /***********************************************************************************************************************

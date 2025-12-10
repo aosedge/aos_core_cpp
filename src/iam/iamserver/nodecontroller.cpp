@@ -36,6 +36,10 @@ NodeStreamHandler::~NodeStreamHandler()
 
 void NodeStreamHandler::Close()
 {
+    if (mNodeID) {
+        mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
+    }
+
     if (mIsClosed.exchange(true)) {
         return;
     }
@@ -335,9 +339,13 @@ Error NodeStreamHandler::HandleNodeInfo(const iamproto::NodeInfo& info)
         return ErrorEnum::eNone;
     }
 
+    nodeInfo->mIsConnected = true;
+
     if (auto err = mNodeManager->SetNodeInfo(*nodeInfo); !err.IsNone()) {
         return err;
     }
+
+    mNodeID = info.node_id();
 
     mStreamRegistry->LinkNodeIDToHandler(info.node_id(), shared_from_this());
 
