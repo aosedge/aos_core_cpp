@@ -54,6 +54,8 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 
     if (mNodeInfo.IsMainNode()) {
+        LOG_INF() << "Register services on main node";
+
         if (GetIdentProvider() != nullptr) {
             builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
         }
@@ -150,9 +152,9 @@ bool PublicMessageHandler::ProcessOnThisNode(const std::string& nodeID)
 grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerContext* context,
     [[maybe_unused]] const google::protobuf::Empty* request, iamanager::APIVersion* response)
 {
-    LOG_DBG() << "Process get API version";
+    LOG_DBG() << "Process get API version" << Log::Field("version", cIAMAPIVersion);
 
-    response->set_version(cIamAPIVersion);
+    response->set_version(cIAMAPIVersion);
 
     return grpc::Status::OK;
 }
@@ -361,7 +363,7 @@ grpc::Status PublicMessageHandler::GetPermissions([[maybe_unused]] grpc::ServerC
 grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerContext* context,
     [[maybe_unused]] const google::protobuf::Empty* request, iamproto::NodesID* response)
 {
-    LOG_DBG() << "Public message handler. Process get all node IDs";
+    LOG_DBG() << "Process get all node IDs";
 
     StaticArray<StaticString<cIDLen>, cMaxNumNodes> nodeIDs;
 
@@ -371,7 +373,11 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
+    LOG_DBG() << "Found node IDs: count=" << nodeIDs.Size();
+
     for (const auto& id : nodeIDs) {
+        LOG_DBG() << "Found node ID: " << id.CStr();
+
         response->add_ids(id.CStr());
     }
 
