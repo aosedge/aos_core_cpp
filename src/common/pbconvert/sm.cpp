@@ -750,4 +750,174 @@ Error ConvertFromProto(const servicemanager::v5::SMInfo& src, aos::cm::nodeinfop
     return ErrorEnum::eNone;
 }
 
+void ConvertToProto(const RuntimeInfo& src, servicemanager::v5::RuntimeInfo& dst)
+{
+    dst.set_runtime_id(src.mRuntimeID.CStr());
+    dst.set_type(src.mRuntimeType.CStr());
+
+    if (src.mMaxDMIPS.HasValue()) {
+        dst.set_max_dmips(*src.mMaxDMIPS);
+    }
+
+    if (src.mAllowedDMIPS.HasValue()) {
+        dst.set_allowed_dmips(*src.mAllowedDMIPS);
+    }
+
+    if (src.mTotalRAM.HasValue()) {
+        dst.set_total_ram(*src.mTotalRAM);
+    }
+
+    if (src.mAllowedRAM.HasValue()) {
+        dst.set_allowed_ram(*src.mAllowedRAM);
+    }
+
+    dst.set_max_instances(src.mMaxInstances);
+}
+
+void ConvertToProto(const ResourceInfo& src, servicemanager::v5::ResourceInfo& dst)
+{
+    dst.set_name(src.mName.CStr());
+    dst.set_shared_count(src.mSharedCount);
+}
+
+void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatus& dst)
+{
+    dst.mutable_instance()->CopyFrom(ConvertToProto(static_cast<const InstanceIdent&>(src)));
+    dst.set_version(src.mVersion.CStr());
+    dst.set_preinstalled(src.mPreinstalled);
+    dst.set_runtime_id(src.mRuntimeID.CStr());
+    dst.set_manifest_digest(src.mManifestDigest.CStr());
+
+    for (const auto& envVarStatus : src.mEnvVarsStatuses) {
+        auto* protoEnvVarStatus = dst.add_env_vars();
+        protoEnvVarStatus->set_name(envVarStatus.mName.CStr());
+        protoEnvVarStatus->mutable_error()->CopyFrom(ConvertAosErrorToProto(envVarStatus.mError));
+    }
+
+    dst.set_state(src.mState.ToString().CStr());
+    dst.mutable_error()->CopyFrom(ConvertAosErrorToProto(src.mError));
+}
+
+void ConvertToProto(const MonitoringData& src, const Time& timestamp, servicemanager::v5::MonitoringData& dst)
+{
+    dst.mutable_timestamp()->CopyFrom(TimestampToPB(timestamp));
+    dst.set_ram(src.mRAM);
+    dst.set_cpu(src.mCPU);
+    dst.set_download(src.mDownload);
+    dst.set_upload(src.mUpload);
+
+    for (const auto& partition : src.mPartitions) {
+        auto* protoPartition = dst.add_partitions();
+        protoPartition->set_name(partition.mName.CStr());
+        protoPartition->set_used_size(partition.mUsedSize);
+    }
+}
+
+void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::InstantMonitoring& dst)
+{
+    ConvertToProto(src.mMonitoringData, src.mTimestamp, *dst.mutable_node_monitoring());
+
+    for (const auto& instance : src.mInstances) {
+        auto* instanceMonitoring = dst.add_instances_monitoring();
+        instanceMonitoring->mutable_instance()->CopyFrom(ConvertToProto(instance.mInstanceIdent));
+        instanceMonitoring->set_runtime_id(instance.mRuntimeID.CStr());
+        ConvertToProto(instance.mMonitoringData, src.mTimestamp, *instanceMonitoring->mutable_monitoring_data());
+    }
+}
+
+void ConvertToProto(const PushLog& src, servicemanager::v5::LogData& dst)
+{
+    dst.set_correlation_id(src.mCorrelationID.CStr());
+    dst.set_part_count(src.mPartsCount);
+    dst.set_part(src.mPart);
+    dst.set_data(src.mContent.CStr());
+    dst.set_status(src.mStatus.ToString().CStr());
+    dst.mutable_error()->CopyFrom(ConvertAosErrorToProto(src.mError));
+}
+
+/***********************************************************************************************************************
+ * Alert conversion
+ **********************************************************************************************************************/
+
+class AlertVisitor : public aos::StaticVisitor<void> {
+public:
+    explicit AlertVisitor(servicemanager::v5::Alert& alert)
+        : mAlert(alert)
+    {
+    }
+
+    void Visit(const aos::SystemAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+        mAlert.mutable_system_alert()->set_message(val.mMessage.CStr());
+    }
+
+    void Visit(const aos::CoreAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+
+        auto* coreAlert = mAlert.mutable_core_alert();
+
+        coreAlert->set_core_component(val.mCoreComponent.ToString().CStr());
+        coreAlert->set_message(val.mMessage.CStr());
+    }
+
+    void Visit(const aos::SystemQuotaAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+
+        auto* quotaAlert = mAlert.mutable_system_quota_alert();
+
+        quotaAlert->set_parameter(val.mParameter.CStr());
+        quotaAlert->set_value(val.mValue);
+        quotaAlert->set_status(val.mState.ToString().CStr());
+    }
+
+    void Visit(const aos::InstanceQuotaAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+
+        auto* quotaAlert = mAlert.mutable_instance_quota_alert();
+
+        quotaAlert->mutable_instance()->CopyFrom(ConvertToProto(static_cast<const aos::InstanceIdent&>(val)));
+        quotaAlert->set_parameter(val.mParameter.CStr());
+        quotaAlert->set_value(val.mValue);
+        quotaAlert->set_status(val.mState.ToString().CStr());
+    }
+
+    void Visit(const aos::ResourceAllocateAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+
+        auto* resourceAlert = mAlert.mutable_resource_allocate_alert();
+
+        resourceAlert->mutable_instance()->CopyFrom(ConvertToProto(static_cast<const aos::InstanceIdent&>(val)));
+        resourceAlert->set_resource(val.mResource.CStr());
+        resourceAlert->set_message(val.mMessage.CStr());
+    }
+
+    void Visit([[maybe_unused]] const aos::DownloadAlert& val) const { }
+
+    void Visit(const aos::InstanceAlert& val) const
+    {
+        mAlert.mutable_timestamp()->CopyFrom(TimestampToPB(val.mTimestamp));
+
+        auto* instanceAlert = mAlert.mutable_instance_alert();
+
+        instanceAlert->mutable_instance()->CopyFrom(ConvertToProto(static_cast<const aos::InstanceIdent&>(val)));
+        instanceAlert->set_service_version(val.mVersion.CStr());
+        instanceAlert->set_message(val.mMessage.CStr());
+    }
+
+private:
+    servicemanager::v5::Alert& mAlert;
+};
+
+void ConvertToProto(const AlertVariant& src, servicemanager::v5::Alert& dst)
+{
+    AlertVisitor visitor(dst);
+
+    src.ApplyVisitor(visitor);
+}
+
 } // namespace aos::common::pbconvert
