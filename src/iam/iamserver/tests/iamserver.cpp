@@ -315,7 +315,7 @@ TEST_F(IAMServerTest, OnNodeInfoChange)
 
     NodeInfo nodeInfo;
 
-    ASSERT_NO_THROW(mServer.OnNodeInfoChange(nodeInfo));
+    ASSERT_NO_THROW(mServer.OnNodeInfoChanged(nodeInfo));
     ASSERT_TRUE(mServer.Stop().IsNone());
 }
 

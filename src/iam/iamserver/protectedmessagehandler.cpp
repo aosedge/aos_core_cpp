@@ -113,7 +113,7 @@ grpc::Status ProtectedMessageHandler::PauseNode([[maybe_unused]] grpc::ServerCon
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::ePaused, true); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::ePaused); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -143,7 +143,7 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned, true); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -247,7 +247,7 @@ grpc::Status ProtectedMessageHandler::FinishProvisioning([[maybe_unused]] grpc::
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned, true); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eProvisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -285,7 +285,7 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
         }
     }
 
-    if (auto err = SetNodeState(nodeID, NodeStateEnum::eUnprovisioned, false); !err.IsNone()) {
+    if (auto err = SetNodeState(nodeID, NodeStateEnum::eUnprovisioned); !err.IsNone()) {
         LOG_ERR() << "Set node state failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);

@@ -64,8 +64,8 @@ public:
     // cppcheck-suppress duplInheritedMember
     void RegisterServices(grpc::ServerBuilder& builder);
 
-    using PublicMessageHandler::OnNodeInfoChange;
-    using PublicMessageHandler::OnNodeRemoved;
+    // iamclient::NodeInfoListenerItf interface
+    using PublicMessageHandler::OnNodeInfoChanged;
 
     // identhandler::SubjectsObserverItf interface
     using PublicMessageHandler::SubjectsChanged;
