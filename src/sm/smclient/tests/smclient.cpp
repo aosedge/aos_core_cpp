@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,366 +9,28 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/message_differencer.h>
-#include <grpcpp/server_builder.h>
 
-#include <core/common/tests/mocks/connectionprovidermock.hpp>
-#include <core/common/tests/mocks/cryptomock.hpp>
-#include <core/common/tests/mocks/logprovidermock.hpp>
-#include <core/common/tests/mocks/monitoringmock.hpp>
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
-#include <core/iam/tests/mocks/certhandlermock.hpp>
-#include <core/iam/tests/mocks/nodeinfoprovidermock.hpp>
-#include <core/iam/tests/mocks/provisionmanagermock.hpp>
+
+#include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
 #include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
-
-#include <servicemanager/v4/servicemanager.grpc.pb.h>
-
-#include <common/tests/mocks/iamclientmock.hpp>
 #include <sm/smclient/smclient.hpp>
+#include <core/common/tests/mocks/instancestatusprovidermock.hpp>
+#include <sm/smclient/tests/mocks/logprovidermock.hpp>
+#include <sm/smclient/tests/mocks/monitoringmock.hpp>
+#include <sm/smclient/tests/mocks/nodeconfighandlermock.hpp>
+#include <sm/smclient/tests/mocks/runtimeinfoprovidermock.hpp>
+#include <sm/smclient/tests/stubs/smservicestub.hpp>
 
 using namespace testing;
 using namespace aos;
 
 /***********************************************************************************************************************
- * Test utils
+ * Test fixture
  **********************************************************************************************************************/
-
-namespace common::v1 {
-
-bool operator==(const ErrorInfo& lhs, const ErrorInfo& rhs)
-{
-    return google::protobuf::util::MessageDifferencer::Equals(lhs, rhs);
-}
-
-} // namespace common::v1
-
-namespace servicemanager::v4 {
-bool operator==(const smproto::NodeConfigStatus& lhs, const smproto::NodeConfigStatus& rhs)
-{
-    return google::protobuf::util::MessageDifferencer::Equals(lhs, rhs);
-}
-
-} // namespace servicemanager::v4
-
-namespace {
-
-aos::NodeInfoObsolete CreateNodeInfo()
-{
-    aos::NodeInfoObsolete result;
-
-    result.mNodeID = "test-node-id";
-
-    return result;
-}
-
-aos::monitoring::NodeMonitoringData CreateNodeMonitoringData()
-{
-    aos::monitoring::NodeMonitoringData monitoringData;
-
-    monitoringData.mNodeID                   = "test-node-id";
-    monitoringData.mMonitoringData.mCPU      = 1;
-    monitoringData.mMonitoringData.mRAM      = 2;
-    monitoringData.mMonitoringData.mDownload = 3;
-    monitoringData.mMonitoringData.mUpload   = 4;
-
-    return monitoringData;
-}
-
-aos::AlertVariant CreateAlert()
-{
-    aos::AlertVariant result;
-    aos::SystemAlert  systemAlert;
-
-    systemAlert.mMessage = "test-message";
-
-    result.SetValue<aos::SystemAlert>(systemAlert);
-
-    return result;
-}
-
-aos::PushLog CreatePushLog()
-{
-    aos::PushLog log;
-
-    log.mContent    = "test log";
-    log.mLogID      = "test-log-id";
-    log.mPart       = 0;
-    log.mPartsCount = 1;
-
-    return log;
-}
-
-aos::InstanceStatusArray CreateInstanceStatus()
-{
-    aos::InstanceStatusArray instances;
-    aos::InstanceStatus      instance;
-
-    static_cast<aos::InstanceIdent&>(instance) = aos::InstanceIdent {"service-id", "instance-id", 0};
-    instance.mState                            = aos::InstanceStateEnum::eActive;
-    instance.mVersion                          = "1.0.0";
-
-    instances.PushBack(instance);
-
-    return instances;
-}
-
-} // namespace
-
-/***********************************************************************************************************************
- * Suite
- **********************************************************************************************************************/
-
-class TestSMService : public smproto::SMService::Service {
-public:
-    TestSMService(const std::string& url) { mServer = CreateServer(url, grpc::InsecureServerCredentials()); }
-
-    ~TestSMService()
-    {
-        if (mCtx) {
-            mCtx->TryCancel();
-        }
-    }
-
-    grpc::Status RegisterSM(grpc::ServerContext*                                            context,
-        grpc::ServerReaderWriter<smproto::SMIncomingMessages, smproto::SMOutgoingMessages>* stream) override
-    {
-        LOG_INF() << "Test server message thread started";
-
-        try {
-
-            mStream = stream;
-            mCtx    = context;
-
-            smproto::SMOutgoingMessages incomingMsg;
-
-            while (stream->Read(&incomingMsg)) {
-                {
-                    if (incomingMsg.has_node_config_status()) {
-                        std::lock_guard lock {mLock};
-
-                        OnNodeConfigStatus(incomingMsg.node_config_status());
-
-                        mNodeConfigStatusReceived = true;
-                        mNodeConfigStatusCV.notify_all();
-                        continue;
-                    } else if (incomingMsg.has_run_instances_status()) {
-                        OnRunInstancesStatus(incomingMsg.run_instances_status());
-                    } else if (incomingMsg.has_update_instances_status()) {
-                        OnUpdateInstancesStatus(incomingMsg.update_instances_status());
-                    } else if (incomingMsg.has_override_env_var_status()) {
-                        OnOverrideEnvVarStatus(incomingMsg.override_env_var_status());
-                    } else if (incomingMsg.has_log()) {
-                        OnLogData(incomingMsg.log());
-                    } else if (incomingMsg.has_instant_monitoring()) {
-                        OnInstantMonitoring(incomingMsg.instant_monitoring());
-                    } else if (incomingMsg.has_average_monitoring()) {
-                        OnAverageMonitoring(incomingMsg.average_monitoring());
-                    } else if (incomingMsg.has_alert()) {
-                        OnAlert(incomingMsg.alert());
-                    } else if (incomingMsg.has_image_content_request()) {
-                        OnImageContentRequest(incomingMsg.image_content_request());
-                    } else if (incomingMsg.has_clock_sync_request()) {
-                        OnClockSyncRequest(incomingMsg.clock_sync_request());
-                    } else {
-                        LOG_ERR() << "Unknown message received in test server";
-
-                        continue;
-                    }
-
-                    {
-                        std::lock_guard lock {mLock};
-
-                        mResponseCV.notify_all();
-                        mResponseReceived = true;
-                    }
-                }
-            }
-        } catch (const std::exception& e) {
-            LOG_ERR() << e.what();
-        }
-
-        LOG_DBG() << "Test server message thread stoped";
-
-        mStream = nullptr;
-        mCtx    = nullptr;
-
-        return grpc::Status::OK;
-    }
-
-    MOCK_METHOD(void, OnNodeConfigStatus, (const smproto::NodeConfigStatus&));
-    MOCK_METHOD(void, OnRunInstancesStatus, (const smproto::RunInstancesStatus&));
-    MOCK_METHOD(void, OnUpdateInstancesStatus, (const smproto::UpdateInstancesStatus&));
-    MOCK_METHOD(void, OnOverrideEnvVarStatus, (const smproto::OverrideEnvVarStatus&));
-    MOCK_METHOD(void, OnLogData, (const smproto::LogData&));
-    MOCK_METHOD(void, OnInstantMonitoring, (const smproto::InstantMonitoring&));
-    MOCK_METHOD(void, OnAverageMonitoring, (const smproto::AverageMonitoring&));
-    MOCK_METHOD(void, OnAlert, (const smproto::Alert&));
-    MOCK_METHOD(void, OnImageContentRequest, (const smproto::ImageContentRequest&));
-    MOCK_METHOD(void, OnClockSyncRequest, (const smproto::ClockSyncRequest&));
-
-    void GetNodeConfigStatus()
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_get_node_config_status();
-
-        mStream->Write(incomingMsg);
-    }
-
-    void CheckNodeConfig(const std::string& version, const std::string& config)
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        auto checkNodeConfig = incomingMsg.mutable_check_node_config();
-
-        checkNodeConfig->set_version(version);
-        checkNodeConfig->set_node_config(config);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void SetNodeConfig(const std::string& version, const std::string& config)
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        auto setNodeConfig = incomingMsg.mutable_set_node_config();
-
-        setNodeConfig->set_version(version);
-        setNodeConfig->set_node_config(config);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void RunInstances(const servicemanager::v4::RunInstances& runInstances = servicemanager::v4::RunInstances {})
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_run_instances()->CopyFrom(runInstances);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void UpdateNetwork(const servicemanager::v4::UpdateNetworks& updateNetwork = servicemanager::v4::UpdateNetworks {})
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_update_networks()->CopyFrom(updateNetwork);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void GetSystemLog()
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_system_log_request();
-
-        mStream->Write(incomingMsg);
-    }
-
-    void GetInstanceLog()
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_instance_log_request();
-
-        mStream->Write(incomingMsg);
-    }
-
-    void GetInstanceCrashLog()
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_instance_crash_log_request();
-
-        mStream->Write(incomingMsg);
-    }
-
-    void OverrideEnvVars(
-        const servicemanager::v4::OverrideEnvVars& overrideEnvVars = servicemanager::v4::OverrideEnvVars {})
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_override_env_vars()->CopyFrom(overrideEnvVars);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void GetAverageMonitoring()
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_get_average_monitoring();
-
-        mStream->Write(incomingMsg);
-    }
-
-    void SendConnectionStatus(smproto::ConnectionEnum status = smproto::ConnectionEnum::CONNECTED)
-    {
-        smproto::SMIncomingMessages incomingMsg;
-
-        incomingMsg.mutable_connection_status()->set_cloud_status(status);
-
-        mStream->Write(incomingMsg);
-    }
-
-    void WaitNodeConfigStatus(const std::chrono::seconds& timeout = std::chrono::seconds(4))
-    {
-        std::unique_lock lock {mLock};
-
-        mNodeConfigStatusCV.wait_for(lock, timeout, [this] { return mNodeConfigStatusReceived; });
-
-        mNodeConfigStatusReceived = false;
-    }
-
-    void WaitMessage(const std::chrono::seconds& timeout = std::chrono::seconds(4))
-    {
-        std::unique_lock lock {mLock};
-
-        mResponseCV.wait_for(lock, timeout, [this] { return mResponseReceived; });
-
-        mResponseReceived = false;
-    }
-
-    aos::Error SendMessage(const smproto::SMIncomingMessages& msg)
-    {
-        if (!mStream) {
-            return AOS_ERROR_WRAP(aos::Error(ErrorEnum::eFailed, "stream is not initialized"));
-        }
-
-        if (!mStream->Write(msg)) {
-            return AOS_ERROR_WRAP(aos::Error(ErrorEnum::eFailed, "can't send message"));
-        }
-
-        return aos::ErrorEnum::eNone;
-    }
-
-private:
-    std::unique_ptr<grpc::Server> CreateServer(
-        const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
-    {
-        grpc::ServerBuilder builder;
-
-        builder.AddListeningPort(addr, credentials);
-        builder.RegisterService(static_cast<smproto::SMService::Service*>(this));
-
-        return builder.BuildAndStart();
-    }
-
-    grpc::ServerReaderWriter<smproto::SMIncomingMessages, smproto::SMOutgoingMessages>* mStream = nullptr;
-    grpc::ServerContext*                                                                mCtx    = nullptr;
-
-    std::mutex              mLock;
-    std::condition_variable mNodeConfigStatusCV;
-    std::condition_variable mResponseCV;
-
-    bool mNodeConfigStatusReceived = false;
-    bool mResponseReceived         = false;
-
-    std::unique_ptr<grpc::Server> mServer;
-};
 
 class SMClientTest : public Test {
 protected:
@@ -378,756 +40,804 @@ protected:
     {
         sm::smclient::Config config;
 
-        config.mCMServerURL        = "localhost:5555";
+        config.mCMServerURL        = "localhost:5556";
         config.mCertStorage        = "sm";
         config.mCMReconnectTimeout = 100 * Time::cMilliseconds;
 
         return config;
     }
 
-    std::unique_ptr<sm::smclient::SMClient> CreateClient(
-        const sm::smclient::Config& config = GetConfig(), bool secureConnection = false)
+    auto CreateRuntimeInfos()
     {
-        auto client = std::make_unique<sm::smclient::SMClient>();
+        auto        runtimes = std::make_unique<RuntimeInfoArray>();
+        RuntimeInfo runtime;
 
-        auto err = client->Init(config, mTLSCredentials, mNodeInfoProvider, mResourceManager, mNetworkManager,
-            mLogProvider, mResourceMonitor, mLauncher, secureConnection);
+        runtime.mRuntimeID   = "runtime1";
+        runtime.mRuntimeType = "runc";
+        runtime.mMaxDMIPS.SetValue(1000);
+        runtime.mAllowedDMIPS.SetValue(800);
+        runtime.mTotalRAM.SetValue(1024 * 1024 * 1024);
+        runtime.mAllowedRAM.SetValue(512 * 1024 * 1024);
+        runtime.mMaxInstances = 10;
 
-        if (!err.IsNone()) {
-            LOG_ERR() << "Can't init client: error=" << err.Message();
+        runtimes->PushBack(runtime);
 
-            return nullptr;
-        }
-
-        return client;
+        return runtimes;
     }
 
-    std::unique_ptr<TestSMService> CreateServer(const std::string& url) { return std::make_unique<TestSMService>(url); }
-
-    std::pair<std::unique_ptr<TestSMService>, std::unique_ptr<sm::smclient::SMClient>> InitTest(
-        const sm::smclient::Config& config = GetConfig(), bool provisionMode = true)
+    auto CreateResourceInfos()
     {
-        auto server = CreateServer(config.mCMServerURL);
-        auto client = CreateClient(config);
+        auto resources = std::make_unique<StaticArray<sm::resourcemanager::ResourceInfo, 4>>();
+        sm::resourcemanager::ResourceInfo resource;
 
-        NodeInfoObsolete                        nodeInfo          = CreateNodeInfo();
-        RetWithError<StaticString<cVersionLen>> nodeConfigVersion = {"1.0.0", ErrorEnum::eNone};
-        smproto::NodeConfigStatus               expNodeConfigVersion;
+        resource.mName        = "resource1";
+        resource.mSharedCount = 2;
 
-        expNodeConfigVersion.set_node_id(nodeInfo.mNodeID.CStr());
-        expNodeConfigVersion.set_node_type(nodeInfo.mNodeType.CStr());
-        expNodeConfigVersion.set_version(nodeConfigVersion.mValue.CStr());
+        resources->PushBack(resource);
 
-        EXPECT_CALL(mNodeInfoProvider, GetNodeInfo)
-            .WillRepeatedly(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
-        EXPECT_CALL(mLauncher, GetCurrentRunStatus).WillRepeatedly(Return(ErrorEnum::eNone));
-        EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials)
-            .WillRepeatedly(Return(std::shared_ptr<grpc::ChannelCredentials>()));
-        EXPECT_CALL(mResourceManager, GetNodeConfigVersion).WillRepeatedly(Return(nodeConfigVersion));
-        EXPECT_CALL(*server, OnNodeConfigStatus(expNodeConfigVersion)).Times(1);
-
-        if (!provisionMode) {
-            EXPECT_CALL(mTLSCredentials, SubscribeListener).WillOnce(Return(ErrorEnum::eNone));
-            EXPECT_CALL(mTLSCredentials, UnsubscribeListener).WillOnce(Return(ErrorEnum::eNone));
-        }
-
-        EXPECT_CALL(mLogProvider, Subscribe(_)).WillOnce(Return(Error()));
-
-        if (auto err = client->Start(); !err.IsNone()) {
-            LOG_ERR() << "Can't start client: error=" << err.Message();
-
-            return std::make_pair(nullptr, nullptr);
-        }
-
-        server->WaitNodeConfigStatus();
-        server->WaitMessage();
-
-        return std::make_pair(std::move(server), std::move(client));
+        return resources;
     }
 
-    aos::common::iamclient::TLSCredentialsMock  mTLSCredentials;
-    iam::nodeinfoprovider::NodeInfoProviderMock mNodeInfoProvider;
-    sm::resourcemanager::ResourceManagerMock    mResourceManager;
-    sm::networkmanager::NetworkManagerMock      mNetworkManager;
-    sm::logprovider::LogProviderMock            mLogProvider;
-    monitoring::ResourceMonitorMock             mResourceMonitor;
-    sm::launcher::LauncherMock                  mLauncher;
+    auto CreateInstanceStatuses()
+    {
+        auto           statuses = std::make_unique<InstanceStatusArray>();
+        InstanceStatus status;
+
+        static_cast<InstanceIdent&>(status) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+        status.mVersion                     = "1.0.0";
+        status.mPreinstalled                = false;
+        status.mRuntimeID                   = "runtime1";
+        status.mManifestDigest              = "sha256:1234567890";
+        status.mState                       = InstanceStateEnum::eActive;
+
+        statuses->PushBack(status);
+
+        return statuses;
+    }
+
+    testing::NiceMock<TLSCredentialsMock>                            mTLSCredentials;
+    testing::NiceMock<aos::iamclient::CertProviderMock>              mCertProvider;
+    testing::NiceMock<sm::launcher::RuntimeInfoProviderMock>         mRuntimeInfoProvider;
+    testing::NiceMock<sm::resourcemanager::ResourceInfoProviderMock> mResourceInfoProvider;
+    testing::NiceMock<sm::nodeconfig::NodeConfigHandlerMock>         mNodeConfigHandler;
+    testing::NiceMock<sm::launcher::LauncherMock>                    mLauncher;
+    testing::NiceMock<sm::logging::LogProviderMock>                  mLogProvider;
+    testing::NiceMock<sm::networkmanager::NetworkManagerMock>        mNetworkManager;
+    testing::NiceMock<monitoring::MonitoringMock>                    mMonitoring;
+    testing::NiceMock<instancestatusprovider::ProviderMock>          mInstanceStatusProvider;
 };
 
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
 
+TEST_F(SMClientTest, RegisterSMSucceeds)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).WillOnce(Invoke([](const smproto::SMInfo& info) {
+        EXPECT_EQ(info.node_id(), "test-node");
+        EXPECT_EQ(info.runtimes_size(), 1);
+        EXPECT_EQ(info.runtimes(0).runtime_id(), "runtime1");
+        EXPECT_EQ(info.runtimes(0).type(), "runc");
+        EXPECT_EQ(info.resources_size(), 1);
+        EXPECT_EQ(info.resources(0).name(), "resource1");
+    }));
+
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).WillOnce(Invoke([](const smproto::NodeInstancesStatus& status) {
+        EXPECT_EQ(status.instances_size(), 1);
+        EXPECT_EQ(status.instances(0).instance().item_id(), "service1");
+        EXPECT_EQ(status.instances(0).version(), "1.0.0");
+    }));
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SendSMInfoWithMultipleRuntimesAndResources)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes = std::make_unique<RuntimeInfoArray>();
+    for (int i = 0; i < 3; i++) {
+        RuntimeInfo runtime;
+        runtime.mRuntimeID   = (std::string("runtime") + std::to_string(i)).c_str();
+        runtime.mRuntimeType = "runc";
+        runtimes->PushBack(runtime);
+    }
+
+    auto resources = std::make_unique<StaticArray<sm::resourcemanager::ResourceInfo, 4>>();
+    for (int i = 0; i < 2; i++) {
+        sm::resourcemanager::ResourceInfo resource;
+        resource.mName = (std::string("resource") + std::to_string(i)).c_str();
+        resources->PushBack(resource);
+    }
+
+    auto statuses = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).WillOnce(Invoke([](const smproto::SMInfo& info) {
+        EXPECT_EQ(info.runtimes_size(), 3);
+        EXPECT_EQ(info.resources_size(), 2);
+    }));
+
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitSMInfo();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SendNodeInstancesStatusWithMultipleInstances)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+
+    auto statuses = std::make_unique<InstanceStatusArray>();
+    for (int i = 0; i < 3; i++) {
+        InstanceStatus status;
+        static_cast<InstanceIdent&>(status) = InstanceIdent {(std::string("service") + std::to_string(i)).c_str(),
+            "subject1", static_cast<uint64_t>(i), UpdateItemTypeEnum::eService};
+        status.mVersion                     = "1.0.0";
+        status.mRuntimeID                   = "runtime1";
+        status.mState                       = InstanceStateEnum::eActive;
+        statuses->PushBack(status);
+    }
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).WillOnce(Invoke([](const smproto::NodeInstancesStatus& status) {
+        EXPECT_EQ(status.instances_size(), 3);
+        EXPECT_EQ(status.instances(0).instance().item_id(), "service0");
+        EXPECT_EQ(status.instances(1).instance().item_id(), "service1");
+        EXPECT_EQ(status.instances(2).instance().item_id(), "service2");
+    }));
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitNodeInstancesStatus();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
 TEST_F(SMClientTest, ClientNotStarted)
 {
-    auto server = CreateServer(GetConfig().mCMServerURL);
-    ASSERT_NE(server, nullptr) << "Can't create server";
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
 
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
 
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(0);
-    server->WaitNodeConfigStatus(std::chrono::seconds(1));
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(0);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(0);
 
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Stop should return no error if start wasn't called" << err.Message();
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop should return no error if start wasn't called";
 }
 
 TEST_F(SMClientTest, SecondStartReturnsError)
 {
-    auto [server, client] = InitTest();
-
-    auto err = client->Start();
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed))
-        << "Start should return failed if client isn't closed" << err.Message();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectOnGettingUnhandlerMessage)
-{
-    auto config = GetConfig();
-
-    config.mCMReconnectTimeout = 10 * Time::cMilliseconds;
-
-    auto [server, client] = InitTest(config);
-
-    server->SendMessage(smproto::SMIncomingMessages());
-
-    // Client is expected to reconnect and send node config status
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    server->WaitNodeConfigStatus(std::chrono::seconds(3));
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, StartFailsOnGetNodeInfoError)
-{
-    auto server = CreateServer(GetConfig().mCMServerURL);
-    ASSERT_NE(server, nullptr) << "Can't create server";
-
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    EXPECT_CALL(mNodeInfoProvider, GetNodeInfo).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    auto err = client->Start();
-    ASSERT_TRUE(err.Is(aos::ErrorEnum::eFailed))
-        << "Start should return failed if get node info fails: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, SendMonitoringDataSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnInstantMonitoring).Times(1);
-
-    auto err = client->SendMonitoringData(CreateNodeMonitoringData());
-    EXPECT_TRUE(err.IsNone()) << "Can't send monitoring data: error=" << err.Message();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, SendMonitoringDataReturnsErrorIfNotConnected)
-{
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    auto err = client->SendMonitoringData(CreateNodeMonitoringData());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Client should fail: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, SendAlertSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnAlert).Times(1);
-
-    auto err = client->SendAlert(CreateAlert());
-    EXPECT_TRUE(err.IsNone()) << "Can't send alerts: error=" << err.Message();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, SendAlertReturnsErrorIfNotConnected)
-{
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    auto err = client->SendAlert(CreateAlert());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Client should fail: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, OnLogReceivedSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnLogData).Times(1);
-
-    auto err = client->OnLogReceived(CreatePushLog());
-    EXPECT_TRUE(err.IsNone()) << "Can't send log data: error=" << err.Message();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, OnLogReceivedReturnsErrorIfNotConnected)
-{
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    auto err = client->OnLogReceived(CreatePushLog());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Client should fail: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, InstancesRunStatusSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-
-    auto err = client->InstancesRunStatus(CreateInstanceStatus());
-    EXPECT_TRUE(err.IsNone()) << "Can't send instance run status: error=" << err.Message();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, InstancesRunStatusReturnsErrorIfNotConnected)
-{
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    auto err = client->InstancesRunStatus(CreateInstanceStatus());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Client should fail: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, InstancesUpdateStatusSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    auto err = client->InstancesUpdateStatus(CreateInstanceStatus());
-    EXPECT_TRUE(err.IsNone()) << "Can't send instance update status: error=" << err.Message();
-
-    server->WaitMessage(std::chrono::seconds(1));
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, InstancesUpdateStatusReturnsErrorIfNotConnected)
-{
-    auto client = CreateClient();
-    ASSERT_NE(client, nullptr) << "Can't create client";
-
-    auto err = client->InstancesUpdateStatus(CreateInstanceStatus());
-    EXPECT_TRUE(err.Is(aos::ErrorEnum::eFailed)) << "Client should fail: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, GetNodeConfigStatusSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-
-    server->GetNodeConfigStatus();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, CheckNodeConfigSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(mResourceManager, CheckNodeConfig).WillOnce(Return(ErrorEnum::eNone));
-
-    server->CheckNodeConfig("1.0.1", "{}");
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, SetNodeConfigSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(mResourceManager, UpdateNodeConfig).WillOnce(Return(ErrorEnum::eNone));
-
-    server->SetNodeConfig("1.0.1", "{}");
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, RunInstancesSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-    EXPECT_CALL(mLauncher, RunInstances).WillOnce(Invoke([&] {
-        client->InstancesRunStatus(CreateInstanceStatus());
-
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
         return ErrorEnum::eNone;
     }));
-
-    server->RunInstances();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnRunInstancesServicesExceedsLimit)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-    EXPECT_CALL(mLauncher, RunInstances).Times(0);
-
-    servicemanager::v4::RunInstances runInstances;
-    for (size_t i = 0; i < aos::cMaxNumServices + 1; ++i) {
-        runInstances.add_services();
-    }
-
-    server->RunInstances(runInstances);
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnRunInstancesLayersExceedsLimit)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-    EXPECT_CALL(mLauncher, RunInstances).Times(0);
-
-    servicemanager::v4::RunInstances runInstances;
-    for (size_t i = 0; i < aos::cMaxNumLayers + 1; ++i) {
-        runInstances.add_layers();
-    }
-
-    server->RunInstances(runInstances);
-
-    server->WaitNodeConfigStatus();
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnRunInstancesInstancesExceedsLimit)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-    EXPECT_CALL(mLauncher, RunInstances).Times(0);
-
-    servicemanager::v4::RunInstances runInstances;
-    for (size_t i = 0; i < aos::cMaxNumInstances + 1; ++i) {
-        runInstances.add_instances();
-    }
-
-    server->RunInstances(runInstances);
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnRunInstancesLauncherError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnRunInstancesStatus).Times(1);
-    EXPECT_CALL(mLauncher, RunInstances).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    server->RunInstances();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, UpdateNetworkSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    std::promise<void> promise;
-
-    EXPECT_CALL(mNetworkManager, UpdateNetworks).WillOnce(Invoke([&] {
-        promise.set_value();
-
-        return ErrorEnum::eNone;
-    }));
-
-    server->UpdateNetwork();
-
-    auto status = promise.get_future().wait_for(std::chrono::seconds(1));
-    EXPECT_EQ(status, std::future_status::ready) << "network manager wasn't called";
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnUpdateNetworkManagerError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(mNetworkManager, UpdateNetworks).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    server->UpdateNetwork();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, GetSystemLogSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnLogData).Times(1);
-    EXPECT_CALL(mLogProvider, GetSystemLog).WillOnce(Invoke([&] {
-        client->OnLogReceived(CreatePushLog());
-
-        return ErrorEnum::eNone;
-    }));
-
-    server->GetSystemLog();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnGetSystemLogProviderError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnLogData).Times(0);
-    EXPECT_CALL(mLogProvider, GetSystemLog).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    server->GetSystemLog();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, GetInstanceLogSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnLogData).Times(1);
-    EXPECT_CALL(mLogProvider, GetInstanceLog).WillOnce(Invoke([&] {
-        client->OnLogReceived(CreatePushLog());
-
-        return ErrorEnum::eNone;
-    }));
-
-    server->GetInstanceLog();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnGetInstanceLogProviderError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnLogData).Times(0);
-    EXPECT_CALL(mLogProvider, GetInstanceLog).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    server->GetInstanceLog();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, GetInstanceCrashLogSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnLogData).Times(1);
-    EXPECT_CALL(mLogProvider, GetInstanceCrashLog).WillOnce(Invoke([&] {
-        client->OnLogReceived(CreatePushLog());
-
-        return ErrorEnum::eNone;
-    }));
-
-    server->GetInstanceCrashLog();
-
-    server->WaitMessage();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnGetInstanceCrashLogProviderError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnLogData).Times(0);
-    EXPECT_CALL(mLogProvider, GetInstanceCrashLog).WillOnce(Return(aos::ErrorEnum::eFailed));
-
-    server->GetInstanceCrashLog();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, OverrideEnvVarsSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    aos::EnvVarsInstanceStatus expectedStatus;
-
-    expectedStatus.mItemID = "service-id";
-    expectedStatus.mStatuses.PushBack({"var-name", aos::ErrorEnum::eNone});
-
-    EXPECT_CALL(*server, OnOverrideEnvVarStatus).WillOnce(Invoke([&](const smproto::OverrideEnvVarStatus& status) {
-        EXPECT_EQ(status.error().aos_code(), static_cast<int32_t>(aos::ErrorEnum::eNone));
-
-        EXPECT_EQ(status.env_vars_status().size(), 1);
-        EXPECT_EQ(status.env_vars_status(0).instance_filter().service_id(), "service-id");
-        EXPECT_EQ(status.env_vars_status(0).instance_filter().instance(), 0);
-
-        EXPECT_EQ(status.env_vars_status(0).statuses().size(), 1);
-        EXPECT_EQ(status.env_vars_status(0).statuses(0).name(), "var-name");
-        EXPECT_EQ(
-            status.env_vars_status(0).statuses(0).error().aos_code(), static_cast<int32_t>(aos::ErrorEnum::eNone));
-    }));
-
-    EXPECT_CALL(mLauncher, OverrideEnvVars)
-        .WillOnce(Invoke([&](const auto& envVarsInstanceInfos, auto& envVarStatuses) {
-            (void)envVarsInstanceInfos;
-
-            envVarStatuses.PushBack(expectedStatus);
-
-            return aos::ErrorEnum::eNone;
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
         }));
 
-    server->OverrideEnvVars();
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
 
-    server->WaitMessage();
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
 
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "First Start failed";
 
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    err = client->Start();
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Second Start should fail";
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
 
-TEST_F(SMClientTest, OverrideEnvVarsRequestExceedsApplicationLimit)
+TEST_F(SMClientTest, SendNodeInstancesStatusesCallback)
 {
-    auto [server, client] = InitTest();
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
 
-    EXPECT_CALL(*server, OnOverrideEnvVarStatus).WillOnce(Invoke([&](const smproto::OverrideEnvVarStatus& status) {
-        EXPECT_EQ(status.error().aos_code(), static_cast<int32_t>(aos::ErrorEnum::eNoMemory));
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(AtLeast(1));
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    InstanceStatusArray callbackStatuses;
+    InstanceStatus      status;
+    static_cast<InstanceIdent&>(status)
+        = InstanceIdent {"callback-service", "subject1", 1, UpdateItemTypeEnum::eService};
+    status.mVersion   = "2.0.0";
+    status.mRuntimeID = "runtime1";
+    status.mState     = InstanceStateEnum::eActive;
+    callbackStatuses.PushBack(status);
+
+    err = client->SendNodeInstancesStatuses(callbackStatuses);
+    ASSERT_TRUE(err.IsNone()) << "SendNodeInstancesStatuses failed";
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SendUpdateInstancesStatusesCallback)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+    EXPECT_CALL(*server, OnUpdateInstancesStatus(_)).Times(1);
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    InstanceStatusArray updateStatuses;
+    InstanceStatus      status;
+    static_cast<InstanceIdent&>(status) = InstanceIdent {"update-service", "subject1", 2, UpdateItemTypeEnum::eService};
+    status.mVersion                     = "3.0.0";
+    status.mRuntimeID                   = "runtime1";
+    status.mState                       = InstanceStateEnum::eActive;
+    updateStatuses.PushBack(status);
+
+    client->SendUpdateInstancesStatuses(updateStatuses);
+
+    server->WaitUpdateInstancesStatus();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SendMonitoringData)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+    EXPECT_CALL(*server, OnInstantMonitoring(_)).WillOnce(Invoke([](const smproto::InstantMonitoring& monitoring) {
+        EXPECT_TRUE(monitoring.has_node_monitoring());
+        EXPECT_EQ(monitoring.instances_monitoring_size(), 2);
+        EXPECT_EQ(monitoring.instances_monitoring(0).instance().item_id(), "service1");
+        EXPECT_EQ(monitoring.instances_monitoring(0).runtime_id(), "runtime1");
+        EXPECT_EQ(monitoring.instances_monitoring(1).instance().item_id(), "service2");
+        EXPECT_EQ(monitoring.instances_monitoring(1).runtime_id(), "runtime2");
     }));
 
-    EXPECT_CALL(mLauncher, OverrideEnvVars).Times(0);
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
 
-    servicemanager::v4::OverrideEnvVars overrideEnvVarsRequest;
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
 
-    for (size_t i = 0; i < aos::cMaxNumInstances + 1; ++i) {
-        overrideEnvVarsRequest.add_env_vars();
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    aos::monitoring::NodeMonitoringData monitoringData;
+    monitoringData.mTimestamp = Time::Now();
+    monitoringData.mNodeID    = "test-node";
+
+    monitoringData.mMonitoringData.mTimestamp = monitoringData.mTimestamp;
+    monitoringData.mMonitoringData.mRAM       = 1024 * 1024 * 512; // 512 MB
+    monitoringData.mMonitoringData.mCPU       = 50.5;
+    monitoringData.mMonitoringData.mDownload  = 1000;
+    monitoringData.mMonitoringData.mUpload    = 500;
+
+    aos::monitoring::InstanceMonitoringData instance1;
+    instance1.mInstanceIdent  = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+    instance1.mRuntimeID      = "runtime1";
+    instance1.mMonitoringData = monitoringData.mMonitoringData;
+    monitoringData.mInstances.PushBack(instance1);
+
+    aos::monitoring::InstanceMonitoringData instance2;
+    instance2.mInstanceIdent  = InstanceIdent {"service2", "subject1", 1, UpdateItemTypeEnum::eService};
+    instance2.mRuntimeID      = "runtime2";
+    instance2.mMonitoringData = monitoringData.mMonitoringData;
+    monitoringData.mInstances.PushBack(instance2);
+
+    err = client->SendMonitoringData(monitoringData);
+    ASSERT_TRUE(err.IsNone()) << "SendMonitoringData failed";
+
+    server->WaitInstantMonitoring();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SendAlert)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+
+    EXPECT_CALL(*server, OnAlert(_))
+        .Times(6)
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // SystemAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_system_alert());
+            EXPECT_EQ(alert.system_alert().message(), "System alert message");
+        }))
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // CoreAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_core_alert());
+            EXPECT_EQ(alert.core_alert().core_component(), "SM");
+            EXPECT_EQ(alert.core_alert().message(), "Core alert message");
+        }))
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // SystemQuotaAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_system_quota_alert());
+            EXPECT_EQ(alert.system_quota_alert().parameter(), "ram");
+            EXPECT_EQ(alert.system_quota_alert().value(), 1024);
+            EXPECT_EQ(alert.system_quota_alert().status(), "raise");
+        }))
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // InstanceQuotaAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_instance_quota_alert());
+            EXPECT_EQ(alert.instance_quota_alert().instance().item_id(), "service1");
+            EXPECT_EQ(alert.instance_quota_alert().parameter(), "cpu");
+            EXPECT_EQ(alert.instance_quota_alert().value(), 90);
+            EXPECT_EQ(alert.instance_quota_alert().status(), "raise");
+        }))
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // ResourceAllocateAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_resource_allocate_alert());
+            EXPECT_EQ(alert.resource_allocate_alert().instance().item_id(), "service1");
+            EXPECT_EQ(alert.resource_allocate_alert().resource(), "gpu");
+            EXPECT_EQ(alert.resource_allocate_alert().message(), "Resource allocation failed");
+        }))
+        .WillOnce(Invoke([](const smproto::Alert& alert) {
+            // InstanceAlert
+            EXPECT_TRUE(alert.has_timestamp());
+            EXPECT_TRUE(alert.has_instance_alert());
+            EXPECT_EQ(alert.instance_alert().instance().item_id(), "service1");
+            EXPECT_EQ(alert.instance_alert().service_version(), "1.0.0");
+            EXPECT_EQ(alert.instance_alert().message(), "Instance alert message");
+        }));
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    // Send SystemAlert
+    {
+        SystemAlert alert;
+        alert.mTimestamp = Time::Now();
+        alert.mNodeID    = "test-node";
+        alert.mMessage   = "System alert message";
+
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(SystemAlert) failed";
+        server->WaitAlert();
     }
 
-    server->OverrideEnvVars(overrideEnvVarsRequest);
+    // Send CoreAlert
+    {
+        CoreAlert alert;
+        alert.mTimestamp     = Time::Now();
+        alert.mNodeID        = "test-node";
+        alert.mCoreComponent = CoreComponentEnum::eSM;
+        alert.mMessage       = "Core alert message";
 
-    server->WaitMessage();
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(CoreAlert) failed";
+        server->WaitAlert();
+    }
 
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+    // Send SystemQuotaAlert
+    {
+        SystemQuotaAlert alert;
+        alert.mTimestamp = Time::Now();
+        alert.mNodeID    = "test-node";
+        alert.mParameter = "ram";
+        alert.mValue     = 1024;
+        alert.mState     = QuotaAlertStateEnum::eRaise;
 
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(SystemQuotaAlert) failed";
+        server->WaitAlert();
+    }
+
+    // Send InstanceQuotaAlert
+    {
+        InstanceQuotaAlert alert;
+        alert.mTimestamp                   = Time::Now();
+        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mParameter                   = "cpu";
+        alert.mValue                       = 90;
+        alert.mState                       = QuotaAlertStateEnum::eRaise;
+
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(InstanceQuotaAlert) failed";
+        server->WaitAlert();
+    }
+
+    // Send ResourceAllocateAlert
+    {
+        ResourceAllocateAlert alert;
+        alert.mTimestamp                   = Time::Now();
+        alert.mNodeID                      = "test-node";
+        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mResource                    = "gpu";
+        alert.mMessage                     = "Resource allocation failed";
+
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(ResourceAllocateAlert) failed";
+        server->WaitAlert();
+    }
+
+    // Send InstanceAlert
+    {
+        InstanceAlert alert;
+        alert.mTimestamp                   = Time::Now();
+        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mVersion                     = "1.0.0";
+        alert.mMessage                     = "Instance alert message";
+
+        err = client->SendAlert(AlertVariant(alert));
+        ASSERT_TRUE(err.IsNone()) << "SendAlert(InstanceAlert) failed";
+        server->WaitAlert();
+    }
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
 
-TEST_F(SMClientTest, OverrideEnvVarsLauncherFails)
+TEST_F(SMClientTest, GetBlobsInfo)
 {
-    auto [server, client] = InitTest();
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
 
-    EXPECT_CALL(*server, OnOverrideEnvVarStatus).WillOnce(Invoke([&](const smproto::OverrideEnvVarStatus& status) {
-        EXPECT_EQ(status.error().aos_code(), static_cast<int32_t>(aos::ErrorEnum::eFailed));
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mLauncher, OverrideEnvVars).WillOnce(Return(aos::ErrorEnum::eFailed));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
 
-    server->OverrideEnvVars();
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
 
-    server->WaitMessage();
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring,
+        mInstanceStatusProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
 
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
 
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
 
-TEST_F(SMClientTest, GetAverageMonitoringSucceeds)
-{
-    auto [server, client] = InitTest();
+    StaticArray<StaticString<oci::cDigestLen>, 2> digests;
+    digests.EmplaceBack("sha256:1234567890abcdef");
+    digests.EmplaceBack("sha256:fedcba0987654321");
 
-    EXPECT_CALL(*server, OnAverageMonitoring).Times(1);
-    EXPECT_CALL(mResourceMonitor, GetAverageMonitoringData)
-        .WillOnce(DoAll(SetArgReferee<0>(CreateNodeMonitoringData()), Return(aos::ErrorEnum::eNone)));
-    server->GetAverageMonitoring();
+    StaticArray<StaticString<cURLLen>, 2> urls;
 
-    server->WaitMessage();
+    err = client->GetBlobsInfo(digests, urls);
+    ASSERT_TRUE(err.IsNone()) << "GetBlobsInfo failed";
 
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
+    ASSERT_EQ(urls.Size(), 2);
+    EXPECT_EQ(urls[0], "http://example.com/blobs/sha256:1234567890abcdef");
+    EXPECT_EQ(urls[1], "http://example.com/blobs/sha256:fedcba0987654321");
 
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ClientReconnectsOnGetAverageMonitoringError)
-{
-    auto [server, client] = InitTest();
-
-    EXPECT_CALL(*server, OnNodeConfigStatus).Times(1);
-    EXPECT_CALL(*server, OnAverageMonitoring).Times(0);
-    EXPECT_CALL(mResourceMonitor, GetAverageMonitoringData).WillOnce(Return(aos::ErrorEnum::eFailed));
-    server->GetAverageMonitoring();
-
-    server->WaitNodeConfigStatus();
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ConnectionStatusConnectedSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    ConnectionSubscriberMock subscriber;
-
-    ASSERT_TRUE(client->Subscribe(subscriber).IsNone());
-
-    std::promise<void> promise;
-
-    EXPECT_CALL(subscriber, OnConnect).WillOnce(Invoke([&] { promise.set_value(); }));
-
-    server->SendConnectionStatus(smproto::ConnectionEnum::CONNECTED);
-
-    EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready)
-        << "didn't receive connection status connected";
-
-    client->Unsubscribe(subscriber);
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
-}
-
-TEST_F(SMClientTest, ConnectionStatusDisconnectedSucceeds)
-{
-    auto [server, client] = InitTest();
-
-    ConnectionSubscriberMock subscriber;
-
-    ASSERT_TRUE(client->Subscribe(subscriber).IsNone());
-
-    std::promise<void> promise;
-
-    EXPECT_CALL(subscriber, OnDisconnect).WillOnce(Invoke([&] { promise.set_value(); }));
-
-    server->SendConnectionStatus(smproto::ConnectionEnum::DISCONNECTED);
-
-    EXPECT_EQ(promise.get_future().wait_for(std::chrono::seconds(1)), std::future_status::ready)
-        << "didn't receive connection status connected";
-
-    client->Unsubscribe(subscriber);
-
-    EXPECT_CALL(mLogProvider, Unsubscribe(_)).WillOnce(Return(Error()));
-
-    auto err = client->Stop();
-    ASSERT_TRUE(err.IsNone()) << "Can't stop client: error=" << err.Message();
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
