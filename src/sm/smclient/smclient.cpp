@@ -235,8 +235,33 @@ Error SMClient::SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& st
 
 Error SMClient::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<StaticString<cURLLen>>& urls)
 {
-    (void)digests;
-    (void)urls;
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get blobs info" << Log::Field("count", digests.Size());
+
+    if (!mStub) {
+        return Error(ErrorEnum::eFailed, "stub not available");
+    }
+
+    smproto::BlobsInfosRequest request;
+
+    for (const auto& digest : digests) {
+        request.add_digests(digest.CStr());
+    }
+
+    grpc::ClientContext context;
+    smproto::BlobsInfos response;
+
+    auto status = mStub->GetBlobsInfos(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    for (const auto& url : response.urls()) {
+        if (auto err = urls.PushBack(url.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
 
     return ErrorEnum::eNone;
 }
