@@ -63,14 +63,14 @@ public:
     /**
      * Creates instance.
      *
-     * @param provisioned whether the node is provisioned.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
      * @param streamRegistry stream registry.
+     * @param isPublic whether the stream is for public handler.
      */
-    static NodeStreamHandler::Ptr Create(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
-        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
+    static NodeStreamHandler::Ptr Create(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry, bool isPublic);
 
     /**
      * Destructor.
@@ -178,22 +178,23 @@ public:
         const std::chrono::seconds responseTimeout);
 
 private:
-    NodeStreamHandler(bool provisioned, NodeServerReaderWriter* stream, grpc::ServerContext* context,
-        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry);
+    NodeStreamHandler(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        iam::nodemanager::NodeManagerItf* nodeManager, StreamRegistryItf* streamRegistry, bool isPublic);
 
     Error SendMessage(const iamproto::IAMIncomingMessages& request, iamproto::IAMOutgoingMessages& response,
         const std::chrono::seconds responseTimeout);
     Error HandleNodeInfo(const iamproto::NodeInfo& info);
 
-    std::optional<std::string>        mNodeID;
-    bool                              mProvisioned {};
     NodeServerReaderWriter*           mStream {};
     grpc::ServerContext*              mContext {};
     iam::nodemanager::NodeManagerItf* mNodeManager {};
     StreamRegistryItf*                mStreamRegistry {};
-    std::mutex                        mMutex;
-    std::atomic_bool                  mIsClosed {};
-    PendingMessagesMap                mPendingMessages;
+    bool                              mIsPublic {};
+
+    std::optional<std::string> mNodeID;
+    std::mutex                 mMutex;
+    std::atomic_bool           mIsClosed {};
+    PendingMessagesMap         mPendingMessages;
 };
 
 /**
@@ -220,14 +221,14 @@ public:
      * Handles register node input/output streams.
      * This method is blocking and should be called in a separate thread.
      *
-     * @param provisioned whether the node is provisioned.
      * @param stream rpc stream to handle.
      * @param context server context.
      * @param nodeManager node manager.
+     * @param isPublic whether the stream is for public handler.
      * @return grpc::Status.
      */
-    grpc::Status HandleRegisterNodeStream(bool provisioned, NodeServerReaderWriter* stream,
-        grpc::ServerContext* context, iam::nodemanager::NodeManagerItf* nodeManager);
+    grpc::Status HandleRegisterNodeStream(NodeServerReaderWriter* stream, grpc::ServerContext* context,
+        iam::nodemanager::NodeManagerItf* nodeManager, bool isPublic);
 
     /**
      * Gets node stream handler by node id.

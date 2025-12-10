@@ -31,7 +31,6 @@ namespace {
 
 constexpr auto cServerURL        = "0.0.0.0:50051";
 const auto     cProvisionedState = NodeState(NodeStateEnum::eProvisioned);
-const auto     cProvisioned      = true;
 
 class TestServer : public iamproto::IAMPublicNodesService::Service {
 public:
@@ -48,7 +47,7 @@ public:
         grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>* stream) override
     {
 
-        return mNodeController.HandleRegisterNodeStream(cProvisioned, stream, context, &mNodeManager);
+        return mNodeController.HandleRegisterNodeStream(stream, context, &mNodeManager, false);
     }
 
     void Start()

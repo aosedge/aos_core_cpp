@@ -79,7 +79,6 @@ public:
 private:
     static constexpr auto cDefaultTimeout      = std::chrono::minutes(1);
     static constexpr auto cProvisioningTimeout = std::chrono::minutes(5);
-    static constexpr auto cProvisioned         = true;
 
     // IAMPublicNodesService interface
     grpc::Status RegisterNode(grpc::ServerContext*                                              context,
