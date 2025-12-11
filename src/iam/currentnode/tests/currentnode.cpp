@@ -386,6 +386,44 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoReadsProvisioningStateFromFile)
     EXPECT_EQ(nodeInfo.mState, NodeStateEnum::eProvisioned) << "Expected provisioned state, got: " << nodeInfo.mState;
 }
 
+TEST_F(CurrentNodeTest, NodeConfigCpuInfoIsUsed)
+{
+    iam::config::NodeInfoConfig config = CreateConfig();
+    config.mCPUInfo.emplace();
+
+    config.mCPUInfo->mModelName    = "CustomModel";
+    config.mCPUInfo->mArchitecture = "CustomArch";
+    config.mCPUInfo->mVariant      = "CustomVariant";
+
+    CurrentNodeHandler handler;
+    NodeInfo           nodeInfo;
+
+    auto err = handler.Init(config);
+    ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
+
+    err = handler.GetCurrentNodeInfo(nodeInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetCurrentNodeInfo should succeed, err = " << err.Message();
+
+    EXPECT_EQ(nodeInfo.mState, NodeStateEnum::eUnprovisioned)
+        << "Expected unprovisioned state, got: " << nodeInfo.mState;
+
+    SetStateFile(NodeStateEnum::eProvisioned);
+
+    err = handler.Init(config);
+    ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
+
+    err = handler.GetCurrentNodeInfo(nodeInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetCurrentNodeInfo should succeed, err = " << err.Message();
+
+    ASSERT_FALSE(nodeInfo.mCPUs.IsEmpty());
+
+    for (const auto& cpu : nodeInfo.mCPUs) {
+        EXPECT_STREQ(cpu.mModelName.CStr(), "CustomModel");
+        EXPECT_STREQ(cpu.mArchInfo.mArchitecture.CStr(), "CustomArch");
+        EXPECT_STREQ(cpu.mArchInfo.mVariant->CStr(), "CustomVariant");
+    }
+}
+
 TEST_F(CurrentNodeTest, CheckStates)
 {
     CurrentNodeHandler handler;
