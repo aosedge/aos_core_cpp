@@ -88,7 +88,7 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
                            R"("items":[]}],"instances":[{"item":{"id":"instance1"},"subject":{"id":"subject1"},)"
                            R"("instance":0,"node":{"codename":"node1"},"itemStates":[)"
@@ -150,7 +150,7 @@ TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
                            R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
-                           R"("upload":500}]},{"node":{"id":"node2"},"nodeStates":[)"
+                           R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
                            R"("items":[]}]})";
 
