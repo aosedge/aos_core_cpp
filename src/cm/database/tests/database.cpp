@@ -25,13 +25,15 @@ std::vector<T> ToVector(const Array<T>& src)
     return std::vector<T>(src.begin(), src.end());
 }
 
-InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance)
+InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
+    UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     InstanceIdent ident;
 
     ident.mItemID    = itemID;
     ident.mSubjectID = subjectID;
     ident.mInstance  = instance;
+    ident.mType      = itemType;
 
     return ident;
 }
@@ -72,11 +74,11 @@ networkmanager::Host CreateHost(const char* nodeID, const char* ip)
 }
 
 networkmanager::Instance CreateInstance(const char* itemID, const char* subjectID, uint64_t instance,
-    const char* networkID, const char* nodeID, const char* ip)
+    const char* networkID, const char* nodeID, const char* ip, UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     networkmanager::Instance inst;
 
-    inst.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance);
+    inst.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance, itemType);
     inst.mNetworkID     = networkID;
     inst.mNodeID        = nodeID;
     inst.mIP            = ip;
@@ -349,7 +351,8 @@ TEST_F(CMDatabaseTest, NetworkManagerAddInstance)
 
     auto instance1 = CreateInstance("service1", "subject1", 0, "network1", "node1", "172.17.0.10");
     auto instance2 = CreateInstance("service1", "subject1", 1, "network1", "node1", "172.17.0.11");
-    auto instance3 = CreateInstance("service2", "subject2", 0, "network1", "node1", "172.17.0.12");
+    auto instance3
+        = CreateInstance("service2", "subject2", 0, "network1", "node1", "172.17.0.12", UpdateItemTypeEnum::eComponent);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
