@@ -1,33 +1,25 @@
 #
-# Copyright (C) 2024 EPAM Systems, Inc.
+# Copyright (C) 2025 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET_NAME monitoring_test)
+set(TARGET_NAME smcontroller_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES nodemonitoringprovider.cpp)
+set(SOURCES smcontroller.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::common::tests::utils aos::sm::monitoring GTest::gmock_main)
+set(LIBRARIES aos::cm::smcontroller aos::common::tests::utils GTest::gtest_main GTest::gmock)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_test(
-    TARGET_NAME
-    ${TARGET_NAME}
-    LOG_MODULE
-    SOURCES
-    ${SOURCES}
-    LIBRARIES
-    ${LIBRARIES}
-)
+add_test(TARGET_NAME ${TARGET_NAME} SOURCES ${SOURCES} LIBRARIES ${LIBRARIES})

@@ -14,7 +14,6 @@
 #include <grpcpp/security/credentials.h>
 
 #include <core/common/alerts/alerts.hpp>
-#include <core/common/connectionprovider/connectionprovider.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/tools/thread.hpp>
@@ -26,7 +25,7 @@
 #include <core/sm/networkmanager/networkmanager.hpp>
 #include <core/sm/resourcemanager/resourcemanager.hpp>
 
-#include <servicemanager/v4/servicemanager.grpc.pb.h>
+#include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 #include <common/iamclient/publicservicehandler.hpp>
 

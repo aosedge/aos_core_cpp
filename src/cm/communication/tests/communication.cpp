@@ -677,7 +677,7 @@ TEST_F(CMCommunicationTest, SendLog)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"pushLog","correlationID":"","node":\{"id":""\},)"
+                     R"("data":\{"messageType":"pushLog","correlationID":"","node":\{"codename":""\},)"
                      R"("part":0,"partsCount":0,"content":"","status":"ok"\}\}$)");
 
     SubscribeAndWaitConnected();
@@ -850,14 +850,14 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
                 {
                     "type": "iam",
                     "node": {
-                        "id": "node0"
+                        "codename": "node0"
                     },
                     "serial": "serial_1"
                 },
                 {
                     "type": "iam",
                     "node": {
-                        "id": "node1"
+                        "codename": "node1"
                     },
                     "serial": "serial_2"
                 }
@@ -867,13 +867,13 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
                 "nodes": [
                     {
                         "node": {
-                            "id": "node0"
+                            "codename": "node0"
                         },
                         "secret": "secret0"
                     },
                     {
                         "node": {
-                            "id": "node1"
+                            "codename": "node1"
                         },
                         "secret": "secret1"
                     }
@@ -889,8 +889,8 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
                      R"("data":\{"messageType":"issueUnitCertificates","correlationID":"","requests":\[)"
-                     R"(\{"type":"iam","node":\{"id":"node0"\},"csr":"csr_result_0"\},)"
-                     R"(\{"type":"iam","node":\{"id":"node1"\},"csr":"csr_result_1"\}]\}\}$)");
+                     R"(\{"type":"iam","node":\{"codename":"node0"\},"csr":"csr_result_0"\},)"
+                     R"(\{"type":"iam","node":\{"codename":"node1"\},"csr":"csr_result_1"\}]\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -948,42 +948,42 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
                 {
                     "type": "iam",
                     "node": {
-                        "id": "node2"
+                        "codename": "node2"
                     },
                     "certificateChain": "chain2"
                 },
                 {
                     "type": "cm",
                     "node": {
-                        "id": "node2"
+                        "codename": "node2"
                     },
                     "certificateChain": "chain2"
                 },
                 {
                     "type": "iam",
                     "node": {
-                        "id": "node0"
+                        "codename": "node0"
                     },
                     "certificateChain": "chain0"
                 },
                 {
                     "type": "cm",
                     "node": {
-                        "id": "node0"
+                        "codename": "node0"
                     },
                     "certificateChain": "chain0"
                 },
                 {
                     "type": "iam",
                     "node": {
-                        "id": "node1"
+                        "codename": "node1"
                     },
                     "certificateChain": "chain1"
                 },
                 {
                     "type": "cm",
                     "node": {
-                        "id": "node1"
+                        "codename": "node1"
                     },
                     "certificateChain": "chain1"
                 }
@@ -998,12 +998,12 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
         R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
         R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
         R"("data":\{"messageType":"installUnitCertificatesConfirmation","correlationID":"","certificates":\[)"
-        R"(\{"type":"cm","node":\{"id":"node1"\},"serial":"00"\},)"
-        R"(\{"type":"iam","node":\{"id":"node1"\},"serial":"01"\},)"
-        R"(\{"type":"cm","node":\{"id":"node2"\},"serial":"02"\},)"
-        R"(\{"type":"iam","node":\{"id":"node2"\},"serial":"03"\},)"
-        R"(\{"type":"cm","node":\{"id":"node0"\},"serial":"04"\},)"
-        R"(\{"type":"iam","node":\{"id":"node0"\},"serial":"05"\}]\}\}$)");
+        R"(\{"type":"cm","node":\{"codename":"node1"\},"serial":"00"\},)"
+        R"(\{"type":"iam","node":\{"codename":"node1"\},"serial":"01"\},)"
+        R"(\{"type":"cm","node":\{"codename":"node2"\},"serial":"02"\},)"
+        R"(\{"type":"iam","node":\{"codename":"node2"\},"serial":"03"\},)"
+        R"(\{"type":"cm","node":\{"codename":"node0"\},"serial":"04"\},)"
+        R"(\{"type":"iam","node":\{"codename":"node0"\},"serial":"05"\}]\}\}$)");
 
     SubscribeAndWaitConnected();
 
