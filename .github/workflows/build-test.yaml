@@ -5,30 +5,32 @@ on:
     branches:
       - main
       - develop
-      - feature*
+      - "feature*"
 
-  pull_request:
+  pull_request_target:
     types:
-      - edited
       - opened
       - reopened
       - synchronize
-
     branches:
       - main
       - develop
-      - feature*
+      - "feature*"
+
+# Minimal explicit permissions — add more only if you need them
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    permissions: read-all
     container:
       image: ghcr.io/aosedge/aos-core-build:latest
       options: "--entrypoint /usr/bin/bash"
       credentials:
         username: ${{ github.actor }}
-        password: ${{ github.token }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
