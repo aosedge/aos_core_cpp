@@ -83,6 +83,15 @@ struct PartitionInfoConfig {
 };
 
 /*
+ * CPU information configuration.
+ */
+struct CPUInfoConfig {
+    std::string                mModelName;
+    std::string                mArchitecture;
+    std::optional<std::string> mVariant;
+};
+
+/*
  * Node information configuration.
  */
 struct NodeInfoConfig {
@@ -96,6 +105,7 @@ struct NodeInfoConfig {
     uint64_t                                     mMaxDMIPS;
     std::unordered_map<std::string, std::string> mAttrs;
     std::vector<PartitionInfoConfig>             mPartitions;
+    std::optional<CPUInfoConfig>                 mCPUInfo;
 };
 
 /**
