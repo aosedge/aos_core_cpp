@@ -14,6 +14,7 @@
 
 #include <core/common/pkcs11/pkcs11.hpp>
 #include <core/common/tools/fs.hpp>
+#include <core/iam/identhandler/identmodules/fileidentifier/config.hpp>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -104,6 +105,21 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
                 return ParsePartitionInfoConfig(
                     common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
             });
+    }
+
+    if (object.Has("cpuInfo")) {
+        common::utils::CaseInsensitiveObjectWrapper cpuInfoObject(object.GetObject("cpuInfo"));
+
+        nodeInfoConfig.mCPUInfo.emplace();
+
+        auto& cpuInfo = *nodeInfoConfig.mCPUInfo;
+
+        cpuInfo.mModelName    = cpuInfoObject.GetValue<std::string>("modelName");
+        cpuInfo.mArchitecture = cpuInfoObject.GetValue<std::string>("architecture");
+
+        if (cpuInfoObject.Has("variant")) {
+            cpuInfo.mVariant = cpuInfoObject.GetValue<std::string>("variant");
+        }
     }
 
     return nodeInfoConfig;
