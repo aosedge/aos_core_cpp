@@ -100,7 +100,7 @@ Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = utils::GetCPUInfo(config.mCPUInfoPath, mNodeInfo.mCPUs); !err.IsNone()) {
+    if (err = InitCPUInfo(config); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -242,6 +242,37 @@ Error CurrentNodeHandler::UpdateProvisionFile(NodeState state)
 
     file << state.ToString().CStr();
     file.close();
+
+    return ErrorEnum::eNone;
+}
+
+Error CurrentNodeHandler::InitCPUInfo(const iam::config::NodeInfoConfig& config)
+{
+    if (auto err = utils::GetCPUInfo(config.mCPUInfoPath, mNodeInfo.mCPUs); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (!config.mCPUInfo.has_value()) {
+        return ErrorEnum::eNone;
+    }
+
+    for (auto& cpu : mNodeInfo.mCPUs) {
+        if (auto err = cpu.mModelName.Assign(config.mCPUInfo->mModelName.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = cpu.mArchInfo.mArchitecture.Assign(config.mCPUInfo->mArchitecture.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (config.mCPUInfo->mVariant.has_value()) {
+            cpu.mArchInfo.mVariant.EmplaceValue();
+
+            if (auto err = cpu.mArchInfo.mVariant->Assign(config.mCPUInfo->mVariant->c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+    }
 
     return ErrorEnum::eNone;
 }
