@@ -53,7 +53,12 @@ public:
                         "Name": "name3",
                         "Path": "path3"
                     }
-                ]
+                ],
+                "cpuInfo": {
+                    "modelName": "TestModel",
+                    "architecture": "TestArch",
+                    "variant": "TestVariant"
+                }
             },
             "IAMPublicServerURL": "localhost:8090",
             "IAMProtectedServerURL": "localhost:8089",
@@ -159,6 +164,11 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mPartitions[2].mName, "name3");
     EXPECT_EQ(config.mNodeInfo.mPartitions[2].mPath, "path3");
     ASSERT_TRUE(config.mNodeInfo.mPartitions[2].mTypes.empty());
+
+    ASSERT_TRUE(config.mNodeInfo.mCPUInfo.has_value());
+    EXPECT_EQ(config.mNodeInfo.mCPUInfo->mModelName, "TestModel");
+    EXPECT_EQ(config.mNodeInfo.mCPUInfo->mArchitecture, "TestArch");
+    ASSERT_TRUE(config.mNodeInfo.mCPUInfo->mVariant.has_value());
 
     EXPECT_EQ(config.mIAMServer.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMServer.mIAMProtectedServerURL, "localhost:8089");
@@ -269,7 +279,7 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     params->set("unitModelPath", "test-unit-model-path");
     params->set("subjectsPath", "test-subjects-path");
 
-    auto fileIdentifierParams = std::make_unique<iam::identhandler::fileidentifier::Config>();
+    auto fileIdentifierParams = std::make_unique<iam::identhandler::FileIdentifierConfig>();
 
     auto err = ParseFileIdentifierModuleParams(params, *fileIdentifierParams);
     ASSERT_EQ(err, ErrorEnum::eNone);
