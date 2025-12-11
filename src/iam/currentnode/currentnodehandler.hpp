@@ -72,6 +72,7 @@ public:
     Error SetConnected(bool isConnected) override;
 
 private:
+    Error InitCPUInfo(const iam::config::NodeInfoConfig& config);
     Error InitOSInfo(const iam::config::NodeInfoConfig& config);
     Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
     Error InitPartitionInfo(const iam::config::NodeInfoConfig& config);
