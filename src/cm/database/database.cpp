@@ -473,8 +473,9 @@ Error Database::AddInstance(const launcher::InstanceInfo& info)
         LauncherInstanceInfoRow row;
 
         FromAos(info, row);
-        *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, imageID, updateItemType, nodeID, "
-                     "prevNodeID, runtimeID, uid, timestamp, cached) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, manifestDigest, "
+                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, cached) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                     "?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -490,13 +491,13 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
     try {
         Poco::Data::Statement statement {*mSession};
 
-        statement
-            << "UPDATE launcher_instances SET imageID = ?, updateItemType = ?, nodeID = ?, prevNodeID = ?, "
-               "runtimeID = ?, uid = ?, timestamp = ?, cached = ? WHERE itemID = ? AND subjectID = ? AND instance = ?;",
-            bind(info.mImageID.CStr()), bind(info.mUpdateItemType.ToString().CStr()), bind(info.mNodeID.CStr()),
-            bind(info.mPrevNodeID.CStr()), bind(info.mRuntimeID.CStr()), bind(info.mUID),
-            bind(info.mTimestamp.UnixNano()), bind(info.mCached), bind(info.mInstanceIdent.mItemID.CStr()),
-            bind(info.mInstanceIdent.mSubjectID.CStr()), bind(info.mInstanceIdent.mInstance);
+        statement << "UPDATE launcher_instances SET manifestDigest = ?, nodeID = ?, prevNodeID = "
+                     "?, runtimeID = ?, uid = ?, gid = ?, timestamp = ?, cached = ? WHERE itemID = ? AND subjectID = ? "
+                     "AND instance = ? AND type = ?;",
+            bind(info.mManifestDigest.CStr()), bind(info.mNodeID.CStr()), bind(info.mPrevNodeID.CStr()),
+            bind(info.mRuntimeID.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mTimestamp.UnixNano()),
+            bind(info.mCached), bind(info.mInstanceIdent.mItemID.CStr()), bind(info.mInstanceIdent.mSubjectID.CStr()),
+            bind(info.mInstanceIdent.mInstance), bind(info.mInstanceIdent.mType.ToString().CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -515,10 +516,11 @@ Error Database::GetInstance(const InstanceIdent& instanceID, launcher::InstanceI
     try {
         std::vector<LauncherInstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, imageID, updateItemType, nodeID, prevNodeID, runtimeID, uid, "
-                     "timestamp, cached FROM launcher_instances WHERE itemID = ? AND subjectID = ? AND instance = ?;",
-            bind(instanceID.mItemID.CStr()), bind(instanceID.mSubjectID.CStr()), bind(instanceID.mInstance), into(rows),
-            now;
+        *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, nodeID, prevNodeID, "
+                     "runtimeID, uid, gid, timestamp, cached FROM launcher_instances WHERE itemID = ? AND subjectID = "
+                     "? AND instance = ? AND type = ?;",
+            bind(instanceID.mItemID.CStr()), bind(instanceID.mSubjectID.CStr()), bind(instanceID.mInstance),
+            bind(instanceID.mType.ToString().CStr()), into(rows), now;
 
         if (rows.size() != 1) {
             return ErrorEnum::eNotFound;
@@ -539,8 +541,8 @@ Error Database::GetActiveInstances(Array<launcher::InstanceInfo>& instances) con
     try {
         std::vector<LauncherInstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, imageID, updateItemType, nodeID, prevNodeID, runtimeID, uid, "
-                     "timestamp, cached FROM launcher_instances;",
+        *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, nodeID, prevNodeID, "
+                     "runtimeID, uid, gid, timestamp, cached FROM launcher_instances;",
             into(rows), now;
 
         auto instanceInfo = std::make_unique<launcher::InstanceInfo>();
@@ -565,8 +567,9 @@ Error Database::RemoveInstance(const InstanceIdent& instanceIdent)
         Poco::Data::Statement statement {*mSession};
 
         statement.reset(*mSession);
-        statement << "DELETE FROM launcher_instances WHERE itemID = ? AND subjectID = ? AND instance = ?;",
-            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance);
+        statement << "DELETE FROM launcher_instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
+            bind(instanceIdent.mType.ToString().CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -659,15 +662,16 @@ void Database::CreateTables()
                  "itemID TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
-                 "imageID TEXT,"
-                 "updateItemType TEXT,"
+                 "type TEXT,"
+                 "manifestDigest TEXT,"
                  "nodeID TEXT,"
                  "prevNodeID TEXT,"
                  "runtimeID TEXT,"
                  "uid INTEGER,"
+                 "gid INTEGER,"
                  "timestamp INTEGER,"
                  "cached INTEGER,"
-                 "PRIMARY KEY(itemID,subjectID,instance)"
+                 "PRIMARY KEY(itemID,subjectID,instance,type)"
                  ");",
         now;
 }
@@ -765,34 +769,36 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
     dst.set<ToInt(LauncherInstanceInfoColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eInstance)>(src.mInstanceIdent.mInstance);
-    dst.set<ToInt(LauncherInstanceInfoColumns::eImageID)>(src.mImageID.CStr());
-    dst.set<ToInt(LauncherInstanceInfoColumns::eUpdateItemType)>(src.mUpdateItemType.ToString().CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>(src.mPrevNodeID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eRuntimeID)>(src.mRuntimeID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eUID)>(src.mUID);
+    dst.set<ToInt(LauncherInstanceInfoColumns::eGID)>(src.mGID);
     dst.set<ToInt(LauncherInstanceInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
     dst.set<ToInt(LauncherInstanceInfoColumns::eCached)>(src.mCached);
 }
 
 void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst)
 {
-    auto timestamp      = src.get<ToInt(LauncherInstanceInfoColumns::eTimestamp)>();
-    auto updateItemType = src.get<ToInt(LauncherInstanceInfoColumns::eUpdateItemType)>();
-
     dst.mInstanceIdent.mItemID    = src.get<ToInt(LauncherInstanceInfoColumns::eItemID)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(LauncherInstanceInfoColumns::eInstance)>();
-    dst.mImageID                  = src.get<ToInt(LauncherInstanceInfoColumns::eImageID)>().c_str();
-    dst.mNodeID                   = src.get<ToInt(LauncherInstanceInfoColumns::eNodeID)>().c_str();
-    dst.mPrevNodeID               = src.get<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>().c_str();
-    dst.mRuntimeID                = src.get<ToInt(LauncherInstanceInfoColumns::eRuntimeID)>().c_str();
-    dst.mUID                      = src.get<ToInt(LauncherInstanceInfoColumns::eUID)>();
-    dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
-    dst.mCached    = src.get<ToInt(LauncherInstanceInfoColumns::eCached)>();
-
     AOS_ERROR_CHECK_AND_THROW(
-        dst.mUpdateItemType.FromString(updateItemType.c_str()), "failed to parse update item type");
+        dst.mInstanceIdent.mType.FromString(src.get<ToInt(LauncherInstanceInfoColumns::eType)>().c_str()),
+        "failed to parse instance type");
+    dst.mManifestDigest = src.get<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>().c_str();
+    dst.mNodeID         = src.get<ToInt(LauncherInstanceInfoColumns::eNodeID)>().c_str();
+    dst.mPrevNodeID     = src.get<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>().c_str();
+    dst.mRuntimeID      = src.get<ToInt(LauncherInstanceInfoColumns::eRuntimeID)>().c_str();
+    dst.mUID            = src.get<ToInt(LauncherInstanceInfoColumns::eUID)>();
+    dst.mGID            = src.get<ToInt(LauncherInstanceInfoColumns::eGID)>();
+
+    auto timestamp = src.get<ToInt(LauncherInstanceInfoColumns::eTimestamp)>();
+    dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
+
+    dst.mCached = src.get<ToInt(LauncherInstanceInfoColumns::eCached)>();
 }
 
 } // namespace aos::cm::database

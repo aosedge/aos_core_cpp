@@ -101,18 +101,18 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
     return inst;
 }
 
-launcher::InstanceInfo CreateLauncherInstanceInfo(
-    const char* itemID, const char* subjectID, uint64_t instance, const char* imageID, const char* nodeID)
+launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char* subjectID, uint64_t instance,
+    const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     launcher::InstanceInfo info;
 
-    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance);
-    info.mImageID        = imageID;
-    info.mUpdateItemType = UpdateItemTypeEnum::eService;
+    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance, itemType);
+    info.mManifestDigest = manifestDigest;
     info.mNodeID         = nodeID;
     info.mPrevNodeID     = "prevNode";
     info.mRuntimeID      = "runc";
     info.mUID            = 1000;
+    info.mGID            = 2000;
     info.mTimestamp      = Time::Now();
     info.mCached         = true;
 
@@ -482,7 +482,8 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
 
     auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
     auto instance2 = CreateLauncherInstanceInfo("service1", "subject1", 1, "image1", "node1");
-    auto instance3 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance3
+        = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2", UpdateItemTypeEnum::eComponent);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -512,12 +513,12 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Update instance
-    instance1.mImageID    = "image1-updated";
-    instance1.mNodeID     = "node1-updated";
-    instance1.mPrevNodeID = "node1";
-    instance1.mRuntimeID  = "crun";
-    instance1.mUID        = 2000;
-    instance1.mCached     = false;
+    instance1.mManifestDigest = "image1-updated";
+    instance1.mNodeID         = "node1-updated";
+    instance1.mPrevNodeID     = "node1";
+    instance1.mRuntimeID      = "crun";
+    instance1.mUID            = 2000;
+    instance1.mCached         = false;
 
     ASSERT_TRUE(mDB.UpdateInstance(instance1).IsNone());
 
