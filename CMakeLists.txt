@@ -46,6 +46,7 @@ message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
 message(STATUS "WITH_DOC                      = ${WITH_DOC}")
+message(STATUS "Test")
 message(STATUS)
 
 # ######################################################################################################################
