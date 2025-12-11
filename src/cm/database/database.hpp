@@ -18,7 +18,6 @@
 
 #include <cm/networkmanager/itf/storage.hpp>
 #include <common/migration/migration.hpp>
-#include <core/cm/imagemanager/itf/storage.hpp>
 #include <core/cm/launcher/itf/storage.hpp>
 #include <core/cm/storagestate/itf/storage.hpp>
 
@@ -29,10 +28,7 @@ namespace aos::cm::database {
 /**
  * Database class.
  */
-class Database : public storagestate::StorageItf,
-                 public imagemanager::storage::StorageItf,
-                 public networkmanager::StorageItf,
-                 public launcher::StorageItf {
+class Database : public storagestate::StorageItf, public networkmanager::StorageItf, public launcher::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -96,54 +92,6 @@ public:
      * @return Error.
      */
     Error UpdateStorageStateInfo(const storagestate::InstanceInfo& info) override;
-
-    //
-    // imagemanager::storage::StorageItf interface
-    //
-
-    /**
-     * Sets item state.
-     *
-     * @param id ID.
-     * @param version Version.
-     * @param state Item state.
-     * @return Error.
-     */
-    Error SetItemState(const String& id, const String& version, imagemanager::storage::ItemState state) override;
-
-    /**
-     * Removes item.
-     *
-     * @param id ID.
-     * @param version Version.
-     * @return Error.
-     */
-    Error RemoveItem(const String& id, const String& version) override;
-
-    /**
-     * Gets items info.
-     *
-     * @param items Items info.
-     * @return Error.
-     */
-    Error GetItemsInfo(Array<imagemanager::storage::ItemInfo>& items) override;
-
-    /**
-     * Gets item versions by ID.
-     *
-     * @param id ID.
-     * @param items Items info.
-     * @return Error.
-     */
-    Error GetItemVersionsByID(const String& id, Array<imagemanager::storage::ItemInfo>& items) override;
-
-    /**
-     * Adds item.
-     *
-     * @param item Item info.
-     * @return Error.
-     */
-    Error AddItem(const imagemanager::storage::ItemInfo& item) override;
 
     //
     // networkmanager::StorageItf interface
@@ -287,20 +235,6 @@ private:
     using StorageStateInstanceInfoRow
         = Poco::Tuple<std::string, std::string, uint64_t, size_t, size_t, Poco::Data::BLOB>;
 
-    enum class ImageManagerItemInfoColumns : int {
-        eID = 0,
-        eType,
-        eVersion,
-        eState,
-        ePath,
-        eTotalSize,
-        eGID,
-        eTimestamp,
-        eImages
-    };
-    using ImageManagerItemInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, size_t,
-        size_t, uint64_t, std::string>;
-
     enum class NetworkManagerNetworkColumns : int { eNetworkID = 0, eSubnet, eVlanID };
     using NetworkManagerNetworkRow = Poco::Tuple<std::string, std::string, uint64_t>;
 
@@ -343,8 +277,6 @@ private:
     static void FromAos(const storagestate::InstanceInfo& src, StorageStateInstanceInfoRow& dst);
     static void ToAos(const StorageStateInstanceInfoRow& src, storagestate::InstanceInfo& dst);
 
-    static void FromAos(const imagemanager::storage::ItemInfo& src, ImageManagerItemInfoRow& dst);
-    static void ToAos(const ImageManagerItemInfoRow& src, imagemanager::storage::ItemInfo& dst);
 
     static void FromAos(const networkmanager::Network& src, NetworkManagerNetworkRow& dst);
     static void ToAos(const NetworkManagerNetworkRow& src, networkmanager::Network& dst);
