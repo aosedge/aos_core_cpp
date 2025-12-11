@@ -260,17 +260,18 @@ private:
         eItemID = 0,
         eSubjectID,
         eInstance,
-        eImageID,
-        eUpdateItemType,
+        eType,
+        eManifestDigest,
         eNodeID,
         ePrevNodeID,
         eRuntimeID,
         eUID,
+        eGID,
         eTimestamp,
         eCached
     };
     using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
-        std::string, std::string, std::string, uint32_t, uint64_t, bool>;
+        std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, bool>;
 
     // make virtual for unit tests
     virtual int GetVersion() const;
@@ -278,7 +279,6 @@ private:
 
     static void FromAos(const storagestate::InstanceInfo& src, StorageStateInstanceInfoRow& dst);
     static void ToAos(const StorageStateInstanceInfoRow& src, storagestate::InstanceInfo& dst);
-
 
     static void FromAos(const networkmanager::Network& src, NetworkManagerNetworkRow& dst);
     static void ToAos(const NetworkManagerNetworkRow& src, networkmanager::Network& dst);
