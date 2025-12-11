@@ -533,7 +533,7 @@ TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, GetBlobsInfoTimeout)
+TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
 {
     mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds;
 
@@ -546,14 +546,14 @@ TEST_F(CMCommunicationTest, GetBlobsInfoTimeout)
 
     auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
 
-    auto err = mCommunication.GetBlobsInfo(digests, *blobsInfo);
+    auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
     EXPECT_TRUE(err.Is(ErrorEnum::eTimeout)) << tests::utils::ErrorToStr(err);
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, GetBlobsInfo)
+TEST_F(CMCommunicationTest, GetBlobsInfos)
 {
     constexpr auto cRequestCorrelationID = "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2";
     constexpr auto cRequestTxnID         = "fb6e8461-2601-4f9a-8957-7ab4e52f304c";
@@ -626,7 +626,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfo)
     auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
 
     auto future = std::async(std::launch::async,
-        [this, &digests, &blobsInfo]() { return mCommunication.GetBlobsInfo(digests, *blobsInfo); });
+        [this, &digests, &blobsInfo]() { return mCommunication.GetBlobsInfos(digests, *blobsInfo); });
 
     const auto cUrlsRequest = mCloudReceivedMessages.Pop().value_or("");
     EXPECT_TRUE(std::regex_match(cUrlsRequest, cExpectedMessage)) << "Received message: " << cUrlsRequest;
