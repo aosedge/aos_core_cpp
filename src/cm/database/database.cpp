@@ -167,8 +167,8 @@ Error Database::AddStorageStateInfo(const storagestate::InstanceInfo& info)
         StorageStateInstanceInfoRow row;
 
         FromAos(info, row);
-        *mSession << "INSERT INTO storagestate (itemID, subjectID, instance, storageQuota, "
-                     "stateQuota, stateChecksum) VALUES (?, ?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO storagestate (itemID, subjectID, instance, type, storageQuota, "
+                     "stateQuota, stateChecksum) VALUES (?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -184,8 +184,9 @@ Error Database::RemoveStorageStateInfo(const InstanceIdent& instanceIdent)
     try {
         Poco::Data::Statement statement {*mSession};
 
-        statement << "DELETE FROM storagestate WHERE itemID = ? AND subjectID = ? AND instance = ?;",
-            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance);
+        statement << "DELETE FROM storagestate WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
+            bind(instanceIdent.mType.ToString().CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -203,7 +204,7 @@ Error Database::GetAllStorageStateInfo(Array<storagestate::InstanceInfo>& info)
 
     try {
         std::vector<StorageStateInstanceInfoRow> rows;
-        *mSession << "SELECT itemID, subjectID, instance, storageQuota, stateQuota, stateChecksum FROM "
+        *mSession << "SELECT itemID, subjectID, instance, type, storageQuota, stateQuota, stateChecksum FROM "
                      "storagestate;",
             into(rows), now;
 
@@ -229,10 +230,10 @@ Error Database::GetStorageStateInfo(const InstanceIdent& instanceIdent, storages
         StorageStateInstanceInfoRow row;
         Poco::Data::Statement       statement {*mSession};
 
-        statement << "SELECT itemID, subjectID, instance, storageQuota, stateQuota, stateChecksum FROM "
-                     "storagestate WHERE itemID = ? AND subjectID = ? AND instance = ?;",
+        statement << "SELECT itemID, subjectID, instance, type, storageQuota, stateQuota, stateChecksum FROM "
+                     "storagestate WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            into(row);
+            bind(instanceIdent.mType.ToString().CStr()), into(row);
 
         if (statement.execute() == 0) {
             return ErrorEnum::eNotFound;
@@ -255,10 +256,10 @@ Error Database::UpdateStorageStateInfo(const storagestate::InstanceInfo& info)
         Poco::Data::BLOB      checksumBlob(info.mStateChecksum.begin(), info.mStateChecksum.Size());
 
         statement << "UPDATE storagestate SET storageQuota = ?, stateQuota = ?, stateChecksum = ? WHERE "
-                     "itemID = ? AND subjectID = ? AND instance = ?;",
+                     "itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
             bind(info.mStorageQuota), bind(info.mStateQuota), bind(checksumBlob),
             bind(info.mInstanceIdent.mItemID.CStr()), bind(info.mInstanceIdent.mSubjectID.CStr()),
-            bind(info.mInstanceIdent.mInstance);
+            bind(info.mInstanceIdent.mInstance), bind(info.mInstanceIdent.mType.ToString().CStr());
 
         if (statement.execute() == 0) {
             return ErrorEnum::eNotFound;
@@ -314,8 +315,8 @@ Error Database::AddInstance(const networkmanager::Instance& instance)
         NetworkManagerInstanceRow row;
 
         FromAos(instance, row);
-        *mSession << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, networkID, nodeID, ip, "
-                     "exposedPorts, dnsServers) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, networkID, nodeID, ip, "
+                     "exposedPorts, dnsServers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -380,7 +381,7 @@ Error Database::GetInstances(const String& networkID, const String& nodeID, Arra
     try {
         std::vector<NetworkManagerInstanceRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, networkID, nodeID, ip, exposedPorts, dnsServers FROM "
+        *mSession << "SELECT itemID, subjectID, instance, type, networkID, nodeID, ip, exposedPorts, dnsServers FROM "
                      "networkmanager_instances WHERE networkID = ? AND nodeID = ?;",
             bind(networkID.CStr()), bind(nodeID.CStr()), into(rows), now;
 
@@ -445,8 +446,10 @@ Error Database::RemoveNetworkInstance(const InstanceIdent& instanceIdent)
     try {
         Poco::Data::Statement statement {*mSession};
 
-        statement << "DELETE FROM networkmanager_instances WHERE itemID = ? AND subjectID = ? AND instance = ?;",
-            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance);
+        statement
+            << "DELETE FROM networkmanager_instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+            bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
+            bind(instanceIdent.mType.ToString().CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -587,10 +590,11 @@ void Database::CreateTables()
                  "itemID TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
+                 "type TEXT,"
                  "storageQuota INTEGER,"
                  "stateQuota INTEGER,"
                  "stateChecksum BLOB,"
-                 "PRIMARY KEY(itemID,subjectID,instance)"
+                 "PRIMARY KEY(itemID,subjectID,instance,type)"
                  ");",
         now;
 
@@ -637,12 +641,13 @@ void Database::CreateTables()
                  "itemID TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
+                 "type TEXT,"
                  "networkID TEXT,"
                  "nodeID TEXT,"
                  "ip TEXT,"
                  "exposedPorts TEXT,"
                  "dnsServers TEXT,"
-                 "PRIMARY KEY(itemID,subjectID,instance),"
+                 "PRIMARY KEY(itemID,subjectID,instance,type),"
                  "FOREIGN KEY(networkID) REFERENCES networks(networkID),"
                  "FOREIGN KEY(networkID,nodeID) REFERENCES hosts(networkID,nodeID)"
                  ");",
@@ -677,6 +682,7 @@ void Database::FromAos(const storagestate::InstanceInfo& src, StorageStateInstan
     dst.set<ToInt(StorageStateInstanceInfoColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
     dst.set<ToInt(StorageStateInstanceInfoColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(StorageStateInstanceInfoColumns::eInstance)>(src.mInstanceIdent.mInstance);
+    dst.set<ToInt(StorageStateInstanceInfoColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>(src.mStorageQuota);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>(src.mStateQuota);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStateChecksum)>(
@@ -692,6 +698,9 @@ void Database::ToAos(const StorageStateInstanceInfoRow& src, storagestate::Insta
     dst.mInstanceIdent.mInstance  = src.get<ToInt(StorageStateInstanceInfoColumns::eInstance)>();
     dst.mStorageQuota             = src.get<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>();
     dst.mStateQuota               = src.get<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>();
+    AOS_ERROR_CHECK_AND_THROW(
+        dst.mInstanceIdent.mType.FromString(src.get<ToInt(StorageStateInstanceInfoColumns::eType)>().c_str()),
+        "failed to parse instance type");
     AOS_ERROR_CHECK_AND_THROW(dst.mStateChecksum.Assign(Array<uint8_t>(blob.rawContent(), blob.size())));
 }
 
@@ -727,6 +736,7 @@ void Database::FromAos(const networkmanager::Instance& src, NetworkManagerInstan
     dst.set<ToInt(NetworkManagerInstanceColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eInstance)>(src.mInstanceIdent.mInstance);
+    dst.set<ToInt(NetworkManagerInstanceColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eNetworkID)>(src.mNetworkID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eIP)>(src.mIP.CStr());
@@ -739,9 +749,12 @@ void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Insta
     dst.mInstanceIdent.mItemID    = src.get<ToInt(NetworkManagerInstanceColumns::eItemID)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(NetworkManagerInstanceColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(NetworkManagerInstanceColumns::eInstance)>();
-    dst.mNetworkID                = src.get<ToInt(NetworkManagerInstanceColumns::eNetworkID)>().c_str();
-    dst.mNodeID                   = src.get<ToInt(NetworkManagerInstanceColumns::eNodeID)>().c_str();
-    dst.mIP                       = src.get<ToInt(NetworkManagerInstanceColumns::eIP)>().c_str();
+    AOS_ERROR_CHECK_AND_THROW(
+        dst.mInstanceIdent.mType.FromString(src.get<ToInt(NetworkManagerInstanceColumns::eType)>().c_str()),
+        "failed to parse instance type");
+    dst.mNetworkID = src.get<ToInt(NetworkManagerInstanceColumns::eNetworkID)>().c_str();
+    dst.mNodeID    = src.get<ToInt(NetworkManagerInstanceColumns::eNodeID)>().c_str();
+    dst.mIP        = src.get<ToInt(NetworkManagerInstanceColumns::eIP)>().c_str();
 
     DeserializeExposedPorts(src.get<ToInt(NetworkManagerInstanceColumns::eExposedPorts)>(), dst.mExposedPorts);
     DeserializeDNSServers(src.get<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(), dst.mDNSServers);
