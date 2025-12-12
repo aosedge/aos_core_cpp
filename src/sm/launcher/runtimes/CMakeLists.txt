@@ -15,4 +15,5 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_launcher)
 # Modules
 # ######################################################################################################################
 
+add_subdirectory(rootfs)
 add_subdirectory(utils)
