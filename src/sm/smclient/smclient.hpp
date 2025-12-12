@@ -20,6 +20,7 @@
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/instancestatusprovider/itf/instancestatusprovider.hpp>
 #include <core/common/monitoring/itf/monitoring.hpp>
+#include <core/common/nodeconfig/itf/jsonprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/types/instance.hpp>
 #include <core/sm/launcher/itf/launcher.hpp>
@@ -58,6 +59,7 @@ public:
      * @param networkManager network manager.
      * @param monitoring monitoring.
      * @param instanceStatusProvider instance status provider.
+     * @param jsonProvider JSON provider.
      * @param secureConnection secure connection flag.
      * @return Error.
      */
@@ -68,7 +70,7 @@ public:
         nodeconfig::NodeConfigHandlerItf& nodeConfigHandler, launcher::LauncherItf& launcher,
         logging::LogProviderItf& logProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::monitoring::MonitoringItf& monitoring, aos::instancestatusprovider::ProviderItf& instanceStatusProvider,
-        bool secureConnection = true);
+        aos::nodeconfig::JSONProviderItf& jsonProvider, bool secureConnection = true);
 
     /**
      * Starts the client.
@@ -187,6 +189,18 @@ private:
 
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
+    void HandleIncomingMessages();
+
+    Error ProcessGetNodeConfigStatus();
+    Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);
+    Error ProcessSetNodeConfig(const smproto::SetNodeConfig& setConfig);
+    Error ProcessUpdateInstances(const smproto::UpdateInstances& updateInstances);
+    Error ProcessSystemLogRequest(const smproto::SystemLogRequest& request);
+    Error ProcessInstanceLogRequest(const smproto::InstanceLogRequest& request);
+    Error ProcessInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request);
+    Error ProcessGetAverageMonitoring();
+    Error ProcessConnectionStatus(const smproto::ConnectionStatus& status);
+    Error ProcessUpdateNetworks(const smproto::UpdateNetworks& updateNetworks);
 
     Config                                     mConfig {};
     std::string                                mNodeID;
@@ -200,6 +214,7 @@ private:
     networkmanager::NetworkManagerItf*         mNetworkManager {};
     aos::monitoring::MonitoringItf*            mMonitoring {};
     aos::instancestatusprovider::ProviderItf*  mInstanceStatusProvider {};
+    aos::nodeconfig::JSONProviderItf*          mJSONProvider {};
     bool                                       mSecureConnection {};
     std::shared_ptr<grpc::ChannelCredentials>  mCredentials;
 
@@ -211,6 +226,8 @@ private:
     std::mutex              mMutex;
     bool                    mStopped = true;
     std::condition_variable mStoppedCV;
+
+    std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
 };
 
 } // namespace aos::sm::smclient
