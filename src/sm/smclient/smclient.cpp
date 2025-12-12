@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
+
 #include <common/pbconvert/sm.hpp>
 #include <sm/logger/logmodule.hpp>
 
@@ -21,7 +23,8 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, nodeconfig::NodeConfigHandlerItf& nodeConfigHandler,
     launcher::LauncherItf& launcher, logging::LogProviderItf& logProvider,
     networkmanager::NetworkManagerItf& networkManager, aos::monitoring::MonitoringItf& monitoring,
-    aos::instancestatusprovider::ProviderItf& instanceStatusProvider, bool secureConnection)
+    aos::instancestatusprovider::ProviderItf& instanceStatusProvider, aos::nodeconfig::JSONProviderItf& jsonProvider,
+    bool secureConnection)
 {
     LOG_DBG() << "Init SM client";
 
@@ -37,6 +40,7 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     mNetworkManager         = &networkManager;
     mMonitoring             = &monitoring;
     mInstanceStatusProvider = &instanceStatusProvider;
+    mJSONProvider           = &jsonProvider;
     mSecureConnection       = secureConnection;
 
     return ErrorEnum::eNone;
@@ -268,14 +272,28 @@ Error SMClient::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests
 
 Error SMClient::SubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener)
 {
-    (void)listener;
+    std::lock_guard lock {mMutex};
+
+    auto it = std::find(mConnectionListeners.begin(), mConnectionListeners.end(), &listener);
+    if (it != mConnectionListeners.end()) {
+        return Error(ErrorEnum::eAlreadyExist, "listener already subscribed");
+    }
+
+    mConnectionListeners.push_back(&listener);
 
     return ErrorEnum::eNone;
 }
 
 Error SMClient::UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener)
 {
-    (void)listener;
+    std::lock_guard lock {mMutex};
+
+    auto it = std::find(mConnectionListeners.begin(), mConnectionListeners.end(), &listener);
+    if (it == mConnectionListeners.end()) {
+        return Error(ErrorEnum::eNotFound, "listener not found");
+    }
+
+    mConnectionListeners.erase(it);
 
     return ErrorEnum::eNone;
 }
@@ -395,6 +413,272 @@ bool SMClient::RegisterSM(const std::string& url)
     return true;
 }
 
+void SMClient::HandleIncomingMessages()
+{
+    smproto::SMIncomingMessages incomingMsg;
+
+    while (mStream->Read(&incomingMsg)) {
+        if (incomingMsg.has_get_node_config_status()) {
+            if (auto err = ProcessGetNodeConfigStatus(); !err.IsNone()) {
+                LOG_ERR() << "Failed to process get node config status: err=" << err;
+            }
+        } else if (incomingMsg.has_check_node_config()) {
+            if (auto err = ProcessCheckNodeConfig(incomingMsg.check_node_config()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process check node config: err=" << err;
+            }
+        } else if (incomingMsg.has_set_node_config()) {
+            if (auto err = ProcessSetNodeConfig(incomingMsg.set_node_config()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process set node config: err=" << err;
+            }
+        } else if (incomingMsg.has_update_instances()) {
+            if (auto err = ProcessUpdateInstances(incomingMsg.update_instances()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process update instances: err=" << err;
+            }
+        } else if (incomingMsg.has_system_log_request()) {
+            if (auto err = ProcessSystemLogRequest(incomingMsg.system_log_request()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process system log request: err=" << err;
+            }
+        } else if (incomingMsg.has_instance_log_request()) {
+            if (auto err = ProcessInstanceLogRequest(incomingMsg.instance_log_request()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process instance log request: err=" << err;
+            }
+        } else if (incomingMsg.has_instance_crash_log_request()) {
+            if (auto err = ProcessInstanceCrashLogRequest(incomingMsg.instance_crash_log_request()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process instance crash log request: err=" << err;
+            }
+        } else if (incomingMsg.has_get_average_monitoring()) {
+            if (auto err = ProcessGetAverageMonitoring(); !err.IsNone()) {
+                LOG_ERR() << "Failed to process get average monitoring: err=" << err;
+            }
+        } else if (incomingMsg.has_connection_status()) {
+            if (auto err = ProcessConnectionStatus(incomingMsg.connection_status()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process connection status: err=" << err;
+            }
+        } else if (incomingMsg.has_update_networks()) {
+            if (auto err = ProcessUpdateNetworks(incomingMsg.update_networks()); !err.IsNone()) {
+                LOG_ERR() << "Failed to process update networks: err=" << err;
+            }
+        }
+    }
+}
+
+Error SMClient::ProcessGetNodeConfigStatus()
+{
+    LOG_DBG() << "Process get node config status";
+
+    NodeConfigStatus status;
+
+    if (auto err = mNodeConfigHandler->GetNodeConfigStatus(status); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+
+    common::pbconvert::ConvertToProto(status, *outgoingMsg.mutable_node_config_status());
+
+    std::lock_guard lock {mMutex};
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "failed to send node config status");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig)
+{
+    LOG_DBG() << "Process check node config";
+
+    auto nodeConfig = std::make_unique<NodeConfig>();
+
+    if (auto err = mJSONProvider->NodeConfigFromJSON(checkConfig.node_config().c_str(), *nodeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    nodeConfig->mVersion = checkConfig.version().c_str();
+
+    NodeConfigStatus status;
+
+    if (auto err = mNodeConfigHandler->GetNodeConfigStatus(status); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    status.mError   = mNodeConfigHandler->CheckNodeConfig(*nodeConfig);
+    status.mVersion = nodeConfig->mVersion;
+
+    smproto::SMOutgoingMessages outgoingMsg;
+
+    common::pbconvert::ConvertToProto(status, *outgoingMsg.mutable_node_config_status());
+
+    std::lock_guard lock {mMutex};
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "failed to send node config status");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessSetNodeConfig(const smproto::SetNodeConfig& setConfig)
+{
+    LOG_DBG() << "Process set node config";
+
+    auto nodeConfig = std::make_unique<NodeConfig>();
+
+    if (auto err = mJSONProvider->NodeConfigFromJSON(setConfig.node_config().c_str(), *nodeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    nodeConfig->mVersion = setConfig.version().c_str();
+
+    NodeConfigStatus status;
+
+    if (auto err = mNodeConfigHandler->GetNodeConfigStatus(status); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    status.mError   = mNodeConfigHandler->UpdateNodeConfig(*nodeConfig);
+    status.mVersion = nodeConfig->mVersion;
+
+    smproto::SMOutgoingMessages outgoingMsg;
+
+    common::pbconvert::ConvertToProto(status, *outgoingMsg.mutable_node_config_status());
+
+    std::lock_guard lock {mMutex};
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "failed to send node config status");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessUpdateInstances(const smproto::UpdateInstances& updateInstances)
+{
+    LOG_DBG() << "Process update instances";
+
+    auto stopInstances  = std::make_unique<StaticArray<InstanceIdent, cMaxNumInstances>>();
+    auto startInstances = std::make_unique<InstanceInfoArray>();
+
+    if (auto err = common::pbconvert::ConvertFromProto(updateInstances, *stopInstances, *startInstances);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mLauncher->UpdateInstances(*stopInstances, *startInstances); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessSystemLogRequest(const smproto::SystemLogRequest& request)
+{
+    LOG_DBG() << "Process system log request";
+
+    RequestLog requestLog;
+
+    if (auto err = common::pbconvert::ConvertFromProto(request, requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mLogProvider->GetSystemLog(requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessInstanceLogRequest(const smproto::InstanceLogRequest& request)
+{
+    LOG_DBG() << "Process instance log request";
+
+    RequestLog requestLog;
+
+    if (auto err = common::pbconvert::ConvertFromProto(request, requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mLogProvider->GetInstanceLog(requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request)
+{
+    LOG_DBG() << "Process instance crash log request";
+
+    RequestLog requestLog;
+
+    if (auto err = common::pbconvert::ConvertFromProto(request, requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mLogProvider->GetInstanceCrashLog(requestLog); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessGetAverageMonitoring()
+{
+    LOG_DBG() << "Process get average monitoring";
+
+    auto monitoringData = std::make_unique<aos::monitoring::NodeMonitoringData>();
+
+    if (auto err = mMonitoring->GetAverageMonitoringData(*monitoringData); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    smproto::SMOutgoingMessages outgoingMsg;
+    common::pbconvert::ConvertToProto(*monitoringData, *outgoingMsg.mutable_average_monitoring());
+
+    std::lock_guard lock {mMutex};
+
+    if (!mStream->Write(outgoingMsg)) {
+        return Error(ErrorEnum::eFailed, "failed to send average monitoring");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& status)
+{
+    LOG_DBG() << "Process connection status: " << status.cloud_status();
+
+    std::lock_guard lock {mMutex};
+
+    for (auto* listener : mConnectionListeners) {
+        if (status.cloud_status() == smproto::ConnectionEnum::CONNECTED) {
+            listener->OnConnect();
+        } else {
+            listener->OnDisconnect();
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& updateNetworks)
+{
+    LOG_DBG() << "Process update networks";
+
+    auto networks = std::make_unique<StaticArray<NetworkParameters, cMaxNumOwners>>();
+
+    if (auto err = common::pbconvert::ConvertFromProto(updateNetworks, *networks); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mNetworkManager->UpdateNetworks(*networks); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 void SMClient::ConnectionLoop() noexcept
 {
     LOG_DBG() << "SM client connection thread started";
@@ -407,6 +691,8 @@ void SMClient::ConnectionLoop() noexcept
                 LOG_ERR() << "Can't send SM info";
             } else if (!SendNodeInstancesStatus()) {
                 LOG_ERR() << "Can't send node instances status";
+            } else {
+                HandleIncomingMessages();
             }
 
             LOG_DBG() << "SM client connection closed";
