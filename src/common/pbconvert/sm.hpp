@@ -97,6 +97,33 @@ Error ConvertToProto(const RequestLog& log, servicemanager::v5::InstanceLogReque
 Error ConvertToProto(const RequestLog& log, servicemanager::v5::InstanceCrashLogRequest& result);
 
 /**
+ * Converts grpc system log request to Aos request log.
+ *
+ * @param src grpc system log request.
+ * @param[out] dst Aos request log.
+ * @return Error
+ */
+Error ConvertFromProto(const servicemanager::v5::SystemLogRequest& src, RequestLog& dst);
+
+/**
+ * Converts grpc instance log request to Aos request log.
+ *
+ * @param src grpc instance log request.
+ * @param[out] dst Aos request log.
+ * @return Error
+ */
+Error ConvertFromProto(const servicemanager::v5::InstanceLogRequest& src, RequestLog& dst);
+
+/**
+ * Converts grpc instance crash log request to Aos request log.
+ *
+ * @param src grpc instance crash log request.
+ * @param[out] dst Aos request log.
+ * @return Error
+ */
+Error ConvertFromProto(const servicemanager::v5::InstanceCrashLogRequest& src, RequestLog& dst);
+
+/**
  * Converts grpc log data to Aos push log.
  *
  * @param grpcLogData grpc log data.
@@ -125,6 +152,26 @@ Error ConvertToProto(const Array<UpdateNetworkParameters>& networkParams, servic
  */
 Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances,
     servicemanager::v5::UpdateInstances& result);
+
+/**
+ * Converts grpc update instances to Aos instance arrays.
+ *
+ * @param src grpc update instances.
+ * @param[out] stopInstances Aos instances to stop.
+ * @param[out] startInstances Aos instances to start.
+ * @return Error
+ */
+Error ConvertFromProto(const servicemanager::v5::UpdateInstances& src, Array<InstanceIdent>& stopInstances,
+    Array<InstanceInfo>& startInstances);
+
+/**
+ * Converts grpc update networks to Aos network parameters.
+ *
+ * @param src grpc update networks.
+ * @param[out] dst Aos network parameters array.
+ * @return Error
+ */
+Error ConvertFromProto(const servicemanager::v5::UpdateNetworks& src, Array<NetworkParameters>& dst);
 
 /**
  * Converts grpc average monitoring to Aos node monitoring data.
@@ -168,6 +215,14 @@ Error ConvertFromProto(
 Error ConvertFromProto(const servicemanager::v5::SMInfo& src, aos::cm::nodeinfoprovider::SMInfo& dst);
 
 /**
+ * Converts aos node config status to protobuf.
+ *
+ * @param src aos node config status.
+ * @param[out] dst protobuf node config status.
+ */
+void ConvertToProto(const NodeConfigStatus& src, servicemanager::v5::NodeConfigStatus& dst);
+
+/**
  * Converts aos runtime info to protobuf.
  *
  * @param src aos runtime info.
@@ -207,6 +262,14 @@ void ConvertToProto(const MonitoringData& src, const Time& timestamp, serviceman
  * @param[out] dst protobuf instant monitoring.
  */
 void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::InstantMonitoring& dst);
+
+/**
+ * Converts aos node monitoring data to protobuf average monitoring.
+ *
+ * @param src aos node monitoring data.
+ * @param[out] dst protobuf average monitoring.
+ */
+void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::AverageMonitoring& dst);
 
 /**
  * Converts aos push log to protobuf log data.
