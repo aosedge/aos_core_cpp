@@ -25,13 +25,15 @@ std::vector<T> ToVector(const Array<T>& src)
     return std::vector<T>(src.begin(), src.end());
 }
 
-InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance)
+InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
+    UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     InstanceIdent ident;
 
     ident.mItemID    = itemID;
     ident.mSubjectID = subjectID;
     ident.mInstance  = instance;
+    ident.mType      = itemType;
 
     return ident;
 }
@@ -48,44 +50,6 @@ storagestate::InstanceInfo CreateStorageStateInstanceInfo(
     info.mStateChecksum = Array<uint8_t>(checksum.data(), checksum.size());
 
     return info;
-}
-
-imagemanager::storage::ItemInfo CreateImageManagerItemInfo(
-    const char* id, const char* version, imagemanager::storage::ItemStateEnum state, size_t totalSize)
-{
-    imagemanager::storage::ItemInfo item;
-
-    item.mID        = id;
-    item.mVersion   = version;
-    item.mTotalSize = totalSize;
-    item.mGID       = 1000;
-    item.mPath      = "/path/to/item";
-    item.mTimestamp = Time::Now();
-
-    item.mType  = UpdateItemTypeEnum::eComponent;
-    item.mState = state;
-
-    // Add a sample image
-    imagemanager::storage::ImageInfo imageInfo;
-    imageInfo.mURL  = "http://example.com/image.tar";
-    imageInfo.mPath = "/path/to/image";
-    imageInfo.mSize = 1024 * 1024;
-
-    // SHA256 hash (magic number)
-    static const std::vector<uint8_t> cSHA256MagicNumber = {0xde, 0xad, 0xbe, 0xef};
-
-    imageInfo.mSHA256 = Array<uint8_t>(cSHA256MagicNumber.data(), cSHA256MagicNumber.size());
-
-    // Platform info
-    imageInfo.mImageID                = "image1";
-    imageInfo.mArchInfo.mArchitecture = "amd64";
-    imageInfo.mArchInfo.mVariant.SetValue("v8");
-    imageInfo.mOSInfo.mOS = "linux";
-    imageInfo.mOSInfo.mVersion.SetValue("5.10");
-
-    AOS_ERROR_CHECK_AND_THROW(item.mImages.PushBack(imageInfo), "can't add image");
-
-    return item;
 }
 
 networkmanager::Network CreateNetwork(const char* networkID, const char* subnet, uint64_t vlanID)
@@ -110,11 +74,11 @@ networkmanager::Host CreateHost(const char* nodeID, const char* ip)
 }
 
 networkmanager::Instance CreateInstance(const char* itemID, const char* subjectID, uint64_t instance,
-    const char* networkID, const char* nodeID, const char* ip)
+    const char* networkID, const char* nodeID, const char* ip, UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     networkmanager::Instance inst;
 
-    inst.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance);
+    inst.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance, itemType);
     inst.mNetworkID     = networkID;
     inst.mNodeID        = nodeID;
     inst.mIP            = ip;
@@ -137,18 +101,18 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
     return inst;
 }
 
-launcher::InstanceInfo CreateLauncherInstanceInfo(
-    const char* itemID, const char* subjectID, uint64_t instance, const char* imageID, const char* nodeID)
+launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char* subjectID, uint64_t instance,
+    const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     launcher::InstanceInfo info;
 
-    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance);
-    info.mImageID        = imageID;
-    info.mUpdateItemType = UpdateItemTypeEnum::eService;
+    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance, itemType);
+    info.mManifestDigest = manifestDigest;
     info.mNodeID         = nodeID;
     info.mPrevNodeID     = "prevNode";
     info.mRuntimeID      = "runc";
     info.mUID            = 1000;
+    info.mGID            = 2000;
     info.mTimestamp      = Time::Now();
     info.mCached         = true;
 
@@ -316,112 +280,6 @@ TEST_F(CMDatabaseTest, StateStorageUpdateStorageStateInfo)
 }
 
 /***********************************************************************************************************************
- * imagemanager::storage::StorageItf tests
- **********************************************************************************************************************/
-
-TEST_F(CMDatabaseTest, ImageManagerAddItem)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto item
-        = CreateImageManagerItemInfo("item1", "1.0.0", imagemanager::storage::ItemStateEnum::eCached, 1024 * 1024);
-
-    ASSERT_TRUE(mDB.AddItem(item).IsNone());
-
-    // Verify the item was added by retrieving all items
-    StaticArray<imagemanager::storage::ItemInfo, 10> allItems;
-    ASSERT_TRUE(mDB.GetItemsInfo(allItems).IsNone());
-    EXPECT_THAT(ToVector(allItems), UnorderedElementsAre(item));
-}
-
-TEST_F(CMDatabaseTest, ImageManagerSetItemState)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    // Set state for non-existent item
-    auto err = mDB.SetItemState(
-        "nonexistent", "1.0.0", imagemanager::storage::ItemState(imagemanager::storage::ItemStateEnum::eActive));
-    ASSERT_EQ(err, ErrorEnum::eNotFound);
-
-    // Add an item with state "cached"
-    auto item
-        = CreateImageManagerItemInfo("item1", "1.0.0", imagemanager::storage::ItemStateEnum::eCached, 1024 * 1024);
-    ASSERT_TRUE(mDB.AddItem(item).IsNone());
-
-    StaticArray<imagemanager::storage::ItemInfo, 10> allItems;
-    ASSERT_TRUE(mDB.GetItemsInfo(allItems).IsNone());
-    ASSERT_EQ(allItems.Size(), 1);
-    EXPECT_EQ(allItems[0].mState, imagemanager::storage::ItemStateEnum::eCached);
-
-    // Set state to "active"
-    ASSERT_TRUE(mDB.SetItemState(item.mID, item.mVersion, imagemanager::storage::ItemStateEnum::eActive).IsNone());
-
-    ASSERT_TRUE(mDB.GetItemsInfo(allItems).IsNone());
-    ASSERT_EQ(allItems.Size(), 1);
-    EXPECT_EQ(allItems[0].mState, imagemanager::storage::ItemStateEnum::eActive);
-}
-
-TEST_F(CMDatabaseTest, ImageManagerRemoveItem)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    // Remove non-existent item
-    EXPECT_EQ(mDB.RemoveItem("nonexistent", "1.0.0"), ErrorEnum::eNotFound);
-
-    // Add items
-    auto item1
-        = CreateImageManagerItemInfo("item1", "1.0.0", imagemanager::storage::ItemStateEnum::eCached, 1024 * 1024);
-    auto item2
-        = CreateImageManagerItemInfo("item2", "2.0.0", imagemanager::storage::ItemStateEnum::eActive, 2048 * 1024);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-
-    // Remove item2
-    ASSERT_TRUE(mDB.RemoveItem(item2.mID, item2.mVersion).IsNone());
-
-    StaticArray<imagemanager::storage::ItemInfo, 10> allItems;
-    ASSERT_TRUE(mDB.GetItemsInfo(allItems).IsNone());
-    EXPECT_THAT(ToVector(allItems), UnorderedElementsAre(item1));
-
-    // Remove item2 again
-    EXPECT_EQ(mDB.RemoveItem(item2.mID, item2.mVersion), ErrorEnum::eNotFound);
-}
-
-TEST_F(CMDatabaseTest, ImageManagerGetItemVersionsByID)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    // Get versions for non-existent item - should return empty
-    StaticArray<imagemanager::storage::ItemInfo, 10> versions;
-    ASSERT_TRUE(mDB.GetItemVersionsByID("nonexistent", versions).IsNone());
-    EXPECT_EQ(versions.Size(), 0);
-
-    // Add items
-    auto item1v1
-        = CreateImageManagerItemInfo("item1", "1.0.0", imagemanager::storage::ItemStateEnum::eCached, 1024 * 1024);
-    auto item1v2
-        = CreateImageManagerItemInfo("item1", "2.0.0", imagemanager::storage::ItemStateEnum::eActive, 2048 * 1024);
-    auto item1v3
-        = CreateImageManagerItemInfo("item1", "3.0.0", imagemanager::storage::ItemStateEnum::eCached, 3072 * 1024);
-    auto item2v1
-        = CreateImageManagerItemInfo("item2", "1.0.0", imagemanager::storage::ItemStateEnum::eActive, 512 * 1024);
-
-    ASSERT_TRUE(mDB.AddItem(item1v1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item1v2).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item1v3).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2v1).IsNone());
-
-    // Get all versions of item1
-    ASSERT_TRUE(mDB.GetItemVersionsByID("item1", versions).IsNone());
-    EXPECT_THAT(ToVector(versions), UnorderedElementsAre(item1v1, item1v2, item1v3));
-
-    // Get all versions of item2
-    ASSERT_TRUE(mDB.GetItemVersionsByID("item2", versions).IsNone());
-    EXPECT_THAT(ToVector(versions), UnorderedElementsAre(item2v1));
-}
-
-/***********************************************************************************************************************
  * networkmanager::StorageItf tests
  **********************************************************************************************************************/
 
@@ -493,7 +351,8 @@ TEST_F(CMDatabaseTest, NetworkManagerAddInstance)
 
     auto instance1 = CreateInstance("service1", "subject1", 0, "network1", "node1", "172.17.0.10");
     auto instance2 = CreateInstance("service1", "subject1", 1, "network1", "node1", "172.17.0.11");
-    auto instance3 = CreateInstance("service2", "subject2", 0, "network1", "node1", "172.17.0.12");
+    auto instance3
+        = CreateInstance("service2", "subject2", 0, "network1", "node1", "172.17.0.12", UpdateItemTypeEnum::eComponent);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -623,7 +482,8 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
 
     auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
     auto instance2 = CreateLauncherInstanceInfo("service1", "subject1", 1, "image1", "node1");
-    auto instance3 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance3
+        = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2", UpdateItemTypeEnum::eComponent);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -653,12 +513,12 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Update instance
-    instance1.mImageID    = "image1-updated";
-    instance1.mNodeID     = "node1-updated";
-    instance1.mPrevNodeID = "node1";
-    instance1.mRuntimeID  = "crun";
-    instance1.mUID        = 2000;
-    instance1.mCached     = false;
+    instance1.mManifestDigest = "image1-updated";
+    instance1.mNodeID         = "node1-updated";
+    instance1.mPrevNodeID     = "node1";
+    instance1.mRuntimeID      = "crun";
+    instance1.mUID            = 2000;
+    instance1.mCached         = false;
 
     ASSERT_TRUE(mDB.UpdateInstance(instance1).IsNone());
 
