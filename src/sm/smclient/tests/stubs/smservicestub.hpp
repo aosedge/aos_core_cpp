@@ -11,6 +11,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <grpcpp/server_builder.h>
@@ -79,6 +80,24 @@ public:
                 OnAlert(msg.alert());
                 mAlertReceived = true;
                 mCV.notify_all();
+            } else if (msg.has_node_config_status()) {
+                std::lock_guard lock {mLock};
+
+                OnNodeConfigStatus(msg.node_config_status());
+                mNodeConfigStatusReceived = true;
+                mCV.notify_all();
+            } else if (msg.has_average_monitoring()) {
+                std::lock_guard lock {mLock};
+
+                OnAverageMonitoring(msg.average_monitoring());
+                mAverageMonitoringReceived = true;
+                mCV.notify_all();
+            } else if (msg.has_log()) {
+                std::lock_guard lock {mLock};
+
+                OnLogData(msg.log());
+                mLogDataReceived = true;
+                mCV.notify_all();
             }
         }
 
@@ -105,6 +124,104 @@ public:
     MOCK_METHOD(void, OnUpdateInstancesStatus, (const smproto::UpdateInstancesStatus&));
     MOCK_METHOD(void, OnInstantMonitoring, (const smproto::InstantMonitoring&));
     MOCK_METHOD(void, OnAlert, (const smproto::Alert&));
+    MOCK_METHOD(void, OnNodeConfigStatus, (const smproto::NodeConfigStatus&));
+    MOCK_METHOD(void, OnAverageMonitoring, (const smproto::AverageMonitoring&));
+    MOCK_METHOD(void, OnLogData, (const smproto::LogData&));
+
+    void SendGetNodeConfigStatus()
+    {
+        smproto::SMIncomingMessages msg;
+        msg.mutable_get_node_config_status();
+        mStream->Write(msg);
+    }
+
+    void SendCheckNodeConfig(const std::string& nodeConfig, const std::string& version)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       checkConfig = msg.mutable_check_node_config();
+        checkConfig->set_node_config(nodeConfig);
+        checkConfig->set_version(version);
+        mStream->Write(msg);
+    }
+
+    void SendSetNodeConfig(const std::string& nodeConfig, const std::string& version)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       setConfig = msg.mutable_set_node_config();
+        setConfig->set_node_config(nodeConfig);
+        setConfig->set_version(version);
+        mStream->Write(msg);
+    }
+
+    void SendUpdateInstances(
+        const std::vector<smproto::InstanceInfo>& startInstances, const std::vector<std::string>& stopServiceIds)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       updateInstances = msg.mutable_update_instances();
+
+        for (const auto& instance : startInstances) {
+            *updateInstances->add_start_instances() = instance;
+        }
+
+        for (const auto& serviceId : stopServiceIds) {
+            auto* ident = updateInstances->add_stop_instances();
+            ident->set_item_id(serviceId);
+        }
+
+        mStream->Write(msg);
+    }
+
+    void SendSystemLogRequest(const std::string& correlationId)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       request = msg.mutable_system_log_request();
+        request->set_correlation_id(correlationId);
+        mStream->Write(msg);
+    }
+
+    void SendInstanceLogRequest(const std::string& correlationId, const std::string& serviceId)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       request = msg.mutable_instance_log_request();
+        request->set_correlation_id(correlationId);
+        request->mutable_filter()->set_item_id(serviceId);
+        mStream->Write(msg);
+    }
+
+    void SendInstanceCrashLogRequest(const std::string& correlationId, const std::string& serviceId)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       request = msg.mutable_instance_crash_log_request();
+        request->set_correlation_id(correlationId);
+        request->mutable_filter()->set_item_id(serviceId);
+        mStream->Write(msg);
+    }
+
+    void SendGetAverageMonitoring()
+    {
+        smproto::SMIncomingMessages msg;
+        msg.mutable_get_average_monitoring();
+        mStream->Write(msg);
+    }
+
+    void SendConnectionStatus(smproto::ConnectionEnum status)
+    {
+        smproto::SMIncomingMessages msg;
+        msg.mutable_connection_status()->set_cloud_status(status);
+        mStream->Write(msg);
+    }
+
+    void SendUpdateNetworks(const std::vector<smproto::UpdateNetworkParameters>& networks)
+    {
+        smproto::SMIncomingMessages msg;
+        auto*                       updateNetworks = msg.mutable_update_networks();
+
+        for (const auto& network : networks) {
+            *updateNetworks->add_networks() = network;
+        }
+
+        mStream->Write(msg);
+    }
 
     void WaitRegistered(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
@@ -154,6 +271,30 @@ public:
         mAlertReceived = false;
     }
 
+    void WaitNodeConfigStatus(const std::chrono::seconds& timeout = std::chrono::seconds(4))
+    {
+        std::unique_lock lock {mLock};
+
+        mCV.wait_for(lock, timeout, [this] { return mNodeConfigStatusReceived; });
+        mNodeConfigStatusReceived = false;
+    }
+
+    void WaitAverageMonitoring(const std::chrono::seconds& timeout = std::chrono::seconds(4))
+    {
+        std::unique_lock lock {mLock};
+
+        mCV.wait_for(lock, timeout, [this] { return mAverageMonitoringReceived; });
+        mAverageMonitoringReceived = false;
+    }
+
+    void WaitLogData(const std::chrono::seconds& timeout = std::chrono::seconds(4))
+    {
+        std::unique_lock lock {mLock};
+
+        mCV.wait_for(lock, timeout, [this] { return mLogDataReceived; });
+        mLogDataReceived = false;
+    }
+
 private:
     std::unique_ptr<grpc::Server> CreateServer(
         const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
@@ -178,6 +319,9 @@ private:
     bool                          mUpdateInstancesStatusReceived {};
     bool                          mInstantMonitoringReceived {};
     bool                          mAlertReceived {};
+    bool                          mNodeConfigStatusReceived {};
+    bool                          mAverageMonitoringReceived {};
+    bool                          mLogDataReceived {};
     std::unique_ptr<grpc::Server> mServer;
 };
 
