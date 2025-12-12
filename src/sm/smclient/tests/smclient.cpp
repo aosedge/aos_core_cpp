@@ -14,11 +14,11 @@
 #include <core/common/tests/utils/log.hpp>
 
 #include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
+#include <core/common/tests/mocks/instancestatusprovidermock.hpp>
 #include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 #include <sm/smclient/smclient.hpp>
-#include <core/common/tests/mocks/instancestatusprovidermock.hpp>
 #include <sm/smclient/tests/mocks/logprovidermock.hpp>
 #include <sm/smclient/tests/mocks/monitoringmock.hpp>
 #include <sm/smclient/tests/mocks/nodeconfighandlermock.hpp>
