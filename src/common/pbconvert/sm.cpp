@@ -412,6 +412,113 @@ Error ConvertToProto(const aos::InstanceInfo& src, servicemanager::v5::InstanceI
     return ErrorEnum::eNone;
 }
 
+Error ConvertFromProto(const servicemanager::v5::FirewallRule& src, FirewallRule& dst)
+{
+    if (auto err = dst.mDstIP.Assign(src.dst_ip().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mDstPort.Assign(src.dst_port().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mProto.Assign(src.proto().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mSrcIP.Assign(src.src_ip().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::NetworkParameters& src, InstanceNetworkParameters& dst)
+{
+    if (auto err = dst.mNetworkID.Assign(src.network_id().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mSubnet.Assign(src.subnet().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mIP.Assign(src.ip().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& dns : src.dns_servers()) {
+        if (auto err = dst.mDNSServers.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mDNSServers.Back().Assign(dns.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& rule : src.rules()) {
+        if (auto err = dst.mFirewallRules.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = ConvertFromProto(rule, dst.mFirewallRules.Back()); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo& dst)
+{
+    static_cast<InstanceIdent&>(dst) = ConvertToAos(src.instance());
+
+    if (auto err = dst.mManifestDigest.Assign(src.manifest_digest().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mRuntimeID.Assign(src.runtime_id().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    dst.mUID      = src.uid();
+    dst.mGID      = src.gid();
+    dst.mPriority = src.priority();
+
+    if (auto err = dst.mStoragePath.Assign(src.storage_path().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = dst.mStatePath.Assign(src.state_path().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& envVar : src.env_vars()) {
+        if (auto err = dst.mEnvVars.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mEnvVars.Back().mName.Assign(envVar.name().c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mEnvVars.Back().mValue.Assign(envVar.value().c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (src.has_network_parameters()) {
+        dst.mNetworkParameters.EmplaceValue();
+
+        if (auto err = ConvertFromProto(src.network_parameters(), *dst.mNetworkParameters); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -442,6 +549,13 @@ Error ConvertFromProto(const servicemanager::v5::NodeConfigStatus& grpcStatus, N
     aosStatus.mError = pbconvert::ConvertFromProto(grpcStatus.error());
 
     return ErrorEnum::eNone;
+}
+
+void ConvertToProto(const NodeConfigStatus& src, servicemanager::v5::NodeConfigStatus& dst)
+{
+    dst.set_state(src.mState.ToString().CStr());
+    dst.set_version(src.mVersion.CStr());
+    dst.mutable_error()->CopyFrom(ConvertAosErrorToProto(src.mError));
 }
 
 Error ConvertToProto(const NodeConfig& config, servicemanager::v5::CheckNodeConfig& result)
@@ -564,6 +678,71 @@ Error ConvertToProto(const RequestLog& log, servicemanager::v5::InstanceCrashLog
     return ErrorEnum::eNone;
 }
 
+Error ConvertFromProto(const servicemanager::v5::SystemLogRequest& src, RequestLog& dst)
+{
+    dst.mLogType = LogTypeEnum::eSystemLog;
+
+    if (auto err = dst.mCorrelationID.Assign(src.correlation_id().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (src.has_from()) {
+        dst.mFilter.mFrom.EmplaceValue(pbconvert::ConvertToAos(src.from()).GetValue());
+    }
+
+    if (src.has_till()) {
+        dst.mFilter.mTill.EmplaceValue(pbconvert::ConvertToAos(src.till()).GetValue());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::InstanceLogRequest& src, RequestLog& dst)
+{
+    dst.mLogType = LogTypeEnum::eInstanceLog;
+
+    if (auto err = dst.mCorrelationID.Assign(src.correlation_id().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (src.has_filter()) {
+        pbconvert::ConvertToAos(src.filter(), dst.mFilter);
+    }
+
+    if (src.has_from()) {
+        dst.mFilter.mFrom.EmplaceValue(pbconvert::ConvertToAos(src.from()).GetValue());
+    }
+
+    if (src.has_till()) {
+        dst.mFilter.mTill.EmplaceValue(pbconvert::ConvertToAos(src.till()).GetValue());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::InstanceCrashLogRequest& src, RequestLog& dst)
+{
+    dst.mLogType = LogTypeEnum::eCrashLog;
+
+    if (auto err = dst.mCorrelationID.Assign(src.correlation_id().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (src.has_filter()) {
+        pbconvert::ConvertToAos(src.filter(), dst.mFilter);
+    }
+
+    if (src.has_from()) {
+        dst.mFilter.mFrom.EmplaceValue(pbconvert::ConvertToAos(src.from()).GetValue());
+    }
+
+    if (src.has_till()) {
+        dst.mFilter.mTill.EmplaceValue(pbconvert::ConvertToAos(src.till()).GetValue());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertFromProto(const servicemanager::v5::LogData& grpcLogData, const String& nodeID, PushLog& aosPushLog)
 {
     if (auto err = aosPushLog.mCorrelationID.Assign(grpcLogData.correlation_id().c_str()); !err.IsNone()) {
@@ -622,6 +801,56 @@ Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<
 
     return ErrorEnum::eNone;
 }
+
+Error ConvertFromProto(const servicemanager::v5::UpdateInstances& src, Array<InstanceIdent>& stopInstances,
+    Array<InstanceInfo>& startInstances)
+{
+    for (const auto& instance : src.stop_instances()) {
+        if (auto err = stopInstances.EmplaceBack(ConvertToAos(instance)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& instance : src.start_instances()) {
+        if (auto err = startInstances.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = ConvertFromProto(instance, startInstances.Back()); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::UpdateNetworks& src, Array<NetworkParameters>& dst)
+{
+    for (const auto& network : src.networks()) {
+        if (auto err = dst.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        auto& dstNetwork = dst.Back();
+
+        if (auto err = dstNetwork.mNetworkID.Assign(network.network_id().c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dstNetwork.mSubnet.Assign(network.subnet().c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dstNetwork.mIP.Assign(network.ip().c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        dstNetwork.mVlanID = network.vlan_id();
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertFromProto(
     const servicemanager::v5::AverageMonitoring& src, const String& nodeID, aos::monitoring::NodeMonitoringData& dst)
 {
@@ -814,6 +1043,18 @@ void ConvertToProto(const MonitoringData& src, const Time& timestamp, serviceman
 }
 
 void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::InstantMonitoring& dst)
+{
+    ConvertToProto(src.mMonitoringData, src.mTimestamp, *dst.mutable_node_monitoring());
+
+    for (const auto& instance : src.mInstances) {
+        auto* instanceMonitoring = dst.add_instances_monitoring();
+        instanceMonitoring->mutable_instance()->CopyFrom(ConvertToProto(instance.mInstanceIdent));
+        instanceMonitoring->set_runtime_id(instance.mRuntimeID.CStr());
+        ConvertToProto(instance.mMonitoringData, src.mTimestamp, *instanceMonitoring->mutable_monitoring_data());
+    }
+}
+
+void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::AverageMonitoring& dst)
 {
     ConvertToProto(src.mMonitoringData, src.mTimestamp, *dst.mutable_node_monitoring());
 

@@ -104,6 +104,21 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time)
     return result;
 }
 
+void ConvertToAos(const ::common::v2::InstanceFilter& src, InstanceFilter& dst)
+{
+    if (!src.item_id().empty()) {
+        dst.mItemID.SetValue(src.item_id().c_str());
+    }
+
+    if (!src.subject_id().empty()) {
+        dst.mSubjectID.SetValue(src.subject_id().c_str());
+    }
+
+    if (src.instance() >= 0) {
+        dst.mInstance.SetValue(static_cast<uint64_t>(src.instance()));
+    }
+}
+
 void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst)
 {
     dst.set_os(src.mOS.CStr());

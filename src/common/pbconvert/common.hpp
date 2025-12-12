@@ -69,6 +69,14 @@ InstanceIdent ConvertToAos(const ::common::v2::InstanceIdent& val);
 Optional<Time> ConvertToAos(const google::protobuf::Timestamp& val);
 
 /**
+ * Converts protobuf instance filter to aos.
+ *
+ * @param src protobuf instance filter.
+ * @param[out] dst aos instance filter.
+ */
+void ConvertToAos(const ::common::v2::InstanceFilter& src, InstanceFilter& dst);
+
+/**
  * Converts aos time to protobuf timestamp.
  *
  * @param time aos time.
