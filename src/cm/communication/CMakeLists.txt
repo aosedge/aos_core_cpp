@@ -30,6 +30,7 @@ set(LIBRARIES
     aos::common::utils
     aos::common::config
     aos::core::common::crypto
+    aos::cm::communication::cloudprotocol
     Poco::Crypto
     Poco::Foundation
     Poco::Net
