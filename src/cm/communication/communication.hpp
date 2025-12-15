@@ -13,6 +13,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <variant>
 #include <vector>
 
 #include <Poco/Net/HTTPMessage.h>
