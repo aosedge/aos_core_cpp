@@ -51,6 +51,16 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
+    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    err = PublicIdentityService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    if (!err.IsNone()) {
+        return err;
+    }
+
     LOG_INF() << "IAM client initialized successfully";
 
     return ErrorEnum::eNone;
@@ -83,6 +93,16 @@ void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
     err = PublicNodesService::Reconnect();
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to reconnect public nodes service" << Log::Field(err);
+    }
+
+    err = PublicCurrentNodeService::Reconnect();
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to reconnect public current node service" << Log::Field(err);
+    }
+
+    err = PublicIdentityService::Reconnect();
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to reconnect public identity service" << Log::Field(err);
     }
 }
 

@@ -11,6 +11,8 @@
 #include <common/iamclient/nodesservice.hpp>
 #include <common/iamclient/provisioningservice.hpp>
 #include <common/iamclient/publiccertservice.hpp>
+#include <common/iamclient/publiccurrentnodeservice.hpp>
+#include <common/iamclient/publicidentityservice.hpp>
 #include <common/iamclient/publicnodeservice.hpp>
 
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -26,6 +28,8 @@ class IAMClient : public aos::common::iamclient::CertificateService,
                   public aos::common::iamclient::ProvisioningService,
                   public aos::common::iamclient::PublicCertService,
                   public aos::common::iamclient::PublicNodesService,
+                  public aos::common::iamclient::PublicCurrentNodeService,
+                  public aos::common::iamclient::PublicIdentityService,
                   public aos::iamclient::CertListenerItf {
 public:
     /**
