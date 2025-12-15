@@ -38,7 +38,7 @@ namespace aos::cm::smcontroller {
 class SMController : public SMControllerItf,
                      private cloudconnection::ConnectionListenerItf,
                      private NodeConnectionStatusListenerItf,
-                     private iamclient::CertListenerItf,
+                     private aos::iamclient::CertListenerItf,
                      private servicemanager::v5::SMService::Service {
 public:
     /**
@@ -60,7 +60,7 @@ public:
      * @return Error.
      */
     Error Init(const Config& config, cloudconnection::CloudConnectionItf& cloudConnection,
-        iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+        aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
         crypto::x509::ProviderItf& cryptoProvider, imagemanager::BlobInfoProviderItf& blobInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
@@ -201,7 +201,7 @@ private:
     cloudconnection::CloudConnectionItf* mCloudConnection {};
     crypto::CertLoaderItf*               mCertLoader {};
     crypto::x509::ProviderItf*           mCryptoProvider {};
-    iamclient::CertProviderItf*          mCertProvider {};
+    aos::iamclient::CertProviderItf*     mCertProvider {};
     imagemanager::BlobInfoProviderItf*   mBlobInfoProvider {};
     alerts::ReceiverItf*                 mAlertsReceiver {};
     SenderItf*                           mLogSender {};
