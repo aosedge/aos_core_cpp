@@ -12,6 +12,8 @@
 
 #include <common/logger/logger.hpp>
 
+#include "aoscore.hpp"
+
 namespace aos::cm::app {
 
 /**
@@ -45,10 +47,11 @@ private:
     void Start();
     void Stop();
 
-    common::logger::Logger mLogger;
-    bool                   mStopProcessing = false;
-    bool                   mProvisioning   = false;
-    std::string            mConfigFile;
+    std::unique_ptr<AosCore> mAosCore;
+    common::logger::Logger   mLogger;
+    bool                     mStopProcessing {};
+    bool                     mInitialized {};
+    std::string              mConfigFile;
 };
 
 } // namespace aos::cm::app

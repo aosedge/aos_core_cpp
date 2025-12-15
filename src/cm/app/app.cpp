@@ -91,25 +91,41 @@ void App::initialize(Application& self)
 
     RegisterErrorSignals();
 
-    auto err = mLogger.Init();
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
+    try {
 
-    Application::initialize(self);
-    Init();
-    Start();
+        auto err = mLogger.Init();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
+
+        Application::initialize(self);
+
+        mAosCore = std::make_unique<AosCore>();
+
+        mAosCore->Init(mConfigFile);
+
+        mInitialized = true;
+
+        mAosCore->Start();
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Initialization failed" << Log::Field(common::utils::ToAosError(e));
+
+        throw;
+    }
 
     // Notify systemd
-    auto ret = sd_notify(0, cSDNotifyReady);
-    if (ret < 0) {
+    if (auto ret = sd_notify(0, cSDNotifyReady); ret < 0) {
         AOS_ERROR_CHECK_AND_THROW(ret, "can't notify systemd");
     }
 }
 
 void App::uninitialize()
 {
-    Stop();
-
     Application::uninitialize();
+
+    if (!mInitialized) {
+        return;
+    }
+
+    mAosCore->Stop();
 }
 
 void App::reinitialize(Application& self)
