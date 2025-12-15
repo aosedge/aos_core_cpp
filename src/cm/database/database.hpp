@@ -18,6 +18,7 @@
 
 #include <cm/networkmanager/itf/storage.hpp>
 #include <common/migration/migration.hpp>
+#include <core/cm/imagemanager/itf/storage.hpp>
 #include <core/cm/launcher/itf/storage.hpp>
 #include <core/cm/storagestate/itf/storage.hpp>
 
@@ -28,7 +29,10 @@ namespace aos::cm::database {
 /**
  * Database class.
  */
-class Database : public storagestate::StorageItf, public networkmanager::StorageItf, public launcher::StorageItf {
+class Database : public storagestate::StorageItf,
+                 public networkmanager::StorageItf,
+                 public launcher::StorageItf,
+                 public imagemanager::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -220,6 +224,55 @@ public:
      */
     Error RemoveInstance(const InstanceIdent& instanceIdent) override;
 
+    //
+    // imagemanager::StorageItf interface
+    //
+
+    /**
+     * Adds item.
+     *
+     * @param item Item info.
+     * @return Error.
+     */
+    Error AddItem(const imagemanager::ItemInfo& item) override;
+
+    /**
+     * Removes item.
+     *
+     * @param id ID.
+     * @param version Version.
+     * @return Error.
+     */
+    Error RemoveItem(const String& id, const String& version) override;
+
+    /**
+     * Updates item state.
+     *
+     * @param id ID.
+     * @param version Version.
+     * @param state Item state.
+     * @param timestamp Timestamp.
+     * @return Error.
+     */
+    Error UpdateItemState(const String& id, const String& version, ItemState state, Time timestamp = {}) override;
+
+    /**
+     * Gets items info.
+     *
+     * @param items Items info.
+     * @return Error.
+     */
+    Error GetItemsInfo(Array<imagemanager::ItemInfo>& items) override;
+
+    /**
+     * Gets items info by ID.
+     *
+     * @param itemID Item ID.
+     * @param items Items info.
+     * @return Error.
+     */
+    Error GetItemsInfos(const String& itemID, Array<imagemanager::ItemInfo>& items) override;
+
 private:
     static constexpr int  cVersion    = 0;
     static constexpr auto cDBFileName = "cm.db";
@@ -273,6 +326,9 @@ private:
     using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
         std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, bool>;
 
+    enum class ImageManagerItemInfoColumns : int { eItemID = 0, eVersion, eIndexDigest, eState, eTimestamp };
+    using ImageManagerItemInfoRow = Poco::Tuple<std::string, std::string, std::string, int, uint64_t>;
+
     // make virtual for unit tests
     virtual int GetVersion() const;
     void        CreateTables();
@@ -291,6 +347,9 @@ private:
 
     static void FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRow& dst);
     static void ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst);
+
+    static void FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRow& dst);
+    static void ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst);
 
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;

@@ -119,6 +119,20 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     return info;
 }
 
+imagemanager::ItemInfo CreateImageManagerItemInfo(
+    const char* itemID, const char* version, const char* indexDigest, ItemState state)
+{
+    imagemanager::ItemInfo info;
+
+    info.mItemID      = itemID;
+    info.mVersion     = version;
+    info.mIndexDigest = indexDigest;
+    info.mState       = state;
+    info.mTimestamp   = Time::Now();
+
+    return info;
+}
+
 std::string GetMigrationSourceDir()
 {
     std::filesystem::path curFilePath(__FILE__);
@@ -602,6 +616,136 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
     // Remove non-existent instance
     auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
     ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent).IsNone());
+}
+
+/***********************************************************************************************************************
+ * imagemanager::StorageItf tests
+ **********************************************************************************************************************/
+
+TEST_F(CMDatabaseTest, ImageManagerAddItem)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+
+    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
+
+    auto duplicateItem = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:xyz999", ItemStateEnum::eInstalled);
+    ASSERT_FALSE(mDB.AddItem(duplicateItem).IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 3> items;
+
+    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+
+    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
+}
+
+TEST_F(CMDatabaseTest, ImageManagerRemoveItem)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+
+    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
+
+    ASSERT_TRUE(mDB.RemoveItem("service1", "1.0.0").IsNone());
+
+    ASSERT_FALSE(mDB.RemoveItem("nonexistent", "1.0.0").IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 2> items;
+
+    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+
+    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item2, item3));
+}
+
+TEST_F(CMDatabaseTest, ImageManagerUpdateItemState)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::ePending);
+    auto item2 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:def456", ItemStateEnum::ePending);
+
+    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
+
+    auto newTimestamp = Time::Now();
+    ASSERT_TRUE(mDB.UpdateItemState("service1", "1.0.0", ItemStateEnum::eInstalled, newTimestamp).IsNone());
+
+    ASSERT_FALSE(mDB.UpdateItemState("nonexistent", "1.0.0", ItemStateEnum::eInstalled).IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 1> items;
+
+    ASSERT_TRUE(mDB.GetItemsInfos("service1", items).IsNone());
+    ASSERT_EQ(items.Size(), 1);
+    EXPECT_EQ(items[0].mState, ItemStateEnum::eInstalled);
+    EXPECT_EQ(items[0].mTimestamp, newTimestamp);
+
+    StaticArray<imagemanager::ItemInfo, 1> items2;
+
+    ASSERT_TRUE(mDB.GetItemsInfos("service2", items2).IsNone());
+    ASSERT_EQ(items2.Size(), 1);
+    EXPECT_EQ(items2[0].mState, ItemStateEnum::ePending);
+}
+
+TEST_F(CMDatabaseTest, ImageManagerGetItemsInfo)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 3> emptyItems;
+
+    ASSERT_TRUE(mDB.GetItemsInfo(emptyItems).IsNone());
+    EXPECT_EQ(emptyItems.Size(), 0);
+
+    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+
+    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 3> items;
+
+    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+
+    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
+}
+
+TEST_F(CMDatabaseTest, ImageManagerGetItemsInfos)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+
+    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
+    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
+
+    StaticArray<imagemanager::ItemInfo, 2> service1Items;
+
+    ASSERT_TRUE(mDB.GetItemsInfos("service1", service1Items).IsNone());
+    EXPECT_THAT(ToVector(service1Items), UnorderedElementsAre(item1, item2));
+
+    StaticArray<imagemanager::ItemInfo, 1> service2Items;
+
+    ASSERT_TRUE(mDB.GetItemsInfos("service2", service2Items).IsNone());
+    EXPECT_THAT(ToVector(service2Items), UnorderedElementsAre(item3));
+
+    StaticArray<imagemanager::ItemInfo, 1> nonExistentItems;
+
+    ASSERT_TRUE(mDB.GetItemsInfos("nonexistent", nonExistentItems).IsNone());
+    EXPECT_EQ(nonExistentItems.Size(), 0);
 }
 
 } // namespace aos::cm::database
