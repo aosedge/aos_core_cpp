@@ -210,44 +210,34 @@ void LabelsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, Array<Sta
 } // namespace
 
 /***********************************************************************************************************************
- * Public
+ * Public functions
  **********************************************************************************************************************/
 
-Error JSONProvider::NodeConfigToJSON(const NodeConfig& nodeConfig, String& json) const
+Poco::JSON::Object::Ptr NodeConfigToJSONObject(const NodeConfig& nodeConfig)
 {
-    try {
-        auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-        object->set("version", nodeConfig.mVersion.CStr());
-        object->set("nodeType", nodeConfig.mNodeType.CStr());
-        object->set("nodeId", nodeConfig.mNodeID.CStr());
+    object->set("version", nodeConfig.mVersion.CStr());
+    object->set("nodeType", nodeConfig.mNodeType.CStr());
+    object->set("nodeId", nodeConfig.mNodeID.CStr());
 
-        if (nodeConfig.mAlertRules.HasValue()) {
-            object->set("alertRules", AlertRulesToJSON(*nodeConfig.mAlertRules));
-        }
-
-        if (nodeConfig.mResourceRatios.HasValue()) {
-            object->set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
-        }
-
-        object->set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
-        object->set("priority", nodeConfig.mPriority);
-
-        json = utils::Stringify(object).c_str();
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    if (nodeConfig.mAlertRules.HasValue()) {
+        object->set("alertRules", AlertRulesToJSON(*nodeConfig.mAlertRules));
     }
 
-    return ErrorEnum::eNone;
+    if (nodeConfig.mResourceRatios.HasValue()) {
+        object->set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
+    }
+
+    object->set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
+    object->set("priority", nodeConfig.mPriority);
+
+    return object;
 }
 
-Error JSONProvider::NodeConfigFromJSON(const String& json, NodeConfig& nodeConfig) const
+Error NodeConfigFromJSONObject(const utils::CaseInsensitiveObjectWrapper& object, NodeConfig& nodeConfig)
 {
     try {
-        Poco::JSON::Parser                  parser;
-        auto                                result = parser.parse(json.CStr());
-        utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
-
         auto err = nodeConfig.mVersion.Assign(object.GetValue<std::string>("version").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "parsed version length exceeds application limit");
 
@@ -273,6 +263,34 @@ Error JSONProvider::NodeConfigFromJSON(const String& json, NodeConfig& nodeConfi
     }
 
     return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
+ * JSONProvider
+ **********************************************************************************************************************/
+
+Error JSONProvider::NodeConfigToJSON(const NodeConfig& nodeConfig, String& json) const
+{
+    try {
+        json = utils::Stringify(NodeConfigToJSONObject(nodeConfig)).c_str();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error JSONProvider::NodeConfigFromJSON(const String& json, NodeConfig& nodeConfig) const
+{
+    try {
+        Poco::JSON::Parser                  parser;
+        auto                                result = parser.parse(json.CStr());
+        utils::CaseInsensitiveObjectWrapper object(result.extract<Poco::JSON::Object::Ptr>());
+
+        return NodeConfigFromJSONObject(object, nodeConfig);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
 }
 
 } // namespace aos::common::jsonprovider
