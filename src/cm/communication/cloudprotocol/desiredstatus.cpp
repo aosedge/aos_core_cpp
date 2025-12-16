@@ -233,6 +233,12 @@ void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
 
         err = updateItemInfo.mItemID.Assign(identity.mID->c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse itemID");
+
+        if (!identity.mType.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item type is missing");
+        }
+
+        updateItemInfo.mType = *identity.mType;
     }
 
     auto err = updateItemInfo.mVersion.Assign(json.GetValue<std::string>("version").c_str());
