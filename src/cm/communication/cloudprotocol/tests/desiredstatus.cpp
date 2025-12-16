@@ -232,7 +232,8 @@ TEST_F(CloudProtocolDesiredStatus, Items)
         "items": [
             {
                 "item": {
-                    "id": "item1"
+                    "id": "item1",
+                    "type": "service"
                 },
                 "version": "0.0.1",
                 "owner": {
@@ -242,7 +243,8 @@ TEST_F(CloudProtocolDesiredStatus, Items)
             },
             {
                 "item": {
-                    "id": "item2"
+                    "id": "item2",
+                    "type": "component"
                 },
                 "version": "1.2.3",
                 "owner": {
@@ -267,12 +269,14 @@ TEST_F(CloudProtocolDesiredStatus, Items)
 
     const auto& item0 = desiredStatus->mUpdateItems[0];
     EXPECT_STREQ(item0.mItemID.CStr(), "item1");
+    EXPECT_STREQ(item0.mType.ToString().CStr(), "service");
     EXPECT_STREQ(item0.mOwnerID.CStr(), "owner1");
     EXPECT_STREQ(item0.mVersion.CStr(), "0.0.1");
     EXPECT_STREQ(item0.mIndexDigest.CStr(), "sha256:36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80");
 
     const auto& item1 = desiredStatus->mUpdateItems[1];
     EXPECT_STREQ(item1.mItemID.CStr(), "item2");
+    EXPECT_STREQ(item1.mType.ToString().CStr(), "component");
     EXPECT_STREQ(item1.mOwnerID.CStr(), "owner2");
     EXPECT_STREQ(item1.mVersion.CStr(), "1.2.3");
     EXPECT_STREQ(item1.mIndexDigest.CStr(), "sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd");
