@@ -523,8 +523,13 @@ void Communication::ReceiveDiscoveryResponse(
     Poco::StreamCopier::copyToString(session.receiveResponse(httpResponse), responseBody);
 
     if (httpResponse.getStatus() != Poco::Net::HTTPResponse::HTTP_OK) {
+        LOG_ERR() << "Discovery request failed" << Log::Field("status", httpResponse.getStatus())
+                  << Log::Field("reason", httpResponse.getReason().c_str());
+
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "Discovery request failed");
     }
+
+    LOG_DBG() << "Received discovery response" << Log::Field("content", responseBody.c_str());
 
     mDiscoveryResponse.emplace();
 
@@ -556,6 +561,10 @@ Error Communication::SendDiscoveryRequest()
 
         Poco::Net::HTTPResponse httpResponse;
         httpRequest.setContentLength64(static_cast<Poco::Int64>(requestBody.length()));
+
+        LOG_DBG() << "Connecting to service discovery server"
+                  << Log::Field("url", mConfig->mServiceDiscoveryURL.c_str())
+                  << Log::Field("content", requestBody.c_str());
 
         session->sendRequest(httpRequest) << requestBody;
 
