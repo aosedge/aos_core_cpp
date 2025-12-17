@@ -95,6 +95,30 @@ void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
 }
 
+void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, imagemanager::Config& config)
+{
+    if (!object.Has("installPath")) {
+        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "installPath tag is missing");
+    }
+
+    if (!object.Has("updateItemTtl")) {
+        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "updateItemTtl tag is missing");
+    }
+
+    if (!object.Has("downloadPath")) {
+        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "downloadPath tag is missing");
+    }
+
+    auto err = config.mInstallPath.Assign(object.GetValue<std::string>("installPath").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing installPath tag");
+
+    Tie(config.mUpdateItemTTL, err) = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl"));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
+
+    err = config.mDownloadPath.Assign(object.GetValue<std::string>("downloadPath").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing downloadPath tag");
+}
+
 void ParseDownloaderConfig(
     const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir, Downloader& config)
 {
@@ -161,6 +185,8 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseNodeInfoProviderConfig(
             object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);
         ParseAlertsConfig(object.Has("alerts") ? object.GetObject("alerts") : empty, config.mAlerts);
+        ParseImagemanagerConfig(
+            object.Has("imageManager") ? object.GetObject("imageManager") : empty, config.mImageManager);
         ParseDownloaderConfig(
             object.Has("downloader") ? object.GetObject("downloader") : empty, config.mWorkingDir, config.mDownloader);
         ParseSMControllerConfig(
