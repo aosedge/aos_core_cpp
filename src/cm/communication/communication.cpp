@@ -730,15 +730,30 @@ Error Communication::ReceiveFrames()
         do {
             n = mWebSocket->receiveFrame(buffer, flags);
 
-            if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
+            const auto frameOp = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
+
+            if (frameOp == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                 LOG_DBG() << "Received close frame, disconnecting";
 
                 break;
             }
 
+            if (frameOp == Poco::Net::WebSocket::FRAME_OP_PING) {
+                std::lock_guard lock {mMutex};
+
+                const auto sentBytes = mWebSocket->sendFrame(
+                    buffer.begin(), n, Poco::Net::WebSocket::FRAME_OP_PONG | Poco::Net::WebSocket::FRAME_FLAG_FIN);
+
+                LOG_DBG() << "Sent pong frame" << Log::Field("sentBytes", sentBytes);
+
+                buffer.resize(0);
+
+                continue;
+            }
+
             LOG_DBG() << "Received WebSocket frame" << Log::Field("size", n) << Log::Field("flags", flags);
 
-            if (n > 0) {
+            if (n > 0 && frameOp == Poco::Net::WebSocket::FRAME_OP_TEXT) {
                 std::lock_guard lock {mMutex};
 
                 mReceiveQueue.emplace(buffer.begin(), buffer.end());
@@ -901,7 +916,7 @@ void Communication::HandleReceivedMessage()
 
 Error Communication::HandleMessage(const std::string& message)
 {
-    LOG_DBG() << "Handle receive queue";
+    LOG_DBG() << "Handle cloud message" << Log::Field("message", message.c_str());
 
     auto parseResult = common::utils::ParseJson(message);
     if (!parseResult.mError.IsNone()) {
