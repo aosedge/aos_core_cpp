@@ -71,12 +71,6 @@ constexpr auto cFullTestConfigJSON = R"({
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
         "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
     },
-    "smController" : {
-        "fileServerUrl" : "localhost:8094",
-        "cmServerUrl" : "localhost:8093",
-        "nodesConnectionTimeout" : "100s",
-        "updateTtl" : "30h"
-    },
     "umController": {
         "fileServerUrl" : "localhost:8092",
         "cmServerUrl" : "localhost:8091",
@@ -108,7 +102,6 @@ constexpr auto cMinimalTestConfigJSON = R"({
         "updateItemTtl": "30d",
         "downloadPath": "/path/to/download"
     },
-    "smController" : {"fileServerUrl" : "localhost:8094", "cmServerUrl" : "localhost:8093"},
     "umController": {
         "fileServerUrl" : "localhost:8092",
         "cmServerUrl" : "localhost:8091"
@@ -195,11 +188,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
     EXPECT_EQ(config.mUMController.mUpdateTTL, aos::Time::cHours * 100);
 
-    EXPECT_EQ(config.mSMController.mFileServerURL, "localhost:8094");
-    EXPECT_EQ(config.mSMController.mCMServerURL, "localhost:8093");
-    EXPECT_EQ(config.mSMController.mNodesConnectionTimeout, aos::Time::cSeconds * 100);
-    EXPECT_EQ(config.mSMController.mUpdateTTL, aos::Time::cHours * 30);
-
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos_communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/communicationmanager/migration");
 }
@@ -247,11 +235,6 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
     EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
     EXPECT_EQ(config.mUMController.mUpdateTTL, aos::Time::cHours * 720);
-
-    EXPECT_EQ(config.mSMController.mFileServerURL, "localhost:8094");
-    EXPECT_EQ(config.mSMController.mCMServerURL, "localhost:8093");
-    EXPECT_EQ(config.mSMController.mNodesConnectionTimeout, aos::Time::cMinutes * 10);
-    EXPECT_EQ(config.mSMController.mUpdateTTL, aos::Time::cHours * 720);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, (std::filesystem::path("workingDir") / "migration").string());
