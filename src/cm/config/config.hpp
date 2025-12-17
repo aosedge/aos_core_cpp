@@ -61,16 +61,6 @@ struct Downloader {
 };
 
 /*
- * SM controller configuration.
- */
-struct SMController {
-    std::string mFileServerURL;
-    std::string mCMServerURL;
-    Duration    mNodesConnectionTimeout;
-    Duration    mUpdateTTL;
-};
-
-/*
  * Config structure.
  */
 struct Config {
@@ -82,7 +72,6 @@ struct Config {
     imagemanager::Config      mImageManager;
     common::config::Migration mMigration;
     Downloader                mDownloader;
-    SMController              mSMController;
     std::string               mDNSIP;
     std::string               mCertStorage;
     std::string               mServiceDiscoveryURL;

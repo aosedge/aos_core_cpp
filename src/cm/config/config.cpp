@@ -138,22 +138,6 @@ void ParseDownloaderConfig(
     config.mDownloadPartLimit = object.GetValue<int>("downloadPartLimit", cDefaultDownloadPartLimit);
 }
 
-void ParseSMControllerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, SMController& config)
-{
-    config.mFileServerURL = object.GetValue<std::string>("fileServerUrl");
-    config.mCMServerURL   = object.GetValue<std::string>("cmServerUrl");
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mNodesConnectionTimeout, err) = common::utils::ParseDuration(
-        object.GetValue<std::string>("nodesConnectionTimeout", cDefaultNodesConnectionTimeout));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing nodesConnectionTimeout tag");
-
-    Tie(config.mUpdateTTL, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("updateTtl", cDefaultSMControllerUpdateTTL));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateTtl tag");
-}
-
 } // namespace
 
 /***********************************************************************************************************************
@@ -189,8 +173,6 @@ Error ParseConfig(const std::string& filename, Config& config)
             object.Has("imageManager") ? object.GetObject("imageManager") : empty, config.mImageManager);
         ParseDownloaderConfig(
             object.Has("downloader") ? object.GetObject("downloader") : empty, config.mWorkingDir, config.mDownloader);
-        ParseSMControllerConfig(
-            object.Has("smController") ? object.GetObject("smController") : empty, config.mSMController);
 
         if (auto err
             = common::config::ParseMigrationConfig(object.Has("migration") ? object.GetObject("migration") : empty,
