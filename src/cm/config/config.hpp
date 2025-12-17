@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <core/cm/alerts/config.hpp>
+#include <core/cm/imagemanager/config.hpp>
 #include <core/cm/monitoring/config.hpp>
 #include <core/cm/nodeinfoprovider/config.hpp>
 #include <core/common/monitoring/config.hpp>
@@ -78,6 +79,7 @@ struct Config {
     Monitoring                mMonitoring;
     nodeinfoprovider::Config  mNodeInfoProvider;
     alerts::Config            mAlerts;
+    imagemanager::Config      mImageManager;
     common::config::Migration mMigration;
     Downloader                mDownloader;
     SMController              mSMController;
