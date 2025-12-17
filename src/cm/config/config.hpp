@@ -72,6 +72,7 @@ struct Config {
     imagemanager::Config      mImageManager;
     common::config::Migration mMigration;
     Downloader                mDownloader;
+    std::string               mDNSStoragePath;
     std::string               mDNSIP;
     std::string               mCertStorage;
     std::string               mServiceDiscoveryURL;
