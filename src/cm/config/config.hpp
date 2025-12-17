@@ -12,6 +12,7 @@
 
 #include <core/cm/alerts/config.hpp>
 #include <core/cm/monitoring/config.hpp>
+#include <core/cm/nodeinfoprovider/config.hpp>
 #include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
 
@@ -75,6 +76,7 @@ struct Config {
     Crypt                     mCrypt;
     UMController              mUMController;
     Monitoring                mMonitoring;
+    nodeinfoprovider::Config  mNodeInfoProvider;
     alerts::Config            mAlerts;
     common::config::Migration mMigration;
     Downloader                mDownloader;
