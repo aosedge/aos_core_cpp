@@ -75,7 +75,9 @@ constexpr auto cFullTestConfigJSON = R"({
         "fileServerUrl" : "localhost:8092",
         "cmServerUrl" : "localhost:8091",
         "updateTtl" : "100h"
-    }
+    },
+    "dnsStoragePath": "/var/aos/dnsstorage",
+    "dnsIp": "0.0.0.0:5353"
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
@@ -190,6 +192,9 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos_communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/communicationmanager/migration");
+
+    EXPECT_EQ(config.mDNSStoragePath, "/var/aos/dnsstorage");
+    EXPECT_EQ(config.mDNSIP, "0.0.0.0:5353");
 }
 
 TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
