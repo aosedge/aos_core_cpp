@@ -22,6 +22,7 @@ namespace aos::cm::config {
  * Constants
  **********************************************************************************************************************/
 
+constexpr auto cDefaultSMConnectionTimeout      = "1m";
 constexpr auto cDefaultServiceTTL               = "30d";
 constexpr auto cDefaultLayerTTL                 = "30d";
 constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
@@ -73,6 +74,16 @@ void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& ob
     Tie(config.mSendPeriod, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("sendPeriod", cDefaultMonitoringSendPeriod));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
+}
+
+void ParseNodeInfoProviderConfig(
+    const common::utils::CaseInsensitiveObjectWrapper& object, nodeinfoprovider::Config& config)
+{
+    Error err;
+
+    Tie(config.mSMConnectionTimeout, err) = common::utils::ParseDuration(
+        object.GetValue<std::string>("smConnectionTimeout", cDefaultSMConnectionTimeout));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing smConnectionTimeout tag");
 }
 
 void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, alerts::Config& config)
@@ -147,6 +158,8 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseUMControllerConfig(
             object.Has("umController") ? object.GetObject("umController") : empty, config.mUMController);
         ParseMonitoringConfig(object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
+        ParseNodeInfoProviderConfig(
+            object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);
         ParseAlertsConfig(object.Has("alerts") ? object.GetObject("alerts") : empty, config.mAlerts);
         ParseDownloaderConfig(
             object.Has("downloader") ? object.GetObject("downloader") : empty, config.mWorkingDir, config.mDownloader);

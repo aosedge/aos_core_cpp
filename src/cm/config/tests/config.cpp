@@ -56,6 +56,9 @@ constexpr auto cFullTestConfigJSON = R"({
         },
         "sendPeriod": "5m"
     },
+    "nodeinfoprovider": {
+        "smConnectionTimeout": "10m"
+    },
     "alerts": {
         "sendPeriod": "13m"
     },
@@ -171,7 +174,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 57);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
-
+    EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 10);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cMinutes * 13);
 
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
@@ -224,7 +227,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 100);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
-
+    EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 220);
 
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
