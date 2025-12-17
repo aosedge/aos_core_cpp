@@ -730,15 +730,17 @@ Error Communication::ReceiveFrames()
         do {
             n = mWebSocket->receiveFrame(buffer, flags);
 
-            const auto frameOp = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
+            const auto opcodes = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
 
-            if (frameOp == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
+            LOG_DBG() << "WebSocket frame received" << Log::Field("size", n) << Log::Field("opcodes", opcodes);
+
+            if (opcodes == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                 LOG_DBG() << "Received close frame, disconnecting";
 
                 break;
             }
 
-            if (frameOp == Poco::Net::WebSocket::FRAME_OP_PING) {
+            if (opcodes == Poco::Net::WebSocket::FRAME_OP_PING) {
                 std::lock_guard lock {mMutex};
 
                 const auto sentBytes = mWebSocket->sendFrame(
@@ -753,7 +755,7 @@ Error Communication::ReceiveFrames()
 
             LOG_DBG() << "Received WebSocket frame" << Log::Field("size", n) << Log::Field("flags", flags);
 
-            if (n > 0 && frameOp == Poco::Net::WebSocket::FRAME_OP_TEXT) {
+            if (n > 0 && (opcodes == Poco::Net::WebSocket::FRAME_OP_BINARY)) {
                 std::lock_guard lock {mMutex};
 
                 mReceiveQueue.emplace(buffer.begin(), buffer.end());
@@ -826,9 +828,9 @@ void Communication::HandleSendQueue()
         }
 
         try {
-            auto data = it->Payload();
+            const auto data = it->Payload();
 
-            const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_TEXT);
+            const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_BINARY);
 
             LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
 
