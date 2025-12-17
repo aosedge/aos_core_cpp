@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <core/cm/alerts/config.hpp>
 #include <core/cm/monitoring/config.hpp>
 #include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
@@ -47,16 +48,6 @@ struct UMController {
 struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
 
 /*
- * Alerts configuration.
- */
-struct Alerts {
-    common::config::JournalAlerts mJournalAlerts;
-    Duration                      mSendPeriod;
-    int                           mMaxMessageSize;
-    int                           mMaxOfflineMessages;
-};
-
-/*
  * Downloader configuration.
  */
 struct Downloader {
@@ -84,7 +75,7 @@ struct Config {
     Crypt                     mCrypt;
     UMController              mUMController;
     Monitoring                mMonitoring;
-    Alerts                    mAlerts;
+    alerts::Config            mAlerts;
     common::config::Migration mMigration;
     Downloader                mDownloader;
     SMController              mSMController;

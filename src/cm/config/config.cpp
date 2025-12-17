@@ -9,6 +9,8 @@
 
 #include <Poco/JSON/Parser.h>
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 
@@ -65,7 +67,7 @@ void ParseUMControllerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
 
 void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
 {
-    auto err = common::config::ParseMonitoringConfig(object.GetObject("monitorConfig"), config);
+    auto err = common::config::ParseMonitoringConfig(object, config);
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing monitoring config");
 
     Tie(config.mSendPeriod, err)
@@ -73,17 +75,13 @@ void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& ob
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
 }
 
-void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Alerts& config)
+void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, alerts::Config& config)
 {
-    auto err = common::config::ParseJournalAlertsConfig(object.GetObject("journalAlerts"), config.mJournalAlerts);
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing journal alerts config");
+    Error err;
 
     Tie(config.mSendPeriod, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("sendPeriod", cDefaultAlertsSendPeriod));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
-
-    config.mMaxMessageSize     = object.GetValue<int>("maxMessageSize", cDefaultAlertsMaxMessageSize);
-    config.mMaxOfflineMessages = object.GetValue<int>("maxOfflineMessages", cDefaultAlertsMaxOfflineMessages);
 }
 
 void ParseDownloaderConfig(
@@ -129,6 +127,8 @@ void ParseSMControllerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
 
 Error ParseConfig(const std::string& filename, Config& config)
 {
+    LOG_DBG() << "Parsing config file" << Log::Field("file", filename.c_str());
+
     std::ifstream file(filename);
 
     if (!file.is_open()) {
