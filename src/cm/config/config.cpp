@@ -181,7 +181,8 @@ Error ParseConfig(const std::string& filename, Config& config)
             return AOS_ERROR_WRAP(err);
         }
 
-        config.mDNSIP = object.GetValue<std::string>("dnsIp");
+        config.mDNSStoragePath = object.GetValue<std::string>("dnsStoragePath");
+        config.mDNSIP          = object.GetValue<std::string>("dnsIp");
 
         config.mCertStorage = object.GetValue<std::string>("certStorage", cDefaultCertStorage);
 
