@@ -174,18 +174,23 @@ protected:
             do {
                 n = mWebSocket->receiveFrame(buffer, flags);
 
-                if (n == 0) {
-                    continue;
-                } else if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
+                const auto opts = (flags & Poco::Net::WebSocket::FRAME_OP_BITMASK);
+
+                LOG_DBG() << "Received WebSocket frame" << aos::Log::Field("size", n) << aos::Log::Field("flags", opts);
+
+                if (opts == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                     mWebSocket->sendFrame(nullptr, 0, flags);
 
                     break;
+                } else if (opts == Poco::Net::WebSocket::FRAME_OP_PONG) {
+                    LOG_DBG() << "Received WebSocket pong frame";
+                    continue;
+                } else if (n > 0 && (opts == Poco::Net::WebSocket::FRAME_OP_BINARY)) {
+                    mReceivedMessages.Push(std::string(buffer.begin(), buffer.end()));
                 }
 
-                mReceivedMessages.Push(std::string(buffer.begin(), buffer.end()));
-
                 buffer.resize(0);
-            } while (n > 0 && (flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) != Poco::Net::WebSocket::FRAME_OP_CLOSE);
+            } while (n >= 0);
 
         } catch (const std::exception& e) {
             LOG_ERR() << "WebSocket receiver failed" << aos::Log::Field(common::utils::ToAosError(e));
@@ -206,7 +211,10 @@ private:
         try {
             while (mRunning) {
                 if (auto messageOpt = mSendMessageQueue.Pop(std::chrono::milliseconds(100)); messageOpt.has_value()) {
-                    mWebSocket->sendFrame(messageOpt->c_str(), messageOpt->length(), Poco::Net::WebSocket::FRAME_TEXT);
+                    LOG_DBG() << "Sending WebSocket message" << aos::Log::Field("message", messageOpt->c_str());
+
+                    mWebSocket->sendFrame(
+                        messageOpt->c_str(), messageOpt->length(), Poco::Net::WebSocket::FRAME_BINARY);
 
                     continue;
                 }
