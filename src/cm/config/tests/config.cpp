@@ -56,13 +56,8 @@ constexpr auto cFullTestConfigJSON = R"({
         },
         "sendPeriod": "5m"
     },
-    "alerts": {		
-        "sendPeriod": "20s",
-        "maxMessageSize": 1024,
-        "maxOfflineMessages": 32,
-        "journalAlerts": {
-            "filter": ["test", "regexp"]
-        }
+    "alerts": {
+        "sendPeriod": "13m"
     },
     "migration" : {
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
@@ -82,31 +77,29 @@ constexpr auto cFullTestConfigJSON = R"({
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
-	"fcrypt" : {
-		"CACert" : "CACert",
-		"tpmDevice": "/dev/tpmrm0",
-		"pkcs11Library": "/path/to/pkcs11/library"
-	},
-	"workingDir" : "workingDir",
-	"serviceDiscoveryUrl" : "www.aos.com",
-	"iamProtectedServerUrl" : "localhost:8089",
-	"iamPublicServerUrl" : "localhost:8090",
-	"cmServerUrl":"localhost:8094",
-	"monitoring": {
-		"monitorConfig": {
-			"pollPeriod": "1s"
-		}
-	},
-	"alerts": {		
-		"journalAlerts": {
-			"filter": ["test", "regexp"]
-		}
-	},
-	"smController" : {"fileServerUrl" : "localhost:8094", "cmServerUrl" : "localhost:8093"},
-	"umController": {
-		"fileServerUrl" : "localhost:8092",
-		"cmServerUrl" : "localhost:8091"
-	}
+    "fcrypt" : {
+        "CACert" : "CACert",
+        "tpmDevice": "/dev/tpmrm0",
+        "pkcs11Library": "/path/to/pkcs11/library"
+    },
+    "workingDir" : "workingDir",
+    "serviceDiscoveryUrl" : "www.aos.com",
+    "iamProtectedServerUrl" : "localhost:8089",
+    "iamPublicServerUrl" : "localhost:8090",
+    "cmServerUrl":"localhost:8094",
+    "monitoring": {
+        "monitorConfig": {
+            "pollPeriod": "1s"
+        }
+    },
+    "alerts": {
+        "sendPeriod": "220s"
+    },
+    "smController" : {"fileServerUrl" : "localhost:8094", "cmServerUrl" : "localhost:8093"},
+    "umController": {
+        "fileServerUrl" : "localhost:8092",
+        "cmServerUrl" : "localhost:8091"
+    }
 })";
 
 } // namespace
@@ -179,12 +172,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
 
-    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 20);
-    EXPECT_EQ(config.mAlerts.mMaxMessageSize, 1024);
-    EXPECT_EQ(config.mAlerts.mMaxOfflineMessages, 32);
-
-    std::vector<std::string> expectedFilter = {"test", "regexp"};
-    EXPECT_EQ(config.mAlerts.mJournalAlerts.mFilter, expectedFilter);
+    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cMinutes * 13);
 
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
     EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
@@ -237,12 +225,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
 
-    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 10);
-    EXPECT_EQ(config.mAlerts.mMaxMessageSize, 65536);
-    EXPECT_EQ(config.mAlerts.mMaxOfflineMessages, 25);
-
-    std::vector<std::string> expectedFilter = {"test", "regexp"};
-    EXPECT_EQ(config.mAlerts.mJournalAlerts.mFilter, expectedFilter);
+    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 220);
 
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
     EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
