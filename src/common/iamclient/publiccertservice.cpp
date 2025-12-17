@@ -30,10 +30,10 @@ PublicCertService::~PublicCertService()
 Error PublicCertService::Init(
     const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_INF() << "Init public cert service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
               << Log::Field("insecureConnection", insecureConnection);
-
-    std::lock_guard lock {mMutex};
 
     mTLSCredentials     = &tlsCredentials;
     mIAMPublicServerURL = iamPublicServerURL;
@@ -108,6 +108,8 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& ce
 {
     std::lock_guard lock {mMutex};
 
+    LOG_INF() << "Unsubscribe from certificate changed";
+
     for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
         auto& manager = it->second;
 
@@ -126,6 +128,8 @@ Error PublicCertService::GetCert(
     const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial, CertInfo& resCert) const
 {
     std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Get certificate" << Log::Field("certType", certType);
 
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
