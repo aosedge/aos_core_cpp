@@ -62,6 +62,11 @@ constexpr auto cFullTestConfigJSON = R"({
     "alerts": {
         "sendPeriod": "13m"
     },
+    "imageManager": {
+        "installPath": "/path/to/install",
+        "updateItemTtl": "30d",
+        "downloadPath": "/path/to/download"
+    },
     "migration" : {
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
         "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
@@ -97,6 +102,11 @@ constexpr auto cMinimalTestConfigJSON = R"({
     },
     "alerts": {
         "sendPeriod": "220s"
+    },
+    "imageManager": {
+        "installPath": "/path/to/install",
+        "updateItemTtl": "30d",
+        "downloadPath": "/path/to/download"
     },
     "smController" : {"fileServerUrl" : "localhost:8094", "cmServerUrl" : "localhost:8093"},
     "umController": {
@@ -176,6 +186,10 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 10);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cMinutes * 13);
+
+    EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), "/path/to/install");
+    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
+    EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
 
     EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
     EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
