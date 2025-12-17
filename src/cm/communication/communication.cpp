@@ -753,12 +753,14 @@ Error Communication::ReceiveFrames()
                 continue;
             }
 
-            LOG_DBG() << "Received WebSocket frame" << Log::Field("size", n) << Log::Field("flags", flags);
-
             if (n > 0 && (opcodes == Poco::Net::WebSocket::FRAME_OP_BINARY)) {
                 std::lock_guard lock {mMutex};
 
-                mReceiveQueue.emplace(buffer.begin(), buffer.end());
+                std::string message(buffer.begin(), buffer.begin() + n);
+
+                LOG_DBG() << "Received message" << Log::Field("message", message.c_str());
+
+                mReceiveQueue.emplace(std::move(message));
                 mCondVar.notify_all();
             }
 
