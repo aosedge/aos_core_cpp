@@ -555,6 +555,7 @@ Error Communication::SendDiscoveryRequest()
 
         httpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_POST);
         httpRequest.setVersion(Poco::Net::HTTPMessage::HTTP_1_1);
+        httpRequest.setURI(mConfig->mServiceDiscoveryURL);
         httpRequest.setKeepAlive(false);
         httpRequest.set("Accept", "application/json");
         httpRequest.setContentType("application/json");
@@ -602,6 +603,8 @@ Error Communication::ConnectToCloud()
     auto it = mDiscoveryResponse->mConnectionInfo.begin();
     try {
         mClientSession = CreateSession(Poco::URI(it->CStr()));
+
+        mCloudHttpRequest.setURI(it->CStr());
 
         mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mCloudHttpRequest, mCloudHttpResponse));
 
