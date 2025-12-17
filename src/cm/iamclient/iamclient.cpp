@@ -21,7 +21,12 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
 {
     LOG_INF() << "Initializing IAM client";
 
-    auto err = CertificateService::Init(iamProtectedServerURL, certStorage, tlsCredentials, insecureConnection);
+    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    err = CertificateService::Init(iamProtectedServerURL, certStorage, tlsCredentials, insecureConnection);
     if (!err.IsNone()) {
         return err;
     }
@@ -32,11 +37,6 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
     }
 
     err = ProvisioningService::Init(iamProtectedServerURL, certStorage, tlsCredentials, insecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
-
-    err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
     if (!err.IsNone()) {
         return err;
     }
