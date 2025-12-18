@@ -32,7 +32,10 @@ public:
                 "NodeIDPath": "NodeIDPath",
                 "NodeType": "NodeType",
                 "NodeName": "NodeName",
-                "OSType": "NodeOSType",
+                "Architecture": "NodeArchitecture",
+                "ArchitectureVariant": "NodeArchitectureVariant",
+                "OS": "NodeOS",
+                "OSVersion": "1.0",
                 "MaxDMIPS": 1000,
                 "Attrs": {
                     "name1": "value1",
@@ -143,7 +146,10 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
     EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
-    EXPECT_EQ(config.mNodeInfo.mOSType, "NodeOSType");
+    EXPECT_EQ(config.mNodeInfo.mArchitecture, "NodeArchitecture");
+    EXPECT_EQ(config.mNodeInfo.mArchitectureVariant, "NodeArchitectureVariant");
+    EXPECT_EQ(config.mNodeInfo.mOS, "NodeOS");
+    EXPECT_EQ(config.mNodeInfo.mOSVersion, "1.0");
     EXPECT_EQ(config.mNodeInfo.mMaxDMIPS, 1000);
     EXPECT_EQ(config.mNodeInfo.mAttrs.size(), 2);
 
@@ -164,11 +170,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config.mNodeInfo.mPartitions[2].mName, "name3");
     EXPECT_EQ(config.mNodeInfo.mPartitions[2].mPath, "path3");
     ASSERT_TRUE(config.mNodeInfo.mPartitions[2].mTypes.empty());
-
-    ASSERT_TRUE(config.mNodeInfo.mCPUInfo.has_value());
-    EXPECT_EQ(config.mNodeInfo.mCPUInfo->mModelName, "TestModel");
-    EXPECT_EQ(config.mNodeInfo.mCPUInfo->mArchitecture, "TestArch");
-    ASSERT_TRUE(config.mNodeInfo.mCPUInfo->mVariant.has_value());
 
     EXPECT_EQ(config.mIAMServer.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMServer.mIAMProtectedServerURL, "localhost:8089");

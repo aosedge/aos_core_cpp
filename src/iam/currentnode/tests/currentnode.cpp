@@ -89,7 +89,8 @@ iam::config::NodeInfoConfig CreateConfig()
     config.mNodeIDPath            = cNodeIDPath;
     config.mNodeName              = "node-name";
     config.mMaxDMIPS              = 1000;
-    config.mOSType                = "testOS";
+    config.mOS                    = "testOS";
+    config.mOSVersion             = "1.0";
 
     config.mAttrs      = {{"attr1", "value1"}, {"attr2", "value2"}};
     config.mPartitions = {cPartitionsInfoConfig.cbegin(), cPartitionsInfoConfig.cend()};
@@ -330,7 +331,7 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoSucceeds)
     EXPECT_STREQ(nodeInfo.mNodeID.CStr(), cNodeIDFileContent);
     EXPECT_STREQ(nodeInfo.mNodeType.CStr(), config.mNodeType.c_str());
     EXPECT_STREQ(nodeInfo.mTitle.CStr(), config.mNodeName.c_str());
-    EXPECT_STREQ(nodeInfo.mOSInfo.mOS.CStr(), config.mOSType.c_str());
+    EXPECT_STREQ(nodeInfo.mOSInfo.mOS.CStr(), config.mOS->c_str());
     EXPECT_EQ(nodeInfo.mTotalRAM, cExpectedMemSizeBytes);
 
     // check partition info
@@ -386,14 +387,14 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoReadsProvisioningStateFromFile)
     EXPECT_EQ(nodeInfo.mState, NodeStateEnum::eProvisioned) << "Expected provisioned state, got: " << nodeInfo.mState;
 }
 
-TEST_F(CurrentNodeTest, NodeConfigCpuInfoIsUsed)
+TEST_F(CurrentNodeTest, NodeConfigOSAndArchInfoApplied)
 {
     iam::config::NodeInfoConfig config = CreateConfig();
-    config.mCPUInfo.emplace();
 
-    config.mCPUInfo->mModelName    = "CustomModel";
-    config.mCPUInfo->mArchitecture = "CustomArch";
-    config.mCPUInfo->mVariant      = "CustomVariant";
+    config.mArchitecture        = "CustomArch";
+    config.mArchitectureVariant = "CustomVariant";
+    config.mOS                  = "CustomOS";
+    config.mOSVersion           = "1.0";
 
     CurrentNodeHandler handler;
     NodeInfo           nodeInfo;
@@ -415,10 +416,13 @@ TEST_F(CurrentNodeTest, NodeConfigCpuInfoIsUsed)
     err = handler.GetCurrentNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetCurrentNodeInfo should succeed, err = " << err.Message();
 
+    EXPECT_EQ(nodeInfo.mOSInfo.mOS, "CustomOS");
+    ASSERT_TRUE(nodeInfo.mOSInfo.mVersion.HasValue());
+    EXPECT_STREQ(nodeInfo.mOSInfo.mVersion->CStr(), "1.0");
+
     ASSERT_FALSE(nodeInfo.mCPUs.IsEmpty());
 
     for (const auto& cpu : nodeInfo.mCPUs) {
-        EXPECT_STREQ(cpu.mModelName.CStr(), "CustomModel");
         EXPECT_STREQ(cpu.mArchInfo.mArchitecture.CStr(), "CustomArch");
         EXPECT_STREQ(cpu.mArchInfo.mVariant->CStr(), "CustomVariant");
     }
