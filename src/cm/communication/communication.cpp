@@ -435,7 +435,7 @@ Error Communication::SendUnitStatus(const UnitStatus& unitStatus)
 
 Error Communication::SubscribeListener(cloudconnection::ConnectionListenerItf& listener)
 {
-    std::lock_guard lock {mMutex};
+    std::lock_guard lock {mSubscribersMutex};
 
     LOG_DBG() << "Subscribing connection listener";
 
@@ -450,7 +450,7 @@ Error Communication::SubscribeListener(cloudconnection::ConnectionListenerItf& l
 
 Error Communication::UnsubscribeListener(cloudconnection::ConnectionListenerItf& listener)
 {
-    std::lock_guard lock {mMutex};
+    std::lock_guard lock {mSubscribersMutex};
 
     LOG_DBG() << "Unsubscribing connection listener";
 
@@ -588,43 +588,46 @@ Error Communication::SendDiscoveryRequest()
 
 Error Communication::ConnectToCloud()
 {
-    std::lock_guard lock {mMutex};
+    {
+        std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Connect to cloud web socket server";
+        LOG_DBG() << "Connect to cloud web socket server";
 
-    if (!ConnectionInfoIsSet()) {
-        if (auto err = SendDiscoveryRequest(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+        if (!ConnectionInfoIsSet()) {
+            if (auto err = SendDiscoveryRequest(); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            mCloudHttpRequest.set(
+                "Authorization", std::string("Bearer ").append(mDiscoveryResponse->mAuthToken.CStr()));
         }
 
-        mCloudHttpRequest.set("Authorization", std::string("Bearer ").append(mDiscoveryResponse->mAuthToken.CStr()));
-    }
+        auto it = mDiscoveryResponse->mConnectionInfo.begin();
+        try {
+            mClientSession = CreateSession(Poco::URI(it->CStr()));
 
-    auto it = mDiscoveryResponse->mConnectionInfo.begin();
-    try {
-        mClientSession = CreateSession(Poco::URI(it->CStr()));
+            mCloudHttpRequest.setURI(it->CStr());
 
-        mCloudHttpRequest.setURI(it->CStr());
+            mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mCloudHttpRequest, mCloudHttpResponse));
 
-        mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mCloudHttpRequest, mCloudHttpResponse));
+            mWebSocket->setKeepAlive(true);
+            mWebSocket->setReceiveTimeout(0);
+        } catch (const Poco::Net::NetException& e) {
+            if (e.code() == Poco::Net::WebSocket::WS_ERR_UNAUTHORIZED) {
+                LOG_WRN() << "Authorization failed, clearing discovery response";
 
-        mWebSocket->setKeepAlive(true);
-        mWebSocket->setReceiveTimeout(0);
-    } catch (const Poco::Net::NetException& e) {
-        if (e.code() == Poco::Net::WebSocket::WS_ERR_UNAUTHORIZED) {
-            LOG_WRN() << "Authorization failed, clearing discovery response";
+                mDiscoveryResponse.reset();
+            }
 
-            mDiscoveryResponse.reset();
+            mDiscoveryResponse->mConnectionInfo.Erase(it);
+
+            mWebSocket.reset();
+
+            mClientSession->reset();
+            mClientSession.reset();
+
+            return common::utils::ToAosError(e);
         }
-
-        mDiscoveryResponse->mConnectionInfo.Erase(it);
-
-        mWebSocket.reset();
-
-        mClientSession->reset();
-        mClientSession.reset();
-
-        return common::utils::ToAosError(e);
     }
 
     NotifyConnectionEstablished();
@@ -675,6 +678,8 @@ Error Communication::Disconnect()
 
 void Communication::NotifyConnectionEstablished()
 {
+    std::lock_guard lock {mSubscribersMutex};
+
     LOG_INF() << "Notifying connection established" << Log::Field("subscribersCount", mSubscribers.size());
 
     for (auto& subscriber : mSubscribers) {
@@ -684,6 +689,8 @@ void Communication::NotifyConnectionEstablished()
 
 void Communication::NotifyConnectionLost()
 {
+    std::lock_guard lock {mSubscribersMutex};
+
     LOG_INF() << "Notifying connection lost" << Log::Field("subscribersCount", mSubscribers.size());
 
     for (auto& subscriber : mSubscribers) {
@@ -1004,6 +1011,9 @@ Error Communication::EnqueueMessage(
 Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived)
 {
     std::unique_lock lock {mMutex};
+
+    LOG_DBG() << "Enqueue message" << Log::Field("txn", msg.Txn().c_str())
+              << Log::Field("correlationID", msg.CorrelationID().c_str());
 
     if (onResponseReceived) {
         mResponseHandlers.emplace(msg.CorrelationID(), onResponseReceived);
