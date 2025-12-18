@@ -29,23 +29,6 @@ static constexpr auto cTestServiceManagerJSON          = R"({
     "caCert": "CACert",
     "certStorage": "sm",
     "cmServerUrl": "aoscm:8093",
-    "downloadDir": "/var/aos/servicemanager/download",
-    "extractDir": "/var/aos/servicemanager/extract",
-    "hostBinds": [
-        "dir0",
-        "dir1",
-        "dir2"
-    ],
-    "hosts": [
-        {
-            "hostName": "wwwivi",
-            "ip": "127.0.0.1"
-        },
-        {
-            "hostName": "wwwaosum",
-            "ip": "0.0.0.0"
-        }
-    ],
     "iamProtectedServerUrl": "localhost:8089",
     "iamPublicServerUrl": "localhost:8090",
     "journalAlerts": {
@@ -56,11 +39,7 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "serviceAlertPriority": 7,
         "systemAlertPriority": 5
     },
-    "serviceTtl": "10d",
     "cmReconnectTimeout": "1m",
-    "layerTtl": "20h",
-    "layersDir": "/var/aos/srvlib",
-    "layersPartLimit": 20,
     "logging": {
         "maxPartCount": 10,
         "maxPartSize": 1024
@@ -74,13 +53,7 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "pollPeriod": "1h1m5s"
     },
     "nodeConfigFile": "/var/aos/aos_node.cfg",
-    "serviceHealthCheckTimeout": "10s",
-    "servicesDir": "/var/aos/servicemanager/services",
-    "servicesPartLimit": 10,
-    "stateDir": "/var/aos/state",
-    "storageDir": "/var/aos/storage",
-    "workingDir": "workingDir",
-    "removeOutdatedPeriod": "1d"
+    "workingDir": "workingDir"
 })";
 static constexpr auto cTestDefaultValuesJSON           = R"({
     "workingDir": "test",
@@ -149,23 +122,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mSMClientConfig.mCMServerURL, "aoscm:8093");
     EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, aos::Time::cMinutes);
 
-    EXPECT_EQ(config->mLauncherConfig.mWorkDir, "workingDir");
-    EXPECT_EQ(config->mLauncherConfig.mStorageDir, "/var/aos/storage");
-    EXPECT_EQ(config->mLauncherConfig.mStateDir, "/var/aos/state");
-
-    ASSERT_EQ(config->mLauncherConfig.mHostBinds.Size(), 3);
-    EXPECT_EQ(config->mLauncherConfig.mHostBinds[0], "dir0");
-    EXPECT_EQ(config->mLauncherConfig.mHostBinds[1], "dir1");
-    EXPECT_EQ(config->mLauncherConfig.mHostBinds[2], "dir2");
-
-    ASSERT_EQ(config->mLauncherConfig.mHosts.Size(), 2);
-    EXPECT_EQ(config->mLauncherConfig.mHosts[0].mHostname, "wwwivi");
-    EXPECT_EQ(config->mLauncherConfig.mHosts[0].mIP, "127.0.0.1");
-    EXPECT_EQ(config->mLauncherConfig.mHosts[1].mHostname, "wwwaosum");
-    EXPECT_EQ(config->mLauncherConfig.mHosts[1].mIP, "0.0.0.0");
-
-    EXPECT_EQ(config->mLauncherConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
-
     EXPECT_EQ(config->mIAMProtectedServerURL, "localhost:8089");
 
     ASSERT_EQ(config->mJournalAlerts.mFilter.size(), 2);
@@ -173,18 +129,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mJournalAlerts.mFilter[1], "regexp");
     EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, 7);
     EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, 5);
-
-    EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 10);
-    EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
-    EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "/var/aos/servicemanager/services");
-    EXPECT_EQ(config->mServiceManagerConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
-
-    EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 20);
-    EXPECT_EQ(config->mLayerManagerConfig.mDownloadDir, "/var/aos/servicemanager/download");
-    EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "/var/aos/srvlib");
-    EXPECT_EQ(config->mLayerManagerConfig.mRemoveOutdatedPeriod, 24 * aos::Time::cHours);
-
-    EXPECT_EQ(config->mLayersPartLimit, 20);
 
     EXPECT_EQ(config->mLogging.mMaxPartCount, 10);
     EXPECT_EQ(config->mLogging.mMaxPartSize, 1024);
@@ -196,7 +140,6 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mMonitoring.mPollPeriod, aos::Time::cHours + aos::Time::cMinutes + 5 * aos::Time::cSeconds);
 
     EXPECT_EQ(config->mNodeConfigFile, "/var/aos/aos_node.cfg");
-    EXPECT_EQ(config->mServicesPartLimit, 10);
     EXPECT_EQ(config->mWorkingDir, "workingDir");
 }
 
@@ -213,8 +156,6 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, cDefaultServiceAlertPriority);
     EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, cDefaultSystemAlertPriority);
 
-    EXPECT_EQ(config->mServiceManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config->mLayerManagerConfig.mTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, 10 * aos::Time::cSeconds);
 
     EXPECT_EQ(config->mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
@@ -224,12 +165,6 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     ASSERT_EQ(config->mWorkingDir, "test");
 
-    EXPECT_EQ(config->mLauncherConfig.mStorageDir, "test/storages");
-    EXPECT_EQ(config->mLauncherConfig.mStateDir, "test/states");
-
-    EXPECT_EQ(config->mLayerManagerConfig.mLayersDir, "test/layers");
-    EXPECT_EQ(config->mServiceManagerConfig.mServicesDir, "test/services");
-    EXPECT_EQ(config->mServiceManagerConfig.mDownloadDir, "test/downloads");
     EXPECT_EQ(config->mNodeConfigFile, "test/aos_node.cfg");
 }
 

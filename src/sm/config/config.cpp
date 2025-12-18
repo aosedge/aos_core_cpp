@@ -44,97 +44,16 @@ std::filesystem::path JoinPath(const std::string& base, const std::string& entry
     return path;
 }
 
-void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, logprovider::Config& config)
+void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, logging::Config& config)
 {
     config.mMaxPartSize  = object.GetValue<uint64_t>("maxPartSize", cLogContentLen);
     config.mMaxPartCount = object.GetValue<uint64_t>("maxPartCount", 80);
-}
-
-Host ParseHostConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
-{
-    const auto ip       = object.GetValue<std::string>("ip");
-    const auto hostname = object.GetValue<std::string>("hostname");
-
-    return Host {
-        ip.c_str(),
-        hostname.c_str(),
-    };
 }
 
 void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::iamclient::Config& config)
 {
     config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
     config.mCACert             = object.GetValue<std::string>("caCert");
-}
-
-void ParseServiceManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
-    sm::servicemanager::Config& config)
-{
-    config.mServicesDir = object.GetValue<std::string>("servicesDir", JoinPath(workingDir, "services")).c_str();
-    config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
-    config.mPartLimit   = object.GetValue<size_t>("servicesPartLimit", 0);
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mTTL, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("serviceTTL", cDefaultServiceTTLDays));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing serviceTTL tag");
-
-    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
-    if (removeOutdatedPeriod.has_value()) {
-        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
-    }
-}
-
-void ParseLayerManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
-    sm::layermanager::Config& config)
-{
-    config.mLayersDir   = object.GetValue<std::string>("layersDir", JoinPath(workingDir, "layers")).c_str();
-    config.mDownloadDir = object.GetValue<std::string>("downloadDir", JoinPath(workingDir, "downloads")).c_str();
-    config.mPartLimit   = object.GetValue<size_t>("layersPartLimit", 0);
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mTTL, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("layerTTL", cDefaultLayerTTLDays));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing layerTTL tag");
-
-    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
-    if (removeOutdatedPeriod.has_value()) {
-        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
-    }
-}
-
-void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
-    sm::launcher::Config& config)
-{
-    config.mStorageDir = object.GetValue<std::string>("storageDir", JoinPath(workingDir, "storages")).c_str();
-    config.mStateDir   = object.GetValue<std::string>("stateDir", JoinPath(workingDir, "states")).c_str();
-    config.mWorkDir    = workingDir.c_str();
-
-    const auto hostBinds = common::utils::GetArrayValue<std::string>(object, "hostBinds");
-
-    for (const auto& hostBind : hostBinds) {
-        auto err = config.mHostBinds.EmplaceBack(hostBind.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing hostBinds tag");
-    }
-
-    const auto hosts = common::utils::GetArrayValue<Host>(object, "hosts",
-        [](const auto& val) { return ParseHostConfig(common::utils::CaseInsensitiveObjectWrapper(val)); });
-    for (const auto& host : hosts) {
-        auto err = config.mHosts.EmplaceBack(host);
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing hosts tag");
-    }
-
-    auto removeOutdatedPeriod = object.GetOptionalValue<std::string>("removeOutdatedPeriod");
-    if (removeOutdatedPeriod.has_value()) {
-        Error err = ErrorEnum::eNone;
-
-        Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(removeOutdatedPeriod.value());
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
-    }
 }
 
 void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, smclient::Config& config)
@@ -171,17 +90,10 @@ Error ParseConfig(const std::string& filename, Config& config)
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
         ParseIAMClientConfig(object, config.mIAMClientConfig);
-        ParseLayerManagerConfig(object, config.mWorkingDir, config.mLayerManagerConfig);
-        ParseServiceManagerConfig(object, config.mWorkingDir, config.mServiceManagerConfig);
-        ParseLauncherConfig(object, config.mWorkingDir, config.mLauncherConfig);
         ParseSMClientConfig(object, config.mSMClientConfig);
 
         config.mCertStorage = object.GetOptionalValue<std::string>("certStorage").value_or("/var/aos/crypt/sm/");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
-
-        config.mServicesPartLimit = object.GetValue<uint32_t>("servicesPartLimit");
-
-        config.mLayersPartLimit = object.GetValue<uint32_t>("layersPartLimit");
 
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
