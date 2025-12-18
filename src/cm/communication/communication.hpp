@@ -282,6 +282,7 @@ private:
     iamclient::ProvisioningItf*                          mProvisioningHandler {};
     std::atomic_bool                                     mIsRunning {};
     SystemInfo                                           mSystemInfo;
+    std::mutex                                           mSubscribersMutex;
     std::vector<cloudconnection::ConnectionListenerItf*> mSubscribers;
     std::optional<ServiceDiscoveryResponse>              mDiscoveryResponse;
     std::mutex                                           mMutex;
