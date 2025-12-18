@@ -25,8 +25,8 @@ public:
      * @param trafficMonitor traffic monitor.
      * @return Error.
      */
-    Error Init(
-        iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider, sm::networkmanager::TrafficMonitorItf& trafficMonitor);
+    Error Init(aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider,
+        sm::networkmanager::TrafficMonitorItf&             trafficMonitor);
 
     /**
      * Starts node monitoring provider.
@@ -64,11 +64,11 @@ private:
     RetWithError<size_t>   GetSystemRAMUsage();
     RetWithError<uint64_t> GetSystemDiskUsage(const String& path);
 
-    iamclient::CurrentNodeInfoProviderItf* mNodeInfoProvider {};
-    sm::networkmanager::TrafficMonitorItf* mTrafficMonitor {};
-    NodeInfo                               mNodeInfo;
-    CPUUsage                               mPrevSysCPUUsage;
-    size_t                                 mCPUCount {};
+    aos::iamclient::CurrentNodeInfoProviderItf* mNodeInfoProvider {};
+    sm::networkmanager::TrafficMonitorItf*      mTrafficMonitor {};
+    NodeInfo                                    mNodeInfo;
+    CPUUsage                                    mPrevSysCPUUsage;
+    size_t                                      mCPUCount {};
 };
 
 } // namespace aos::sm::monitoring
