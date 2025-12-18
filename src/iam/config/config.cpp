@@ -85,13 +85,16 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
 
     nodeInfoConfig.mProvisioningStatePath
         = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
-    nodeInfoConfig.mCPUInfoPath = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
-    nodeInfoConfig.mMemInfoPath = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
-    nodeInfoConfig.mNodeIDPath  = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
-    nodeInfoConfig.mNodeName    = object.GetValue<std::string>("nodeName");
-    nodeInfoConfig.mNodeType    = object.GetValue<std::string>("nodeType");
-    nodeInfoConfig.mOSType      = object.GetValue<std::string>("osType");
-    nodeInfoConfig.mMaxDMIPS    = object.GetValue<uint64_t>("maxDMIPS");
+    nodeInfoConfig.mCPUInfoPath         = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
+    nodeInfoConfig.mMemInfoPath         = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
+    nodeInfoConfig.mNodeIDPath          = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
+    nodeInfoConfig.mNodeName            = object.GetValue<std::string>("nodeName");
+    nodeInfoConfig.mNodeType            = object.GetValue<std::string>("nodeType");
+    nodeInfoConfig.mMaxDMIPS            = object.GetValue<uint64_t>("maxDMIPS");
+    nodeInfoConfig.mArchitecture        = object.GetOptionalValue<std::string>("architecture");
+    nodeInfoConfig.mArchitectureVariant = object.GetOptionalValue<std::string>("architectureVariant");
+    nodeInfoConfig.mOS                  = object.GetOptionalValue<std::string>("os");
+    nodeInfoConfig.mOSVersion           = object.GetOptionalValue<std::string>("osVersion");
 
     if (object.Has("attrs")) {
         for (const auto& [key, value] : *object.Get("attrs").extract<Poco::JSON::Object::Ptr>()) {
@@ -105,21 +108,6 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
                 return ParsePartitionInfoConfig(
                     common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
             });
-    }
-
-    if (object.Has("cpuInfo")) {
-        common::utils::CaseInsensitiveObjectWrapper cpuInfoObject(object.GetObject("cpuInfo"));
-
-        nodeInfoConfig.mCPUInfo.emplace();
-
-        auto& cpuInfo = *nodeInfoConfig.mCPUInfo;
-
-        cpuInfo.mModelName    = cpuInfoObject.GetValue<std::string>("modelName");
-        cpuInfo.mArchitecture = cpuInfoObject.GetValue<std::string>("architecture");
-
-        if (cpuInfoObject.Has("variant")) {
-            cpuInfo.mVariant = cpuInfoObject.GetValue<std::string>("variant");
-        }
     }
 
     return nodeInfoConfig;
