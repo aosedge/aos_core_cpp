@@ -516,7 +516,7 @@ TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"overrideEnvVarsStatus","correlationID":"","statuses":\[\]\}\}$)");
+                     R"("data":\{"messageType":"overrideEnvVarsStatus","statuses":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -613,7 +613,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
     const auto     cExpectedAckMsg
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"f2df3016-de31-46e6-9ce8-9cde4ed7849f"\},)"
-                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
+                     R"("data":\{"messageType":"ack"\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -655,7 +655,7 @@ TEST_F(CMCommunicationTest, SendMonitoring)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"monitoringData","correlationID":"","nodes":\[\]\}\}$)");
+                     R"("data":\{"messageType":"monitoringData","nodes":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -677,7 +677,7 @@ TEST_F(CMCommunicationTest, SendLog)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"pushLog","correlationID":"","node":\{"codename":""\},)"
+                     R"("data":\{"messageType":"pushLog","node":\{"codename":""\},)"
                      R"("part":0,"partsCount":0,"content":"","status":"ok"\}\}$)");
 
     SubscribeAndWaitConnected();
@@ -701,7 +701,7 @@ TEST_F(CMCommunicationTest, SendStateRequest)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"stateRequest","correlationID":"","item":\{"id":""\},)"
+                     R"("data":\{"messageType":"stateRequest","item":\{"id":""\},)"
                      R"("subject":\{"id":""\},"instance":0,"default":false\}\}$)");
 
     SubscribeAndWaitConnected();
@@ -725,7 +725,7 @@ TEST_F(CMCommunicationTest, SendNewState)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"newState","correlationID":"","item":\{"id":""\},)"
+                     R"("data":\{"messageType":"newState","item":\{"id":""\},)"
                      R"("subject":\{"id":""\},"instance":0,"stateChecksum":"","state":""\}\}$)");
 
     SubscribeAndWaitConnected();
@@ -884,11 +884,11 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
     const auto     cExpectedAckMsg
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
+                     R"("data":\{"messageType":"ack"\}\}$)");
     const auto cExpectedIssuedCertsRequestMsg
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
-                     R"("data":\{"messageType":"issueUnitCertificates","correlationID":"","requests":\[)"
+                     R"("data":\{"messageType":"issueUnitCertificates","requests":\[)"
                      R"(\{"type":"iam","node":\{"codename":"node0"\},"csr":"csr_result_0"\},)"
                      R"(\{"type":"iam","node":\{"codename":"node1"\},"csr":"csr_result_1"\}]\}\}$)");
 
@@ -993,17 +993,17 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
     const auto     cExpectedAckMsg
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"ack","correlationID":""\}\}$)");
-    const auto cExpectedIssuedCertsRequestMsg = std::regex(
-        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
-        R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
-        R"("data":\{"messageType":"installUnitCertificatesConfirmation","correlationID":"","certificates":\[)"
-        R"(\{"type":"cm","node":\{"codename":"node1"\},"serial":"00"\},)"
-        R"(\{"type":"iam","node":\{"codename":"node1"\},"serial":"01"\},)"
-        R"(\{"type":"cm","node":\{"codename":"node2"\},"serial":"02"\},)"
-        R"(\{"type":"iam","node":\{"codename":"node2"\},"serial":"03"\},)"
-        R"(\{"type":"cm","node":\{"codename":"node0"\},"serial":"04"\},)"
-        R"(\{"type":"iam","node":\{"codename":"node0"\},"serial":"05"\}]\}\}$)");
+                     R"("data":\{"messageType":"ack"\}\}$)");
+    const auto cExpectedIssuedCertsRequestMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"180d54e5-0bac-4d4e-a144-68de544cb3d8"\},)"
+                     R"("data":\{"messageType":"installUnitCertificatesConfirmation","certificates":\[)"
+                     R"(\{"type":"cm","node":\{"codename":"node1"\},"serial":"00"\},)"
+                     R"(\{"type":"iam","node":\{"codename":"node1"\},"serial":"01"\},)"
+                     R"(\{"type":"cm","node":\{"codename":"node2"\},"serial":"02"\},)"
+                     R"(\{"type":"iam","node":\{"codename":"node2"\},"serial":"03"\},)"
+                     R"(\{"type":"cm","node":\{"codename":"node0"\},"serial":"04"\},)"
+                     R"(\{"type":"iam","node":\{"codename":"node0"\},"serial":"05"\}]\}\}$)");
 
     SubscribeAndWaitConnected();
 

@@ -172,7 +172,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Instance
 Error ToJSON(const Protocol& protocol, Poco::JSON::Object& json)
 {
     try {
-        json.set("correlationID", protocol.mCorrelationID.CStr());
+        if (!protocol.mCorrelationID.IsEmpty()) {
+            json.set("correlationID", protocol.mCorrelationID.CStr());
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
