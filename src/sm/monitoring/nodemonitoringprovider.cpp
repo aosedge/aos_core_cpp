@@ -41,7 +41,7 @@ const auto       cUnitMapping = std::map<std::string, size_t> {
  **********************************************************************************************************************/
 
 Error NodeMonitoringProvider::Init(
-    iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider, sm::networkmanager::TrafficMonitorItf& trafficMonitor)
+    aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider, sm::networkmanager::TrafficMonitorItf& trafficMonitor)
 {
     LOG_DBG() << "Initialize node monitoring provider";
 
