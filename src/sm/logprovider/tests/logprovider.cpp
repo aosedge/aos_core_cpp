@@ -42,10 +42,10 @@ public:
     {
         aos::tests::utils::InitLog();
 
-        auto config = aos::logprovider::Config {200, 10};
+        auto config = aos::logging::Config {200, 10};
 
         mLogProvider.Init(config, mInstanceIDProvider);
-        mLogProvider.Subscribe(mLogObserver);
+        mLogProvider.Subscribe(mLogSender);
         mLogProvider.Start();
     }
 
@@ -77,19 +77,22 @@ protected:
     TestLogProvider mLogProvider;
 
     InstanceIDProviderMock mInstanceIDProvider;
-    LogObserverMock        mLogObserver;
+    LogSenderMock          mLogSender;
 
     std::mutex              mMutex;
     std::condition_variable mLogReceived;
 };
 
-InstanceFilter CreateInstanceFilter(const std::string& serviceID, const std::string& subjectID, uint64_t instance)
+LogFilter CreateLogFilter(
+    const std::string& serviceID, const std::string& subjectID, uint64_t instance, Time from, Time till)
 {
-    InstanceFilter filter;
+    LogFilter filter;
 
     filter.mItemID.EmplaceValue(serviceID.c_str());
     filter.mSubjectID.EmplaceValue(subjectID.c_str());
     filter.mInstance.EmplaceValue(instance);
+    filter.mFrom.EmplaceValue(from);
+    filter.mTill.EmplaceValue(till);
 
     return filter;
 }
@@ -109,23 +112,23 @@ std::string UnzipData(const String& compressedData)
     return outputStream.str();
 }
 
-MATCHER_P5(MatchPushLog, logID, partsCount, part, content, status, "PushLog matcher")
+MATCHER_P5(MatchPushLog, correlationID, partsCount, part, content, status, "PushLog matcher")
 {
     auto data = UnzipData(arg.mContent);
 
-    return (arg.mLogID == logID && arg.mPartsCount == partsCount && arg.mPart == part
+    return (arg.mCorrelationID == correlationID && arg.mPartsCount == partsCount && arg.mPart == part
         && data.find(content) != std::string::npos && arg.mStatus == status);
 }
 
-MATCHER_P(MatchEmptyPushLog, logID, "PushLog empty matcher")
+MATCHER_P(MatchEmptyPushLog, correlationID, "PushLog empty matcher")
 {
-    return (arg.mLogID == logID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
+    return (arg.mCorrelationID == correlationID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
         && arg.mStatus == LogStatusEnum::eEmpty);
 }
 
-MATCHER_P(MatchAbsentPushLog, logID, "PushLog absent matcher")
+MATCHER_P(MatchAbsentPushLog, correlationID, "PushLog absent matcher")
 {
-    return (arg.mLogID == logID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
+    return (arg.mCorrelationID == correlationID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
         && arg.mStatus == LogStatusEnum::eAbsent);
 }
 
@@ -138,20 +141,20 @@ TEST_F(LogProviderTest, GetServiceLog)
     auto from = Time::Now();
     auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
-    auto unitName       = "aos-service@logservice0.service";
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
+    auto unitName  = "aos-service@logservice0.service";
 
     mLogProvider.mJournal.AddMessage("This is log", unitName, "");
 
-    RequestLog request = {};
-    request.mLogID     = "log0";
-    request.mFilter    = LogFilter {instanceFilter, from, till};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
     std::vector<std::string> instanceIDs = {"logservice0"};
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(instanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "This is log", LogStatusEnum::eOK)))
+    EXPECT_CALL(mLogSender, SendLog(MatchPushLog("log0", 1U, 1U, "This is log", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
 
@@ -163,23 +166,23 @@ TEST_F(LogProviderTest, GetBigServiceLog)
     auto from = Time::Now();
     auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
-    auto unitName       = "aos-service@logservice0.service";
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
+    auto unitName  = "aos-service@logservice0.service";
 
     for (int i = 0; i < 10; i++) {
         mLogProvider.mJournal.AddMessage("Hello World", unitName, "");
     }
 
-    RequestLog request = {};
-    request.mLogID     = "log0";
-    request.mFilter    = LogFilter {instanceFilter, from, till};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
     std::vector<std::string> instanceIDs = {"logservice0"};
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(instanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 1U, "", LogStatusEnum::eOK)));
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 2U, 2U, "", LogStatusEnum::eOK)))
+    EXPECT_CALL(mLogSender, SendLog(MatchPushLog("log0", 2U, 1U, "", LogStatusEnum::eOK)));
+    EXPECT_CALL(mLogSender, SendLog(MatchPushLog("log0", 2U, 2U, "", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
@@ -196,11 +199,15 @@ TEST_F(LogProviderTest, GetSystemLog)
         mLogProvider.mJournal.AddMessage("Hello World", "logger", "");
     }
 
-    RequestLog request = {};
-    request.mLogID     = "log0";
-    request.mFilter    = LogFilter {{}, from, till};
+    LogFilter logFilter;
+    logFilter.mFrom.EmplaceValue(from);
+    logFilter.mTill.EmplaceValue(till);
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchPushLog("log0", 1U, 1U, "Hello World", LogStatusEnum::eOK)))
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
+
+    EXPECT_CALL(mLogSender, SendLog(MatchPushLog("log0", 1U, 1U, "Hello World", LogStatusEnum::eOK)))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetSystemLog(request).IsNone());
@@ -213,17 +220,17 @@ TEST_F(LogProviderTest, GetEmptyLog)
     auto from = Time::Now();
     auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
 
-    RequestLog request = {};
-    request.mLogID     = "log0";
-    request.mFilter    = LogFilter {instanceFilter, from, till};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
     std::vector<std::string> instanceIDs = {"logservice0"};
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(instanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchEmptyPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
+    EXPECT_CALL(mLogSender, SendLog(MatchEmptyPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
 
@@ -235,8 +242,8 @@ TEST_F(LogProviderTest, GetCrashLog)
     auto from = Time::Now();
     auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
-    auto unitName       = std::string("aos-service@logservice0.service");
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
+    auto unitName  = std::string("aos-service@logservice0.service");
 
     mLogProvider.mJournal.AddMessage("Started", unitName, cAOSServiceSlicePrefix + unitName);
     mLogProvider.mJournal.AddMessage("somelog1", unitName, cAOSServiceSlicePrefix + unitName);
@@ -245,16 +252,16 @@ TEST_F(LogProviderTest, GetCrashLog)
     sleep(1);
     mLogProvider.mJournal.AddMessage("skip log", unitName, cAOSServiceSlicePrefix + unitName);
 
-    RequestLog request = {};
-    request.mLogID     = "log0";
-    request.mFilter    = LogFilter {instanceFilter, from, till};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
     std::vector<std::string> instanceIDs = {"logservice0"};
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(instanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver,
-        OnLogReceived(AllOf(MatchPushLog("log0", 1U, 1U, "somelog1", LogStatusEnum::eOK),
+    EXPECT_CALL(mLogSender,
+        SendLog(AllOf(MatchPushLog("log0", 1U, 1U, "somelog1", LogStatusEnum::eOK),
             MatchPushLog("log0", 1U, 1U, "somelog3", LogStatusEnum::eOK),
             MatchPushLog("log0", 1U, 1U, "process exited", LogStatusEnum::eOK))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
@@ -266,32 +273,27 @@ TEST_F(LogProviderTest, GetCrashLog)
 
 TEST_F(LogProviderTest, GetInstanceIDsFailed)
 {
-    auto                     from        = Time::Now();
-    auto                     till        = from.Add(5 * Time::cSeconds);
-    std::vector<std::string> instanceIDs = {};
+    auto from = Time::Now();
+    auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
-    auto unitName       = std::string("aos-service@logservice0.service");
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
 
-    RequestLog request = {};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
-    request.mLogID  = "log0";
-    request.mFilter = LogFilter {instanceFilter, from, till};
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _)).WillOnce(Return(ErrorEnum::eFailed));
 
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eFailed)));
-
-    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
+    EXPECT_CALL(mLogSender, SendLog(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_FALSE(mLogProvider.GetInstanceCrashLog(request).IsNone());
 
     // notification is instant, no need to wait.
 
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eFailed)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _)).WillOnce(Return(ErrorEnum::eFailed));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
+    EXPECT_CALL(mLogSender, SendLog(Field(&PushLog::mError, Error(ErrorEnum::eFailed))))
         .WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_FALSE(mLogProvider.GetInstanceLog(request).IsNone());
@@ -301,31 +303,29 @@ TEST_F(LogProviderTest, GetInstanceIDsFailed)
 
 TEST_F(LogProviderTest, EmptyInstanceIDs)
 {
-    auto                     from        = Time::Now();
-    auto                     till        = from.Add(5 * Time::cSeconds);
-    std::vector<std::string> instanceIDs = {};
+    auto from = Time::Now();
+    auto till = from.Add(5 * Time::cSeconds);
 
-    auto instanceFilter = CreateInstanceFilter("logservice0", "subject0", 0);
-    auto unitName       = std::string("aos-service@logservice0.service");
+    auto logFilter = CreateLogFilter("logservice0", "subject0", 0, from, till);
 
-    RequestLog request = {};
+    RequestLog request     = {};
+    request.mCorrelationID = "log0";
+    request.mFilter        = logFilter;
 
-    request.mLogID  = "log0";
-    request.mFilter = LogFilter {instanceFilter, from, till};
+    std::vector<std::string> emptyInstanceIDs = {};
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(emptyInstanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
-
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchAbsentPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
+    EXPECT_CALL(mLogSender, SendLog(MatchAbsentPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceCrashLog(request).IsNone());
 
     // notification is instant, no need to wait.
 
-    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(instanceFilter))
-        .WillOnce(Return(RetWithError<std::vector<std::string>>(instanceIDs, ErrorEnum::eNone)));
+    EXPECT_CALL(mInstanceIDProvider, GetInstanceIDs(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(emptyInstanceIDs), Return(ErrorEnum::eNone)));
 
-    EXPECT_CALL(mLogObserver, OnLogReceived(MatchAbsentPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
+    EXPECT_CALL(mLogSender, SendLog(MatchAbsentPushLog("log0"))).WillOnce(Invoke(GetLogReceivedNotifier()));
 
     EXPECT_TRUE(mLogProvider.GetInstanceLog(request).IsNone());
 
