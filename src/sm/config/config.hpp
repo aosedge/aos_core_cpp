@@ -12,12 +12,9 @@
 
 #include <Poco/Dynamic/Var.h>
 
-#include <core/common/logprovider/config.hpp>
-#include <core/common/monitoring/resourcemonitor.hpp>
+#include <core/common/logging/config.hpp>
+#include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
-#include <core/sm/launcher/config.hpp>
-#include <core/sm/layermanager/layermanager.hpp>
-#include <core/sm/servicemanager/servicemanager.hpp>
 
 #include <common/config/config.hpp>
 #include <common/iamclient/config.hpp>
@@ -35,18 +32,13 @@ namespace aos::sm::config {
  */
 struct Config {
     common::iamclient::Config     mIAMClientConfig;
-    sm::layermanager::Config      mLayerManagerConfig;
-    sm::servicemanager::Config    mServiceManagerConfig;
-    sm::launcher::Config          mLauncherConfig;
     smclient::Config              mSMClientConfig;
     std::string                   mCertStorage;
     std::string                   mIAMProtectedServerURL;
     std::string                   mWorkingDir;
-    uint32_t                      mServicesPartLimit;
-    uint32_t                      mLayersPartLimit;
     std::string                   mNodeConfigFile;
     monitoring::Config            mMonitoring;
-    logprovider::Config           mLogging;
+    logging::Config               mLogging;
     common::config::JournalAlerts mJournalAlerts;
     common::config::Migration     mMigration;
 };
