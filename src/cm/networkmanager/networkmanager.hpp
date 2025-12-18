@@ -11,12 +11,12 @@
 #include <unordered_map>
 
 #include <core/cm/networkmanager/itf/networkmanager.hpp>
+#include <core/cm/networkmanager/itf/nodenetwork.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/array.hpp>
 
 #include "ipsubnet.hpp"
 #include "itf/dnsserver.hpp"
-#include "itf/sender.hpp"
 #include "itf/storage.hpp"
 
 namespace aos::cm::networkmanager {
@@ -33,11 +33,11 @@ public:
      *
      * @param storage Storage interface.
      * @param random Random interface.
-     * @param sender Sender interface.
+     * @param nodeNetwork Node network interface.
      * @param dnsServer DNS server interface.
      * @return Error.
      */
-    Error Init(StorageItf& storage, crypto::RandomItf& random, SenderItf& sender, DNSServerItf& dnsServer);
+    Error Init(StorageItf& storage, crypto::RandomItf& random, NodeNetworkItf& nodeNetwork, DNSServerItf& dnsServer);
 
     /**
      * Gets instances.
@@ -91,13 +91,14 @@ private:
 
     void RemoveExistedNetworks();
     void RemoveProviderNetworks(const Array<StaticString<cIDLen>>& providers, const String& nodeID);
-    void AddProviderNetwork(const String& networkID, const String& nodeID, NetworkParameters& networkParameters);
+    void AddProviderNetwork(const String& networkID, const String& nodeID, UpdateNetworkParameters& networkParameters);
     void RemoveInstanceNetwork(const std::string& networkID, const std::string& IP, const InstanceIdent& instanceIdent);
-    void CreateProviderNetwork(const String& networkID, const String& nodeID, NetworkParameters& networkParameters);
-    bool ShouldRemoveNetwork(const NetworkState& networkState, const Array<StaticString<cIDLen>>& providers) const;
-    void CleanupHostFromNetwork(NetworkState& networkState, const String& nodeID);
-    bool IsNetworkEmpty(const NetworkState& networkState) const;
-    void CleanupEmptyNetwork(const NetworkState& networkState);
+    void CreateProviderNetwork(
+        const String& networkID, const String& nodeID, UpdateNetworkParameters& networkParameters);
+    bool     ShouldRemoveNetwork(const NetworkState& networkState, const Array<StaticString<cIDLen>>& providers) const;
+    void     CleanupHostFromNetwork(NetworkState& networkState, const String& nodeID);
+    bool     IsNetworkEmpty(const NetworkState& networkState) const;
+    void     CleanupEmptyNetwork(const NetworkState& networkState);
     uint64_t GenerateVlanID();
     void     PrepareInstanceIdentHosts(
             const InstanceIdent& instanceIdent, const String& networkID, std::vector<std::string>& hosts) const;
@@ -115,7 +116,7 @@ private:
 
     StorageItf*        mStorage {};
     crypto::RandomItf* mRandom {};
-    SenderItf*         mSender {};
+    NodeNetworkItf*    mNodeNetwork {};
     DNSServerItf*      mDNSServer {};
     IpSubnet           mIpSubnet;
 
