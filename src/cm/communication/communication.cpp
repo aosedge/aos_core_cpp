@@ -480,13 +480,13 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    auto err = mCertProvider->GetCert(mConfig->mCertStorage.c_str(), {}, {}, *certInfo);
+    auto err = mCertProvider->GetCert(cOnlineCertificate, {}, {}, *certInfo);
     AOS_ERROR_CHECK_AND_THROW(err);
 
     auto context = Poco::makeAuto<Poco::Net::Context>(Poco::Net::Context::TLS_CLIENT_USE, "");
 
-    err = common::utils::ConfigureSSLContext(mConfig->mCertStorage.c_str(), mConfig->mCrypt.mCACert.c_str(),
-        *mCertProvider, *mCertLoader, *mCryptoProvider, context->sslContext());
+    err = common::utils::ConfigureSSLContext(cOnlineCertificate, mConfig->mCrypt.mCACert.c_str(), *mCertProvider,
+        *mCertLoader, *mCryptoProvider, context->sslContext());
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
