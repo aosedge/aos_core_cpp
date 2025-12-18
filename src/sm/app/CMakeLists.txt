@@ -19,26 +19,25 @@ set(SOURCES app.cpp aoscore.cpp main.cpp)
 set(LIBRARIES
     aos::sm::config
     aos::sm::database
-    aos::sm::image
-    aos::sm::launcher
+    aos::sm::iamclient
     aos::sm::monitoring
     aos::sm::resourcemanager
-    aos::sm::runner
     aos::sm::networkmanager
-    aos::sm::alerts
+    # aos::sm::alerts
     aos::sm::smclient
     aos::sm::logprovider
     aos::common::iamclient
     aos::common::jsonprovider
     aos::common::logger
-    aos::common::downloader
-    aos::common::ocispec
+    aos::common::network
     aos::common::version
     aos::core::common::monitoring
     aos::core::common::version
-    aos::core::sm::layermanager
-    aos::core::sm::servicemanager
+    aos::core::common::crypto
+    aos::core::common::pkcs11
     aos::core::sm::launcher
+    aos::core::sm::nodeconfig
+    aos::core::sm::networkmanager
     Poco::Util
 )
 
