@@ -54,18 +54,6 @@ void ParseCryptConfig(const common::utils::CaseInsensitiveObjectWrapper& object,
     config.mPkcs11Library = object.GetValue<std::string>("pkcs11Library");
 }
 
-void ParseUMControllerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, UMController& config)
-{
-    config.mFileServerURL = object.GetValue<std::string>("fileServerUrl");
-    config.mCMServerURL   = object.GetValue<std::string>("cmServerUrl");
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mUpdateTTL, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("updateTtl", cDefaultUMControllerUpdateTTL));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateTtl tag");
-}
-
 void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
 {
     auto err = common::config::ParseMonitoringConfig(object, config);
@@ -163,8 +151,6 @@ Error ParseConfig(const std::string& filename, Config& config)
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
         ParseCryptConfig(object.Has("fcrypt") ? object.GetObject("fcrypt") : empty, config.mCrypt);
-        ParseUMControllerConfig(
-            object.Has("umController") ? object.GetObject("umController") : empty, config.mUMController);
         ParseMonitoringConfig(object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
         ParseNodeInfoProviderConfig(
             object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);

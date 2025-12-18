@@ -71,11 +71,6 @@ constexpr auto cFullTestConfigJSON = R"({
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
         "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
     },
-    "umController": {
-        "fileServerUrl" : "localhost:8092",
-        "cmServerUrl" : "localhost:8091",
-        "updateTtl" : "100h"
-    },
     "dnsStoragePath": "/var/aos/dnsstorage",
     "dnsIp": "0.0.0.0:5353"
 })";
@@ -103,10 +98,6 @@ constexpr auto cMinimalTestConfigJSON = R"({
         "installPath": "/path/to/install",
         "updateItemTtl": "30d",
         "downloadPath": "/path/to/download"
-    },
-    "umController": {
-        "fileServerUrl" : "localhost:8092",
-        "cmServerUrl" : "localhost:8091"
     }
 })";
 
@@ -186,10 +177,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
 
-    EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
-    EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
-    EXPECT_EQ(config.mUMController.mUpdateTTL, aos::Time::cHours * 100);
-
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos_communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/communicationmanager/migration");
 
@@ -236,10 +223,6 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 220);
-
-    EXPECT_EQ(config.mUMController.mFileServerURL, "localhost:8092");
-    EXPECT_EQ(config.mUMController.mCMServerURL, "localhost:8091");
-    EXPECT_EQ(config.mUMController.mUpdateTTL, aos::Time::cHours * 720);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, (std::filesystem::path("workingDir") / "migration").string());

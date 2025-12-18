@@ -36,15 +36,6 @@ struct Crypt {
 };
 
 /*
- * UM controller configuration.
- */
-struct UMController {
-    std::string mFileServerURL;
-    std::string mCMServerURL;
-    Duration    mUpdateTTL;
-};
-
-/*
  * Monitoring configuration.
  */
 struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
@@ -65,7 +56,6 @@ struct Downloader {
  */
 struct Config {
     Crypt                     mCrypt;
-    UMController              mUMController;
     Monitoring                mMonitoring;
     nodeinfoprovider::Config  mNodeInfoProvider;
     alerts::Config            mAlerts;
