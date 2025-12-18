@@ -14,6 +14,9 @@
 
 #include <Poco/Timer.h>
 
+#include <core/common/alerts/itf/sender.hpp>
+#include <core/common/types/alerts.hpp>
+
 #include <sm/config/config.hpp>
 #include <sm/utils/journal.hpp>
 
