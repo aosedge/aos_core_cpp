@@ -252,23 +252,17 @@ Error CurrentNodeHandler::InitCPUInfo(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (!config.mCPUInfo.has_value()) {
-        return ErrorEnum::eNone;
-    }
-
     for (auto& cpu : mNodeInfo.mCPUs) {
-        if (auto err = cpu.mModelName.Assign(config.mCPUInfo->mModelName.c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+        if (config.mArchitecture.has_value()) {
+            if (auto err = cpu.mArchInfo.mArchitecture.Assign(config.mArchitecture->c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
         }
 
-        if (auto err = cpu.mArchInfo.mArchitecture.Assign(config.mCPUInfo->mArchitecture.c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (config.mCPUInfo->mVariant.has_value()) {
+        if (config.mArchitectureVariant.has_value()) {
             cpu.mArchInfo.mVariant.EmplaceValue();
 
-            if (auto err = cpu.mArchInfo.mVariant->Assign(config.mCPUInfo->mVariant->c_str()); !err.IsNone()) {
+            if (auto err = cpu.mArchInfo.mVariant->Assign(config.mArchitectureVariant->c_str()); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
         }
@@ -283,8 +277,18 @@ Error CurrentNodeHandler::InitOSInfo(const iam::config::NodeInfoConfig& config)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (!config.mOSType.empty()) {
-        return mNodeInfo.mOSInfo.mOS.Assign(config.mOSType.c_str());
+    if (config.mOS.has_value()) {
+        if (auto err = mNodeInfo.mOSInfo.mOS.Assign(config.mOS->c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (config.mOSVersion.has_value()) {
+        mNodeInfo.mOSInfo.mVersion.EmplaceValue();
+
+        if (auto err = mNodeInfo.mOSInfo.mVersion->Assign(config.mOSVersion->c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
