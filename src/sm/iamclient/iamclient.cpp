@@ -21,12 +21,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
 {
     LOG_INF() << "Initializing IAM client";
 
-    auto err = PermissionsService::Init(iamProtectedServerURL, certStorage, tlsCredentials, insecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
-
-    err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
     if (!err.IsNone()) {
         return err;
     }
@@ -41,6 +36,11 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
+    err = PermissionsService::Init(iamProtectedServerURL, certStorage, tlsCredentials, insecureConnection);
+    if (!err.IsNone()) {
+        return err;
+    }
+
     LOG_INF() << "IAM client initialized successfully";
 
     return ErrorEnum::eNone;
@@ -50,12 +50,7 @@ void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
     LOG_INF() << "Certificate changed, reconnect all services";
 
-    auto err = PermissionsService::Reconnect();
-    if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect permissions service" << Log::Field(err);
-    }
-
-    err = PublicCertService::Reconnect();
+    auto err = PublicCertService::Reconnect();
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to reconnect public cert service" << Log::Field(err);
     }
@@ -63,6 +58,11 @@ void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
     err = PublicCurrentNodeService::Reconnect();
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to reconnect public current node service" << Log::Field(err);
+    }
+
+    err = PermissionsService::Reconnect();
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to reconnect permissions service" << Log::Field(err);
     }
 }
 
