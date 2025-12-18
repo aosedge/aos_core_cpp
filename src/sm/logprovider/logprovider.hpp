@@ -14,34 +14,18 @@
 #include <thread>
 #include <vector>
 
-#include <common/logprovider/archivator.hpp>
+#include <common/logging/archiver.hpp>
+#include <core/sm/logging/itf/logprovider.hpp>
 #include <sm/utils/journal.hpp>
 
+#include "itf/instanceidprovider.hpp"
+
 namespace aos::sm::logprovider {
-
-/*
- * Provides service instances ID.
- */
-class InstanceIDProviderItf {
-public:
-    /**
-     * Returns service instance IDs.
-     *
-     * @param filter service instance filter.
-     * @return RetWithError<std::vector<std::string>>.
-     */
-    virtual RetWithError<std::vector<std::string>> GetInstanceIDs(const InstanceFilter& filter) = 0;
-
-    /**
-     * Destructor.
-     */
-    virtual ~InstanceIDProviderItf() = default;
-};
 
 /**
  * Provides journal logs.
  */
-class LogProvider : public LogProviderItf {
+class LogProvider : public logging::LogProviderItf {
 public:
     /**
      * Initializes LogProvider object instance.
@@ -51,7 +35,7 @@ public:
      * @param config log provider config.
      * @return Error.
      */
-    Error Init(const aos::logprovider::Config& config, InstanceIDProviderItf& instanceProvider);
+    Error Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider);
 
     /**
      * Starts requests processing thread.
@@ -99,58 +83,58 @@ public:
     /**
      * Subscribes on logs.
      *
-     * @param observer logs observer.
+     * @param sender log sender.
      * @return Error.
      */
-    Error Subscribe(LogObserverItf& observer) override;
+    Error Subscribe(aos::logging::SenderItf& sender);
 
     /**
      * Unsubscribes from logs.
      *
-     * @param observer logs observer.
+     * @param sender log sender.
      * @return Error.
      */
-    Error Unsubscribe(LogObserverItf& observer) override;
+    Error Unsubscribe(const aos::logging::SenderItf& sender);
 
 private:
     static constexpr auto cAOSServicePrefix = "aos-service@";
 
     struct GetLogRequest {
-        std::vector<std::string> mInstanceIDs;
-        StaticString<cLogIDLen>  mLogID;
-        Optional<Time>           mFrom, mTill;
-        bool                     mCrashLog = false;
+        std::vector<std::string>     mInstanceIDs;
+        StaticString<uuid::cUUIDLen> mCorrelationID;
+        Optional<Time>               mFrom, mTill;
+        bool                         mCrashLog = false;
     };
 
-    std::shared_ptr<common::logprovider::Archivator> CreateArchivator();
+    std::shared_ptr<common::logging::Archiver> CreateArchiver();
     // to be overridden in unit tests.
     virtual std::shared_ptr<utils::JournalItf> CreateJournal();
 
-    void ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    void ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
         const Optional<Time>& from, const Optional<Time>& till);
 
-    void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
-        const Optional<Time>& from, const Optional<Time>& till);
+    void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
+        const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till);
 
     void ProcessLogs();
 
-    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
         const Optional<Time>& from, const Optional<Time>& till);
 
-    void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
-        const Optional<Time>& from, const Optional<Time>& till);
+    void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
+        const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till);
 
-    void SendErrorResponse(const String& logID, const std::string& errorMsg);
-    void SendEmptyResponse(const String& logID, const std::string& errorMsg);
+    void SendErrorResponse(const String& correlationID, const std::string& errorMsg);
+    void SendEmptyResponse(const String& correlationID, const std::string& errorMsg);
 
     void AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
     void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
     void AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
 
-    void ProcessJournalLogs(utils::JournalItf& journal, Optional<Time> till, bool needUnitField,
-        common::logprovider::Archivator& archivator);
+    void ProcessJournalLogs(
+        utils::JournalItf& journal, Optional<Time> till, bool needUnitField, common::logging::Archiver& archiver);
     void ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
-        const std::vector<std::string>& instanceIDs, common::logprovider::Archivator& archivator);
+        const std::vector<std::string>& instanceIDs, common::logging::Archiver& archiver);
 
     std::string FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit);
 
@@ -159,8 +143,8 @@ private:
     std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
 
     InstanceIDProviderItf*   mInstanceProvider = nullptr;
-    aos::logprovider::Config mConfig           = {};
-    LogObserverItf*          mLogReceiver      = nullptr;
+    aos::logging::Config     mConfig           = {};
+    aos::logging::SenderItf* mLogSender        = nullptr;
 
     std::thread               mWorkerThread;
     std::queue<GetLogRequest> mLogRequests;
