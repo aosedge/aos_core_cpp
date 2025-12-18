@@ -9,7 +9,8 @@
 
 #include <gmock/gmock.h>
 
-#include <core/sm/logprovider/logprovider.hpp>
+#include <core/common/logging/itf/sender.hpp>
+#include <core/sm/logging/itf/logprovider.hpp>
 
 #include <sm/logprovider/logprovider.hpp>
 
@@ -20,27 +21,25 @@ namespace aos::sm::logprovider {
  */
 class InstanceIDProviderMock : public InstanceIDProviderItf {
 public:
-    MOCK_METHOD(RetWithError<std::vector<std::string>>, GetInstanceIDs, (const InstanceFilter& filter), (override));
+    MOCK_METHOD(Error, GetInstanceIDs, (const LogFilter& filter, std::vector<std::string>& instanceIDs), (override));
 };
 
 /**
- * Log observer mock.
+ * Log sender mock.
  */
-class LogObserverMock : public aos::sm::logprovider::LogObserverItf {
+class LogSenderMock : public aos::logging::SenderItf {
 public:
-    MOCK_METHOD(aos::Error, OnLogReceived, (const aos::PushLog&), (override));
+    MOCK_METHOD(aos::Error, SendLog, (const aos::PushLog&), (override));
 };
 
 /**
  * Log provider mock.
  */
-class LogProviderMock : public aos::sm::logprovider::LogProviderItf {
+class LogProviderMock : public aos::sm::logging::LogProviderItf {
 public:
     MOCK_METHOD(aos::Error, GetInstanceLog, (const aos::RequestLog&), (override));
     MOCK_METHOD(aos::Error, GetInstanceCrashLog, (const aos::RequestLog&), (override));
     MOCK_METHOD(aos::Error, GetSystemLog, (const aos::RequestLog&), (override));
-    MOCK_METHOD(aos::Error, Subscribe, (aos::sm::logprovider::LogObserverItf&), (override));
-    MOCK_METHOD(aos::Error, Unsubscribe, (aos::sm::logprovider::LogObserverItf&), (override));
 };
 
 } // namespace aos::sm::logprovider

@@ -22,7 +22,7 @@ namespace aos::sm::logprovider {
  * Public
  **********************************************************************************************************************/
 
-Error LogProvider::Init(const aos::logprovider::Config& config, InstanceIDProviderItf& instanceProvider)
+Error LogProvider::Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider)
 {
     LOG_DBG() << "Init log provider";
 
@@ -71,77 +71,79 @@ LogProvider::~LogProvider()
 
 Error LogProvider::GetInstanceLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get instance log: logID=" << request.mLogID;
+    LOG_DBG() << "Get instance log: correlationID=" << request.mCorrelationID;
 
-    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(static_cast<const InstanceFilter&>(request.mFilter));
+    std::vector<std::string> instanceIDs;
+    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
-        SendErrorResponse(request.mLogID, err.Message());
+        SendErrorResponse(request.mCorrelationID, err.Message());
 
         return err;
     }
 
     if (instanceIDs.empty()) {
-        LOG_DBG() << "No instance ids for log request: logID=" << request.mLogID;
+        LOG_DBG() << "No instance ids for log request: correlationID=" << request.mCorrelationID;
 
-        SendEmptyResponse(request.mLogID, "no service instance found");
+        SendEmptyResponse(request.mCorrelationID, "no service instance found");
 
         return ErrorEnum::eNone;
     }
 
-    ScheduleGetLog(instanceIDs, request.mLogID, request.mFilter.mFrom, request.mFilter.mTill);
+    ScheduleGetLog(instanceIDs, request.mCorrelationID, request.mFilter.mFrom, request.mFilter.mTill);
 
     return ErrorEnum::eNone;
 }
 
 Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get instance crash log: logID=" << request.mLogID;
+    LOG_DBG() << "Get instance crash log: correlationID=" << request.mCorrelationID;
 
-    auto [instanceIDs, err] = mInstanceProvider->GetInstanceIDs(static_cast<const InstanceFilter&>(request.mFilter));
+    std::vector<std::string> instanceIDs;
+    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
-        SendErrorResponse(request.mLogID, err.Message());
+        SendErrorResponse(request.mCorrelationID, err.Message());
 
         return AOS_ERROR_WRAP(err);
     }
 
     if (instanceIDs.empty()) {
-        LOG_DBG() << "No instance ids for crash log request: logID=" << request.mLogID;
+        LOG_DBG() << "No instance ids for crash log request: correlationID=" << request.mCorrelationID;
 
-        SendEmptyResponse(request.mLogID, "no service instance found");
+        SendEmptyResponse(request.mCorrelationID, "no service instance found");
 
         return ErrorEnum::eNone;
     }
 
-    ScheduleGetCrashLog(instanceIDs, request.mLogID, request.mFilter.mFrom, request.mFilter.mTill);
+    ScheduleGetCrashLog(instanceIDs, request.mCorrelationID, request.mFilter.mFrom, request.mFilter.mTill);
 
     return ErrorEnum::eNone;
 }
 
 Error LogProvider::GetSystemLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get system log: logID=" << request.mLogID;
+    LOG_DBG() << "Get system log: correlationID=" << request.mCorrelationID;
 
-    ScheduleGetLog({}, request.mLogID, request.mFilter.mFrom, request.mFilter.mTill);
-
-    return ErrorEnum::eNone;
-}
-
-Error LogProvider::Subscribe(LogObserverItf& observer)
-{
-    std::unique_lock<std::mutex> lock {mMutex};
-
-    mLogReceiver = &observer;
+    ScheduleGetLog({}, request.mCorrelationID, request.mFilter.mFrom, request.mFilter.mTill);
 
     return ErrorEnum::eNone;
 }
 
-Error LogProvider::Unsubscribe(LogObserverItf& observer)
+Error LogProvider::Subscribe(aos::logging::SenderItf& sender)
 {
-    (void)observer;
+    std::unique_lock<std::mutex> lock {mMutex};
+
+    mLogSender = &sender;
+
+    return ErrorEnum::eNone;
+}
+
+Error LogProvider::Unsubscribe(const aos::logging::SenderItf& sender)
+{
+    (void)sender;
 
     std::unique_lock<std::mutex> lock {mMutex};
 
-    mLogReceiver = nullptr;
+    mLogSender = nullptr;
 
     return ErrorEnum::eNone;
 }
@@ -150,9 +152,9 @@ Error LogProvider::Unsubscribe(LogObserverItf& observer)
  * Private
  **********************************************************************************************************************/
 
-std::shared_ptr<common::logprovider::Archivator> LogProvider::CreateArchivator()
+std::shared_ptr<common::logging::Archiver> LogProvider::CreateArchiver()
 {
-    return std::make_shared<common::logprovider::Archivator>(*mLogReceiver, mConfig);
+    return std::make_shared<common::logging::Archiver>(*mLogSender, mConfig);
 }
 
 std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
@@ -160,22 +162,22 @@ std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
     return std::make_shared<utils::Journal>();
 }
 
-void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
-    const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
+    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, logID, from, till, false});
+    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationID, from, till, false});
 
     mCondVar.notify_one();
 }
 
-void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
-    const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
+    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, logID, from, till, true});
+    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationID, from, till, true});
 
     mCondVar.notify_one();
 }
@@ -204,24 +206,25 @@ void LogProvider::ProcessLogs()
 
         try {
             if (logRequest.mCrashLog) {
-                GetInstanceCrashLog(logRequest.mInstanceIDs, logRequest.mLogID, logRequest.mFrom, logRequest.mTill);
+                GetInstanceCrashLog(
+                    logRequest.mInstanceIDs, logRequest.mCorrelationID, logRequest.mFrom, logRequest.mTill);
             } else {
-                GetLog(logRequest.mInstanceIDs, logRequest.mLogID, logRequest.mFrom, logRequest.mTill);
+                GetLog(logRequest.mInstanceIDs, logRequest.mCorrelationID, logRequest.mFrom, logRequest.mTill);
             }
         } catch (const std::exception& e) {
             auto err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
 
-            LOG_ERR() << "PushLog failed: logID=" << logRequest.mLogID << ", err=" << err;
+            LOG_ERR() << "PushLog failed: correlationID=" << logRequest.mCorrelationID << ", err=" << err;
 
-            SendErrorResponse(logRequest.mLogID, err.Message());
+            SendErrorResponse(logRequest.mCorrelationID, err.Message());
         }
     }
 }
 
-void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
+void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
     const Optional<Time>& from, const Optional<Time>& till)
 {
-    if (!mLogReceiver) {
+    if (!mLogSender) {
         return;
     }
 
@@ -236,17 +239,17 @@ void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const Stat
 
     SeekToTime(*journal, from);
 
-    auto archivator = CreateArchivator();
+    auto archiver = CreateArchiver();
 
-    ProcessJournalLogs(*journal, till, needUnitField, *archivator);
+    ProcessJournalLogs(*journal, till, needUnitField, *archiver);
 
-    AOS_ERROR_CHECK_AND_THROW(archivator->SendLog(logID), "sending log failed");
+    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationID), "sending log failed");
 }
 
-void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceIDs, const StaticString<cLogIDLen>& logID,
-    const Optional<Time>& from, const Optional<Time>& till)
+void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
+    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
 {
-    if (!mLogReceiver) {
+    if (!mLogSender) {
         return;
     }
 
@@ -263,7 +266,7 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
     Time crashTime = GetCrashTime(*journal, from);
     if (crashTime.IsZero()) {
         // No crash time found, send an empty response
-        SendEmptyResponse(logID, "no instance crash found");
+        SendEmptyResponse(correlationID, "no instance crash found");
 
         return;
     }
@@ -272,40 +275,40 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
 
     AddServiceCgroupFilter(*journal, instanceIDs);
 
-    auto archivator = CreateArchivator();
+    auto archiver = CreateArchiver();
 
-    ProcessJournalCrashLogs(*journal, crashTime, instanceIDs, *archivator);
+    ProcessJournalCrashLogs(*journal, crashTime, instanceIDs, *archiver);
 
-    AOS_ERROR_CHECK_AND_THROW(archivator->SendLog(logID), "sending log failed");
+    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationID), "sending log failed");
 }
 
-void LogProvider::SendErrorResponse(const String& logID, const std::string& errorMsg)
+void LogProvider::SendErrorResponse(const String& correlationID, const std::string& errorMsg)
 {
     auto response = std::make_unique<PushLog>();
 
-    response->mLogID      = logID;
-    response->mStatus     = LogStatusEnum::eError;
-    response->mError      = Error(ErrorEnum::eFailed, errorMsg.c_str());
-    response->mPartsCount = 0;
-    response->mPart       = 0;
+    response->mCorrelationID = correlationID;
+    response->mStatus        = LogStatusEnum::eError;
+    response->mError         = Error(ErrorEnum::eFailed, errorMsg.c_str());
+    response->mPartsCount    = 0;
+    response->mPart          = 0;
 
-    if (mLogReceiver) {
-        mLogReceiver->OnLogReceived(*response);
+    if (mLogSender) {
+        mLogSender->SendLog(*response);
     }
 }
 
-void LogProvider::SendEmptyResponse(const String& logID, const std::string& errorMsg)
+void LogProvider::SendEmptyResponse(const String& correlationID, const std::string& errorMsg)
 {
     auto response = std::make_unique<PushLog>();
 
-    response->mLogID      = logID;
-    response->mStatus     = LogStatusEnum::eAbsent;
-    response->mPartsCount = 1;
-    response->mPart       = 1;
-    response->mError      = Error(ErrorEnum::eNone, errorMsg.c_str());
+    response->mCorrelationID = correlationID;
+    response->mStatus        = LogStatusEnum::eAbsent;
+    response->mPartsCount    = 1;
+    response->mPart          = 1;
+    response->mError         = Error(ErrorEnum::eNone, errorMsg.c_str());
 
-    if (mLogReceiver) {
-        mLogReceiver->OnLogReceived(*response);
+    if (mLogSender) {
+        mLogSender->SendLog(*response);
     }
 }
 
@@ -347,7 +350,7 @@ void LogProvider::SeekToTime(utils::JournalItf& journal, const Optional<Time>& f
 }
 
 void LogProvider::ProcessJournalLogs(
-    utils::JournalItf& journal, Optional<Time> till, bool needUnitField, common::logprovider::Archivator& archivator)
+    utils::JournalItf& journal, Optional<Time> till, bool needUnitField, common::logging::Archiver& archiver)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();
@@ -358,12 +361,12 @@ void LogProvider::ProcessJournalLogs(
 
         auto log = FormatLogEntry(entry, needUnitField);
 
-        AOS_ERROR_CHECK_AND_THROW(archivator.AddLog(log), "adding log failed");
+        AOS_ERROR_CHECK_AND_THROW(archiver.AddLog(log), "adding log failed");
     }
 }
 
 void LogProvider::ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
-    const std::vector<std::string>& instanceIDs, common::logprovider::Archivator& archivator)
+    const std::vector<std::string>& instanceIDs, common::logging::Archiver& archiver)
 {
     while (journal.Next()) {
         auto entry = journal.GetEntry();
@@ -379,7 +382,7 @@ void LogProvider::ProcessJournalCrashLogs(utils::JournalItf& journal, Time crash
             if (unitNameInLog.find(unitName) != std::string::npos) {
                 auto log = FormatLogEntry(entry, false);
 
-                AOS_ERROR_CHECK_AND_THROW(archivator.AddLog(log), "adding log failed");
+                AOS_ERROR_CHECK_AND_THROW(archiver.AddLog(log), "adding log failed");
                 break;
             }
         }
