@@ -182,6 +182,7 @@ private:
     static constexpr auto cReconnectTimeout      = Time::cSeconds * 1;
     static constexpr auto cMaxReconnectTimeout   = 10 * Time::cMinutes;
     static constexpr auto cMessageHandlerThreads = 4;
+    static constexpr auto cOnlineCertificate     = "online";
 
     using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
     using ResponseMessageVariant    = std::variant<BlobURLsInfo>;

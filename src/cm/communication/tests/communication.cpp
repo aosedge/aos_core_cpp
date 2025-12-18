@@ -48,6 +48,7 @@ constexpr auto cDiscoveryServerPort = 3344;
 constexpr auto cDiscoveryServerURL  = "https://localhost:3344";
 constexpr auto cWebSocketServiceURL = "wss://localhost:3345";
 constexpr auto cCloudServerPort     = 3345;
+constexpr auto cCertificate         = "online";
 
 /***********************************************************************************************************************
  * Mocks
@@ -181,7 +182,6 @@ public:
 
         mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
         mConfig.mCrypt.mCACert            = CERTIFICATES_CM_DIR "/ca.cer";
-        mConfig.mCertStorage              = "client";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentityProvider, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
@@ -200,18 +200,18 @@ public:
         err = mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize certificate loader: " << tests::utils::ErrorToStr(err);
 
-        RegisterPKCS11Module(mConfig.mCertStorage.c_str());
-        ASSERT_TRUE(mCertHandler.SetOwner(mConfig.mCertStorage.c_str(), cPIN).IsNone());
+        RegisterPKCS11Module(cCertificate);
+        ASSERT_TRUE(mCertHandler.SetOwner(cCertificate, cPIN).IsNone());
 
         RegisterPKCS11Module("server");
 
-        ApplyCertificate(mConfig.mCertStorage.c_str(), mConfig.mCertStorage.c_str(),
-            CERTIFICATES_CM_DIR "/client_int.key", CERTIFICATES_CM_DIR "/client_int.cer", 0x3333444, mClientInfo);
+        ApplyCertificate(cCertificate, cCertificate, CERTIFICATES_CM_DIR "/client_int.key",
+            CERTIFICATES_CM_DIR "/client_int.cer", 0x3333444, mClientInfo);
         ApplyCertificate("server", "localhost", CERTIFICATES_CM_DIR "/server_int.key",
             CERTIFICATES_CM_DIR "/server_int.cer", 0x3333333, mServerInfo);
 
         CertInfo certInfo;
-        mCertHandler.GetCert("client", {}, {}, certInfo);
+        mCertHandler.GetCert(cCertificate, {}, {}, certInfo);
         auto [keyURI, errPkcs] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, ErrorEnum::eNone);
 
