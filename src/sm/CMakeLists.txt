@@ -8,7 +8,10 @@
 # Dependencies
 # ######################################################################################################################
 
+find_package(PkgConfig REQUIRED)
 find_package(Poco REQUIRED Foundation Util JSON DataSQLite)
+
+pkg_check_modules(Systemd libsystemd REQUIRED)
 
 # ######################################################################################################################
 # Target properties
