@@ -12,6 +12,7 @@
 #include <numeric>
 #include <string>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <vector>
@@ -67,7 +68,13 @@ Error FSWatcher::Stop()
 
     LOG_DBG() << "Stop file system watcher";
 
-    return StopImpl();
+    if (auto err = StopImpl(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    LOG_DBG() << "File system watcher stopped";
+
+    return ErrorEnum::eNone;
 }
 
 Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscriber)
@@ -120,9 +127,41 @@ Error FSWatcher::StartImpl()
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
+    Error err;
+
+    auto cleanup = DeferRelease(&err, [this](const Error* err) {
+        if (err->IsNone()) {
+            return;
+        }
+
+        if (mEpollFd >= 0) {
+            close(mEpollFd);
+            mEpollFd = -1;
+        }
+
+        if (mEventFd >= 0) {
+            close(mEventFd);
+            mEventFd = -1;
+        }
+
+        if (mInotifyFd >= 0) {
+            close(mInotifyFd);
+            mInotifyFd = -1;
+        }
+    });
+
+    mEventFd = eventfd(0, EFD_NONBLOCK);
+    if (mEventFd < 0) {
+        err = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
+
+        return err;
+    }
+
     mEpollFd = epoll_create1(0);
     if (mEpollFd < 0) {
-        return Error(ErrorEnum::eFailed, strerror(errno));
+        err = Error(ErrorEnum::eFailed, strerror(errno));
+
+        return err;
     }
 
     epoll_event ev {};
@@ -130,10 +169,14 @@ Error FSWatcher::StartImpl()
     ev.data.fd = mInotifyFd;
 
     if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, mInotifyFd, &ev) < 0) {
-        auto err = Error(ErrorEnum::eFailed, strerror(errno));
+        err = Error(ErrorEnum::eFailed, strerror(errno));
 
-        close(mEpollFd);
-        mEpollFd = -1;
+        return err;
+    }
+
+    ev.data.fd = mEventFd;
+    if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, mEventFd, &ev) < 0) {
+        err = Error(ErrorEnum::eFailed, strerror(errno));
 
         return err;
     }
@@ -151,18 +194,32 @@ Error FSWatcher::StopImpl()
         return ErrorEnum::eWrongState;
     }
 
-    ClearWatchedContexts();
-
     mRunning = false;
 
-    mCondVar.notify_all();
+    // Signal eventfd to wake up epoll_wait
+    if (mEventFd >= 0) {
+        uint64_t value = 1;
+        if (write(mEventFd, &value, sizeof(value)) < 0) {
+            LOG_WRN() << "Failed to write to eventfd" << Log::Field(Error(errno));
+        }
+    }
 
     if (mThread.joinable()) {
         mThread.join();
     }
 
+    ClearWatchedContexts();
+
+    mCondVar.notify_all();
+
+    if (mEventFd >= 0) {
+        close(mEventFd);
+        mEventFd = -1;
+    }
+
     if (mInotifyFd >= 0) {
         close(mInotifyFd);
+        mInotifyFd = -1;
     }
 
     if (auto err = mTimer.Stop(); !err.IsNone()) {
@@ -218,6 +275,11 @@ void FSWatcher::Run()
             continue;
         } else if (waitResult == 0) {
             continue;
+        }
+
+        // Check if woken up by eventfd (stop signal)
+        if (events.data.fd == mEventFd) {
+            break;
         }
 
         const auto length = read(mInotifyFd, buffer.data(), buffer.size());
