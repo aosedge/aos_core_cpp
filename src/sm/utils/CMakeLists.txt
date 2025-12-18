@@ -22,7 +22,7 @@ set(HEADERS itf/journal.hpp itf/systemdconn.hpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils)
+set(LIBRARIES aos::common::utils ${Systemd_LIBRARIES})
 
 # ######################################################################################################################
 # Target
