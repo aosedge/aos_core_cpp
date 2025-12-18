@@ -8,6 +8,7 @@
 
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Data/Session.h>
+#include <Poco/JSON/Array.h>
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/JSON/Stringifier.h>
@@ -29,14 +30,10 @@ namespace aos::sm::database {
 
 namespace {
 
-Poco::Data::BLOB ToBlob(const std::string& str)
+template <typename E>
+constexpr int ToInt(E e)
 {
-    return Poco::Data::BLOB {reinterpret_cast<const uint8_t*>(str.c_str()), str.size()};
-}
-
-Poco::Data::BLOB ToBlob(const String& str)
-{
-    return Poco::Data::BLOB {reinterpret_cast<const uint8_t*>(str.CStr()), str.Size()};
+    return static_cast<int>(e);
 }
 
 Time ConvertTimestamp(uint64_t timestamp)
@@ -47,365 +44,266 @@ Time ConvertTimestamp(uint64_t timestamp)
     return Time::Unix(seconds, nanos);
 }
 
-EnvVarInfo ConvertEnvVarInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object)
+std::string SerializeEnvVars(const EnvVarArray& envVars)
 {
-    EnvVarInfo envVar;
+    Poco::JSON::Array jsonArray;
 
-    envVar.mTTL.Reset();
-
-    const auto name  = object.GetValue<std::string>("name");
-    const auto value = object.GetValue<std::string>("value");
-
-    envVar.mName  = name.c_str();
-    envVar.mValue = value.c_str();
-
-    if (const auto ttl = object.GetOptionalValue<int64_t>("ttl").value_or(0); ttl > 0) {
-        const auto time = ConvertTimestamp(ttl);
-
-        envVar.mTTL.SetValue(time);
+    for (const auto& envVar : envVars) {
+        Poco::JSON::Object obj;
+        obj.set("name", envVar.mName.CStr());
+        obj.set("value", envVar.mValue.CStr());
+        jsonArray.add(obj);
     }
 
-    return envVar;
+    return common::utils::Stringify(jsonArray);
 }
 
-Poco::JSON::Array ConvertEnvVarsInstanceInfoArrayToJSON(const Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
+void DeserializeEnvVars(const std::string& jsonStr, EnvVarArray& envVars)
 {
-    Poco::JSON::Array result;
-
-    for (const auto& envVarsInstanceInfo : envVarsInstanceInfos) {
-        Poco::JSON::Object object;
-        Poco::JSON::Object instanceFilter;
-
-        if (envVarsInstanceInfo.mItemID.HasValue()) {
-            instanceFilter.set("serviceID", envVarsInstanceInfo.mItemID.GetValue().CStr());
-        }
-
-        if (envVarsInstanceInfo.mSubjectID.HasValue()) {
-            instanceFilter.set("subjectID", envVarsInstanceInfo.mSubjectID.GetValue().CStr());
-        }
-
-        if (envVarsInstanceInfo.mInstance.HasValue()) {
-            instanceFilter.set("instance", envVarsInstanceInfo.mInstance.GetValue());
-        }
-
-        object.set("instanceFilter", instanceFilter);
-
-        Poco::JSON::Array envVars;
-
-        for (const auto& envVar : envVarsInstanceInfo.mVariables) {
-            Poco::JSON::Object envVarObject;
-
-            envVarObject.set("name", envVar.mName.CStr());
-            envVarObject.set("value", envVar.mValue.CStr());
-
-            if (envVar.mTTL.HasValue()) {
-                envVarObject.set("ttl", envVar.mTTL.GetValue().UnixNano());
-            }
-
-            envVars.add(envVarObject);
-        }
-
-        object.set("envVars", envVars);
-
-        result.add(object);
+    if (jsonStr.empty()) {
+        envVars.Clear();
+        return;
     }
 
-    return result;
-}
+    Poco::JSON::Parser parser;
 
-void ConvertEnvVarsInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, EnvVarsInstanceInfo& result)
-{
-    if (object.Has("instanceFilter")) {
-        const auto filter = object.GetObject("instanceFilter");
-
-        if (filter.Has("serviceID")) {
-            result.mItemID.SetValue(filter.GetValue<std::string>("serviceID").c_str());
-        }
-
-        if (filter.Has("subjectID")) {
-            result.mSubjectID.SetValue(filter.GetValue<std::string>("subjectID").c_str());
-        }
-
-        if (filter.Has("instance")) {
-            result.mInstance.SetValue(filter.GetValue<uint32_t>("instance"));
-        }
+    auto jsonArray = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+    if (jsonArray == nullptr) {
+        return;
     }
 
-    const auto envVars
-        = common::utils::GetArrayValue<EnvVarInfo>(object, "envVars", [&](const Poco::Dynamic::Var& value) {
-              return ConvertEnvVarInfoFromJSON(
-                  common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
-          });
+    envVars.Clear();
 
-    for (auto& envVar : envVars) {
-        auto err = result.mVariables.PushBack(Move(envVar));
-        AOS_ERROR_CHECK_AND_THROW(err, "DB instance's envVar count exceeds application limit");
+    for (const auto& item : *jsonArray) {
+        const auto obj = item.extract<Poco::JSON::Object::Ptr>();
+        if (obj == nullptr) {
+            continue;
+        }
+
+        EnvVar envVar;
+        AOS_ERROR_CHECK_AND_THROW(envVar.mName.Assign(obj->getValue<std::string>("name").c_str()));
+        AOS_ERROR_CHECK_AND_THROW(envVar.mValue.Assign(obj->getValue<std::string>("value").c_str()));
+        AOS_ERROR_CHECK_AND_THROW(envVars.PushBack(envVar), "can't add env var");
     }
 }
 
-Error ConvertEnvVarsInstanceInfoArrayFromJSON(const std::string& src, Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
+std::string SerializeNetworkParameters(const Optional<InstanceNetworkParameters>& params)
 {
-    if (src.empty()) {
-        return ErrorEnum::eNone;
+    if (!params.HasValue()) {
+        return "";
     }
 
-    try {
-        auto [parser, err] = common::utils::ParseJson(src);
+    const auto& p = params.GetValue();
 
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(Error(err, "Failed to parse envvars"));
+    Poco::JSON::Object obj;
+    obj.set("networkID", p.mNetworkID.CStr());
+    obj.set("subnet", p.mSubnet.CStr());
+    obj.set("ip", p.mIP.CStr());
+
+    Poco::JSON::Array dnsArray;
+    for (const auto& dns : p.mDNSServers) {
+        dnsArray.add(dns.CStr());
+    }
+    obj.set("dnsServers", dnsArray);
+
+    Poco::JSON::Array rulesArray;
+    for (const auto& rule : p.mFirewallRules) {
+        Poco::JSON::Object ruleObj;
+        ruleObj.set("dstIP", rule.mDstIP.CStr());
+        ruleObj.set("dstPort", rule.mDstPort.CStr());
+        ruleObj.set("proto", rule.mProto.CStr());
+        ruleObj.set("srcIP", rule.mSrcIP.CStr());
+        rulesArray.add(ruleObj);
+    }
+    obj.set("firewallRules", rulesArray);
+
+    return common::utils::Stringify(obj);
+}
+
+void DeserializeNetworkParameters(const std::string& jsonStr, Optional<InstanceNetworkParameters>& params)
+{
+    if (jsonStr.empty()) {
+        params.Reset();
+        return;
+    }
+
+    Poco::JSON::Parser parser;
+    auto               obj = parser.parse(jsonStr).extract<Poco::JSON::Object::Ptr>();
+    if (obj == nullptr) {
+        params.Reset();
+        return;
+    }
+
+    params.EmplaceValue();
+    auto& p = params.GetValue();
+
+    AOS_ERROR_CHECK_AND_THROW(p.mNetworkID.Assign(obj->getValue<std::string>("networkID").c_str()));
+    AOS_ERROR_CHECK_AND_THROW(p.mSubnet.Assign(obj->getValue<std::string>("subnet").c_str()));
+    AOS_ERROR_CHECK_AND_THROW(p.mIP.Assign(obj->getValue<std::string>("ip").c_str()));
+
+    if (obj->has("dnsServers")) {
+        auto dnsArray = obj->getArray("dnsServers");
+        for (const auto& dns : *dnsArray) {
+            AOS_ERROR_CHECK_AND_THROW(p.mDNSServers.EmplaceBack(dns.convert<std::string>().c_str()), "can't add DNS");
         }
+    }
 
-        auto items = parser.extract<Poco::JSON::Array::Ptr>();
-
-        if (items.isNull()) {
-            return ErrorEnum::eNone;
-        }
-
-        for (const auto& item : *items) {
-            const auto objectPtr = item.extract<Poco::JSON::Object::Ptr>();
-
-            if (objectPtr.isNull()) {
+    if (obj->has("firewallRules")) {
+        auto rulesArray = obj->getArray("firewallRules");
+        for (const auto& item : *rulesArray) {
+            const auto ruleObj = item.extract<Poco::JSON::Object::Ptr>();
+            if (ruleObj == nullptr) {
                 continue;
             }
 
-            auto envVarsInfo = std::make_unique<EnvVarsInstanceInfo>();
-
-            ConvertEnvVarsInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(objectPtr), *envVarsInfo);
-
-            err = envVarsInstanceInfos.PushBack(*envVarsInfo);
-            AOS_ERROR_CHECK_AND_THROW(err, "DB instance's envvars count exceeds application limit");
+            FirewallRule rule;
+            AOS_ERROR_CHECK_AND_THROW(rule.mDstIP.Assign(ruleObj->getValue<std::string>("dstIP").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mDstPort.Assign(ruleObj->getValue<std::string>("dstPort").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mProto.Assign(ruleObj->getValue<std::string>("proto").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mSrcIP.Assign(ruleObj->getValue<std::string>("srcIP").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(p.mFirewallRules.PushBack(rule), "can't add firewall rule");
         }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
-
-    return ErrorEnum::eNone;
 }
 
-Poco::JSON::Object ConvertInstanceNetworkParametersToJSON(const InstanceNetworkParameters& networkParameters)
+std::string SerializeMonitoringParams(const Optional<InstanceMonitoringParams>& params)
 {
-    Poco::JSON::Object object;
-    Poco::JSON::Array  dnsServers;
-    Poco::JSON::Array  firewallRules;
-
-    object.set("networkID", networkParameters.mNetworkID.CStr());
-    object.set("subnet", networkParameters.mSubnet.CStr());
-    object.set("ip", networkParameters.mIP.CStr());
-
-    for (const auto& dnsServer : networkParameters.mDNSServers) {
-        dnsServers.add(dnsServer.CStr());
+    if (!params.HasValue()) {
+        return "";
     }
 
-    object.set("dnsServers", dnsServers);
+    const auto& p = params.GetValue();
 
-    for (const auto& firewallRule : networkParameters.mFirewallRules) {
-        Poco::JSON::Object rule;
+    Poco::JSON::Object obj;
 
-        rule.set("dstIp", firewallRule.mDstIP.CStr());
-        rule.set("dstPort", firewallRule.mDstPort.CStr());
-        rule.set("proto", firewallRule.mProto.CStr());
-        rule.set("srcIp", firewallRule.mSrcIP.CStr());
+    if (p.mAlertRules.HasValue()) {
+        const auto& rules = p.mAlertRules.GetValue();
 
-        firewallRules.add(rule);
+        Poco::JSON::Object alertObj;
+
+        if (rules.mRAM.HasValue()) {
+            Poco::JSON::Object ramObj;
+            ramObj.set("minThreshold", rules.mRAM.GetValue().mMinThreshold);
+            ramObj.set("maxThreshold", rules.mRAM.GetValue().mMaxThreshold);
+            ramObj.set("minTimeout", rules.mRAM.GetValue().mMinTimeout.Nanoseconds());
+            alertObj.set("ram", ramObj);
+        }
+
+        if (rules.mCPU.HasValue()) {
+            Poco::JSON::Object cpuObj;
+            cpuObj.set("minThreshold", rules.mCPU.GetValue().mMinThreshold);
+            cpuObj.set("maxThreshold", rules.mCPU.GetValue().mMaxThreshold);
+            cpuObj.set("minTimeout", rules.mCPU.GetValue().mMinTimeout.Nanoseconds());
+            alertObj.set("cpu", cpuObj);
+        }
+
+        if (rules.mDownload.HasValue()) {
+            Poco::JSON::Object downloadObj;
+            downloadObj.set("minThreshold", rules.mDownload.GetValue().mMinThreshold);
+            downloadObj.set("maxThreshold", rules.mDownload.GetValue().mMaxThreshold);
+            downloadObj.set("minTimeout", rules.mDownload.GetValue().mMinTimeout.Nanoseconds());
+            alertObj.set("download", downloadObj);
+        }
+
+        if (rules.mUpload.HasValue()) {
+            Poco::JSON::Object uploadObj;
+            uploadObj.set("minThreshold", rules.mUpload.GetValue().mMinThreshold);
+            uploadObj.set("maxThreshold", rules.mUpload.GetValue().mMaxThreshold);
+            uploadObj.set("minTimeout", rules.mUpload.GetValue().mMinTimeout.Nanoseconds());
+            alertObj.set("upload", uploadObj);
+        }
+
+        if (!rules.mPartitions.IsEmpty()) {
+            Poco::JSON::Array partitionsArray;
+            for (const auto& partition : rules.mPartitions) {
+                Poco::JSON::Object partObj;
+                partObj.set("name", partition.mName.CStr());
+                partObj.set("minThreshold", partition.mMinThreshold);
+                partObj.set("maxThreshold", partition.mMaxThreshold);
+                partObj.set("minTimeout", partition.mMinTimeout.Nanoseconds());
+                partitionsArray.add(partObj);
+            }
+            alertObj.set("partitions", partitionsArray);
+        }
+
+        obj.set("alertRules", alertObj);
     }
 
-    object.set("firewallRules", firewallRules);
-
-    return object;
+    return common::utils::Stringify(obj);
 }
 
-Error ConvertInstanceNetworkParametersFromJSON(
-    const Poco::JSON::Object& src, InstanceNetworkParameters& networkParameters)
+void DeserializeMonitoringParams(const std::string& jsonStr, Optional<InstanceMonitoringParams>& params)
 {
-    try {
-        networkParameters.mNetworkID = src.getValue<std::string>("networkID").c_str();
-        networkParameters.mSubnet    = src.getValue<std::string>("subnet").c_str();
-        networkParameters.mIP        = src.getValue<std::string>("ip").c_str();
+    if (jsonStr.empty()) {
+        params.Reset();
+        return;
+    }
 
-        if (src.has("dnsServers")) {
-            auto dnsServersArray = src.getArray("dnsServers");
-            if (!dnsServersArray.isNull()) {
-                for (size_t i = 0; i < dnsServersArray->size(); ++i) {
-                    auto dnsServer = dnsServersArray->getElement<std::string>(i);
-                    if (auto err = networkParameters.mDNSServers.PushBack(dnsServer.c_str()); !err.IsNone()) {
-                        return AOS_ERROR_WRAP(err);
-                    }
+    Poco::JSON::Parser parser;
+    auto               obj = parser.parse(jsonStr).extract<Poco::JSON::Object::Ptr>();
+    if (obj == nullptr) {
+        params.Reset();
+        return;
+    }
+
+    params.EmplaceValue();
+    auto& p = params.GetValue();
+
+    if (obj->has("alertRules")) {
+        auto alertObj = obj->getObject("alertRules");
+        p.mAlertRules.EmplaceValue();
+        auto& rules = p.mAlertRules.GetValue();
+
+        if (alertObj->has("ram")) {
+            auto ramObj = alertObj->getObject("ram");
+            rules.mRAM.EmplaceValue();
+            rules.mRAM.GetValue().mMinThreshold = ramObj->getValue<uint8_t>("minThreshold");
+            rules.mRAM.GetValue().mMaxThreshold = ramObj->getValue<uint8_t>("maxThreshold");
+            rules.mRAM.GetValue().mMinTimeout   = Duration(ramObj->getValue<int64_t>("minTimeout"));
+        }
+
+        if (alertObj->has("cpu")) {
+            auto cpuObj = alertObj->getObject("cpu");
+            rules.mCPU.EmplaceValue();
+            rules.mCPU.GetValue().mMinThreshold = cpuObj->getValue<uint8_t>("minThreshold");
+            rules.mCPU.GetValue().mMaxThreshold = cpuObj->getValue<uint8_t>("maxThreshold");
+            rules.mCPU.GetValue().mMinTimeout   = Duration(cpuObj->getValue<int64_t>("minTimeout"));
+        }
+
+        if (alertObj->has("download")) {
+            auto downloadObj = alertObj->getObject("download");
+            rules.mDownload.EmplaceValue();
+            rules.mDownload.GetValue().mMinThreshold = downloadObj->getValue<uint64_t>("minThreshold");
+            rules.mDownload.GetValue().mMaxThreshold = downloadObj->getValue<uint64_t>("maxThreshold");
+            rules.mDownload.GetValue().mMinTimeout   = Duration(downloadObj->getValue<int64_t>("minTimeout"));
+        }
+
+        if (alertObj->has("upload")) {
+            auto uploadObj = alertObj->getObject("upload");
+            rules.mUpload.EmplaceValue();
+            rules.mUpload.GetValue().mMinThreshold = uploadObj->getValue<uint64_t>("minThreshold");
+            rules.mUpload.GetValue().mMaxThreshold = uploadObj->getValue<uint64_t>("maxThreshold");
+            rules.mUpload.GetValue().mMinTimeout   = Duration(uploadObj->getValue<int64_t>("minTimeout"));
+        }
+
+        if (alertObj->has("partitions")) {
+            auto partitionsArray = alertObj->getArray("partitions");
+            for (const auto& item : *partitionsArray) {
+                const auto partObj = item.extract<Poco::JSON::Object::Ptr>();
+                if (partObj == nullptr) {
+                    continue;
                 }
+
+                PartitionAlertRule rule;
+                AOS_ERROR_CHECK_AND_THROW(rule.mName.Assign(partObj->getValue<std::string>("name").c_str()));
+                rule.mMinThreshold = partObj->getValue<uint8_t>("minThreshold");
+                rule.mMaxThreshold = partObj->getValue<uint8_t>("maxThreshold");
+                rule.mMinTimeout   = Duration(partObj->getValue<int64_t>("minTimeout"));
+                AOS_ERROR_CHECK_AND_THROW(rules.mPartitions.PushBack(rule), "can't add partition rule");
             }
         }
-
-        if (src.has("firewallRules")) {
-            auto firewallRulesArray = src.getArray("firewallRules");
-            if (!firewallRulesArray.isNull()) {
-                for (size_t i = 0; i < firewallRulesArray->size(); ++i) {
-                    auto ruleObj = firewallRulesArray->getObject(i);
-                    if (!ruleObj.isNull()) {
-                        FirewallRule rule;
-                        rule.mDstIP   = ruleObj->getValue<std::string>("dstIp").c_str();
-                        rule.mDstPort = ruleObj->getValue<std::string>("dstPort").c_str();
-                        rule.mProto   = ruleObj->getValue<std::string>("proto").c_str();
-                        rule.mSrcIP   = ruleObj->getValue<std::string>("srcIp").c_str();
-
-                        if (auto err = networkParameters.mFirewallRules.PushBack(rule); !err.IsNone()) {
-                            return AOS_ERROR_WRAP(err);
-                        }
-                    }
-                }
-            }
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
-
-    return ErrorEnum::eNone;
 }
-
-class DBInstanceData {
-public:
-    using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, uint32_t, uint64_t, std::string,
-        std::string, Poco::Nullable<std::string>>;
-
-    static void ToAos(const Fields& dbFields, sm::launcher::InstanceData& result)
-    {
-        result.mInstanceID = dbFields.get<Columns::eInstanceID>().c_str();
-
-        result.mInstanceInfo.mItemID      = dbFields.get<Columns::eServiceID>().c_str();
-        result.mInstanceInfo.mSubjectID   = dbFields.get<Columns::eSubjectID>().c_str();
-        result.mInstanceInfo.mInstance    = dbFields.get<Columns::eInstance>();
-        result.mInstanceInfo.mUID         = dbFields.get<Columns::eUID>();
-        result.mInstanceInfo.mPriority    = dbFields.get<Columns::ePriority>();
-        result.mInstanceInfo.mStoragePath = dbFields.get<Columns::eStoragePath>().c_str();
-        result.mInstanceInfo.mStatePath   = dbFields.get<Columns::eStatePath>().c_str();
-
-        const auto networkJson = dbFields.get<Columns::eNetwork>();
-        if (networkJson.isNull()) {
-            return;
-        }
-
-        Poco::JSON::Parser parser;
-
-        const auto ptr = parser.parse(networkJson.value()).extract<Poco::JSON::Object::Ptr>();
-        if (ptr == nullptr) {
-            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse network json");
-        }
-
-        auto err = ConvertInstanceNetworkParametersFromJSON(*ptr, result.mInstanceInfo.mNetworkParameters);
-        AOS_ERROR_CHECK_AND_THROW(err, "failed to convert network parameters from JSON");
-    }
-
-private:
-    enum Columns {
-        eInstanceID = 0,
-        eServiceID,
-        eSubjectID,
-        eInstance,
-        eUID,
-        ePriority,
-        eStoragePath,
-        eStatePath,
-        eNetwork,
-    };
-};
-
-class DBServiceData {
-public:
-    using Fields = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint32_t, uint64_t,
-        uint32_t, uint32_t>;
-
-    static sm::servicemanager::ServiceData ToAos(const Fields& dbFields)
-    {
-        sm::servicemanager::ServiceData result;
-
-        result.mServiceID      = dbFields.get<Columns::eServiceID>().c_str();
-        result.mVersion        = dbFields.get<Columns::eVersion>().c_str();
-        result.mProviderID     = dbFields.get<Columns::eProviderID>().c_str();
-        result.mImagePath      = dbFields.get<Columns::eImagePath>().c_str();
-        result.mManifestDigest = dbFields.get<Columns::eManifestDigest>().c_str();
-        result.mState          = static_cast<ServiceStateEnum>(dbFields.get<Columns::eCached>());
-        result.mTimestamp      = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
-        result.mSize           = dbFields.get<Columns::eSize>();
-        result.mGID            = dbFields.get<Columns::eGID>();
-
-        return result;
-    }
-
-private:
-    enum Columns {
-        eServiceID = 0,
-        eVersion,
-        eProviderID,
-        eImagePath,
-        eManifestDigest,
-        eCached,
-        eTimestamp,
-        eSize,
-        eGID,
-    };
-};
-
-class DBNetworkInfo {
-public:
-    using Fields = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string>;
-
-    static sm::networkmanager::NetworkInfo ToAos(const Fields& dbFields)
-    {
-        sm::networkmanager::NetworkInfo networkParameters;
-
-        networkParameters.mNetworkID  = dbFields.get<Columns::eNetworkID>().c_str();
-        networkParameters.mSubnet     = dbFields.get<Columns::eSubnet>().c_str();
-        networkParameters.mIP         = dbFields.get<Columns::eIP>().c_str();
-        networkParameters.mVlanID     = dbFields.get<Columns::eVlanID>();
-        networkParameters.mVlanIfName = dbFields.get<Columns::eVlanIfName>().c_str();
-
-        return networkParameters;
-    }
-
-private:
-    enum Columns {
-        eNetworkID = 0,
-        eIP,
-        eSubnet,
-        eVlanID,
-        eVlanIfName,
-    };
-};
-
-class DBLayerData {
-public:
-    using Fields = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, std::string, uint64_t,
-        uint32_t, uint32_t>;
-
-    static sm::layermanager::LayerData ToAos(const Fields& dbFields)
-    {
-        sm::layermanager::LayerData layer;
-
-        layer.mLayerDigest         = dbFields.get<Columns::eDigest>().c_str();
-        layer.mUnpackedLayerDigest = dbFields.get<Columns::eUnpackedDigest>().c_str();
-        layer.mLayerID             = dbFields.get<Columns::eLayerId>().c_str();
-        layer.mPath                = dbFields.get<Columns::ePath>().c_str();
-        layer.mOSVersion           = dbFields.get<Columns::eOSVersion>().c_str();
-        layer.mVersion             = dbFields.get<Columns::eVersion>().c_str();
-        layer.mSize                = dbFields.get<Columns::eSize>();
-        layer.mState               = static_cast<LayerStateEnum>(dbFields.get<Columns::eState>());
-        layer.mTimestamp           = ConvertTimestamp(dbFields.get<Columns::eTimestamp>());
-
-        return layer;
-    }
-
-private:
-    enum Columns {
-        eDigest = 0,
-        eUnpackedDigest,
-        eLayerId,
-        ePath,
-        eOSVersion,
-        eVersion,
-        eTimestamp,
-        eState,
-        eSize,
-    };
-};
 
 } // namespace
 
@@ -469,89 +367,26 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
  * sm::launcher::StorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::AddInstance(const sm::launcher::InstanceData& instance)
+Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos)
 {
-    LOG_DBG() << "Add instance: instanceID=" << instance.mInstanceID;
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get all instances infos";
 
     try {
-        const auto& instanceInfo = instance.mInstanceInfo;
-        const auto  networkJson
-            = common::utils::Stringify(ConvertInstanceNetworkParametersToJSON(instanceInfo.mNetworkParameters));
+        std::vector<InstanceInfoRow> rows;
 
-        *mSession << "INSERT INTO instances values(?, ?,  ?, ?, ?, ?, ?, ?, ?);", bind(instance.mInstanceID.CStr()),
-            bind(instanceInfo.mItemID.CStr()), bind(instanceInfo.mSubjectID.CStr()), bind(instanceInfo.mInstance),
-            bind(instanceInfo.mUID), bind(instanceInfo.mPriority), bind(instanceInfo.mStoragePath.CStr()),
-            bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)), now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
+        *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, runtimeID, subjectType, "
+                     "uid, gid, priority, storagePath, statePath, envVars, networkParameters, monitoringParams "
+                     "FROM instances;",
+            into(rows), now;
 
-    return ErrorEnum::eNone;
-}
+        auto instanceInfo = std::make_unique<InstanceInfo>();
 
-Error Database::UpdateInstance(const sm::launcher::InstanceData& instance)
-{
-    LOG_DBG() << "Update instance: instanceID=" << instance.mInstanceID;
+        for (const auto& row : rows) {
+            ToAos(row, *instanceInfo);
 
-    try {
-        const auto& instanceInfo = instance.mInstanceInfo;
-        const auto  networkJson
-            = common::utils::Stringify(ConvertInstanceNetworkParametersToJSON(instanceInfo.mNetworkParameters));
-
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "UPDATE instances SET "
-                     "serviceID = ?, subjectID = ?, instance = ?, "
-                     "uid = ?, priority = ?, storagePath = ?, statePath = ?, network = ? "
-                     "WHERE instanceID = ?;",
-            bind(instanceInfo.mItemID.CStr()), bind(instanceInfo.mSubjectID.CStr()), bind(instanceInfo.mInstance),
-            bind(instanceInfo.mUID), bind(instanceInfo.mPriority), bind(instanceInfo.mStoragePath.CStr()),
-            bind(instanceInfo.mStatePath.CStr()), bind(ToBlob(networkJson)), bind(instance.mInstanceID.CStr());
-
-        if (statement.execute() == 0) {
-            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::RemoveInstance(const String& instanceID)
-{
-    LOG_DBG() << "Remove instance: instanceID=" << instanceID;
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "DELETE FROM instances WHERE instanceID = ?;", bind(instanceID.CStr());
-
-        if (statement.execute() == 0) {
-            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetAllInstances(Array<sm::launcher::InstanceData>& instances)
-{
-    LOG_DBG() << "Get all instances";
-
-    try {
-        std::vector<DBInstanceData::Fields> result;
-
-        *mSession << "SELECT * FROM instances;", into(result), now;
-
-        for (const auto& info : result) {
-            auto instanceData = std::make_unique<sm::launcher::InstanceData>();
-
-            DBInstanceData::ToAos(info, *instanceData);
-
-            if (auto err = instances.PushBack(*instanceData); !err.IsNone()) {
+            if (auto err = infos.PushBack(*instanceInfo); !err.IsNone()) {
                 return AOS_ERROR_WRAP(Error(err, "db instances count exceeds application limit"));
             }
         }
@@ -562,33 +397,21 @@ Error Database::GetAllInstances(Array<sm::launcher::InstanceData>& instances)
     return ErrorEnum::eNone;
 }
 
-RetWithError<uint64_t> Database::GetOperationVersion() const
+Error Database::AddInstanceInfo(const InstanceInfo& info)
 {
-    RetWithError<uint64_t> result {0, ErrorEnum::eNone};
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Add instance info: itemID=" << info.mItemID << ", instance=" << info.mInstance;
 
     try {
-        Poco::Data::Statement statement {*mSession};
+        InstanceInfoRow row;
 
-        statement << "SELECT operationVersion FROM config;", into(result.mValue);
+        FromAos(info, row);
 
-        if (statement.execute() == 0) {
-            return {0, ErrorEnum::eNotFound};
-        }
-
-        LOG_DBG() << "Get operation version: version=" << result.mValue;
-    } catch (const std::exception& e) {
-        result.mError = AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return result;
-};
-
-Error Database::SetOperationVersion(uint64_t version)
-{
-    LOG_DBG() << "Set operation version: version=" << version;
-
-    try {
-        *mSession << "UPDATE config SET operationVersion = ?;", use(version), now;
+        *mSession << "INSERT INTO instances (itemID, subjectID, instance, type, manifestDigest, runtimeID, "
+                     "subjectType, uid, gid, priority, storagePath, statePath, envVars, networkParameters, "
+                     "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -596,182 +419,21 @@ Error Database::SetOperationVersion(uint64_t version)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetOverrideEnvVars(Array<EnvVarsInstanceInfo>& envVarsInstanceInfos) const
+Error Database::RemoveInstanceInfo(const InstanceIdent& ident)
 {
-    LOG_DBG() << "Get override env vars";
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Remove instance info: itemID=" << ident.mItemID << ", instance=" << ident.mInstance;
 
     try {
-        std::string envVarsJson;
-
-        *mSession << "SELECT envvars FROM config;", into(envVarsJson), now;
-
-        return ConvertEnvVarsInstanceInfoArrayFromJSON(envVarsJson, envVarsInstanceInfos);
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::SetOverrideEnvVars(const Array<EnvVarsInstanceInfo>& envVarsInstanceInfos)
-{
-    LOG_DBG() << "Set override env vars";
-
-    try {
-        const auto envVarInstanceInfosJson
-            = common::utils::Stringify(ConvertEnvVarsInstanceInfoArrayToJSON(envVarsInstanceInfos));
-
         Poco::Data::Statement statement {*mSession};
 
-        statement << "UPDATE config SET envvars = ?;", bind(envVarInstanceInfosJson);
+        statement << "DELETE FROM instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+            bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
+            bind(ident.mType.ToString().CStr());
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-RetWithError<Time> Database::GetOnlineTime() const
-{
-    RetWithError<Time> result {{}, ErrorEnum::eNone};
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        uint64_t onlineTime {0};
-
-        statement << "SELECT onlineTime FROM config;", into(onlineTime), now;
-
-        if (statement.execute() == 0) {
-            return {Time::Unix(0, 0), ErrorEnum::eNotFound};
-        }
-
-        result.mValue = ConvertTimestamp(onlineTime);
-
-        LOG_DBG() << "Get online time: time=" << result.mValue;
-    } catch (const std::exception& e) {
-        result.mError = AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return result;
-}
-
-Error Database::SetOnlineTime(const Time& time)
-{
-    LOG_DBG() << "Set online time: time=" << time;
-
-    try {
-        *mSession << "UPDATE config SET onlineTime = ?;", bind(time.UnixNano()), now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-/***********************************************************************************************************************
- * sm::servicemanager::StorageItf implementation
- **********************************************************************************************************************/
-
-Error Database::AddService(const sm::servicemanager::ServiceData& service)
-{
-    LOG_DBG() << "Add service: serviceID=" << service.mServiceID << ", version=" << service.mVersion;
-
-    try {
-        *mSession << "INSERT INTO services values(?, ?, ?, ?, ?, ?, ?, ?, ?);", bind(service.mServiceID.CStr()),
-            bind(service.mVersion.CStr()), bind(service.mProviderID.CStr()), bind(service.mImagePath.CStr()),
-            bind(ToBlob(service.mManifestDigest)), bind(static_cast<uint32_t>(service.mState.GetValue())),
-            bind(service.mTimestamp.UnixNano()), bind(service.mSize), bind(service.mGID), now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetServiceVersions(const String& serviceID, Array<sm::servicemanager::ServiceData>& services)
-{
-    LOG_DBG() << "Get service versions: serviceID=" << serviceID;
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        std::vector<DBServiceData::Fields> dbResults;
-
-        statement << "SELECT * FROM services WHERE id = ?;", bind(serviceID.CStr()), into(dbResults);
-
-        if (statement.execute() == 0) {
-            return ErrorEnum::eNotFound;
-        }
-
-        for (const auto& dbResult : dbResults) {
-            if (auto err = services.PushBack(DBServiceData::ToAos(dbResult)); !err.IsNone()) {
-                return AOS_ERROR_WRAP(Error(err, "db services count exceeds application limit"));
-            }
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::UpdateService(const sm::servicemanager::ServiceData& service)
-{
-    LOG_DBG() << "Update service: serviceID=" << service.mServiceID << ", version=" << service.mVersion
-              << ", state=" << service.mState;
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "UPDATE services SET providerID = ?, imagePath = ?,"
-                     "manifestDigest = ?, state = ?, timestamp = ?, size = ?, GID = ? "
-                     "WHERE id = ? AND version = ?;",
-            bind(service.mProviderID.CStr()), bind(service.mImagePath.CStr()), bind(ToBlob(service.mManifestDigest)),
-            bind(static_cast<uint32_t>(service.mState.GetValue())), bind(service.mTimestamp.UnixNano()),
-            bind(service.mSize), bind(service.mGID), bind(service.mServiceID.CStr()), bind(service.mVersion.CStr());
-
-        if (statement.execute() == 0) {
-            return ErrorEnum::eNotFound;
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::RemoveService(const String& serviceID, const String& version)
-{
-    LOG_DBG() << "Remove service: serviceID=" << serviceID << ", version=" << version;
-
-    try {
-        *mSession << "DELETE FROM services WHERE id = ? AND version = ?;", bind(serviceID.CStr()), bind(version.CStr()),
-            now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetAllServices(Array<sm::servicemanager::ServiceData>& services)
-{
-    LOG_DBG() << "Get all services";
-
-    try {
-        std::vector<DBServiceData::Fields> dbResult;
-
-        *mSession << "SELECT * FROM services;", into(dbResult), now;
-
-        for (const auto& service : dbResult) {
-            if (auto err = services.PushBack(DBServiceData::ToAos(service)); !err.IsNone()) {
-                return AOS_ERROR_WRAP(Error(err, "db services count exceeds application limit"));
-            }
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -786,6 +448,8 @@ Error Database::GetAllServices(Array<sm::servicemanager::ServiceData>& services)
 
 Error Database::RemoveNetworkInfo(const String& networkID)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Remove network: networkID=" << networkID;
 
     try {
@@ -805,11 +469,17 @@ Error Database::RemoveNetworkInfo(const String& networkID)
 
 Error Database::AddNetworkInfo(const sm::networkmanager::NetworkInfo& info)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Add network info: networkID=" << info.mNetworkID;
 
     try {
-        *mSession << "INSERT INTO network values(?, ?, ?, ?, ?);", bind(info.mNetworkID.CStr()), bind(info.mIP.CStr()),
-            bind(info.mSubnet.CStr()), bind(info.mVlanID), bind(info.mVlanIfName.CStr()), now;
+        NetworkInfoRow row;
+
+        FromAos(info, row);
+
+        *mSession << "INSERT INTO network (networkID, ip, subnet, vlanID, vlanIfName) VALUES (?, ?, ?, ?, ?);",
+            bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -819,15 +489,21 @@ Error Database::AddNetworkInfo(const sm::networkmanager::NetworkInfo& info)
 
 Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks) const
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Get all networks";
 
     try {
-        std::vector<DBNetworkInfo::Fields> result;
+        std::vector<NetworkInfoRow> rows;
 
-        *mSession << "SELECT * FROM network;", into(result), now;
+        *mSession << "SELECT networkID, ip, subnet, vlanID, vlanIfName FROM network;", into(rows), now;
 
-        for (const auto& info : result) {
-            if (auto err = networks.PushBack(DBNetworkInfo::ToAos(info)); !err.IsNone()) {
+        auto networkInfo = std::make_unique<sm::networkmanager::NetworkInfo>();
+
+        for (const auto& row : rows) {
+            ToAos(row, *networkInfo);
+
+            if (auto err = networks.PushBack(*networkInfo); !err.IsNone()) {
                 return AOS_ERROR_WRAP(Error(err, "db network count exceeds application limit"));
             }
         }
@@ -840,6 +516,8 @@ Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks
 
 Error Database::SetTrafficMonitorData(const String& chain, const Time& time, uint64_t value)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Set traffic monitor data: chain=" << chain << ", time=" << time << ", value=" << value;
 
     try {
@@ -854,6 +532,8 @@ Error Database::SetTrafficMonitorData(const String& chain, const Time& time, uin
 
 Error Database::GetTrafficMonitorData(const String& chain, Time& time, uint64_t& value) const
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Get traffic monitor data: chain=" << chain;
 
     try {
@@ -878,6 +558,8 @@ Error Database::GetTrafficMonitorData(const String& chain, Time& time, uint64_t&
 
 Error Database::RemoveTrafficMonitorData(const String& chain)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Remove traffic monitor data: chain=" << chain;
 
     try {
@@ -897,6 +579,8 @@ Error Database::RemoveTrafficMonitorData(const String& chain)
 
 Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Add instance network info" << Log::Field("instanceID", info.mInstanceID)
               << Log::Field("networkID", info.mNetworkID);
 
@@ -912,6 +596,8 @@ Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetwork
 
 Error Database::RemoveInstanceNetworkInfo(const String& instanceID)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Remove instance network info" << Log::Field("instanceID", instanceID);
 
     try {
@@ -931,6 +617,8 @@ Error Database::RemoveInstanceNetworkInfo(const String& instanceID)
 
 Error Database::GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetworkInfo>& networks) const
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Get all instance networks";
 
     try {
@@ -954,119 +642,13 @@ Error Database::GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetwor
 }
 
 /***********************************************************************************************************************
- * sm::layermanager::StorageItf implementation
- **********************************************************************************************************************/
-
-Error Database::AddLayer(const sm::layermanager::LayerData& layer)
-{
-    LOG_DBG() << "Add layer: digest=" << layer.mLayerDigest;
-
-    try {
-        *mSession << "INSERT INTO layers values(?, ?, ?, ?, ?, ?, ?, ?, ?);", bind(layer.mLayerDigest.CStr()),
-            bind(layer.mUnpackedLayerDigest.CStr()), bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()),
-            bind(layer.mOSVersion.CStr()), bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
-            bind(static_cast<uint32_t>(layer.mState.GetValue())), bind(layer.mSize), now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::RemoveLayer(const String& digest)
-{
-    LOG_DBG() << "Remove layer: digest=" << digest;
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "DELETE FROM layers WHERE digest = ?;", bind(digest.CStr());
-
-        if (statement.execute() == 0) {
-            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetAllLayers(Array<sm::layermanager::LayerData>& layers) const
-{
-    LOG_DBG() << "Get all layers";
-
-    try {
-        std::vector<DBLayerData::Fields> result;
-
-        *mSession << "SELECT * FROM layers;", into(result), now;
-
-        for (const auto& info : result) {
-            if (auto err = layers.PushBack(DBLayerData::ToAos(info)); !err.IsNone()) {
-                return AOS_ERROR_WRAP(Error(err, "db layers count exceeds application limit"));
-            }
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetLayer(const String& digest, sm::layermanager::LayerData& layer) const
-{
-    LOG_DBG() << "Get layer: digest=" << digest;
-
-    try {
-        DBLayerData::Fields result;
-
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "SELECT * FROM layers WHERE digest = ?;", bind(digest.CStr()), into(result);
-
-        if (statement.execute() == 0) {
-            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-
-        layer = DBLayerData::ToAos(result);
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::UpdateLayer(const sm::layermanager::LayerData& layer)
-{
-    LOG_DBG() << "Update layer: digest=" << layer.mLayerDigest << ", state=" << layer.mState;
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "UPDATE layers SET "
-                     "unpackedDigest = ?, layerId = ?, path = ?, osVersion = ?, version = ?, timestamp = ?, state = ?, "
-                     "size = ? "
-                     "WHERE digest = ?;",
-            bind(layer.mUnpackedLayerDigest.CStr()), bind(layer.mLayerID.CStr()), bind(layer.mPath.CStr()),
-            bind(layer.mOSVersion.CStr()), bind(layer.mVersion.CStr()), bind(layer.mTimestamp.UnixNano()),
-            bind(static_cast<uint32_t>(layer.mState.GetValue())), bind(layer.mSize), bind(layer.mLayerDigest.CStr());
-
-        if (statement.execute() == 0) {
-            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-/***********************************************************************************************************************
- * cloudprotocol::JournalAlertStorageItf implementation
+ * sm::alerts::StorageItf implementation
  **********************************************************************************************************************/
 
 Error Database::SetJournalCursor(const String& cursor)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Set journal cursor: cursor=" << cursor;
 
     try {
@@ -1080,6 +662,8 @@ Error Database::SetJournalCursor(const String& cursor)
 
 Error Database::GetJournalCursor(String& cursor) const
 {
+    std::lock_guard lock {mMutex};
+
     try {
         std::string dbCursor;
 
@@ -1096,20 +680,53 @@ Error Database::GetJournalCursor(String& cursor) const
 }
 
 /***********************************************************************************************************************
- * sm::loggging::InstanceIDProvider implementation
+ * sm::alerts::InstanceInfoProviderItf implementation
  **********************************************************************************************************************/
 
-RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const InstanceFilter& filter)
+Error Database::GetInstanceInfoByID(const String& id, alerts::ServiceInstanceData& instanceData)
 {
-    LOG_DBG() << "Get instance IDs";
+    std::lock_guard lock {mMutex};
 
-    std::vector<std::string> instanceIDs;
+    LOG_DBG() << "Get instance info by ID: id=" << id;
+
+    try {
+        std::vector<Poco::Tuple<std::string, std::string, uint64_t, std::string>> result;
+
+        *mSession << "SELECT itemID, subjectID, instance, type FROM instances WHERE itemID = ? OR subjectID = ?;",
+            bind(std::string(id.CStr())), bind(std::string(id.CStr())), into(result), now;
+
+        if (result.empty()) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+
+        instanceData.mInstanceIdent.mItemID    = result[0].get<0>().c_str();
+        instanceData.mInstanceIdent.mSubjectID = result[0].get<1>().c_str();
+        instanceData.mInstanceIdent.mInstance  = result[0].get<2>();
+
+        AOS_ERROR_CHECK_AND_THROW(
+            instanceData.mInstanceIdent.mType.FromString(result[0].get<3>().c_str()), "failed to parse instance type");
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
+ * sm::logprovider::InstanceIDProviderItf implementation
+ **********************************************************************************************************************/
+
+Error Database::GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get instance IDs";
 
     try {
         std::string where;
 
         if (filter.mItemID.HasValue()) {
-            where += Poco::format("serviceID = \"%s\"", std::string(filter.mItemID.GetValue().CStr()));
+            where += Poco::format("itemID = \"%s\"", std::string(filter.mItemID.GetValue().CStr()));
         }
 
         if (filter.mSubjectID.HasValue()) {
@@ -1134,60 +751,19 @@ RetWithError<std::vector<std::string>> Database::GetInstanceIDs(const InstanceFi
 
         std::vector<Poco::Tuple<std::string>> result;
 
-        *mSession << "SELECT instanceID FROM instances " << where << ";", into(result), now;
+        *mSession << "SELECT itemID FROM instances " << where << ";", into(result), now;
 
         std::transform(result.begin(), result.end(), std::back_inserter(instanceIDs),
             [](const Poco::Tuple<std::string>& info) { return info.get<0>(); });
     } catch (const std::exception& e) {
-        return {{}, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     if (instanceIDs.empty()) {
-        return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+        return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
     }
 
-    return {instanceIDs, ErrorEnum::eNone};
-}
-
-/***********************************************************************************************************************
- * sm::loggging::InstanceInfoProviderItf implementation
- **********************************************************************************************************************/
-
-RetWithError<alerts::ServiceInstanceData> Database::GetInstanceInfoByID(const String& id)
-{
-    try {
-        alerts::ServiceInstanceData                                  result;
-        std::vector<Poco::Tuple<std::string, std::string, uint64_t>> instanceIdent;
-
-        *mSession << "SELECT serviceID, subjectID, instance FROM instances WHERE instanceID = ?;",
-            bind(std::string(id.CStr())), into(instanceIdent), now;
-
-        if (instanceIdent.empty()) {
-            return {{}, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
-        }
-
-        result.mInstanceIdent.mItemID    = instanceIdent[0].get<0>().c_str();
-        result.mInstanceIdent.mSubjectID = instanceIdent[0].get<1>().c_str();
-        result.mInstanceIdent.mInstance  = instanceIdent[0].get<2>();
-
-        auto serviceVersions = std::make_unique<sm::servicemanager::ServiceDataArray>();
-
-        auto err = GetServiceVersions(result.mInstanceIdent.mItemID, *serviceVersions);
-        if (!err.IsNone()) {
-            return {{}, AOS_ERROR_WRAP(err)};
-        }
-
-        std::sort(serviceVersions->begin(), serviceVersions->end(),
-            [](const sm::servicemanager::ServiceData& a, const sm::servicemanager::ServiceData& b) {
-                return std::strcmp(a.mVersion.CStr(), b.mVersion.CStr()) == 1;
-            });
-
-        result.mVersion = (*serviceVersions)[0].mVersion;
-
-        return result;
-    } catch (const std::exception& e) {
-        return {{}, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
-    }
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************
@@ -1213,24 +789,6 @@ RetWithError<bool> Database::TableExist(const std::string& tableName)
     return {count > 0, ErrorEnum::eNone};
 }
 
-Error Database::DropAllTables()
-{
-    try {
-        LOG_WRN() << "Dropping all tables";
-
-        *mSession << "DROP TABLE IF EXISTS config;", now;
-        *mSession << "DROP TABLE IF EXISTS network;", now;
-        *mSession << "DROP TABLE IF EXISTS services;", now;
-        *mSession << "DROP TABLE IF EXISTS trafficmonitor;", now;
-        *mSession << "DROP TABLE IF EXISTS layers;", now;
-        *mSession << "DROP TABLE IF EXISTS instances;", now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error Database::CreateConfigTable()
 {
     auto [tableExists, err] = TableExist("config");
@@ -1240,35 +798,15 @@ Error Database::CreateConfigTable()
     }
 
     if (tableExists) {
-        uint64_t operationVersion {0};
-
-        Tie(operationVersion, err) = GetOperationVersion();
-        if (!err.IsNone()) {
-            return err;
-        }
-
-        if (operationVersion == sm::launcher::Launcher::cOperationVersion) {
-            return ErrorEnum::eNone;
-        }
-
-        if (err = DropAllTables(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(Error(err, "failed to drop all tables"));
-        }
+        return ErrorEnum::eNone;
     }
 
     try {
         *mSession << "CREATE TABLE config ("
-                     "operationVersion INTEGER, "
-                     "cursor TEXT, "
-                     "envvars TEXT, "
-                     "onlineTime TIMESTAMP);",
+                     "cursor TEXT);",
             now;
 
-        *mSession << "INSERT INTO config ("
-                     "operationVersion, "
-                     "onlineTime) values(?, ?);",
-            bind(Poco::Tuple<uint32_t, uint64_t>(sm::launcher::Launcher::cOperationVersion, Time::Now().UnixNano())),
-            now;
+        *mSession << "INSERT INTO config (cursor) VALUES ('');", now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -1278,6 +816,8 @@ Error Database::CreateConfigTable()
 
 void Database::CreateTables()
 {
+    LOG_DBG() << "Create network table";
+
     *mSession << "CREATE TABLE IF NOT EXISTS network ("
                  "networkID TEXT NOT NULL PRIMARY KEY, "
                  "ip TEXT, "
@@ -1328,6 +868,67 @@ void Database::CreateTables()
                  "statePath TEXT, "
                  "network BLOB)",
         now;
+}
+
+void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
+{
+    dst.set<ToInt(InstanceInfoColumns::eItemID)>(src.mItemID.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eSubjectID)>(src.mSubjectID.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eInstance)>(src.mInstance);
+    dst.set<ToInt(InstanceInfoColumns::eType)>(src.mType.ToString().CStr());
+    dst.set<ToInt(InstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eRuntimeID)>(src.mRuntimeID.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
+    dst.set<ToInt(InstanceInfoColumns::eUID)>(src.mUID);
+    dst.set<ToInt(InstanceInfoColumns::eGID)>(src.mGID);
+    dst.set<ToInt(InstanceInfoColumns::ePriority)>(src.mPriority);
+    dst.set<ToInt(InstanceInfoColumns::eStoragePath)>(src.mStoragePath.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eStatePath)>(src.mStatePath.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eEnvVars)>(SerializeEnvVars(src.mEnvVars));
+    dst.set<ToInt(InstanceInfoColumns::eNetworkParameters)>(SerializeNetworkParameters(src.mNetworkParameters));
+    dst.set<ToInt(InstanceInfoColumns::eMonitoringParams)>(SerializeMonitoringParams(src.mMonitoringParams));
+}
+
+void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
+{
+    dst.mItemID         = src.get<ToInt(InstanceInfoColumns::eItemID)>().c_str();
+    dst.mSubjectID      = src.get<ToInt(InstanceInfoColumns::eSubjectID)>().c_str();
+    dst.mInstance       = src.get<ToInt(InstanceInfoColumns::eInstance)>();
+    dst.mManifestDigest = src.get<ToInt(InstanceInfoColumns::eManifestDigest)>().c_str();
+    dst.mRuntimeID      = src.get<ToInt(InstanceInfoColumns::eRuntimeID)>().c_str();
+    dst.mUID            = src.get<ToInt(InstanceInfoColumns::eUID)>();
+    dst.mGID            = src.get<ToInt(InstanceInfoColumns::eGID)>();
+    dst.mPriority       = src.get<ToInt(InstanceInfoColumns::ePriority)>();
+    dst.mStoragePath    = src.get<ToInt(InstanceInfoColumns::eStoragePath)>().c_str();
+    dst.mStatePath      = src.get<ToInt(InstanceInfoColumns::eStatePath)>().c_str();
+
+    AOS_ERROR_CHECK_AND_THROW(
+        dst.mType.FromString(src.get<ToInt(InstanceInfoColumns::eType)>().c_str()), "failed to parse instance type");
+
+    AOS_ERROR_CHECK_AND_THROW(dst.mSubjectType.FromString(src.get<ToInt(InstanceInfoColumns::eSubjectType)>().c_str()),
+        "failed to parse subject type");
+
+    DeserializeEnvVars(src.get<ToInt(InstanceInfoColumns::eEnvVars)>(), dst.mEnvVars);
+    DeserializeNetworkParameters(src.get<ToInt(InstanceInfoColumns::eNetworkParameters)>(), dst.mNetworkParameters);
+    DeserializeMonitoringParams(src.get<ToInt(InstanceInfoColumns::eMonitoringParams)>(), dst.mMonitoringParams);
+}
+
+void Database::FromAos(const sm::networkmanager::NetworkInfo& src, NetworkInfoRow& dst)
+{
+    dst.set<ToInt(NetworkInfoColumns::eNetworkID)>(src.mNetworkID.CStr());
+    dst.set<ToInt(NetworkInfoColumns::eIP)>(src.mIP.CStr());
+    dst.set<ToInt(NetworkInfoColumns::eSubnet)>(src.mSubnet.CStr());
+    dst.set<ToInt(NetworkInfoColumns::eVlanID)>(src.mVlanID);
+    dst.set<ToInt(NetworkInfoColumns::eVlanIfName)>(src.mVlanIfName.CStr());
+}
+
+void Database::ToAos(const NetworkInfoRow& src, sm::networkmanager::NetworkInfo& dst)
+{
+    dst.mNetworkID  = src.get<ToInt(NetworkInfoColumns::eNetworkID)>().c_str();
+    dst.mIP         = src.get<ToInt(NetworkInfoColumns::eIP)>().c_str();
+    dst.mSubnet     = src.get<ToInt(NetworkInfoColumns::eSubnet)>().c_str();
+    dst.mVlanID     = src.get<ToInt(NetworkInfoColumns::eVlanID)>();
+    dst.mVlanIfName = src.get<ToInt(NetworkInfoColumns::eVlanIfName)>().c_str();
 }
 
 } // namespace aos::sm::database

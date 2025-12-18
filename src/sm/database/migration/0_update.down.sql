@@ -1,0 +1,1 @@
+-- Initial schema rollback - nothing to do
