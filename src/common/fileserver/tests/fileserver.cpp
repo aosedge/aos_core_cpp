@@ -16,6 +16,7 @@
 #include <Poco/StreamCopier.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/string.hpp>
 
 #include <common/fileserver/fileserver.hpp>
 
@@ -54,17 +55,13 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(CommonFileserverTest, TranslateURL)
+TEST_F(CommonFileserverTest, TranslateFilePathURL)
 {
-    auto [url, err] = mFileserver.TranslateURL(false, "file://download/test_file.dat");
+    StaticString<256> url;
+    auto              err = mFileserver.TranslateFilePathURL("file://download/test_file.dat", url);
     EXPECT_EQ(err, ErrorEnum::eNone);
 
     EXPECT_EQ(url, "http://localhost:8000/test_file.dat");
-
-    Tie(url, err) = mFileserver.TranslateURL(true, "download/test_file.dat");
-    EXPECT_EQ(err, ErrorEnum::eNone);
-
-    EXPECT_EQ(url, "download/test_file.dat");
 }
 
 TEST_F(CommonFileserverTest, DownloadFileSuccess)

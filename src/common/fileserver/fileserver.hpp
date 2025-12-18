@@ -17,6 +17,7 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
+#include <core/cm/fileserver/itf/fileserver.hpp>
 #include <core/common/tools/error.hpp>
 
 namespace aos::common::fileserver {
@@ -24,7 +25,7 @@ namespace aos::common::fileserver {
 /**
  * Fileserver.
  */
-class Fileserver {
+class Fileserver : public cm::fileserver::FileServerItf {
 public:
     /**
      * Default constructor.
@@ -41,13 +42,13 @@ public:
     Error Init(const std::string& serverURL, const std::string& rootDir);
 
     /**
-     * Translates URL.
+     * Translates file path URL.
      *
-     * @param isLocal is local.
-     * @param inURL input URL.
-     * @return translated URL.
+     * @param filePath input file path.
+     * @param[out] outURL translated URL.
+     * @return Error.
      */
-    RetWithError<std::string> TranslateURL(bool isLocal, const std::string& inURL);
+    Error TranslateFilePathURL(const String& filePath, String& outURL) override;
 
     /**
      * File request handler factory.
