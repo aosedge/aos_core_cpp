@@ -78,18 +78,14 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
     return ErrorEnum::eNone;
 }
 
-RetWithError<std::string> Fileserver::TranslateURL(bool isLocal, const std::string& inURL)
+Error Fileserver::TranslateFilePathURL(const String& filePath, String& outURL)
 {
     if (mHost.empty() || mPort == 0) {
-        return {{}, Error(ErrorEnum::eWrongState, "server is not started")};
-    }
-
-    if (isLocal) {
-        return inURL;
+        return Error(ErrorEnum::eWrongState, "server is not started");
     }
 
     try {
-        Poco::URI             uri(inURL);
+        Poco::URI             uri(filePath.CStr());
         std::filesystem::path path = uri.getPath();
 
         auto filename = path.filename();
@@ -99,9 +95,11 @@ RetWithError<std::string> Fileserver::TranslateURL(bool isLocal, const std::stri
         uri.setPort(mPort);
         uri.setPath(filename.string());
 
-        return uri.toString();
+        outURL = uri.toString().c_str();
+
+        return ErrorEnum::eNone;
     } catch (const std::exception& e) {
-        return {{}, common::utils::ToAosError(e)};
+        return common::utils::ToAosError(e);
     }
 }
 
