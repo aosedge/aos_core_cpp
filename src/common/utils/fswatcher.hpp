@@ -94,6 +94,7 @@ private:
     size_t                                   mFlags {};
     int                                      mInotifyFd {-1};
     int                                      mEpollFd {-1};
+    int                                      mEventFd {-1};
     std::atomic_bool                         mRunning {};
     bool                                     mInitialized {};
     std::thread                              mThread;
