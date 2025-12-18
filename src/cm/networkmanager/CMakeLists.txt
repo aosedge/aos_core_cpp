@@ -26,8 +26,14 @@ set(INCLUDES ${Libnl_INCLUDE_DIRS})
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::common::tools aos::common::network aos::common::utils ${Libnl_LIBRARIES} Poco::Foundation
-              Poco::Util
+set(LIBRARIES
+    aos::core::cm::networkmanager
+    aos::core::common::tools
+    aos::common::network
+    aos::common::utils
+    ${Libnl_LIBRARIES}
+    Poco::Foundation
+    Poco::Util
 )
 
 # ######################################################################################################################

@@ -29,12 +29,13 @@ constexpr int cExposedPortConfigExpectedLen  = 2;
  * Public
  **********************************************************************************************************************/
 
-Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, SenderItf& sender, DNSServerItf& dnsServer)
+Error NetworkManager::Init(
+    StorageItf& storage, crypto::RandomItf& random, NodeNetworkItf& nodeNetwork, DNSServerItf& dnsServer)
 {
-    mStorage   = &storage;
-    mRandom    = &random;
-    mSender    = &sender;
-    mDNSServer = &dnsServer;
+    mStorage     = &storage;
+    mRandom      = &random;
+    mNodeNetwork = &nodeNetwork;
+    mDNSServer   = &dnsServer;
 
     mIpSubnet.Init();
 
@@ -132,17 +133,17 @@ Error NetworkManager::UpdateProviderNetwork(const Array<StaticString<cIDLen>>& p
 {
     LOG_DBG() << "Updating provider network" << Log::Field("nodeID", nodeID);
 
-    std::vector<NetworkParameters> networkParametersList;
+    StaticArray<UpdateNetworkParameters, cMaxNumOwners> networkParametersList;
 
     try {
         RemoveProviderNetworks(providers, nodeID);
 
         for (const auto& provider : providers) {
-            std::unique_ptr<NetworkParameters> networkParameters = std::make_unique<NetworkParameters>();
+            UpdateNetworkParameters networkParameters;
 
-            AddProviderNetwork(provider, nodeID, *networkParameters);
+            AddProviderNetwork(provider, nodeID, networkParameters);
 
-            networkParametersList.push_back(*networkParameters);
+            networkParametersList.PushBack(networkParameters);
         }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -150,7 +151,7 @@ Error NetworkManager::UpdateProviderNetwork(const Array<StaticString<cIDLen>>& p
 
     LOG_DBG() << "Updated provider network" << Log::Field("nodeID", nodeID);
 
-    return mSender->SendNetwork(nodeID.CStr(), networkParametersList);
+    return mNodeNetwork->UpdateNetworks(nodeID, networkParametersList);
 }
 
 Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& instanceIdent, const String& networkID,
@@ -410,7 +411,7 @@ bool NetworkManager::IsHostExist(const std::string& hostName) const
 }
 
 void NetworkManager::AddProviderNetwork(
-    const String& networkID, const String& nodeID, NetworkParameters& networkParameters)
+    const String& networkID, const String& nodeID, UpdateNetworkParameters& networkParameters)
 {
     LOG_DBG() << "Adding provider network" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
 
@@ -454,7 +455,7 @@ void NetworkManager::AddProviderNetwork(
 }
 
 void NetworkManager::CreateProviderNetwork(
-    const String& networkID, const String& nodeID, NetworkParameters& networkParameters)
+    const String& networkID, const String& nodeID, UpdateNetworkParameters& networkParameters)
 {
     LOG_DBG() << "Creating provider network" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
 

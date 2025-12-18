@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
+
 #include <gtest/gtest.h>
 
 #include <cm/networkmanager/ipsubnet.hpp>
@@ -15,8 +17,8 @@
 #include <core/common/tests/utils/log.hpp>
 
 #include "mocks/dnsservermock.hpp"
+#include "mocks/nodenetworkmock.hpp"
 #include "mocks/randommock.hpp"
-#include "mocks/sendermock.hpp"
 #include "mocks/storagemock.hpp"
 
 using namespace testing;
@@ -36,7 +38,7 @@ public:
         mNetworkManager = std::make_unique<NetworkManager>();
         mStorage        = std::make_unique<StrictMock<MockStorage>>();
         mRandom         = std::make_unique<StrictMock<crypto::MockRandom>>();
-        mSender         = std::make_unique<StrictMock<MockSender>>();
+        mNodeNetwork    = std::make_unique<StrictMock<MockNodeNetwork>>();
         mDNSServer      = std::make_unique<StrictMock<MockDNSServer>>();
     }
 
@@ -46,7 +48,7 @@ protected:
     std::unique_ptr<NetworkManager>                 mNetworkManager;
     std::unique_ptr<StrictMock<MockStorage>>        mStorage;
     std::unique_ptr<StrictMock<crypto::MockRandom>> mRandom;
-    std::unique_ptr<StrictMock<MockSender>>         mSender;
+    std::unique_ptr<StrictMock<MockNodeNetwork>>    mNodeNetwork;
     std::unique_ptr<StrictMock<MockDNSServer>>      mDNSServer;
 };
 
@@ -62,7 +64,7 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_Success)
 
     String nodeID = "node1";
 
-    std::vector<NetworkParameters> capturedNetworkParams;
+    StaticArray<UpdateNetworkParameters, cMaxNumOwners> capturedNetworkParams;
 
     EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mStorage, GetHosts(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
@@ -76,17 +78,22 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_Success)
 
     EXPECT_CALL(*mStorage, AddHost(_, _)).WillOnce(Return(ErrorEnum::eNone)).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*mSender, SendNetwork(_, _))
-        .WillOnce(DoAll(SaveArg<1>(&capturedNetworkParams), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*mNodeNetwork, UpdateNetworks(_, _))
+        .WillOnce(Invoke([&](const String&, const Array<UpdateNetworkParameters>& params) -> Error {
+            for (const auto& p : params) {
+                capturedNetworkParams.PushBack(p);
+            }
+            return ErrorEnum::eNone;
+        }));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->UpdateProviderNetwork(providers, nodeID);
 
     EXPECT_TRUE(err.IsNone());
 
-    EXPECT_EQ(capturedNetworkParams.size(), 2);
+    EXPECT_EQ(capturedNetworkParams.Size(), 2);
 
     for (const auto& networkParams : capturedNetworkParams) {
         EXPECT_FALSE(networkParams.mSubnet.IsEmpty());
@@ -104,11 +111,11 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_Success)
     EXPECT_CALL(*mStorage, RemoveHost(String("provider1"), nodeID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mStorage, RemoveNetwork(String("provider1"))).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*mSender, SendNetwork(_, _))
-        .WillOnce(Invoke([&](const std::string&, const std::vector<NetworkParameters>& params) -> Error {
-            EXPECT_EQ(params.size(), 1);
+    EXPECT_CALL(*mNodeNetwork, UpdateNetworks(_, _))
+        .WillOnce(Invoke([&](const String&, const Array<UpdateNetworkParameters>& params) -> Error {
+            EXPECT_EQ(params.Size(), 1);
             auto it = std::find_if(capturedNetworkParams.begin(), capturedNetworkParams.end(),
-                [](const NetworkParameters& np) { return np.mNetworkID == "provider2"; });
+                [](const UpdateNetworkParameters& np) { return np.mNetworkID == "provider2"; });
             EXPECT_NE(it, capturedNetworkParams.end());
             EXPECT_EQ(params[0].mSubnet, it->mSubnet);
             EXPECT_EQ(params[0].mIP, it->mIP);
@@ -125,9 +132,9 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_Success)
     EXPECT_CALL(*mStorage, RemoveHost(String("provider2"), nodeID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mStorage, RemoveNetwork(String("provider2"))).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*mSender, SendNetwork(_, _))
-        .WillOnce(Invoke([&](const std::string&, const std::vector<NetworkParameters>& params) -> Error {
-            EXPECT_EQ(params.size(), 0);
+    EXPECT_CALL(*mNodeNetwork, UpdateNetworks(_, _))
+        .WillOnce(Invoke([&](const String&, const Array<UpdateNetworkParameters>& params) -> Error {
+            EXPECT_EQ(params.Size(), 0);
             return ErrorEnum::eNone;
         }));
 
@@ -150,7 +157,7 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_StorageError)
 
     EXPECT_CALL(*mStorage, AddNetwork(_)).WillOnce(Return(Error(ErrorEnum::eRuntime, "Storage error")));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->UpdateProviderNetwork(providers, nodeID);
@@ -171,7 +178,7 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_RandomError)
     EXPECT_CALL(*mRandom, RandInt(_))
         .WillOnce(Return(RetWithError<uint64_t>(0u, Error(ErrorEnum::eRuntime, "Random error"))));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->UpdateProviderNetwork(providers, nodeID);
@@ -195,9 +202,9 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_SenderError)
 
     EXPECT_CALL(*mStorage, AddHost(_, _)).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*mSender, SendNetwork(_, _)).WillOnce(Return(Error(ErrorEnum::eRuntime, "Sender error")));
+    EXPECT_CALL(*mNodeNetwork, UpdateNetworks(_, _)).WillOnce(Return(Error(ErrorEnum::eRuntime, "Sender error")));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->UpdateProviderNetwork(providers, nodeID);
@@ -232,9 +239,9 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_ExistingNetwork)
     EXPECT_CALL(*mStorage, GetInstances(String("existing_provider"), String("node1"), _))
         .WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_CALL(*mSender, SendNetwork(_, _))
-        .WillOnce(Invoke([&](const std::string&, const std::vector<NetworkParameters>& params) -> Error {
-            EXPECT_EQ(params.size(), 1);
+    EXPECT_CALL(*mNodeNetwork, UpdateNetworks(_, _))
+        .WillOnce(Invoke([&](const String&, const Array<UpdateNetworkParameters>& params) -> Error {
+            EXPECT_EQ(params.Size(), 1);
             EXPECT_EQ(params[0].mNetworkID, "existing_provider");
             EXPECT_EQ(params[0].mSubnet, "172.17.0.0/16");
             EXPECT_EQ(params[0].mIP, "172.17.0.1");
@@ -242,7 +249,7 @@ TEST_F(CMNetworkManagerTest, UpdateProviderNetwork_ExistingNetwork)
             return ErrorEnum::eNone;
         }));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->UpdateProviderNetwork(providers, nodeID);
@@ -287,7 +294,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NewInstance_Succes
 
     EXPECT_CALL(*mDNSServer, GetIP()).WillOnce(Return("8.8.8.8")).WillOnce(Return("1.1.1.1"));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID, instanceData, result1);
@@ -357,7 +364,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_ExistingInstance_S
             return ErrorEnum::eNone;
         }));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID, instanceData, result);
@@ -385,7 +392,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NetworkNotFound_Er
     EXPECT_CALL(*mStorage, GetHosts(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mStorage, GetInstances(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID, instanceData, result);
@@ -425,7 +432,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_NodeNotFound_Error
 
     EXPECT_CALL(*mStorage, GetInstances(String("network1"), String("node1"), _)).WillOnce(Return(ErrorEnum::eNone));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID, instanceData, result);
@@ -472,7 +479,7 @@ TEST_F(CMNetworkManagerTest, RemoveInstanceNetworkParameters_Success)
 
     EXPECT_CALL(*mStorage, RemoveNetworkInstance(instanceIdent)).WillOnce(Return(ErrorEnum::eNone));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->RemoveInstanceNetworkParameters(instanceIdent, nodeID);
@@ -544,7 +551,7 @@ TEST_F(CMNetworkManagerTest, GetInstances_Success)
             return ErrorEnum::eNone;
         }));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     StaticArray<InstanceIdent, 2> instances;
@@ -618,7 +625,7 @@ TEST_F(CMNetworkManagerTest, RestartDNSServer_Success)
 
     EXPECT_CALL(*mDNSServer, GetIP()).WillOnce(Return("8.8.8.8")).WillOnce(Return("1.1.1.1"));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent1, networkID, nodeID, instanceData1, result1);
@@ -718,7 +725,7 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
 
     EXPECT_CALL(*mDNSServer, GetIP()).WillOnce(Return("8.8.8.8")).WillOnce(Return("1.1.1.1"));
 
-    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mSender, *mDNSServer);
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
     ASSERT_TRUE(err.IsNone());
 
     err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent1, networkID1, nodeID, instanceData1, result1);
