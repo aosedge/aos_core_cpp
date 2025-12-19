@@ -24,20 +24,9 @@ namespace aos::cm::config {
 
 constexpr auto cDefaultSMConnectionTimeout      = "1m";
 constexpr auto cDefaultUpdateItemTTL            = "30d";
-constexpr auto cDefaultServiceTTL               = "30d";
-constexpr auto cDefaultLayerTTL                 = "30d";
 constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
 constexpr auto cDefaultCloudResponseWaitTimeout = "10s";
-constexpr auto cDefaultMaxConcurrentDownloads   = 4;
-constexpr auto cDefaultRetryDelay               = "1m";
-constexpr auto cDefaultMaxRetryDelay            = "30m";
-constexpr auto cDefaultDownloadPartLimit        = 100;
-constexpr auto cDefaultUMControllerUpdateTTL    = "30d";
-constexpr auto cDefaultNodesConnectionTimeout   = "10m";
-constexpr auto cDefaultSMControllerUpdateTTL    = "30d";
 constexpr auto cDefaultAlertsSendPeriod         = "10s";
-constexpr auto cDefaultAlertsMaxMessageSize     = 65536;
-constexpr auto cDefaultAlertsMaxOfflineMessages = 25;
 constexpr auto cDefaultMonitoringSendPeriod     = "1m";
 constexpr auto cDefaultMigrationPath            = "/usr/share/aos/communicationmanager/migration";
 constexpr auto cDefaultCertStorage              = "/var/aos/crypt/cm/";
@@ -152,20 +141,10 @@ Error ParseConfig(const std::string& filename, Config& config)
             = object.GetValue<std::string>("storageDir", std::filesystem::path(config.mWorkingDir) / "storages");
         config.mStateDir
             = object.GetValue<std::string>("stateDir", std::filesystem::path(config.mWorkingDir) / "states");
-        config.mComponentsDir
-            = object.GetValue<std::string>("componentsDir", std::filesystem::path(config.mWorkingDir) / "components");
         config.mUnitConfigFile = object.GetValue<std::string>(
             "unitConfigFile", std::filesystem::path(config.mWorkingDir) / "aos_unit.cfg");
 
         Error err = ErrorEnum::eNone;
-
-        Tie(config.mServiceTTL, err)
-            = common::utils::ParseDuration(object.GetValue<std::string>("serviceTtlDays", cDefaultServiceTTL));
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing serviceTtlDays tag");
-
-        Tie(config.mLayerTTL, err)
-            = common::utils::ParseDuration(object.GetValue<std::string>("layerTtlDays", cDefaultLayerTTL));
-        AOS_ERROR_CHECK_AND_THROW(err, "error parsing layerTtlDays tag");
 
         Tie(config.mUnitStatusSendTimeout, err) = common::utils::ParseDuration(
             object.GetValue<std::string>("unitStatusSendTimeout", cDefaultUnitStatusSendTimeout));

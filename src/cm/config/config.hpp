@@ -60,10 +60,7 @@ struct Config {
     std::string               mStorageDir;
     std::string               mStateDir;
     std::string               mWorkingDir;
-    std::string               mComponentsDir;
     std::string               mUnitConfigFile;
-    Duration                  mServiceTTL;
-    Duration                  mLayerTTL;
     Duration                  mUnitStatusSendTimeout;
     Duration                  mCloudResponseWaitTimeout;
 };

@@ -37,9 +37,6 @@ constexpr auto cFullTestConfigJSON = R"({
     "iamPublicServerUrl" : "localhost:8090",
     "cmServerUrl":"localhost:8094",
     "workingDir" : "workingDir",
-    "componentsDir": "componentDir",
-    "serviceTtlDays": "720h",
-    "layerTtlDays": "720h",
     "unitConfigFile" : "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
     "monitoring": {
@@ -143,10 +140,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mCMServerURL, "localhost:8094");
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/cm/");
-    EXPECT_EQ(config.mComponentsDir, "componentDir");
 
-    EXPECT_EQ(config.mServiceTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config.mLayerTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cDay * 3);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
@@ -185,11 +179,8 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/cm/");
     EXPECT_EQ(config.mStorageDir, (std::filesystem::path("workingDir") / "storages").string());
     EXPECT_EQ(config.mStateDir, (std::filesystem::path("workingDir") / "states").string());
-    EXPECT_EQ(config.mComponentsDir, (std::filesystem::path("workingDir") / "components").string());
     EXPECT_EQ(config.mUnitConfigFile, (std::filesystem::path("workingDir") / "aos_unit.cfg").string());
 
-    EXPECT_EQ(config.mServiceTTL, aos::Time::cHours * 24 * 30);
-    EXPECT_EQ(config.mLayerTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 30);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cSeconds * 10);
 
