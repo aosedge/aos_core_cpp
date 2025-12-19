@@ -93,6 +93,11 @@ Error NodeMonitoringProvider::GetNodeMonitoringData(MonitoringData& monitoringDa
             return AOS_ERROR_WRAP(err);
         }
 
+        err = monitoringData.mPartitions.Back().mName.Assign(partition.mName);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         if (Tie(monitoringData.mPartitions.Back().mUsedSize, err) = GetSystemDiskUsage(partition.mPath);
             !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
