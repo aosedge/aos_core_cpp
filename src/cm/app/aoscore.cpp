@@ -66,7 +66,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize communication
 
-    err = mCommunication.Init(mConfig, mIAMClient, mIAMClient, mIAMClient, mCertLoader, mCryptoProvider,
+    err = mCommunication.Init(mConfig, mIAMClient, mIAMClient, mIAMClient, mCertLoader, mCryptoProvider, mCryptoHelper,
         mCryptoProvider, mUpdateManager, mStorageState, mSMController, *mEnvVarHandler, mIAMClient, mIAMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize communication");
 

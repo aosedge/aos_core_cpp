@@ -65,6 +65,7 @@ public:
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
+     * @param cryptoHelper crypto helper.
      * @param uuidProvider UUID provider.
      * @param updateManager update manager.
      * @param stateHandler storage state handler.
@@ -76,7 +77,8 @@ public:
      */
     Error Init(const cm::config::Config& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         iamclient::IdentProviderItf& identityProvider, iamclient::CertProviderItf& certProvider,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
+        crypto::CryptoHelper& cryptoHelper, crypto::UUIDItf& uuidProvider,
         updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
         smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
         iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler
@@ -177,12 +179,13 @@ public:
     Error UnsubscribeListener(cloudconnection::ConnectionListenerItf& listener) override;
 
 private:
-    static constexpr auto cProtocolVersion       = 7;
-    static constexpr auto cReconnectTries        = 5;
-    static constexpr auto cReconnectTimeout      = Time::cSeconds * 1;
-    static constexpr auto cMaxReconnectTimeout   = 10 * Time::cMinutes;
-    static constexpr auto cMessageHandlerThreads = 4;
-    static constexpr auto cOnlineCertificate     = "online";
+    static constexpr auto cProtocolVersion         = 7;
+    static constexpr auto cReconnectTries          = 5;
+    static constexpr auto cReconnectTimeout        = Time::cSeconds * 1;
+    static constexpr auto cMaxReconnectTimeout     = 10 * Time::cMinutes;
+    static constexpr auto cMessageHandlerThreads   = 4;
+    static constexpr auto cOnlineCertificate       = "online";
+    static constexpr auto cMaxServiceDiscoveryURLs = 1;
 
     using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
     using ResponseMessageVariant    = std::variant<BlobURLsInfo>;
@@ -227,7 +230,7 @@ private:
     std::string CreateDiscoveryRequestBody() const;
     void        ReceiveDiscoveryResponse(Poco::Net::HTTPClientSession& session, Poco::Net::HTTPResponse& httpResponse);
     bool        ConnectionInfoIsSet() const;
-    Error       SendDiscoveryRequest();
+    Error       SendDiscoveryRequest(const String& url);
     Error       ConnectToCloud();
     Error       CloseConnection();
     Error       Disconnect();
@@ -274,6 +277,7 @@ private:
     iamclient::CertProviderItf*                          mCertProvider {};
     crypto::CertLoaderItf*                               mCertLoader {};
     crypto::x509::ProviderItf*                           mCryptoProvider {};
+    crypto::CryptoHelper*                                mCryptoHelper {};
     crypto::UUIDItf*                                     mUUIDProvider {};
     updatemanager::UpdateManagerItf*                     mUpdateManager {};
     storagestate::StateHandlerItf*                       mStateHandler {};
@@ -290,6 +294,7 @@ private:
     std::condition_variable                              mCondVar;
     StaticString<cIDLen>                                 mMainNodeID;
     Duration                                             mReconnectTimeout {cReconnectTimeout};
+    Poco::URI                                            mConfigServiceDiscoveryURI;
 
     SessionPtr                          mClientSession;
     std::optional<Poco::Net::WebSocket> mWebSocket;

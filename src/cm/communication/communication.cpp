@@ -181,7 +181,7 @@ std::unique_ptr<RecievedMessageVariant> ParseMessage(const common::utils::CaseIn
 Error Communication::Init(const cm::config::Config& config,
     iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, iamclient::IdentProviderItf& identityProvider,
     iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, crypto::UUIDItf& uuidProvider,
+    crypto::x509::ProviderItf& cryptoProvider, crypto::CryptoHelper& cryptoHelper, crypto::UUIDItf& uuidProvider,
     updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
     smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
     iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler)
@@ -196,6 +196,7 @@ Error Communication::Init(const cm::config::Config& config,
     mCertProvider            = &certProvider;
     mCertLoader              = &certLoader;
     mCryptoProvider          = &cryptoProvider;
+    mCryptoHelper            = &cryptoHelper;
     mUUIDProvider            = &uuidProvider;
     mUpdateManager           = &updateManager;
     mStateHandler            = &stateHandler;
@@ -209,6 +210,12 @@ Error Communication::Init(const cm::config::Config& config,
     mCloudHttpRequest.set("Accept", "application/json");
     mCloudHttpRequest.set("Connection", "Upgrade");
     mCloudHttpRequest.set("Upgrade", "websocket");
+
+    try {
+        mConfigServiceDiscoveryURI = Poco::URI(mConfig->mServiceDiscoveryURL);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 
     return ErrorEnum::eNone;
 }
@@ -537,10 +544,10 @@ void Communication::ReceiveDiscoveryResponse(
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery response from JSON");
 }
 
-Error Communication::SendDiscoveryRequest()
+Error Communication::SendDiscoveryRequest(const String& url)
 {
     try {
-        auto session      = CreateSession(Poco::URI(mConfig->mServiceDiscoveryURL));
+        auto session      = CreateSession(Poco::URI(url.CStr()));
         auto clearSession = DeferRelease(session.get(), [](auto* session) {
             if (session) {
                 session->reset();
@@ -551,11 +558,14 @@ Error Communication::SendDiscoveryRequest()
 
         const auto requestBody = CreateDiscoveryRequestBody();
 
+        auto postURI = Poco::URI(url.CStr());
+        postURI.setPath(mConfigServiceDiscoveryURI.getPath());
+
         Poco::Net::HTTPRequest httpRequest;
 
         httpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_POST);
         httpRequest.setVersion(Poco::Net::HTTPMessage::HTTP_1_1);
-        httpRequest.setURI(mConfig->mServiceDiscoveryURL);
+        httpRequest.setURI(postURI.toString());
         httpRequest.setKeepAlive(false);
         httpRequest.set("Accept", "application/json");
         httpRequest.setContentType("application/json");
@@ -563,8 +573,7 @@ Error Communication::SendDiscoveryRequest()
         Poco::Net::HTTPResponse httpResponse;
         httpRequest.setContentLength64(static_cast<Poco::Int64>(requestBody.length()));
 
-        LOG_DBG() << "Connecting to service discovery server"
-                  << Log::Field("url", mConfig->mServiceDiscoveryURL.c_str())
+        LOG_DBG() << "Connecting to service discovery server" << Log::Field("url", postURI.toString().c_str())
                   << Log::Field("content", requestBody.c_str());
 
         session->sendRequest(httpRequest) << requestBody;
@@ -588,13 +597,23 @@ Error Communication::SendDiscoveryRequest()
 
 Error Communication::ConnectToCloud()
 {
+    auto serviceDiscoveryURLs = std::make_unique<StaticArray<StaticString<cURLLen>, cMaxServiceDiscoveryURLs>>();
+
+    if (auto err = mCryptoHelper->GetServiceDiscoveryURLs(*serviceDiscoveryURLs); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (serviceDiscoveryURLs->IsEmpty()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "no service discovery URLs available"));
+    }
+
     {
         std::lock_guard lock {mMutex};
 
         LOG_DBG() << "Connect to cloud web socket server";
 
         if (!ConnectionInfoIsSet()) {
-            if (auto err = SendDiscoveryRequest(); !err.IsNone()) {
+            if (auto err = SendDiscoveryRequest(serviceDiscoveryURLs->Front()); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 

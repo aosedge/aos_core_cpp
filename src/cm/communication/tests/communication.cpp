@@ -218,6 +218,10 @@ public:
         auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
 
+        err = mCryptoHelper.Init(mCertProvider, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
+            mConfig.mCrypt.mCACert.c_str());
+        ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
+
         StartHTTPServer();
     }
 
@@ -262,7 +266,7 @@ public:
         }));
 
         auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProvider, mIdentityProvider, mCertProvider, mCertLoader,
-            mCryptoProvider, mUUIDProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler,
+            mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler,
             mCertHandlerMock, mProvisioningMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
@@ -381,6 +385,7 @@ protected:
     CertInfo                      mClientInfo;
     CertInfo                      mServerInfo;
     crypto::DefaultCryptoProvider mCryptoProvider;
+    crypto::CryptoHelper          mCryptoHelper;
     UUIDItfStub                   mUUIDProvider;
     iamclient::CertProviderStub   mCertProvider {mCertHandler};
     crypto::CertLoader            mCertLoader;
