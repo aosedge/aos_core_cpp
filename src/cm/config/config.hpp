@@ -56,6 +56,7 @@ struct Config {
     std::string               mServiceDiscoveryURL;
     std::string               mIAMProtectedServerURL;
     std::string               mIAMPublicServerURL;
+    std::string               mFileServerURL;
     std::string               mCMServerURL;
     std::string               mStorageDir;
     std::string               mStateDir;
