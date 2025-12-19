@@ -20,7 +20,8 @@
 #include <sm/config/config.hpp>
 #include <sm/utils/journal.hpp>
 
-#include "alerts.hpp"
+#include "itf/instanceinfoprovider.hpp"
+#include "itf/storage.hpp"
 
 namespace aos::sm::alerts {
 
