@@ -4,14 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
 
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/tests/mocks/journalmock.hpp>
-
-#include "mocks/alertsmock.hpp"
 
 using namespace testing;
 
@@ -62,6 +61,26 @@ public:
 };
 
 /***********************************************************************************************************************
+ * Mocks
+ **********************************************************************************************************************/
+
+class SenderMock : public aos::alerts::SenderItf {
+public:
+    MOCK_METHOD(Error, SendAlert, (const AlertVariant& alert), (override));
+};
+
+class StorageMock : public StorageItf {
+public:
+    MOCK_METHOD(Error, SetJournalCursor, (const String& cursor), (override));
+    MOCK_METHOD(Error, GetJournalCursor, (String & cursor), (const, override));
+};
+
+class InstanceInfoProviderMock : public InstanceInfoProviderItf {
+public:
+    MOCK_METHOD(Error, GetInstanceInfoByID, (const String& id, ServiceInstanceData& instanceData), (override));
+};
+
+/***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
 
@@ -88,7 +107,7 @@ public:
 
     common::config::JournalAlerts mConfig;
     InstanceInfoProviderMock      mInstanceInfoProvider;
-    aos::alerts::SenderMock       mSender;
+    SenderMock                    mSender;
     StorageMock                   mStorage;
     std::string                   mCursor = "cursor";
 
@@ -177,7 +196,7 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     entry.mSystemdUnit = "/system.slice/system-aos@service.slice/aos-service@service0.service";
     entry.mMessage     = "Hello World";
 
-    ServiceInstanceData serviceInfo = {InstanceIdent {"service0", "service0", 0}, "0.0.0"};
+    ServiceInstanceData serviceInfo {InstanceIdent {"service0", "service0", 0, UpdateItemTypeEnum::eService}, "0.0.0"};
 
     InstanceAlert alert;
 
@@ -186,7 +205,8 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     alert.mMessage                     = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"))).WillOnce(Return(serviceInfo));
+    EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"), _))
+        .WillOnce(DoAll(SetArgReferee<1>(serviceInfo), Return(Error())));
 
     EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
         .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));

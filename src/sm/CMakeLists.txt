@@ -24,7 +24,7 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_sm)
 # Modules
 # ######################################################################################################################
 
-# add_subdirectory(alerts)
+add_subdirectory(alerts)
 add_subdirectory(app)
 add_subdirectory(config)
 add_subdirectory(database)

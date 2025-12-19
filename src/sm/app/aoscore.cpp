@@ -125,9 +125,8 @@ void AosCore::Init(const std::string& configFile)
 
     // // Initialize journalalerts
 
-    //     err
-    //     = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mDatabase, mSMClient);
-    // AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
+    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mDatabase, mSMClient);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
 }
 
 void AosCore::Start()
@@ -177,14 +176,14 @@ void AosCore::Start()
         }
     });
 
-    // err = mJournalAlerts.Start();
-    // AOS_ERROR_CHECK_AND_THROW(err, "can't start journalalerts");
+    err = mJournalAlerts.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start journalalerts");
 
-    // mCleanupManager.AddCleanup([this]() {
-    //     if (auto err = mJournalAlerts.Stop(); !err.IsNone()) {
-    //         LOG_ERR() << "Can't stop journalalerts: err=" << err;
-    //     }
-    // });
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mJournalAlerts.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop journalalerts: err=" << err;
+        }
+    });
 
     err = mSMClient.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start SM client");

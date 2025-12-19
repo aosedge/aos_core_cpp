@@ -23,7 +23,7 @@ set(LIBRARIES
     aos::sm::monitoring
     aos::sm::resourcemanager
     aos::sm::networkmanager
-    # aos::sm::alerts
+    aos::sm::alerts
     aos::sm::smclient
     aos::sm::logprovider
     aos::common::iamclient
