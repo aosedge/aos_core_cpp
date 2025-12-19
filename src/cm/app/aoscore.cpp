@@ -74,7 +74,7 @@ void AosCore::Init(const std::string& configFile)
     InitStorageState();
     InitSMController();
 
-    err = mAlerts.Init(mConfig.mAlerts, mCommunication);
+    err = mAlerts.Init(mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
 
     err = mDownloadSpaceAllocator.Init(mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
