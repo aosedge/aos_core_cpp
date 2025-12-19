@@ -45,16 +45,16 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     mSMInfoReceiver         = &smInfoReceiver;
     mInsecureConn           = insecureConn;
 
-    if (auto err = CreateServerCredentials(); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     return ErrorEnum::eNone;
 }
 
 Error SMController::Start()
 {
     LOG_INF() << "Start SM Controller";
+
+    if (auto err = CreateServerCredentials(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = StartServer(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -426,6 +426,8 @@ Error SMController::StartServer()
     if (!mServer) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to start CM server"));
     }
+
+    LOG_INF() << "CM server started on: " << correctedAddress.c_str();
 
     return ErrorEnum::eNone;
 }
