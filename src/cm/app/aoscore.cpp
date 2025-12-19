@@ -86,8 +86,8 @@ void AosCore::Init(const std::string& configFile)
     err = mDownloader.Init(&mAlerts);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
 
-    // TODO: initialize file server
-    // err = mFileServer.Init();
+    err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mInstallPath.CStr());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
     err = mImageManager.Init(mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,
         mInstallSpaceAllocator, mDownloader, mFileServer, mCryptoHelper, mFileInfoProvider, mOCISpec);
@@ -120,6 +120,15 @@ void AosCore::Start()
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mFSWatcher.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop FS watcher" << Log::Field(err);
+        }
+    });
+
+    err = mFileServer.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start file server");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mFileServer.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop file server" << Log::Field(err);
         }
     });
 
