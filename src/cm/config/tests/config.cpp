@@ -40,9 +40,6 @@ constexpr auto cFullTestConfigJSON = R"({
     "unitConfigFile" : "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
     "monitoring": {
-        "monitorConfig": {
-            "pollPeriod": "1s"
-        },
         "sendPeriod": "5m"
     },
     "nodeinfoprovider": {
@@ -74,15 +71,7 @@ constexpr auto cMinimalTestConfigJSON = R"({
     "serviceDiscoveryUrl" : "www.aos.com",
     "iamProtectedServerUrl" : "localhost:8089",
     "iamPublicServerUrl" : "localhost:8090",
-    "cmServerUrl":"localhost:8094",
-    "monitoring": {
-        "monitorConfig": {
-            "pollPeriod": "1s"
-        }
-    },
-    "alerts": {
-        "sendPeriod": "220s"
-    }
+    "cmServerUrl":"localhost:8094"
 })";
 
 } // namespace
@@ -186,7 +175,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
-    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 220);
+    EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 10);
 
     EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), (std::filesystem::path("workingDir") / "install").c_str());
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), (std::filesystem::path("workingDir") / "download").c_str());
