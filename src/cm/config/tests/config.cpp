@@ -185,4 +185,6 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, (std::filesystem::path("workingDir") / "migration").string());
+
+    EXPECT_EQ(config.mDNSStoragePath, "/var/aos/dns");
 }

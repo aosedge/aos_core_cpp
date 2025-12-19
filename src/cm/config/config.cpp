@@ -30,6 +30,7 @@ constexpr auto cDefaultAlertsSendPeriod         = "10s";
 constexpr auto cDefaultMonitoringSendPeriod     = "1m";
 constexpr auto cDefaultMigrationPath            = "/usr/share/aos/communicationmanager/migration";
 constexpr auto cDefaultCertStorage              = "/var/aos/crypt/cm/";
+constexpr auto cDefaultDNSStoragePath           = "/var/aos/dns";
 
 /***********************************************************************************************************************
  * Static
@@ -128,7 +129,7 @@ Error ParseConfig(const std::string& filename, Config& config)
             return AOS_ERROR_WRAP(err);
         }
 
-        config.mDNSStoragePath = object.GetValue<std::string>("dnsStoragePath");
+        config.mDNSStoragePath = object.GetValue<std::string>("dnsStoragePath", cDefaultDNSStoragePath);
         config.mDNSIP          = object.GetValue<std::string>("dnsIp");
 
         config.mCertStorage = object.GetValue<std::string>("certStorage", cDefaultCertStorage);
