@@ -37,19 +37,11 @@ constexpr auto cFullTestConfigJSON = R"({
     "iamPublicServerUrl" : "localhost:8090",
     "cmServerUrl":"localhost:8094",
     "workingDir" : "workingDir",
-    "imageStoreDir": "imagestoreDir",
     "componentsDir": "componentDir",
     "serviceTtlDays": "720h",
     "layerTtlDays": "720h",
     "unitConfigFile" : "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
-    "downloader": {
-        "downloadDir": "/path/to/download",
-        "maxConcurrentDownloads": 10,
-        "retryDelay": "10s",
-        "maxRetryDelay": "30s",
-        "downloadPartLimit": 57
-    },
     "monitoring": {
         "monitorConfig": {
             "pollPeriod": "1s"
@@ -93,11 +85,6 @@ constexpr auto cMinimalTestConfigJSON = R"({
     },
     "alerts": {
         "sendPeriod": "220s"
-    },
-    "imageManager": {
-        "installPath": "/path/to/install",
-        "updateItemTtl": "30d",
-        "downloadPath": "/path/to/download"
     }
 })";
 
@@ -148,7 +135,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mCrypt.mPkcs11Library, "/path/to/pkcs11/library");
 
     EXPECT_EQ(config.mServiceDiscoveryURL, "www.aos.com");
-    EXPECT_EQ(config.mImageStoreDir, "imagestoreDir");
     EXPECT_EQ(config.mStorageDir, "/var/aos/storage");
     EXPECT_EQ(config.mStateDir, "/var/aos/state");
     EXPECT_EQ(config.mWorkingDir, "workingDir");
@@ -162,12 +148,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mServiceTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mLayerTTL, aos::Time::cHours * 24 * 30);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cDay * 3);
-
-    EXPECT_EQ(config.mDownloader.mDownloadDir, "/path/to/download");
-    EXPECT_EQ(config.mDownloader.mMaxConcurrentDownloads, 10);
-    EXPECT_EQ(config.mDownloader.mRetryDelay, aos::Time::cSeconds * 10);
-    EXPECT_EQ(config.mDownloader.mMaxRetryDelay, aos::Time::cSeconds * 30);
-    EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 57);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 10);
@@ -205,7 +185,6 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/cm/");
     EXPECT_EQ(config.mStorageDir, (std::filesystem::path("workingDir") / "storages").string());
     EXPECT_EQ(config.mStateDir, (std::filesystem::path("workingDir") / "states").string());
-    EXPECT_EQ(config.mImageStoreDir, (std::filesystem::path("workingDir") / "imagestore").string());
     EXPECT_EQ(config.mComponentsDir, (std::filesystem::path("workingDir") / "components").string());
     EXPECT_EQ(config.mUnitConfigFile, (std::filesystem::path("workingDir") / "aos_unit.cfg").string());
 
@@ -214,15 +193,13 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 30);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cSeconds * 10);
 
-    EXPECT_EQ(config.mDownloader.mDownloadDir, (std::filesystem::path("workingDir") / "download").string());
-    EXPECT_EQ(config.mDownloader.mMaxConcurrentDownloads, 4);
-    EXPECT_EQ(config.mDownloader.mRetryDelay, aos::Time::cMinutes * 1);
-    EXPECT_EQ(config.mDownloader.mMaxRetryDelay, aos::Time::cMinutes * 30);
-    EXPECT_EQ(config.mDownloader.mDownloadPartLimit, 100);
-
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 220);
+
+    EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), (std::filesystem::path("workingDir") / "install").c_str());
+    EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), (std::filesystem::path("workingDir") / "download").c_str());
+    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, (std::filesystem::path("workingDir") / "migration").string());

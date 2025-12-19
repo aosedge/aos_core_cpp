@@ -23,6 +23,7 @@ namespace aos::cm::config {
  **********************************************************************************************************************/
 
 constexpr auto cDefaultSMConnectionTimeout      = "1m";
+constexpr auto cDefaultUpdateItemTTL            = "30d";
 constexpr auto cDefaultServiceTTL               = "30d";
 constexpr auto cDefaultLayerTTL                 = "30d";
 constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
@@ -83,47 +84,20 @@ void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
 }
 
-void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, imagemanager::Config& config)
+void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+    imagemanager::Config& config)
 {
-    if (!object.Has("installPath")) {
-        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "installPath tag is missing");
-    }
-
-    if (!object.Has("updateItemTtl")) {
-        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "updateItemTtl tag is missing");
-    }
-
-    if (!object.Has("downloadPath")) {
-        AOS_ERROR_THROW(Error(ErrorEnum::eInvalidArgument), "downloadPath tag is missing");
-    }
-
-    auto err = config.mInstallPath.Assign(object.GetValue<std::string>("installPath").c_str());
+    auto err = config.mInstallPath.Assign(
+        object.GetValue<std::string>("installPath", std::filesystem::path(workingDir) / "install").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing installPath tag");
 
-    Tie(config.mUpdateItemTTL, err) = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl"));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
-
-    err = config.mDownloadPath.Assign(object.GetValue<std::string>("downloadPath").c_str());
+    err = config.mDownloadPath.Assign(
+        object.GetValue<std::string>("downloadPath", std::filesystem::path(workingDir) / "download").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing downloadPath tag");
-}
 
-void ParseDownloaderConfig(
-    const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir, Downloader& config)
-{
-    config.mDownloadDir = object.GetValue<std::string>("downloadDir", std::filesystem::path(workingDir) / "download");
-    config.mMaxConcurrentDownloads = object.GetValue<int>("maxConcurrentDownloads", cDefaultMaxConcurrentDownloads);
-
-    Error err = ErrorEnum::eNone;
-
-    Tie(config.mRetryDelay, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("retryDelay", cDefaultRetryDelay));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing retryDelay tag");
-
-    Tie(config.mMaxRetryDelay, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("maxRetryDelay", cDefaultMaxRetryDelay));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing maxRetryDelay tag");
-
-    config.mDownloadPartLimit = object.GetValue<int>("downloadPartLimit", cDefaultDownloadPartLimit);
+    Tie(config.mUpdateItemTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl", cDefaultUpdateItemTTL));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
 }
 
 } // namespace
@@ -155,10 +129,8 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseNodeInfoProviderConfig(
             object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);
         ParseAlertsConfig(object.Has("alerts") ? object.GetObject("alerts") : empty, config.mAlerts);
-        ParseImagemanagerConfig(
-            object.Has("imageManager") ? object.GetObject("imageManager") : empty, config.mImageManager);
-        ParseDownloaderConfig(
-            object.Has("downloader") ? object.GetObject("downloader") : empty, config.mWorkingDir, config.mDownloader);
+        ParseImagemanagerConfig(object.Has("imageManager") ? object.GetObject("imageManager") : empty,
+            config.mWorkingDir, config.mImageManager);
 
         if (auto err
             = common::config::ParseMigrationConfig(object.Has("migration") ? object.GetObject("migration") : empty,
@@ -180,8 +152,6 @@ Error ParseConfig(const std::string& filename, Config& config)
             = object.GetValue<std::string>("storageDir", std::filesystem::path(config.mWorkingDir) / "storages");
         config.mStateDir
             = object.GetValue<std::string>("stateDir", std::filesystem::path(config.mWorkingDir) / "states");
-        config.mImageStoreDir
-            = object.GetValue<std::string>("imageStoreDir", std::filesystem::path(config.mWorkingDir) / "imagestore");
         config.mComponentsDir
             = object.GetValue<std::string>("componentsDir", std::filesystem::path(config.mWorkingDir) / "components");
         config.mUnitConfigFile = object.GetValue<std::string>(
