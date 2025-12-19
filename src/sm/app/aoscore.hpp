@@ -92,9 +92,9 @@ private:
     aos::common::network::InterfaceManager mNetworkInterfaceManager;
     sm::resourcemanager::ResourceManager   mResourceManager;
     sm::nodeconfig::NodeConfig             mNodeConfigHandler;
-    // sm::alerts::JournalAlerts                            mJournalAlerts;
-    sm::smclient::SMClient             mSMClient;
-    aos::common::utils::CleanupManager mCleanupManager;
+    sm::alerts::JournalAlerts              mJournalAlerts;
+    sm::smclient::SMClient                 mSMClient;
+    aos::common::utils::CleanupManager     mCleanupManager;
 
 private:
     static constexpr auto cDefaultConfigFile = "aos_servicemanager.cfg";

@@ -19,7 +19,8 @@
 #include <core/sm/networkmanager/itf/storage.hpp>
 
 #include <common/migration/migration.hpp>
-#include <sm/alerts/alerts.hpp>
+#include <sm/alerts/itf/instanceinfoprovider.hpp>
+#include <sm/alerts/itf/storage.hpp>
 #include <sm/config/config.hpp>
 #include <sm/logprovider/itf/instanceidprovider.hpp>
 
