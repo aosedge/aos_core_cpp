@@ -96,7 +96,7 @@ void AosCore::Init(const std::string& configFile)
     err = mNodeInfoProvider.Init(mConfig.mNodeInfoProvider, mIAMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
 
-    err = mMonitoring.Init(mConfig.mMonitoring, mCommunication, mLauncher, mNodeInfoProvider);
+    err = mMonitoring.Init(mConfig.mMonitoring, mCommunication, mCommunication, mLauncher, mNodeInfoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize monitoring");
 
     err = mUnitConfig.Init({mConfig.mUnitConfigFile.c_str()}, mNodeInfoProvider, mSMController, mJSONProvider);
