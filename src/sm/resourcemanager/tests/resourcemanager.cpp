@@ -49,12 +49,18 @@ public:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ResourcemanagerTest, InitFailsNoFile)
+TEST_F(ResourcemanagerTest, InitSucceedsNoFile)
 {
     mConfig.mResourceInfoFilePath = "non_existing_file.json";
 
     auto err = mResourceManager.Init(mConfig);
-    EXPECT_FALSE(err.IsNone());
+    EXPECT_TRUE(err.IsNone());
+
+    auto resources = std::make_unique<StaticArray<ResourceInfo, cMaxNumNodeResources>>();
+
+    err = mResourceManager.GetResourcesInfos(*resources);
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_EQ(resources->Size(), 0u);
 }
 
 TEST_F(ResourcemanagerTest, InitFailsInvalidFormat)
