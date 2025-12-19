@@ -240,6 +240,7 @@ TEST_F(SMClientTest, SendSMInfoWithMultipleRuntimesAndResources)
     ASSERT_TRUE(err.IsNone()) << "Start failed";
 
     server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
 
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
