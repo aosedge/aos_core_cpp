@@ -75,6 +75,10 @@ constexpr auto cImageConfig       = R"(
 {
     "architecture": "x86_64",
     "author": "gtest",
+    "created": "2024-12-31T23:59:59Z",
+    "os": "Linux",
+    "osVersion": "6.0.8",
+    "variant": "6",
     "config": {
         "cmd": [
             "test-cmd",
@@ -96,10 +100,12 @@ constexpr auto cImageConfig       = R"(
         ],
         "workingDir": "/test-working-dir"
     },
-    "created": "2024-12-31T23:59:59Z",
-    "os": "Linux",
-    "osVersion": "6.0.8",
-    "variant": "6"
+    "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+            "sha256:129abeb509f55870ec19f24eba0caecccee3f0e055c467e1df8513bdcddc746f"
+        ]
+    }
 }
 )";
 const auto     cServiceConfigPath = fs::JoinPath(cTestBaseDir, "service_config.json");

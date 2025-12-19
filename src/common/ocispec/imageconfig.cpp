@@ -66,6 +66,32 @@ Poco::JSON::Object ConfigToJSON(const aos::oci::Config& config)
     return object;
 }
 
+void RootfsFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::Rootfs& rootfs)
+{
+    const auto type = object.GetValue<std::string>("type");
+    rootfs.mType    = type.c_str();
+
+    for (const auto& diffID : utils::GetArrayValue<std::string>(object, "diff_ids")) {
+        auto err = rootfs.mDiffIDs.EmplaceBack(diffID.c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "diff_ids parsing error");
+    }
+}
+
+Poco::JSON::Object RootfsToJSON(const aos::oci::Rootfs& rootfs)
+{
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    if (!rootfs.mType.IsEmpty()) {
+        object.set("type", rootfs.mType.CStr());
+    }
+
+    if (!rootfs.mDiffIDs.IsEmpty()) {
+        object.set("diff_ids", utils::ToJsonArray(rootfs.mDiffIDs, utils::ToStdString));
+    }
+
+    return object;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -87,10 +113,6 @@ Error OCISpec::LoadImageConfig(const String& path, aos::oci::ImageConfig& imageC
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
-        if (wrapper.Has("config")) {
-            ConfigFromJSON(wrapper.GetObject("config"), imageConfig.mConfig);
-        }
-
         imageConfig.mAuthor = wrapper.GetValue<std::string>("author").c_str();
 
         PlatformFromJSONObject(wrapper, imageConfig);
@@ -98,6 +120,14 @@ Error OCISpec::LoadImageConfig(const String& path, aos::oci::ImageConfig& imageC
         if (const auto created = wrapper.GetOptionalValue<std::string>("created")) {
             Tie(imageConfig.mCreated, err) = utils::FromUTCString(created->c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
+        }
+
+        if (wrapper.Has("config")) {
+            ConfigFromJSON(wrapper.GetObject("config"), imageConfig.mConfig);
+        }
+
+        if (wrapper.Has("rootfs")) {
+            RootfsFromJSON(wrapper.GetObject("rootfs"), imageConfig.mRootfs);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
@@ -126,6 +156,10 @@ Error OCISpec::SaveImageConfig(const String& path, const aos::oci::ImageConfig& 
 
         if (auto configObject = ConfigToJSON(imageConfig.mConfig); configObject.size() > 0) {
             object->set("config", configObject);
+        }
+
+        if (auto rootfsObject = RootfsToJSON(imageConfig.mRootfs); rootfsObject.size() > 0) {
+            object->set("rootfs", rootfsObject);
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());
