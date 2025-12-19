@@ -41,17 +41,6 @@ struct Crypt {
 struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
 
 /*
- * Downloader configuration.
- */
-struct Downloader {
-    std::string mDownloadDir;
-    int         mMaxConcurrentDownloads;
-    Duration    mRetryDelay;
-    Duration    mMaxRetryDelay;
-    int         mDownloadPartLimit;
-};
-
-/*
  * Config structure.
  */
 struct Config {
@@ -61,7 +50,6 @@ struct Config {
     alerts::Config            mAlerts;
     imagemanager::Config      mImageManager;
     common::config::Migration mMigration;
-    Downloader                mDownloader;
     std::string               mDNSStoragePath;
     std::string               mDNSIP;
     std::string               mCertStorage;
@@ -72,7 +60,6 @@ struct Config {
     std::string               mStorageDir;
     std::string               mStateDir;
     std::string               mWorkingDir;
-    std::string               mImageStoreDir;
     std::string               mComponentsDir;
     std::string               mUnitConfigFile;
     Duration                  mServiceTTL;
