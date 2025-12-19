@@ -36,6 +36,7 @@ constexpr auto cFullTestConfigJSON = R"({
     "iamProtectedServerUrl" : "localhost:8089",
     "iamPublicServerUrl" : "localhost:8090",
     "cmServerUrl":"localhost:8094",
+    "fileServerUrl":"localhost:8080",
     "workingDir" : "workingDir",
     "unitConfigFile" : "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
@@ -127,6 +128,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mUnitConfigFile, "/var/aos/aos_unit.cfg");
     EXPECT_EQ(config.mIAMProtectedServerURL, "localhost:8089");
     EXPECT_EQ(config.mIAMPublicServerURL, "localhost:8090");
+    EXPECT_EQ(config.mFileServerURL, "localhost:8080");
     EXPECT_EQ(config.mCMServerURL, "localhost:8094");
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/cm/");
 

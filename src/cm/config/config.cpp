@@ -136,6 +136,7 @@ Error ParseConfig(const std::string& filename, Config& config)
         config.mServiceDiscoveryURL   = object.GetValue<std::string>("serviceDiscoveryUrl");
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerUrl");
         config.mIAMPublicServerURL    = object.GetValue<std::string>("iamPublicServerUrl");
+        config.mFileServerURL         = object.GetValue<std::string>("fileServerUrl");
         config.mCMServerURL           = object.GetValue<std::string>("cmServerUrl");
         config.mStorageDir
             = object.GetValue<std::string>("storageDir", std::filesystem::path(config.mWorkingDir) / "storages");
