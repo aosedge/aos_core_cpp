@@ -7,7 +7,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <sys/utsname.h>
 
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
@@ -22,29 +21,6 @@ namespace {
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
-
-Error SetOSInfo(OSInfo& info)
-{
-    struct utsname buffer;
-
-    if (auto ret = uname(&buffer); ret != 0) {
-        return AOS_ERROR_WRAP(ErrorEnum::eFailed);
-    }
-
-    if (auto err = info.mOS.Assign(buffer.sysname); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (buffer.release[0] != '\0') {
-        info.mVersion.EmplaceValue();
-
-        if (auto err = info.mVersion->Assign(buffer.release); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    return ErrorEnum::eNone;
-}
 
 Error GetNodeID(const std::string& path, String& nodeID)
 {
@@ -273,10 +249,6 @@ Error CurrentNodeHandler::InitCPUInfo(const iam::config::NodeInfoConfig& config)
 
 Error CurrentNodeHandler::InitOSInfo(const iam::config::NodeInfoConfig& config)
 {
-    if (auto err = SetOSInfo(mNodeInfo.mOSInfo); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     if (config.mOS.has_value()) {
         if (auto err = mNodeInfo.mOSInfo.mOS.Assign(config.mOS->c_str()); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
