@@ -102,7 +102,8 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
 }
 
 launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char* subjectID, uint64_t instance,
-    const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService)
+    const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService,
+    launcher::InstanceStateEnum state = launcher::InstanceStateEnum::eCached, bool isUnitSubject = false)
 {
     launcher::InstanceInfo info;
 
@@ -114,7 +115,8 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     info.mUID            = 1000;
     info.mGID            = 2000;
     info.mTimestamp      = Time::Now();
-    info.mCached         = true;
+    info.mState          = state;
+    info.mIsUnitSubject  = isUnitSubject;
 
     return info;
 }
@@ -494,10 +496,12 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
-    auto instance2 = CreateLauncherInstanceInfo("service1", "subject1", 1, "image1", "node1");
-    auto instance3
-        = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2", UpdateItemTypeEnum::eComponent);
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false);
+    auto instance2 = CreateLauncherInstanceInfo("service1", "subject1", 1, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, true);
+    auto instance3 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+        UpdateItemTypeEnum::eComponent, launcher::InstanceStateEnum::eDisabled, false);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -519,8 +523,10 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false);
+    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, true);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -532,7 +538,8 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     instance1.mPrevNodeID     = "node1";
     instance1.mRuntimeID      = "crun";
     instance1.mUID            = 2000;
-    instance1.mCached         = false;
+    instance1.mState          = launcher::InstanceStateEnum::eActive;
+    instance1.mIsUnitSubject  = true;
 
     ASSERT_TRUE(mDB.UpdateInstance(instance1).IsNone());
 
@@ -556,8 +563,10 @@ TEST_F(CMDatabaseTest, LauncherGetInstance)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false);
+    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, true);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -586,8 +595,10 @@ TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
     ASSERT_TRUE(mDB.GetActiveInstances(emptyInstances).IsNone());
     EXPECT_EQ(emptyInstances.Size(), 0);
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false);
+    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eDisabled, true);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
@@ -604,8 +615,10 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1");
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2");
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, true);
+    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false);
 
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
