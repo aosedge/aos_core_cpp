@@ -321,10 +321,11 @@ private:
         eUID,
         eGID,
         eTimestamp,
-        eCached
+        eState,
+        eIsUnitSubject
     };
     using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
-        std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, bool>;
+        std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool>;
 
     enum class ImageManagerItemInfoColumns : int { eItemID = 0, eVersion, eIndexDigest, eState, eTimestamp };
     using ImageManagerItemInfoRow = Poco::Tuple<std::string, std::string, std::string, int, uint64_t>;
