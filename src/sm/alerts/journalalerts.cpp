@@ -295,20 +295,20 @@ std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::Journa
 
 std::optional<CoreAlert> JournalAlerts::GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit)
 {
-    for (const auto& it : cCoreComponentServices) {
-        if (unit.find(it.first) != std::string::npos) {
-            CoreAlert alert;
-
-            alert.mTimestamp     = entry.mRealTime;
-            alert.mCoreComponent = it.second;
-
-            WriteAlertMsg(entry.mMessage, alert.mMessage);
-
-            return alert;
-        }
+    auto it = std::find_if(cCoreComponentServices.begin(), cCoreComponentServices.end(),
+        [&unit](const auto& it) { return unit.find(it.first) != std::string::npos; });
+    if (it == cCoreComponentServices.end()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    CoreAlert alert;
+
+    alert.mTimestamp     = entry.mRealTime;
+    alert.mCoreComponent = it->second;
+
+    WriteAlertMsg(entry.mMessage, alert.mMessage);
+
+    return alert;
 }
 
 std::optional<SystemAlert> JournalAlerts::GetSystemAlert(const utils::JournalEntry& entry)
