@@ -50,14 +50,6 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error OnEnvVarsStatusesReceived(const String& nodeID, const Array<EnvVarsInstanceStatus>& statuses) override
-    {
-        (void)nodeID;
-        (void)statuses;
-
-        return ErrorEnum::eNone;
-    }
-
     Error WaitInstanceStatus(const String& nodeID, const InstanceIdent& instanceIdent)
     {
         std::unique_lock lock {mMutex};
