@@ -38,6 +38,15 @@ RetWithError<std::string> MkTmpDir(const std::string& dir = "", const std::strin
  */
 RetWithError<uintmax_t> CalculateSize(const std::string& path);
 
+/**
+ * Changes owner of file or directory.
+ *
+ * @param path file or directory path.
+ * @param uid user ID.
+ * @param gid group ID.
+ */
+void ChangeOwner(const std::string& path, uid_t uid, gid_t gid);
+
 } // namespace aos::common::utils
 
 #endif
