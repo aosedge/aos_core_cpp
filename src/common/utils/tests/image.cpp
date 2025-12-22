@@ -157,7 +157,7 @@ TEST(ValidateDigestTest, ValidateDigestInvalidLength)
     ASSERT_NE(result.Message(), "");
 }
 
-TEST(HashDirTest, HashDir)
+TEST(ImageTest, CalculateDirDigest)
 {
     std::string dir         = "test_dir";
     std::string fileContent = "This is a test content";
@@ -174,7 +174,7 @@ TEST(HashDirTest, HashDir)
     ofs2 << fileContent;
     ofs2.close();
 
-    auto result = HashDir(dir);
+    auto result = CalculateDirDigest(dir);
 
     ASSERT_EQ(result.mError, ErrorEnum::eNone);
     auto [algorithm, hex] = ParseDigest(result.mValue);
