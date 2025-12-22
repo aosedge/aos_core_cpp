@@ -40,7 +40,7 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bo
  * @param digest digest string.
  * @return std::pair<std::string, std::string> .
  */
-std::pair<std::string, std::string> ParseDigest(const std::string& digest);
+std::pair<std::string, std::string> ParseDigest(const Digest& digest);
 
 /**
  * Validates the digest.
@@ -50,12 +50,12 @@ std::pair<std::string, std::string> ParseDigest(const std::string& digest);
 Error ValidateDigest(const Digest& digest);
 
 /**
- * Hashes the directory.
+ * Calculates directory digest.
  *
  * @param dir directory path.
- * @return std::string.
+ * @return RetWithError<Digest>.
  */
-RetWithError<std::string> HashDir(const std::string& dir);
+RetWithError<Digest> CalculateDirDigest(const std::string& dir);
 
 } // namespace aos::common::utils
 
