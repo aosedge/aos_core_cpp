@@ -66,4 +66,23 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path)
     return {0, ErrorEnum::eNotSupported};
 }
 
+void ChangeOwner(const std::string& path, uid_t uid, gid_t gid)
+{
+    auto changeOwner = [](const std::string& path, uid_t uid, gid_t gid) {
+        if (chown(path.c_str(), uid, gid) == -1) {
+            AOS_ERROR_THROW(errno, "can't change file owner");
+        }
+    };
+
+    changeOwner(path, uid, gid);
+
+    if (std::filesystem::is_regular_file(path)) {
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+        changeOwner(entry.path().string(), uid, gid);
+    }
+}
+
 } // namespace aos::common::utils
