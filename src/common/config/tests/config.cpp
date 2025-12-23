@@ -96,9 +96,8 @@ TEST_F(CommonConfigTest, ParseMonitoringConfig)
     aos::common::utils::CaseInsensitiveObjectWrapper wrapper(object);
 
     aos::monitoring::Config config;
-    auto                    err = aos::common::config::ParseMonitoringConfig(wrapper.GetObject("monitoring"), config);
 
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_NO_THROW(aos::common::config::ParseMonitoringConfig(wrapper.GetObject("monitoring"), config));
 
     EXPECT_EQ(config.mPollPeriod, aos::Time::cMinutes);
     EXPECT_EQ(config.mAverageWindow, aos::Time::cMinutes * 5);
@@ -119,10 +118,9 @@ TEST_F(CommonConfigTest, ParseMigrationConfig)
     aos::common::utils::CaseInsensitiveObjectWrapper wrapper(object);
 
     aos::common::config::Migration config;
-    auto                           err = aos::common::config::ParseMigrationConfig(
-        wrapper.GetObject("migration"), "/default/migration/path", "/default/merged/path", config);
 
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_NO_THROW(aos::common::config::ParseMigrationConfig(
+        wrapper.GetObject("migration"), "/default/migration/path", "/default/merged/path", config));
 
     EXPECT_EQ(config.mMigrationPath, "/custom/migration/path");
     EXPECT_EQ(config.mMergedMigrationPath, "/custom/merged/path");
@@ -143,9 +141,8 @@ TEST_F(CommonConfigTest, ParseJournalAlertsConfig)
     aos::common::utils::CaseInsensitiveObjectWrapper wrapper(object);
 
     aos::common::config::JournalAlerts config;
-    auto err = aos::common::config::ParseJournalAlertsConfig(wrapper.GetObject("journalAlerts"), config);
 
-    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_NO_THROW(aos::common::config::ParseJournalAlertsConfig(wrapper.GetObject("journalAlerts"), config));
 
     std::vector<std::string> expectedFilter = {"test1", "test2", "test3"};
     EXPECT_EQ(config.mFilter, expectedFilter);
