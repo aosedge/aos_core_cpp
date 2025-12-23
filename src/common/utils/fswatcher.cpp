@@ -39,7 +39,7 @@ namespace aos::common::utils {
 
 Error FSWatcher::Init(Duration pollTimeout, const std::vector<fs::FSEvent>& events)
 {
-    LOG_DBG() << "Initialize file system watcher" << Log::Field("pollTimeout", pollTimeout);
+    LOG_DBG() << "Init file system watcher" << Log::Field("pollTimeout", pollTimeout);
 
     mPollTimeout = pollTimeout;
 
@@ -419,7 +419,7 @@ size_t FSWatcher::ToInotifyMask(const std::vector<fs::FSEvent>& events) const
 
 Error FSBufferedWatcher::Init(Duration pollTimeout, Duration notifyTimeout, const std::vector<fs::FSEvent>& events)
 {
-    LOG_DBG() << "Initialize buffered file system watcher" << Log::Field("notifyTimeout", notifyTimeout);
+    LOG_DBG() << "Init buffered file system watcher" << Log::Field("notifyTimeout", notifyTimeout);
 
     if (auto err = FSWatcher::Init(pollTimeout, events); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);

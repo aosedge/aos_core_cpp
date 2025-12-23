@@ -85,7 +85,8 @@ void App::Init()
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
-    LOG_INF() << "Initialize message-proxy: version = " << AOS_CORE_CPP_VERSION;
+    LOG_INF() << "Init MP" << Log::Field("version", AOS_CORE_CPP_VERSION);
+    LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(AosCore));
 
     CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
     if (result != CURLE_OK) {

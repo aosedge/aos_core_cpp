@@ -186,7 +186,7 @@ Error Communication::Init(const cm::config::Config& config,
     smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
     iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler)
 {
-    LOG_DBG() << "Initializing communication";
+    LOG_DBG() << "Init communication";
 
     Poco::Net::initializeSSL();
 

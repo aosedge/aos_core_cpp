@@ -43,7 +43,7 @@ const auto       cUnitMapping = std::map<std::string, size_t> {
 Error NodeMonitoringProvider::Init(
     aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider, sm::networkmanager::TrafficMonitorItf& trafficMonitor)
 {
-    LOG_DBG() << "Initialize node monitoring provider";
+    LOG_DBG() << "Init node monitoring provider";
 
     mCPUCount         = std::thread::hardware_concurrency();
     mNodeInfoProvider = &nodeInfoProvider;

@@ -19,7 +19,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
     const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials, const String& certType,
     bool insecureConnection)
 {
-    LOG_INF() << "Initializing IAM client";
+    LOG_DBG() << "Init IAM client";
 
     auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
     if (!err.IsNone()) {

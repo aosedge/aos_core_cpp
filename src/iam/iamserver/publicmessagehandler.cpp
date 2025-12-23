@@ -25,7 +25,7 @@ Error PublicMessageHandler::Init(NodeController& nodeController, iamclient::Iden
     iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider)
 {
-    LOG_DBG() << "Initialize message handler: handler=public";
+    LOG_DBG() << "Init message handler: handler=public";
 
     mNodeController     = &nodeController;
     mIdentProvider      = &identProvider;

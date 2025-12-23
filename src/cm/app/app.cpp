@@ -172,7 +172,8 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 
 void App::Init()
 {
-    LOG_INF() << "Initialize CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+    LOG_INF() << "Init CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+    LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(AosCore));
 }
 
 void App::Start()
