@@ -29,7 +29,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
     nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, bool insecureConn)
 {
-    LOG_INF() << "Initialize SM Controller";
+    LOG_DBG() << "Init SM controller";
 
     mConfig                 = config;
     mCloudConnection        = &cloudConnection;

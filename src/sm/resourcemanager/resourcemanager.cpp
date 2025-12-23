@@ -91,7 +91,7 @@ void ParseResourceInfo(const common::utils::CaseInsensitiveObjectWrapper& object
 
 Error ResourceManager::Init(const Config& config)
 {
-    LOG_DBG() << "Initialize resource manager";
+    LOG_DBG() << "Init resource manager";
 
     mConfig = config;
 

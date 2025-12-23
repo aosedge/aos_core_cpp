@@ -28,7 +28,7 @@ PublicCurrentNodeService::~PublicCurrentNodeService()
 Error PublicCurrentNodeService::Init(
     const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
 {
-    LOG_INF() << "Init public current node service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
+    LOG_DBG() << "Init public current node service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
               << Log::Field("insecureConnection", insecureConnection);
 
     std::lock_guard lock {mMutex};

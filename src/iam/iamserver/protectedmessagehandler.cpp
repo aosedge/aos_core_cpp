@@ -38,7 +38,7 @@ Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::I
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
     iam::provisionmanager::ProvisionManagerItf& provisionManager)
 {
-    LOG_DBG() << "Initialize message handler: handler=protected";
+    LOG_DBG() << "Init message handler: handler=protected";
 
     mProvisionManager = &provisionManager;
 

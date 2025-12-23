@@ -32,7 +32,7 @@ Error PublicCertService::Init(
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Init public cert service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
+    LOG_DBG() << "Init public cert service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
               << Log::Field("insecureConnection", insecureConnection);
 
     mTLSCredentials     = &tlsCredentials;

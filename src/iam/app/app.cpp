@@ -224,7 +224,8 @@ void App::defineOptions(Poco::Util::OptionSet& options)
 
 void App::Init()
 {
-    LOG_INF() << "Initialize IAM: version = " << AOS_CORE_CPP_VERSION;
+    LOG_INF() << "Init IAM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+    LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(App));
 
     // Initialize Aos modules
 
