@@ -19,6 +19,7 @@
 #include <common/config/config.hpp>
 #include <common/iamclient/config.hpp>
 #include <common/utils/time.hpp>
+#include <sm/launcher/config.hpp>
 #include <sm/smclient/config.hpp>
 
 namespace aos::sm::config {
@@ -38,6 +39,7 @@ struct Config {
     std::string                   mWorkingDir;
     std::string                   mNodeConfigFile;
     monitoring::Config            mMonitoring;
+    launcher::Config              mLauncher;
     logging::Config               mLogging;
     common::config::JournalAlerts mJournalAlerts;
     common::config::Migration     mMigration;
