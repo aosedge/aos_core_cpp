@@ -25,6 +25,7 @@
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/database/database.hpp>
 #include <sm/iamclient/iamclient.hpp>
+#include <sm/launcher/runtimes.hpp>
 #include <sm/logprovider/logprovider.hpp>
 #include <sm/monitoring/nodemonitoringprovider.hpp>
 #include <sm/networkmanager/cni.hpp>
@@ -82,6 +83,7 @@ private:
     sm::cni::CNI                           mCNI;
     sm::cni::Exec                          mExec;
     sm::database::Database                 mDatabase;
+    sm::launcher::Runtimes                 mRuntimes;
     sm::launcher::Launcher                 mLauncher;
     sm::logprovider::LogProvider           mLogProvider;
     sm::monitoring::NodeMonitoringProvider mNodeMonitoringProvider;

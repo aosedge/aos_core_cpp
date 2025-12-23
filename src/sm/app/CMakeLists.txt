@@ -17,29 +17,30 @@ set(SOURCES app.cpp aoscore.cpp main.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES
-    aos::sm::config
-    aos::sm::database
-    aos::sm::iamclient
-    aos::sm::imagemanager
-    aos::sm::monitoring
-    aos::sm::resourcemanager
-    aos::sm::networkmanager
-    aos::sm::alerts
-    aos::sm::smclient
-    aos::sm::logprovider
+    Poco::Util
+    aos::core::common::crypto
+    aos::core::common::monitoring
+    aos::core::common::pkcs11
+    aos::core::common::version
+    aos::core::sm::launcher
+    aos::core::sm::networkmanager
+    aos::core::sm::nodeconfig
     aos::common::iamclient
     aos::common::jsonprovider
     aos::common::logger
     aos::common::network
     aos::common::version
-    aos::core::common::monitoring
-    aos::core::common::version
-    aos::core::common::crypto
-    aos::core::common::pkcs11
-    aos::core::sm::launcher
-    aos::core::sm::nodeconfig
-    aos::core::sm::networkmanager
-    Poco::Util
+    aos::sm::alerts
+    aos::sm::config
+    aos::sm::database
+    aos::sm::iamclient
+    aos::sm::imagemanager
+    aos::sm::launcher
+    aos::sm::logprovider
+    aos::sm::monitoring
+    aos::sm::networkmanager
+    aos::sm::resourcemanager
+    aos::sm::smclient
 )
 
 # ######################################################################################################################
