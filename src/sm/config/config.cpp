@@ -68,6 +68,27 @@ void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing cmReconnectTimeout tag");
 };
 
+void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, launcher::Config& config)
+{
+    if (object.Has("runtimes")) {
+        auto runtimesObject = object.GetObject("runtimes");
+
+        for (const auto& name : runtimesObject.GetNames()) {
+            auto runtimeObject = common::utils::CaseInsensitiveObjectWrapper(runtimesObject.GetObject(name));
+
+            launcher::RuntimeConfig runtimeConfig;
+
+            runtimeConfig.mType = runtimeObject.GetValue<std::string>("type");
+
+            if (runtimeObject.Has("config")) {
+                runtimeConfig.mConfig = runtimeObject.GetObject("config");
+            }
+
+            config.mRuntimes.emplace(name, std::move(runtimeConfig));
+        }
+    }
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -103,10 +124,12 @@ Error ParseConfig(const std::string& filename, Config& config)
         common::config::ParseMonitoringConfig(
             object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
 
+        auto launcher      = object.Has("launcher") ? object.GetObject("launcher") : empty;
         auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
         auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
         auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
+        ParseLauncherConfig(launcher, config.mLauncher);
         ParseLoggingConfig(logging, config.mLogging);
         common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
         common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
