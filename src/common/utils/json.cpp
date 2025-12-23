@@ -61,6 +61,15 @@ Poco::JSON::Array::Ptr CaseInsensitiveObjectWrapper::GetArray(const std::string&
     return Get(key).extract<Poco::JSON::Array::Ptr>();
 }
 
+Poco::JSON::Object::NameList CaseInsensitiveObjectWrapper::GetNames() const
+{
+    Poco::JSON::Object::NameList nameList;
+
+    mObject->getNames(nameList);
+
+    return nameList;
+}
+
 CaseInsensitiveObjectWrapper::operator Poco::JSON::Object::Ptr() const
 {
     return mObject;
