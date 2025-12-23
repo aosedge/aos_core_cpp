@@ -16,7 +16,7 @@ namespace aos::mp::communication {
 
 Error VChan::Init(const config::VChanConfig& config)
 {
-    LOG_DBG() << "Initialize the virtual channel";
+    LOG_DBG() << "Init the virtual channel";
 
     mConfig = config;
 

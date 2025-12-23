@@ -22,8 +22,8 @@ void AosCore::Init(const std::string& configFile)
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
-    LOG_INF() << "Init SM: version=" << AOS_CORE_CPP_VERSION;
-    LOG_DBG() << "Aos core size: size=" << sizeof(AosCore);
+    LOG_INF() << "Init SM" << Log::Field("version", AOS_CORE_CPP_VERSION);
+    LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(AosCore));
 
     // Initialize Aos modules
 

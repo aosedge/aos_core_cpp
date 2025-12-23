@@ -51,7 +51,7 @@ Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
 {
     Error err;
 
-    LOG_INF() << "Initialize current node handler";
+    LOG_DBG() << "Init current node handler";
 
     if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mNodeID); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);

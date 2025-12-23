@@ -18,7 +18,7 @@ namespace aos::mp::communication {
 
 Error Socket::Init(int port)
 {
-    LOG_DBG() << "Initializing socket with: port=" << port;
+    LOG_DBG() << "Init socket with: port=" << port;
 
     mPort = port;
 
@@ -33,7 +33,7 @@ Error Socket::Connect()
         return Error {EINTR};
     }
 
-    LOG_DBG() << "Initializing socket with: port=" << mPort;
+    LOG_DBG() << "Init socket with: port=" << mPort;
 
     mClose = false;
 

@@ -18,7 +18,7 @@ namespace aos::mp::cmclient {
 Error CMClient::Init(const config::Config& config, common::iamclient::TLSCredentialsItf& certProvider,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, bool insecureConnection)
 {
-    LOG_INF() << "Initializing CM client";
+    LOG_DBG() << "Init CM client";
 
     mCertProvider       = &certProvider;
     mCertLoader         = &certLoader;
