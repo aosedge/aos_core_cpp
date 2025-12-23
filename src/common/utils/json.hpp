@@ -141,6 +141,13 @@ public:
     Poco::JSON::Array::Ptr GetArray(const std::string& key) const;
 
     /**
+     * Gets names of the object properties.
+     *
+     * @return Poco::JSON::Object::NameList.
+     */
+    Poco::JSON::Object::NameList GetNames() const;
+
+    /**
      * Converts to Poco::JSON::Object::Ptr.
      *
      * @return Poco::JSON::Object::Ptr.
