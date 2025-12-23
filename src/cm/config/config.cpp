@@ -47,8 +47,9 @@ void ParseCryptConfig(const common::utils::CaseInsensitiveObjectWrapper& object,
 
 void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
 {
-    auto err = common::config::ParseMonitoringConfig(object, config);
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing monitoring config");
+    common::config::ParseMonitoringConfig(object, config);
+
+    Error err;
 
     Tie(config.mSendPeriod, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("sendPeriod", cDefaultMonitoringSendPeriod));
@@ -122,12 +123,8 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseImagemanagerConfig(object.Has("imageManager") ? object.GetObject("imageManager") : empty,
             config.mWorkingDir, config.mImageManager);
 
-        if (auto err
-            = common::config::ParseMigrationConfig(object.Has("migration") ? object.GetObject("migration") : empty,
-                cDefaultMigrationPath, std::filesystem::path(config.mWorkingDir) / "migration", config.mMigration);
-            err != ErrorEnum::eNone) {
-            return AOS_ERROR_WRAP(err);
-        }
+        common::config::ParseMigrationConfig(object.Has("migration") ? object.GetObject("migration") : empty,
+            cDefaultMigrationPath, std::filesystem::path(config.mWorkingDir) / "migration", config.mMigration);
 
         config.mDNSStoragePath = object.GetValue<std::string>("dnsStoragePath", cDefaultDNSStoragePath);
         config.mDNSIP          = object.GetValue<std::string>("dnsIp");
