@@ -92,10 +92,17 @@ void AosCore::Init(const std::string& configFile)
     err = mNodeMonitoringProvider.Init(mIAMClient, mTrafficMonitor);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node monitoring provider");
 
-    // Initialize launcher
+    // Initialize runtimes
 
-    // StaticArray<launcher::RuntimeItf*, cMaxNumNodeRuntimes> runtimes;
+    err = mRuntimes.Init(mConfig.mLauncher, mIAMClient);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize runtimes");
+
     auto runtimes = std::make_unique<StaticArray<launcher::RuntimeItf*, cMaxNumNodeRuntimes>>();
+
+    err = mRuntimes.GetRuntimes(*runtimes);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't get runtimes");
+
+    // Initialize launcher
 
     err = mLauncher.Init(*runtimes, mSMClient, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
