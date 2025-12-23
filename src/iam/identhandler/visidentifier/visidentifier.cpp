@@ -65,7 +65,7 @@ VISIdentifier::VISIdentifier()
 
 Error VISIdentifier::Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider)
 {
-    LOG_DBG() << "Initializing VIS identifier";
+    LOG_DBG() << "Init VIS identifier";
 
     mConfig       = config;
     mUUIDProvider = &uuidProvider;

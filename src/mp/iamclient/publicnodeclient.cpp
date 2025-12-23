@@ -18,7 +18,7 @@ namespace aos::mp::iamclient {
 Error PublicNodeClient::Init(
     const config::IAMConfig& cfg, common::iamclient::TLSCredentialsItf& certProvider, bool publicServer)
 {
-    LOG_INF() << "Initializing public node client: publicServer=" << publicServer;
+    LOG_DBG() << "Init public node client: publicServer=" << publicServer;
 
     mCertStorage  = cfg.mCertStorage;
     mCertProvider = &certProvider;
