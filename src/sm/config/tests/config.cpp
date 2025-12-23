@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <sm/config/config.hpp>
 
@@ -40,6 +41,19 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "systemAlertPriority": 5
     },
     "cmReconnectTimeout": "1m",
+    "launcher": {
+        "runtimes": {
+            "container": {
+                "type": "crun"
+            },
+            "rootfs": {
+                "type": "aos-vm-rootfs"
+            },
+            "boot": {
+                "type": "aos-vm-boot"
+            }
+        }
+    },
     "logging": {
         "maxPartCount": 10,
         "maxPartSize": 1024
@@ -111,7 +125,8 @@ TEST_F(ConfigTest, ParseConfig)
 {
     auto config = std::make_unique<aos::sm::config::Config>();
 
-    ASSERT_TRUE(aos::sm::config::ParseConfig(cConfigFileName, *config).IsNone());
+    auto err = aos::sm::config::ParseConfig(cConfigFileName, *config);
+    ASSERT_TRUE(err.IsNone()) << "parsing config failed: " << aos::tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(config->mIAMClientConfig.mCACert, "CACert");
     EXPECT_EQ(config->mIAMClientConfig.mIAMPublicServerURL, "localhost:8090");
@@ -129,6 +144,14 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mJournalAlerts.mFilter[1], "regexp");
     EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, 7);
     EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, 5);
+
+    EXPECT_EQ(config->mLauncher.mRuntimes.size(), 3);
+    EXPECT_TRUE(config->mLauncher.mRuntimes.find("container") != config->mLauncher.mRuntimes.end());
+    EXPECT_TRUE(config->mLauncher.mRuntimes.find("rootfs") != config->mLauncher.mRuntimes.end());
+    EXPECT_TRUE(config->mLauncher.mRuntimes.find("boot") != config->mLauncher.mRuntimes.end());
+    EXPECT_EQ(config->mLauncher.mRuntimes.at("container").mType, "crun");
+    EXPECT_EQ(config->mLauncher.mRuntimes.at("rootfs").mType, "aos-vm-rootfs");
+    EXPECT_EQ(config->mLauncher.mRuntimes.at("boot").mType, "aos-vm-boot");
 
     EXPECT_EQ(config->mLogging.mMaxPartCount, 10);
     EXPECT_EQ(config->mLogging.mMaxPartSize, 1024);

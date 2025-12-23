@@ -16,7 +16,7 @@ set(SOURCES config.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::config GTest::gmock_main)
+set(LIBRARIES aos::sm::config aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
