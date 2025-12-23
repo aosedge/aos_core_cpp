@@ -100,27 +100,17 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
-        if (auto err = common::config::ParseMonitoringConfig(
-                object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
-            err != ErrorEnum::eNone) {
-            return AOS_ERROR_WRAP(err);
-        }
+        common::config::ParseMonitoringConfig(
+            object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
 
         auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
         auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
         auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
         ParseLoggingConfig(logging, config.mLogging);
-        if (auto err = common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
-            err != ErrorEnum::eNone) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
-                JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
-            err != ErrorEnum::eNone) {
-            return AOS_ERROR_WRAP(err);
-        }
+        common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
+        common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
+            JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

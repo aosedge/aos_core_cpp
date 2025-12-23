@@ -47,9 +47,8 @@ struct Migration {
  *
  * @param object JSON object.
  * @param[out] config monitoring configuration.
- * @return Error.
  */
-Error ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, monitoring::Config& config);
+void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, monitoring::Config& config);
 
 /*
  * Parses migration configuration.
@@ -58,9 +57,8 @@ Error ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& o
  * @param defaultMigrationPath default migration path.
  * @param defaultMergedMigrationPath default merged migration path.
  * @param[out] config migration configuration.
- * @return Error.
  */
-Error ParseMigrationConfig(const common::utils::CaseInsensitiveObjectWrapper& object,
+void ParseMigrationConfig(const common::utils::CaseInsensitiveObjectWrapper& object,
     const std::string& defaultMigrationPath, const std::string& defaultMergedMigrationPath, Migration& config);
 
 /*
@@ -68,9 +66,8 @@ Error ParseMigrationConfig(const common::utils::CaseInsensitiveObjectWrapper& ob
  *
  * @param object JSON object.
  * @param[out] config journal alerts configuration.
- * @return Error.
  */
-Error ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, JournalAlerts& config);
+void ParseJournalAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object, JournalAlerts& config);
 
 } // namespace aos::common::config
 
