@@ -47,6 +47,7 @@ static void ValidateEncoded(const std::string& algorithm, const std::string& enc
     }
 
     const std::regex& r = it->second;
+
     if (encoded.length() != 2 * (algorithm == "sha256" ? 32 : algorithm == "sha384" ? 48 : 64)) {
         throw std::runtime_error("Invalid encoded length");
     }
@@ -74,7 +75,7 @@ static std::vector<std::string> CollectFiles(const std::string& dir)
  * Public
  **********************************************************************************************************************/
 
-std::pair<std::string, std::string> ParseDigest(const std::string& digest)
+std::pair<std::string, std::string> ParseDigest(const Digest& digest)
 {
     auto pos = digest.find(':');
     if (pos == std::string::npos) {
@@ -167,7 +168,7 @@ Error ValidateDigest(const Digest& digest)
     std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
     if (cAnchoredEncodedRegexps.find(algorithm) == cAnchoredEncodedRegexps.end()) {
-        return Error(ErrorEnum::eInvalidArgument, "Unsupported algorithm");
+        return Error(ErrorEnum::eInvalidArgument, "unsupported algorithm");
     }
 
     try {
@@ -179,27 +180,30 @@ Error ValidateDigest(const Digest& digest)
     return ErrorEnum::eNone;
 }
 
-RetWithError<std::string> HashDir(const std::string& dir)
+RetWithError<Digest> CalculateDirDigest(const std::string& dir)
 {
     std::vector<std::string> files = CollectFiles(dir);
+
     std::sort(files.begin(), files.end(), [](const std::string& a, const std::string& b) { return a < b; });
 
     Poco::SHA2Engine h;
+
     for (const auto& file : files) {
         if (file.find('\n') != std::string::npos) {
-            return {"", Error(ErrorEnum::eInvalidArgument, "File names with new lines are not supported")};
+            return {"", Error(ErrorEnum::eInvalidArgument, "file names with new lines are not supported")};
         }
 
         std::ifstream fileStream(file, std::ios::binary);
         if (!fileStream.is_open()) {
-            return {"", Error(ErrorEnum::eFailed, "Failed to open file")};
+            return {"", Error(ErrorEnum::eFailed, "failed to open file")};
         }
 
         Poco::SHA2Engine         hf;
         Poco::DigestOutputStream dos(hf);
         Poco::StreamCopier::copyStream(fileStream, dos);
 
-        std::string hash = Poco::DigestEngine::digestToHex(hf.digest());
+        std::string hash = Poco::DigestEngine::digestToHex(hf.digest()) + "  " + fs::relative(file, dir).string();
+
         h.update(hash + "\n");
     }
 
