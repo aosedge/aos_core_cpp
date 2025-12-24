@@ -83,7 +83,7 @@ iamanager::v6::NodeInfo ConvertToProto(const NodeInfo& src)
         result.set_physical_ram(*src.mPhysicalRAM);
     }
 
-    ConvertOSInfoToProto(src.mOSInfo, *result.mutable_os_info());
+    ConvertToProto(src.mOSInfo, *result.mutable_os_info());
 
     for (const auto& cpuInfo : src.mCPUs) {
         *result.add_cpus() = ConvertToProto(cpuInfo);
