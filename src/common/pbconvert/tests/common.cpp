@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <common/pbconvert/common.hpp>
 
@@ -143,8 +144,8 @@ TEST_F(PBConvertCommon, ConvertOSInfoToProto)
     src.mFeatures.PushBack("feature2");
     src.mFeatures.PushBack("feature3");
 
-    iamanager::v6::OSInfo dst;
-    aos::common::pbconvert::ConvertOSInfoToProto(src, dst);
+    ::common::v2::OSInfo dst;
+    aos::common::pbconvert::ConvertToProto(src, dst);
 
     EXPECT_STREQ(dst.os().c_str(), "linux");
     EXPECT_STREQ(dst.version().c_str(), "5.15.0");
@@ -159,12 +160,65 @@ TEST_F(PBConvertCommon, ConvertOSInfoToProtoWithoutOptionalFields)
     aos::OSInfo src;
     src.mOS = "windows";
 
-    iamanager::v6::OSInfo dst;
-    aos::common::pbconvert::ConvertOSInfoToProto(src, dst);
+    ::common::v2::OSInfo dst;
+    aos::common::pbconvert::ConvertToProto(src, dst);
 
     EXPECT_STREQ(dst.os().c_str(), "windows");
     EXPECT_TRUE(dst.version().empty());
     EXPECT_EQ(dst.features_size(), 0);
+}
+
+TEST_F(PBConvertCommon, ConvertOSInfoToAos)
+{
+    ::common::v2::OSInfo src;
+
+    src.set_os("linux");
+    src.set_version("5.15.0");
+    src.add_features("feature1");
+    src.add_features("feature2");
+    src.add_features("feature3");
+
+    aos::OSInfo dst;
+
+    auto err = aos::common::pbconvert::ConvertToAos(src, dst);
+    EXPECT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(dst.mOS, "linux");
+    EXPECT_EQ(*dst.mVersion, "5.15.0");
+    EXPECT_EQ(dst.mFeatures[0], "feature1");
+    EXPECT_EQ(dst.mFeatures[1], "feature2");
+    EXPECT_EQ(dst.mFeatures[2], "feature3");
+}
+
+TEST_F(PBConvertCommon, ConvertArchInfoToProto)
+{
+    aos::ArchInfo src;
+
+    src.mArchitecture = "arm64";
+    src.mVariant.SetValue("v7");
+
+    ::common::v2::ArchInfo dst;
+
+    aos::common::pbconvert::ConvertToProto(src, dst);
+
+    EXPECT_EQ(dst.architecture(), "arm64");
+    EXPECT_EQ(dst.variant(), "v7");
+}
+
+TEST_F(PBConvertCommon, ConvertArchInfoToAos)
+{
+    ::common::v2::ArchInfo src;
+
+    src.set_architecture("arm64");
+    src.set_variant("v7");
+
+    aos::ArchInfo dst;
+
+    auto err = aos::common::pbconvert::ConvertToAos(src, dst);
+    EXPECT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(dst.mArchitecture, "arm64");
+    EXPECT_EQ(*dst.mVariant, "v7");
 }
 
 TEST_F(PBConvertCommon, ConvertNodeInfoToAos)

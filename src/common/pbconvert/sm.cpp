@@ -273,11 +273,31 @@ Error ConvertFromProto(const servicemanager::v5::RuntimeInfo& src, aos::RuntimeI
         return AOS_ERROR_WRAP(err);
     }
 
-    dst.mMaxDMIPS     = src.max_dmips();
-    dst.mAllowedDMIPS = src.allowed_dmips();
-    dst.mTotalRAM     = src.total_ram();
-    dst.mAllowedRAM   = src.allowed_ram();
+    if (src.max_dmips() > 0) {
+        dst.mMaxDMIPS.SetValue(src.max_dmips());
+    }
+
+    if (src.allowed_dmips() > 0) {
+        dst.mAllowedDMIPS.SetValue(src.allowed_dmips());
+    }
+
+    if (src.total_ram() > 0) {
+        dst.mTotalRAM.SetValue(src.total_ram());
+    }
+
+    if (src.allowed_ram() > 0) {
+        dst.mAllowedRAM.SetValue(src.allowed_ram());
+    }
+
     dst.mMaxInstances = static_cast<size_t>(src.max_instances());
+
+    if (auto err = ConvertToAos(src.os_info(), dst.mOSInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = ConvertToAos(src.arch_info(), dst.mArchInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     return ErrorEnum::eNone;
 }
@@ -1001,6 +1021,9 @@ void ConvertToProto(const RuntimeInfo& src, servicemanager::v5::RuntimeInfo& dst
     }
 
     dst.set_max_instances(src.mMaxInstances);
+
+    ConvertToProto(src.mOSInfo, *dst.mutable_os_info());
+    ConvertToProto(src.mArchInfo, *dst.mutable_arch_info());
 }
 
 void ConvertToProto(const ResourceInfo& src, servicemanager::v5::ResourceInfo& dst)

@@ -119,7 +119,7 @@ void ConvertToAos(const ::common::v2::InstanceFilter& src, InstanceFilter& dst)
     }
 }
 
-void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst)
+void ConvertToProto(const OSInfo& src, ::common::v2::OSInfo& dst)
 {
     dst.set_os(src.mOS.CStr());
 
@@ -132,18 +132,58 @@ void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst)
     }
 }
 
+Error ConvertToAos(const ::common::v2::OSInfo& src, OSInfo& dst)
+{
+    if (auto err = dst.mOS.Assign(src.os().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (!src.version().empty()) {
+        dst.mVersion.SetValue(src.version().c_str());
+    }
+
+    for (const auto& feature : src.features()) {
+        if (auto err = dst.mFeatures.PushBack(feature.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+void ConvertToProto(const ArchInfo& src, ::common::v2::ArchInfo& dst)
+{
+    dst.set_architecture(src.mArchitecture.CStr());
+
+    if (src.mVariant.HasValue()) {
+        dst.set_variant(src.mVariant->CStr());
+    }
+}
+
+Error ConvertToAos(const ::common::v2::ArchInfo& src, ArchInfo& dst)
+{
+    if (auto err = dst.mArchitecture.Assign(src.architecture().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (!src.variant().empty()) {
+        dst.mVariant.SetValue(src.variant().c_str());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUInfo>& src, CPUInfoArray& dst)
 {
     for (const auto& srcCPU : src) {
         CPUInfo dstCPU;
 
-        dstCPU.mModelName              = srcCPU.model_name().c_str();
-        dstCPU.mNumCores               = srcCPU.num_cores();
-        dstCPU.mNumThreads             = srcCPU.num_threads();
-        dstCPU.mArchInfo.mArchitecture = srcCPU.arch_info().architecture().c_str();
+        dstCPU.mModelName  = srcCPU.model_name().c_str();
+        dstCPU.mNumCores   = srcCPU.num_cores();
+        dstCPU.mNumThreads = srcCPU.num_threads();
 
-        if (!srcCPU.arch_info().variant().empty()) {
-            dstCPU.mArchInfo.mVariant.SetValue(srcCPU.arch_info().variant().c_str());
+        if (auto err = ConvertToAos(srcCPU.arch_info(), dstCPU.mArchInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
 
         if (srcCPU.max_dmips() > 0) {
