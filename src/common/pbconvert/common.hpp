@@ -87,10 +87,34 @@ google::protobuf::Timestamp TimestampToPB(const aos::Time& time);
 /**
  * Converts aos OSInfo to protobuf OSInfo.
  *
- * @param src aos OSInfo.
- * @param[out] dst protobuf OSInfo.
+ * @param src aos OS Info.
+ * @param[out] dst protobuf OS Info.
  */
-void ConvertOSInfoToProto(const OSInfo& src, iamanager::v6::OSInfo& dst);
+void ConvertToProto(const OSInfo& src, ::common::v2::OSInfo& dst);
+
+/**
+ * Converts protobuf OSInfo to aos OSInfo.
+ *
+ * @param src protobuf OS Info.
+ * @param[out] dst aos OS Info.
+ */
+Error ConvertToAos(const ::common::v2::OSInfo& src, OSInfo& dst);
+
+/**
+ * Converts aos ArchInfo to protobuf ArchInfo.
+ *
+ * @param src aos arch info.
+ * @param[out] dst protobuf arch Info.
+ */
+void ConvertToProto(const ArchInfo& src, ::common::v2::ArchInfo& dst);
+
+/**
+ * Converts protobuf ArchInfo to aos ArchInfo.
+ *
+ * @param src protobuf arch info.
+ * @param[out] dst aos arch info.
+ */
+Error ConvertToAos(const ::common::v2::ArchInfo& src, ArchInfo& dst);
 
 /**
  * Converts protobuf cpus to aos.

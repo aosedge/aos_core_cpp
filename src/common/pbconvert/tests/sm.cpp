@@ -605,6 +605,12 @@ TEST_F(PBConvertSMTest, ConvertSMInfoFromProto)
     runtime->set_total_ram(4096);
     runtime->set_allowed_ram(2048);
     runtime->set_max_instances(10);
+    auto* archInfo = runtime->mutable_arch_info();
+    archInfo->set_architecture("arm64");
+    archInfo->set_variant("v7");
+    auto* osInfo = runtime->mutable_os_info();
+    osInfo->set_os("linux");
+    osInfo->set_version("5.10");
 
     cm::nodeinfoprovider::SMInfo aosInfo;
 
@@ -620,6 +626,10 @@ TEST_F(PBConvertSMTest, ConvertSMInfoFromProto)
     EXPECT_EQ(aosInfo.mRuntimes[0].mRuntimeType, String("container"));
     EXPECT_EQ(aosInfo.mRuntimes[0].mMaxDMIPS, 1000);
     EXPECT_EQ(aosInfo.mRuntimes[0].mMaxInstances, 10);
+    EXPECT_EQ(aosInfo.mRuntimes[0].mArchInfo.mArchitecture, "arm64");
+    EXPECT_EQ(*aosInfo.mRuntimes[0].mArchInfo.mVariant, "v7");
+    EXPECT_EQ(aosInfo.mRuntimes[0].mOSInfo.mOS, "linux");
+    EXPECT_EQ(*aosInfo.mRuntimes[0].mOSInfo.mVersion, "5.10");
 }
 
 TEST_F(PBConvertSMTest, ConvertNodeConfigToCheckNodeConfigProto)

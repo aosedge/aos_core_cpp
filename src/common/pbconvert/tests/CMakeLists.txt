@@ -28,7 +28,7 @@ endif()
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::pbconvert GTest::gmock_main)
+set(LIBRARIES aos::core::common::tests::utils aos::common::pbconvert GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
