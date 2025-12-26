@@ -7,6 +7,8 @@
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 
+#include <cm/utils/uidgidvalidator.hpp>
+
 #include "aoscore.hpp"
 #include "envvarhandler.hpp"
 
@@ -27,10 +29,6 @@ void AosCore::Init(const std::string& configFile)
 
     err = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile, mConfig);
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse config");
-
-    // Initialize env var handler
-
-    mEnvVarHandler = std::make_unique<aos::cm::launcher::EnvVarHandler>();
 
     // Initialize crypto provider
 
@@ -67,7 +65,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize communication
 
     err = mCommunication.Init(mConfig, mIAMClient, mIAMClient, mIAMClient, mCertLoader, mCryptoProvider, mCryptoHelper,
-        mCryptoProvider, mUpdateManager, mStorageState, mSMController, *mEnvVarHandler, mIAMClient, mIAMClient);
+        mCryptoProvider, mUpdateManager, mStorageState, mSMController, mLauncher, mIAMClient, mIAMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize communication");
 
     InitDatabase();
@@ -101,6 +99,11 @@ void AosCore::Init(const std::string& configFile)
 
     err = mUnitConfig.Init({mConfig.mUnitConfigFile.c_str()}, mNodeInfoProvider, mSMController, mJSONProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize unit config");
+
+    err = mLauncher.Init(mConfig.mLauncher, mNodeInfoProvider, mSMController, mImageManager, mOCISpec, mUnitConfig,
+        mStorageState, mNetworkManager, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid,
+        mDatabase);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     err = mUpdateManager.Init({mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig, mNodeInfoProvider,
         mImageManager, mLauncher, mCommunication, mCommunication);
@@ -174,6 +177,15 @@ void AosCore::Start()
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mImageManager.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop image manager" << Log::Field(err);
+        }
+    });
+
+    err = mLauncher.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start launcher");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mLauncher.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop launcher" << Log::Field(err);
         }
     });
 
