@@ -10,11 +10,6 @@
 #include <memory>
 #include <numeric>
 
-#include <Poco/Pipe.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StreamCopier.h>
-
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/tools/string.hpp>
@@ -23,6 +18,7 @@
 #include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>
+#include <common/utils/utils.hpp>
 
 #include "iamserver.hpp"
 
@@ -45,42 +41,6 @@ std::string CorrectAddress(const std::string& addr)
     }
 
     return addr;
-}
-
-Error ExecProcess(const std::string& cmd, const std::vector<std::string>& args, std::string& output)
-{
-    Poco::Pipe            outPipe;
-    Poco::ProcessHandle   ph = Poco::Process::launch(cmd, args, nullptr, &outPipe, &outPipe);
-    Poco::PipeInputStream outStream(outPipe);
-
-    Poco::StreamCopier::copyToString(outStream, output);
-    Poco::trimRightInPlace(output);
-
-    if (int exitCode = ph.wait(); exitCode != 0) {
-        StaticString<cMaxErrorStrLen> errStr;
-
-        errStr.Format("Process failed: cmd=%s, code=%d", cmd.c_str(), exitCode);
-
-        return {ErrorEnum::eFailed, errStr.CStr()};
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ExecCommand(const std::string& cmdName, const std::vector<std::string>& cmdArgs)
-{
-    if (!cmdArgs.empty()) {
-        std::string                    output;
-        const std::vector<std::string> args {cmdArgs.begin() + 1, cmdArgs.end()};
-
-        if (auto err = ExecProcess(cmdArgs[0], args, output); !err.IsNone()) {
-            LOG_ERR() << cmdName.c_str() << " exec failed: output=" << output.c_str() << ", error=" << err;
-
-            return err;
-        }
-    }
-
-    return ErrorEnum::eNone;
 }
 
 } // namespace
@@ -226,7 +186,12 @@ Error IAMServer::OnStartProvisioning(const String& password)
 
     LOG_DBG() << "Process on start provisioning";
 
-    return ExecCommand("Start provisioning", mConfig.mStartProvisioningCmdArgs);
+    auto [_, err] = common::utils::ExecCommand(mConfig.mStartProvisioningCmdArgs);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error IAMServer::OnFinishProvisioning(const String& password)
@@ -235,7 +200,12 @@ Error IAMServer::OnFinishProvisioning(const String& password)
 
     LOG_DBG() << "Process on finish provisioning";
 
-    return ExecCommand("Finish provisioning", mConfig.mFinishProvisioningCmdArgs);
+    auto [_, err] = common::utils::ExecCommand(mConfig.mFinishProvisioningCmdArgs);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error IAMServer::OnDeprovision(const String& password)
@@ -244,7 +214,12 @@ Error IAMServer::OnDeprovision(const String& password)
 
     LOG_DBG() << "Process on deprovisioning";
 
-    return ExecCommand("Deprovision", mConfig.mDeprovisionCmdArgs);
+    auto [_, err] = common::utils::ExecCommand(mConfig.mDeprovisionCmdArgs);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error IAMServer::OnEncryptDisk(const String& password)
@@ -253,7 +228,12 @@ Error IAMServer::OnEncryptDisk(const String& password)
 
     LOG_DBG() << "Process on encrypt disk";
 
-    return ExecCommand("Encrypt disk", mConfig.mDiskEncryptionCmdArgs);
+    auto [_, err] = common::utils::ExecCommand(mConfig.mDiskEncryptionCmdArgs);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 void IAMServer::OnNodeInfoChanged(const NodeInfo& info)

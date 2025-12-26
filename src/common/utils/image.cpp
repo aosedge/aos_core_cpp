@@ -13,12 +13,11 @@
 
 #include <Poco/DigestEngine.h>
 #include <Poco/DigestStream.h>
-#include <Poco/Pipe.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
 #include <Poco/SHA2Engine.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/StringTokenizer.h>
+
+#include <common/utils/utils.hpp>
 
 #include "exception.hpp"
 #include "image.hpp"
@@ -91,22 +90,9 @@ Error UnpackTarImage(const std::string& archivePath, const std::string& destinat
         return Error(ErrorEnum::eNotFound, "Archive does not exist");
     }
 
-    Poco::Process::Args args;
-    args.push_back("xf");
-    args.push_back(archivePath);
-    args.push_back("-C");
-    args.push_back(destination);
-
-    Poco::Pipe          outPipe;
-    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
-    int                 rc = ph.wait();
-
-    if (rc != 0) {
-        std::string           output;
-        Poco::PipeInputStream istr(outPipe);
-        Poco::StreamCopier::copyToString(istr, output);
-
-        return Error(ErrorEnum::eFailed, output.c_str());
+    auto [_, err] = ExecCommand({"tar", "xf", archivePath, "-C", destination});
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
@@ -122,19 +108,15 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bo
         return {0, ErrorEnum::eNotFound};
     }
 
-    Poco::Process::Args args;
-    args.push_back(isTarGz ? "-tzvf" : "-tvf");
-    args.push_back(archivePath);
-
-    Poco::Pipe          outPipe;
-    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
-
-    Poco::PipeInputStream istr(outPipe);
-
-    uint64_t size = 0;
+    auto [outStr, err] = ExecCommand({"tar", isTarGz ? "-tzvf" : "-tvf", archivePath});
+    if (!err.IsNone()) {
+        return {0, AOS_ERROR_WRAP(err)};
+    }
 
     try {
-        std::string line;
+        std::istringstream istr(outStr);
+        std::string        line;
+        uint64_t           size = 0;
 
         while (std::getline(istr, line)) {
             Poco::StringTokenizer tokenizer(
@@ -147,18 +129,12 @@ RetWithError<uint64_t> GetUnpackedArchiveSize(const std::string& archivePath, bo
 
             size += std::stoull(tokenizer[cFileSizeTokenIndex]);
         }
+
+        return size;
+
     } catch (const std::exception& e) {
         return {0, AOS_ERROR_WRAP(ToAosError(e))};
     }
-
-    if (int rc = ph.wait(); rc != 0) {
-        std::string output;
-        Poco::StreamCopier::copyToString(istr, output);
-
-        return {0, Error(ErrorEnum::eFailed, output.c_str())};
-    }
-
-    return size;
 }
 
 Error ValidateDigest(const Digest& digest)
