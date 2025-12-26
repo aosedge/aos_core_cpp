@@ -39,7 +39,7 @@ RetWithError<std::string> ExecCommand(const std::vector<std::string>& args)
     if (int rc = ph.wait(); rc != 0) {
         std::ostringstream err;
 
-        err << "Command `" << program;
+        err << "command `" << program;
 
         for (const auto& a : pocoArgs) {
             err << ' ' << a;

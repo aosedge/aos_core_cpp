@@ -19,6 +19,7 @@
 
 #include <common/utils/filesystem.hpp>
 #include <common/utils/image.hpp>
+#include <common/utils/utils.hpp>
 #include <sm/imagemanager/imagehandler.hpp>
 
 using namespace testing;
@@ -39,27 +40,8 @@ constexpr auto cTestDirRoot = "/tmp/imagemanager_test";
 
 void CreateTarGzArchive(const std::filesystem::path& sourceDir, const std::filesystem::path& archivePath)
 {
-    Poco::Process::Args args;
-
-    args.push_back("-czf");
-    args.push_back(archivePath.string());
-    args.push_back("-C");
-    args.push_back(sourceDir.string());
-    args.push_back(".");
-
-    Poco::Pipe outPipe;
-
-    auto ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
-
-    int rc = ph.wait();
-    if (rc != 0) {
-        std::string output;
-
-        Poco::PipeInputStream istr(outPipe);
-        Poco::StreamCopier::copyToString(istr, output);
-
-        throw std::runtime_error("failed to create test tar.gz file: " + output);
-    }
+    auto [_, err] = common::utils::ExecCommand({"tar", "-czf", archivePath.string(), "-C", sourceDir.string(), "."});
+    EXPECT_TRUE(err.IsNone()) << "Failed to create tar.gz archive: " << tests::utils::ErrorToStr(err);
 
     std::filesystem::remove_all(sourceDir);
 }
