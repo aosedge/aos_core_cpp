@@ -22,28 +22,23 @@ namespace aos::cm::config {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultSMConnectionTimeout      = "1m";
-constexpr auto cDefaultUpdateItemTTL            = "30d";
-constexpr auto cDefaultUnitStatusSendTimeout    = "30s";
-constexpr auto cDefaultCloudResponseWaitTimeout = "10s";
-constexpr auto cDefaultAlertsSendPeriod         = "10s";
-constexpr auto cDefaultMonitoringSendPeriod     = "1m";
-constexpr auto cDefaultMigrationPath            = "/usr/share/aos/communicationmanager/migration";
-constexpr auto cDefaultCertStorage              = "/var/aos/crypt/cm/";
-constexpr auto cDefaultDNSStoragePath           = "/var/aos/dns";
+constexpr auto cDefaultAlertsSendPeriod               = "10s";
+constexpr auto cDefaultCloudResponseWaitTimeout       = "10s";
+constexpr auto cDefaultLauncherInstanceTTL            = "30d";
+constexpr auto cDefaultLauncherNodesConnectionTimeout = "10m";
+constexpr auto cDefaultMonitoringSendPeriod           = "1m";
+constexpr auto cDefaultSMConnectionTimeout            = "1m";
+constexpr auto cDefaultUnitStatusSendTimeout          = "30s";
+constexpr auto cDefaultUpdateItemTTL                  = "30d";
+constexpr auto cDefaultMigrationPath                  = "/usr/share/aos/communicationmanager/migration";
+constexpr auto cDefaultCertStorage                    = "/var/aos/crypt/cm/";
+constexpr auto cDefaultDNSStoragePath                 = "/var/aos/dns";
 
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
 
 namespace {
-
-void ParseCryptConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Crypt& config)
-{
-    config.mCACert        = object.GetValue<std::string>("caCert");
-    config.mTpmDevice     = object.GetValue<std::string>("tpmDevice");
-    config.mPkcs11Library = object.GetValue<std::string>("pkcs11Library");
-}
 
 void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
 {
@@ -91,6 +86,19 @@ void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
 }
 
+void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, launcher::Config& config)
+{
+    Error err;
+
+    Tie(config.mNodesConnectionTimeout, err) = common::utils::ParseDuration(
+        object.GetValue<std::string>("nodesConnectionTimeout", cDefaultLauncherNodesConnectionTimeout));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing nodesConnectionTimeout tag");
+
+    Tie(config.mInstanceTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("instanceTtl", cDefaultLauncherInstanceTTL));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing instanceTtl tag");
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -113,15 +121,16 @@ Error ParseConfig(const std::string& filename, Config& config)
         common::utils::CaseInsensitiveObjectWrapper object(result);
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
+        config.mCACert     = object.GetValue<std::string>("caCert");
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
-        ParseCryptConfig(object.Has("fcrypt") ? object.GetObject("fcrypt") : empty, config.mCrypt);
         ParseMonitoringConfig(object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
         ParseNodeInfoProviderConfig(
             object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);
         ParseAlertsConfig(object.Has("alerts") ? object.GetObject("alerts") : empty, config.mAlerts);
         ParseImagemanagerConfig(object.Has("imageManager") ? object.GetObject("imageManager") : empty,
             config.mWorkingDir, config.mImageManager);
+        ParseLauncherConfig(object.Has("launcher") ? object.GetObject("launcher") : empty, config.mLauncher);
 
         common::config::ParseMigrationConfig(object.Has("migration") ? object.GetObject("migration") : empty,
             cDefaultMigrationPath, std::filesystem::path(config.mWorkingDir) / "migration", config.mMigration);

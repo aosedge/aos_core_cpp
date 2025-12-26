@@ -24,11 +24,7 @@ using namespace testing;
 namespace {
 
 constexpr auto cFullTestConfigJSON = R"({
-    "fcrypt" : {
-        "CACert" : "CACert",
-        "tpmDevice": "/dev/tpmrm0",
-        "pkcs11Library": "/path/to/pkcs11/library"
-    },
+    "CACert" : "CACert",
     "certStorage": "/var/aos/crypt/cm/",
     "storageDir" : "/var/aos/storage",
     "stateDir" : "/var/aos/state",
@@ -54,6 +50,10 @@ constexpr auto cFullTestConfigJSON = R"({
         "updateItemTtl": "30d",
         "downloadPath": "/path/to/download"
     },
+    "launcher": {
+        "nodesConnectionTimeout": "1m",
+        "instanceTtl": "1d"
+    },
     "migration" : {
         "migrationPath" : "/usr/share/aos_communicationmanager/migration",
         "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
@@ -63,11 +63,7 @@ constexpr auto cFullTestConfigJSON = R"({
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
-    "fcrypt" : {
-        "CACert" : "CACert",
-        "tpmDevice": "/dev/tpmrm0",
-        "pkcs11Library": "/path/to/pkcs11/library"
-    },
+    "CACert" : "CACert",
     "workingDir" : "workingDir",
     "serviceDiscoveryUrl" : "www.aos.com",
     "iamProtectedServerUrl" : "localhost:8089",
@@ -117,10 +113,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mCrypt.mTpmDevice, "/dev/tpmrm0");
-    EXPECT_EQ(config.mCrypt.mCACert, "CACert");
-    EXPECT_EQ(config.mCrypt.mPkcs11Library, "/path/to/pkcs11/library");
-
+    EXPECT_EQ(config.mCACert, "CACert");
     EXPECT_EQ(config.mServiceDiscoveryURL, "www.aos.com");
     EXPECT_EQ(config.mStorageDir, "/var/aos/storage");
     EXPECT_EQ(config.mStateDir, "/var/aos/state");
@@ -142,6 +135,9 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
 
+    EXPECT_EQ(config.mLauncher.mNodesConnectionTimeout, aos::Time::cMinutes * 1);
+    EXPECT_EQ(config.mLauncher.mInstanceTTL, aos::Time::cDay * 1);
+
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos_communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/communicationmanager/migration");
 
@@ -157,9 +153,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mCrypt.mTpmDevice, "/dev/tpmrm0");
-    EXPECT_EQ(config.mCrypt.mCACert, "CACert");
-    EXPECT_EQ(config.mCrypt.mPkcs11Library, "/path/to/pkcs11/library");
+    EXPECT_EQ(config.mCACert, "CACert");
 
     EXPECT_EQ(config.mServiceDiscoveryURL, "www.aos.com");
     EXPECT_EQ(config.mWorkingDir, "workingDir");

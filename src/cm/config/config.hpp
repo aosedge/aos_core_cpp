@@ -12,6 +12,7 @@
 
 #include <core/cm/alerts/config.hpp>
 #include <core/cm/imagemanager/config.hpp>
+#include <core/cm/launcher/config.hpp>
 #include <core/cm/monitoring/config.hpp>
 #include <core/cm/nodeinfoprovider/config.hpp>
 #include <core/common/monitoring/config.hpp>
@@ -27,15 +28,6 @@ namespace aos::cm::config {
  **********************************************************************************************************************/
 
 /*
- * Crypt configuration.
- */
-struct Crypt {
-    std::string mCACert;
-    std::string mTpmDevice;
-    std::string mPkcs11Library;
-};
-
-/*
  * Monitoring configuration.
  */
 struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
@@ -44,12 +36,13 @@ struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::
  * Config structure.
  */
 struct Config {
-    Crypt                     mCrypt;
+    std::string               mCACert;
     Monitoring                mMonitoring;
-    nodeinfoprovider::Config  mNodeInfoProvider;
+    common::config::Migration mMigration;
     alerts::Config            mAlerts;
     imagemanager::Config      mImageManager;
-    common::config::Migration mMigration;
+    launcher::Config          mLauncher;
+    nodeinfoprovider::Config  mNodeInfoProvider;
     std::string               mDNSStoragePath;
     std::string               mDNSIP;
     std::string               mCertStorage;
