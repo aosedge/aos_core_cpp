@@ -8,13 +8,12 @@
 #include <filesystem>
 #include <fstream>
 
-#include <Poco/Pipe.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StreamCopier.h>
 #include <gtest/gtest.h>
 
+#include <core/common/tests/utils/utils.hpp>
+
 #include <common/utils/image.hpp>
+#include <common/utils/utils.hpp>
 
 using namespace testing;
 
@@ -26,29 +25,15 @@ namespace aos::common::utils {
  * Static
  **********************************************************************************************************************/
 
-static void createTestTarFile(
+static void CreateTestTarFile(
     const std::string& tarPath, const std::string& contentFilePath, const std::string& content)
 {
     std::ofstream ofs(contentFilePath);
     ofs << content;
     ofs.close();
 
-    Poco::Process::Args args;
-    args.push_back("czf");
-    args.push_back(tarPath);
-    args.push_back(contentFilePath);
-
-    Poco::Pipe          outPipe;
-    Poco::ProcessHandle ph = Poco::Process::launch("tar", args, nullptr, &outPipe, &outPipe);
-    int                 rc = ph.wait();
-
-    if (rc != 0) {
-        std::string           output;
-        Poco::PipeInputStream istr(outPipe);
-        Poco::StreamCopier::copyToString(istr, output);
-
-        throw std::runtime_error("Failed to create test tar file: " + output);
-    }
+    auto [_, err] = ExecCommand({"tar", "czf", tarPath, contentFilePath});
+    EXPECT_TRUE(err.IsNone()) << "Failed to create test tar file: " << tests::utils::ErrorToStr(err);
 
     fs::remove(contentFilePath);
 }
@@ -64,7 +49,7 @@ TEST(UnpackTarImageTest, UnpackTarImageSuccess)
     std::string destination     = "test_unpack_dir";
     std::string fileContent     = "This is a test content";
 
-    createTestTarFile(archivePath, contentFilePath, fileContent);
+    CreateTestTarFile(archivePath, contentFilePath, fileContent);
 
     auto [upackedSize, err] = GetUnpackedArchiveSize(archivePath);
 
@@ -93,14 +78,14 @@ TEST(UnpackTarImageTest, UnpackTarImageFailure)
 
     auto [upackedSize, err] = GetUnpackedArchiveSize(archivePath);
 
-    EXPECT_EQ(err, ErrorEnum::eFailed);
+    EXPECT_EQ(err, ErrorEnum::eRuntime);
     EXPECT_EQ(upackedSize, 0);
 
     std::filesystem::create_directory(destination);
 
     err = UnpackTarImage(archivePath, destination);
 
-    ASSERT_EQ(err, ErrorEnum::eFailed);
+    ASSERT_EQ(err, ErrorEnum::eRuntime);
     ASSERT_NE(err.Message(), "");
 
     fs::remove(archivePath);
