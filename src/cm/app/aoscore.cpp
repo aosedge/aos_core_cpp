@@ -45,7 +45,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize crypto helper
 
     err = mCryptoHelper.Init(
-        mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCrypt.mCACert.c_str());
+        mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
 
     // Initialize file info provider
@@ -55,7 +55,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize TLS credentials
 
-    err = mTLSCredentials.Init(mConfig.mCrypt.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
+    err = mTLSCredentials.Init(mConfig.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize TLS credentials");
 
     // Initialize IAM client
@@ -256,7 +256,7 @@ void AosCore::InitSMController()
 {
     smcontroller::Config config;
 
-    config.mCACert      = mConfig.mCrypt.mCACert;
+    config.mCACert      = mConfig.mCACert;
     config.mCertStorage = mConfig.mCertStorage;
     config.mCMServerURL = mConfig.mCMServerURL;
 
