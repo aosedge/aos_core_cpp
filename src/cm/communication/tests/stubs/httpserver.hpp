@@ -24,7 +24,8 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/Util/ServerApplication.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 
 namespace aos::cm::communication {

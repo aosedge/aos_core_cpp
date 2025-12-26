@@ -7,7 +7,8 @@
 #include <grpcpp/grpcpp.h>
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
 

@@ -7,10 +7,10 @@
 
 #include <memory>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/pbconvert/iam.hpp>
 
 #include "publicmessagehandler.hpp"

@@ -17,7 +17,8 @@
 
 #include <grpcpp/grpcpp.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <core/common/tools/error.hpp>
 
 namespace aos::common::utils {

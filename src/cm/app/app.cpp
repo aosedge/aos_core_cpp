@@ -12,9 +12,9 @@
 #include <Poco/Util/HelpFormatter.h>
 #include <systemd/sd-daemon.h>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/version/version.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 
