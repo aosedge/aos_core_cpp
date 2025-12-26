@@ -10,7 +10,8 @@
 #include <Poco/Net/NetException.h>
 #include <Poco/Net/SSLManager.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>

@@ -10,9 +10,9 @@
 #include <Poco/Net/Context.h>
 #include <Poco/URI.h>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/uuid.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/json.hpp>
 
 #include "pocowsclient.hpp"

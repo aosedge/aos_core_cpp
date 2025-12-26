@@ -11,7 +11,8 @@
 #include <Poco/JSON/Stringifier.h>
 #include <Poco/Path.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 
