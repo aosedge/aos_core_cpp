@@ -1,0 +1,17 @@
+[Unit]
+Description=AOS Service
+After=network.target
+
+[Service]
+Type=forking
+Restart=always
+ExecStartPre=/usr/bin/@RUNNER@ delete -f %i
+ExecStart=/usr/bin/@RUNNER@ run -d --pid-file /run/aos/runtime/%i/.pid -b /run/aos/runtime/%i %i
+
+ExecStop=/usr/bin/@RUNNER@ kill %i SIGKILL
+ExecStopPost=/usr/bin/@RUNNER@ delete -f %i
+PIDFile=/run/aos/runtime/%i/.pid
+SuccessExitStatus=SIGKILL
+
+[Install]
+WantedBy=multi-user.target
