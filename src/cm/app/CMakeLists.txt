@@ -28,6 +28,7 @@ set(LIBRARIES
     aos::cm::networkmanager
     aos::cm::smcontroller
     aos::cm::unitconfig
+    aos::cm::utils
     aos::common::downloader
     aos::common::fileserver
     aos::common::logger
