@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "tlscredentials.hpp"
 

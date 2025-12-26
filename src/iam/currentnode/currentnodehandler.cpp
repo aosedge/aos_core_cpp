@@ -8,7 +8,8 @@
 #include <filesystem>
 #include <fstream>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 
 #include "currentnodehandler.hpp"

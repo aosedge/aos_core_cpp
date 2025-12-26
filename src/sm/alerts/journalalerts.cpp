@@ -7,7 +7,8 @@
 #include <Poco/Format.h>
 #include <Poco/RegularExpression.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 
 #include "journalalerts.hpp"

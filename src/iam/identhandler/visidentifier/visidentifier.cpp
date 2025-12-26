@@ -7,7 +7,8 @@
 
 #include <Poco/JSON/JSONException.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/json.hpp>
 
 #include "pocowsclient.hpp"

@@ -12,10 +12,10 @@
 
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>
 #include <common/utils/utils.hpp>

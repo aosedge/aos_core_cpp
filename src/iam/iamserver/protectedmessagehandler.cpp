@@ -8,10 +8,10 @@
 #include <memory>
 
 #include <core/common/crypto/itf/x509.hpp>
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
 

@@ -14,9 +14,9 @@
 
 #include <core/common/pkcs11/pkcs11.hpp>
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/logger.hpp>
 #include <core/iam/identhandler/identmodules/fileidentifier/config.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 

@@ -8,9 +8,9 @@
 #include <fstream>
 #include <thread>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/types/alerts.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/exception.hpp>
 
 #include "downloader.hpp"

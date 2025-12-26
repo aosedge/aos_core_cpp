@@ -9,7 +9,8 @@
 #include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server_builder.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/pbconvert/sm.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>

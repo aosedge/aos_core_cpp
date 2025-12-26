@@ -21,7 +21,7 @@
 #include <netlink/route/link/bridge.h>
 #include <netlink/route/link/vlan.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "interfacemanager.hpp"
 

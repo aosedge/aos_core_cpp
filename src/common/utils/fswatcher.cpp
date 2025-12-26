@@ -21,8 +21,7 @@
 #include <Poco/UUIDGenerator.h>
 
 #include <core/common/tools/fs.hpp>
-
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "exception.hpp"
 #include "fswatcher.hpp"

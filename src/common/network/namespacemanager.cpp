@@ -11,9 +11,8 @@
 #include <sys/mount.h>
 #include <unistd.h>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/memory.hpp>
-
-#include <common/logger/logmodule.hpp>
 
 #include "namespacemanager.hpp"
 
