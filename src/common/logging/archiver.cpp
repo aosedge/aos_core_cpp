@@ -6,7 +6,8 @@
 
 #include <Poco/Zip/Compress.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 
 #include "archiver.hpp"

@@ -12,7 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/parser.hpp>
 

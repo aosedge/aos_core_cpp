@@ -10,7 +10,8 @@
 #include <Poco/Process.h>
 #include <Poco/StreamCopier.h>
 
-#include <common/logger/logmodule.hpp>
+#include <core/common/tools/logger.hpp>
+
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
 #include <common/utils/exception.hpp>

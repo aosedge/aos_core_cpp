@@ -16,9 +16,8 @@
 #include <Poco/Net/WebSocket.h>
 #include <Poco/URI.h>
 
-#include <core/common/tools/log.hpp>
+#include <core/common/tools/logger.hpp>
 
-#include <common/logger/logmodule.hpp>
 #include <iam/identhandler/visidentifier/vismessage.hpp>
 
 #include "visserver.hpp"
