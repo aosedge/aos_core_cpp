@@ -112,7 +112,6 @@ private:
     cm::unitconfig::JSONProvider                                 mJSONProvider;
     cm::unitconfig::UnitConfig                                   mUnitConfig;
     cm::updatemanager::UpdateManager                             mUpdateManager;
-    std::unique_ptr<cm::launcher::EnvVarHandlerItf>              mEnvVarHandler;
     communication::Communication                                 mCommunication;
     database::Database                                           mDatabase;
     iamclient::IAMClient                                         mIAMClient;
