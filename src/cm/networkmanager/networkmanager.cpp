@@ -42,7 +42,7 @@ Error NetworkManager::Init(
     auto networks = std::make_unique<StaticArray<Network, cMaxNumOwners>>();
 
     if (auto err = mStorage->GetNetworks(*networks); !err.IsNone()) {
-        return err;
+        return AOS_ERROR_WRAP(err);
     }
 
     for (const auto& network : *networks) {
@@ -52,7 +52,7 @@ Error NetworkManager::Init(
         auto hosts = std::make_unique<StaticArray<Host, cMaxNumNodes * cMaxNumOwners>>();
 
         if (auto err = mStorage->GetHosts(network.mNetworkID, *hosts); !err.IsNone()) {
-            return err;
+            return AOS_ERROR_WRAP(err);
         }
 
         for (const auto& host : *hosts) {
@@ -62,7 +62,7 @@ Error NetworkManager::Init(
             auto instances = std::make_unique<StaticArray<Instance, cMaxNumInstances>>();
 
             if (auto err = mStorage->GetInstances(network.mNetworkID, host.mNodeID, *instances); !err.IsNone()) {
-                return err;
+                return AOS_ERROR_WRAP(err);
             }
 
             for (const auto& instance : *instances) {
@@ -86,7 +86,7 @@ Error NetworkManager::GetInstances(Array<InstanceIdent>& instances) const
         for (const auto& [__, hostInstances] : networkState.mHostInstances) {
             for (const auto& [instanceIdent, ___] : hostInstances.mInstances) {
                 if (auto err = instances.PushBack(instanceIdent); !err.IsNone()) {
-                    return err;
+                    return AOS_ERROR_WRAP(err);
                 }
             }
         }
@@ -121,7 +121,7 @@ Error NetworkManager::RemoveInstanceNetworkParameters(const InstanceIdent& insta
                       << Log::Field("instanceIdent", instanceIdent);
         }
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent);
@@ -146,7 +146,7 @@ Error NetworkManager::UpdateProviderNetwork(const Array<StaticString<cIDLen>>& p
             networkParametersList.PushBack(networkParameters);
         }
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     LOG_DBG() << "Updated provider network" << Log::Field("nodeID", nodeID);
@@ -225,7 +225,7 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
         }
 
         if (auto err = mStorage->AddInstance(instance); !err.IsNone()) {
-            return err;
+            return AOS_ERROR_WRAP(err);
         }
 
         LOG_DBG() << "Prepared instance network parameters" << Log::Field("networkID", networkID)
@@ -233,7 +233,7 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
                   << Log::Field("IP", result.mIP);
 
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -242,7 +242,7 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
 Error NetworkManager::RestartDNSServer()
 {
     if (auto err = mDNSServer->UpdateHostsFile(mHosts); !err.IsNone()) {
-        return err;
+        return AOS_ERROR_WRAP(err);
     }
 
     mHosts.clear();
@@ -260,11 +260,11 @@ Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen
         StaticArray<StaticString<cExposedPortLen>, cExposedPortConfigExpectedLen> portConfig;
 
         if (auto err = exposedPort.Split(portConfig, '/'); !err.IsNone()) {
-            return err;
+            return AOS_ERROR_WRAP(err);
         }
 
         if (portConfig.Size() == 0) {
-            return Error(ErrorEnum::eRuntime, "unsupported ExposedPorts format");
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "unsupported ExposedPorts format"));
         }
 
         ExposedPort exposedPortInfo;
@@ -355,7 +355,7 @@ Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const Stri
             result.mFirewallRules.PushBack(rule);
         }
     } catch (const std::exception& e) {
-        return Error(aos::ErrorEnum::eRuntime, e.what());
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
