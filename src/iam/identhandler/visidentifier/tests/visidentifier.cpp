@@ -443,7 +443,7 @@ TEST_F(VisidentifierTest, GetSystemInfoUnitModelExceedsMaxSize)
             response.set("action", "get");
             response.set("requestId", "test-requestId");
             response.set("timestamp", 0);
-            response.set("value", std::string(cUnitModelLen + 1, '1'));
+            response.set("value", std::string(cIDLen + 1, '1'));
 
             std::ostringstream jsonStream;
             Poco::JSON::Stringifier::stringify(response, jsonStream);
@@ -456,8 +456,8 @@ TEST_F(VisidentifierTest, GetSystemInfoUnitModelExceedsMaxSize)
     auto systemInfo = std::make_unique<SystemInfo>();
 
     const auto err = mVisIdentifier.GetSystemInfo(*systemInfo);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << err.Message();
 
+    EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << err.Message();
     ExpectStopSucceeded();
 }
 
