@@ -11,13 +11,15 @@
 #include <Poco/String.h>
 
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/logger.hpp>
+#include <core/common/types/common.hpp>
 
 #include <common/utils/exception.hpp>
-#include <sm/logger/logmodule.hpp>
+#include <sm/utils/systemdconn.hpp>
 
 #include "runner.hpp"
 
-namespace aos::sm::runner {
+namespace aos::sm::launcher {
 
 /***********************************************************************************************************************
  * Statics
@@ -25,11 +27,16 @@ namespace aos::sm::runner {
 
 namespace {
 
-inline InstanceState ToInstanceState(UnitState state)
+inline InstanceState ToInstanceState(utils::UnitState state)
 {
-    if (state.GetValue() == UnitStateEnum::eActive) {
+    switch (state.GetValue()) {
+    case utils::UnitStateEnum::eActive:
         return InstanceStateEnum::eActive;
-    } else {
+
+    case utils::UnitStateEnum::eInactive:
+        return InstanceStateEnum::eInactive;
+
+    default:
         return InstanceStateEnum::eFailed;
     }
 }
@@ -111,10 +118,8 @@ Runner::~Runner()
     std::ignore = Stop();
 }
 
-RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeDir, const RunParameters& params)
+RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
 {
-    (void)runtimeDir;
-
     RunStatus status = {};
 
     status.mInstanceID = instanceID;
@@ -135,8 +140,10 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
         fixedParams.mRestartInterval = cDefaultRestartInterval;
     }
 
-    LOG_DBG() << "Start service instance: instanceID=" << instanceID << ", startInterval=" << fixedParams.mStartInterval
-              << ", startBurst=" << fixedParams.mStartBurst << ", restartInterval=" << fixedParams.mRestartInterval;
+    LOG_DBG() << "Start service instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("startInterval", fixedParams.mStartInterval)
+              << Log::Field("startBurst", fixedParams.mStartBurst)
+              << Log::Field("restartInterval", fixedParams.mRestartInterval);
 
     // Create systemd service file.
     const auto unitName = CreateSystemdUnitName(instanceID);
@@ -155,15 +162,15 @@ RunStatus Runner::StartInstance(const String& instanceID, const String& runtimeD
     // Get unit status.
     Tie(status.mState, status.mError) = GetStartingUnitState(unitName, startTime);
 
-    LOG_DBG() << "Start instance: name=" << unitName.c_str() << ", unitStatus=" << status.mState
-              << ", instanceID=" << instanceID << ", err=" << status.mError;
+    LOG_DBG() << "Start instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("name", unitName.c_str()) << Log::Field(status.mError);
 
     return status;
 }
 
-Error Runner::StopInstance(const String& instanceID)
+Error Runner::StopInstance(const std::string& instanceID)
 {
-    LOG_DBG() << "Stop service instance: " << instanceID;
+    LOG_DBG() << "Stop service instance" << Log::Field("instanceID", instanceID.c_str());
 
     const auto unitName = CreateSystemdUnitName(instanceID);
 
@@ -176,7 +183,7 @@ Error Runner::StopInstance(const String& instanceID)
     auto err = mSystemd->StopUnit(unitName, "replace", cDefaultStopTimeout);
     if (!err.IsNone()) {
         if (err.Is(ErrorEnum::eNotFound)) {
-            LOG_DBG() << "Service not loaded: id=" << instanceID;
+            LOG_DBG() << "Service not loaded" << Log::Field("instanceID", instanceID.c_str());
 
             err = ErrorEnum::eNone;
         }
@@ -197,9 +204,9 @@ Error Runner::StopInstance(const String& instanceID)
     return err;
 }
 
-std::shared_ptr<SystemdConnItf> Runner::CreateSystemdConn()
+std::shared_ptr<utils::SystemdConnItf> Runner::CreateSystemdConn()
 {
-    return std::make_shared<SystemdConn>();
+    return std::make_shared<utils::SystemdConn>();
 }
 
 std::string Runner::GetSystemdDropInsDir() const
@@ -219,7 +226,7 @@ void Runner::MonitorUnits()
 
         auto [units, err] = mSystemd->ListUnits();
         if (!err.IsNone()) {
-            LOG_ERR() << "Systemd list units failed, err=" << err;
+            LOG_ERR() << "Systemd list units failed" << Log::Field(err);
 
             return;
         }
@@ -234,7 +241,7 @@ void Runner::MonitorUnits()
                 startUnitIt->second.mExitCode = unit.mExitCode;
 
                 // systemd doesn't change the state of failed unit => notify listener about final state.
-                if (unit.mActiveState == UnitStateEnum::eFailed) {
+                if (unit.mActiveState == utils::UnitStateEnum::eFailed) {
                     startUnitIt->second.mCondVar.notify_all();
                 }
             }
@@ -258,7 +265,7 @@ void Runner::MonitorUnits()
     }
 }
 
-Array<RunStatus> Runner::GetRunningInstances() const
+std::vector<RunStatus>& Runner::GetRunningInstances() const
 {
     mRunningInstances.clear();
 
@@ -268,10 +275,10 @@ Array<RunStatus> Runner::GetRunningInstances() const
 
             auto error = unit.second.mExitCode.HasValue() ? Error(unit.second.mExitCode.GetValue()) : Error();
 
-            return RunStatus {instanceID.c_str(), unit.second.mRunState, error};
+            return RunStatus {instanceID, unit.second.mRunState, error};
         });
 
-    return Array(mRunningInstances.data(), mRunningInstances.size());
+    return mRunningInstances;
 }
 
 Error Runner::SetRunParameters(const std::string& unitName, const RunParameters& params)
@@ -326,7 +333,7 @@ RetWithError<InstanceState> Runner::GetStartingUnitState(const std::string& unit
 
         mStartingUnits.erase(unitName);
 
-        if (runState.GetValue() != UnitStateEnum::eActive) {
+        if (runState.GetValue() != utils::UnitStateEnum::eActive) {
 
             const auto errMsg = "failed to start unit";
             err = exitCode.HasValue() ? Error(exitCode.GetValue(), errMsg) : Error(ErrorEnum::eFailed, errMsg);
@@ -340,9 +347,9 @@ RetWithError<InstanceState> Runner::GetStartingUnitState(const std::string& unit
     }
 }
 
-std::string Runner::CreateSystemdUnitName(const String& instance)
+std::string Runner::CreateSystemdUnitName(const std::string& instance)
 {
-    return Poco::format(cSystemdUnitNameTemplate, std::string(instance.CStr()));
+    return Poco::format(cSystemdUnitNameTemplate, instance);
 }
 
 std::string Runner::CreateInstanceID(const std::string& unitname)
@@ -357,4 +364,4 @@ std::string Runner::CreateInstanceID(const std::string& unitname)
     }
 }
 
-} // namespace aos::sm::runner
+} // namespace aos::sm::launcher
