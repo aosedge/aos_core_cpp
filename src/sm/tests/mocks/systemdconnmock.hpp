@@ -16,14 +16,10 @@ namespace aos::sm::utils {
 class SystemdConnMock : public SystemdConnItf {
 public:
     MOCK_METHOD(RetWithError<std::vector<UnitStatus>>, ListUnits, (), (override));
-
-    MOCK_METHOD(RetWithError<UnitStatus>, GetUnitStatus, (const std::string& name), (override));
-    MOCK_METHOD(
-        Error, StartUnit, (const std::string& name, const std::string& mode, const Duration& timeout), (override));
-    MOCK_METHOD(
-        Error, StopUnit, (const std::string& name, const std::string& mode, const Duration& timeout), (override));
-
-    MOCK_METHOD(Error, ResetFailedUnit, (const std::string& name), (override));
+    MOCK_METHOD(RetWithError<UnitStatus>, GetUnitStatus, (const std::string&), (override));
+    MOCK_METHOD(Error, StartUnit, (const std::string&, const std::string&, const Duration&), (override));
+    MOCK_METHOD(Error, StopUnit, (const std::string&, const std::string&, const Duration&), (override));
+    MOCK_METHOD(Error, ResetFailedUnit, (const std::string&), (override));
 };
 
 } // namespace aos::sm::utils
