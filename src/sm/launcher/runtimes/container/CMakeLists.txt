@@ -20,7 +20,7 @@ set(SOURCES container.cpp runner.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools)
+set(LIBRARIES Poco::JSON aos::common::utils aos::sm::utils)
 
 # ######################################################################################################################
 # Target
