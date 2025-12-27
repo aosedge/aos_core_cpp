@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef AOS_SM_RUNNER_RUNNER_HPP_
-#define AOS_SM_RUNNER_RUNNER_HPP_
+#ifndef AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_RUNNER_HPP_
+#define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_RUNNER_HPP_
 
 #include <chrono>
 #include <condition_variable>
@@ -16,11 +16,12 @@
 #include <thread>
 
 #include <core/common/tools/time.hpp>
-#include <core/common/types/obsolete.hpp>
 
-#include "systemdconn.hpp"
+#include <sm/utils/itf/systemdconn.hpp>
 
-namespace aos::sm::runner {
+#include "itf/runner.hpp"
+
+namespace aos::sm::launcher {
 
 /**
  * Service runner.
@@ -28,49 +29,48 @@ namespace aos::sm::runner {
 class Runner : public RunnerItf {
 public:
     /**
+     * Destructor.
+     */
+    ~Runner();
+
+    /**
      * Initializes Runner instance.
      *
      * @param receiver run status receiver.
      * @return Error.
      */
-    Error Init(RunStatusReceiverItf& receiver);
+    Error Init(RunStatusReceiverItf& receiver) override;
 
     /**
      * Starts monitoring thread.
      *
      * @return Error.
      */
-    Error Start();
+    Error Start() override;
 
     /**
      * Stops Runner.
      *
      * @return Error.
      */
-    Error Stop();
-
-    /**
-     * Destructor.
-     */
-    ~Runner();
+    Error Stop() override;
 
     /**
      * Starts service instance.
      *
      * @param instanceID instance ID.
-     * @param runtimeDir directory with runtime spec.
      * @param runParams runtime parameters.
      * @return RunStatus.
      */
-    RunStatus StartInstance(const String& instanceID, const String& runtimeDir, const RunParameters& params) override;
+    RunStatus StartInstance(const std::string& instanceID, const RunParameters& params) override;
 
     /**
      * Stops service instance.
      *
-     * @param instanceID instance ID
+     * @param instanceID instance ID.
      * @return Error.
      */
-    Error StopInstance(const String& instanceID) override;
+    Error StopInstance(const std::string& instanceID) override;
 
 private:
     static constexpr auto cDefaultStartInterval   = 5 * Time::cSeconds;
@@ -85,21 +85,21 @@ private:
     static constexpr auto cSystemdDropInsDir       = "/run/systemd/system";
     static constexpr auto cParametersFileName      = "parameters.conf";
 
-    virtual std::shared_ptr<SystemdConnItf> CreateSystemdConn();
-    virtual std::string                     GetSystemdDropInsDir() const;
+    virtual std::shared_ptr<utils::SystemdConnItf> CreateSystemdConn();
+    virtual std::string                            GetSystemdDropInsDir() const;
 
     void                        MonitorUnits();
-    Array<RunStatus>            GetRunningInstances() const;
+    std::vector<RunStatus>&     GetRunningInstances() const;
     Error                       SetRunParameters(const std::string& unitName, const RunParameters& params);
     Error                       RemoveRunParameters(const std::string& unitName);
     RetWithError<InstanceState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
 
-    static std::string CreateSystemdUnitName(const String& instance);
+    static std::string CreateSystemdUnitName(const std::string& instance);
     static std::string CreateInstanceID(const std::string& unitname);
 
     struct StartingUnitData {
         std::condition_variable mCondVar;
-        UnitState               mRunState;
+        utils::UnitState        mRunState;
         Optional<int32_t>       mExitCode;
     };
 
@@ -110,10 +110,10 @@ private:
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
-    std::shared_ptr<SystemdConnItf> mSystemd;
-    std::thread                     mMonitoringThread;
-    std::mutex                      mMutex;
-    std::condition_variable         mCondVar;
+    std::shared_ptr<utils::SystemdConnItf> mSystemd;
+    std::thread                            mMonitoringThread;
+    std::mutex                             mMutex;
+    std::condition_variable                mCondVar;
 
     std::map<std::string, StartingUnitData> mStartingUnits;
     std::map<std::string, RunningUnitData>  mRunningUnits;
@@ -122,6 +122,6 @@ private:
     bool mClosed = false;
 };
 
-} // namespace aos::sm::runner
+} // namespace aos::sm::launcher
 
 #endif
