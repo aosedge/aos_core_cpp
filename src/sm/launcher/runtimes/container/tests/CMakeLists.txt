@@ -10,7 +10,7 @@ set(TARGET_NAME container_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES container.cpp runner.cpp)
+set(SOURCES container.cpp filesystem.cpp runner.cpp)
 
 # ######################################################################################################################
 # Libraries
