@@ -6,9 +6,12 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/exception.hpp>
 #include <common/utils/utils.hpp>
 
 #include "container.hpp"
+#include "filesystem.hpp"
+#include "runner.hpp"
 
 namespace aos::sm::launcher {
 
@@ -32,21 +35,46 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         return err;
     }
 
+    mRunner     = CreateRunner();
+    mFileSystem = CreateFileSystem();
+
+    if (auto err = mRunner->Init(*this); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     return ErrorEnum::eNone;
 }
 
 Error ContainerRuntime::Start()
 {
-    LOG_DBG() << "Start runtime";
+    try {
+        LOG_DBG() << "Start runtime";
 
-    return ErrorEnum::eNone;
+        if (auto err = mRunner->Start(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 }
 
 Error ContainerRuntime::Stop()
 {
-    LOG_DBG() << "Stop runtime";
+    try {
+        LOG_DBG() << "Stop runtime";
 
-    return ErrorEnum::eNone;
+        Error err;
+
+        if (auto stopErr = mRunner->Stop(); !stopErr.IsNone()) {
+            err = AOS_ERROR_WRAP(stopErr);
+        }
+
+        return err;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 }
 
 Error ContainerRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
@@ -58,22 +86,67 @@ Error ContainerRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     return ErrorEnum::eNone;
 }
 
-Error ContainerRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& status)
+Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, InstanceStatus& status)
 {
-    (void)status;
+    try {
+        std::shared_ptr<Instance> instance;
 
-    LOG_DBG() << "Start instance" << Log::Field("instance", static_cast<const InstanceIdent&>(instance));
+        {
+            std::lock_guard lock {mMutex};
 
-    return ErrorEnum::eNone;
+            LOG_DBG() << "Start instance" << Log::Field("instance", static_cast<const InstanceIdent&>(instanceInfo));
+
+            if (auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceInfo));
+                it != mCurrentInstances.end()) {
+                return AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "instance already running"));
+            }
+
+            instance = std::make_shared<Instance>(instanceInfo);
+
+            mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
+        }
+
+        if (auto err = instance->Start(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        instance->GetStatus(status);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 }
 
-Error ContainerRuntime::StopInstance(const InstanceIdent& instance, InstanceStatus& status)
+Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, InstanceStatus& status)
 {
-    (void)status;
+    try {
+        std::shared_ptr<Instance> instance;
 
-    LOG_DBG() << "Stop instance" << Log::Field("instance", instance);
+        {
+            std::lock_guard lock {mMutex};
 
-    return ErrorEnum::eNone;
+            LOG_DBG() << "Stop instance" << Log::Field("instance", instanceIdent);
+
+            auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceIdent));
+            if (it == mCurrentInstances.end()) {
+                return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "instance not running"));
+            }
+
+            instance = it->second;
+            mCurrentInstances.erase(it);
+        }
+
+        if (auto err = instance->Stop(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        instance->GetStatus(status);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
 }
 
 Error ContainerRuntime::Reboot()
@@ -96,6 +169,16 @@ Error ContainerRuntime::GetInstanceMonitoringData(
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+std::shared_ptr<RunnerItf> ContainerRuntime::CreateRunner()
+{
+    return std::make_shared<Runner>();
+}
+
+std::shared_ptr<FileSystemItf> ContainerRuntime::CreateFileSystem()
+{
+    return std::make_shared<FileSystem>();
+}
 
 Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo)
 {
@@ -122,6 +205,13 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
               << Log::Field("architecture", mRuntimeInfo.mArchInfo.mArchitecture)
               << Log::Field("os", mRuntimeInfo.mOSInfo.mOS) << Log::Field("maxInstances", mRuntimeInfo.mMaxInstances);
+
+    return ErrorEnum::eNone;
+}
+
+Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
+{
+    (void)instances;
 
     return ErrorEnum::eNone;
 }
