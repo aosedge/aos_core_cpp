@@ -21,20 +21,6 @@
 
 namespace aos::iam::visidentifier {
 
-namespace {
-
-/***********************************************************************************************************************
- * Statics
- **********************************************************************************************************************/
-
-template <class F>
-auto OnScopeExit(F&& f)
-{
-    return std::unique_ptr<void, typename std::decay<F>::type>(reinterpret_cast<void*>(1), std::forward<F>(f));
-}
-
-} // namespace
-
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -144,13 +130,14 @@ PocoWSClient::ByteArray PocoWSClient::SendRequest(const std::string& requestId, 
     auto requestParams = std::make_shared<RequestParams>(requestId);
     mPendingRequests.Add(requestParams);
 
-    const auto onScopeExit = OnScopeExit([&](void*) { mPendingRequests.Remove(requestParams); });
+    auto cleanupRequest = DeferRelease(requestParams.get(), [&](void*) { mPendingRequests.Remove(requestParams); });
 
     AsyncSendMessage(message);
 
     LOG_DBG() << "Sent message: requestId = " << requestId.c_str();
 
     std::string response;
+
     if (!requestParams->TryWaitForResponse(response, GetWebSocketTimeout())) {
         LOG_ERR() << "Timeout waiting for server response: requestId = " << requestId.c_str();
 
