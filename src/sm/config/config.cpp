@@ -22,10 +22,10 @@
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultServiceTTLDays     = "30d";
-constexpr auto cDefaultLayerTTLDays       = "30d";
-constexpr auto cDefaultHealthCheckTimeout = "35s";
-constexpr auto cDefaultCMReconnectTimeout = "10s";
+constexpr auto cDefaultUpdateItemTTL        = "30d";
+constexpr auto cDefaultRemoveOutdatedPeriod = "24h";
+constexpr auto cDefaultHealthCheckTimeout   = "35s";
+constexpr auto cDefaultCMReconnectTimeout   = "10s";
 
 namespace aos::sm::config {
 
@@ -67,6 +67,26 @@ void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
         = common::utils::ParseDuration(object.GetValue<std::string>("cmReconnectTimeout", cDefaultCMReconnectTimeout));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing cmReconnectTimeout tag");
 };
+
+void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+    imagemanager::Config& config)
+{
+    Error err;
+
+    err = config.mImagePath.Assign(
+        object.GetValue<std::string>("imagePath", std::filesystem::path(workingDir) / "images").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing imagePath tag");
+
+    config.mPartLimit = object.GetValue<size_t>("imagesPartLimit", 0);
+
+    Tie(config.mUpdateItemTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl", cDefaultUpdateItemTTL));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
+
+    Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(
+        object.GetValue<std::string>("removeOutdatedPeriod", cDefaultRemoveOutdatedPeriod));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
+}
 
 void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, launcher::Config& config)
 {
@@ -124,11 +144,13 @@ Error ParseConfig(const std::string& filename, Config& config)
         common::config::ParseMonitoringConfig(
             object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
 
+        auto imageManager  = object.Has("imageManager") ? object.GetObject("imageManager") : empty;
         auto launcher      = object.Has("launcher") ? object.GetObject("launcher") : empty;
         auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
         auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
         auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
+        ParseImageManagerConfig(imageManager, config.mWorkingDir, config.mImageManager);
         ParseLauncherConfig(launcher, config.mLauncher);
         ParseLoggingConfig(logging, config.mLogging);
         common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);

@@ -15,6 +15,7 @@
 #include <core/common/logging/config.hpp>
 #include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
+#include <core/sm/imagemanager/config.hpp>
 
 #include <common/config/config.hpp>
 #include <common/iamclient/config.hpp>
@@ -32,17 +33,18 @@ namespace aos::sm::config {
  * Config instance.
  */
 struct Config {
-    common::iamclient::Config     mIAMClientConfig;
-    smclient::Config              mSMClientConfig;
     std::string                   mCertStorage;
     std::string                   mIAMProtectedServerURL;
-    std::string                   mWorkingDir;
     std::string                   mNodeConfigFile;
-    monitoring::Config            mMonitoring;
-    launcher::Config              mLauncher;
-    logging::Config               mLogging;
+    std::string                   mWorkingDir;
     common::config::JournalAlerts mJournalAlerts;
     common::config::Migration     mMigration;
+    common::iamclient::Config     mIAMClientConfig;
+    imagemanager::Config          mImageManager;
+    launcher::Config              mLauncher;
+    logging::Config               mLogging;
+    monitoring::Config            mMonitoring;
+    smclient::Config              mSMClientConfig;
 };
 
 /*******************************************************************************
