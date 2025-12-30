@@ -13,6 +13,7 @@
 #include <core/common/types/log.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/filesystem.hpp>
 #include <common/utils/json.hpp>
 #include <sm/logger/logmodule.hpp>
 
@@ -34,15 +35,6 @@ namespace aos::sm::config {
  **********************************************************************************************************************/
 
 namespace {
-
-std::filesystem::path JoinPath(const std::string& base, const std::string& entry)
-{
-    auto path = std::filesystem::path(base);
-
-    path /= entry;
-
-    return path;
-}
 
 void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& object, logging::Config& config)
 {
@@ -137,7 +129,7 @@ Error ParseConfig(const std::string& filename, Config& config)
         config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerURL");
 
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
-                                     .value_or(JoinPath(config.mWorkingDir, "aos_node.cfg"));
+                                     .value_or(common::utils::JoinPath(config.mWorkingDir, "aos_node.cfg"));
 
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
@@ -155,7 +147,7 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseLoggingConfig(logging, config.mLogging);
         common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
         common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
-            JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
+            common::utils::JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
