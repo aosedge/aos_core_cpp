@@ -41,6 +41,12 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "systemAlertPriority": 5
     },
     "cmReconnectTimeout": "1m",
+    "imageManager": {
+        "imagePath": "/path/to/images",
+        "imagesPartLimit": 50,
+        "updateItemTtl": "15d",
+        "removeOutdatedPeriod": "12h"
+    },
     "launcher": {
         "runtimes": {
             "container": {
@@ -144,6 +150,11 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mJournalAlerts.mFilter[1], "regexp");
     EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, 7);
     EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, 5);
+
+    EXPECT_EQ(config->mImageManager.mImagePath, "/patht/to/images");
+    EXPECT_EQ(config->mImageManager.mPartLimit, 50);
+    EXPECT_EQ(config->mImageManager.mUpdateItemTTL, 15 * 24 * aos::Time::cHours);
+    EXPECT_EQ(config->mImageManager.mRemoveOutdatedPeriod, 12 * aos::Time::cHours);
 
     EXPECT_EQ(config->mLauncher.mRuntimes.size(), 3);
     EXPECT_TRUE(config->mLauncher.mRuntimes.find("container") != config->mLauncher.mRuntimes.end());
