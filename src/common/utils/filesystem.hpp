@@ -47,6 +47,15 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path);
  */
 void ChangeOwner(const std::string& path, uid_t uid, gid_t gid);
 
+/**
+ * Joins base path and entry into a single path.
+ *
+ * @param base base path.
+ * @param entry path entry.
+ * @return std::string.
+ */
+std::string JoinPath(const std::string& base, const std::string& entry);
+
 } // namespace aos::common::utils
 
 #endif
