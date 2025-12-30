@@ -102,6 +102,31 @@ void AosCore::Init(const std::string& configFile)
     err = mRuntimes.GetRuntimes(*runtimes);
     AOS_ERROR_CHECK_AND_THROW(err, "can't get runtimes");
 
+    // Initialize images space allocator
+
+    err = mImagesSpaceAllocator.Init(mConfig.mImageManager.mImagePath, mPlatformFS, 0, &mImageManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize images space allocator");
+
+    // Initialize downloader
+
+    err = mDownloader.Init();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
+
+    // Initialize file info provider
+
+    err = mFileInfoProvider.Init(mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file info provider");
+
+    // Initialize image handler
+    err = mImageHandler.Init();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image handler");
+
+    // Initialize image manager
+
+    err = mImageManager.Init(mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader, mFileInfoProvider,
+        mOCISpec, mImageHandler);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
+
     // Initialize launcher
 
     err = mLauncher.Init(*runtimes, mSMClient, mDatabase);
