@@ -242,7 +242,7 @@ std::unique_ptr<aos::oci::RuntimeConfig> CreateRuntimeConfig()
 {
     auto res = std::make_unique<aos::oci::RuntimeConfig>();
 
-    aos::oci::CreateExampleRuntimeSpec(*res);
+    aos::oci::CreateExampleRuntimeConfig(*res);
 
     aos::oci::Linux lnx;
     lnx.mResources.EmplaceValue(CreateLinuxResources());
