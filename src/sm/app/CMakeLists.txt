@@ -22,13 +22,16 @@ set(LIBRARIES
     aos::core::common::monitoring
     aos::core::common::pkcs11
     aos::core::common::version
+    aos::core::sm::imagemanager
     aos::core::sm::launcher
     aos::core::sm::networkmanager
     aos::core::sm::nodeconfig
+    aos::common::downloader
     aos::common::iamclient
     aos::common::jsonprovider
     aos::common::logger
     aos::common::network
+    aos::common::ocispec
     aos::common::version
     aos::sm::alerts
     aos::sm::config
