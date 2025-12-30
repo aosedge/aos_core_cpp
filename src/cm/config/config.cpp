@@ -30,6 +30,7 @@ constexpr auto cDefaultMonitoringSendPeriod           = "1m";
 constexpr auto cDefaultSMConnectionTimeout            = "1m";
 constexpr auto cDefaultUnitStatusSendTimeout          = "30s";
 constexpr auto cDefaultUpdateItemTTL                  = "30d";
+constexpr auto cDefaultRemoveOutdatedPeriod           = "24h";
 constexpr auto cDefaultMigrationPath                  = "/usr/share/aos/communicationmanager/migration";
 constexpr auto cDefaultCertStorage                    = "/var/aos/crypt/cm/";
 constexpr auto cDefaultDNSStoragePath                 = "/var/aos/dns";
@@ -70,7 +71,7 @@ void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing sendPeriod tag");
 }
 
-void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
+void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
     imagemanager::Config& config)
 {
     auto err = config.mInstallPath.Assign(
@@ -84,6 +85,10 @@ void ParseImagemanagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     Tie(config.mUpdateItemTTL, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl", cDefaultUpdateItemTTL));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
+
+    Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(
+        object.GetValue<std::string>("removeOutdatedPeriod", cDefaultRemoveOutdatedPeriod));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
 }
 
 void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, launcher::Config& config)
@@ -128,7 +133,7 @@ Error ParseConfig(const std::string& filename, Config& config)
         ParseNodeInfoProviderConfig(
             object.Has("nodeInfoProvider") ? object.GetObject("nodeInfoProvider") : empty, config.mNodeInfoProvider);
         ParseAlertsConfig(object.Has("alerts") ? object.GetObject("alerts") : empty, config.mAlerts);
-        ParseImagemanagerConfig(object.Has("imageManager") ? object.GetObject("imageManager") : empty,
+        ParseImageManagerConfig(object.Has("imageManager") ? object.GetObject("imageManager") : empty,
             config.mWorkingDir, config.mImageManager);
         ParseLauncherConfig(object.Has("launcher") ? object.GetObject("launcher") : empty, config.mLauncher);
 
