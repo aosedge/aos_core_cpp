@@ -47,8 +47,9 @@ constexpr auto cFullTestConfigJSON = R"({
     },
     "imageManager": {
         "installPath": "/path/to/install",
+        "downloadPath": "/path/to/download",
         "updateItemTtl": "30d",
-        "downloadPath": "/path/to/download"
+        "removeOutdatedPeriod": "1h"
     },
     "launcher": {
         "nodesConnectionTimeout": "1m",
@@ -132,8 +133,9 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cMinutes * 13);
 
     EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), "/path/to/install");
-    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
+    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
+    EXPECT_EQ(config.mImageManager.mRemoveOutdatedPeriod, aos::Time::cHours * 1);
 
     EXPECT_EQ(config.mLauncher.mNodesConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mLauncher.mInstanceTTL, aos::Time::cDay * 1);
