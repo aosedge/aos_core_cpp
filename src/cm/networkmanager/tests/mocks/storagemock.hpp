@@ -11,7 +11,7 @@
 
 #include <cm/networkmanager/itf/storage.hpp>
 
-namespace aos::cm::networkmanager::tests {
+namespace aos::cm::networkmanager {
 
 class MockStorage : public StorageItf {
 public:
@@ -27,6 +27,6 @@ public:
     MOCK_METHOD(Error, RemoveNetworkInstance, (const InstanceIdent& instanceIdent), (override));
 };
 
-} // namespace aos::cm::networkmanager::tests
+} // namespace aos::cm::networkmanager
 
 #endif

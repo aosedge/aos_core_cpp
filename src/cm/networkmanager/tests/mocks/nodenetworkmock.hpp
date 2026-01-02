@@ -11,7 +11,7 @@
 
 #include <core/cm/networkmanager/itf/nodenetwork.hpp>
 
-namespace aos::cm::networkmanager::tests {
+namespace aos::cm::networkmanager {
 
 class MockNodeNetwork : public NodeNetworkItf {
 public:
@@ -19,6 +19,6 @@ public:
         (override));
 };
 
-} // namespace aos::cm::networkmanager::tests
+} // namespace aos::cm::networkmanager
 
 #endif
