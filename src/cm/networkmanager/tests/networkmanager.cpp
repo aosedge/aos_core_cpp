@@ -8,13 +8,14 @@
 
 #include <gtest/gtest.h>
 
+#include <core/common/tests/utils/log.hpp>
+
 #include <cm/networkmanager/ipsubnet.hpp>
 #include <cm/networkmanager/netpool.hpp>
 #include <cm/networkmanager/networkmanager.hpp>
 
 #include <common/network/utils.hpp>
 #include <common/utils/exception.hpp>
-#include <core/common/tests/utils/log.hpp>
 
 #include "mocks/dnsservermock.hpp"
 #include "mocks/nodenetworkmock.hpp"
@@ -27,7 +28,7 @@ using namespace testing;
  * Suite
  **********************************************************************************************************************/
 
-namespace aos::cm::networkmanager::tests {
+namespace aos::cm::networkmanager {
 
 class CMNetworkManagerTest : public Test {
 public:
@@ -764,4 +765,4 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
     }
 }
 
-} // namespace aos::cm::networkmanager::tests
+} // namespace aos::cm::networkmanager
