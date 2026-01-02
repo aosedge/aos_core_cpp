@@ -11,7 +11,7 @@
 
 #include <cm/networkmanager/itf/dnsserver.hpp>
 
-namespace aos::cm::networkmanager::tests {
+namespace aos::cm::networkmanager {
 
 class MockDNSServer : public DNSServerItf {
 public:
@@ -20,6 +20,6 @@ public:
     MOCK_METHOD(std::string, GetIP, (), (const, override));
 };
 
-} // namespace aos::cm::networkmanager::tests
+} // namespace aos::cm::networkmanager
 
 #endif // AOS_CM_NETWORKMANAGER_TESTS_MOCKS_DNSSERVERMOCK_HPP_
