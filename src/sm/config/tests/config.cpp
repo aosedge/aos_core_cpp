@@ -47,19 +47,22 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "updateItemTtl": "15d",
         "removeOutdatedPeriod": "12h"
     },
-    "launcher": {
-        "runtimes": {
-            "container": {
-                "type": "crun"
-            },
-            "rootfs": {
-                "type": "aos-vm-rootfs"
-            },
-            "boot": {
-                "type": "aos-vm-boot"
-            }
+    "runtimes": [
+        {
+            "plugin": "container",
+            "type": "crun"
+        },
+        {
+            "plugin": "rootfs",
+            "type": "aos-vm-rootfs",
+            "isComponent": true
+        },
+        {
+            "plugin": "boot",
+            "type": "aos-vm-boot",
+            "isComponent": true
         }
-    },
+    ],
     "logging": {
         "maxPartCount": 10,
         "maxPartSize": 1024
@@ -151,18 +154,30 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mJournalAlerts.mServiceAlertPriority, 7);
     EXPECT_EQ(config->mJournalAlerts.mSystemAlertPriority, 5);
 
-    EXPECT_EQ(config->mImageManager.mImagePath, "/patht/to/images");
+    EXPECT_EQ(config->mImageManager.mImagePath, "/path/to/images");
     EXPECT_EQ(config->mImageManager.mPartLimit, 50);
     EXPECT_EQ(config->mImageManager.mUpdateItemTTL, 15 * 24 * aos::Time::cHours);
     EXPECT_EQ(config->mImageManager.mRemoveOutdatedPeriod, 12 * aos::Time::cHours);
 
     EXPECT_EQ(config->mLauncher.mRuntimes.size(), 3);
-    EXPECT_TRUE(config->mLauncher.mRuntimes.find("container") != config->mLauncher.mRuntimes.end());
-    EXPECT_TRUE(config->mLauncher.mRuntimes.find("rootfs") != config->mLauncher.mRuntimes.end());
-    EXPECT_TRUE(config->mLauncher.mRuntimes.find("boot") != config->mLauncher.mRuntimes.end());
-    EXPECT_EQ(config->mLauncher.mRuntimes.at("container").mType, "crun");
-    EXPECT_EQ(config->mLauncher.mRuntimes.at("rootfs").mType, "aos-vm-rootfs");
-    EXPECT_EQ(config->mLauncher.mRuntimes.at("boot").mType, "aos-vm-boot");
+
+    auto it = std::find_if(config->mLauncher.mRuntimes.begin(), config->mLauncher.mRuntimes.end(),
+        [](const aos::sm::launcher::RuntimeConfig& runtime) { return runtime.mPlugin == "container"; });
+    ASSERT_NE(it, config->mLauncher.mRuntimes.end());
+    EXPECT_EQ(it->mType, "crun");
+    EXPECT_FALSE(it->isComponent);
+
+    it = std::find_if(config->mLauncher.mRuntimes.begin(), config->mLauncher.mRuntimes.end(),
+        [](const aos::sm::launcher::RuntimeConfig& runtime) { return runtime.mPlugin == "rootfs"; });
+    ASSERT_NE(it, config->mLauncher.mRuntimes.end());
+    EXPECT_EQ(it->mType, "aos-vm-rootfs");
+    EXPECT_TRUE(it->isComponent);
+
+    it = std::find_if(config->mLauncher.mRuntimes.begin(), config->mLauncher.mRuntimes.end(),
+        [](const aos::sm::launcher::RuntimeConfig& runtime) { return runtime.mPlugin == "boot"; });
+    ASSERT_NE(it, config->mLauncher.mRuntimes.end());
+    EXPECT_EQ(it->mType, "aos-vm-boot");
+    EXPECT_TRUE(it->isComponent);
 
     EXPECT_EQ(config->mLogging.mMaxPartCount, 10);
     EXPECT_EQ(config->mLogging.mMaxPartSize, 1024);
