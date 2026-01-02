@@ -21,11 +21,11 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
 {
     LOG_DBG() << "Init runtimes" << Log::Field("numRuntimes", config.mRuntimes.size());
 
-    for (const auto& [name, runtimeConfig] : config.mRuntimes) {
-        LOG_DBG() << "Init runtime" << Log::Field("runtime", name.c_str())
+    for (const auto& runtimeConfig : config.mRuntimes) {
+        LOG_DBG() << "Init runtime" << Log::Field("plugin", runtimeConfig.mPlugin.c_str())
                   << Log::Field("type", runtimeConfig.mType.c_str());
 
-        if (name == cRuntimeContainer) {
+        if (runtimeConfig.mPlugin == cRuntimeContainer) {
             auto runtime = std::make_unique<ContainerRuntime>();
 
             if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider); !err.IsNone()) {
@@ -33,7 +33,7 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
             }
 
             mRuntimes.emplace_back(std::move(runtime));
-        } else if (name == cRuntimeBoot) {
+        } else if (runtimeConfig.mPlugin == cRuntimeBoot) {
             auto runtime = std::make_unique<BootRuntime>();
 
             if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider); !err.IsNone()) {
@@ -42,7 +42,7 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
 
             mRuntimes.emplace_back(std::move(runtime));
 
-        } else if (name == cRuntimeRootfs) {
+        } else if (runtimeConfig.mPlugin == cRuntimeRootfs) {
             auto runtime = std::make_unique<RootfsRuntime>();
 
             if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider); !err.IsNone()) {
