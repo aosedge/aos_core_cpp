@@ -81,9 +81,9 @@ TEST_F(RuntimesTest, InitRuntimes)
     Runtimes runtimes;
     Config   config;
 
-    config.mRuntimes.emplace(cRuntimeContainer, RuntimeConfig {"crun", {}});
-    config.mRuntimes.emplace(cRuntimeBoot, RuntimeConfig {"aos-vm-boot", {}});
-    config.mRuntimes.emplace(cRuntimeRootfs, RuntimeConfig {"aos-vm-rootfs", {}});
+    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeContainer, "crun", false, {}});
+    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeBoot, "aos-vm-boot", true, {}});
+    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, {}});
 
     auto nodeInfo = std::make_unique<NodeInfo>();
 
@@ -109,10 +109,10 @@ TEST_F(RuntimesTest, InitRuntimes)
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         auto it = std::find_if(config.mRuntimes.begin(), config.mRuntimes.end(),
-            [&runtimeInfo](const auto& pair) { return runtimeInfo->mRuntimeType == pair.second.mType.c_str(); });
+            [&runtimeInfo](const auto& config) { return runtimeInfo->mRuntimeType == config.mType.c_str(); });
         ASSERT_TRUE(it != config.mRuntimes.end());
 
-        EXPECT_EQ(runtimeInfo->mRuntimeID, (it->second.mType + "-" + nodeInfo->mNodeID.CStr()).c_str());
+        EXPECT_EQ(runtimeInfo->mRuntimeID, (it->mType + "-" + nodeInfo->mNodeID.CStr()).c_str());
     }
 }
 
