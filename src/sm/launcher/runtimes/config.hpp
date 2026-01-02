@@ -16,7 +16,9 @@ namespace aos::sm::launcher {
  * Runtime configuration.
  */
 struct RuntimeConfig {
+    std::string             mPlugin;
     std::string             mType;
+    bool                    isComponent;
     Poco::JSON::Object::Ptr mConfig;
 };
 
