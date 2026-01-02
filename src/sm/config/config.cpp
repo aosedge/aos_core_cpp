@@ -80,25 +80,16 @@ void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
 }
 
-void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& object, launcher::Config& config)
+launcher::RuntimeConfig ParseRuntimeConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
-    if (object.Has("runtimes")) {
-        auto runtimesObject = object.GetObject("runtimes");
+    auto config = launcher::RuntimeConfig {object.GetValue<std::string>("plugin"), object.GetValue<std::string>("type"),
+        object.GetValue<bool>("isComponent", false), nullptr};
 
-        for (const auto& name : runtimesObject.GetNames()) {
-            auto runtimeObject = common::utils::CaseInsensitiveObjectWrapper(runtimesObject.GetObject(name));
-
-            launcher::RuntimeConfig runtimeConfig;
-
-            runtimeConfig.mType = runtimeObject.GetValue<std::string>("type");
-
-            if (runtimeObject.Has("config")) {
-                runtimeConfig.mConfig = runtimeObject.GetObject("config");
-            }
-
-            config.mRuntimes.emplace(name, std::move(runtimeConfig));
-        }
+    if (object.Has("config")) {
+        config.mConfig = object.GetObject("config");
     }
+
+    return config;
 }
 
 } // namespace
@@ -137,17 +128,21 @@ Error ParseConfig(const std::string& filename, Config& config)
             object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
 
         auto imageManager  = object.Has("imageManager") ? object.GetObject("imageManager") : empty;
-        auto launcher      = object.Has("launcher") ? object.GetObject("launcher") : empty;
         auto logging       = object.Has("logging") ? object.GetObject("logging") : empty;
         auto journalAlerts = object.Has("journalAlerts") ? object.GetObject("journalAlerts") : empty;
         auto migration     = object.Has("migration") ? object.GetObject("migration") : empty;
 
         ParseImageManagerConfig(imageManager, config.mWorkingDir, config.mImageManager);
-        ParseLauncherConfig(launcher, config.mLauncher);
         ParseLoggingConfig(logging, config.mLogging);
         common::config::ParseJournalAlertsConfig(journalAlerts, config.mJournalAlerts);
         common::config::ParseMigrationConfig(migration, "/usr/share/aos/servicemanager/migration",
             common::utils::JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
+
+        config.mLauncher.mRuntimes = common::utils::GetArrayValue<launcher::RuntimeConfig>(
+            object, "runtimes", [](const Poco::Dynamic::Var& value) {
+                return ParseRuntimeConfig(
+                    common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+            });
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
