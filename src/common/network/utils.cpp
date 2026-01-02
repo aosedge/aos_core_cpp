@@ -68,7 +68,7 @@ bool NetworkContainsIP(const std::string& networkCIDR, const std::string& ipAddr
     return result;
 }
 
-Error GetRouteList(Array<RouteInfo>& routes)
+Error GetRouteList(std::vector<RouteInfo>& routes)
 {
     auto [sock, err] = CreateNetlinkSocket();
     if (!err.IsNone()) {
@@ -112,9 +112,7 @@ Error GetRouteList(Array<RouteInfo>& routes)
             }
         }
 
-        if (err = routes.PushBack(info); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+        routes.push_back(info);
     }
 
     return ErrorEnum::eNone;
@@ -145,7 +143,7 @@ RetWithError<nl_addr*> ParseAddress(const std::string& cidr)
     return addr;
 }
 
-RetWithError<bool> CheckRouteOverlaps(const std::string& toCheck, const Array<RouteInfo>& routes)
+RetWithError<bool> CheckRouteOverlaps(const std::string& toCheck, const std::vector<RouteInfo>& routes)
 {
     try {
         for (const auto& route : routes) {

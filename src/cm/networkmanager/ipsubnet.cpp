@@ -106,7 +106,7 @@ std::string IpSubnet::RequestIPNetPool(const std::string& networkID)
 
 std::string IpSubnet::FindUnusedIPSubnet()
 {
-    StaticArray<common::network::RouteInfo, common::network::cMaxRouteCount> routes;
+    std::vector<common::network::RouteInfo> routes;
 
     auto err = common::network::GetRouteList(routes);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to get routes");
