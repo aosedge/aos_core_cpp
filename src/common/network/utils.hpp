@@ -26,13 +26,8 @@ namespace aos::common::network {
 struct RouteInfo {
     std::optional<std::string> mDestination;
     std::optional<std::string> mGateway;
-    int                        mLinkIndex;
+    int                        mLinkIndex {};
 };
-
-/**
- * Max route count.
- */
-constexpr size_t cMaxRouteCount = 20;
 
 using NetlinkSocketDeleter = std::function<void(nl_sock*)>;
 using UniqueNetlinkSocket  = std::unique_ptr<nl_sock, NetlinkSocketDeleter>;
@@ -43,7 +38,7 @@ using UniqueNetlinkSocket  = std::unique_ptr<nl_sock, NetlinkSocketDeleter>;
  * @param[out] routes routes.
  * @return Error.
  */
-Error GetRouteList(Array<RouteInfo>& routes);
+Error GetRouteList(std::vector<RouteInfo>& routes);
 
 /**
  * Creates netlink socket.
@@ -59,7 +54,7 @@ RetWithError<UniqueNetlinkSocket> CreateNetlinkSocket();
  * @param routes routes to check against.
  * @return true if overlaps, false otherwise.
  */
-RetWithError<bool> CheckRouteOverlaps(const std::string& toCheck, const Array<RouteInfo>& routes);
+RetWithError<bool> CheckRouteOverlaps(const std::string& toCheck, const std::vector<RouteInfo>& routes);
 
 /**
  * Parses address from CIDR.

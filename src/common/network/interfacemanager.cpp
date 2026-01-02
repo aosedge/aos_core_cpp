@@ -532,7 +532,7 @@ RetWithError<int> InterfaceManager::GetMasterInterfaceIndex() const
 {
     LOG_DBG() << "Get master interface index";
 
-    StaticArray<RouteInfo, cMaxRouteCount> routes;
+    std::vector<RouteInfo> routes;
 
     if (auto err = GetRouteList(routes); !err.IsNone()) {
         return {-1, err};
