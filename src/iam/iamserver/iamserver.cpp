@@ -186,9 +186,11 @@ Error IAMServer::OnStartProvisioning(const String& password)
 
     LOG_DBG() << "Process on start provisioning";
 
-    auto [_, err] = common::utils::ExecCommand(mConfig.mStartProvisioningCmdArgs);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (!mConfig.mStartProvisioningCmdArgs.empty()) {
+        auto [_, err] = common::utils::ExecCommand(mConfig.mStartProvisioningCmdArgs);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -200,9 +202,11 @@ Error IAMServer::OnFinishProvisioning(const String& password)
 
     LOG_DBG() << "Process on finish provisioning";
 
-    auto [_, err] = common::utils::ExecCommand(mConfig.mFinishProvisioningCmdArgs);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (!mConfig.mFinishProvisioningCmdArgs.empty()) {
+        auto [_, err] = common::utils::ExecCommand(mConfig.mFinishProvisioningCmdArgs);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -214,9 +218,11 @@ Error IAMServer::OnDeprovision(const String& password)
 
     LOG_DBG() << "Process on deprovisioning";
 
-    auto [_, err] = common::utils::ExecCommand(mConfig.mDeprovisionCmdArgs);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (!mConfig.mDeprovisionCmdArgs.empty()) {
+        auto [_, err] = common::utils::ExecCommand(mConfig.mDeprovisionCmdArgs);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -228,9 +234,11 @@ Error IAMServer::OnEncryptDisk(const String& password)
 
     LOG_DBG() << "Process on encrypt disk";
 
-    auto [_, err] = common::utils::ExecCommand(mConfig.mDiskEncryptionCmdArgs);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (!mConfig.mDiskEncryptionCmdArgs.empty()) {
+        auto [_, err] = common::utils::ExecCommand(mConfig.mDiskEncryptionCmdArgs);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
