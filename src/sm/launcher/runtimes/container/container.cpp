@@ -7,6 +7,7 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/json.hpp>
 #include <common/utils/utils.hpp>
 
 #include "container.hpp"
@@ -23,26 +24,35 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider) // cppcheck-suppress constParameterReference
 
 {
-    LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
+    try {
+        LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
 
-    auto nodeInfo = std::make_unique<NodeInfo>();
+        auto nodeInfo = std::make_unique<NodeInfo>();
 
-    if (auto err = currentNodeInfoProvider.GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+        if (auto err = currentNodeInfoProvider.GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = CreateRuntimeInfo(config.mType, *nodeInfo); !err.IsNone()) {
+            return err;
+        }
+
+        mRunner     = CreateRunner();
+        mFileSystem = CreateFileSystem();
+
+        if (auto err = mRunner->Init(*this); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        ParseContainerConfig(config.mConfig
+                ? common::utils::CaseInsensitiveObjectWrapper(config.mConfig)
+                : common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>()),
+            config.mWorkingDir, mConfig);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
-
-    if (auto err = CreateRuntimeInfo(config.mType, *nodeInfo); !err.IsNone()) {
-        return err;
-    }
-
-    mRunner     = CreateRunner();
-    mFileSystem = CreateFileSystem();
-
-    if (auto err = mRunner->Init(*this); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
 }
 
 Error ContainerRuntime::Start()

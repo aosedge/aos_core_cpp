@@ -68,7 +68,7 @@ protected:
 
     void SetUp() override
     {
-        RuntimeConfig config = {"container", "runc", false, nullptr};
+        RuntimeConfig config = {"container", "runc", false, "", nullptr};
 
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
             .WillRepeatedly(DoAll(SetArgReferee<0>(CreateNodeInfo()), Return(ErrorEnum::eNone)));
@@ -123,7 +123,7 @@ TEST_F(ContainerRuntimeTest, StopInstance)
 
     auto status = std::make_unique<InstanceStatus>();
 
-    auto err = mRuntime.StartInstance(instance, status);
+    auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
