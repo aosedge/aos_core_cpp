@@ -20,7 +20,7 @@ set(SOURCES rootfs.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::core::common::tools)
+set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools)
 
 # ######################################################################################################################
 # Target
