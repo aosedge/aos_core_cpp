@@ -14,7 +14,7 @@ set(TARGET_NAME container)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES container.cpp filesystem.cpp instance.cpp runner.cpp)
+set(SOURCES config.cpp container.cpp filesystem.cpp instance.cpp runner.cpp)
 
 # ######################################################################################################################
 # Libraries

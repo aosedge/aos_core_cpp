@@ -111,6 +111,7 @@ private:
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
 
+    ContainerConfig                                              mConfig;
     RuntimeInfo                                                  mRuntimeInfo;
     std::mutex                                                   mMutex;
     std::condition_variable                                      mCV;
