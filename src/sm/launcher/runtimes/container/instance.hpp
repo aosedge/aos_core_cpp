@@ -9,6 +9,8 @@
 
 #include <core/common/types/instance.hpp>
 
+#include "config.hpp"
+
 namespace aos::sm::launcher {
 
 /**
