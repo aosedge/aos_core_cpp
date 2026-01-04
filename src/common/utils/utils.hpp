@@ -46,7 +46,21 @@ struct hash<aos::InstanceIdent> {
 
 namespace aos::common::utils {
 
+/**
+ * Execute command and return its output.
+ *
+ * @param args command arguments (first argument is program name).
+ * @return RetWithError<std::string>.
+ */
 RetWithError<std::string> ExecCommand(const std::vector<std::string>& args);
+
+/**
+ * Generates name-based UUID.
+ *
+ * @param name name.
+ * @return std::string.
+ */
+std::string NameUUID(const std::string& name);
 
 } // namespace aos::common::utils
 
