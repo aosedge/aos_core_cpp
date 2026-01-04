@@ -161,7 +161,7 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
 {
     const auto& nodeID = request->node_id();
 
-    LOG_DBG() << "Process get cert types: ID = " << nodeID.c_str();
+    LOG_DBG() << "Process get cert types: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
