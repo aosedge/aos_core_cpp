@@ -10,6 +10,8 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 
+#include <common/utils/utils.hpp>
+
 #include <sm/launcher/runtimes.hpp>
 #include <sm/launcher/runtimes/boot/boot.hpp>
 #include <sm/launcher/runtimes/container/container.hpp>
@@ -112,7 +114,7 @@ TEST_F(RuntimesTest, InitRuntimes)
             [&runtimeInfo](const auto& config) { return runtimeInfo->mRuntimeType == config.mType.c_str(); });
         ASSERT_TRUE(it != config.mRuntimes.end());
 
-        EXPECT_EQ(runtimeInfo->mRuntimeID, (it->mType + "-" + nodeInfo->mNodeID.CStr()).c_str());
+        EXPECT_EQ(runtimeInfo->mRuntimeID, common::utils::NameUUID(it->mType + "-" + nodeInfo->mNodeID.CStr()).c_str());
     }
 }
 

@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/utils.hpp>
+
 #include "rootfs.hpp"
 
 namespace aos::sm::launcher {
@@ -98,7 +100,7 @@ Error RootfsRuntime::CreateRuntimeInfo(const std::string& runtimeType, const Nod
 {
     auto runtimeID = runtimeType + "-" + nodeInfo.mNodeID.CStr();
 
-    if (auto err = mRuntimeInfo.mRuntimeID.Assign(runtimeID.c_str()); !err.IsNone()) {
+    if (auto err = mRuntimeInfo.mRuntimeID.Assign(common::utils::NameUUID(runtimeID).c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

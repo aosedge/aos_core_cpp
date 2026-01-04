@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/utils.hpp>
+
 #include "container.hpp"
 
 namespace aos::sm::launcher {
@@ -99,7 +101,7 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
 {
     auto runtimeID = runtimeType + "-" + nodeInfo.mNodeID.CStr();
 
-    if (auto err = mRuntimeInfo.mRuntimeID.Assign(runtimeID.c_str()); !err.IsNone()) {
+    if (auto err = mRuntimeInfo.mRuntimeID.Assign(common::utils::NameUUID(runtimeID).c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
