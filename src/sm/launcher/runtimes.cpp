@@ -30,7 +30,8 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
         if (runtimeConfig.mPlugin == cRuntimeContainer) {
             auto runtime = std::make_unique<ContainerRuntime>();
 
-            if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider); !err.IsNone()) {
+            if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec);
+                !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
