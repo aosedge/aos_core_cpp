@@ -491,6 +491,98 @@ Error ConvertFromProto(const servicemanager::v5::NetworkParameters& src, Instanc
     return ErrorEnum::eNone;
 }
 
+Error ConvertFromProto(const servicemanager::v5::AlertRulePercents& src, AlertRulePercents& dst)
+{
+    dst.mMinThreshold = src.min_threshold();
+    dst.mMaxThreshold = src.max_threshold();
+
+    if (src.has_duration()) {
+        dst.mMinTimeout = Duration(src.duration().nanos());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::AlertRulePoints& src, AlertRulePoints& dst)
+{
+    dst.mMinThreshold = src.min_threshold();
+    dst.mMaxThreshold = src.max_threshold();
+
+    if (src.has_duration()) {
+        dst.mMinTimeout = Duration(src.duration().nanos());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::PartitionAlertRule& src, PartitionAlertRule& dst)
+{
+
+    if (auto err = dst.mName.Assign(src.name().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    dst.mMinThreshold = src.min_threshold();
+    dst.mMaxThreshold = src.max_threshold();
+
+    if (src.has_duration()) {
+        dst.mMinTimeout = Duration(src.duration().nanos());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::MonitoringParameters& src, InstanceMonitoringParams& dst)
+{
+    if (src.has_alert_rules()) {
+        dst.mAlertRules.EmplaceValue();
+
+        if (src.alert_rules().has_ram()) {
+            dst.mAlertRules->mRAM.EmplaceValue();
+
+            if (auto err = ConvertFromProto(src.alert_rules().ram(), *dst.mAlertRules->mRAM); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        if (src.alert_rules().has_cpu()) {
+            dst.mAlertRules->mCPU.EmplaceValue();
+
+            if (auto err = ConvertFromProto(src.alert_rules().cpu(), *dst.mAlertRules->mCPU); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        for (const auto& partitionRule : src.alert_rules().partitions()) {
+            if (auto err = dst.mAlertRules->mPartitions.EmplaceBack(); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            if (auto err = ConvertFromProto(partitionRule, dst.mAlertRules->mPartitions.Back()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        if (src.alert_rules().has_download()) {
+            dst.mAlertRules->mDownload.EmplaceValue();
+
+            if (auto err = ConvertFromProto(src.alert_rules().download(), *dst.mAlertRules->mDownload); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        if (src.alert_rules().has_upload()) {
+            dst.mAlertRules->mUpload.EmplaceValue();
+
+            if (auto err = ConvertFromProto(src.alert_rules().upload(), *dst.mAlertRules->mUpload); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo& dst)
 {
     static_cast<InstanceIdent&>(dst) = ConvertToAos(src.instance());
@@ -537,6 +629,14 @@ Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo
         dst.mNetworkParameters.EmplaceValue();
 
         if (auto err = ConvertFromProto(src.network_parameters(), *dst.mNetworkParameters); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (src.has_monitoring_parameters()) {
+        dst.mMonitoringParams.EmplaceValue();
+
+        if (auto err = ConvertFromProto(src.monitoring_parameters(), *dst.mMonitoringParams); !err.IsNone()) {
             return err;
         }
     }
