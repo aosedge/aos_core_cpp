@@ -73,6 +73,8 @@ protected:
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
             .WillRepeatedly(DoAll(SetArgReferee<0>(CreateNodeInfo()), Return(ErrorEnum::eNone)));
 
+        EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
+
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 

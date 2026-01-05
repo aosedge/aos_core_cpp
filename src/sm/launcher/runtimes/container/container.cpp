@@ -16,6 +16,16 @@
 
 namespace aos::sm::launcher {
 
+namespace {
+
+/***********************************************************************************************************************
+ * Consts
+ **********************************************************************************************************************/
+
+const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"};
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -48,6 +58,17 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
                 ? common::utils::CaseInsensitiveObjectWrapper(config.mConfig)
                 : common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>()),
             config.mWorkingDir, mConfig);
+
+        if (mConfig.mHostBinds.empty()) {
+            for (const auto& bind : cDefaultHostFSBinds) {
+                mConfig.mHostBinds.push_back(bind);
+            }
+        }
+
+        if (auto err = mFileSystem->CreateHostFSWhiteouts(mConfig.mHostWhiteoutsDir, mConfig.mHostBinds);
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
