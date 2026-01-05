@@ -422,4 +422,24 @@ Error FileSystem::RemoveAll(const std::string& path)
     }
 }
 
+RetWithError<std::vector<std::string>> FileSystem::ListDir(const std::string& path)
+{
+    try {
+        std::vector<std::string> entries;
+        auto                     dirPath = fs::path(path);
+
+        for (const auto& entry : fs::directory_iterator(dirPath)) {
+            if (!fs::is_directory(entry)) {
+                continue;
+            }
+
+            entries.push_back(entry.path().filename().string());
+        }
+
+        return entries;
+    } catch (const std::exception& e) {
+        return {std::vector<std::string>(), AOS_ERROR_WRAP(common::utils::ToAosError(e, ErrorEnum::eRuntime))};
+    }
+}
+
 } // namespace aos::sm::launcher
