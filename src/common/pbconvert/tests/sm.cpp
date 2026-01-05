@@ -549,13 +549,6 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     start1.mStoragePath = "/storage";
     start1.mStatePath   = "/state";
 
-    InstanceNetworkParameters netParams;
-
-    netParams.mNetworkID = "net1";
-    netParams.mIP        = "10.0.0.10";
-    netParams.mSubnet    = "10.0.0.0/24";
-    start1.mNetworkParameters.SetValue(netParams);
-
     EnvVar envVar1;
     envVar1.mName  = "ENV_VAR1";
     envVar1.mValue = "value1";
@@ -565,6 +558,26 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     envVar2.mName  = "ENV_VAR2";
     envVar2.mValue = "value2";
     start1.mEnvVars.PushBack(envVar2);
+
+    InstanceNetworkParameters netParams;
+
+    netParams.mNetworkID = "net1";
+    netParams.mIP        = "10.0.0.10";
+    netParams.mSubnet    = "10.0.0.0/24";
+    start1.mNetworkParameters.SetValue(netParams);
+
+    InstanceMonitoringParams monitoringParams;
+
+    monitoringParams.mAlertRules.EmplaceValue();
+    monitoringParams.mAlertRules->mRAM.EmplaceValue(AlertRulePercents {120 * Time::cSeconds, 80.0, 95.0});
+    monitoringParams.mAlertRules->mCPU.EmplaceValue(AlertRulePercents {20 * Time::cSeconds, 80.0, 95.0});
+    monitoringParams.mAlertRules->mPartitions.EmplaceBack(
+        PartitionAlertRule {300 * Time::cSeconds, 70.0, 90.0, "part1"});
+    monitoringParams.mAlertRules->mPartitions.EmplaceBack(
+        PartitionAlertRule {300 * Time::cSeconds, 70.0, 90.0, "part2"});
+    monitoringParams.mAlertRules->mDownload.EmplaceValue(AlertRulePoints {180 * Time::cSeconds, 1000, 2000});
+    monitoringParams.mAlertRules->mUpload.EmplaceValue(AlertRulePoints {10 * Time::cSeconds, 2000, 3000});
+    start1.mMonitoringParams.SetValue(monitoringParams);
 
     startInstances.PushBack(start1);
 
@@ -586,6 +599,39 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     EXPECT_EQ(result.start_instances(0).env_vars(0).value(), "value1");
     EXPECT_EQ(result.start_instances(0).env_vars(1).name(), "ENV_VAR2");
     EXPECT_EQ(result.start_instances(0).env_vars(1).value(), "value2");
+
+    ASSERT_TRUE(result.start_instances(0).has_network_parameters());
+    EXPECT_EQ(result.start_instances(0).network_parameters().network_id(), "net1");
+    EXPECT_EQ(result.start_instances(0).network_parameters().ip(), "10.0.0.10");
+    EXPECT_EQ(result.start_instances(0).network_parameters().subnet(), "10.0.0.0/24");
+
+    ASSERT_TRUE(result.start_instances(0).has_monitoring_parameters());
+    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().has_alert_rules());
+    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_ram());
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().duration().seconds(), 120);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().min_threshold(), 80.0);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().max_threshold(), 95.0);
+    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_cpu());
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().duration().seconds(), 20);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().min_threshold(), 80.0);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().max_threshold(), 95.0);
+    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_download());
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().duration().seconds(), 180);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().min_threshold(), 1000);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().max_threshold(), 2000);
+    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_upload());
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().duration().seconds(), 10);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().min_threshold(), 2000);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().max_threshold(), 3000);
+    ASSERT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions_size(), 2);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).name(), "part1");
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).duration().seconds(), 300);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).min_threshold(), 70.0);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).max_threshold(), 90.0);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).name(), "part2");
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).duration().seconds(), 300);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).min_threshold(), 70.0);
+    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).max_threshold(), 90.0);
 }
 
 TEST_F(PBConvertSMTest, ConvertSMInfoFromProto)
