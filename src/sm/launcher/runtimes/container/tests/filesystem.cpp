@@ -233,4 +233,25 @@ TEST_F(ContainerFileSystemTest, RemoveAll)
     EXPECT_FALSE(fs::exists(testDir)) << "Directory not removed";
 }
 
+TEST_F(ContainerFileSystemTest, ListDir)
+{
+    const auto testDir = fs::path(cTestDirRoot) / "dir";
+
+    fs::create_directories(testDir);
+    fs::create_directories(testDir / "subdir1");
+    fs::create_directories(testDir / "subdir2");
+    fs::create_directories(testDir / "subdir3");
+
+    CreateFile(testDir / "file1", "test");
+    CreateFile(testDir / "file2", "test");
+
+    auto [entries, err] = mFileSystem.ListDir(testDir.string());
+    EXPECT_TRUE(err.IsNone()) << "ListDir failed: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(entries.size(), 3);
+    EXPECT_NE(std::find(entries.begin(), entries.end(), "subdir1"), entries.end()) << "subdir1 not listed";
+    EXPECT_NE(std::find(entries.begin(), entries.end(), "subdir2"), entries.end()) << "subdir2 not listed";
+    EXPECT_NE(std::find(entries.begin(), entries.end(), "subdir3"), entries.end()) << "subdir3 not listed";
+}
+
 } // namespace aos::sm::launcher

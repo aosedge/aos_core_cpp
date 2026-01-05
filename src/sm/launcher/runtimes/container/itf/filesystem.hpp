@@ -126,6 +126,14 @@ public:
      * @return Error.
      */
     virtual Error RemoveAll(const std::string& path) = 0;
+
+    /**
+     * Lists directory contents (only directories).
+     *
+     * @param path directory path.
+     * @return RetWithError<std::vector<std::string>>.
+     */
+    virtual RetWithError<std::vector<std::string>> ListDir(const std::string& path) = 0;
 };
 
 } // namespace aos::sm::launcher
