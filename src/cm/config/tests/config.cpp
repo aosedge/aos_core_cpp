@@ -24,17 +24,17 @@ using namespace testing;
 namespace {
 
 constexpr auto cFullTestConfigJSON = R"({
-    "CACert" : "CACert",
+    "CACert": "CACert",
     "certStorage": "/var/aos/crypt/cm/",
-    "storageDir" : "/var/aos/storage",
-    "stateDir" : "/var/aos/state",
-    "serviceDiscoveryUrl" : "www.aos.com",
-    "iamProtectedServerUrl" : "localhost:8089",
-    "iamPublicServerUrl" : "localhost:8090",
+    "storageDir": "/var/aos/storage",
+    "stateDir": "/var/aos/state",
+    "serviceDiscoveryUrl": "www.aos.com",
+    "iamProtectedServerUrl": "localhost:8089",
+    "iamPublicServerUrl": "localhost:8090",
     "cmServerUrl":"localhost:8094",
     "fileServerUrl":"localhost:8080",
-    "workingDir" : "workingDir",
-    "unitConfigFile" : "/var/aos/aos_unit.cfg",
+    "workingDir": "workingDir",
+    "unitConfigFile": "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
     "monitoring": {
         "sendPeriod": "5m"
@@ -55,9 +55,9 @@ constexpr auto cFullTestConfigJSON = R"({
         "nodesConnectionTimeout": "1m",
         "instanceTtl": "1d"
     },
-    "migration" : {
-        "migrationPath" : "/usr/share/aos_communicationmanager/migration",
-        "mergedMigrationPath" : "/var/aos/communicationmanager/migration"
+    "migration": {
+        "migrationPath": "/usr/share/aos_communicationmanager/migration",
+        "mergedMigrationPath": "/var/aos/communicationmanager/migration"
     },
     "dnsStoragePath": "/var/aos/dnsstorage",
     "dnsIp": "0.0.0.0:5353"
