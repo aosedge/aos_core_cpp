@@ -190,6 +190,7 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
 
+    auto instanceID    = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
 
@@ -209,6 +210,12 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     EXPECT_FALSE(runtimeConfig->mProcess->mTerminal);
     EXPECT_EQ(runtimeConfig->mProcess->mUser.mUID, instance.mUID);
     EXPECT_EQ(runtimeConfig->mProcess->mUser.mGID, instance.mGID);
+
+    // Check cgroups path
+
+    ASSERT_TRUE(runtimeConfig->mLinux.HasValue());
+    EXPECT_EQ(
+        runtimeConfig->mLinux->mCgroupsPath, ("/system.slice/system-aos\\x2dservice.slice/" + instanceID).c_str());
 }
 
 } // namespace aos::sm::launcher
