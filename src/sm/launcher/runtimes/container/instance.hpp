@@ -81,6 +81,7 @@ public:
 
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
+    static constexpr auto cRootFSDir         = "rootfs";
     static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
     void  GenerateInstanceID();
