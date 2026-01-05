@@ -81,6 +81,7 @@ public:
 
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
+    static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
     void  GenerateInstanceID();
     Error LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
