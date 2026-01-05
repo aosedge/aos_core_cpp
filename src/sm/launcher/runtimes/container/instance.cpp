@@ -181,6 +181,13 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return AOS_ERROR_WRAP(err);
     }
 
+    if (auto err = runtimeConfig.mRoot->mPath.Assign(common::utils::JoinPath(runtimeDir, cRootFSDir).c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    runtimeConfig.mRoot->mReadonly = false;
+
     if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
