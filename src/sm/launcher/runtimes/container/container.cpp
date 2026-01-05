@@ -14,6 +14,8 @@
 #include "filesystem.hpp"
 #include "runner.hpp"
 
+namespace fs = std::filesystem;
+
 namespace aos::sm::launcher {
 
 namespace {
@@ -31,7 +33,8 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
  **********************************************************************************************************************/
 
 Error ContainerRuntime::Init(const RuntimeConfig& config,
-    iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider) // cppcheck-suppress constParameterReference
+    iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    oci::OCISpecItf& ociSpec) // cppcheck-suppress constParameterReference
 
 {
     try {
@@ -49,6 +52,9 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
 
         mRunner     = CreateRunner();
         mFileSystem = CreateFileSystem();
+
+        mItemInfoProvider = &itemInfoProvider;
+        mOCISpec          = &ociSpec;
 
         if (auto err = mRunner->Init(*this); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -132,7 +138,8 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
                 return AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "instance already running"));
             }
 
-            instance = std::make_shared<Instance>(instanceInfo);
+            instance = std::make_shared<Instance>(
+                instanceInfo, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mOCISpec);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
