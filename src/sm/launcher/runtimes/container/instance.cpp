@@ -176,6 +176,12 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
     runtimeConfig.mProcess->mUser.mGID = mInstanceInfo.mGID;
 
     if (auto err
+        = runtimeConfig.mLinux->mCgroupsPath.Assign(common::utils::JoinPath(cCgroupsPath, mInstanceID).c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
         return err;
