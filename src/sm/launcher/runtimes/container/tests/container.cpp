@@ -182,4 +182,33 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
 }
 
+TEST_F(ContainerRuntimeTest, RuntimeConfig)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check process
+
+    ASSERT_TRUE(runtimeConfig->mProcess.HasValue());
+    EXPECT_FALSE(runtimeConfig->mProcess->mTerminal);
+    EXPECT_EQ(runtimeConfig->mProcess->mUser.mUID, instance.mUID);
+    EXPECT_EQ(runtimeConfig->mProcess->mUser.mGID, instance.mGID);
+}
+
 } // namespace aos::sm::launcher
