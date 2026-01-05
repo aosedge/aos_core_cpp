@@ -7,8 +7,10 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
 
@@ -40,6 +42,14 @@ NodeInfo CreateNodeInfo()
     nodeInfo.mCPUs.Back().mArchInfo.mArchitecture = "amd64";
 
     return nodeInfo;
+}
+
+std::string CreateInstanceID(const InstanceIdent& instanceIdent)
+{
+    auto idStr = std::string(instanceIdent.mItemID.CStr()) + ":" + std::string(instanceIdent.mSubjectID.CStr()) + ":"
+        + std::to_string(instanceIdent.mInstance);
+
+    return common::utils::NameUUID(idStr);
 }
 
 } // namespace
@@ -75,7 +85,7 @@ protected:
 
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
 
-        auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock);
+        auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mOCISpecMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         err = mRuntime.Start();
@@ -90,6 +100,8 @@ protected:
 
     TestRuntime                                      mRuntime;
     NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
+    NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
+    NiceMock<oci::OCISpecMock>                       mOCISpecMock;
 };
 
 /***********************************************************************************************************************
@@ -104,10 +116,16 @@ TEST_F(ContainerRuntimeTest, StartInstance)
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
 
-    auto status = std::make_unique<InstanceStatus>();
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status     = std::make_unique<InstanceStatus>();
+
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eActive);
 
     // Start the same instance again
 
@@ -123,13 +141,18 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
 
-    auto status = std::make_unique<InstanceStatus>();
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status     = std::make_unique<InstanceStatus>();
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
 
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
+
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eInactive);
 
     // Stop the same instance again
 

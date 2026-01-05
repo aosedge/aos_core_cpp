@@ -17,9 +17,6 @@
 #include <common/utils/utils.hpp>
 #include <sm/launcher/runtimes/config.hpp>
 
-#include "itf/filesystem.hpp"
-#include "itf/runner.hpp"
-
 #include "instance.hpp"
 
 namespace aos::sm::launcher {
@@ -39,9 +36,12 @@ public:
      *
      * @param config runtime config.
      * @param currentNodeInfoProvider current node info provider.
+     * @param itemInfoProvider item info provider.
+     * @param ociSpec OCI spec interface.
      * @return Error.
      */
-    Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider);
+    Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
      * Starts runtime.
@@ -110,6 +110,9 @@ private:
 
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
+
+    imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
+    oci::OCISpecItf*                   mOCISpec {};
 
     ContainerConfig                                              mConfig;
     RuntimeInfo                                                  mRuntimeInfo;
