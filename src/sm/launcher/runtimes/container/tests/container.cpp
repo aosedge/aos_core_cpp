@@ -216,6 +216,12 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     ASSERT_TRUE(runtimeConfig->mLinux.HasValue());
     EXPECT_EQ(
         runtimeConfig->mLinux->mCgroupsPath, ("/system.slice/system-aos\\x2dservice.slice/" + instanceID).c_str());
+
+    // Check root
+
+    ASSERT_TRUE(runtimeConfig->mRoot.HasValue());
+    EXPECT_EQ(runtimeConfig->mRoot->mPath, ("/run/aos/runtime/" + instanceID + "/rootfs").c_str());
+    EXPECT_FALSE(runtimeConfig->mRoot->mReadonly);
 }
 
 } // namespace aos::sm::launcher
