@@ -542,6 +542,7 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     start1.mSubjectID   = "user1";
     start1.mInstance    = 0;
     start1.mRuntimeID   = "runc";
+    start1.mOwnerID     = "owner1";
     start1.mUID         = 1000;
     start1.mGID         = 1000;
     start1.mPriority    = 50;
