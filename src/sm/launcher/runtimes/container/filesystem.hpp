@@ -119,6 +119,14 @@ public:
      * @return Error.
      */
     Error RemoveAll(const std::string& path) override;
+
+    /**
+     * Lists directory contents (only directories).
+     *
+     * @param path directory path.
+     * @return RetWithError<std::vector<std::string>>.
+     */
+    RetWithError<std::vector<std::string>> ListDir(const std::string& path) override;
 };
 
 } // namespace aos::sm::launcher
