@@ -12,8 +12,19 @@
 #include <common/utils/utils.hpp>
 
 #include "instance.hpp"
+#include "runtimeconfig.hpp"
 
 namespace aos::sm::launcher {
+
+namespace {
+
+/***********************************************************************************************************************
+ * Consts
+ **********************************************************************************************************************/
+
+static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -188,10 +199,28 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
 
     runtimeConfig.mRoot->mReadonly = false;
 
+    if (auto err = BindHostDirs(runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
     if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
         return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::BindHostDirs(oci::RuntimeConfig& runtimeConfig)
+{
+    for (const auto& hostEntry : cBindEtcEntries) {
+        auto path  = common::utils::JoinPath("/etc", hostEntry);
+        auto mount = std::make_unique<Mount>(path.c_str(), path.c_str(), "bind", "bind,ro");
+
+        if (auto err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
     }
 
     return ErrorEnum::eNone;
