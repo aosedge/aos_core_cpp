@@ -19,7 +19,8 @@ namespace aos::sm::launcher {
 
 Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn)
+    iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver,
+    sm::utils::SystemdConnItf& systemdConn)
 {
     LOG_DBG() << "Init runtimes" << Log::Field("numRuntimes", config.mRuntimes.size());
 
@@ -30,8 +31,8 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
         if (runtimeConfig.mPlugin == cRuntimeContainer) {
             auto runtime = std::make_unique<ContainerRuntime>();
 
-            if (auto err
-                = runtime->Init(runtimeConfig, currentNodeInfoProvider, itemInfoProvider, networkManager, ociSpec);
+            if (auto err = runtime->Init(
+                    runtimeConfig, currentNodeInfoProvider, itemInfoProvider, networkManager, permHandler, ociSpec);
                 !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
