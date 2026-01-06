@@ -101,6 +101,7 @@ private:
         const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
     Error BindHostDirs(oci::RuntimeConfig& runtimeConfig);
     Error CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
+    Error ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
