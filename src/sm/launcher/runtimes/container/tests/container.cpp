@@ -272,6 +272,66 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_INSTANCE_ID=" + instanceID).IsNone());
 }
 
+TEST_F(ContainerRuntimeTest, ImageConfig)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID    = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+    auto imageConfig   = std::make_unique<oci::ImageConfig>();
+
+    EXPECT_CALL(mOCISpecMock, LoadImageConfig(_, _))
+        .WillOnce(Invoke([&imageConfig](const String&, oci::ImageConfig& config) {
+            imageConfig->mConfig.mEnv.EmplaceBack("ENV_VAR1=value1");
+            imageConfig->mConfig.mEnv.EmplaceBack("ENV_VAR2=value2");
+            imageConfig->mConfig.mEnv.EmplaceBack("ENV_VAR3=value3");
+            imageConfig->mConfig.mEntryPoint.EmplaceBack("/bin/example1");
+            imageConfig->mConfig.mEntryPoint.EmplaceBack("/bin/example2");
+            imageConfig->mConfig.mCmd.EmplaceBack("arg1");
+            imageConfig->mConfig.mCmd.EmplaceBack("arg2");
+            imageConfig->mConfig.mCmd.EmplaceBack("arg3");
+            imageConfig->mConfig.mWorkingDir = "/work/dir";
+
+            config = *imageConfig;
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check args
+
+    auto expectedArgs = std::make_unique<StaticArray<StaticString<oci::cMaxParamLen>, oci::cMaxParamCount>>();
+
+    for (const auto& arg : imageConfig->mConfig.mEntryPoint) {
+        expectedArgs->PushBack(arg);
+    }
+
+    for (const auto& arg : imageConfig->mConfig.mCmd) {
+        expectedArgs->PushBack(arg);
+    }
+
+    EXPECT_EQ(runtimeConfig->mProcess->mArgs, *expectedArgs);
+
+    // Check image config env vars
+
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR1=value1").IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR2=value2").IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR3=value3").IsNone());
+}
+
 TEST_F(ContainerRuntimeTest, Network)
 {
     InstanceInfo instance;

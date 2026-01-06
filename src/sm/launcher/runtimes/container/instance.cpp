@@ -177,7 +177,6 @@ Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& s
 Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
     const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig)
 {
-    (void)imageConfig;
     (void)serviceConfig;
 
     LOG_DBG() << "Create runtime config" << Log::Field("instanceID", mInstanceID.c_str());
@@ -221,6 +220,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
 
     if (auto err = CreateAosEnvVars(runtimeConfig); !err.IsNone()) {
         return err;
+    }
+
+    if (auto err = ApplyImageConfig(imageConfig, runtimeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     if (auto err
@@ -285,6 +288,35 @@ Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig)
 
     if (auto err = AddEnvVars(*envVars, runtimeConfig); !err.IsNone()) {
         return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig)
+{
+    runtimeConfig.mProcess->mArgs.Clear();
+
+    for (const auto& arg : imageConfig.mConfig.mEntryPoint) {
+        if (auto err = runtimeConfig.mProcess->mArgs.PushBack(arg); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& arg : imageConfig.mConfig.mCmd) {
+        if (auto err = runtimeConfig.mProcess->mArgs.PushBack(arg); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    runtimeConfig.mProcess->mCwd = imageConfig.mConfig.mWorkingDir;
+
+    if (runtimeConfig.mProcess->mCwd.IsEmpty()) {
+        runtimeConfig.mProcess->mCwd = "/";
+    }
+
+    if (auto err = AddEnvVars(imageConfig.mConfig.mEnv, runtimeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
