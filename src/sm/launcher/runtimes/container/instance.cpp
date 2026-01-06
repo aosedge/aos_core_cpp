@@ -34,6 +34,18 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
               << Log::Field("instanceID", mInstanceID.c_str());
 }
 
+Instance::Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem,
+    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec)
+    : mInstanceID(instanceID)
+    , mConfig(config)
+    , mFileSystem(fileSystem)
+    , mRunner(runner)
+    , mItemInfoProvider(itemInfoProvider)
+    , mOCISpec(ociSpec)
+{
+    LOG_DBG() << "Create instance" << Log::Field("instanceID", mInstanceID.c_str());
+}
+
 Error Instance::Start()
 {
     std::lock_guard lock {mMutex};

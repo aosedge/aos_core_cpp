@@ -107,6 +107,7 @@ private:
     Error UpdateRunStatus(const std::vector<RunStatus>& instances) override;
 
     Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
+    Error StopActiveInstances();
 
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
