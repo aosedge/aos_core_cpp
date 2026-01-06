@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/common/iamclient/itf/permhandler.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
@@ -35,6 +36,7 @@ public:
      * @param currentNodeInfoProvider current node info provider.
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
+     * @param permHandler permission handler.
      * @param ociSpec OCI spec interface.
      * @param statusReceiver instance status receiver.
      * @param systemdConn systemd connection.
@@ -42,7 +44,8 @@ public:
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
+        aos::iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec,
+        InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
 
     /**
      * Returns runtimes.

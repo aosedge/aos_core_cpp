@@ -95,7 +95,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize runtimes
 
     err = mRuntimes.Init(
-        mConfig.mLauncher, mIAMClient, mImageManager, mNetworkManager, mOCISpec, mLauncher, mSystemdConn);
+        mConfig.mLauncher, mIAMClient, mImageManager, mNetworkManager, mIAMClient, mOCISpec, mLauncher, mSystemdConn);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize runtimes");
 
     auto runtimes = std::make_unique<StaticArray<launcher::RuntimeItf*, cMaxNumNodeRuntimes>>();

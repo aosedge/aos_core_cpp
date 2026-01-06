@@ -5,6 +5,7 @@
  */
 
 #include <filesystem>
+#include <numeric>
 
 #include <core/common/tools/logger.hpp>
 
@@ -30,15 +31,17 @@ static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
  * Public
  **********************************************************************************************************************/
 
-Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, FileSystemItf& fileSystem,
-    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, oci::OCISpecItf& ociSpec)
+Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
+    FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec)
     : mInstanceInfo(instance)
     , mConfig(config)
+    , mNodeInfo(nodeInfo)
     , mFileSystem(fileSystem)
     , mRunner(runner)
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
+    , mPermHandler(permHandler)
     , mOCISpec(ociSpec)
 {
     GenerateInstanceID();
@@ -47,15 +50,17 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
               << Log::Field("instanceID", mInstanceID.c_str());
 }
 
-Instance::Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem,
-    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, oci::OCISpecItf& ociSpec)
+Instance::Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
+    FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec)
     : mInstanceID(instanceID)
     , mConfig(config)
+    , mNodeInfo(nodeInfo)
     , mFileSystem(fileSystem)
     , mRunner(runner)
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
+    , mPermHandler(permHandler)
     , mOCISpec(ociSpec)
 {
     LOG_DBG() << "Create instance" << Log::Field("instanceID", mInstanceID.c_str());
@@ -177,8 +182,6 @@ Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& s
 Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
     const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig)
 {
-    (void)serviceConfig;
-
     LOG_DBG() << "Create runtime config" << Log::Field("instanceID", mInstanceID.c_str());
 
     if (auto err = oci::CreateExampleRuntimeConfig(runtimeConfig); !err.IsNone()) {
@@ -223,6 +226,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
     }
 
     if (auto err = ApplyImageConfig(imageConfig, runtimeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = ApplyServiceConfig(serviceConfig, runtimeConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -320,6 +327,105 @@ Error Instance::ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::Runti
     }
 
     return ErrorEnum::eNone;
+}
+
+Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig)
+{
+    if (serviceConfig.mHostname.HasValue()) {
+        runtimeConfig.mHostname = *serviceConfig.mHostname;
+    }
+
+    runtimeConfig.mLinux->mSysctl = serviceConfig.mSysctl;
+
+    if (serviceConfig.mQuotas.mCPUDMIPSLimit.HasValue()) {
+        int64_t quota
+            = *serviceConfig.mQuotas.mCPUDMIPSLimit * cDefaultCPUPeriod * GetNumCPUCores() / mNodeInfo.mMaxDMIPS;
+        if (quota < cMinCPUQuota) {
+            quota = cMinCPUQuota;
+        }
+
+        if (auto err = SetCPULimit(quota, cDefaultCPUPeriod, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (serviceConfig.mQuotas.mRAMLimit.HasValue()) {
+        if (auto err = SetRAMLimit(*serviceConfig.mQuotas.mRAMLimit, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (serviceConfig.mQuotas.mPIDsLimit.HasValue()) {
+        auto pidLimit = *serviceConfig.mQuotas.mPIDsLimit;
+
+        if (auto err = SetPIDLimit(pidLimit, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+
+        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NPROC", pidLimit, pidLimit}, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (serviceConfig.mQuotas.mNoFileLimit.HasValue()) {
+        auto noFileLimit = *serviceConfig.mQuotas.mNoFileLimit;
+
+        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NOFILE", noFileLimit, noFileLimit}, runtimeConfig);
+            !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (serviceConfig.mQuotas.mTmpLimit.HasValue()) {
+        StaticString<cFSMountOptionLen> tmpFSOpts;
+
+        if (auto err = tmpFSOpts.Format("nosuid,strictatime,mode=1777,size=%lu", *serviceConfig.mQuotas.mTmpLimit);
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        auto mount = std::make_unique<Mount>("tmpfs", "/tmp", "tmpfs", tmpFSOpts);
+
+        if (auto err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (!serviceConfig.mPermissions.IsEmpty()) {
+        auto [secret, err] = mPermHandler.RegisterInstance(mInstanceInfo, serviceConfig.mPermissions);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        mPermissionsRegistered = true;
+
+        StaticString<cEnvVarLen> envVar;
+
+        if (err = envVar.Format("%s=%s", cEnvAosSecret, secret.CStr()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (err = AddEnvVars(Array<StaticString<cEnvVarLen>>(&envVar, 1), runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+size_t Instance::GetNumCPUCores() const
+{
+    int numCores = std::accumulate(mNodeInfo.mCPUs.begin(), mNodeInfo.mCPUs.end(), 0,
+        [](int sum, const auto& cpu) { return sum + cpu.mNumCores; });
+
+    if (numCores == 0) {
+        LOG_WRN() << "Can't identify number of CPU cores, default value (1) will be taken"
+                  << Log::Field("instanceID", mInstanceID.c_str());
+
+        numCores = 1;
+    }
+
+    return numCores;
 }
 
 } // namespace aos::sm::launcher
