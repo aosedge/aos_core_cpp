@@ -12,6 +12,7 @@
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/common/types/instance.hpp>
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
+#include <core/sm/networkmanager/itf/networkmanager.hpp>
 
 #include "itf/filesystem.hpp"
 #include "itf/runner.hpp"
@@ -33,10 +34,12 @@ public:
      * @param fileSystem file system interface.
      * @param runner runner interface.
      * @param itemInfoProvider item info provider.
+     * @param networkManager network manager.
      * @param ociSpec OCI spec interface.
      */
     Instance(const InstanceInfo& instance, const ContainerConfig& config, FileSystemItf& fileSystem, RunnerItf& runner,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Constructor.
@@ -46,10 +49,12 @@ public:
      * @param fileSystem file system interface.
      * @param runner runner interface.
      * @param itemInfoProvider item info provider.
+     * @param networkManager network manager.
      * @param ociSpec OCI spec interface.
      */
     Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem, RunnerItf& runner,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Starts instance.
@@ -98,6 +103,7 @@ private:
     FileSystemItf&                     mFileSystem;
     RunnerItf&                         mRunner;
     imagemanager::ItemInfoProviderItf& mItemInfoProvider;
+    networkmanager::NetworkManagerItf& mNetworkManager;
     oci::OCISpecItf&                   mOCISpec;
 
     mutable std::mutex mMutex;

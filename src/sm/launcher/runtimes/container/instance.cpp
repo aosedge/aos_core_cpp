@@ -31,12 +31,14 @@ static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
  **********************************************************************************************************************/
 
 Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, FileSystemItf& fileSystem,
-    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec)
+    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    networkmanager::NetworkManagerItf& networkManager, oci::OCISpecItf& ociSpec)
     : mInstanceInfo(instance)
     , mConfig(config)
     , mFileSystem(fileSystem)
     , mRunner(runner)
     , mItemInfoProvider(itemInfoProvider)
+    , mNetworkManager(networkManager)
     , mOCISpec(ociSpec)
 {
     GenerateInstanceID();
@@ -46,12 +48,14 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
 }
 
 Instance::Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem,
-    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec)
+    RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    networkmanager::NetworkManagerItf& networkManager, oci::OCISpecItf& ociSpec)
     : mInstanceID(instanceID)
     , mConfig(config)
     , mFileSystem(fileSystem)
     , mRunner(runner)
     , mItemInfoProvider(itemInfoProvider)
+    , mNetworkManager(networkManager)
     , mOCISpec(ociSpec)
 {
     LOG_DBG() << "Create instance" << Log::Field("instanceID", mInstanceID.c_str());
@@ -201,6 +205,18 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
 
     if (auto err = BindHostDirs(runtimeConfig); !err.IsNone()) {
         return err;
+    }
+
+    if (mInstanceInfo.mNetworkParameters.HasValue()) {
+        auto [instanceNetns, err] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (err = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
+            !err.IsNone()) {
+            return err;
+        }
     }
 
     if (auto err

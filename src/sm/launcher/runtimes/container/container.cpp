@@ -34,7 +34,8 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
 
 Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    oci::OCISpecItf& ociSpec) // cppcheck-suppress constParameterReference
+    networkmanager::NetworkManagerItf& networkManager,
+    oci::OCISpecItf&                   ociSpec) // cppcheck-suppress constParameterReference
 
 {
     try {
@@ -54,6 +55,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         mFileSystem = CreateFileSystem();
 
         mItemInfoProvider = &itemInfoProvider;
+        mNetworkManager   = &networkManager;
         mOCISpec          = &ociSpec;
 
         if (auto err = mRunner->Init(*this); !err.IsNone()) {
@@ -143,7 +145,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             }
 
             instance = std::make_shared<Instance>(
-                instanceInfo, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mOCISpec);
+                instanceInfo, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mNetworkManager, *mOCISpec);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
@@ -268,8 +270,8 @@ Error ContainerRuntime::StopActiveInstances()
     for (const auto& instanceID : activeInstances) {
         LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
 
-        auto instance
-            = std::make_unique<Instance>(instanceID, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mOCISpec);
+        auto instance = std::make_unique<Instance>(
+            instanceID, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mNetworkManager, *mOCISpec);
 
         if (err = instance->Stop(); !err.IsNone()) {
             LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())

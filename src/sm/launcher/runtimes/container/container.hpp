@@ -37,11 +37,13 @@ public:
      * @param config runtime config.
      * @param currentNodeInfoProvider current node info provider.
      * @param itemInfoProvider item info provider.
+     * @param networkManager network manager.
      * @param ociSpec OCI spec interface.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Starts runtime.
@@ -113,6 +115,7 @@ private:
     std::shared_ptr<FileSystemItf> mFileSystem;
 
     imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
+    networkmanager::NetworkManagerItf* mNetworkManager {};
     oci::OCISpecItf*                   mOCISpec {};
 
     ContainerConfig                                              mConfig;

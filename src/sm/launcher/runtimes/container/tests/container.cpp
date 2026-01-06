@@ -11,6 +11,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
+#include <core/sm/tests/mocks/networkmanagermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
 
@@ -62,6 +63,16 @@ Error CheckMount(const oci::RuntimeConfig& runtimeConfig, const Mount& mount)
     return ErrorEnum::eNone;
 }
 
+Error CheckNameSpace(const oci::RuntimeConfig& runtimeConfig, const oci::LinuxNamespace& ns)
+{
+    if (auto it = std::find(runtimeConfig.mLinux->mNamespaces.begin(), runtimeConfig.mLinux->mNamespaces.end(), ns);
+        it == runtimeConfig.mLinux->mNamespaces.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -95,7 +106,8 @@ protected:
 
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
 
-        auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mOCISpecMock);
+        auto err = mRuntime.Init(
+            config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock, mOCISpecMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -117,6 +129,7 @@ protected:
     TestRuntime                                      mRuntime;
     NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
     NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
+    NiceMock<networkmanager::NetworkManagerMock>     mNetworkManagerMock;
     NiceMock<oci::OCISpecMock>                       mOCISpecMock;
 };
 
@@ -240,6 +253,36 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     for (const auto& bind : expectedBindings) {
         EXPECT_TRUE(CheckMount(*runtimeConfig, Mount {bind.c_str(), bind.c_str(), "bind", "bind,ro"}).IsNone());
     }
+}
+
+TEST_F(ContainerRuntimeTest, Network)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+    instance.mNetworkParameters.EmplaceValue();
+
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
+        .WillOnce(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check netns
+
+    EXPECT_TRUE(CheckNameSpace(*runtimeConfig, oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, "/netns/path"})
+                    .IsNone());
 }
 
 } // namespace aos::sm::launcher
