@@ -162,7 +162,7 @@ protected:
 
     void SetUp() override
     {
-        RuntimeConfig config = {"container", "runc", false, "", nullptr};
+        RuntimeConfig config = {"container", "runc", false, "/var/aos/workdir", nullptr};
 
         mNodeInfo = CreateNodeInfo();
 
@@ -563,6 +563,44 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
     for (size_t i = 0; i < ociLinuxDevices.size(); ++i) {
         EXPECT_TRUE(CheckLinuxDevice(*runtimeConfig, ociLinuxDevices[i], devicePermissions[i]).IsNone());
     }
+}
+
+TEST_F(ContainerRuntimeTest, StorageState)
+{
+    InstanceInfo instance;
+
+    instance.mItemID      = "item0";
+    instance.mSubjectID   = "subject0";
+    instance.mInstance    = 0;
+    instance.mStatePath   = "state";
+    instance.mStoragePath = "storage";
+
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    EXPECT_CALL(*mRuntime.mFileSystem, GetAbsPath(_)).WillRepeatedly(Invoke([](const std::string& path) {
+        return RetWithError<std::string> {path};
+    }));
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check state and storage
+
+    EXPECT_TRUE(CheckMount(*runtimeConfig,
+        Mount {("/var/aos/workdir/states/" + std::string(instance.mStatePath.CStr())).c_str(), "/state.dat", "bind",
+            "bind,rw"})
+                    .IsNone());
+    EXPECT_TRUE(CheckMount(*runtimeConfig,
+        Mount {("/var/aos/workdir/storages/" + std::string(instance.mStoragePath.CStr())).c_str(), "/storage", "bind",
+            "bind,rw"})
+                    .IsNone());
 }
 
 TEST_F(ContainerRuntimeTest, Network)
