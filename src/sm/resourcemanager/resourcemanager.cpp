@@ -77,8 +77,8 @@ void ParseResourceInfo(const common::utils::CaseInsensitiveObjectWrapper& object
         ParseHost(common::utils::CaseInsensitiveObjectWrapper(var), resource.mHosts.Back());
     });
 
-    common::utils::ForEach(object, "hostDevices", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mHostDevices.EmplaceBack(var.convert<std::string>().c_str());
+    common::utils::ForEach(object, "devices", [&](const Poco::Dynamic::Var& var) {
+        auto err = resource.mDevices.EmplaceBack(var.convert<std::string>().c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse host device name");
     });
 }
@@ -98,11 +98,35 @@ Error ResourceManager::Init(const Config& config)
     return ParseResourceInfos();
 }
 
-Error ResourceManager::GetResourcesInfos(Array<ResourceInfo>& resources)
+Error ResourceManager::GetResourcesInfos(Array<aos::ResourceInfo>& resources)
 {
-    LOG_DBG() << "Getting resources info";
+    LOG_DBG() << "Get resources infos" << Log::Field("count", mResources.size());
 
-    return resources.Assign(Array<ResourceInfo>(mResources.data(), mResources.size()));
+    for (const auto& resource : mResources) {
+        LOG_DBG() << "Resource info" << Log::Field("name", resource.mName)
+                  << Log::Field("sharedCount", resource.mSharedCount);
+
+        if (auto err = resources.PushBack(resource); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ResourceManager::GetResourceInfo(const String& name, ResourceInfo& resourceInfo)
+{
+    LOG_DBG() << "Get resource info" << Log::Field("name", name.CStr());
+
+    auto it = std::find_if(
+        mResources.begin(), mResources.end(), [&](const ResourceInfo& resource) { return resource.mName == name; });
+    if (it == mResources.end()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "resource not found"));
+    }
+
+    resourceInfo = *it;
+
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************

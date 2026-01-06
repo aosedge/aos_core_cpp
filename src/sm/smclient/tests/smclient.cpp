@@ -69,8 +69,8 @@ protected:
 
     auto CreateResourceInfos()
     {
-        auto resources = std::make_unique<StaticArray<sm::resourcemanager::ResourceInfo, 4>>();
-        sm::resourcemanager::ResourceInfo resource;
+        auto         resources = std::make_unique<StaticArray<ResourceInfo, 4>>();
+        ResourceInfo resource;
 
         resource.mName        = "resource1";
         resource.mSharedCount = 2;
@@ -133,7 +133,7 @@ TEST_F(SMClientTest, RegisterSMSucceeds)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -210,7 +210,7 @@ TEST_F(SMClientTest, SendSMInfoWithMultipleRuntimesAndResources)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -275,7 +275,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusWithMultipleInstances)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -348,7 +348,7 @@ TEST_F(SMClientTest, SecondStartReturnsError)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -403,7 +403,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusesCallback)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -467,7 +467,7 @@ TEST_F(SMClientTest, SendUpdateInstancesStatusesCallback)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -532,7 +532,7 @@ TEST_F(SMClientTest, SendMonitoringData)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -619,7 +619,7 @@ TEST_F(SMClientTest, SendAlert)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -800,7 +800,7 @@ TEST_F(SMClientTest, GetBlobsInfo)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -865,7 +865,7 @@ TEST_F(SMClientTest, ProcessGetNodeConfigStatus)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -930,7 +930,7 @@ TEST_F(SMClientTest, ProcessUpdateInstances)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -1002,7 +1002,7 @@ TEST_F(SMClientTest, ProcessGetAverageMonitoring)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -1072,7 +1072,7 @@ TEST_F(SMClientTest, ProcessSystemLogRequest)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }
@@ -1134,7 +1134,7 @@ TEST_F(SMClientTest, ProcessUpdateNetworks)
         return ErrorEnum::eNone;
     }));
     EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
-        .WillRepeatedly(Invoke([&resources](Array<sm::resourcemanager::ResourceInfo>& out) {
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
             for (const auto& item : *resources) {
                 out.PushBack(item);
             }

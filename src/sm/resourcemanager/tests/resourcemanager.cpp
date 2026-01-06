@@ -56,7 +56,7 @@ TEST_F(ResourcemanagerTest, InitSucceedsNoFile)
     auto err = mResourceManager.Init(mConfig);
     EXPECT_TRUE(err.IsNone());
 
-    auto resources = std::make_unique<StaticArray<ResourceInfo, cMaxNumNodeResources>>();
+    auto resources = std::make_unique<StaticArray<aos::ResourceInfo, cMaxNumNodeResources>>();
 
     err = mResourceManager.GetResourcesInfos(*resources);
     EXPECT_TRUE(err.IsNone());
@@ -82,7 +82,7 @@ TEST_F(ResourcemanagerTest, InitSucceedsEmptyList)
     auto err = mResourceManager.Init(mConfig);
     EXPECT_TRUE(err.IsNone());
 
-    auto resources = std::make_unique<StaticArray<ResourceInfo, cMaxNumNodeResources>>();
+    auto resources = std::make_unique<StaticArray<aos::ResourceInfo, cMaxNumNodeResources>>();
 
     err = mResourceManager.GetResourcesInfos(*resources);
     EXPECT_TRUE(err.IsNone());
@@ -121,6 +121,10 @@ TEST_F(ResourcemanagerTest, InitSucceeds)
                         "hostname": "host0",
                         "ip": "ip0"
                     }
+                ],
+                "devices": [
+                    "/dev/dev0:/dev/device0:rwm",
+                    "/dev/dev1:/dev/device1:rw"
                 ]
             },
             {
@@ -133,45 +137,62 @@ TEST_F(ResourcemanagerTest, InitSucceeds)
     auto err = mResourceManager.Init(mConfig);
     EXPECT_TRUE(err.IsNone());
 
-    auto resources = std::make_unique<StaticArray<ResourceInfo, cMaxNumNodeResources>>();
+    auto resources = std::make_unique<StaticArray<aos::ResourceInfo, cMaxNumNodeResources>>();
 
     err = mResourceManager.GetResourcesInfos(*resources);
     EXPECT_TRUE(err.IsNone());
 
     ASSERT_EQ(resources->Size(), 2u);
+    EXPECT_STREQ((*resources)[0].mName.CStr(), "name0");
+    EXPECT_EQ((*resources)[0].mSharedCount, 1u);
+    EXPECT_STREQ((*resources)[1].mName.CStr(), "name1");
+    EXPECT_EQ((*resources)[1].mSharedCount, 2u);
 
-    const auto& resource0 = (*resources)[0];
-    EXPECT_STREQ(resource0.mName.CStr(), "name0");
-    EXPECT_EQ(resource0.mSharedCount, 1u);
+    auto resource0 = std::make_unique<ResourceInfo>();
 
-    ASSERT_EQ(resource0.mGroups.Size(), 2u);
-    EXPECT_STREQ(resource0.mGroups[0].CStr(), "group0");
-    EXPECT_STREQ(resource0.mGroups[1].CStr(), "group1");
+    err = mResourceManager.GetResourceInfo("name0", *resource0);
+    EXPECT_TRUE(err.IsNone());
 
-    ASSERT_EQ(resource0.mMounts.Size(), 1u);
-    EXPECT_STREQ(resource0.mMounts[0].mDestination.CStr(), "destination");
-    EXPECT_STREQ(resource0.mMounts[0].mType.CStr(), "type");
-    EXPECT_STREQ(resource0.mMounts[0].mSource.CStr(), "source");
+    EXPECT_STREQ(resource0->mName.CStr(), "name0");
+    EXPECT_EQ(resource0->mSharedCount, 1u);
 
-    ASSERT_EQ(resource0.mMounts[0].mOptions.Size(), 2u);
-    EXPECT_STREQ(resource0.mMounts[0].mOptions[0].CStr(), "option0");
-    EXPECT_STREQ(resource0.mMounts[0].mOptions[1].CStr(), "option1");
+    ASSERT_EQ(resource0->mGroups.Size(), 2u);
+    EXPECT_STREQ(resource0->mGroups[0].CStr(), "group0");
+    EXPECT_STREQ(resource0->mGroups[1].CStr(), "group1");
 
-    ASSERT_EQ(resource0.mEnv.Size(), 2u);
-    EXPECT_STREQ(resource0.mEnv[0].CStr(), "key0=value0");
-    EXPECT_STREQ(resource0.mEnv[1].CStr(), "key1=value1");
+    ASSERT_EQ(resource0->mMounts.Size(), 1u);
+    EXPECT_STREQ(resource0->mMounts[0].mDestination.CStr(), "destination");
+    EXPECT_STREQ(resource0->mMounts[0].mType.CStr(), "type");
+    EXPECT_STREQ(resource0->mMounts[0].mSource.CStr(), "source");
 
-    ASSERT_EQ(resource0.mHosts.Size(), 1u);
-    EXPECT_STREQ(resource0.mHosts[0].mHostname.CStr(), "host0");
-    EXPECT_STREQ(resource0.mHosts[0].mIP.CStr(), "ip0");
+    ASSERT_EQ(resource0->mMounts[0].mOptions.Size(), 2u);
+    EXPECT_STREQ(resource0->mMounts[0].mOptions[0].CStr(), "option0");
+    EXPECT_STREQ(resource0->mMounts[0].mOptions[1].CStr(), "option1");
 
-    const auto& resource1 = (*resources)[1];
-    EXPECT_STREQ(resource1.mName.CStr(), "name1");
-    EXPECT_EQ(resource1.mSharedCount, 2u);
-    EXPECT_EQ(resource1.mGroups.Size(), 0u);
-    EXPECT_EQ(resource1.mMounts.Size(), 0u);
-    EXPECT_EQ(resource1.mEnv.Size(), 0u);
-    EXPECT_EQ(resource1.mHosts.Size(), 0u);
+    ASSERT_EQ(resource0->mEnv.Size(), 2u);
+    EXPECT_STREQ(resource0->mEnv[0].CStr(), "key0=value0");
+    EXPECT_STREQ(resource0->mEnv[1].CStr(), "key1=value1");
+
+    ASSERT_EQ(resource0->mHosts.Size(), 1u);
+    EXPECT_STREQ(resource0->mHosts[0].mHostname.CStr(), "host0");
+    EXPECT_STREQ(resource0->mHosts[0].mIP.CStr(), "ip0");
+
+    ASSERT_EQ(resource0->mDevices.Size(), 2u);
+    EXPECT_STREQ(resource0->mDevices[0].CStr(), "/dev/dev0:/dev/device0:rwm");
+    EXPECT_STREQ(resource0->mDevices[1].CStr(), "/dev/dev1:/dev/device1:rw");
+
+    auto resource1 = std::make_unique<ResourceInfo>();
+
+    err = mResourceManager.GetResourceInfo("name1", *resource1);
+    EXPECT_TRUE(err.IsNone());
+
+    EXPECT_STREQ(resource1->mName.CStr(), "name1");
+    EXPECT_EQ(resource1->mSharedCount, 2u);
+    EXPECT_EQ(resource1->mGroups.Size(), 0u);
+    EXPECT_EQ(resource1->mMounts.Size(), 0u);
+    EXPECT_EQ(resource1->mEnv.Size(), 0u);
+    EXPECT_EQ(resource1->mHosts.Size(), 0u);
+    EXPECT_EQ(resource1->mDevices.Size(), 0u);
 }
 
 } // namespace aos::sm::resourcemanager
