@@ -91,6 +91,10 @@ Error ContainerRuntime::Start()
             return AOS_ERROR_WRAP(err);
         }
 
+        if (auto err = StopActiveInstances(); !err.IsNone()) {
+            LOG_ERR() << "Failed to stop active instances" << Log::Field(err);
+        }
+
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -250,6 +254,30 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
 Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
 {
     (void)instances;
+
+    return ErrorEnum::eNone;
+}
+
+Error ContainerRuntime::StopActiveInstances()
+{
+    auto [activeInstances, err] = mFileSystem->ListDir(mConfig.mRuntimeDir);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& instanceID : activeInstances) {
+        LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
+
+        auto instance
+            = std::make_unique<Instance>(instanceID, mConfig, *mFileSystem, *mRunner, *mItemInfoProvider, *mOCISpec);
+
+        if (err = instance->Stop(); !err.IsNone()) {
+            LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field(err);
+        }
+
+        LOG_DBG() << "Active instance stopped" << Log::Field("instanceID", instanceID.c_str());
+    }
 
     return ErrorEnum::eNone;
 }
