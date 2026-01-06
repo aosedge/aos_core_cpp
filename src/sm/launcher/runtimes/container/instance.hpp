@@ -89,11 +89,18 @@ private:
     static constexpr auto cRootFSDir         = "rootfs";
     static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
+    static constexpr auto cEnvAosItemID        = "AOS_ITEM_ID";
+    static constexpr auto cEnvAosSubjectID     = "AOS_SUBJECT_ID";
+    static constexpr auto cEnvAosInstanceIndex = "AOS_INSTANCE_INDEX";
+    static constexpr auto cEnvAosInstanceID    = "AOS_INSTANCE_ID";
+    static constexpr auto cEnvAosSecret        = "AOS_SECRET";
+
     void  GenerateInstanceID();
     Error LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
     Error CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
         const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
     Error BindHostDirs(oci::RuntimeConfig& runtimeConfig);
+    Error CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
