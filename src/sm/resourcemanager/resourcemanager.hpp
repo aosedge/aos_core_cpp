@@ -33,7 +33,16 @@ public:
      * @param[out] resources resources info.
      * @return Error.
      */
-    Error GetResourcesInfos(Array<ResourceInfo>& resources) override;
+    Error GetResourcesInfos(Array<aos::ResourceInfo>& resources) override;
+
+    /**
+     * Returns resource info by name.
+     *
+     * @param name resource name.
+     * @param[out] resourceInfo resource info.
+     * @return Error.
+     */
+    Error GetResourceInfo(const String& name, ResourceInfo& resourceInfo) override;
 
 private:
     Error ParseResourceInfos();
