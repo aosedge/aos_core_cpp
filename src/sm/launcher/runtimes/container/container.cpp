@@ -35,7 +35,8 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
 Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
     networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-    oci::OCISpecItf& ociSpec) // cppcheck-suppress constParameterReference
+    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+    oci::OCISpecItf&                          ociSpec) // cppcheck-suppress constParameterReference
 
 {
     try {
@@ -52,10 +53,11 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         mRunner     = CreateRunner();
         mFileSystem = CreateFileSystem();
 
-        mItemInfoProvider = &itemInfoProvider;
-        mNetworkManager   = &networkManager;
-        mPermHandler      = &permHandler;
-        mOCISpec          = &ociSpec;
+        mItemInfoProvider     = &itemInfoProvider;
+        mNetworkManager       = &networkManager;
+        mPermHandler          = &permHandler;
+        mResourceInfoProvider = &resourceInfoProvider;
+        mOCISpec              = &ociSpec;
 
         if (auto err = mRunner->Init(*this); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -144,7 +146,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             }
 
             instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner,
-                *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mOCISpec);
+                *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
@@ -270,7 +272,7 @@ Error ContainerRuntime::StopActiveInstances()
         LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
 
         auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner,
-            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mOCISpec);
+            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
 
         if (err = instance->Stop(); !err.IsNone()) {
             LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())

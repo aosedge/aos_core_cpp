@@ -39,12 +39,14 @@ public:
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
+     * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-        iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec);
+        iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Starts runtime.
@@ -115,10 +117,11 @@ private:
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
 
-    imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
-    networkmanager::NetworkManagerItf* mNetworkManager {};
-    iamclient::PermHandlerItf*         mPermHandler {};
-    oci::OCISpecItf*                   mOCISpec {};
+    imagemanager::ItemInfoProviderItf*        mItemInfoProvider {};
+    networkmanager::NetworkManagerItf*        mNetworkManager {};
+    iamclient::PermHandlerItf*                mPermHandler {};
+    resourcemanager::ResourceInfoProviderItf* mResourceInfoProvider {};
+    oci::OCISpecItf*                          mOCISpec {};
 
     ContainerConfig                                              mConfig;
     NodeInfo                                                     mNodeInfo;

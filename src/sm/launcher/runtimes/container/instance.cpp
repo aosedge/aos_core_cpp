@@ -33,7 +33,8 @@ static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
 
 Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
     FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec)
+    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
+    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec)
     : mInstanceInfo(instance)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
@@ -42,6 +43,7 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
     , mPermHandler(permHandler)
+    , mResourceInfoProvider(resourceInfoProvider)
     , mOCISpec(ociSpec)
 {
     GenerateInstanceID();
@@ -52,7 +54,8 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
 
 Instance::Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
     FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec)
+    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
+    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec)
     : mInstanceID(instanceID)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
@@ -61,6 +64,7 @@ Instance::Instance(const std::string& instanceID, const ContainerConfig& config,
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
     , mPermHandler(permHandler)
+    , mResourceInfoProvider(resourceInfoProvider)
     , mOCISpec(ociSpec)
 {
     LOG_DBG() << "Create instance" << Log::Field("instanceID", mInstanceID.c_str());
@@ -410,6 +414,10 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
+    if (auto err = AddResources(serviceConfig.mResources, runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
     return ErrorEnum::eNone;
 }
 
@@ -426,6 +434,89 @@ size_t Instance::GetNumCPUCores() const
     }
 
     return numCores;
+}
+
+Error Instance::AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig)
+{
+    for (const auto& resource : resources) {
+        auto resourceInfo = std::make_unique<sm::resourcemanager::ResourceInfo>();
+
+        if (auto err = mResourceInfoProvider.GetResourceInfo(resource, *resourceInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        for (const auto& group : resourceInfo->mGroups) {
+            auto [gid, err] = mFileSystem.GetGIDByName(group.CStr());
+            if (!err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            if (err = AddAdditionalGID(gid, runtimeConfig); !err.IsNone()) {
+                return err;
+            }
+        }
+
+        for (const auto& mount : resourceInfo->mMounts) {
+            if (auto err = AddMount(mount, runtimeConfig); !err.IsNone()) {
+                return err;
+            }
+        }
+
+        if (auto err = AddEnvVars(resourceInfo->mEnv, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+
+        if (auto err = AddDevices(resourceInfo->mDevices, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig)
+{
+    for (const auto& device : devices) {
+        LOG_DBG() << "Set device" << Log::Field("instanceID", mInstanceID.c_str()) << Log::Field("device", device);
+
+        auto deviceParts = std::make_unique<StaticArray<StaticString<cDeviceNameLen>, 3>>();
+
+        if (auto err = device.Split(*deviceParts, ':'); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (deviceParts->IsEmpty()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "invalid device format"));
+        }
+
+        auto ociDevices = std::vector<oci::LinuxDevice>();
+
+        if (auto err = mFileSystem.PopulateHostDevices((*deviceParts)[0].CStr(), ociDevices); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (deviceParts->Size() >= 2) {
+            for (auto& ociDevice : ociDevices) {
+                if (auto err = ociDevice.mPath.Replace((*deviceParts)[0], (*deviceParts)[1], 1); !err.IsNone()) {
+                    return AOS_ERROR_WRAP(err);
+                }
+            }
+        }
+
+        StaticString<cPermissionsLen> permissions;
+
+        if (deviceParts->Size() == 3) {
+            permissions = (*deviceParts)[2];
+        }
+
+        for (const auto& ociDevice : ociDevices) {
+            if (auto err = AddDevice(ociDevice, permissions, runtimeConfig); !err.IsNone()) {
+                return err;
+            }
+        }
+    }
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::launcher

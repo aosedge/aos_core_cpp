@@ -13,6 +13,7 @@
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
+#include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
 
@@ -96,6 +97,45 @@ Error CheckRLimits(const oci::RuntimeConfig& runtimeConfig, const oci::POSIXRlim
     return ErrorEnum::eNone;
 }
 
+Error CheckAdditionalGID(const oci::RuntimeConfig& runtimeConfig, gid_t gid)
+{
+    if (auto it = std::find(runtimeConfig.mProcess->mUser.mAdditionalGIDs.begin(),
+            runtimeConfig.mProcess->mUser.mAdditionalGIDs.end(), gid);
+        it == runtimeConfig.mProcess->mUser.mAdditionalGIDs.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error CheckLinuxDevice(
+    const oci::RuntimeConfig& runtimeConfig, const oci::LinuxDevice& device, const std::string& permissions)
+{
+    if (auto it = std::find(runtimeConfig.mLinux->mDevices.begin(), runtimeConfig.mLinux->mDevices.end(), device);
+        it == runtimeConfig.mLinux->mDevices.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    auto it = std::find_if(runtimeConfig.mLinux->mResources->mDevices.begin(),
+        runtimeConfig.mLinux->mResources->mDevices.end(), [&device](const oci::LinuxDeviceCgroup& cgroupDevice) {
+            return cgroupDevice.mType == device.mType && cgroupDevice.mMajor == device.mMajor
+                && cgroupDevice.mMinor == device.mMinor;
+        });
+    if (it == runtimeConfig.mLinux->mResources->mDevices.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    if (!it->mAllow) {
+        return ErrorEnum::eFailed;
+    }
+
+    if (it->mAccess != permissions.c_str()) {
+        return ErrorEnum::eFailed;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -132,7 +172,7 @@ protected:
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mOCISpecMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -151,13 +191,14 @@ protected:
         ASSERT_TRUE(err.IsNone()) << "Failed to stop runtime: " << tests::utils::ErrorToStr(err);
     }
 
-    TestRuntime                                      mRuntime;
-    NodeInfo                                         mNodeInfo;
-    NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
-    NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
-    NiceMock<networkmanager::NetworkManagerMock>     mNetworkManagerMock;
-    NiceMock<iamclient::PermHandlerMock>             mPermHandlerMock;
-    NiceMock<oci::OCISpecMock>                       mOCISpecMock;
+    TestRuntime                                         mRuntime;
+    NodeInfo                                            mNodeInfo;
+    NiceMock<iamclient::CurrentNodeInfoProviderMock>    mCurrentNodeInfoProviderMock;
+    NiceMock<imagemanager::ItemInfoProviderMock>        mItemInfoProviderMock;
+    NiceMock<networkmanager::NetworkManagerMock>        mNetworkManagerMock;
+    NiceMock<iamclient::PermHandlerMock>                mPermHandlerMock;
+    NiceMock<resourcemanager::ResourceInfoProviderMock> mResourceInfoProviderMock;
+    NiceMock<oci::OCISpecMock>                          mOCISpecMock;
 };
 
 /***********************************************************************************************************************
@@ -362,6 +403,32 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
     auto serviceConfig = std::make_unique<oci::ServiceConfig>();
 
+    std::vector<resourcemanager::ResourceInfo> resourceInfos;
+
+    resourceInfos.emplace_back();
+
+    resourceInfos.back().mGroups.EmplaceBack("group1");
+    resourceInfos.back().mGroups.EmplaceBack("group2");
+    resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path1", "/container/path1", "bind", "ro"});
+    resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path2", "/container/path2", "bind", "ro"});
+    resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR1=res_value1");
+    resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR2=res_value2");
+    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice1:/dev/containerDevice1:rw");
+
+    resourceInfos.emplace_back();
+
+    resourceInfos.back().mGroups.EmplaceBack("group3");
+    resourceInfos.back().mGroups.EmplaceBack("group4");
+    resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path3", "/container/path3", "bind", "ro"});
+    resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path4", "/container/path4", "bind", "ro"});
+    resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR3=res_value3");
+    resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR4=res_value4");
+    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice2:/dev/containerDevice2:ro");
+
+    std::vector<oci::LinuxDevice> ociLinuxDevices
+        = {{"/dev/containerDevice1", "c", 1, 2, 3, 4, 5}, {"/dev/containerDevice2", "b", 6, 7, 8, 9, 10}};
+    std::vector<std::string> devicePermissions = {"rw", "ro"};
+
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
         manifest.mAosService.EmplaceValue();
 
@@ -382,7 +449,38 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
 
             serviceConfig->mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
 
+            serviceConfig->mResources.EmplaceBack("resource1");
+            serviceConfig->mResources.EmplaceBack("resource2");
+
             config = *serviceConfig;
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mResourceInfoProviderMock, GetResourceInfo(_, _))
+        .WillOnce(Invoke([&resourceInfos](const String&, resourcemanager::ResourceInfo& resourceInfo) {
+            resourceInfo = resourceInfos[0];
+
+            return ErrorEnum::eNone;
+        }))
+        .WillOnce(Invoke([&resourceInfos](const String&, resourcemanager::ResourceInfo& resourceInfo) {
+            resourceInfo = resourceInfos[1];
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(*mRuntime.mFileSystem, GetGIDByName(_))
+        .WillOnce(Return(RetWithError<gid_t> {1}))
+        .WillOnce(Return(RetWithError<gid_t> {2}))
+        .WillOnce(Return(RetWithError<gid_t> {3}))
+        .WillOnce(Return(RetWithError<gid_t> {4}));
+    EXPECT_CALL(*mRuntime.mFileSystem, PopulateHostDevices(_, _))
+        .WillRepeatedly(Invoke([&ociLinuxDevices](const std::string& path, std::vector<oci::LinuxDevice>& ociDevices) {
+            if (path == "/dev/hostDevice1") {
+                ociDevices.push_back(ociLinuxDevices[0]);
+            } else if (path == "/dev/hostDevice2") {
+                ociDevices.push_back(ociLinuxDevices[1]);
+            } else {
+                return ErrorEnum::eNotFound;
+            }
 
             return ErrorEnum::eNone;
         }));
@@ -444,6 +542,27 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
     // Check permissions registration
 
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_SECRET=instance-secret").IsNone());
+
+    // Check resources
+
+    EXPECT_TRUE(CheckAdditionalGID(*runtimeConfig, 1).IsNone());
+    EXPECT_TRUE(CheckAdditionalGID(*runtimeConfig, 2).IsNone());
+    EXPECT_TRUE(CheckAdditionalGID(*runtimeConfig, 3).IsNone());
+    EXPECT_TRUE(CheckAdditionalGID(*runtimeConfig, 4).IsNone());
+
+    for (const auto& resourceInfo : resourceInfos) {
+        for (const auto& mount : resourceInfo.mMounts) {
+            EXPECT_TRUE(CheckMount(*runtimeConfig, mount).IsNone());
+        }
+
+        for (const auto& envVar : resourceInfo.mEnv) {
+            EXPECT_TRUE(CheckEnvVar(*runtimeConfig, envVar.CStr()).IsNone());
+        }
+    }
+
+    for (size_t i = 0; i < ociLinuxDevices.size(); ++i) {
+        EXPECT_TRUE(CheckLinuxDevice(*runtimeConfig, ociLinuxDevices[i], devicePermissions[i]).IsNone());
+    }
 }
 
 TEST_F(ContainerRuntimeTest, Network)
