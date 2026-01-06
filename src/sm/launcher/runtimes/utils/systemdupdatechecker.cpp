@@ -60,8 +60,9 @@ Error SystemdUpdateChecker::Check()
 
 bool SystemdUpdateChecker::AllUnitsActive() const
 {
-    return std::all_of(mUnits.begin(), mUnits.end(),
-        [](const auto& unitStatus) { return unitStatus.second == aos::sm::utils::UnitStateEnum::eActive; });
+    return mUnits.empty() || std::all_of(mUnits.begin(), mUnits.end(), [](const auto& unitStatus) {
+        return unitStatus.second == aos::sm::utils::UnitStateEnum::eActive;
+    });
 }
 
 bool SystemdUpdateChecker::AnyUnitFailed() const
