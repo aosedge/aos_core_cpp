@@ -219,6 +219,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         }
     }
 
+    if (auto err = CreateAosEnvVars(runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
     if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
@@ -237,6 +241,50 @@ Error Instance::BindHostDirs(oci::RuntimeConfig& runtimeConfig)
         if (auto err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
             return err;
         }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig)
+{
+    auto                     envVars = std::make_unique<StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>>();
+    StaticString<cEnvVarLen> envVar;
+
+    if (auto err = envVar.Format("%s=%s", cEnvAosItemID, mInstanceInfo.mItemID.CStr()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVar.Format("%s=%s", cEnvAosSubjectID, mInstanceInfo.mSubjectID.CStr()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVar.Format("%s=%d", cEnvAosInstanceIndex, mInstanceInfo.mInstance); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVar.Format("%s=%s", cEnvAosInstanceID, mInstanceID.c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = AddEnvVars(*envVars, runtimeConfig); !err.IsNone()) {
+        return err;
     }
 
     return ErrorEnum::eNone;

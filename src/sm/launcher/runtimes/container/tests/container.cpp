@@ -73,6 +73,16 @@ Error CheckNameSpace(const oci::RuntimeConfig& runtimeConfig, const oci::LinuxNa
     return ErrorEnum::eNone;
 }
 
+Error CheckEnvVar(const oci::RuntimeConfig& runtimeConfig, const std::string& envVar)
+{
+    if (auto it = std::find(runtimeConfig.mProcess->mEnv.begin(), runtimeConfig.mProcess->mEnv.end(), envVar.c_str());
+        it == runtimeConfig.mProcess->mEnv.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -253,15 +263,21 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     for (const auto& bind : expectedBindings) {
         EXPECT_TRUE(CheckMount(*runtimeConfig, Mount {bind.c_str(), bind.c_str(), "bind", "bind,ro"}).IsNone());
     }
+
+    // Check Aos env vars
+
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_ITEM_ID=" + std::string(instance.mItemID.CStr())).IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_SUBJECT_ID=" + std::string(instance.mSubjectID.CStr())).IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_INSTANCE_INDEX=" + std::to_string(instance.mInstance)).IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_INSTANCE_ID=" + instanceID).IsNone());
 }
 
 TEST_F(ContainerRuntimeTest, Network)
 {
     InstanceInfo instance;
 
-    instance.mItemID    = "item0";
-    instance.mSubjectID = "subject0";
-    instance.mInstance  = 0;
+    instance.mItemID   = "item0";
+    instance.mInstance = 0;
     instance.mNetworkParameters.EmplaceValue();
 
     auto status        = std::make_unique<InstanceStatus>();
