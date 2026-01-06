@@ -237,6 +237,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return AOS_ERROR_WRAP(err);
     }
 
+    if (auto err = ApplyStateStorage(runtimeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
@@ -513,6 +517,39 @@ Error Instance::AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, o
             if (auto err = AddDevice(ociDevice, permissions, runtimeConfig); !err.IsNone()) {
                 return err;
             }
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::ApplyStateStorage(oci::RuntimeConfig& runtimeConfig)
+{
+    if (!mInstanceInfo.mStatePath.IsEmpty()) {
+        auto [absPath, err]
+            = mFileSystem.GetAbsPath(common::utils::JoinPath(mConfig.mStateDir, mInstanceInfo.mStatePath.CStr()));
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        auto mount = std::make_unique<Mount>(absPath.c_str(), cInstanceStateFile, "bind", "bind,rw");
+
+        if (err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (!mInstanceInfo.mStoragePath.IsEmpty()) {
+        auto [absPath, err]
+            = mFileSystem.GetAbsPath(common::utils::JoinPath(mConfig.mStorageDir, mInstanceInfo.mStoragePath.CStr()));
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        auto mount = std::make_unique<Mount>(absPath.c_str(), cInstanceStorageDir, "bind", "bind,rw");
+
+        if (err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
+            return err;
         }
     }
 

@@ -108,6 +108,9 @@ private:
     static constexpr auto cDefaultCPUPeriod = 100000;
     static constexpr auto cMinCPUQuota      = 1000;
 
+    static constexpr auto cInstanceStateFile  = "/state.dat";
+    static constexpr auto cInstanceStorageDir = "/storage";
+
     void   GenerateInstanceID();
     Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
     Error  CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
@@ -119,6 +122,7 @@ private:
     size_t GetNumCPUCores() const;
     Error  AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig);
     Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
+    Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
