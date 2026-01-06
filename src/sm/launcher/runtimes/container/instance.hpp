@@ -14,6 +14,7 @@
 #include <core/common/types/instance.hpp>
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
+#include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
 #include "itf/filesystem.hpp"
 #include "itf/runner.hpp"
@@ -38,12 +39,13 @@ public:
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
+     * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      */
     Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-        oci::OCISpecItf& ociSpec);
+        resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
      * Constructor.
@@ -56,12 +58,13 @@ public:
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
+     * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      */
     Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-        oci::OCISpecItf& ociSpec);
+        resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
      * Starts instance.
@@ -114,19 +117,22 @@ private:
     Error  ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
     Error  ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
     size_t GetNumCPUCores() const;
+    Error  AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig);
+    Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
     RunStatus    mRunStatus;
 
-    const ContainerConfig&             mConfig;
-    const NodeInfo&                    mNodeInfo;
-    FileSystemItf&                     mFileSystem;
-    RunnerItf&                         mRunner;
-    imagemanager::ItemInfoProviderItf& mItemInfoProvider;
-    networkmanager::NetworkManagerItf& mNetworkManager;
-    iamclient::PermHandlerItf&         mPermHandler;
-    oci::OCISpecItf&                   mOCISpec;
+    const ContainerConfig&                    mConfig;
+    const NodeInfo&                           mNodeInfo;
+    FileSystemItf&                            mFileSystem;
+    RunnerItf&                                mRunner;
+    imagemanager::ItemInfoProviderItf&        mItemInfoProvider;
+    networkmanager::NetworkManagerItf&        mNetworkManager;
+    iamclient::PermHandlerItf&                mPermHandler;
+    resourcemanager::ResourceInfoProviderItf& mResourceInfoProvider;
+    oci::OCISpecItf&                          mOCISpec;
 
     mutable std::mutex mMutex;
 
