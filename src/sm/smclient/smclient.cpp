@@ -344,7 +344,7 @@ bool SMClient::SendSMInfo()
         common::pbconvert::ConvertToProto(runtime, *smInfo.add_runtimes());
     }
 
-    auto resources = std::make_unique<StaticArray<resourcemanager::ResourceInfo, cMaxNumNodeResources>>();
+    auto resources = std::make_unique<StaticArray<ResourceInfo, cMaxNumNodeResources>>();
     if (auto err = mResourceInfoProvider->GetResourcesInfos(*resources); !err.IsNone()) {
         LOG_ERR() << "Can't get resources info: err=" << err;
 
@@ -352,8 +352,7 @@ bool SMClient::SendSMInfo()
     }
 
     for (const auto& resource : *resources) {
-        common::pbconvert::ConvertToProto(
-            static_cast<const resourcemanager::ResourceInfo&>(resource), *smInfo.add_resources());
+        common::pbconvert::ConvertToProto(resource, *smInfo.add_resources());
     }
 
     return mStream->Write(outgoingMsg);
