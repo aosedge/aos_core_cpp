@@ -9,6 +9,7 @@
 
 #include <mutex>
 
+#include <core/common/iamclient/itf/permhandler.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/common/types/instance.hpp>
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
@@ -31,14 +32,17 @@ public:
      *
      * @param instanceInfo instance info.
      * @param config container runtime config.
+     * @param nodeInfo current node info.
      * @param fileSystem file system interface.
      * @param runner runner interface.
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
+     * @param permHandler permission handler.
      * @param ociSpec OCI spec interface.
      */
-    Instance(const InstanceInfo& instance, const ContainerConfig& config, FileSystemItf& fileSystem, RunnerItf& runner,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
+        FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+        networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
         oci::OCISpecItf& ociSpec);
 
     /**
@@ -46,14 +50,17 @@ public:
      *
      * @param instanceID instance ID.
      * @param config container runtime config.
+     * @param nodeInfo current node info.
      * @param fileSystem file system interface.
      * @param runner runner interface.
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
+     * @param permHandler permission handler.
      * @param ociSpec OCI spec interface.
      */
-    Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem, RunnerItf& runner,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
+        FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+        networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
         oci::OCISpecItf& ociSpec);
 
     /**
@@ -95,26 +102,35 @@ private:
     static constexpr auto cEnvAosInstanceID    = "AOS_INSTANCE_ID";
     static constexpr auto cEnvAosSecret        = "AOS_SECRET";
 
-    void  GenerateInstanceID();
-    Error LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
-    Error CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
-        const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
-    Error BindHostDirs(oci::RuntimeConfig& runtimeConfig);
-    Error CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
-    Error ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
+    static constexpr auto cDefaultCPUPeriod = 100000;
+    static constexpr auto cMinCPUQuota      = 1000;
+
+    void   GenerateInstanceID();
+    Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
+    Error  CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
+         const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
+    Error  BindHostDirs(oci::RuntimeConfig& runtimeConfig);
+    Error  CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
+    Error  ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
+    Error  ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
+    size_t GetNumCPUCores() const;
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
     RunStatus    mRunStatus;
 
     const ContainerConfig&             mConfig;
+    const NodeInfo&                    mNodeInfo;
     FileSystemItf&                     mFileSystem;
     RunnerItf&                         mRunner;
     imagemanager::ItemInfoProviderItf& mItemInfoProvider;
     networkmanager::NetworkManagerItf& mNetworkManager;
+    iamclient::PermHandlerItf&         mPermHandler;
     oci::OCISpecItf&                   mOCISpec;
 
     mutable std::mutex mMutex;
+
+    bool mPermissionsRegistered {};
 };
 
 } // namespace aos::sm::launcher
