@@ -15,6 +15,7 @@
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
+#include <core/sm/networkmanager/itf/networkmanager.hpp>
 
 #include <sm/utils/itf/systemdconn.hpp>
 
@@ -33,14 +34,15 @@ public:
      * @param config runtime config.
      * @param currentNodeInfoProvider current node info provider.
      * @param itemInfoProvider item info provider.
+     * @param networkManager network manager.
      * @param ociSpec OCI spec interface.
      * @param statusReceiver instance status receiver.
      * @param systemdConn systemd connection.
      * @return Error.
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
-        InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
 
     /**
      * Returns runtimes.
