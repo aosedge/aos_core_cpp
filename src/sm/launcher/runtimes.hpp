@@ -17,6 +17,7 @@
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
+#include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
 #include <sm/utils/itf/systemdconn.hpp>
 
@@ -37,6 +38,7 @@ public:
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
+     * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      * @param statusReceiver instance status receiver.
      * @param systemdConn systemd connection.
@@ -44,8 +46,8 @@ public:
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-        aos::iamclient::PermHandlerItf& permHandler, oci::OCISpecItf& ociSpec,
-        InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
+        aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
 
     /**
      * Returns runtimes.
