@@ -8,6 +8,7 @@
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
+#include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
@@ -64,6 +65,7 @@ protected:
     NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
     NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
     NiceMock<networkmanager::NetworkManagerMock>     mNetworkManagerMock;
+    NiceMock<iamclient::PermHandlerMock>             mPermHandlerMock;
     NiceMock<oci::OCISpecMock>                       mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>             mInstanceStatusReceiverMock;
     NiceMock<sm::utils::SystemdConnMock>             mSystemdConnMock;
@@ -78,7 +80,7 @@ TEST_F(RuntimesTest, InitNoRuntimes)
     Runtimes runtimes;
 
     auto err = runtimes.Init(Config {}, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-        mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+        mPermHandlerMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -108,7 +110,7 @@ TEST_F(RuntimesTest, InitRuntimes)
         .WillRepeatedly(DoAll(SetArgReferee<0>(*nodeInfo), Return(ErrorEnum::eNone)));
 
     auto err = runtimes.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-        mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+        mPermHandlerMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
