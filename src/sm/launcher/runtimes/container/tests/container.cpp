@@ -52,6 +52,16 @@ std::string CreateInstanceID(const InstanceIdent& instanceIdent)
     return common::utils::NameUUID(idStr);
 }
 
+Error CheckMount(const oci::RuntimeConfig& runtimeConfig, const Mount& mount)
+{
+    if (auto it = std::find(runtimeConfig.mMounts.begin(), runtimeConfig.mMounts.end(), mount);
+        it == runtimeConfig.mMounts.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -222,6 +232,14 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     ASSERT_TRUE(runtimeConfig->mRoot.HasValue());
     EXPECT_EQ(runtimeConfig->mRoot->mPath, ("/run/aos/runtime/" + instanceID + "/rootfs").c_str());
     EXPECT_FALSE(runtimeConfig->mRoot->mReadonly);
+
+    // Check host binds
+
+    std::vector<std::string> expectedBindings = {"/etc/nsswitch.conf", "/etc/ssl"};
+
+    for (const auto& bind : expectedBindings) {
+        EXPECT_TRUE(CheckMount(*runtimeConfig, Mount {bind.c_str(), bind.c_str(), "bind", "bind,ro"}).IsNone());
+    }
 }
 
 } // namespace aos::sm::launcher
