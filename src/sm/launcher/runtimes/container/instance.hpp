@@ -88,6 +88,7 @@ private:
     Error LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
     Error CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
         const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
+    Error BindHostDirs(oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
