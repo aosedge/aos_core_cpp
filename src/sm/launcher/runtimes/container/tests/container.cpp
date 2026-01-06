@@ -8,6 +8,7 @@
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
+#include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
@@ -38,6 +39,8 @@ NodeInfo CreateNodeInfo()
 
     nodeInfo.mNodeID     = "node0";
     nodeInfo.mOSInfo.mOS = "linux";
+    nodeInfo.mMaxDMIPS   = 10000;
+    nodeInfo.mCPUs.EmplaceBack(CPUInfo {"amd64", 4, 2500, {}, {}});
 
     nodeInfo.mCPUs.EmplaceBack();
     nodeInfo.mCPUs.Back().mArchInfo.mArchitecture = "amd64";
@@ -83,6 +86,16 @@ Error CheckEnvVar(const oci::RuntimeConfig& runtimeConfig, const std::string& en
     return ErrorEnum::eNone;
 }
 
+Error CheckRLimits(const oci::RuntimeConfig& runtimeConfig, const oci::POSIXRlimit& rLimit)
+{
+    auto it = std::find(runtimeConfig.mProcess->mRlimits.begin(), runtimeConfig.mProcess->mRlimits.end(), rLimit);
+    if (it == runtimeConfig.mProcess->mRlimits.end()) {
+        return ErrorEnum::eNotFound;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -111,13 +124,15 @@ protected:
     {
         RuntimeConfig config = {"container", "runc", false, "", nullptr};
 
+        mNodeInfo = CreateNodeInfo();
+
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
-            .WillRepeatedly(DoAll(SetArgReferee<0>(CreateNodeInfo()), Return(ErrorEnum::eNone)));
+            .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
 
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
 
-        auto err = mRuntime.Init(
-            config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock, mOCISpecMock);
+        auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
+            mPermHandlerMock, mOCISpecMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -137,9 +152,11 @@ protected:
     }
 
     TestRuntime                                      mRuntime;
+    NodeInfo                                         mNodeInfo;
     NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
     NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
     NiceMock<networkmanager::NetworkManagerMock>     mNetworkManagerMock;
+    NiceMock<iamclient::PermHandlerMock>             mPermHandlerMock;
     NiceMock<oci::OCISpecMock>                       mOCISpecMock;
 };
 
@@ -330,6 +347,103 @@ TEST_F(ContainerRuntimeTest, ImageConfig)
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR1=value1").IsNone());
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR2=value2").IsNone());
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR3=value3").IsNone());
+}
+
+TEST_F(ContainerRuntimeTest, ServiceConfig)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID    = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+    auto serviceConfig = std::make_unique<oci::ServiceConfig>();
+
+    EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
+        manifest.mAosService.EmplaceValue();
+
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _))
+        .WillOnce(Invoke([&serviceConfig](const String&, oci::ServiceConfig& config) {
+            serviceConfig->mHostname.SetValue("example-host");
+            serviceConfig->mSysctl.Emplace("net.ipv4.ip_forward", "1");
+            serviceConfig->mSysctl.Emplace("net.ipv4.conf.all.rp_filter", "1");
+            serviceConfig->mSysctl.Emplace("net.ipv4.conf.default.rp_filter", "1");
+
+            serviceConfig->mQuotas.mCPUDMIPSLimit = 5000;
+            serviceConfig->mQuotas.mRAMLimit      = 256 * 1024 * 1024;
+            serviceConfig->mQuotas.mPIDsLimit     = 100;
+            serviceConfig->mQuotas.mNoFileLimit   = 2048;
+            serviceConfig->mQuotas.mTmpLimit      = 512 * 1024 * 1024;
+
+            serviceConfig->mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
+
+            config = *serviceConfig;
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mPermHandlerMock, RegisterInstance(_, _))
+        .WillOnce(Return(RetWithError<StaticString<cSecretLen>> {"instance-secret"}));
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check hostname
+
+    EXPECT_EQ(runtimeConfig->mHostname, *serviceConfig->mHostname);
+
+    // Check sysctl
+
+    EXPECT_EQ(runtimeConfig->mLinux->mSysctl, serviceConfig->mSysctl);
+
+    // Check CPU quota
+
+    ASSERT_TRUE(runtimeConfig->mLinux->mResources.HasValue());
+    ASSERT_TRUE(runtimeConfig->mLinux->mResources->mCPU.HasValue());
+    EXPECT_EQ(*runtimeConfig->mLinux->mResources->mCPU->mQuota,
+        100000 * mNodeInfo.mCPUs[0].mNumCores * (*serviceConfig->mQuotas.mCPUDMIPSLimit) / mNodeInfo.mMaxDMIPS);
+    EXPECT_EQ(runtimeConfig->mLinux->mResources->mCPU->mPeriod, 100000);
+
+    // Check memory quota
+
+    ASSERT_TRUE(runtimeConfig->mLinux->mResources->mMemory.HasValue());
+    EXPECT_EQ(runtimeConfig->mLinux->mResources->mMemory->mLimit, *serviceConfig->mQuotas.mRAMLimit);
+
+    // Check PID limit
+
+    ASSERT_TRUE(runtimeConfig->mLinux->mResources->mPids.HasValue());
+    EXPECT_EQ(runtimeConfig->mLinux->mResources->mPids->mLimit, *serviceConfig->mQuotas.mPIDsLimit);
+
+    EXPECT_TRUE(CheckRLimits(*runtimeConfig,
+        oci::POSIXRlimit {"RLIMIT_NPROC", *serviceConfig->mQuotas.mPIDsLimit, *serviceConfig->mQuotas.mPIDsLimit})
+                    .IsNone());
+
+    // Check NoFile limit
+
+    EXPECT_TRUE(CheckRLimits(*runtimeConfig,
+        oci::POSIXRlimit {"RLIMIT_NOFILE", *serviceConfig->mQuotas.mNoFileLimit, *serviceConfig->mQuotas.mNoFileLimit})
+                    .IsNone());
+
+    // Check /tmp limit
+
+    EXPECT_TRUE(CheckMount(*runtimeConfig,
+        Mount {"tmpfs", "/tmp", "tmpfs",
+            ("nosuid,strictatime,mode=1777,size=" + std::to_string(*serviceConfig->mQuotas.mTmpLimit)).c_str()})
+                    .IsNone());
+
+    // Check permissions registration
+
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "AOS_SECRET=instance-secret").IsNone());
 }
 
 TEST_F(ContainerRuntimeTest, Network)
