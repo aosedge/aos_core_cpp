@@ -39,6 +39,19 @@ public:
         imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
+     * Constructor.
+     *
+     * @param instanceID instance ID.
+     * @param config container runtime config.
+     * @param fileSystem file system interface.
+     * @param runner runner interface.
+     * @param itemInfoProvider item info provider.
+     * @param ociSpec OCI spec interface.
+     */
+    Instance(const std::string& instanceID, const ContainerConfig& config, FileSystemItf& fileSystem, RunnerItf& runner,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec);
+
+    /**
      * Starts instance.
      *
      * @return Error

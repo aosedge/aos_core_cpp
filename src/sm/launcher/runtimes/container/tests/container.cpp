@@ -88,6 +88,12 @@ protected:
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mOCISpecMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
+        EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
+            std::vector<std::string> instances;
+
+            return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
+        }));
+
         err = mRuntime.Start();
         ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
     }
@@ -107,6 +113,22 @@ protected:
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
+
+TEST_F(ContainerRuntimeTest, StopActiveInstances)
+{
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
+        std::vector<std::string> instances = {"instance1", "instance2", "instance3"};
+
+        return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
+    }));
+
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance1")).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance2")).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance3")).WillOnce(Return(ErrorEnum::eNone));
+
+    auto err = mRuntime.Start();
+    ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
+}
 
 TEST_F(ContainerRuntimeTest, StartInstance)
 {
