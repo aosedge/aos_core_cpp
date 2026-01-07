@@ -100,6 +100,12 @@ Error Instance::Start()
         return err;
     }
 
+    if (mInstanceInfo.mNetworkParameters.HasValue()) {
+        if (auto err = SetupNetwork(runtimeDir, *serviceConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
     mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
 
     if (!mRunStatus.mError.IsNone()) {
@@ -654,6 +660,87 @@ Error Instance::PrepareRootFS(
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ServiceConfig& serviceConfig)
+{
+    LOG_DBG() << "Setup network" << Log::Field("instanceID", mInstanceID.c_str());
+
+    auto networkParams = std::make_unique<networkmanager::InstanceNetworkParameters>();
+
+    networkParams->mInstanceIdent = mInstanceInfo;
+
+    auto etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
+
+    if (auto err = networkParams->mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = networkParams->mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto hosts = mConfig.mHosts;
+
+    for (const auto& resource : serviceConfig.mResources) {
+        if (auto err = AddNetworkHostsFromResource(resource.CStr(), hosts); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& host : hosts) {
+        if (auto err = networkParams->mHosts.PushBack(host); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    networkParams->mNetworkParameters = *mInstanceInfo.mNetworkParameters;
+
+    if (serviceConfig.mHostname.HasValue()) {
+        networkParams->mHostname = *serviceConfig.mHostname;
+    }
+
+    if (serviceConfig.mQuotas.mDownloadSpeed.HasValue()) {
+        networkParams->mIngressKbit = *serviceConfig.mQuotas.mDownloadSpeed;
+    }
+
+    if (serviceConfig.mQuotas.mUploadSpeed.HasValue()) {
+        networkParams->mEgressKbit = *serviceConfig.mQuotas.mUploadSpeed;
+    }
+
+    if (serviceConfig.mQuotas.mDownloadLimit.HasValue()) {
+        networkParams->mDownloadLimit = *serviceConfig.mQuotas.mDownloadLimit;
+    }
+
+    if (serviceConfig.mQuotas.mUploadLimit.HasValue()) {
+        networkParams->mUploadLimit = *serviceConfig.mQuotas.mUploadLimit;
+    }
+
+    if (auto err = mFileSystem.PrepareNetworkDir(common::utils::JoinPath(runtimeDir, cMountPointsDir)); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mNetworkManager.AddInstanceToNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, *networkParams);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::AddNetworkHostsFromResource(const std::string& resource, std::vector<Host>& hosts)
+{
+    auto resourceInfo = std::make_unique<resourcemanager::ResourceInfo>();
+
+    if (auto err = mResourceInfoProvider.GetResourceInfo(resource.c_str(), *resourceInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    hosts.insert(hosts.end(), resourceInfo->mHosts.begin(), resourceInfo->mHosts.end());
 
     return ErrorEnum::eNone;
 }
