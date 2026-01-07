@@ -603,6 +603,37 @@ TEST_F(ContainerRuntimeTest, StorageState)
                     .IsNone());
 }
 
+TEST_F(ContainerRuntimeTest, OverrideEnvVars)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+    instance.mEnvVars.EmplaceBack(EnvVar {"OVERRIDE_ENV_VAR1", "override_value1"});
+    instance.mEnvVars.EmplaceBack(EnvVar {"OVERRIDE_ENV_VAR2", "override_value2"});
+    instance.mEnvVars.EmplaceBack(EnvVar {"OVERRIDE_ENV_VAR3", "override_value3"});
+
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check overridden env vars
+
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "OVERRIDE_ENV_VAR1=override_value1").IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "OVERRIDE_ENV_VAR2=override_value2").IsNone());
+    EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "OVERRIDE_ENV_VAR3=override_value3").IsNone());
+}
+
 TEST_F(ContainerRuntimeTest, Network)
 {
     InstanceInfo instance;
