@@ -123,6 +123,7 @@ private:
     Error  AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig);
     Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
     Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
+    Error  OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
