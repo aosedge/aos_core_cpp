@@ -8,7 +8,8 @@
 #include <core/iam/identhandler/identmodules/fileidentifier/fileidentifier.hpp>
 
 #include "identhandler.hpp"
-#include "visidentifier/visidentifier.hpp"
+// TODO: Disabled due to crash on shutdown (see eVISIdentifier case below)
+// #include "visidentifier/visidentifier.hpp"
 
 namespace aos::iam::identhandler {
 
@@ -48,7 +49,7 @@ using IdentifierModule     = EnumStringer<IdentifierModuleType>;
  **********************************************************************************************************************/
 
 std::unique_ptr<IdentModuleItf> InitializeIdentModule(
-    const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider)
+    const config::IdentifierConfig& config, [[maybe_unused]] crypto::UUIDItf& uuidProvider)
 {
     const std::string& plugin = config.mPlugin.empty() ? "none" : config.mPlugin;
 
@@ -72,14 +73,22 @@ std::unique_ptr<IdentModuleItf> InitializeIdentModule(
         return identifier;
     }
 
-    case IdentifierModuleEnum::eVISIdentifier: {
-        auto identifier = std::make_unique<aos::iam::visidentifier::VISIdentifier>();
-
-        err = identifier->Init(config, uuidProvider);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize VIS identifier module");
-
-        return identifier;
-    }
+        // TODO: VISIdentifier is disabled due to application crash on shutdown.
+        // Crash occurs in Poco::MemoryPool::clear() during static destruction (__cxa_finalize).
+        // This is possibly a conflict between gRPC experimental TLS API (TlsServerCredentials)
+        // and Poco::Net static objects. When VISIdentifier code is linked (even without being
+        // executed), Poco::Net library loads with its static MemoryPool objects, which may
+        // get corrupted during gRPC TLS cleanup.
+        //
+        //
+        // case IdentifierModuleEnum::eVISIdentifier: {
+        //     auto identifier = std::make_unique<aos::iam::visidentifier::VISIdentifier>();
+        //
+        //     err = identifier->Init(config, uuidProvider);
+        //     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize VIS identifier module");
+        //
+        //     return identifier;
+        // }
 
     default:
         return nullptr;
