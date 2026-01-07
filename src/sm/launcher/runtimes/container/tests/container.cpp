@@ -572,10 +572,15 @@ TEST_F(ContainerRuntimeTest, StorageState)
     instance.mItemID      = "item0";
     instance.mSubjectID   = "subject0";
     instance.mInstance    = 0;
+    instance.mUID         = 1000;
+    instance.mGID         = 1001;
     instance.mStatePath   = "state";
     instance.mStoragePath = "storage";
 
-    auto status        = std::make_unique<InstanceStatus>();
+    auto status      = std::make_unique<InstanceStatus>();
+    auto statePath   = "/var/aos/workdir/states/" + std::string(instance.mStatePath.CStr());
+    auto storagePath = "/var/aos/workdir/storages/" + std::string(instance.mStoragePath.CStr());
+
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
 
     EXPECT_CALL(*mRuntime.mFileSystem, GetAbsPath(_)).WillRepeatedly(Invoke([](const std::string& path) {
@@ -587,20 +592,17 @@ TEST_F(ContainerRuntimeTest, StorageState)
 
             return ErrorEnum::eNone;
         }));
+    EXPECT_CALL(*mRuntime.mFileSystem, PrepareServiceState(statePath, 1000, 1001)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mFileSystem, PrepareServiceStorage(storagePath, 1000, 1001))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
 
     // Check state and storage
 
-    EXPECT_TRUE(CheckMount(*runtimeConfig,
-        Mount {("/var/aos/workdir/states/" + std::string(instance.mStatePath.CStr())).c_str(), "/state.dat", "bind",
-            "bind,rw"})
-                    .IsNone());
-    EXPECT_TRUE(CheckMount(*runtimeConfig,
-        Mount {("/var/aos/workdir/storages/" + std::string(instance.mStoragePath.CStr())).c_str(), "/storage", "bind",
-            "bind,rw"})
-                    .IsNone());
+    EXPECT_TRUE(CheckMount(*runtimeConfig, Mount {(statePath).c_str(), "/state.dat", "bind", "bind,rw"}).IsNone());
+    EXPECT_TRUE(CheckMount(*runtimeConfig, Mount {(storagePath).c_str(), "/storage", "bind", "bind,rw"}).IsNone());
 }
 
 TEST_F(ContainerRuntimeTest, OverrideEnvVars)
