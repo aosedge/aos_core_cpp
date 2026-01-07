@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 
 #include <common/utils/utils.hpp>
@@ -41,12 +42,13 @@ public:
      * @param permHandler permission handler.
      * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
+     * @param instanceStatusReceiver instance status receiver.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-        oci::OCISpecItf& ociSpec);
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver);
 
     /**
      * Starts runtime.
@@ -113,6 +115,7 @@ private:
 
     Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
     Error StopActiveInstances();
+    void  SendInstanceStatus(const Instance& instance);
 
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
@@ -122,6 +125,7 @@ private:
     iamclient::PermHandlerItf*                mPermHandler {};
     resourcemanager::ResourceInfoProviderItf* mResourceInfoProvider {};
     oci::OCISpecItf*                          mOCISpec {};
+    InstanceStatusReceiverItf*                mInstanceStatusReceiver {};
 
     ContainerConfig                                              mConfig;
     NodeInfo                                                     mNodeInfo;
