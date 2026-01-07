@@ -697,13 +697,52 @@ TEST_F(ContainerRuntimeTest, Network)
 {
     InstanceInfo instance;
 
-    instance.mItemID   = "item0";
-    instance.mInstance = 0;
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+    instance.mOwnerID   = "owner0";
     instance.mNetworkParameters.EmplaceValue();
+    instance.mNetworkParameters->mNetworkID = "network0";
+    instance.mNetworkParameters->mSubnet    = "subnet0";
+    instance.mNetworkParameters->mIP        = "192.168.1.100";
+
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
 
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+    auto networkParams = std::make_unique<networkmanager::InstanceNetworkParameters>();
 
+    networkParams->mInstanceIdent      = instance;
+    networkParams->mNetworkParameters  = *instance.mNetworkParameters;
+    networkParams->mHostsFilePath      = ("/run/aos/runtime/" + instanceID + "/mounts/etc/hosts").c_str();
+    networkParams->mResolvConfFilePath = ("/run/aos/runtime/" + instanceID + "/mounts/etc/resolv.conf").c_str();
+    networkParams->mHostname           = "example-host";
+    networkParams->mIngressKbit        = 1000;
+    networkParams->mEgressKbit         = 1000;
+    networkParams->mDownloadLimit      = 1024 * 1024;
+    networkParams->mUploadLimit        = 1024 * 1024;
+    networkParams->mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
+    networkParams->mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
+    networkParams->mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
+    networkParams->mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
+
+    EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
+        manifest.mAosService.EmplaceValue();
+
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _))
+        .WillOnce(Invoke([&networkParams](const String&, oci::ServiceConfig& config) {
+            config.mHostname.SetValue(networkParams->mHostname);
+            config.mResources.EmplaceBack("resource1");
+            config.mResources.EmplaceBack("resource2");
+            config.mQuotas.mUploadSpeed.SetValue(networkParams->mEgressKbit);
+            config.mQuotas.mDownloadSpeed.SetValue(networkParams->mIngressKbit);
+            config.mQuotas.mUploadLimit.SetValue(networkParams->mUploadLimit);
+            config.mQuotas.mDownloadLimit.SetValue(networkParams->mDownloadLimit);
+
+            return ErrorEnum::eNone;
+        }));
     EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
         .WillOnce(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
     EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
@@ -712,6 +751,24 @@ TEST_F(ContainerRuntimeTest, Network)
 
             return ErrorEnum::eNone;
         }));
+    EXPECT_CALL(mResourceInfoProviderMock, GetResourceInfo(_, _))
+        .WillRepeatedly(Invoke([](const String& resource, resourcemanager::ResourceInfo& resourceInfo) {
+            if (resource == "resource1") {
+                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
+                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
+            } else if (resource == "resource2") {
+                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
+                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
+            } else {
+                return ErrorEnum::eNotFound;
+            }
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(
+        mNetworkManagerMock, AddInstanceToNetwork(String(instanceID.c_str()), instance.mOwnerID, *networkParams))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
