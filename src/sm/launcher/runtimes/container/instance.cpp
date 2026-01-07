@@ -241,6 +241,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return AOS_ERROR_WRAP(err);
     }
 
+    if (auto err = OverrideEnvVars(runtimeConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     if (auto err
         = mOCISpec.SaveRuntimeConfig(common::utils::JoinPath(runtimeDir, cRuntimeConfigFile).c_str(), runtimeConfig);
         !err.IsNone()) {
@@ -551,6 +555,29 @@ Error Instance::ApplyStateStorage(oci::RuntimeConfig& runtimeConfig)
         if (err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
             return err;
         }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::OverrideEnvVars(oci::RuntimeConfig& runtimeConfig)
+{
+    auto                     envVars = std::make_unique<StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>>();
+    StaticString<cEnvVarLen> envVar;
+
+    for (const auto& overrideEnvVar : mInstanceInfo.mEnvVars) {
+        if (auto err = envVar.Format("%s=%s", overrideEnvVar.mName.CStr(), overrideEnvVar.mValue.CStr());
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (auto err = AddEnvVars(*envVars, runtimeConfig); !err.IsNone()) {
+        return err;
     }
 
     return ErrorEnum::eNone;
