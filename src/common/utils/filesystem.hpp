@@ -8,6 +8,7 @@
 #ifndef AOS_COMMON_UTILS_FILESYSTEM_HPP_
 #define AOS_COMMON_UTILS_FILESYSTEM_HPP_
 
+#include <filesystem>
 #include <string>
 
 #include <core/common/tools/error.hpp>
@@ -48,13 +49,24 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path);
 void ChangeOwner(const std::string& path, uid_t uid, gid_t gid);
 
 /**
- * Joins base path and entry into a single path.
+ * Joins base path and one or more entries into a single path.
  *
  * @param base base path.
- * @param entry path entry.
+ * @param entry first path entry.
+ * @param entries additional path entries (variadic).
  * @return std::string.
  */
-std::string JoinPath(const std::string& base, const std::string& entry);
+template <typename... Args>
+std::string JoinPath(const std::string& base, const std::string& entry, Args&&... entries)
+{
+    auto path = std::filesystem::path(base) / entry;
+
+    if constexpr (sizeof...(entries) > 0) {
+        ((path /= std::forward<Args>(entries)), ...);
+    }
+
+    return path.string();
+}
 
 } // namespace aos::common::utils
 

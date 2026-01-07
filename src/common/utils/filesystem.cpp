@@ -85,13 +85,4 @@ void ChangeOwner(const std::string& path, uid_t uid, gid_t gid)
     }
 }
 
-std::string JoinPath(const std::string& base, const std::string& entry)
-{
-    auto path = std::filesystem::path(base);
-
-    path /= entry;
-
-    return path.string();
-}
-
 } // namespace aos::common::utils
