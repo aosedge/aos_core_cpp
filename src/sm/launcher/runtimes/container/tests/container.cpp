@@ -253,14 +253,35 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     instance.mItemID    = "item0";
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
+    instance.mNetworkParameters.EmplaceValue();
 
     auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status     = std::make_unique<InstanceStatus>();
+
+    EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
+        manifest.mAosService.EmplaceValue();
+
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _)).WillOnce(Invoke([](const String&, oci::ServiceConfig& config) {
+        config.mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
+
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
+        .WillOnce(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
+    EXPECT_CALL(mPermHandlerMock, RegisterInstance(_, _))
+        .WillOnce(Return(RetWithError<StaticString<cSecretLen>> {"instance-secret"}));
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
 
     EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mPermHandlerMock, UnregisterInstance(instance)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetworkManagerMock, RemoveInstanceFromNetwork(String(instanceID.c_str()), instance.mOwnerID))
+        .WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
