@@ -96,6 +96,10 @@ Error Instance::Start()
         return err;
     }
 
+    if (auto err = PrepareRootFS(runtimeDir, *imageConfig, *runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
     mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
 
     if (!mRunStatus.mError.IsNone()) {
@@ -611,6 +615,44 @@ Error Instance::PrepareStateStorage()
             !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::PrepareRootFS(
+    const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig)
+{
+    LOG_DBG() << "Prepare rootfs" << Log::Field("instanceID", mInstanceID.c_str());
+
+    auto mountPoints
+        = std::vector<Mount>(runtimeConfig.mMounts.Get(), runtimeConfig.mMounts.Get() + runtimeConfig.mMounts.Size());
+    auto mountPointsDir = common::utils::JoinPath(runtimeDir, cMountPointsDir);
+
+    if (auto err = mFileSystem.CreateMountPoints(mountPointsDir, mountPoints); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    std::vector<std::string> layers;
+
+    layers.push_back(mountPointsDir);
+
+    for (const auto& layerDigest : imageConfig.mRootfs.mDiffIDs) {
+        auto path = std::make_unique<StaticString<cFilePathLen>>();
+
+        if (auto err = mItemInfoProvider.GetLayerPath(layerDigest, *path); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        layers.push_back(path->CStr());
+    }
+
+    layers.push_back(mConfig.mHostWhiteoutsDir);
+    layers.push_back("/");
+
+    if (auto err = mFileSystem.MountServiceRootFS(common::utils::JoinPath(runtimeDir, cRootFSDir), layers);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
