@@ -127,7 +127,28 @@ Error Instance::Stop()
         stopErr = AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mFileSystem.RemoveAll(runtimeDir); !err.IsNone()) {
+    if (mPermissionsRegistered) {
+        if (auto err = mPermHandler.UnregisterInstance(mInstanceInfo); !err.IsNone() && stopErr.IsNone()) {
+            stopErr = err;
+        }
+
+        mPermissionsRegistered = false;
+    }
+
+    if (mInstanceInfo.mNetworkParameters.HasValue()) {
+        if (auto err = mNetworkManager.RemoveInstanceFromNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
+            !err.IsNone() && stopErr.IsNone()) {
+            stopErr = err;
+        }
+    }
+
+    auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
+
+    if (auto err = mFileSystem.UmountServiceRootFS(rootfsPath); !err.IsNone() && stopErr.IsNone()) {
+        stopErr = AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mFileSystem.RemoveAll(runtimeDir); !err.IsNone() && stopErr.IsNone()) {
         stopErr = AOS_ERROR_WRAP(err);
     }
 
