@@ -124,6 +124,7 @@ private:
     Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
     Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
     Error  OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
+    Error  PrepareStateStorage();
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
