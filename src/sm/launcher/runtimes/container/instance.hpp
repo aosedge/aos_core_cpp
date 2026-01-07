@@ -97,6 +97,7 @@ public:
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";
+    static constexpr auto cMountPointsDir    = "mounts";
     static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
     static constexpr auto cEnvAosItemID        = "AOS_ITEM_ID";
@@ -125,6 +126,8 @@ private:
     Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
     Error  OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
     Error  PrepareStateStorage();
+    Error  PrepareRootFS(
+         const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
