@@ -94,6 +94,13 @@ public:
      */
     void GetStatus(InstanceStatus& status) const;
 
+    /**
+     * Updates run status.
+     *
+     * @param runStatus run status.
+     */
+    void UpdateRunStatus(const RunStatus& runStatus);
+
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";

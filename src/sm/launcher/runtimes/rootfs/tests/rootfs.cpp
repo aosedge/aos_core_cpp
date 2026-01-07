@@ -18,8 +18,8 @@
 #include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
-#include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
+#include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/rebootermock.hpp>
 #include <core/sm/tests/mocks/updatecheckermock.hpp>
 #include <core/sm/tests/stubs/instancestatusreceiver.hpp>

@@ -153,7 +153,7 @@ Error Instance::Stop()
     }
 
     mRunStatus.mInstanceID = mInstanceID;
-    mRunStatus.mState      = InstanceStateEnum::eInactive;
+    mRunStatus.mState      = stopErr.IsNone() ? InstanceStateEnum::eInactive : InstanceStateEnum::eFailed;
     mRunStatus.mError      = stopErr;
 
     return stopErr;
@@ -169,6 +169,13 @@ void Instance::GetStatus(InstanceStatus& status) const
     status.mManifestDigest              = mInstanceInfo.mManifestDigest;
     status.mState                       = mRunStatus.mState;
     status.mError                       = mRunStatus.mError;
+}
+
+void Instance::UpdateRunStatus(const RunStatus& runStatus)
+{
+    std::lock_guard lock {mMutex};
+
+    mRunStatus = runStatus;
 }
 
 /***********************************************************************************************************************
