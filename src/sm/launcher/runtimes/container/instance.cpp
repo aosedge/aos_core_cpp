@@ -92,6 +92,10 @@ Error Instance::Start()
         return err;
     }
 
+    if (auto err = PrepareStateStorage(); !err.IsNone()) {
+        return err;
+    }
+
     mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
 
     if (!mRunStatus.mError.IsNone()) {
@@ -578,6 +582,35 @@ Error Instance::OverrideEnvVars(oci::RuntimeConfig& runtimeConfig)
 
     if (auto err = AddEnvVars(*envVars, runtimeConfig); !err.IsNone()) {
         return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::PrepareStateStorage()
+{
+    if (!mInstanceInfo.mStatePath.IsEmpty()) {
+        auto statePath = common::utils::JoinPath(mConfig.mStateDir, mInstanceInfo.mStatePath.CStr());
+
+        LOG_DBG() << "Prepare state" << Log::Field("instanceID", mInstanceID.c_str())
+                  << Log::Field("path", statePath.c_str());
+
+        if (auto err = mFileSystem.PrepareServiceState(statePath, mInstanceInfo.mUID, mInstanceInfo.mGID);
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (!mInstanceInfo.mStoragePath.IsEmpty()) {
+        auto storagePath = common::utils::JoinPath(mConfig.mStorageDir, mInstanceInfo.mStoragePath.CStr());
+
+        LOG_DBG() << "Prepare storage" << Log::Field("instanceID", mInstanceID.c_str())
+                  << Log::Field("path", storagePath.c_str());
+
+        if (auto err = mFileSystem.PrepareServiceStorage(storagePath, mInstanceInfo.mUID, mInstanceInfo.mGID);
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
