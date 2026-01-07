@@ -35,8 +35,8 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
 Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
     networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf&                          ociSpec) // cppcheck-suppress constParameterReference
+    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec,
+    InstanceStatusReceiverItf& instanceStatusReceiver) // cppcheck-suppress constParameterReference
 
 {
     try {
@@ -53,11 +53,12 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         mRunner     = CreateRunner();
         mFileSystem = CreateFileSystem();
 
-        mItemInfoProvider     = &itemInfoProvider;
-        mNetworkManager       = &networkManager;
-        mPermHandler          = &permHandler;
-        mResourceInfoProvider = &resourceInfoProvider;
-        mOCISpec              = &ociSpec;
+        mItemInfoProvider       = &itemInfoProvider;
+        mNetworkManager         = &networkManager;
+        mPermHandler            = &permHandler;
+        mResourceInfoProvider   = &resourceInfoProvider;
+        mOCISpec                = &ociSpec;
+        mInstanceStatusReceiver = &instanceStatusReceiver;
 
         if (auto err = mRunner->Init(*this); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -151,6 +152,12 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
 
+        instance->UpdateRunStatus(RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});
+
+        SendInstanceStatus(*instance);
+
+        auto sendStatus = DeferRelease(instance.get(), [&](void*) { SendInstanceStatus(*instance); });
+
         if (auto err = instance->Start(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -181,6 +188,8 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
             instance = it->second;
             mCurrentInstances.erase(it);
         }
+
+        auto sendStatus = DeferRelease(instance.get(), [&](void*) { SendInstanceStatus(*instance); });
 
         if (auto err = instance->Stop(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -256,7 +265,32 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
 
 Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
 {
-    (void)instances;
+    std::lock_guard lock {mMutex};
+
+    std::vector<InstanceStatus> instancesStatuses;
+
+    for (const auto& runStatus : instances) {
+        auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
+            [&runStatus](const auto& pair) { return pair.second->InstanceID() == runStatus.mInstanceID; });
+        if (it == mCurrentInstances.end()) {
+            LOG_WRN() << "Received run status for unknown instance"
+                      << Log::Field("instanceID", runStatus.mInstanceID.c_str());
+
+            continue;
+        }
+
+        LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
+                  << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
+
+        it->second->UpdateRunStatus(runStatus);
+
+        instancesStatuses.emplace_back();
+
+        it->second->GetStatus(instancesStatuses.back());
+    }
+
+    mInstanceStatusReceiver->OnInstancesStatusesReceived(
+        Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
 
     return ErrorEnum::eNone;
 }
@@ -283,6 +317,14 @@ Error ContainerRuntime::StopActiveInstances()
     }
 
     return ErrorEnum::eNone;
+}
+
+void ContainerRuntime::SendInstanceStatus(const Instance& instance)
+{
+    auto instanceStatus = std::make_unique<InstanceStatus>();
+
+    instance.GetStatus(*instanceStatus);
+    mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(instanceStatus.get(), 1));
 }
 
 }; // namespace aos::sm::launcher

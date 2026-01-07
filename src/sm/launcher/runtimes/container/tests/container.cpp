@@ -12,6 +12,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
+#include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
@@ -136,6 +137,14 @@ Error CheckLinuxDevice(
     return ErrorEnum::eNone;
 }
 
+void CreateInstanceStatus(InstanceStatus& instanceStatus, const InstanceInfo& instanceInfo, InstanceStateEnum state,
+    const Error& error = ErrorEnum::eNone)
+{
+    static_cast<InstanceIdent&>(instanceStatus) = instanceInfo;
+    instanceStatus.mState                       = state;
+    instanceStatus.mError                       = error;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -168,11 +177,15 @@ protected:
 
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
-
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mRunner, Init(_)).WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver) {
+            mRunStatusReceiver = &runStatusReceiver;
+
+            return ErrorEnum::eNone;
+        }));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -199,6 +212,8 @@ protected:
     NiceMock<iamclient::PermHandlerMock>                mPermHandlerMock;
     NiceMock<resourcemanager::ResourceInfoProviderMock> mResourceInfoProviderMock;
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
+    NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
+    RunStatusReceiverItf*                               mRunStatusReceiver {};
 };
 
 /***********************************************************************************************************************
@@ -232,6 +247,18 @@ TEST_F(ContainerRuntimeTest, StartInstance)
     auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status     = std::make_unique<InstanceStatus>();
 
+    auto receivedStatus1 = std::make_unique<InstanceStatus>();
+    auto receivedStatus2 = std::make_unique<InstanceStatus>();
+
+    CreateInstanceStatus(*receivedStatus1, instance, InstanceStateEnum::eActivating);
+    CreateInstanceStatus(*receivedStatus2, instance, InstanceStateEnum::eActive);
+
+    EXPECT_CALL(
+        mInstanceStatusReceiverMock, OnInstancesStatusesReceived(Array<InstanceStatus>(receivedStatus1.get(), 1)))
+        .Times(1);
+    EXPECT_CALL(
+        mInstanceStatusReceiverMock, OnInstancesStatusesReceived(Array<InstanceStatus>(receivedStatus2.get(), 1)))
+        .Times(1);
     EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
         .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
 
@@ -258,6 +285,10 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status     = std::make_unique<InstanceStatus>();
 
+    auto receivedStatus = std::make_unique<InstanceStatus>();
+
+    CreateInstanceStatus(*receivedStatus, instance, InstanceStateEnum::eInactive);
+
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
         manifest.mAosService.EmplaceValue();
 
@@ -282,6 +313,9 @@ TEST_F(ContainerRuntimeTest, StopInstance)
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(
+        mInstanceStatusReceiverMock, OnInstancesStatusesReceived(Array<InstanceStatus>(receivedStatus.get(), 1)))
+        .Times(1);
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
@@ -292,6 +326,36 @@ TEST_F(ContainerRuntimeTest, StopInstance)
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(ContainerRuntimeTest, UpdateInstanceStatus)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID     = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status         = std::make_unique<InstanceStatus>();
+    auto receivedStatus = std::make_unique<InstanceStatus>();
+
+    CreateInstanceStatus(*receivedStatus, instance, InstanceStateEnum::eFailed, ErrorEnum::eFailed);
+
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Check update status
+
+    EXPECT_CALL(
+        mInstanceStatusReceiverMock, OnInstancesStatusesReceived(Array<InstanceStatus>(receivedStatus.get(), 1)))
+        .Times(1);
+
+    mRunStatusReceiver->UpdateRunStatus(
+        std::vector<RunStatus> {RunStatus {instanceID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}});
 }
 
 TEST_F(ContainerRuntimeTest, RuntimeConfig)
