@@ -636,6 +636,63 @@ TEST_F(ContainerRuntimeTest, OverrideEnvVars)
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "OVERRIDE_ENV_VAR3=override_value3").IsNone());
 }
 
+TEST_F(ContainerRuntimeTest, Rootfs)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID    = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status        = std::make_unique<InstanceStatus>();
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    std::vector<Mount> expectedMounts = {
+        Mount {"proc", "/proc", "proc"},
+        Mount {"tmpfs", "/dev", "tmpfs", "nosuid,strictatime,mode=755,size=65536k"},
+        Mount {"devpts", "/dev/pts", "devpts", "nosuid,noexec,newinstance,ptmxmode=0666,mode=0620,gid=5"},
+        Mount {"shm", "/dev/shm", "tmpfs", "nosuid,noexec,nodev,mode=1777,size=65536k"},
+        Mount {"mqueue", "/dev/mqueue", "mqueue", "nosuid,noexec,nodev"},
+        Mount {"sysfs", "/sys", "sysfs", "nosuid,noexec,nodev,ro"},
+        Mount {"cgroup", "/sys/fs/cgroup", "cgroup", "nosuid,noexec,nodev,relatime,ro"},
+        Mount {"/etc/nsswitch.conf", "/etc/nsswitch.conf", "bind", "bind,ro"},
+        Mount {"/etc/ssl", "/etc/ssl", "bind", "bind,ro"},
+    };
+
+    std::vector<std::string> expectedLayerPaths = {"/run/aos/runtime/" + instanceID + "/mounts",
+        "/images/sha256/layer1", "/images/sha256/layer2", "/images/sha256/layer3", "/var/aos/workdir/whiteouts", "/"};
+
+    EXPECT_CALL(mOCISpecMock, LoadImageConfig(_, _)).WillOnce(Invoke([](const String&, oci::ImageConfig& config) {
+        config.mRootfs.mDiffIDs.EmplaceBack("sha256:layer1");
+        config.mRootfs.mDiffIDs.EmplaceBack("sha256:layer2");
+        config.mRootfs.mDiffIDs.EmplaceBack("sha256:layer3");
+
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
+        .WillOnce(Invoke([&runtimeConfig](const String&, const oci::RuntimeConfig& config) {
+            *runtimeConfig = config;
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(*mRuntime.mFileSystem, CreateMountPoints(_, expectedMounts)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mItemInfoProviderMock, GetLayerPath(_, _))
+        .WillRepeatedly(Invoke([](const String& digest, String& path) {
+            auto s = "/images/" + std::string(digest.CStr());
+
+            std::replace(s.begin(), s.end(), ':', '/');
+
+            path = s.c_str();
+
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(*mRuntime.mFileSystem, MountServiceRootFS(_, expectedLayerPaths)).WillOnce(Return(ErrorEnum::eNone));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+}
+
 TEST_F(ContainerRuntimeTest, Network)
 {
     InstanceInfo instance;
