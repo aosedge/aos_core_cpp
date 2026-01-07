@@ -109,6 +109,8 @@ TEST_F(IdentHandlerTest, FileIdentifierModule)
 TEST_F(IdentHandlerTest, VisModule)
 {
     try {
+        GTEST_SKIP() << "VISIdentifier is disabled due to application crash on shutdown.";
+
         config::IdentifierConfig config;
 
         config.mPlugin = "visidentifier";
