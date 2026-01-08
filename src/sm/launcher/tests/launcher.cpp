@@ -7,8 +7,11 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
+#include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 
 #include <common/utils/utils.hpp>
 
@@ -16,6 +19,7 @@
 #include <sm/launcher/runtimes/boot/boot.hpp>
 #include <sm/launcher/runtimes/container/container.hpp>
 #include <sm/launcher/runtimes/rootfs/rootfs.hpp>
+#include <sm/tests/mocks/systemdconnmock.hpp>
 
 using namespace testing;
 
@@ -57,6 +61,10 @@ protected:
     void TearDown() override { }
 
     NiceMock<iamclient::CurrentNodeInfoProviderMock> mCurrentNodeInfoProviderMock;
+    NiceMock<imagemanager::ItemInfoProviderMock>     mItemInfoProviderMock;
+    NiceMock<oci::OCISpecMock>                       mOCISpecMock;
+    NiceMock<InstanceStatusReceiverMock>             mInstanceStatusReceiverMock;
+    NiceMock<sm::utils::SystemdConnMock>             mSystemdConnMock;
 };
 
 /***********************************************************************************************************************
@@ -67,7 +75,8 @@ TEST_F(RuntimesTest, InitNoRuntimes)
 {
     Runtimes runtimes;
 
-    auto err = runtimes.Init(Config {}, mCurrentNodeInfoProviderMock);
+    auto err = runtimes.Init(Config {}, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mOCISpecMock,
+        mInstanceStatusReceiverMock, mSystemdConnMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -83,10 +92,12 @@ TEST_F(RuntimesTest, InitRuntimes)
     Runtimes runtimes;
     Config   config;
 
-    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeContainer, "crun", false, {}});
-    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeBoot, "aos-vm-boot", true, {}});
-    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, {}});
-
+    config.mRuntimes.emplace_back(
+        RuntimeConfig {cRuntimeContainer, "crun", false, "", Poco::makeShared<Poco::JSON::Object>()});
+    config.mRuntimes.emplace_back(
+        RuntimeConfig {cRuntimeBoot, "aos-vm-boot", true, "", Poco::makeShared<Poco::JSON::Object>()});
+    config.mRuntimes.emplace_back(
+        RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, "", Poco::makeShared<Poco::JSON::Object>()});
     auto nodeInfo = std::make_unique<NodeInfo>();
 
     CreateNodeInfo(*nodeInfo);
@@ -94,7 +105,8 @@ TEST_F(RuntimesTest, InitRuntimes)
     EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
         .WillRepeatedly(DoAll(SetArgReferee<0>(*nodeInfo), Return(ErrorEnum::eNone)));
 
-    auto err = runtimes.Init(config, mCurrentNodeInfoProviderMock);
+    auto err = runtimes.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mOCISpecMock,
+        mInstanceStatusReceiverMock, mSystemdConnMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();

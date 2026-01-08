@@ -11,7 +11,12 @@
 #include <vector>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/common/ocispec/itf/ocispec.hpp>
+#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
+#include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
+
+#include <sm/utils/itf/systemdconn.hpp>
 
 #include "config.hpp"
 
@@ -27,9 +32,15 @@ public:
      *
      * @param config runtime config.
      * @param currentNodeInfoProvider current node info provider.
+     * @param itemInfoProvider item info provider.
+     * @param ociSpec OCI spec interface.
+     * @param statusReceiver instance status receiver.
+     * @param systemdConn systemd connection.
      * @return Error.
      */
-    Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider);
+    Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+        InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn);
 
     /**
      * Returns runtimes.

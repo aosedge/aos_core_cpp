@@ -39,6 +39,7 @@
 #include <sm/networkmanager/trafficmonitor.hpp>
 #include <sm/resourcemanager/resourcemanager.hpp>
 #include <sm/smclient/smclient.hpp>
+#include <sm/utils/systemdconn.hpp>
 
 namespace aos::sm::app {
 
@@ -113,6 +114,7 @@ private:
     sm::nodeconfig::NodeConfig             mNodeConfigHandler;
     sm::resourcemanager::ResourceManager   mResourceManager;
     sm::smclient::SMClient                 mSMClient;
+    sm::utils::SystemdConn                 mSystemdConn;
 
 private:
     static constexpr auto cDefaultConfigFile = "aos_servicemanager.cfg";
