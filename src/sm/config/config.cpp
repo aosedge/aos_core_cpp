@@ -27,6 +27,7 @@ constexpr auto cDefaultUpdateItemTTL        = "30d";
 constexpr auto cDefaultRemoveOutdatedPeriod = "24h";
 constexpr auto cDefaultHealthCheckTimeout   = "35s";
 constexpr auto cDefaultCMReconnectTimeout   = "10s";
+const auto     cEmptyObject                 = Poco::makeShared<Poco::JSON::Object>();
 
 namespace aos::sm::config {
 
@@ -85,9 +86,7 @@ launcher::RuntimeConfig ParseRuntimeConfig(const common::utils::CaseInsensitiveO
     auto config = launcher::RuntimeConfig {object.GetValue<std::string>("plugin"), object.GetValue<std::string>("type"),
         object.GetValue<bool>("isComponent", false), nullptr};
 
-    if (object.Has("config")) {
-        config.mConfig = object.GetObject("config");
-    }
+    config.mConfig = object.Has("config") ? object.GetObject("config") : cEmptyObject;
 
     return config;
 }
