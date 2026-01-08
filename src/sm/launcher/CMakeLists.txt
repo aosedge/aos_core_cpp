@@ -17,7 +17,7 @@ set(SOURCES runtimes.cpp)
 # ######################################################################################################################
 
 set(LIBRARIES Poco::JSON aos::core::common::tools aos::sm::runtimes::container aos::sm::runtimes::boot
-              aos::sm::runtimes::rootfs
+              aos::sm::runtimes::rootfs aos::sm::utils
 )
 
 # ######################################################################################################################

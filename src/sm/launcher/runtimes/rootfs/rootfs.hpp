@@ -7,10 +7,21 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_ROOTFS_ROOTFS_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_ROOTFS_ROOTFS_HPP_
 
+#include <mutex>
+#include <thread>
+
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/common/ocispec/itf/ocispec.hpp>
+#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
+#include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 
 #include <sm/launcher/runtimes/config.hpp>
+#include <sm/launcher/runtimes/utils/systemdrebooter.hpp>
+#include <sm/launcher/runtimes/utils/systemdupdatechecker.hpp>
+#include <sm/utils/itf/systemdconn.hpp>
+
+#include "config.hpp"
 
 namespace aos::sm::launcher {
 
@@ -18,6 +29,7 @@ namespace aos::sm::launcher {
  * Rootfs runtime name.
  */
 constexpr auto cRuntimeRootfs = "rootfs";
+
 /**
  * Rootfs runtime implementation.
  */
@@ -28,9 +40,15 @@ public:
      *
      * @param config runtime config.
      * @param currentNodeInfoProvider current node info provider.
+     * @param itemInfoProvider item info provider.
+     * @param ociSpec OCI spec interface.
+     * @param statusReceiver instance status receiver.
+     * @param systemdConn systemd connection.
      * @return Error.
      */
-    Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider);
+    Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+        InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn);
 
     /**
      * Starts runtime.
@@ -90,9 +108,78 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
+    static constexpr auto cImageExtension             = ".squashfs";
+    static constexpr auto cFullMediaTypePrefix        = "vnd.aos.image.component.full";
+    static constexpr auto cIncrementalMediaTypePrefix = "vnd.aos.image.component.inc";
+    static constexpr auto cInstalledInstanceFileName  = "installed_instance.json";
+    static constexpr auto cPendingInstanceFileName    = "pending_instance.json";
 
-    RuntimeInfo mRuntimeInfo;
+    /**
+     * Action type type.
+     */
+    class ActionTypeType {
+    public:
+        enum class Enum {
+            eUpdated,
+            eDoApply,
+            eDoUpdate,
+            eFailed,
+            eNumActions,
+        };
+
+        static const Array<const char* const> GetStrings()
+        {
+            static const char* const sStrings[] = {
+                "updated",
+                "do_apply",
+                "do_update",
+                "failed",
+                "",
+            };
+
+            return Array<const char* const>(sStrings, ArraySize(sStrings));
+        };
+    };
+
+    using ActionTypeEnum = ActionTypeType::Enum;
+    using ActionType     = EnumStringer<ActionTypeType>;
+
+    void  RunHealthCheck(std::unique_ptr<InstanceStatus> status);
+    Error InitInstalledData();
+    Error InitPendingData();
+    Error CreateRuntimeInfo();
+    Error ProcessUpdateAction(Array<InstanceStatus>& statuses);
+    Error ProcessUpdated(Array<InstanceStatus>& statuses);
+    Error ProcessFailed(Array<InstanceStatus>& statuses);
+    Error ProcessNoAction(Array<InstanceStatus>& statuses);
+    void  FillInstanceStatus(
+         const InstanceInfo& instanceInfo, const String& version, InstanceStateEnum state, InstanceStatus& status) const;
+    Error      SavePendingInstanceInfo(const InstanceInfo& instance, const String& version);
+    Error      LoadInstanceInfo(const String& path, InstanceInfo& instance, String& version);
+    Error      GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
+    Error      UnpackImage(const oci::ImageManifest& manifest) const;
+    Error      PrepareUpdateFileContent(const oci::ImageManifest& manifest, std::string& updateType) const;
+    void       ClearUpdateArtifacts() const;
+    Error      StoreAction(const ActionType& action, const std::string& data = "") const;
+    ActionType ReadAction() const;
+    Error      PrepareUpdate(const InstanceInfo& instance);
+
+    RuntimeConfig                          mRuntimeConfig;
+    RootfsConfig                           mRootfsConfig;
+    iamclient::CurrentNodeInfoProviderItf* mCurrentNodeInfoProvider {};
+    imagemanager::ItemInfoProviderItf*     mItemInfoProvider {};
+    oci::OCISpecItf*                       mOCISpec {};
+    InstanceStatusReceiverItf*             mStatusReceiver {};
+    utils::SystemdUpdateChecker            mUpdateChecker;
+    utils::SystemdRebooter                 mRebooter;
+
+    mutable std::mutex         mMutex;
+    std::optional<std::thread> mHealthCheckThread;
+    InstanceInfo               mCurrentInstance;
+    StaticString<cVersionLen>  mCurrentVersion;
+    RuntimeInfo                mRuntimeInfo;
+    InstanceInfo               mPendingInstance;
+    StaticString<cVersionLen>  mPendingVersion;
 };
 
 } // namespace aos::sm::launcher
