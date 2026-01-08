@@ -16,7 +16,7 @@ set(SOURCES launcher.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::common::tests::utils aos::sm::launcher GTest::gmock_main)
+set(LIBRARIES aos::core::common::tests::utils aos::core::sm::tests::mocks aos::sm::launcher GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

@@ -10,13 +10,13 @@ set(TARGET_NAME rootfs_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES rootfs.cpp)
+set(SOURCES config.cpp rootfs.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::common::tests::utils aos::sm::runtimes::rootfs GTest::gmock_main)
+set(LIBRARIES aos::core::common::tests::utils aos::core::sm::tests::mocks aos::sm::runtimes::rootfs GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
