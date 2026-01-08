@@ -166,18 +166,21 @@ TEST_F(ConfigTest, ParseConfig)
     ASSERT_NE(it, config->mLauncher.mRuntimes.end());
     EXPECT_EQ(it->mType, "crun");
     EXPECT_FALSE(it->isComponent);
+    EXPECT_FALSE(it->mConfig.isNull());
 
     it = std::find_if(config->mLauncher.mRuntimes.begin(), config->mLauncher.mRuntimes.end(),
         [](const aos::sm::launcher::RuntimeConfig& runtime) { return runtime.mPlugin == "rootfs"; });
     ASSERT_NE(it, config->mLauncher.mRuntimes.end());
     EXPECT_EQ(it->mType, "aos-vm-rootfs");
     EXPECT_TRUE(it->isComponent);
+    EXPECT_FALSE(it->mConfig.isNull());
 
     it = std::find_if(config->mLauncher.mRuntimes.begin(), config->mLauncher.mRuntimes.end(),
         [](const aos::sm::launcher::RuntimeConfig& runtime) { return runtime.mPlugin == "boot"; });
     ASSERT_NE(it, config->mLauncher.mRuntimes.end());
     EXPECT_EQ(it->mType, "aos-vm-boot");
     EXPECT_TRUE(it->isComponent);
+    EXPECT_FALSE(it->mConfig.isNull());
 
     EXPECT_EQ(config->mLogging.mMaxPartCount, 10);
     EXPECT_EQ(config->mLogging.mMaxPartSize, 1024);
