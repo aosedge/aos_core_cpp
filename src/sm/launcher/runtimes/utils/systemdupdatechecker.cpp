@@ -81,6 +81,9 @@ Error SystemdUpdateChecker::UpdateUnitsStatus()
             return AOS_ERROR_WRAP(ret.mError);
         }
 
+        LOG_DBG() << "Got unit status" << Log::Field("unit", unit.c_str())
+                  << Log::Field("state", ret.mValue.mActiveState.ToString().CStr());
+
         state = ret.mValue.mActiveState;
     }
 
