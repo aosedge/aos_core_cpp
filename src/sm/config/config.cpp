@@ -81,10 +81,11 @@ void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing removeOutdatedPeriod tag");
 }
 
-launcher::RuntimeConfig ParseRuntimeConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+launcher::RuntimeConfig ParseRuntimeConfig(
+    const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir)
 {
     auto config = launcher::RuntimeConfig {object.GetValue<std::string>("plugin"), object.GetValue<std::string>("type"),
-        object.GetValue<bool>("isComponent", false), nullptr};
+        object.GetValue<bool>("isComponent", false), workingDir, nullptr};
 
     config.mConfig = object.Has("config") ? object.GetObject("config") : cEmptyObject;
 
@@ -138,9 +139,8 @@ Error ParseConfig(const std::string& filename, Config& config)
             common::utils::JoinPath(config.mWorkingDir, "mergedMigration"), config.mMigration);
 
         config.mLauncher.mRuntimes = common::utils::GetArrayValue<launcher::RuntimeConfig>(
-            object, "runtimes", [](const Poco::Dynamic::Var& value) {
-                return ParseRuntimeConfig(
-                    common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
+            object, "runtimes", [&](const Poco::Dynamic::Var& value) {
+                return ParseRuntimeConfig(common::utils::CaseInsensitiveObjectWrapper(value), config.mWorkingDir);
             });
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
