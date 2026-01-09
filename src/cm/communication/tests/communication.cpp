@@ -1054,4 +1054,62 @@ TEST_F(CMCommunicationTest, ReceiveIssuedUnitCerts)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
+TEST_F(CMCommunicationTest, ReceivedAckIsNotRecent)
+{
+    mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds;
+
+    constexpr auto cJSON = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "txn": "fb6e8461-2601-4f9a-8957-7ab4e52f304c"
+        },
+        "data": {
+            "messageType": "requestLog",
+            "correlationId": "logID",
+            "logType": "systemLog",
+            "filter": {
+                "from": "2024-01-01T12:00:00Z",
+                "till": "2024-01-31T12:00:00Z",
+                "nodeIds": [
+                    {
+                        "codename": "node1"
+                    },
+                    {
+                        "codename": "node2"
+                    }
+                ],
+                "item": {
+                    "id": "itemID"
+                },
+                "subject": {
+                    "id": "subjectID"
+                },
+                "instance": 1
+            }
+        }
+    })";
+    const auto     cExpectedAckMsg
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"ack"\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("00008461-2601-4f9a-8957-7ab4e52f304c");
+
+    mCloudSendMessageQueue.Push(cJSON);
+
+    const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedAckMsg)) << "Received message: " << cReceivedMessage;
+
+    const auto recievedCloudMessage = mCloudReceivedMessages.Pop(std::chrono::seconds(1));
+
+    EXPECT_FALSE(recievedCloudMessage.has_value())
+        << "No more messages expected, but received: " << recievedCloudMessage.value();
+
+    auto err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
 } // namespace aos::cm::communication

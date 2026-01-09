@@ -192,12 +192,19 @@ private:
     using ResponseMessageVariantPtr = std::shared_ptr<ResponseMessageVariant>;
     using OnResponseReceivedFunc    = std::function<void(ResponseMessageVariantPtr)>;
 
+    enum class SendPollicy {
+        eExpectAck,
+        eSendOnly,
+    };
+
     class Message {
     public:
-        Message(const std::string& txn, Poco::JSON::Object::Ptr payload, const std::string& correlationId = {},
+        Message(const std::string& txn, Poco::JSON::Object::Ptr payload,
+            SendPollicy sendPollicy = SendPollicy::eExpectAck, const std::string& correlationId = {},
             const Time& timestamp = Time::Now())
             : mTxn(txn)
             , mPayload(std::move(payload))
+            , mSendPollicy(sendPollicy)
             , mCorrelationID(correlationId)
             , mTimestamp(timestamp)
         {
@@ -206,6 +213,7 @@ private:
         const std::string& Txn() const { return mTxn; }
         const std::string& CorrelationID() const { return mCorrelationID; }
         std::string        Payload() const { return common::utils::Stringify(mPayload); }
+        SendPollicy        Pollicy() const { return mSendPollicy; }
         const Time&        Timestamp() const { return mTimestamp; }
         void               ResetTimestamp(const Time& time) { mTimestamp = time; }
         bool               RetryAllowed() const { return mTries < cMaxTries; }
@@ -216,6 +224,7 @@ private:
 
         std::string             mTxn;
         Poco::JSON::Object::Ptr mPayload;
+        SendPollicy             mSendPollicy {SendPollicy::eExpectAck};
         std::string             mCorrelationID;
         Time                    mTimestamp {Time::Now()};
         size_t                  mTries {};
