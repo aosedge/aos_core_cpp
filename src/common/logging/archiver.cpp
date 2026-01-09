@@ -41,7 +41,7 @@ Error Archiver::AddLog(const std::string& message)
     return ErrorEnum::eNone;
 }
 
-Error Archiver::SendLog(const String& correlationID)
+Error Archiver::SendLog(const String& correlationId)
 {
     mCompressionStream->close();
 
@@ -57,7 +57,7 @@ Error Archiver::SendLog(const String& correlationID)
 
         auto emptyLog = std::make_unique<PushLog>();
 
-        emptyLog->mCorrelationID = correlationID;
+        emptyLog->mCorrelationID = correlationId;
         emptyLog->mPartsCount    = part;
         emptyLog->mPart          = part;
         emptyLog->mStatus        = LogStatusEnum::eEmpty;
@@ -75,7 +75,7 @@ Error Archiver::SendLog(const String& correlationID)
 
         auto logPart = std::make_unique<PushLog>();
 
-        logPart->mCorrelationID = correlationID;
+        logPart->mCorrelationID = correlationId;
         logPart->mPartsCount    = mLogStreams.size();
         logPart->mPart          = part;
         logPart->mStatus        = LogStatusEnum::eOK;

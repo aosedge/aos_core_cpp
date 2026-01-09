@@ -54,7 +54,7 @@ TEST_F(CloudProtocolState, StateAcceptance)
         "subject": {
             "id": "subject1"
         },
-        "correlationID": "correlation1",
+        "correlationId": "correlation1",
         "instance": "10",
         "checksum": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "result": "accepted",
@@ -89,7 +89,7 @@ TEST_F(CloudProtocolState, UpdateState)
         "subject": {
             "id": "subject1"
         },
-        "correlationID": "correlation1",
+        "correlationId": "correlation1",
         "instance": "10",
         "stateChecksum": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "state": "test"
@@ -116,7 +116,7 @@ TEST_F(CloudProtocolState, UpdateState)
 TEST_F(CloudProtocolState, NewState)
 {
     const auto cExpectedJSON
-        = R"({"messageType":"newState","correlationID":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
+        = R"({"messageType":"newState","correlationId":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
           R"("instance":10,"stateChecksum":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",)"
           R"("state":"test"})";
 
@@ -139,7 +139,7 @@ TEST_F(CloudProtocolState, NewState)
 TEST_F(CloudProtocolState, StateRequest)
 {
     const auto cExpectedJSON
-        = R"({"messageType":"stateRequest","correlationID":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
+        = R"({"messageType":"stateRequest","correlationId":"correlation1","item":{"id":"item1"},"subject":{"id":"subject1"},)"
           R"("instance":10,"default":true})";
 
     auto state            = std::make_unique<StateRequest>();

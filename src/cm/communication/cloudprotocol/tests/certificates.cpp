@@ -32,7 +32,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
 {
     constexpr auto cJSON = R"({
         "messageType": "renewCertificatesNotification",
-        "correlationID": "id",
+        "correlationId": "id",
         "certificates": [
             {
                 "type": "iam",
@@ -118,7 +118,7 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
 {
     constexpr auto cJSON = R"({
         "messageType": "issuedUnitCertificates",
-        "correlationID": "id",
+        "correlationId": "id",
         "certificates": [
             {
                 "type": "iam",
@@ -173,7 +173,7 @@ TEST_F(CloudProtocolCertificates, IssuedUnitCerts)
 
 TEST_F(CloudProtocolCertificates, IssueUnitCerts)
 {
-    constexpr auto cJSON = R"({"messageType":"issueUnitCertificates","correlationID":"id","requests":[)"
+    constexpr auto cJSON = R"({"messageType":"issueUnitCertificates","correlationId":"id","requests":[)"
                            R"({"type":"iam","node":{"codename":"node1"},"csr":"csr_1"},)"
                            R"({"type":"offline","node":{"codename":"node2"},"csr":"csr_2"}]})";
 
@@ -201,7 +201,7 @@ TEST_F(CloudProtocolCertificates, IssueUnitCerts)
 TEST_F(CloudProtocolCertificates, InstallUnitCertsConfirmation)
 {
     constexpr auto cJSON
-        = R"({"messageType":"installUnitCertificatesConfirmation","correlationID":"id","certificates":[)"
+        = R"({"messageType":"installUnitCertificatesConfirmation","correlationId":"id","certificates":[)"
           R"({"type":"iam","node":{"codename":"node1"},"serial":"serial_1",)"
           R"("errorInfo":{"aosCode":1,"exitCode":0,"message":"error_msg"}},)"
           R"({"type":"offline","node":{"codename":"node2"},"serial":"serial_2"}]})";

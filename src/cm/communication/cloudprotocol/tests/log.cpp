@@ -33,7 +33,7 @@ TEST_F(CloudProtocolLog, RequestLog)
 {
     constexpr auto cJSON = R"({
         "messageType": "requestLog",
-        "correlationID": "logID",
+        "correlationId": "logID",
         "logType": "systemLog",
         "filter": {
             "from": "2024-01-01T12:00:00Z",
@@ -82,7 +82,7 @@ TEST_F(CloudProtocolLog, RequestLog)
 
 TEST_F(CloudProtocolLog, PushLog)
 {
-    constexpr auto cJSON = R"({"messageType":"pushLog","correlationID":"logID","node":{"codename":"nodeID"},)"
+    constexpr auto cJSON = R"({"messageType":"pushLog","correlationId":"logID","node":{"codename":"nodeID"},)"
                            R"("part":1,"partsCount":10,"content":"log content","status":"error",)"
                            R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}})";
 
