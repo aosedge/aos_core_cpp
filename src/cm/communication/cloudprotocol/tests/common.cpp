@@ -228,7 +228,7 @@ TEST_F(CloudProtocolCommon, InstanceFilterNoFilterTags)
 TEST_F(CloudProtocolCommon, ProtocolToJSON)
 {
     const auto     cProtocol = Protocol {"corr-id"};
-    constexpr auto cJSON     = R"({"correlationID":"corr-id"})";
+    constexpr auto cJSON     = R"({"correlationId":"corr-id"})";
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
     ASSERT_EQ(ToJSON(cProtocol, *json), ErrorEnum::eNone);
@@ -238,7 +238,7 @@ TEST_F(CloudProtocolCommon, ProtocolToJSON)
 
 TEST_F(CloudProtocolCommon, ProtocolFromJSON)
 {
-    constexpr auto cJSON = R"({"correlationID":"corr-id"})";
+    constexpr auto cJSON = R"({"correlationId":"corr-id"})";
 
     auto [jsonVar, err] = common::utils::ParseJson(cJSON);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);

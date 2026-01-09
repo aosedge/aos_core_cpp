@@ -38,7 +38,7 @@ public:
 
 TEST_F(CloudProtocolStatus, AckToJSON)
 {
-    constexpr auto cExpectedMessage = R"({"messageType":"ack","correlationID":"id"})";
+    constexpr auto cExpectedMessage = R"({"messageType":"ack","correlationId":"id"})";
 
     auto ack            = std::make_unique<Ack>();
     ack->mCorrelationID = "id";
@@ -53,7 +53,7 @@ TEST_F(CloudProtocolStatus, AckToJSON)
 
 TEST_F(CloudProtocolStatus, AckFromJSON)
 {
-    constexpr auto cJSON = R"({"messageType":"ack","correlationID":"id"})";
+    constexpr auto cJSON = R"({"messageType":"ack","correlationId":"id"})";
 
     auto [jsonVar, err] = common::utils::ParseJson(cJSON);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -70,7 +70,7 @@ TEST_F(CloudProtocolStatus, AckFromJSON)
 
 TEST_F(CloudProtocolStatus, NackToJSON)
 {
-    constexpr auto cExpectedMessage = R"({"messageType":"nack","correlationID":"id","retryAfter":100})";
+    constexpr auto cExpectedMessage = R"({"messageType":"nack","correlationId":"id","retryAfter":100})";
 
     auto nack            = std::make_unique<Nack>();
     nack->mCorrelationID = "id";
@@ -86,7 +86,7 @@ TEST_F(CloudProtocolStatus, NackToJSON)
 
 TEST_F(CloudProtocolStatus, NackFromJSONUsesDefaultRetryAfter)
 {
-    constexpr auto cJSON = R"({"messageType":"nack","correlationID":"id"})";
+    constexpr auto cJSON = R"({"messageType":"nack","correlationId":"id"})";
 
     auto [jsonVar, err] = common::utils::ParseJson(cJSON);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -104,7 +104,7 @@ TEST_F(CloudProtocolStatus, NackFromJSONUsesDefaultRetryAfter)
 
 TEST_F(CloudProtocolStatus, NackFromJSONCustomRetryAfter)
 {
-    constexpr auto cJSON = R"({"messageType":"nack","correlationID":"id","retryAfter":224})";
+    constexpr auto cJSON = R"({"messageType":"nack","correlationId":"id","retryAfter":224})";
 
     auto [jsonVar, err] = common::utils::ParseJson(cJSON);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);

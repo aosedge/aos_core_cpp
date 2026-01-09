@@ -32,13 +32,13 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error WaitLog(const String& correlationID, uint64_t part)
+    Error WaitLog(const String& correlationId, uint64_t part)
     {
         std::unique_lock lock {mMutex};
 
-        auto hasLog = [this, &correlationID, part]() {
-            auto it = std::find_if(mLogs.begin(), mLogs.end(), [&correlationID, part](const PushLog& log) {
-                return log.mCorrelationID == correlationID && log.mPart == part;
+        auto hasLog = [this, &correlationId, part]() {
+            auto it = std::find_if(mLogs.begin(), mLogs.end(), [&correlationId, part](const PushLog& log) {
+                return log.mCorrelationID == correlationId && log.mPart == part;
             });
 
             return it != mLogs.end();
@@ -53,12 +53,12 @@ public:
         return ErrorEnum::eNone;
     }
 
-    bool HasLog(const String& correlationID, uint64_t part) const
+    bool HasLog(const String& correlationId, uint64_t part) const
     {
         std::lock_guard lock {mMutex};
 
-        auto it = std::find_if(mLogs.begin(), mLogs.end(), [&correlationID, part](const PushLog& log) {
-            return log.mCorrelationID == correlationID && log.mPart == part;
+        auto it = std::find_if(mLogs.begin(), mLogs.end(), [&correlationId, part](const PushLog& log) {
+            return log.mCorrelationID == correlationId && log.mPart == part;
         });
 
         return it != mLogs.end();

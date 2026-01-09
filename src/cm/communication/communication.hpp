@@ -194,11 +194,11 @@ private:
 
     class Message {
     public:
-        Message(const std::string& txn, Poco::JSON::Object::Ptr payload, const std::string& correlationID = {},
+        Message(const std::string& txn, Poco::JSON::Object::Ptr payload, const std::string& correlationId = {},
             const Time& timestamp = Time::Now())
             : mTxn(txn)
             , mPayload(std::move(payload))
-            , mCorrelationID(correlationID)
+            , mCorrelationID(correlationId)
             , mTimestamp(timestamp)
         {
         }
@@ -266,7 +266,7 @@ private:
     void  HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification);
     void  HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs);
     Error SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response);
-    Error SendAck(const std::string& correlationID);
+    Error SendAck(const std::string& correlationId);
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);
     Error SendInstallUnitCertsConfirmation(const InstallUnitCertsConfirmation& confirmation);
     void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
