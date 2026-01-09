@@ -81,7 +81,7 @@ void AddInstanceStateInfo(const Time& time, InstanceState state, InstanceStateIn
 
 TEST_F(CloudProtocolMonitoring, Monitoring)
 {
-    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationId":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","state":"unprovisioned","isConnected":true}],)"
@@ -143,7 +143,7 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 
 TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 {
-    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"monitoringData","correlationId":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
                            R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
                            R"({"timestamp":"2024-01-31T12:01:00Z","state":"provisioned","isConnected":false}],)"

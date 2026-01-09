@@ -33,7 +33,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
 {
     const auto cJSON = R"({
         "messageType": "overrideEnvVarsStatus",
-        "correlationID": "id",
+        "correlationId": "id",
             "items": [
                 {
                     "item": {
@@ -99,7 +99,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
 
 TEST_F(CloudProtocolEnvVars, OverrideEnvVarsStatuses)
 {
-    constexpr auto cJSON = R"({"messageType":"overrideEnvVarsStatus","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"overrideEnvVarsStatus","correlationId":"id",)"
                            R"("statuses":[{"item":{"id":"itemID"},)"
                            R"("subject":{"id":"subjectID"},"instance":0,"name":"var0","errorInfo":{"aosCode":1,)"
                            R"("exitCode":0,"message":""}},{"item":{"id":"itemID"},"subject":{"id":"subjectID"},)"

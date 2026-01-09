@@ -110,22 +110,22 @@ private:
     // to be overridden in unit tests.
     virtual std::shared_ptr<utils::JournalItf> CreateJournal();
 
-    void ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
+    void ScheduleGetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationId,
         const Optional<Time>& from, const Optional<Time>& till);
 
     void ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
-        const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till);
+        const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till);
 
     void ProcessLogs();
 
-    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
+    void GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationId,
         const Optional<Time>& from, const Optional<Time>& till);
 
     void GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
-        const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till);
+        const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till);
 
-    void SendErrorResponse(const String& correlationID, const std::string& errorMsg);
-    void SendEmptyResponse(const String& correlationID, const std::string& errorMsg);
+    void SendErrorResponse(const String& correlationId, const std::string& errorMsg);
+    void SendEmptyResponse(const String& correlationId, const std::string& errorMsg);
 
     void AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
     void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
