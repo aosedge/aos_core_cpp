@@ -554,6 +554,13 @@ TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
     auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
     EXPECT_TRUE(err.Is(ErrorEnum::eTimeout)) << tests::utils::ErrorToStr(err);
 
+    // make sure get blobs info message is not sent one more time after timeout
+
+    auto result
+        = mCloudSendMessageQueue.Pop(std::chrono::milliseconds(2 * mConfig.mCloudResponseWaitTimeout.Milliseconds()));
+
+    EXPECT_FALSE(result.has_value()) << "No more messages expected, but received: " << result.value();
+
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }

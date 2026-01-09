@@ -1049,6 +1049,10 @@ Error Communication::DequeueMessage(const Message& msg)
 {
     std::lock_guard lock {mMutex};
 
+    mSendQueue.erase(std::remove_if(mSendQueue.begin(), mSendQueue.end(),
+                         [&msg](const Message& queuedMsg) { return queuedMsg.Txn() == msg.Txn(); }),
+        mSendQueue.end());
+
     mSentMessages.erase(msg.Txn());
     mResponseHandlers.erase(msg.CorrelationID());
 
