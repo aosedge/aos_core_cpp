@@ -40,7 +40,7 @@ TEST_F(CloudProtocolDesiredStatus, Nodes)
 {
     constexpr auto cJSON = R"({
         "messageType": "desiredStatus",
-        "correlationID": "id",
+        "correlationId": "id",
         "nodes": [
             {
                 "item": {"codename": "node-1"},
@@ -77,7 +77,7 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
 {
     constexpr auto cJSON = R"({
         "messageType": "desiredStatus",
-        "correlationID": "id",
+        "correlationId": "id",
         "unitConfig": {
             "version": "v1.0.0",
             "formatVersion": "1.0",

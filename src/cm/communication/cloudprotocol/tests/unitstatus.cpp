@@ -63,7 +63,7 @@ public:
 
 TEST_F(CloudProtocolUnitStatus, UnitConfig)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"unitConfig":[)"
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"unitConfig":[)"
                            R"({"version":"0.0.1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
                            R"("message":"error message"}},)"
                            R"({"version":"0.0.2","state":"installed"}]})";
@@ -93,7 +93,7 @@ TEST_F(CloudProtocolUnitStatus, UnitConfig)
 TEST_F(CloudProtocolUnitStatus, Nodes)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"nodes":[)"
+        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"nodes":[)"
           R"({"identity":{"codename":"nodeID1","title":"title1"},"nodeGroupSubject":{"codename":"type1"},)"
           R"("maxDmips":10000,"physicalRam":8096,"totalRam":16384,"osInfo":{"os":"Linux",)"
           R"("version":"5.10","features":["feature1","feature2"]},"cpus":[{"modelName":)"
@@ -189,7 +189,7 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
 TEST_F(CloudProtocolUnitStatus, Items)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"items":[)"
+        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"items":[)"
           R"({"item":{"id":"itemID1"},"version":"version1","state":"downloading"},)"
           R"({"item":{"id":"itemID2"},"version":"version1","state":"installed"},)"
           R"({"item":{"id":"itemID3"},"version":"version1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":"test error"}}]})";
@@ -226,7 +226,7 @@ TEST_F(CloudProtocolUnitStatus, Items)
 TEST_F(CloudProtocolUnitStatus, Instances)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"instances":[)"
+        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
           R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
@@ -279,7 +279,7 @@ TEST_F(CloudProtocolUnitStatus, Instances)
 TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
 {
     constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,"instances":[)"
+        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
           R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
@@ -332,7 +332,7 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
 
 TEST_F(CloudProtocolUnitStatus, Subjects)
 {
-    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationID":"id","isDeltaInfo":false,)"
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,)"
                            R"("subjects":[{"codename":"subject1"},{"codename":"subject2"}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();

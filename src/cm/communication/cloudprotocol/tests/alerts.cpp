@@ -154,7 +154,7 @@ public:
 TEST_F(CloudProtocolAlerts, AlertsArray)
 {
     constexpr auto cJSON
-        = R"({"messageType":"alerts","correlationID":"id","items":[)"
+        = R"({"messageType":"alerts","correlationId":"id","items":[)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"coreAlert","node":{"codename":"test_node"},)"
           R"("coreComponent":"CM","message":"Test core alert message"},)"
           R"({"timestamp":"1970-01-01T00:00:00Z","tag":"resourceAllocateAlert","item":{"id":"itemID"},)"

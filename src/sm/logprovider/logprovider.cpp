@@ -71,7 +71,7 @@ LogProvider::~LogProvider()
 
 Error LogProvider::GetInstanceLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get instance log: correlationID=" << request.mCorrelationID;
+    LOG_DBG() << "Get instance log: correlationId=" << request.mCorrelationID;
 
     std::vector<std::string> instanceIDs;
     auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
@@ -82,7 +82,7 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
     }
 
     if (instanceIDs.empty()) {
-        LOG_DBG() << "No instance ids for log request: correlationID=" << request.mCorrelationID;
+        LOG_DBG() << "No instance ids for log request: correlationId=" << request.mCorrelationID;
 
         SendEmptyResponse(request.mCorrelationID, "no service instance found");
 
@@ -96,7 +96,7 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
 
 Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get instance crash log: correlationID=" << request.mCorrelationID;
+    LOG_DBG() << "Get instance crash log: correlationId=" << request.mCorrelationID;
 
     std::vector<std::string> instanceIDs;
     auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
@@ -107,7 +107,7 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
     }
 
     if (instanceIDs.empty()) {
-        LOG_DBG() << "No instance ids for crash log request: correlationID=" << request.mCorrelationID;
+        LOG_DBG() << "No instance ids for crash log request: correlationId=" << request.mCorrelationID;
 
         SendEmptyResponse(request.mCorrelationID, "no service instance found");
 
@@ -121,7 +121,7 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 
 Error LogProvider::GetSystemLog(const RequestLog& request)
 {
-    LOG_DBG() << "Get system log: correlationID=" << request.mCorrelationID;
+    LOG_DBG() << "Get system log: correlationId=" << request.mCorrelationID;
 
     ScheduleGetLog({}, request.mCorrelationID, request.mFilter.mFrom, request.mFilter.mTill);
 
@@ -163,21 +163,21 @@ std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
 }
 
 void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
+    const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationID, from, till, false});
+    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
 
     mCondVar.notify_one();
 }
 
 void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
+    const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
     std::unique_lock<std::mutex> lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationID, from, till, true});
+    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
 
     mCondVar.notify_one();
 }
@@ -214,14 +214,14 @@ void LogProvider::ProcessLogs()
         } catch (const std::exception& e) {
             auto err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
 
-            LOG_ERR() << "PushLog failed: correlationID=" << logRequest.mCorrelationID << ", err=" << err;
+            LOG_ERR() << "PushLog failed: correlationId=" << logRequest.mCorrelationID << ", err=" << err;
 
             SendErrorResponse(logRequest.mCorrelationID, err.Message());
         }
     }
 }
 
-void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationID,
+void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const StaticString<uuid::cUUIDLen>& correlationId,
     const Optional<Time>& from, const Optional<Time>& till)
 {
     if (!mLogSender) {
@@ -243,11 +243,11 @@ void LogProvider::GetLog(const std::vector<std::string>& instanceIDs, const Stat
 
     ProcessJournalLogs(*journal, till, needUnitField, *archiver);
 
-    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationID), "sending log failed");
+    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationId), "sending log failed");
 }
 
 void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceIDs,
-    const StaticString<uuid::cUUIDLen>& correlationID, const Optional<Time>& from, const Optional<Time>& till)
+    const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
     if (!mLogSender) {
         return;
@@ -266,7 +266,7 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
     Time crashTime = GetCrashTime(*journal, from);
     if (crashTime.IsZero()) {
         // No crash time found, send an empty response
-        SendEmptyResponse(correlationID, "no instance crash found");
+        SendEmptyResponse(correlationId, "no instance crash found");
 
         return;
     }
@@ -279,14 +279,14 @@ void LogProvider::GetInstanceCrashLog(const std::vector<std::string>& instanceID
 
     ProcessJournalCrashLogs(*journal, crashTime, instanceIDs, *archiver);
 
-    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationID), "sending log failed");
+    AOS_ERROR_CHECK_AND_THROW(archiver->SendLog(correlationId), "sending log failed");
 }
 
-void LogProvider::SendErrorResponse(const String& correlationID, const std::string& errorMsg)
+void LogProvider::SendErrorResponse(const String& correlationId, const std::string& errorMsg)
 {
     auto response = std::make_unique<PushLog>();
 
-    response->mCorrelationID = correlationID;
+    response->mCorrelationID = correlationId;
     response->mStatus        = LogStatusEnum::eError;
     response->mError         = Error(ErrorEnum::eFailed, errorMsg.c_str());
     response->mPartsCount    = 0;
@@ -297,11 +297,11 @@ void LogProvider::SendErrorResponse(const String& correlationID, const std::stri
     }
 }
 
-void LogProvider::SendEmptyResponse(const String& correlationID, const std::string& errorMsg)
+void LogProvider::SendEmptyResponse(const String& correlationId, const std::string& errorMsg)
 {
     auto response = std::make_unique<PushLog>();
 
-    response->mCorrelationID = correlationID;
+    response->mCorrelationID = correlationId;
     response->mStatus        = LogStatusEnum::eAbsent;
     response->mPartsCount    = 1;
     response->mPart          = 1;

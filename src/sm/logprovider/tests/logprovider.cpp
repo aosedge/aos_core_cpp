@@ -112,23 +112,23 @@ std::string UnzipData(const String& compressedData)
     return outputStream.str();
 }
 
-MATCHER_P5(MatchPushLog, correlationID, partsCount, part, content, status, "PushLog matcher")
+MATCHER_P5(MatchPushLog, correlationId, partsCount, part, content, status, "PushLog matcher")
 {
     auto data = UnzipData(arg.mContent);
 
-    return (arg.mCorrelationID == correlationID && arg.mPartsCount == partsCount && arg.mPart == part
+    return (arg.mCorrelationID == correlationId && arg.mPartsCount == partsCount && arg.mPart == part
         && data.find(content) != std::string::npos && arg.mStatus == status);
 }
 
-MATCHER_P(MatchEmptyPushLog, correlationID, "PushLog empty matcher")
+MATCHER_P(MatchEmptyPushLog, correlationId, "PushLog empty matcher")
 {
-    return (arg.mCorrelationID == correlationID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
+    return (arg.mCorrelationID == correlationId && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
         && arg.mStatus == LogStatusEnum::eEmpty);
 }
 
-MATCHER_P(MatchAbsentPushLog, correlationID, "PushLog absent matcher")
+MATCHER_P(MatchAbsentPushLog, correlationId, "PushLog absent matcher")
 {
-    return (arg.mCorrelationID == correlationID && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
+    return (arg.mCorrelationID == correlationId && arg.mPartsCount == 1 && arg.mPart == 1 && arg.mContent.IsEmpty()
         && arg.mStatus == LogStatusEnum::eAbsent);
 }
 

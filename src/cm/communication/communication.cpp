@@ -898,12 +898,12 @@ void Communication::HandleUnacknowledgedMessages()
 
             if (!it->second.RetryAllowed()) {
                 LOG_ERR() << "Message delivery failed, max retries reached" << Log::Field("txn", it->first.c_str())
-                          << Log::Field("correlationID", it->second.CorrelationID().c_str());
+                          << Log::Field("correlationId", it->second.CorrelationID().c_str());
 
                 mResponseHandlers.erase(it->second.CorrelationID());
             } else {
                 LOG_WRN() << "Message not acknowledged, re-enqueueing" << Log::Field("txn", it->first.c_str())
-                          << Log::Field("correlationID", it->second.CorrelationID().c_str());
+                          << Log::Field("correlationId", it->second.CorrelationID().c_str());
 
                 it->second.ResetTimestamp(now);
                 it->second.IncrementTries();
@@ -1033,7 +1033,7 @@ Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc o
     std::unique_lock lock {mMutex};
 
     LOG_DBG() << "Enqueue message" << Log::Field("txn", msg.Txn().c_str())
-              << Log::Field("correlationID", msg.CorrelationID().c_str());
+              << Log::Field("correlationId", msg.CorrelationID().c_str());
 
     if (onResponseReceived) {
         mResponseHandlers.emplace(msg.CorrelationID(), onResponseReceived);
@@ -1058,7 +1058,7 @@ Error Communication::DequeueMessage(const Message& msg)
 void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack)
 {
     LOG_DBG() << "Received ack message" << Log::Field("txn", info.mTxn.c_str())
-              << Log::Field("correlationID", ack.mCorrelationID);
+              << Log::Field("correlationId", ack.mCorrelationID);
 
     std::lock_guard lock {mMutex};
 
@@ -1076,7 +1076,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol:
     }
 
     LOG_DBG() << "Received nack message" << Log::Field("txn", info.mTxn.c_str())
-              << Log::Field("correlationID", info.mCorrelationID.c_str())
+              << Log::Field("correlationId", info.mCorrelationID.c_str())
               << Log::Field("retryAfter", nack.mRetryAfter.Milliseconds());
 
     auto it = mSentMessages.find(info.mTxn);
@@ -1097,7 +1097,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol:
 void Communication::HandleMessage(const ResponseInfo& info, const BlobURLsInfo& urls)
 {
     LOG_DBG() << "Received blob URLs info message" << Log::Field("txn", info.mTxn.c_str())
-              << Log::Field("correlationID", info.mCorrelationID.c_str()) << Log::Field("count", urls.mItems.Size());
+              << Log::Field("correlationId", info.mCorrelationID.c_str()) << Log::Field("count", urls.mItems.Size());
 
     if (auto err = SendAck(info.mTxn); !err.IsNone()) {
         LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
@@ -1422,7 +1422,7 @@ void Communication::OnResponseReceived(const ResponseInfo& info, ResponseMessage
         auto it = mResponseHandlers.find(info.mCorrelationID);
         if (it == mResponseHandlers.end()) {
             LOG_DBG() << "Message handler not found" << Log::Field("txn", info.mTxn.c_str())
-                      << Log::Field("correlationID", info.mCorrelationID.c_str());
+                      << Log::Field("correlationId", info.mCorrelationID.c_str());
 
             return;
         }

@@ -32,7 +32,7 @@ public:
 TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
 {
     const auto cJSON = R"({
-        "correlationID": "id",
+        "correlationId": "id",
         "node": {
             "codename": "node1"
         },
@@ -56,7 +56,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningRequest)
 
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 {
-    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationId":"id",)"
                            R"("node":{"codename":"node1"},)"
                            R"("csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
@@ -83,7 +83,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"startProvisioningResponse","correlationId":"id",)"
                            R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""},"csrs":[{"type":"cm","csr":"cm scr"},)"
                            R"({"type":"iam","csr":"iam csr"}]})";
@@ -113,7 +113,7 @@ TEST_F(CloudProtocolProvisioning, StartProvisioningResponseWithError)
 TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 {
     const auto cJSON = R"({
-        "correlationID": "id",
+        "correlationId": "id",
         "node": {
             "codename": "node1"
         },
@@ -157,7 +157,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningRequest)
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 {
     constexpr auto cJSON
-        = R"({"messageType":"finishProvisioningResponse","correlationID":"id","node":{"codename":"node1"}})";
+        = R"({"messageType":"finishProvisioningResponse","correlationId":"id","node":{"codename":"node1"}})";
 
     auto response            = std::make_unique<FinishProvisioningResponse>();
     response->mCorrelationID = "id";
@@ -173,7 +173,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"finishProvisioningResponse","correlationId":"id",)"
                            R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 
@@ -193,7 +193,7 @@ TEST_F(CloudProtocolProvisioning, FinishProvisioningResponseWithError)
 TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
 {
     const auto cJSON = R"({
-        "correlationID": "id",
+        "correlationId": "id",
         "node": {
             "codename": "node1"
         },
@@ -218,7 +218,7 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningRequest)
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 {
     constexpr auto cJSON
-        = R"({"messageType":"deprovisioningResponse","correlationID":"id","node":{"codename":"node1"}})";
+        = R"({"messageType":"deprovisioningResponse","correlationId":"id","node":{"codename":"node1"}})";
 
     auto response            = std::make_unique<DeprovisioningResponse>();
     response->mCorrelationID = "id";
@@ -234,7 +234,7 @@ TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithoutError)
 
 TEST_F(CloudProtocolProvisioning, DeprovisioningResponseWithError)
 {
-    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationID":"id",)"
+    constexpr auto cJSON = R"({"messageType":"deprovisioningResponse","correlationId":"id",)"
                            R"("node":{"codename":"node1"},"errorInfo":)"
                            R"({"aosCode":1,"exitCode":0,"message":""}})";
 

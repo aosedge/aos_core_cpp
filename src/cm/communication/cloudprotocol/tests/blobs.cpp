@@ -38,7 +38,7 @@ public:
 
 TEST_F(CloudProtocolBlobs, BlobURLsRequest)
 {
-    constexpr auto cExpectedMessage = R"({"messageType":"requestBlobUrls","correlationID":"id",)"
+    constexpr auto cExpectedMessage = R"({"messageType":"requestBlobUrls","correlationId":"id",)"
                                       R"("digests":[)"
                                       R"("sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",)"
                                       R"("sha256:1c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"]})";
@@ -60,7 +60,7 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
 {
     constexpr auto cJSON = R"({
         "messageType": "blobUrls",
-        "correlationID": "id",
+        "correlationId": "id",
         "items": [
             {
                 "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",

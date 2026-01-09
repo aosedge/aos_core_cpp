@@ -147,7 +147,7 @@ Error SMHandler::UpdateNodeConfig(const NodeConfig& config)
 
 Error SMHandler::RequestLog(const aos::RequestLog& log)
 {
-    LOG_DBG() << "Request log" << Log::Field("correlationID", log.mCorrelationID) << Log::Field("nodeID", GetNodeID());
+    LOG_DBG() << "Request log" << Log::Field("correlationId", log.mCorrelationID) << Log::Field("nodeID", GetNodeID());
 
     servicemanager::v5::SMIncomingMessages inMsg;
     servicemanager::v5::SMOutgoingMessages outMsg;
@@ -333,7 +333,7 @@ Error SMHandler::ProcessNodeInstancesStatus(const servicemanager::v5::NodeInstan
 Error SMHandler::ProcessLogData(const servicemanager::v5::LogData& logData)
 {
     LOG_DBG() << "Process log data" << Log::Field("nodeID", GetNodeID())
-              << Log::Field("correlationID", logData.correlation_id().c_str()) << Log::Field("part", logData.part())
+              << Log::Field("correlationId", logData.correlation_id().c_str()) << Log::Field("part", logData.part())
               << Log::Field("partCount", logData.part_count());
 
     auto pushLog = std::make_unique<PushLog>();

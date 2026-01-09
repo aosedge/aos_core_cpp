@@ -173,7 +173,7 @@ Error ToJSON(const Protocol& protocol, Poco::JSON::Object& json)
 {
     try {
         if (!protocol.mCorrelationID.IsEmpty()) {
-            json.set("correlationID", protocol.mCorrelationID.CStr());
+            json.set("correlationId", protocol.mCorrelationID.CStr());
         }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -184,8 +184,8 @@ Error ToJSON(const Protocol& protocol, Poco::JSON::Object& json)
 
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Protocol& protocol)
 {
-    if (auto err = protocol.mCorrelationID.Assign(json.GetValue<std::string>("correlationID").c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(Error(err, "can't parse correlationID"));
+    if (auto err = protocol.mCorrelationID.Assign(json.GetValue<std::string>("correlationId").c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(Error(err, "can't parse correlationId"));
     }
 
     return ErrorEnum::eNone;

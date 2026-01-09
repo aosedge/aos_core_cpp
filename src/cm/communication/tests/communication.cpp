@@ -465,7 +465,7 @@ TEST_F(CMCommunicationTest, MessageIsRecentIfAckNotReceived)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"alerts","correlationID":"id","items":\[\]\}\}$)");
+                     R"("data":\{"messageType":"alerts","correlationId":"id","items":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -497,7 +497,7 @@ TEST_F(CMCommunicationTest, SendAlerts)
     const auto cExpectedMessage
         = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                      R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                     R"("data":\{"messageType":"alerts","correlationID":"id","items":\[\]\}\}$)");
+                     R"("data":\{"messageType":"alerts","correlationId":"id","items":\[\]\}\}$)");
 
     SubscribeAndWaitConnected();
 
@@ -566,7 +566,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
     const auto     cExpectedMessage      = std::regex(
         R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
                  R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
-                 R"("data":\{"messageType":"requestBlobUrls","correlationID":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
+                 R"("data":\{"messageType":"requestBlobUrls","correlationId":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
                  R"("digests":\["sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"\]\}\}$)");
     constexpr auto cCloudAck = R"({
         "header": {
@@ -586,7 +586,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
         },
         "data": {
             "messageType": "blobUrls",
-            "correlationID": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "correlationId": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
             "items": [
                 {
                     "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",

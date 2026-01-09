@@ -149,7 +149,7 @@ Error SMController::GetNodeConfigStatus(const String& nodeID, NodeConfigStatus& 
 
 Error SMController::RequestLog(const aos::RequestLog& log)
 {
-    LOG_DBG() << "Requesting log" << Log::Field("correlationID", log.mCorrelationID);
+    LOG_DBG() << "Requesting log" << Log::Field("correlationId", log.mCorrelationID);
 
     for (const auto& nodeID : log.mFilter.mNodes) {
         SMHandler* handler = FindNode(nodeID);
