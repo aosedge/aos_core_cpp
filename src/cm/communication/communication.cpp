@@ -352,7 +352,8 @@ Error Communication::GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& d
 
     ResponseMessageVariantPtr response;
 
-    if (auto err = SendAndWaitResponse(Message(txn, payload, request->mCorrelationID.CStr()), response);
+    if (auto err
+        = SendAndWaitResponse(Message(txn, payload, SendPollicy::eExpectAck, request->mCorrelationID.CStr()), response);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -863,7 +864,9 @@ void Communication::HandleSendQueue()
 
             LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
 
-            mSentMessages.emplace(it->Txn(), *it);
+            if (it->Pollicy() == SendPollicy::eExpectAck) {
+                mSentMessages.emplace(it->Txn(), *it);
+            }
 
             mSendQueue.erase(it);
         } catch (const std::exception& e) {
@@ -1061,10 +1064,10 @@ Error Communication::DequeueMessage(const Message& msg)
 
 void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Received ack message" << Log::Field("txn", info.mTxn.c_str())
               << Log::Field("correlationId", ack.mCorrelationID);
-
-    std::lock_guard lock {mMutex};
 
     mSentMessages.erase(info.mTxn);
 }
@@ -1383,7 +1386,7 @@ Error Communication::SendAck(const std::string& txn)
         return common::utils::ToAosError(e);
     }
 
-    return EnqueueMessage(Message(txn, std::move(msg)));
+    return EnqueueMessage(Message(txn, std::move(msg), SendPollicy::eSendOnly));
 }
 
 Error Communication::SendIssueUnitCerts(const IssueUnitCerts& certs)
@@ -1391,7 +1394,7 @@ Error Communication::SendIssueUnitCerts(const IssueUnitCerts& certs)
     LOG_DBG() << "Send issue unit certs";
 
     try {
-        if (auto err = EnqueueMessage(CreateMessageData(certs), true); !err.IsNone()) {
+        if (auto err = EnqueueMessage(CreateMessageData(certs)); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
