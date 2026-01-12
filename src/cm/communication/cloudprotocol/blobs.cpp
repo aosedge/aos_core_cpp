@@ -90,8 +90,17 @@ void BlobInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, B
 
     blobURLInfo.mSize = json.GetValue<size_t>("size");
 
-    DecryptInfoFromJSON(json.GetObject("decryptInfo"), blobURLInfo.mDecryptInfo);
-    SignInfoFromJSON(json.GetObject("signInfo"), blobURLInfo.mSignInfo);
+    if (json.Has("decryptInfo")) {
+        blobURLInfo.mDecryptInfo.EmplaceValue();
+
+        DecryptInfoFromJSON(json.GetObject("decryptInfo"), *blobURLInfo.mDecryptInfo);
+    }
+
+    if (json.Has("signInfo")) {
+        blobURLInfo.mSignInfo.EmplaceValue();
+
+        SignInfoFromJSON(json.GetObject("signInfo"), *blobURLInfo.mSignInfo);
+    }
 }
 
 } // namespace
