@@ -605,6 +605,15 @@ Error Communication::ConnectToCloud()
         return AOS_ERROR_WRAP(err);
     }
 
+    if (!mConfig->mOverrideServiceDiscoveryURL.empty()) {
+        serviceDiscoveryURLs->Clear();
+        if (auto err
+            = serviceDiscoveryURLs->PushBack(StaticString<cURLLen>(mConfig->mOverrideServiceDiscoveryURL.c_str()));
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
     if (serviceDiscoveryURLs->IsEmpty()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "no service discovery URLs available"));
     }
