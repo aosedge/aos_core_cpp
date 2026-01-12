@@ -13,8 +13,11 @@
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
+#include <core/common/tests/mocks/certhandlermock.hpp>
 #include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/identprovidermock.hpp>
+#include <core/common/tests/mocks/provisioningmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/common/tools/fs.hpp>
@@ -28,6 +31,10 @@
 #include <cm/communication/cloudprotocol/servicediscovery.hpp>
 #include <cm/communication/communication.hpp>
 
+#include "mocks/launchermock.hpp"
+#include "mocks/smcontrollermock.hpp"
+#include "mocks/storagestatemock.hpp"
+#include "mocks/updatemanagermock.hpp"
 #include "stubs/certprovider.hpp"
 #include "stubs/connectionsubscriber.hpp"
 #include "stubs/httpserver.hpp"
@@ -53,53 +60,6 @@ constexpr auto cCertificate         = "online";
 /***********************************************************************************************************************
  * Mocks
  **********************************************************************************************************************/
-
-class IdentityProviderMock : public iamclient::IdentProviderItf {
-public:
-    MOCK_METHOD(Error, GetSystemInfo, (SystemInfo & info), (override));
-    MOCK_METHOD(Error, GetSubjects, (Array<StaticString<cIDLen>> & subjects), (override));
-    MOCK_METHOD(Error, SubscribeListener, (iamclient::SubjectsListenerItf & subjectsListener), (override));
-    MOCK_METHOD(Error, UnsubscribeListener, (iamclient::SubjectsListenerItf & subjectsListener), (override));
-};
-
-class UpdateManagerMock : public updatemanager::UpdateManagerItf {
-public:
-    MOCK_METHOD(Error, ProcessDesiredStatus, (const DesiredStatus& desiredStatus), (override));
-};
-
-class StateHandlerMock : public storagestate::StateHandlerItf {
-public:
-    MOCK_METHOD(Error, UpdateState, (const aos::UpdateState& state), (override));
-    MOCK_METHOD(Error, AcceptState, (const StateAcceptance& state), (override));
-};
-
-class LogProviderMock : public smcontroller::LogProviderItf {
-public:
-    MOCK_METHOD(Error, RequestLog, (const aos::RequestLog& log), (override));
-};
-
-class EnvVarHandlerMock : public launcher::EnvVarHandlerItf {
-public:
-    MOCK_METHOD(Error, OverrideEnvVars, (const OverrideEnvVarsRequest& envVars), (override));
-};
-
-class CertHandlerMock : public iamclient::CertHandlerItf {
-public:
-    MOCK_METHOD(Error, CreateKey,
-        (const String& nodeID, const String& certType, const String& subject, const String& password, String& csr),
-        (override));
-    MOCK_METHOD(Error, ApplyCert,
-        (const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo), (override));
-};
-
-class ProvisioningMock : public iamclient::ProvisioningItf {
-public:
-    MOCK_METHOD(
-        Error, GetCertTypes, (const String& nodeID, Array<StaticString<cCertTypeLen>>& certTypes), (const, override));
-    MOCK_METHOD(Error, StartProvisioning, (const String& nodeID, const String& password), (override));
-    MOCK_METHOD(Error, FinishProvisioning, (const String& nodeID, const String& password), (override));
-    MOCK_METHOD(Error, Deprovision, (const String& nodeID, const String& password), (override));
-};
 
 class UUIDItfStub : public crypto::UUIDItf {
 public:
@@ -184,7 +144,7 @@ public:
         mConfig.mCACert                   = CERTIFICATES_CM_DIR "/ca.cer";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
-        EXPECT_CALL(mIdentityProvider, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
+        EXPECT_CALL(mIdentProviderMock, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
             info.mSystemID = mSystemID;
             return ErrorEnum::eNone;
         }));
@@ -218,8 +178,8 @@ public:
         auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
 
-        err = mCryptoHelper.Init(
-            mCertProvider, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
+        err = mCryptoHelper.Init(mCertProviderStub, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
+            mConfig.mCACert.c_str());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
 
         StartHTTPServer();
@@ -259,24 +219,24 @@ public:
 
     void SubscribeAndWaitConnected()
     {
-        EXPECT_CALL(mCurrentNodeInfoProvider, GetCurrentNodeInfo).WillRepeatedly(Invoke([this](NodeInfo& info) {
+        EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo).WillRepeatedly(Invoke([this](NodeInfo& info) {
             info.mNodeID = mNodeID;
 
             return ErrorEnum::eNone;
         }));
 
-        auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProvider, mIdentityProvider, mCertProvider, mCertLoader,
-            mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManager, mStateHandler, mLogProvider, mEnvVarHandler,
-            mCertHandlerMock, mProvisioningMock);
+        auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProviderMock, mIdentProviderMock, mCertProviderStub,
+            mCertLoader, mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManagerMock, mStateHandlerMock,
+            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-        err = mCommunication.SubscribeListener(mConnectionSubscriber);
+        err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mCommunication.Start();
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-        err = mConnectionSubscriber.WaitEvent(cConnectedEvent);
+        err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent);
         EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
     }
 
@@ -369,15 +329,15 @@ protected:
     StaticString<cIDLen>                   mSystemID = "test_system_id";
     StaticString<cIDLen>                   mNodeID   = "node0";
     config::Config                         mConfig;
-    ConnectionSubscriberStub               mConnectionSubscriber;
-    iamclient::CurrentNodeInfoProviderMock mCurrentNodeInfoProvider;
-    IdentityProviderMock                   mIdentityProvider;
-    UpdateManagerMock                      mUpdateManager;
-    StateHandlerMock                       mStateHandler;
-    LogProviderMock                        mLogProvider;
-    EnvVarHandlerMock                      mEnvVarHandler;
-    CertHandlerMock                        mCertHandlerMock;
-    ProvisioningMock                       mProvisioningMock;
+    ConnectionSubscriberStub               mConnectionSubscriberStub;
+    iamclient::CurrentNodeInfoProviderMock mCurrentNodeInfoProviderMock;
+    iamclient::IdentProviderMock           mIdentProviderMock;
+    updatemanager::UpdateManagerMock       mUpdateManagerMock;
+    storagestate::StateHandlerMock         mStateHandlerMock;
+    smcontroller::LogProviderMock          mLogProviderMock;
+    launcher::EnvVarHandlerMock            mEnvVarHandlerMock;
+    iamclient::CertHandlerMock             mCertHandlerMock;
+    iamclient::ProvisioningMock            mProvisioningMock;
 
     std::optional<HTTPServer>     mDiscoveryServer;
     std::optional<HTTPServer>     mCloudServer;
@@ -387,7 +347,7 @@ protected:
     crypto::DefaultCryptoProvider mCryptoProvider;
     crypto::CryptoHelper          mCryptoHelper;
     UUIDItfStub                   mUUIDProvider;
-    iamclient::CertProviderStub   mCertProvider {mCertHandler};
+    iamclient::CertProviderStub   mCertProviderStub {mCertHandler};
     crypto::CertLoader            mCertLoader;
     Communication                 mCommunication;
 
@@ -420,21 +380,21 @@ TEST_F(CMCommunicationTest, Reconnect)
 
     StopHTTPServer();
 
-    auto err = mConnectionSubscriber.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
+    auto err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     StartHTTPServer();
 
-    err = mConnectionSubscriber.WaitEvent(cConnectedEvent);
+    err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    err = mConnectionSubscriber.WaitEvent(cDisconnectedEvent);
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    err = mCommunication.UnsubscribeListener(mConnectionSubscriber);
+    err = mCommunication.UnsubscribeListener(mConnectionSubscriberStub);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
@@ -442,19 +402,19 @@ TEST_F(CMCommunicationTest, SubscribeUnsubscribe)
 {
     SubscribeAndWaitConnected();
 
-    auto err = mCommunication.SubscribeListener(mConnectionSubscriber);
+    auto err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
     ASSERT_TRUE(err.Is(ErrorEnum::eAlreadyExist)) << tests::utils::ErrorToStr(err);
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    err = mConnectionSubscriber.WaitEvent(cDisconnectedEvent);
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    err = mCommunication.UnsubscribeListener(mConnectionSubscriber);
+    err = mCommunication.UnsubscribeListener(mConnectionSubscriberStub);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    err = mCommunication.UnsubscribeListener(mConnectionSubscriber);
+    err = mCommunication.UnsubscribeListener(mConnectionSubscriberStub);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << tests::utils::ErrorToStr(err);
 }
 
@@ -782,7 +742,7 @@ TEST_F(CMCommunicationTest, ReceiveUpdateStateMessage)
 
     std::promise<void> messageHandled;
 
-    EXPECT_CALL(mStateHandler, UpdateState).WillOnce(Invoke([&messageHandled](const UpdateState& state) {
+    EXPECT_CALL(mStateHandlerMock, UpdateState).WillOnce(Invoke([&messageHandled](const UpdateState& state) {
         EXPECT_STREQ(state.mItemID.CStr(), "itemID");
         EXPECT_STREQ(state.mSubjectID.CStr(), "subjectID");
         EXPECT_EQ(state.mInstance, 0);
@@ -828,7 +788,7 @@ TEST_F(CMCommunicationTest, ReceiveStateAcceptanceMessage)
 
     std::promise<void> messageHandled;
 
-    EXPECT_CALL(mStateHandler, AcceptState).WillOnce(Invoke([&messageHandled](const StateAcceptance& state) {
+    EXPECT_CALL(mStateHandlerMock, AcceptState).WillOnce(Invoke([&messageHandled](const StateAcceptance& state) {
         EXPECT_STREQ(state.mItemID.CStr(), "itemID");
         EXPECT_STREQ(state.mSubjectID.CStr(), "subjectID");
         EXPECT_EQ(state.mInstance, 0);
