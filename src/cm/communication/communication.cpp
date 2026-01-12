@@ -225,7 +225,7 @@ Error Communication::Start()
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Starting communication";
+    LOG_DBG() << "Start communication";
 
     if (mIsRunning) {
         return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
@@ -556,7 +556,7 @@ Error Communication::SendDiscoveryRequest(const String& url)
             }
         });
 
-        LOG_DBG() << "Send discovery request";
+        LOG_DBG() << "Send discovery request" << Log::Field("url", url.CStr());
 
         const auto requestBody = CreateDiscoveryRequestBody();
 
@@ -575,13 +575,12 @@ Error Communication::SendDiscoveryRequest(const String& url)
         Poco::Net::HTTPResponse httpResponse;
         httpRequest.setContentLength64(static_cast<Poco::Int64>(requestBody.length()));
 
-        LOG_DBG() << "Connecting to service discovery server" << Log::Field("url", postURI.toString().c_str())
+        LOG_DBG() << "Connect to service discovery server" << Log::Field("url", postURI.toString().c_str())
                   << Log::Field("content", requestBody.c_str());
 
         session->sendRequest(httpRequest) << requestBody;
 
         ReceiveDiscoveryResponse(*session, httpResponse);
-
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
