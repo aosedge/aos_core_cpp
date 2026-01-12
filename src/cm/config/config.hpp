@@ -47,6 +47,7 @@ struct Config {
     std::string               mDNSIP;
     std::string               mCertStorage;
     std::string               mServiceDiscoveryURL;
+    std::string               mOverrideServiceDiscoveryURL;
     std::string               mIAMProtectedServerURL;
     std::string               mIAMPublicServerURL;
     std::string               mFileServerURL;

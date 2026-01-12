@@ -145,11 +145,12 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         config.mCertStorage = object.GetValue<std::string>("certStorage", cDefaultCertStorage);
 
-        config.mServiceDiscoveryURL   = object.GetValue<std::string>("serviceDiscoveryUrl");
-        config.mIAMProtectedServerURL = object.GetValue<std::string>("iamProtectedServerUrl");
-        config.mIAMPublicServerURL    = object.GetValue<std::string>("iamPublicServerUrl");
-        config.mFileServerURL         = object.GetValue<std::string>("fileServerUrl");
-        config.mCMServerURL           = object.GetValue<std::string>("cmServerUrl");
+        config.mServiceDiscoveryURL         = object.GetValue<std::string>("serviceDiscoveryUrl");
+        config.mOverrideServiceDiscoveryURL = object.GetValue<std::string>("overrideServiceDiscoveryUrl", "");
+        config.mIAMProtectedServerURL       = object.GetValue<std::string>("iamProtectedServerUrl");
+        config.mIAMPublicServerURL          = object.GetValue<std::string>("iamPublicServerUrl");
+        config.mFileServerURL               = object.GetValue<std::string>("fileServerUrl");
+        config.mCMServerURL                 = object.GetValue<std::string>("cmServerUrl");
         config.mStorageDir
             = object.GetValue<std::string>("storageDir", std::filesystem::path(config.mWorkingDir) / "storages");
         config.mStateDir
