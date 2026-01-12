@@ -54,7 +54,7 @@ Error Downloader::Download(const String& digest, const String& url, const String
 
         auto it = mCancelFlags.find(digest.CStr());
         if (it != mCancelFlags.end()) {
-            return Error(ErrorEnum::eAlreadyExist, "Download already in progress");
+            return Error(ErrorEnum::eAlreadyExist, "download already in progress");
         }
 
         mCancelFlags[context.mDigest].store(false);
@@ -84,20 +84,20 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
     std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
     if (!curl) {
-        return Error(ErrorEnum::eFailed, "Failed to init curl");
+        return Error(ErrorEnum::eFailed, "failed to init curl");
     }
 
     auto fileCloser = [](FILE* fp) {
         if (fp) {
             if (auto res = fclose(fp); res != 0) {
-                LOG_ERR() << "Failed to close file: res=" << res;
+                LOG_ERR() << "failed to close file: res=" << res;
             }
         }
     };
 
     std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), "ab"), fileCloser);
     if (!fp) {
-        return Error(ErrorEnum::eFailed, "Failed to open file");
+        return Error(ErrorEnum::eFailed, "failed to open file");
     }
 
     fseek(fp.get(), 0, SEEK_END);
@@ -155,7 +155,7 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
     }
 
     if (!std::filesystem::exists(path)) {
-        return Error(ErrorEnum::eFailed, "File not found");
+        return Error(ErrorEnum::eFailed, "file not found");
     }
 
     try {
@@ -177,18 +177,18 @@ Error Downloader::RetryDownload(const String& url, const String& path, ProgressC
 
     for (int retryCount = 0; (retryCount < cMaxRetryCount) && (!mShutdown); ++retryCount) {
         if (context->mCancelFlag && context->mCancelFlag->load()) {
-            return Error(ErrorEnum::eRuntime, "Download cancelled");
+            return Error(ErrorEnum::eRuntime, "download cancelled");
         }
 
-        LOG_DBG() << "Downloading: url=" << url << ", retry=" << retryCount;
+        LOG_DBG() << "Downloading:" << Log::Field("url", url) << Log::Field("retry", retryCount);
 
         if (err = DownloadImage(url, path, context); err.IsNone()) {
-            LOG_DBG() << "Download success: url=" << url;
+            LOG_DBG() << "Download success" << Log::Field("url", url);
 
             return ErrorEnum::eNone;
         }
 
-        LOG_ERR() << "Failed to download: err=" << err.Message() << ", retry=" << retryCount;
+        LOG_ERR() << "Failed to download" << Log::Field("retry", retryCount) << Log::Field(AOS_ERROR_WRAP(err));
 
         {
             std::unique_lock<std::mutex> lock {mMutex};
@@ -281,12 +281,12 @@ Error Downloader::Cancel(const String& digest)
     if (auto it = mCancelFlags.find(digest.CStr()); it != mCancelFlags.end()) {
         it->second.store(true);
 
-        LOG_DBG() << "Cancel requested for download: digest=" << digest;
+        LOG_DBG() << "Cancel requested for download:" << Log::Field("digest", digest);
 
         return ErrorEnum::eNone;
     }
 
-    return Error(ErrorEnum::eNotFound, "Download not found");
+    return Error(ErrorEnum::eNotFound, "download not found");
 }
 
 } // namespace aos::common::downloader
