@@ -26,6 +26,10 @@
 
 #include <core/cm/communication/itf/communication.hpp>
 #include <core/cm/communication/servicediscovery.hpp>
+#include <core/cm/launcher/itf/envvarhandler.hpp>
+#include <core/cm/smcontroller/itf/logprovider.hpp>
+#include <core/cm/storagestate/itf/statehandler.hpp>
+#include <core/cm/updatemanager/itf/updatemanager.hpp>
 #include <core/common/cloudconnection/itf/cloudconnection.hpp>
 #include <core/common/iamclient/itf/certhandler.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -36,11 +40,6 @@
 #include <core/common/types/certificates.hpp>
 #include <core/common/types/provisioning.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
-
-#include <core/cm/launcher/itf/envvarhandler.hpp>
-#include <core/cm/smcontroller/itf/logprovider.hpp>
-#include <core/cm/storagestate/itf/statehandler.hpp>
-#include <core/cm/updatemanager/itf/updatemanager.hpp>
 
 #include <common/utils/json.hpp>
 #include <common/utils/time.hpp>
