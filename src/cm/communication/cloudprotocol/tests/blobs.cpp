@@ -115,17 +115,19 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
     EXPECT_EQ(image.mSHA256, expectedSHA256);
     EXPECT_EQ(image.mSize, 1000);
 
-    EXPECT_STREQ(image.mDecryptInfo.mBlockAlg.CStr(), "AES256/CBC/pkcs7");
-    EXPECT_EQ(image.mDecryptInfo.mBlockIV, String("blockIv").AsByteArray());
-    EXPECT_EQ(image.mDecryptInfo.mBlockKey, String("blockKey").AsByteArray());
+    ASSERT_TRUE(image.mDecryptInfo.HasValue());
+    EXPECT_STREQ(image.mDecryptInfo->mBlockAlg.CStr(), "AES256/CBC/pkcs7");
+    EXPECT_EQ(image.mDecryptInfo->mBlockIV, String("blockIv").AsByteArray());
+    EXPECT_EQ(image.mDecryptInfo->mBlockKey, String("blockKey").AsByteArray());
 
-    EXPECT_STREQ(image.mSignInfo.mChainName.CStr(), "chainName");
-    EXPECT_STREQ(image.mSignInfo.mAlg.CStr(), "RSA/SHA256");
-    EXPECT_EQ(image.mSignInfo.mValue, String("value").AsByteArray());
-    EXPECT_EQ(image.mSignInfo.mTrustedTimestamp, Time::UTC("2023-10-01T12:00:00Z").mValue);
-    ASSERT_EQ(image.mSignInfo.mOCSPValues.Size(), 2);
-    EXPECT_STREQ(image.mSignInfo.mOCSPValues[0].CStr(), "ocspValue1");
-    EXPECT_STREQ(image.mSignInfo.mOCSPValues[1].CStr(), "ocspValue2");
+    ASSERT_TRUE(image.mSignInfo.HasValue());
+    EXPECT_STREQ(image.mSignInfo->mChainName.CStr(), "chainName");
+    EXPECT_STREQ(image.mSignInfo->mAlg.CStr(), "RSA/SHA256");
+    EXPECT_EQ(image.mSignInfo->mValue, String("value").AsByteArray());
+    EXPECT_EQ(image.mSignInfo->mTrustedTimestamp, Time::UTC("2023-10-01T12:00:00Z").mValue);
+    ASSERT_EQ(image.mSignInfo->mOCSPValues.Size(), 2);
+    EXPECT_STREQ(image.mSignInfo->mOCSPValues[0].CStr(), "ocspValue1");
+    EXPECT_STREQ(image.mSignInfo->mOCSPValues[1].CStr(), "ocspValue2");
 }
 
 } // namespace aos::cm::communication::cloudprotocol
