@@ -601,4 +601,4 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
     return ErrorEnum::eNone;
 }
 
-}; // namespace aos::sm::launcher
+} // namespace aos::sm::launcher

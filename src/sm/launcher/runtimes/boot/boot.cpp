@@ -117,4 +117,4 @@ Error BootRuntime::CreateRuntimeInfo(const std::string& runtimeType, const NodeI
     return ErrorEnum::eNone;
 }
 
-}; // namespace aos::sm::launcher
+} // namespace aos::sm::launcher

@@ -327,4 +327,4 @@ void ContainerRuntime::SendInstanceStatus(const Instance& instance)
     mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(instanceStatus.get(), 1));
 }
 
-}; // namespace aos::sm::launcher
+} // namespace aos::sm::launcher
