@@ -33,6 +33,6 @@ public:
     MOCK_METHOD(RetWithError<std::vector<std::string>>, ListDir, (const std::string&), (override));
 };
 
-}; // namespace aos::sm::launcher
+} // namespace aos::sm::launcher
 
 #endif
