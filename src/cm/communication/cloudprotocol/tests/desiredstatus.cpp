@@ -346,13 +346,13 @@ TEST_F(CloudProtocolDesiredStatus, Subjects)
         "subjects": [
             {
                 "identity": {
-                    "codename": "subjectId1"
+                    "id": "subjectId1"
                 },
                 "type": "group"
             },
             {
                 "identity": {
-                    "codename": "subjectId2"
+                    "id": "subjectId2"
                 },
                 "type": "user"
             }

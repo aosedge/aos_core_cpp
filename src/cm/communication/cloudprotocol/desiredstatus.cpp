@@ -307,11 +307,11 @@ void SubjectInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json
     auto err = ParseAosIdentity(json.GetObject("identity"), identity);
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject identity");
 
-    if (!identity.mCodename.has_value()) {
-        AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject codename is missing");
+    if (!identity.mID.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject ID is missing");
     }
 
-    err = subject.mSubjectID.Assign(identity.mCodename->c_str());
+    err = subject.mSubjectID.Assign(identity.mID->c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse subjectID");
 
     err = subject.mSubjectType.FromString(json.GetValue<std::string>("type").c_str());
