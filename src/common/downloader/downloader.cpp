@@ -180,7 +180,7 @@ Error Downloader::RetryDownload(const String& url, const String& path, ProgressC
             return Error(ErrorEnum::eRuntime, "download cancelled");
         }
 
-        LOG_DBG() << "Downloading:" << Log::Field("url", url) << Log::Field("retry", retryCount);
+        LOG_DBG() << "Downloading" << Log::Field("url", url) << Log::Field("retry", retryCount);
 
         if (err = DownloadImage(url, path, context); err.IsNone()) {
             LOG_DBG() << "Download success" << Log::Field("url", url);
