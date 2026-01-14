@@ -195,7 +195,7 @@ run_coverage() {
     print_next_step "Run tests with coverage"
 
     cd ./build
-    make coverage
+    ctest --output-on-failure
     echo
     echo "Coverage completed!"
 }
