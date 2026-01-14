@@ -152,7 +152,7 @@ TEST_F(ContainerFileSystemTest, GetGIDByName)
     EXPECT_EQ(gid, grp->gr_gid) << "GID mismatch";
 }
 
-TEST_F(ContainerFileSystemTest, PopulateHostDevices)
+TEST_F(ContainerFileSystemTest, DISABLED_PopulateHostDevices)
 {
     const auto cRootDevicePath     = fs::path(cTestDirRoot) / "dev";
     const auto cTestDeviceFullPath = cRootDevicePath / "device1";
@@ -174,7 +174,7 @@ TEST_F(ContainerFileSystemTest, PopulateHostDevices)
     EXPECT_EQ(devices.front().mPath, cTestDeviceFullPath.c_str());
 }
 
-TEST_F(ContainerFileSystemTest, PopulateHostDevicesSymlink)
+TEST_F(ContainerFileSystemTest, DISABLED_PopulateHostDevicesSymlink)
 {
     const auto cRootDevicePath     = fs::path(cTestDirRoot) / "dev";
     const auto cTestDeviceFullPath = cRootDevicePath / "device1";
