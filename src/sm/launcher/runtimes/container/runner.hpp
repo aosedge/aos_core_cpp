@@ -29,11 +29,6 @@ namespace aos::sm::launcher {
 class Runner : public RunnerItf {
 public:
     /**
-     * Destructor.
-     */
-    ~Runner();
-
-    /**
      * Initializes Runner instance.
      *
      * @param receiver run status receiver.

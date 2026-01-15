@@ -33,11 +33,10 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
  **********************************************************************************************************************/
 
 Error ContainerRuntime::Init(const RuntimeConfig& config,
-    iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec,
-    InstanceStatusReceiverItf& instanceStatusReceiver) // cppcheck-suppress constParameterReference
-
+    iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
+    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver)
 {
     try {
         LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
