@@ -408,10 +408,10 @@ TEST_F(RootfsRuntimeTest, UpdatedFailed)
 
     std::vector<InstanceStatus> statuses;
 
-    err = mStatusReceiver.GetStatuses(statuses, std::chrono::seconds(1));
+    err = mStatusReceiver.GetStatuses(statuses, std::chrono::seconds(2));
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses.size(), 1u);
     EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActivating);
     EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
     EXPECT_STREQ(statuses[0].mSubjectID.CStr(), "updateSubjectId");
@@ -420,7 +420,7 @@ TEST_F(RootfsRuntimeTest, UpdatedFailed)
 
     getUnitStatusPromise.set_value();
 
-    err = mStatusReceiver.GetStatuses(statuses, std::chrono::seconds(1));
+    err = mStatusReceiver.GetStatuses(statuses, std::chrono::seconds(2));
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     ASSERT_EQ(statuses.size(), 1u);

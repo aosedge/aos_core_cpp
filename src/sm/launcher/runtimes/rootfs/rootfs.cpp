@@ -116,11 +116,12 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
     std::lock_guard lock {mMutex};
 
     LOG_DBG() << "Start instance" << Log::Field("ident", static_cast<const InstanceIdent&>(instance))
-              << Log::Field("manifestDigest", instance.mManifestDigest);
+              << Log::Field("manifestDigest", instance.mManifestDigest) << Log::Field("type", instance.mType);
 
     static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
 
-    if (mCurrentInstance == instance) {
+    if (static_cast<const InstanceIdent&>(mCurrentInstance) == static_cast<const InstanceIdent&>(instance)
+        && instance.mManifestDigest == mCurrentInstance.mManifestDigest) {
         status.mState   = InstanceStateEnum::eActive;
         status.mError   = ErrorEnum::eNone;
         status.mVersion = mCurrentVersion;
@@ -393,6 +394,8 @@ void RootfsRuntime::FillInstanceStatus(
     status.mVersion                     = version;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mManifestDigest              = instanceInfo.mManifestDigest;
+    status.mType                        = UpdateItemTypeEnum::eComponent;
+    status.mPreinstalled                = status.mItemID.IsEmpty();
 }
 
 Error RootfsRuntime::SavePendingInstanceInfo(const InstanceInfo& instance, const String& version)
@@ -427,13 +430,13 @@ Error RootfsRuntime::LoadInstanceInfo(const String& path, InstanceInfo& instance
 {
     LOG_DBG() << "Load instance info" << Log::Field("path", path);
 
+    instance.mType = UpdateItemTypeEnum::eComponent;
+
     std::ifstream file(path.CStr());
 
     if (!file.is_open()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "can't open instance info file"));
     }
-
-    instance.mType = UpdateItemTypeEnum::eComponent;
 
     try {
         auto parseResult = common::utils::ParseJson(file);
