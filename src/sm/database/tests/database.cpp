@@ -103,14 +103,14 @@ protected:
  * Tests - launcher::StorageItf
  **********************************************************************************************************************/
 
-TEST_F(DatabaseTest, AddInstanceInfo)
+TEST_F(DatabaseTest, UpdateInstanceInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
     auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", 1);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
-    EXPECT_TRUE(mDB.AddInstanceInfo(instanceInfo).Is(aos::ErrorEnum::eFailed));
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 }
 
 TEST_F(DatabaseTest, RemoveInstanceInfo)
@@ -123,7 +123,7 @@ TEST_F(DatabaseTest, RemoveInstanceInfo)
 
     auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", 1);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 
     ident = CreateInstanceIdent("service-1", "subject-1", 1);
 
@@ -136,7 +136,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfos)
 
     auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", 1);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 
     // aos::InstanceInfoArray result;
     auto result = std::make_unique<aos::InstanceInfoArray>();
@@ -207,7 +207,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
     instanceInfo.mMonitoringParams.GetValue().mAlertRules.GetValue().mRAM.GetValue().mMinTimeout
         = aos::Duration(1000000000);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 
     auto result = std::make_unique<aos::InstanceInfoArray>();
 
@@ -224,7 +224,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfosExceedsLimit)
     for (size_t i = 0; i < aos::cMaxNumInstances + 1; ++i) {
         auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", i);
 
-        ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
+        ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
     }
 
     // aos::InstanceInfoArray result;
@@ -395,7 +395,7 @@ TEST_F(DatabaseTest, GetInstanceInfoByIDOk)
 
     auto instanceInfo = CreateInstanceInfo(serviceID, "subject", 0);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instanceInfo).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 
     aos::sm::alerts::ServiceInstanceData result;
 
@@ -429,8 +429,8 @@ TEST_F(DatabaseTest, GetInstanceIDsOk)
     auto instance1 = CreateInstanceInfo(serviceID, "subject", 0);
     auto instance2 = CreateInstanceInfo(serviceID, "subject", 1);
 
-    ASSERT_TRUE(mDB.AddInstanceInfo(instance1).IsNone());
-    ASSERT_TRUE(mDB.AddInstanceInfo(instance2).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instance1).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceInfo(instance2).IsNone());
 
     aos::LogFilter filter;
 
