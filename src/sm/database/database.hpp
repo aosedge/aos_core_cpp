@@ -62,12 +62,13 @@ public:
     Error GetAllInstancesInfos(Array<InstanceInfo>& infos) override;
 
     /**
-     * Stores instance info to storage.
+     * Updates instance info in storage. Inserts a new record
+     * if it does not exist.
      *
      * @param info instance info to store.
      * @return Error.
      */
-    Error AddInstanceInfo(const InstanceInfo& info) override;
+    Error UpdateInstanceInfo(const InstanceInfo& info) override;
 
     /**
      * Deletes instance info from storage.
