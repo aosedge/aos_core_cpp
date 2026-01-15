@@ -113,11 +113,6 @@ Error Runner::Stop()
     return ErrorEnum::eNone;
 }
 
-Runner::~Runner()
-{
-    std::ignore = Stop();
-}
-
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
 {
     RunStatus status = {};
