@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/SQLite/SQLiteException.h>
 #include <Poco/Data/Session.h>
 #include <Poco/JSON/Array.h>
 #include <Poco/JSON/Object.h>
@@ -397,18 +398,18 @@ Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos
     return ErrorEnum::eNone;
 }
 
-Error Database::AddInstanceInfo(const InstanceInfo& info)
+Error Database::UpdateInstanceInfo(const InstanceInfo& info)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Add instance info: itemID=" << info.mItemID << ", instance=" << info.mInstance;
+    LOG_DBG() << "Update instance info" << Log::Field("itemID", info.mItemID) << Log::Field("instance", info.mInstance);
 
     try {
         InstanceInfoRow row;
 
         FromAos(info, row);
 
-        *mSession << "INSERT INTO instances (itemID, subjectID, instance, type, manifestDigest, runtimeID, "
+        *mSession << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, manifestDigest, runtimeID, "
                      "subjectType, uid, gid, priority, storagePath, statePath, envVars, networkParameters, "
                      "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
