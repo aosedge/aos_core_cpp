@@ -89,15 +89,27 @@ RetWithError<size_t> FSPlatform::GetAvailableSize(const String& dir) const
 
 Error FSPlatform::SetUserQuota(const String& path, size_t quota, size_t uid) const
 {
+    if (quota == 0) {
+        return ErrorEnum::eNone;
+    }
+
+    auto [device, err] = GetBlockDevice(path.CStr());
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    LOG_DBG() << "Set quota" << Log::Field("path", path) << Log::Field("device", device) << Log::Field("quota", quota)
+              << Log::Field("uid", uid);
+
     dqblk dq {};
 
     dq.dqb_bhardlimit = quota;
     dq.dqb_valid      = QIF_BLIMITS;
 
     if (auto res
-        = quotactl(QCMD(Q_SETQUOTA, USRQUOTA), path.CStr(), static_cast<int>(uid), reinterpret_cast<char*>(&dq));
+        = quotactl(QCMD(Q_SETQUOTA, USRQUOTA), device.CStr(), static_cast<int>(uid), reinterpret_cast<char*>(&dq));
         res == -1) {
-        return Error(errno);
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
     return ErrorEnum::eNone;
