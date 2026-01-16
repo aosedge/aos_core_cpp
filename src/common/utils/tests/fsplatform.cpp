@@ -201,4 +201,39 @@ TEST(FSPlatformTest, ChangeFileOwner)
     EXPECT_EQ(err, ErrorEnum::eRuntime) << "Expected runtime failure, got: " << tests::utils::ErrorToStr(err);
 }
 
+TEST(FSPlatformTest, GetBlockDeviceInvalidPath)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    auto [device, err] = fsPlatform.GetBlockDevice(String("/nonexistent/path"));
+    EXPECT_EQ(err, ErrorEnum::eNotFound) << "Expected not found error, got: " << tests::utils::ErrorToStr(err);
+}
+
+TEST(FSPlatformTest, GetBlockDeviceValidPath)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    const auto tempDir = std::filesystem::temp_directory_path() / "get-block-device-test";
+    std::filesystem::create_directories(tempDir);
+
+    // Get the block device of the temp directory
+    auto commandRes = utils::ExecCommand({"findmnt", "-no", "SOURCE", "--target", tempDir.string()});
+    EXPECT_TRUE(commandRes.mError.IsNone())
+        << "Failed to execute df command: " << tests::utils::ErrorToStr(commandRes.mError);
+
+    commandRes.mValue.erase(commandRes.mValue.find_last_not_of(" \n\r\t") + 1);
+
+    auto getBlockDeviceRes = fsPlatform.GetBlockDevice(tempDir.c_str());
+    EXPECT_TRUE(getBlockDeviceRes.mError.IsNone())
+        << "Failed to get block device: " << tests::utils::ErrorToStr(getBlockDeviceRes.mError);
+
+    EXPECT_STREQ(getBlockDeviceRes.mValue.CStr(), commandRes.mValue.c_str());
+
+    std::filesystem::remove_all(tempDir);
+}
+
 } // namespace aos::common::utils::test
