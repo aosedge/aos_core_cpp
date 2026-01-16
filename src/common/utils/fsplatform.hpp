@@ -65,6 +65,14 @@ public:
      */
     Error ChangeOwner(const String& path, uint32_t uid, uint32_t gid) const override;
 
+    /**
+     * Gets block device for the given path.
+     *
+     * @param path path to file or directory.
+     * @return RetWithError<StaticString<cDeviceNameLen>>.
+     */
+    RetWithError<StaticString<cDeviceNameLen>> GetBlockDevice(const String& path) const override;
+
 private:
     static constexpr size_t cStatBlockSize = 512;
     static constexpr auto   cMtabPath      = "/proc/mounts";

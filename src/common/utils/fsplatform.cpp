@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 #include <filesystem>
 #include <memory>
 #include <mntent.h>
@@ -12,6 +13,7 @@
 #include <unistd.h>
 
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "exception.hpp"
 #include "filesystem.hpp"
@@ -110,6 +112,36 @@ Error FSPlatform::ChangeOwner(const String& path, uint32_t uid, uint32_t gid) co
     }
 
     return ErrorEnum::eNone;
+}
+
+RetWithError<StaticString<cDeviceNameLen>> FSPlatform::GetBlockDevice(const String& path) const
+{
+    struct stat dirStat;
+
+    if (stat(path.CStr(), &dirStat) != 0) {
+        return {0, Error(ErrorEnum::eNotFound, "failed to stat directory")};
+    }
+
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    if (!mtab) {
+        return {0, Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
+    }
+
+    struct mntent* entry;
+
+    while ((entry = getmntent(mtab.get())) != nullptr) {
+        struct stat mountStat;
+
+        if (stat(entry->mnt_dir, &mountStat) != 0) {
+            continue;
+        }
+
+        if (dirStat.st_dev == mountStat.st_dev) {
+            return {entry->mnt_fsname, ErrorEnum::eNone};
+        }
+    }
+
+    return {0, Error(ErrorEnum::eNotFound, "failed to find block device")};
 }
 
 } // namespace aos::common::utils
