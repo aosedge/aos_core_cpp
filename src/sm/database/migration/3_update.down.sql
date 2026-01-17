@@ -51,4 +51,6 @@ CREATE TABLE IF NOT EXISTS layers (
     size INTEGER
 );
 
+ALTER TABLE network DROP COLUMN bridgeIfName;
+
 COMMIT;

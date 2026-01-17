@@ -241,7 +241,7 @@ TEST_F(DatabaseTest, AddNetworkInfoSucceeds)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
-    aos::sm::networkmanager::NetworkInfo networkParams {"networkID", "subnet", "ip", 1, "vlanIfName"};
+    aos::sm::networkmanager::NetworkInfo networkParams {"networkID", "subnet", "ip", 1, "vlanIfName", "bridgeIfName"};
 
     ASSERT_TRUE(mDB.AddNetworkInfo(networkParams).IsNone());
     ASSERT_TRUE(mDB.AddNetworkInfo(networkParams).Is(aos::ErrorEnum::eFailed));
@@ -263,8 +263,8 @@ TEST_F(DatabaseTest, GetNetworksInfoSucceeds)
     aos::StaticArray<aos::sm::networkmanager::NetworkInfo, 2> networks;
     aos::StaticArray<aos::sm::networkmanager::NetworkInfo, 2> expectedNetworks;
 
-    networks.PushBack({"networkID-1", "subnet", "ip", 1, "vlanIfName"});
-    networks.PushBack({"networkID-2", "subnet", "ip", 1, "vlanIfName"});
+    networks.PushBack({"networkID-1", "subnet", "ip", 1, "vlanIfName", "bridgeIfName"});
+    networks.PushBack({"networkID-2", "subnet", "ip", 1, "vlanIfName", "bridgeIfName"});
 
     for (const auto& network : networks) {
         ASSERT_TRUE(mDB.AddNetworkInfo(network).IsNone());
