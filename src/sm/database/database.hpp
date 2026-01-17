@@ -222,8 +222,8 @@ private:
         std::string, uint32_t, uint32_t, uint64_t, std::string, std::string, std::string, std::string, std::string>;
 
     // Network info columns
-    enum class NetworkInfoColumns : int { eNetworkID = 0, eIP, eSubnet, eVlanID, eVlanIfName };
-    using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string>;
+    enum class NetworkInfoColumns : int { eNetworkID = 0, eIP, eSubnet, eVlanID, eVlanIfName, eBridgeIfName };
+    using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string>;
 
     RetWithError<bool> TableExist(const std::string& tableName);
     Error              CreateConfigTable();
