@@ -479,7 +479,8 @@ Error Database::AddNetworkInfo(const sm::networkmanager::NetworkInfo& info)
 
         FromAos(info, row);
 
-        *mSession << "INSERT INTO network (networkID, ip, subnet, vlanID, vlanIfName) VALUES (?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO network (networkID, ip, subnet, vlanID, vlanIfName, bridgeIfName) VALUES (?, ?, ?, "
+                     "?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -497,7 +498,7 @@ Error Database::GetNetworksInfo(Array<sm::networkmanager::NetworkInfo>& networks
     try {
         std::vector<NetworkInfoRow> rows;
 
-        *mSession << "SELECT networkID, ip, subnet, vlanID, vlanIfName FROM network;", into(rows), now;
+        *mSession << "SELECT networkID, ip, subnet, vlanID, vlanIfName, bridgeIfName FROM network;", into(rows), now;
 
         auto networkInfo = std::make_unique<sm::networkmanager::NetworkInfo>();
 
@@ -921,15 +922,17 @@ void Database::FromAos(const sm::networkmanager::NetworkInfo& src, NetworkInfoRo
     dst.set<ToInt(NetworkInfoColumns::eSubnet)>(src.mSubnet.CStr());
     dst.set<ToInt(NetworkInfoColumns::eVlanID)>(src.mVlanID);
     dst.set<ToInt(NetworkInfoColumns::eVlanIfName)>(src.mVlanIfName.CStr());
+    dst.set<ToInt(NetworkInfoColumns::eBridgeIfName)>(src.mBridgeIfName.CStr());
 }
 
 void Database::ToAos(const NetworkInfoRow& src, sm::networkmanager::NetworkInfo& dst)
 {
-    dst.mNetworkID  = src.get<ToInt(NetworkInfoColumns::eNetworkID)>().c_str();
-    dst.mIP         = src.get<ToInt(NetworkInfoColumns::eIP)>().c_str();
-    dst.mSubnet     = src.get<ToInt(NetworkInfoColumns::eSubnet)>().c_str();
-    dst.mVlanID     = src.get<ToInt(NetworkInfoColumns::eVlanID)>();
-    dst.mVlanIfName = src.get<ToInt(NetworkInfoColumns::eVlanIfName)>().c_str();
+    dst.mNetworkID    = src.get<ToInt(NetworkInfoColumns::eNetworkID)>().c_str();
+    dst.mIP           = src.get<ToInt(NetworkInfoColumns::eIP)>().c_str();
+    dst.mSubnet       = src.get<ToInt(NetworkInfoColumns::eSubnet)>().c_str();
+    dst.mVlanID       = src.get<ToInt(NetworkInfoColumns::eVlanID)>();
+    dst.mVlanIfName   = src.get<ToInt(NetworkInfoColumns::eVlanIfName)>().c_str();
+    dst.mBridgeIfName = src.get<ToInt(NetworkInfoColumns::eBridgeIfName)>().c_str();
 }
 
 } // namespace aos::sm::database

@@ -35,4 +35,6 @@ DROP TABLE IF EXISTS instances;
 -- Rename new table
 ALTER TABLE instances_new RENAME TO instances;
 
+ALTER TABLE network ADD COLUMN bridgeIfName TEXT;
+
 COMMIT;
