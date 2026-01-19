@@ -152,16 +152,17 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
         }
 
         instance->UpdateRunStatus(RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});
+        instance->GetStatus(status);
+        SendInstanceStatus(status);
 
-        SendInstanceStatus(*instance);
-
-        auto sendStatus = DeferRelease(instance.get(), [&](void*) { SendInstanceStatus(*instance); });
+        auto sendStatus = DeferRelease(instance.get(), [&](void*) {
+            instance->GetStatus(status);
+            SendInstanceStatus(status);
+        });
 
         if (auto err = instance->Start(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
-
-        instance->GetStatus(status);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -188,13 +189,14 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
             mCurrentInstances.erase(it);
         }
 
-        auto sendStatus = DeferRelease(instance.get(), [&](void*) { SendInstanceStatus(*instance); });
+        auto sendStatus = DeferRelease(instance.get(), [&](void*) {
+            instance->GetStatus(status);
+            SendInstanceStatus(status);
+        });
 
         if (auto err = instance->Stop(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
-
-        instance->GetStatus(status);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -318,12 +320,9 @@ Error ContainerRuntime::StopActiveInstances()
     return ErrorEnum::eNone;
 }
 
-void ContainerRuntime::SendInstanceStatus(const Instance& instance)
+void ContainerRuntime::SendInstanceStatus(const InstanceStatus& status)
 {
-    auto instanceStatus = std::make_unique<InstanceStatus>();
-
-    instance.GetStatus(*instanceStatus);
-    mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(instanceStatus.get(), 1));
+    mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(&status, 1));
 }
 
 } // namespace aos::sm::launcher

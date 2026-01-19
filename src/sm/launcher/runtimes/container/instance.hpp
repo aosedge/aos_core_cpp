@@ -101,6 +101,18 @@ public:
      */
     void UpdateRunStatus(const RunStatus& runStatus);
 
+    /**
+     * Returns run status.
+     *
+     * @return RunStatus.
+     */
+    RunStatus GetRunStatus() const
+    {
+        std::lock_guard lock {mMutex};
+
+        return mRunStatus;
+    }
+
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";
