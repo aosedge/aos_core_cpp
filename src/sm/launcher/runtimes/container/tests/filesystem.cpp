@@ -88,12 +88,12 @@ TEST_F(ContainerFileSystemTest, CreateHostFSWhiteouts)
 TEST_F(ContainerFileSystemTest, CreateMountPoints)
 {
     std::vector<Mount> mounts = {
-        Mount {"proc", "proc", "proc"},
-        Mount {"tmpfs", "tmpfs", "tmpfs"},
-        Mount {"sysfs", "sysfs", "sysfs"},
-        Mount {"/etc/hosts", "etc/hosts", "bind", "rbind,ro"},
-        Mount {"/var/log", "var/log", "bind", "rbind"},
-        Mount {"/tmp", "tmp", "bind", "rw"},
+        Mount {"proc", "/proc", "proc"},
+        Mount {"tmpfs", "/dev", "tmpfs"},
+        Mount {"sysfs", "/sys", "sysfs"},
+        Mount {"/etc/hosts", "/etc/hosts", "bind", "rbind,ro"},
+        Mount {"/var/log", "/var/log", "bind", "rbind"},
+        Mount {"/tmp", "/tmp", "bind", "rw"},
     };
 
     auto mountPointDir = fs::path(cTestDirRoot) / "mountpoints";
