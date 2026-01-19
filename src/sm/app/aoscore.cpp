@@ -130,7 +130,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize launcher
 
-    err = mLauncher.Init(*runtimes, mSMClient, mDatabase);
+    err = mLauncher.Init(*runtimes, mImageManager, mSMClient, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize node config handler
