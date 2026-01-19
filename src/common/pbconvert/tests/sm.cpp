@@ -539,6 +539,7 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     InstanceInfo start1;
 
     start1.mItemID      = "new-service";
+    start1.mVersion     = "2.0.0";
     start1.mSubjectID   = "user1";
     start1.mInstance    = 0;
     start1.mRuntimeID   = "runc";
@@ -588,9 +589,15 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
 
     ASSERT_EQ(result.stop_instances_size(), 1);
     EXPECT_EQ(result.stop_instances(0).item_id(), "old-service");
+    EXPECT_EQ(result.stop_instances(0).subject_id(), "user1");
+    EXPECT_EQ(result.stop_instances(0).instance(), 0);
 
     ASSERT_EQ(result.start_instances_size(), 1);
     EXPECT_EQ(result.start_instances(0).instance().item_id(), "new-service");
+    EXPECT_EQ(result.start_instances(0).version(), "2.0.0");
+    EXPECT_EQ(result.start_instances(0).instance().subject_id(), "user1");
+    EXPECT_EQ(result.start_instances(0).instance().instance(), 0);
+    EXPECT_EQ(result.start_instances(0).owner_id(), "owner1");
     EXPECT_EQ(result.start_instances(0).runtime_id(), "runc");
     EXPECT_EQ(result.start_instances(0).uid(), 1000);
 

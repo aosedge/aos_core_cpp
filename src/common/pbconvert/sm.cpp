@@ -399,6 +399,7 @@ Error ConvertToProto(const aos::InstanceInfo& src, servicemanager::v5::InstanceI
     auto* instance = dst.mutable_instance();
     *instance      = pbconvert::ConvertToProto(static_cast<const InstanceIdent&>(src));
 
+    dst.set_version(src.mVersion.CStr());
     dst.set_manifest_digest(src.mManifestDigest.CStr());
     dst.set_owner_id(src.mOwnerID.CStr());
     dst.set_runtime_id(src.mRuntimeID.CStr());
@@ -586,6 +587,10 @@ Error ConvertFromProto(const servicemanager::v5::MonitoringParameters& src, Inst
 Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo& dst)
 {
     static_cast<InstanceIdent&>(dst) = ConvertToAos(src.instance());
+
+    if (auto err = dst.mVersion.Assign(src.version().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = dst.mManifestDigest.Assign(src.manifest_digest().c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
