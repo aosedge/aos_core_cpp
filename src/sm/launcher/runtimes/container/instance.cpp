@@ -74,9 +74,18 @@ Error Instance::Start()
 {
     std::lock_guard lock {mMutex};
 
+    Error err;
+
+    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
+        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+            mRunStatus.mState = InstanceStateEnum::eFailed;
+            mRunStatus.mError = *err;
+        }
+    });
+
     auto runtimeDir = common::utils::JoinPath(mConfig.mRuntimeDir, mInstanceID);
 
-    if (auto err = mFileSystem.ClearDir(runtimeDir); !err.IsNone()) {
+    if (err = mFileSystem.ClearDir(runtimeDir); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -84,32 +93,33 @@ Error Instance::Start()
     auto serviceConfig = std::make_unique<oci::ServiceConfig>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
 
-    if (auto err = LoadConfigs(*imageConfig, *serviceConfig); !err.IsNone()) {
+    if (err = LoadConfigs(*imageConfig, *serviceConfig); !err.IsNone()) {
         return err;
     }
 
-    if (auto err = CreateRuntimeConfig(runtimeDir, *imageConfig, *serviceConfig, *runtimeConfig); !err.IsNone()) {
+    if (err = CreateRuntimeConfig(runtimeDir, *imageConfig, *serviceConfig, *runtimeConfig); !err.IsNone()) {
         return err;
     }
 
-    if (auto err = PrepareStateStorage(); !err.IsNone()) {
+    if (err = PrepareStateStorage(); !err.IsNone()) {
         return err;
     }
 
-    if (auto err = PrepareRootFS(runtimeDir, *imageConfig, *runtimeConfig); !err.IsNone()) {
+    if (err = PrepareRootFS(runtimeDir, *imageConfig, *runtimeConfig); !err.IsNone()) {
         return err;
     }
 
     if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (auto err = SetupNetwork(runtimeDir, *serviceConfig); !err.IsNone()) {
+        if (err = SetupNetwork(runtimeDir, *serviceConfig); !err.IsNone()) {
             return err;
         }
     }
 
     mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
+    err        = mRunStatus.mError;
 
-    if (!mRunStatus.mError.IsNone()) {
-        return AOS_ERROR_WRAP(mRunStatus.mError);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
@@ -120,6 +130,12 @@ Error Instance::Stop()
     std::lock_guard lock {mMutex};
 
     Error stopErr;
+
+    auto updateRunStatus = DeferRelease(&stopErr, [&](const Error* err) {
+        mRunStatus.mInstanceID = mInstanceID;
+        mRunStatus.mState      = err->IsNone() ? InstanceStateEnum::eInactive : InstanceStateEnum::eFailed;
+        mRunStatus.mError      = *err;
+    });
 
     auto runtimeDir = common::utils::JoinPath(mConfig.mRuntimeDir, mInstanceID);
 
@@ -151,10 +167,6 @@ Error Instance::Stop()
     if (auto err = mFileSystem.RemoveAll(runtimeDir); !err.IsNone() && stopErr.IsNone()) {
         stopErr = AOS_ERROR_WRAP(err);
     }
-
-    mRunStatus.mInstanceID = mInstanceID;
-    mRunStatus.mState      = stopErr.IsNone() ? InstanceStateEnum::eInactive : InstanceStateEnum::eFailed;
-    mRunStatus.mError      = stopErr;
 
     return stopErr;
 }

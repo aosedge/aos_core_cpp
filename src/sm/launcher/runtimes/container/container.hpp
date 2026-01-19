@@ -115,7 +115,7 @@ private:
 
     Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
     Error StopActiveInstances();
-    void  SendInstanceStatus(const Instance& instance);
+    void  SendInstanceStatus(const InstanceStatus& status);
 
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
