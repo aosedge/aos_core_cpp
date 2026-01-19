@@ -65,9 +65,9 @@ unsigned GetMountPermissions(const Mount& mount)
     return 0;
 }
 
-void CreateMountPoint(const fs::path& path, const Mount& mount, bool isDir)
+void CreateMountPoint(const std::string& path, const Mount& mount, bool isDir)
 {
-    auto mountPoint = fs::path(path) / mount.mDestination.CStr();
+    auto mountPoint = fs::path(path).concat(mount.mDestination.CStr());
 
     if (isDir) {
         fs::create_directories(mountPoint);
