@@ -367,9 +367,10 @@ Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos
     try {
         std::vector<InstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, runtimeID, subjectType, "
-                     "uid, gid, priority, storagePath, statePath, envVars, networkParameters, monitoringParams "
-                     "FROM instances;",
+        *mSession
+            << "SELECT itemID, subjectID, instance, type, version, manifestDigest, runtimeID, ownerID, subjectType, "
+               "uid, gid, priority, storagePath, statePath, envVars, networkParameters, monitoringParams "
+               "FROM instances;",
             into(rows), now;
 
         auto instanceInfo = std::make_unique<InstanceInfo>();
@@ -399,9 +400,9 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
 
         FromAos(info, row);
 
-        *mSession << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, manifestDigest, runtimeID, "
-                     "subjectType, uid, gid, priority, storagePath, statePath, envVars, networkParameters, "
-                     "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        *mSession << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, version, manifestDigest, "
+                     "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
+                     "networkParameters, monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -845,8 +846,10 @@ void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
     dst.set<ToInt(InstanceInfoColumns::eSubjectID)>(src.mSubjectID.CStr());
     dst.set<ToInt(InstanceInfoColumns::eInstance)>(src.mInstance);
     dst.set<ToInt(InstanceInfoColumns::eType)>(src.mType.ToString().CStr());
+    dst.set<ToInt(InstanceInfoColumns::eVersion)>(src.mVersion.CStr());
     dst.set<ToInt(InstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
     dst.set<ToInt(InstanceInfoColumns::eRuntimeID)>(src.mRuntimeID.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eOwnerID)>(src.mOwnerID.CStr());
     dst.set<ToInt(InstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
     dst.set<ToInt(InstanceInfoColumns::eUID)>(src.mUID);
     dst.set<ToInt(InstanceInfoColumns::eGID)>(src.mGID);
@@ -863,8 +866,10 @@ void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
     dst.mItemID         = src.get<ToInt(InstanceInfoColumns::eItemID)>().c_str();
     dst.mSubjectID      = src.get<ToInt(InstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstance       = src.get<ToInt(InstanceInfoColumns::eInstance)>();
+    dst.mVersion        = src.get<ToInt(InstanceInfoColumns::eVersion)>().c_str();
     dst.mManifestDigest = src.get<ToInt(InstanceInfoColumns::eManifestDigest)>().c_str();
     dst.mRuntimeID      = src.get<ToInt(InstanceInfoColumns::eRuntimeID)>().c_str();
+    dst.mOwnerID        = src.get<ToInt(InstanceInfoColumns::eOwnerID)>().c_str();
     dst.mUID            = src.get<ToInt(InstanceInfoColumns::eUID)>();
     dst.mGID            = src.get<ToInt(InstanceInfoColumns::eGID)>();
     dst.mPriority       = src.get<ToInt(InstanceInfoColumns::ePriority)>();
