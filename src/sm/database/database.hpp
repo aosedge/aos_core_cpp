@@ -225,9 +225,9 @@ private:
     enum class NetworkInfoColumns : int { eNetworkID = 0, eIP, eSubnet, eVlanID, eVlanIfName, eBridgeIfName };
     using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string>;
 
-    RetWithError<bool> TableExist(const std::string& tableName);
-    Error              CreateConfigTable();
-    void               CreateTables();
+    bool TableExist(const std::string& tableName);
+    void CreateConfigTable();
+    void CreateTables();
 
     // FromAos/ToAos conversion methods
     static void FromAos(const InstanceInfo& src, InstanceInfoRow& dst);
