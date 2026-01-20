@@ -343,10 +343,6 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
         const auto dbPath = Poco::Path(workDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
 
-        if (auto err = CreateConfigTable(); !err.IsNone()) {
-            return err;
-        }
-
         CreateTables();
 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
@@ -767,49 +763,29 @@ Error Database::GetInstanceIDs(const LogFilter& filter, std::vector<std::string>
  * Private
  **********************************************************************************************************************/
 
-RetWithError<bool> Database::TableExist(const std::string& tableName)
+bool Database::TableExist(const std::string& tableName)
 {
     size_t count {0};
 
-    try {
-        Poco::Data::Statement statement {*mSession};
+    Poco::Data::Statement statement {*mSession};
 
-        statement << "SELECT count(*) FROM sqlite_master WHERE name = ? and type='table'", bind(tableName), into(count);
+    statement << "SELECT count(*) FROM sqlite_master WHERE name = ? and type='table'", bind(tableName), into(count);
 
-        if (statement.execute() == 0) {
-            return {false, ErrorEnum::eNotFound};
-        }
-    } catch (const std::exception& e) {
-        return {false, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
+    if (statement.execute() == 0) {
+        return false;
     }
 
-    return {count > 0, ErrorEnum::eNone};
-}
-
-Error Database::CreateConfigTable()
-{
-    auto [tableExists, err] = TableExist("config");
-    if (!err.IsNone()) {
-        return err;
-    }
-
-    if (tableExists) {
-        return ErrorEnum::eNone;
-    }
-
-    try {
-        *mSession << "CREATE TABLE config (cursor TEXT);", now;
-        *mSession << "INSERT INTO config (cursor) VALUES ('');", now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
+    return count > 0;
 }
 
 void Database::CreateTables()
 {
-    LOG_DBG() << "Create network table";
+    LOG_DBG() << "Create tables";
+
+    if (!TableExist("config")) {
+        *mSession << "CREATE TABLE config (cursor TEXT);", now;
+        *mSession << "INSERT INTO config (cursor) VALUES ('');", now;
+    }
 
     *mSession << "CREATE TABLE IF NOT EXISTS network ("
                  "networkID TEXT NOT NULL PRIMARY KEY, "
