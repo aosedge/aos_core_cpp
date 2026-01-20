@@ -328,7 +328,7 @@ Database::~Database()
 
 Error Database::Init(const std::string& workDir, const common::config::Migration& migrationConfig)
 {
-    LOG_DBG() << "Init database: workDir=" << workDir.c_str();
+    LOG_DBG() << "Init database" << Log::Field("workDir", workDir.c_str());
 
     if (mSession && mSession->isConnected()) {
         return ErrorEnum::eNone;
@@ -344,8 +344,6 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
 
         if (auto err = CreateConfigTable(); !err.IsNone()) {
-            LOG_ERR() << "Failed to create config table: err=" << err.StrValue();
-
             return err;
         }
 
@@ -354,11 +352,7 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
         mMigration->MigrateToVersion(sVersion);
     } catch (const std::exception& e) {
-        auto err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
-
-        LOG_ERR() << "Failed to init database: err=" << err;
-
-        return err;
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
     return ErrorEnum::eNone;
@@ -402,7 +396,7 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Update instance info" << Log::Field("itemID", info.mItemID) << Log::Field("instance", info.mInstance);
+    LOG_DBG() << "Update instance info" << Log::Field("instance", static_cast<const InstanceIdent&>(info));
 
     try {
         InstanceInfoRow row;
@@ -424,7 +418,7 @@ Error Database::RemoveInstanceInfo(const InstanceIdent& ident)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Remove instance info: itemID=" << ident.mItemID << ", instance=" << ident.mInstance;
+    LOG_DBG() << "Remove instance info" << Log::Field("instance", static_cast<const InstanceIdent&>(ident));
 
     try {
         Poco::Data::Statement statement {*mSession};
@@ -451,7 +445,7 @@ Error Database::RemoveNetworkInfo(const String& networkID)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Remove network: networkID=" << networkID;
+    LOG_DBG() << "Remove network" << Log::Field("networkID", networkID);
 
     try {
         Poco::Data::Statement statement {*mSession};
@@ -472,7 +466,7 @@ Error Database::AddNetworkInfo(const sm::networkmanager::NetworkInfo& info)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Add network info: networkID=" << info.mNetworkID;
+    LOG_DBG() << "Add network info" << Log::Field("networkID", info.mNetworkID);
 
     try {
         NetworkInfoRow row;
@@ -520,7 +514,8 @@ Error Database::SetTrafficMonitorData(const String& chain, const Time& time, uin
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Set traffic monitor data: chain=" << chain << ", time=" << time << ", value=" << value;
+    LOG_DBG() << "Set traffic monitor data" << Log::Field("chain", chain) << Log::Field("time", time)
+              << Log::Field("value", value);
 
     try {
         *mSession << "INSERT OR REPLACE INTO trafficmonitor values(?, ?, ?);", bind(chain.CStr()),
@@ -536,7 +531,7 @@ Error Database::GetTrafficMonitorData(const String& chain, Time& time, uint64_t&
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Get traffic monitor data: chain=" << chain;
+    LOG_DBG() << "Get traffic monitor data" << Log::Field("chain", chain);
 
     try {
         Poco::Data::Statement statement {*mSession};
@@ -562,7 +557,7 @@ Error Database::RemoveTrafficMonitorData(const String& chain)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Remove traffic monitor data: chain=" << chain;
+    LOG_DBG() << "Remove traffic monitor data" << Log::Field("chain", chain);
 
     try {
         Poco::Data::Statement statement {*mSession};
@@ -651,7 +646,7 @@ Error Database::SetJournalCursor(const String& cursor)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Set journal cursor: cursor=" << cursor;
+    LOG_DBG() << "Set journal cursor" << Log::Field("cursor", cursor);
 
     try {
         *mSession << "UPDATE config SET cursor = ?;", bind(cursor.CStr()), now;
@@ -673,7 +668,7 @@ Error Database::GetJournalCursor(String& cursor) const
 
         cursor = dbCursor.c_str();
 
-        LOG_DBG() << "Get journal cursor: cursor=" << cursor;
+        LOG_DBG() << "Get journal cursor" << Log::Field("cursor", cursor);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -689,7 +684,7 @@ Error Database::GetInstanceInfoByID(const String& id, alerts::ServiceInstanceDat
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Get instance info by ID: id=" << id;
+    LOG_DBG() << "Get instance info by ID" << Log::Field("id", id);
 
     try {
         std::vector<Poco::Tuple<std::string, std::string, uint64_t, std::string>> result;
@@ -794,7 +789,6 @@ RetWithError<bool> Database::TableExist(const std::string& tableName)
 Error Database::CreateConfigTable()
 {
     auto [tableExists, err] = TableExist("config");
-
     if (!err.IsNone()) {
         return err;
     }
@@ -804,10 +798,7 @@ Error Database::CreateConfigTable()
     }
 
     try {
-        *mSession << "CREATE TABLE config ("
-                     "cursor TEXT);",
-            now;
-
+        *mSession << "CREATE TABLE config (cursor TEXT);", now;
         *mSession << "INSERT INTO config (cursor) VALUES ('');", now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));

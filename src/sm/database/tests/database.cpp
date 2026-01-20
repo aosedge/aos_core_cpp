@@ -54,14 +54,6 @@ aos::InstanceInfo CreateInstanceInfo(
     return info;
 }
 
-// std::string GetMigrationSourceDir()
-// {
-//     std::filesystem::path curFilePath(__FILE__);
-//     std::filesystem::path migrationSourceDir = curFilePath.parent_path() / "../" / "migration/";
-
-//     return std::filesystem::canonical(migrationSourceDir).string();
-// }
-
 } // namespace
 
 /***********************************************************************************************************************
