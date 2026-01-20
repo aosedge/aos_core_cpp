@@ -112,6 +112,14 @@ public:
     virtual Error PopulateHostDevices(const std::string& devicePath, std::vector<oci::LinuxDevice>& devices) = 0;
 
     /**
+     * Creates directory and all parent directories if not exist.
+     *
+     * @param path directory path.
+     * @return Error.
+     */
+    virtual Error MakeDirAll(const std::string& path) = 0;
+
+    /**
      * Clears directory.
      *
      * @param path directory path.

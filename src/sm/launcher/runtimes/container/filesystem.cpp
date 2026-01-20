@@ -394,14 +394,27 @@ Error FileSystem::PopulateHostDevices(const std::string& devicePath, std::vector
     }
 }
 
+Error FileSystem::MakeDirAll(const std::string& path)
+{
+    try {
+        auto dirPath = fs::path(path);
+
+        fs::create_directories(dirPath);
+        fs::permissions(dirPath, cDirPermissions);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
+}
+
 Error FileSystem::ClearDir(const std::string& path)
 {
     try {
         auto dirPath = fs::path(path);
 
         fs::remove_all(dirPath);
-        fs::create_directories(dirPath);
-        fs::permissions(dirPath, cDirPermissions);
+        MakeDirAll(dirPath.string());
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
