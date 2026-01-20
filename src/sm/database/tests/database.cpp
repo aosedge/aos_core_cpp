@@ -42,8 +42,10 @@ aos::InstanceInfo CreateInstanceInfo(
     info.mSubjectID      = subjectID.c_str();
     info.mInstance       = instance;
     info.mType           = aos::UpdateItemTypeEnum::eService;
+    info.mVersion        = "1.0.0";
     info.mManifestDigest = "sha256:digest123";
     info.mRuntimeID      = "runtime-1";
+    info.mOwnerID        = "owner-1";
     info.mSubjectType    = aos::SubjectTypeEnum::eUser;
     info.mUID            = uid;
     info.mGID            = uid + 1;
