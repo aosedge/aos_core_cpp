@@ -113,6 +113,14 @@ public:
     Error ClearDir(const std::string& path) override;
 
     /**
+     * Creates directory and all parent directories if not exist.
+     *
+     * @param path directory path.
+     * @return Error.
+     */
+    Error MakeDirAll(const std::string& path) override;
+
+    /**
      * Removes all files and directories at path.
      *
      * @param path path to remove.

@@ -202,6 +202,16 @@ TEST_F(ContainerFileSystemTest, DISABLED_PopulateHostDevicesSymlink)
     EXPECT_EQ(devices.front().mPath, (cRootDevicePath / "link").c_str());
 }
 
+TEST_F(ContainerFileSystemTest, MakeDirAll)
+{
+    const auto testDir = fs::path(cTestDirRoot) / "dir" / "subdir1" / "subdir2";
+
+    auto err = mFileSystem.MakeDirAll(testDir.string());
+    EXPECT_EQ(err, ErrorEnum::eNone) << "MakeDirAll failed: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_TRUE(fs::exists(testDir)) << "Directory not created";
+}
+
 TEST_F(ContainerFileSystemTest, ClearDir)
 {
     const auto testDir = fs::path(cTestDirRoot) / "dir";
