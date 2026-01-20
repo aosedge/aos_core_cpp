@@ -87,7 +87,7 @@ std::pair<std::string, std::string> ParseDigest(const Digest& digest)
 Error UnpackTarImage(const std::string& archivePath, const std::string& destination)
 {
     if (!fs::exists(archivePath)) {
-        return Error(ErrorEnum::eNotFound, "Archive does not exist");
+        return Error(ErrorEnum::eNotFound, "archive does not exist");
     }
 
     auto [_, err] = ExecCommand({"tar", "xf", archivePath, "-C", destination});
