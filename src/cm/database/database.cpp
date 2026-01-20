@@ -475,8 +475,9 @@ Error Database::AddInstance(const launcher::InstanceInfo& info)
 
         FromAos(info, row);
         *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, manifestDigest, "
-                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
+                     "subjectType) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -493,13 +494,15 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
         Poco::Data::Statement statement {*mSession};
 
         statement << "UPDATE launcher_instances SET manifestDigest = ?, nodeID = ?, prevNodeID = "
-                     "?, runtimeID = ?, uid = ?, gid = ?, timestamp = ?, state = ?, isUnitSubject = ? "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+                     "?, runtimeID = ?, uid = ?, gid = ?, timestamp = ?, state = ?, isUnitSubject = ?, ownerID = ?, "
+                     "subjectType = ? "
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(info.mManifestDigest.CStr()), bind(info.mNodeID.CStr()), bind(info.mPrevNodeID.CStr()),
             bind(info.mRuntimeID.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mTimestamp.UnixNano()),
-            bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mInstanceIdent.mItemID.CStr()),
+            bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mOwnerID.CStr()),
+            bind(info.mSubjectType.ToString().CStr()), bind(info.mInstanceIdent.mItemID.CStr()),
             bind(info.mInstanceIdent.mSubjectID.CStr()), bind(info.mInstanceIdent.mInstance),
-            bind(info.mInstanceIdent.mType.ToString().CStr());
+            bind(info.mInstanceIdent.mType.ToString().CStr()), bind(info.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -519,7 +522,7 @@ Error Database::GetInstance(const InstanceIdent& instanceID, launcher::InstanceI
         std::vector<LauncherInstanceInfoRow> rows;
 
         *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, nodeID, prevNodeID, "
-                     "runtimeID, uid, gid, timestamp, state, isUnitSubject "
+                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType "
                      "FROM launcher_instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
             bind(instanceID.mItemID.CStr()), bind(instanceID.mSubjectID.CStr()), bind(instanceID.mInstance),
             bind(instanceID.mType.ToString().CStr()), into(rows), now;
@@ -544,7 +547,8 @@ Error Database::GetActiveInstances(Array<launcher::InstanceInfo>& instances) con
         std::vector<LauncherInstanceInfoRow> rows;
 
         *mSession << "SELECT itemID, subjectID, instance, type, manifestDigest, nodeID, prevNodeID, "
-                     "runtimeID, uid, gid, timestamp, state, isUnitSubject FROM launcher_instances;",
+                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType "
+                     "FROM launcher_instances;",
             into(rows), now;
 
         auto instanceInfo = std::make_unique<launcher::InstanceInfo>();
@@ -781,7 +785,10 @@ void Database::CreateTables()
                  "timestamp INTEGER,"
                  "state TEXT,"
                  "isUnitSubject INTEGER,"
-                 "PRIMARY KEY(itemID,subjectID,instance,type)"
+                 "version TEXT,"
+                 "ownerID TEXT,"
+                 "subjectType TEXT,"
+                 "PRIMARY KEY(itemID,subjectID,instance,type,version)"
                  ");",
         now;
 }
@@ -889,6 +896,9 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
     dst.set<ToInt(LauncherInstanceInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
     dst.set<ToInt(LauncherInstanceInfoColumns::eState)>(src.mState.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>(src.mIsUnitSubject);
+    dst.set<ToInt(LauncherInstanceInfoColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eOwnerID)>(src.mOwnerID.CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
 }
 
 void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst)
@@ -910,6 +920,11 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
 
     dst.mIsUnitSubject = src.get<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>();
+    dst.mVersion       = src.get<ToInt(LauncherInstanceInfoColumns::eVersion)>().c_str();
+    dst.mOwnerID       = src.get<ToInt(LauncherInstanceInfoColumns::eOwnerID)>().c_str();
+
+    const auto& subjectTypeStr = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectType)>();
+    AOS_ERROR_CHECK_AND_THROW(dst.mSubjectType.FromString(subjectTypeStr.c_str()), "failed to parse subject type");
 
     const auto& stateStr = src.get<ToInt(LauncherInstanceInfoColumns::eState)>();
     AOS_ERROR_CHECK_AND_THROW(dst.mState.FromString(stateStr.c_str()), "failed to parse instance state");
