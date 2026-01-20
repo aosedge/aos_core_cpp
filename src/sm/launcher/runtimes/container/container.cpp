@@ -94,6 +94,10 @@ Error ContainerRuntime::Start()
             return AOS_ERROR_WRAP(err);
         }
 
+        if (auto err = mFileSystem->MakeDirAll(mConfig.mRuntimeDir); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         if (auto err = StopActiveInstances(); !err.IsNone()) {
             LOG_ERR() << "Failed to stop active instances" << Log::Field(err);
         }
