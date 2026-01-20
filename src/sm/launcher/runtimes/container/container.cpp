@@ -287,15 +287,16 @@ Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
         LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
                   << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
 
-        it->second->UpdateRunStatus(runStatus);
-
-        instancesStatuses.emplace_back();
-
-        it->second->GetStatus(instancesStatuses.back());
+        if (it->second->UpdateRunStatus(runStatus)) {
+            instancesStatuses.emplace_back();
+            it->second->GetStatus(instancesStatuses.back());
+        }
     }
 
-    mInstanceStatusReceiver->OnInstancesStatusesReceived(
-        Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
+    if (!instancesStatuses.empty()) {
+        mInstanceStatusReceiver->OnInstancesStatusesReceived(
+            Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
+    }
 
     return ErrorEnum::eNone;
 }
