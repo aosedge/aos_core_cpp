@@ -98,8 +98,9 @@ public:
      * Updates run status.
      *
      * @param runStatus run status.
+     * @return bool true if status changed, false otherwise.
      */
-    void UpdateRunStatus(const RunStatus& runStatus);
+    bool UpdateRunStatus(const RunStatus& runStatus);
 
     /**
      * Returns run status.

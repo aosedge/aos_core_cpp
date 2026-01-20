@@ -176,6 +176,7 @@ void Instance::GetStatus(InstanceStatus& status) const
     std::lock_guard lock {mMutex};
 
     static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(mInstanceInfo);
+    status.mVersion                     = mInstanceInfo.mVersion;
     status.mPreinstalled                = false;
     status.mRuntimeID                   = mInstanceInfo.mRuntimeID;
     status.mManifestDigest              = mInstanceInfo.mManifestDigest;
@@ -183,11 +184,17 @@ void Instance::GetStatus(InstanceStatus& status) const
     status.mError                       = mRunStatus.mError;
 }
 
-void Instance::UpdateRunStatus(const RunStatus& runStatus)
+bool Instance::UpdateRunStatus(const RunStatus& runStatus)
 {
     std::lock_guard lock {mMutex};
 
+    if (runStatus == mRunStatus) {
+        return false;
+    }
+
     mRunStatus = runStatus;
+
+    return true;
 }
 
 /***********************************************************************************************************************

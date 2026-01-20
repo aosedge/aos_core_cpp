@@ -165,7 +165,7 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
 
 Error Runner::StopInstance(const std::string& instanceID)
 {
-    LOG_DBG() << "Stop service instance" << Log::Field("instanceID", instanceID.c_str());
+    LOG_DBG() << "Stop instance" << Log::Field("instanceID", instanceID.c_str());
 
     const auto unitName = CreateSystemdUnitName(instanceID);
 
