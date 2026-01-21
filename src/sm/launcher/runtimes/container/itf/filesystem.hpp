@@ -20,7 +20,7 @@ namespace aos::sm::launcher {
 class FileSystemItf {
 public:
     /**
-     * Destroys runtime interface.
+     * Destructor.
      */
     virtual ~FileSystemItf() = default;
 
