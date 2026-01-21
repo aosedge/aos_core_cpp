@@ -864,4 +864,73 @@ TEST_F(ContainerRuntimeTest, Network)
                     .IsNone());
 }
 
+TEST_F(ContainerRuntimeTest, GetInstanceInfoByID)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+    instance.mVersion   = "1.0.5";
+
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status     = std::make_unique<InstanceStatus>();
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Get instance info
+
+    alerts::InstanceInfo alertsInstanceInfo;
+
+    err = mRuntime.GetInstanceInfoByID(instanceID.c_str(), alertsInstanceInfo);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance info: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(alertsInstanceInfo.mInstanceIdent, static_cast<const InstanceIdent&>(instance));
+    EXPECT_EQ(alertsInstanceInfo.mVersion, instance.mVersion);
+
+    // Get non-existing instance info
+
+    err = mRuntime.GetInstanceInfoByID("non-existing-instance", alertsInstanceInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(ContainerRuntimeTest, GetInstanceIDs)
+{
+    InstanceInfo instance1;
+
+    instance1.mItemID    = "item0";
+    instance1.mSubjectID = "subject0";
+    instance1.mInstance  = 0;
+
+    InstanceInfo instance2;
+
+    instance2.mItemID    = "item1";
+    instance2.mSubjectID = "subject1";
+    instance2.mInstance  = 1;
+
+    auto status = std::make_unique<InstanceStatus>();
+
+    auto err = mRuntime.StartInstance(instance1, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    err = mRuntime.StartInstance(instance2, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Get instance IDs
+
+    std::vector<std::string> instanceIDs;
+
+    err = mRuntime.GetInstanceIDs(LogFilter(), instanceIDs);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance IDs: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(instanceIDs.size(), 2);
+    EXPECT_NE(std::find(instanceIDs.begin(), instanceIDs.end(),
+                  CreateInstanceID(static_cast<const InstanceIdent&>(instance1))),
+        instanceIDs.end());
+    EXPECT_NE(std::find(instanceIDs.begin(), instanceIDs.end(),
+                  CreateInstanceID(static_cast<const InstanceIdent&>(instance2))),
+        instanceIDs.end());
+}
+
 } // namespace aos::sm::launcher

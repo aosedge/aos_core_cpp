@@ -44,7 +44,7 @@ public:
      */
     Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-        networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
+        networkmanager::NetworkManagerItf& networkManager, aos::iamclient::PermHandlerItf& permHandler,
         resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
@@ -63,7 +63,7 @@ public:
      */
     Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-        networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
+        networkmanager::NetworkManagerItf& networkManager, aos::iamclient::PermHandlerItf& permHandler,
         resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
 
     /**
@@ -114,6 +114,13 @@ public:
         return mRunStatus;
     }
 
+    /**
+     * Returns instance version.
+     *
+     * @return std::string.
+     */
+    std::string GetVersion() const { return mInstanceInfo.mVersion.CStr(); }
+
 private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";
@@ -161,7 +168,7 @@ private:
     RunnerItf&                                mRunner;
     imagemanager::ItemInfoProviderItf&        mItemInfoProvider;
     networkmanager::NetworkManagerItf&        mNetworkManager;
-    iamclient::PermHandlerItf&                mPermHandler;
+    aos::iamclient::PermHandlerItf&           mPermHandler;
     resourcemanager::ResourceInfoProviderItf& mResourceInfoProvider;
     oci::OCISpecItf&                          mOCISpec;
 
