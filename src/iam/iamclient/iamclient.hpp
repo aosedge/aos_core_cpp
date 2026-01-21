@@ -8,34 +8,24 @@
 #ifndef AOS_IAM_IAMCLIENT_IAMCLIENT_HPP_
 #define AOS_IAM_IAMCLIENT_IAMCLIENT_HPP_
 
-#include <condition_variable>
-#include <thread>
-
-#include <grpcpp/channel.h>
-#include <grpcpp/security/credentials.h>
-
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
-#include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/currentnode/itf/currentnodehandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <common/iamclient/publicnodeservice.hpp>
 
 #include <iam/config/config.hpp>
 
 namespace aos::iam::iamclient {
 
-using PublicNodeService        = iamanager::v6::IAMPublicNodesService;
-using PublicNodeServiceStubPtr = std::unique_ptr<PublicNodeService::StubInterface>;
-
 /**
  * GRPC IAM client.
  */
-class IAMClient : private aos::iamclient::CertListenerItf {
+class IAMClient : public common::iamclient::PublicNodesService, private aos::iamclient::CertListenerItf {
 public:
     /**
      * Initializes IAM client instance.
@@ -44,16 +34,15 @@ public:
      * @param identProvider identification provider.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
-     * @param certLoader certificate loader.
-     * @param cryptoProvider crypto provider.
-     * @param nodeInfoProvider node info provider.
+     * @param tlsCredentials TLS credentials.
+     * @param currentNodeHandler current node handler.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      * @returns Error.
      */
     Error Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-        currentnode::CurrentNodeHandlerItf& currentNodeHandler, bool provisioningMode);
+        common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
+        bool provisioningMode);
 
     /**
      * Starts IAM client.
@@ -69,62 +58,37 @@ public:
      */
     Error Stop();
 
+protected:
+    Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
+    void  OnConnected() override;
+    void  OnDisconnected() override;
+
 private:
     void OnCertChanged(const CertInfo& info) override;
 
-    using StreamPtr = std::unique_ptr<
-        grpc::ClientReaderWriterInterface<iamanager::v6::IAMOutgoingMessages, iamanager::v6::IAMIncomingMessages>>;
-
-    std::unique_ptr<grpc::ClientContext> CreateClientContext();
-    PublicNodeServiceStubPtr             CreateStub(
-                    const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
-
-    bool RegisterNode(const std::string& url);
-
-    void ConnectionLoop() noexcept;
-    void HandleIncomingMessages() noexcept;
-
-    bool SendNodeInfo();
-    bool ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
-    bool ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);
-    bool ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request);
-    bool ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request);
-    bool ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request);
-    bool ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request);
-    bool ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
-    bool ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
+    Error SendNodeInfo();
+    Error ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
+    Error ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);
+    Error ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request);
+    Error ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request);
+    Error ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request);
+    Error ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request);
+    Error ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
+    Error ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
 
     Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
-    bool SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
-    bool SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
+    Error SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
+    Error SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
-    bool SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
+    Error SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
 
     aos::iamclient::IdentProviderItf*      mIdentProvider      = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager   = nullptr;
     aos::iamclient::CertProviderItf*       mCertProvider       = nullptr;
-    crypto::CertLoaderItf*                 mCertLoader         = nullptr;
-    crypto::x509::ProviderItf*             mCryptoProvider     = nullptr;
     currentnode::CurrentNodeHandlerItf*    mCurrentNodeHandler = nullptr;
 
-    std::vector<std::shared_ptr<grpc::ChannelCredentials>> mCredentialList;
-    bool                                                   mCredentialListUpdated = false;
-
-    Duration    mReconnectInterval;
-    std::string mCACert;
     std::string mCertStorage;
-    std::string mServerURL;
-
-    std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
-    StreamPtr                            mStream;
-    PublicNodeServiceStubPtr             mPublicNodeServiceStub;
-
-    std::thread mConnectionThread;
-
-    std::condition_variable mCondVar;
-    bool                    mStop = true;
-    std::mutex              mMutex;
 };
 
 } // namespace aos::iam::iamclient
