@@ -12,6 +12,7 @@
 
 #include "container.hpp"
 #include "filesystem.hpp"
+#include "monitoring.hpp"
 #include "runner.hpp"
 
 namespace fs = std::filesystem;
@@ -51,6 +52,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
 
         mRunner     = CreateRunner();
         mFileSystem = CreateFileSystem();
+        mMonitoring = CreateMonitoring();
 
         mItemInfoProvider       = &itemInfoProvider;
         mNetworkManager         = &networkManager;
@@ -150,7 +152,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             }
 
             instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner,
-                *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
+                *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
@@ -218,9 +220,21 @@ Error ContainerRuntime::Reboot()
 Error ContainerRuntime::GetInstanceMonitoringData(
     const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData)
 {
-    (void)monitoringData;
+    std::lock_guard lock {mMutex};
 
     LOG_DBG() << "Get instance monitoring data" << Log::Field("instance", instanceIdent);
+
+    auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceIdent));
+    if (it == mCurrentInstances.end()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "instance not found"));
+    }
+
+    if (auto err = mMonitoring->GetInstanceMonitoringData(it->second->InstanceID(), monitoringData); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    monitoringData.mInstanceIdent = instanceIdent;
+    monitoringData.mRuntimeID     = mRuntimeInfo.mRuntimeID;
 
     return ErrorEnum::eNone;
 }
@@ -273,6 +287,11 @@ std::shared_ptr<RunnerItf> ContainerRuntime::CreateRunner()
 std::shared_ptr<FileSystemItf> ContainerRuntime::CreateFileSystem()
 {
     return std::make_shared<FileSystem>();
+}
+
+std::shared_ptr<MonitoringItf> ContainerRuntime::CreateMonitoring()
+{
+    return std::make_shared<Monitoring>();
 }
 
 Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo)
@@ -347,7 +366,7 @@ Error ContainerRuntime::StopActiveInstances()
     for (const auto& instanceID : activeInstances) {
         LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
 
-        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner,
+        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
             *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
 
         if (err = instance->Stop(); !err.IsNone()) {
