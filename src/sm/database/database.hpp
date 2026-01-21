@@ -26,11 +26,7 @@
 
 namespace aos::sm::database {
 
-class Database : public sm::launcher::StorageItf,
-                 public sm::networkmanager::StorageItf,
-                 public sm::alerts::StorageItf,
-                 public sm::alerts::InstanceInfoProviderItf,
-                 public sm::logprovider::InstanceIDProviderItf {
+class Database : public sm::launcher::StorageItf, public sm::networkmanager::StorageItf, public sm::alerts::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -173,28 +169,6 @@ public:
      * @return Error.
      */
     Error GetJournalCursor(String& cursor) const override;
-
-    // sm::alerts::InstanceInfoProviderItf interface
-
-    /**
-     * Gets instance info.
-     *
-     * @param id instance id.
-     * @param[out] instanceData service instance data.
-     * @return Error.
-     */
-    Error GetInstanceInfoByID(const String& id, alerts::ServiceInstanceData& instanceData) override;
-
-    // sm::logprovider::InstanceIDProviderItf interface
-
-    /**
-     * Gets instance ids.
-     *
-     * @param filter log filter.
-     * @param[out] instanceIDs instance IDs.
-     * @return Error.
-     */
-    Error GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs) override;
 
 private:
     static constexpr int  sVersion    = 3;
