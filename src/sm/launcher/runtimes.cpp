@@ -40,7 +40,9 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
         } else if (runtimeConfig.mPlugin == cRuntimeBoot) {
             auto runtime = std::make_unique<BootRuntime>();
 
-            if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider); !err.IsNone()) {
+            if (auto err = runtime->Init(
+                    runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec, statusReceiver, systemdConn);
+                !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
