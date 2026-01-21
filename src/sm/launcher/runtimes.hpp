@@ -22,6 +22,7 @@
 #include <sm/utils/itf/systemdconn.hpp>
 
 #include "config.hpp"
+#include "runtimes/container/container.hpp"
 
 namespace aos::sm::launcher {
 
@@ -56,6 +57,13 @@ public:
      * @return Error.
      */
     Error GetRuntimes(Array<RuntimeItf*>& runtimes) const;
+
+    /**
+     * Returns container runtime.
+     *
+     * @return Container runtime or nullptr if not found.
+     */
+    ContainerRuntime* GetContainerRuntime() const;
 
 private:
     std::vector<std::unique_ptr<RuntimeItf>> mRuntimes;
