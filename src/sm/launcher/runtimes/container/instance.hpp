@@ -144,6 +144,9 @@ private:
     static constexpr auto cInstanceStateFile  = "/state.dat";
     static constexpr auto cInstanceStorageDir = "/storage";
 
+    static constexpr auto cStatePartitionName   = "state";
+    static constexpr auto cStoragePartitionName = "storage";
+
     void   GenerateInstanceID();
     Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
     Error  CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
@@ -162,6 +165,7 @@ private:
          const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
     Error SetupNetwork(const std::string& runtimeDir, const oci::ServiceConfig& serviceConfig);
     Error AddNetworkHostsFromResource(const std::string& resource, std::vector<Host>& hosts);
+    Error StartMonitoring();
 
     InstanceInfo mInstanceInfo;
     std::string  mInstanceID;
