@@ -14,7 +14,7 @@ set(TARGET_NAME boot)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES boot.cpp config.cpp partitionmanager.cpp)
+set(SOURCES boot.cpp config.cpp efivar.cpp partitionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries
@@ -23,8 +23,12 @@ set(SOURCES boot.cpp config.cpp partitionmanager.cpp)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(BLKID blkid REQUIRED)
+pkg_check_modules(EFIVAR efivar REQUIRED)
+pkg_check_modules(EFIBOOT efiboot REQUIRED)
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools ${BLKID_LIBRARIES})
+set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools ${BLKID_LIBRARIES} ${EFIVAR_LIBRARIES}
+              ${EFIBOOT_LIBRARIES}
+)
 
 # ######################################################################################################################
 # Target
