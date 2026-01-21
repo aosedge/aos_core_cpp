@@ -25,8 +25,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-constexpr size_t cKilobyte    = 1024;
-const auto       cUnitMapping = std::map<std::string, size_t> {
+const auto cUnitMapping = std::map<std::string, size_t> {
     {"B", 1},
     {"KB", cKilobyte},
     {"MB", cKilobyte* cKilobyte},
@@ -84,8 +83,8 @@ Error NodeMonitoringProvider::GetNodeMonitoringData(MonitoringData& monitoringDa
         return AOS_ERROR_WRAP(err);
     }
 
-    LOG_DBG() << "Get node monitoring data" << Log::Field("CPU(%)", monitoringData.mCPU)
-              << Log::Field("RAM(K)", monitoringData.mRAM / cKilobyte);
+    LOG_DBG() << "Get node monitoring data" << Log::Field("cpu", monitoringData.mCPU)
+              << Log::Field("ram", monitoringData.mRAM / cKilobyte);
 
     for (const auto& partition : mNodeInfo.mPartitions) {
         err = monitoringData.mPartitions.EmplaceBack();
@@ -104,7 +103,7 @@ Error NodeMonitoringProvider::GetNodeMonitoringData(MonitoringData& monitoringDa
         }
 
         LOG_DBG() << "Get node monitoring data" << Log::Field("name", partition.mName)
-                  << Log::Field("usedSize(K)", monitoringData.mPartitions.Back().mUsedSize / cKilobyte);
+                  << Log::Field("usedSize", monitoringData.mPartitions.Back().mUsedSize / cKilobyte);
     }
 
     if (mTrafficMonitor) {
