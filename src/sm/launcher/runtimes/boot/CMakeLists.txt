@@ -14,13 +14,17 @@ set(TARGET_NAME boot)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES boot.cpp config.cpp)
+set(SOURCES boot.cpp config.cpp partitionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(BLKID blkid REQUIRED)
+
+set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools ${BLKID_LIBRARIES})
 
 # ######################################################################################################################
 # Target
