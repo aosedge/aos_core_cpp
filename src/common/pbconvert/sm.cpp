@@ -1043,6 +1043,8 @@ Error ConvertFromProto(const servicemanager::v5::InstanceStatus& src, const Stri
         return AOS_ERROR_WRAP(err);
     }
 
+    dst.mPreinstalled = src.preinstalled();
+
     dst.mError = pbconvert::ConvertFromProto(src.error());
 
     return ErrorEnum::eNone;
