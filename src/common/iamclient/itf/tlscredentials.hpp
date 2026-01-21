@@ -29,22 +29,17 @@ public:
      * Gets MTLS configuration.
      *
      * @param certStorage Certificate storage.
-     * @param insecureConnection If true, returns insecure credentials.
      * @return MTLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(
-        const String& certStorage, bool insecureConnection = false)
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(const String& certStorage)
         = 0;
 
     /**
      * Gets TLS credentials.
      *
-     * @param insecureConnection If true, returns insecure credentials.
      * @return TLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials(
-        bool insecureConnection = false)
-        = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() = 0;
 };
 
 } // namespace aos::common::iamclient
