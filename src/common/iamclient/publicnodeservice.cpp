@@ -21,29 +21,33 @@ namespace aos::common::iamclient {
 
 PublicNodesService::~PublicNodesService()
 {
+    Stop();
+
     if (mSubscriptionManager) {
         mSubscriptionManager->Close();
     }
 }
 
-Error PublicNodesService::Init(
-    const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
+Error PublicNodesService::Init(const std::string& iamServerURL, TLSCredentialsItf& tlsCredentials,
+    bool insecureConnection, bool publicServer, const std::string& certStorage)
 {
-    LOG_DBG() << "Init public nodes service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
-              << Log::Field("insecureConnection", insecureConnection);
+    LOG_DBG() << "Init public nodes service" << Log::Field("iamServerURL", iamServerURL.c_str())
+              << Log::Field("publicServer", publicServer) << Log::Field("insecureConnection", insecureConnection);
 
     std::lock_guard lock {mMutex};
 
     mTLSCredentials     = &tlsCredentials;
-    mIAMPublicServerURL = iamPublicServerURL;
+    mIAMPublicServerURL = iamServerURL;
     mInsecureConnection = insecureConnection;
+    mPublicServer       = publicServer;
+    mCertStorage        = certStorage;
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
+    Error err;
+
+    Tie(mCredentials, err) = CreateCredential();
     if (!err.IsNone()) {
         return err;
     }
-
-    mCredentials = credentials;
 
     mStub = iamanager::v6::IAMPublicNodesService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
@@ -57,12 +61,12 @@ Error PublicNodesService::Reconnect()
 
     LOG_INF() << "Reconnect public nodes service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
+    Error err;
+
+    Tie(mCredentials, err) = CreateCredential();
     if (!err.IsNone()) {
         return err;
     }
-
-    mCredentials = credentials;
 
     mStub = iamanager::v6::IAMPublicNodesService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
@@ -170,6 +174,168 @@ Error PublicNodesService::UnsubscribeListener(aos::iamclient::NodeInfoListenerIt
     }
 
     return ErrorEnum::eNone;
+}
+
+Error PublicNodesService::Start()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Start node registration";
+
+    if (mStart) {
+        return ErrorEnum::eNone;
+    }
+
+    mStart            = true;
+    mStop             = false;
+    mConnectionThread = std::thread(&PublicNodesService::ConnectionLoop, this);
+
+    return ErrorEnum::eNone;
+}
+
+void PublicNodesService::Stop()
+{
+    {
+        std::lock_guard lock {mMutex};
+
+        LOG_INF() << "Stop node registration";
+
+        if (!mStart) {
+            return;
+        }
+
+        mStop  = true;
+        mStart = false;
+
+        if (mRegisterNodeCtx) {
+            mRegisterNodeCtx->TryCancel();
+        }
+    }
+
+    mCV.notify_all();
+
+    if (mConnectionThread.joinable()) {
+        mConnectionThread.join();
+    }
+}
+
+Error PublicNodesService::SendMessage(const iamanager::v6::IAMOutgoingMessages& message)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Send message";
+
+    if (!mStream || !mConnected || mStop) {
+        return Error(ErrorEnum::eCanceled, "stream is not connected");
+    }
+
+    if (!mStream->Write(message)) {
+        return Error(ErrorEnum::eRuntime, "failed to write message");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+void PublicNodesService::ConnectionLoop()
+{
+    LOG_DBG() << "Connection loop started";
+
+    while (!mStop) {
+        if (auto err = RegisterNode(); !err.IsNone()) {
+            LOG_ERR() << "Failed to register node" << Log::Field(err);
+        }
+
+        std::unique_lock lock {mMutex};
+
+        mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
+    }
+
+    LOG_DBG() << "Connection loop stopped";
+}
+
+Error PublicNodesService::RegisterNode()
+{
+    {
+        std::lock_guard lock {mMutex};
+
+        LOG_DBG() << "Registering node";
+
+        if (mStop) {
+            return ErrorEnum::eNone;
+        }
+
+        mRegisterNodeCtx = std::make_unique<grpc::ClientContext>();
+
+        if (mStream = mStub->RegisterNode(mRegisterNodeCtx.get()); !mStream) {
+            return Error(ErrorEnum::eRuntime, "failed to create stream");
+        }
+
+        mConnected = true;
+
+        LOG_INF() << "Node registration stream established";
+    }
+
+    OnConnected();
+
+    HandleIncomingMessage();
+
+    {
+        std::lock_guard lock {mMutex};
+
+        mConnected = false;
+    }
+
+    OnDisconnected();
+
+    return ErrorEnum::eNone;
+}
+
+Error PublicNodesService::ReceiveMessage([[maybe_unused]] const iamanager::v6::IAMIncomingMessages&
+        msg) // virtual function should be override in inherit classes
+{
+    return ErrorEnum::eNotSupported;
+}
+
+void PublicNodesService::OnConnected()
+{
+}
+
+void PublicNodesService::OnDisconnected()
+{
+}
+
+Error PublicNodesService::HandleIncomingMessage()
+{
+    iamanager::v6::IAMIncomingMessages incomingMsg;
+
+    while (true) {
+        if (!mStream->Read(&incomingMsg)) {
+            LOG_WRN() << "Failed to read message or stream closed";
+
+            return ErrorEnum::eFailed;
+        }
+
+        if (auto err = ReceiveMessage(incomingMsg); !err.IsNone()) {
+            return err;
+        }
+    }
+}
+
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicNodesService::CreateCredential()
+{
+    if (mInsecureConnection) {
+        return grpc::InsecureChannelCredentials();
+    }
+
+    if (mPublicServer) {
+        return mTLSCredentials->GetTLSClientCredentials();
+    }
+
+    return mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
 }
 
 } // namespace aos::common::iamclient

@@ -29,7 +29,7 @@ protected:
 
         mStub = std::make_unique<IAMPublicNodesServiceStub>();
 
-        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials(_))
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 
@@ -178,4 +178,160 @@ TEST_F(PublicNodesServiceTest, Reconnect)
 
     err = mService->UnsubscribeListener(listener);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
+}
+
+/***********************************************************************************************************************
+ * RegisterNode Tests
+ **********************************************************************************************************************/
+
+class PublicNodesServiceStub : public PublicNodesService {
+public:
+    std::vector<iamanager::v6::IAMIncomingMessages> mReceivedMessages;
+    std::mutex                                      mMessagesMutex;
+    std::condition_variable                         mMessagesCV;
+
+protected:
+    aos::Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override
+    {
+        std::lock_guard lock {mMessagesMutex};
+
+        mReceivedMessages.push_back(msg);
+        mMessagesCV.notify_all();
+
+        return aos::ErrorEnum::eNone;
+    }
+
+public:
+    bool WaitForMessage(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mMessagesMutex};
+
+        return mMessagesCV.wait_for(lock, timeout, [this] { return !mReceivedMessages.empty(); });
+    }
+
+    size_t GetReceivedMessagesCount()
+    {
+        std::lock_guard lock {mMessagesMutex};
+
+        return mReceivedMessages.size();
+    }
+
+    iamanager::v6::IAMIncomingMessages GetLastMessage()
+    {
+        std::lock_guard lock {mMessagesMutex};
+
+        return mReceivedMessages.back();
+    }
+};
+
+class RegisterNodeTest : public Test {
+protected:
+    void SetUp() override
+    {
+        aos::tests::utils::InitLog();
+
+        mStub = std::make_unique<IAMPublicNodesServiceStub>();
+
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
+            .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+                grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+
+        mService = std::make_unique<PublicNodesServiceStub>();
+
+        auto err = mService->Init("localhost:8007", mTLSCredentialsMock, true);
+        ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    }
+
+    void TearDown() override
+    {
+        mService->Stop();
+        mService.reset();
+        mStub.reset();
+    }
+
+    std::unique_ptr<IAMPublicNodesServiceStub> mStub;
+    std::unique_ptr<PublicNodesServiceStub>    mService;
+    TLSCredentialsMock                         mTLSCredentialsMock;
+};
+
+TEST_F(RegisterNodeTest, StartAndStop)
+{
+    auto err = mService->Start();
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
+
+    mService->Stop();
+}
+
+TEST_F(RegisterNodeTest, SendMessage)
+{
+    auto err = mService->Start();
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
+
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    outgoingMsg.mutable_node_info()->set_node_id("test-node");
+    outgoingMsg.mutable_node_info()->set_node_type("secondary");
+
+    err = mService->SendMessage(outgoingMsg);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    iamanager::v6::IAMOutgoingMessages receivedMsg;
+    ASSERT_TRUE(mStub->WaitForOutgoingMessage(receivedMsg));
+
+    EXPECT_TRUE(receivedMsg.has_node_info());
+    EXPECT_EQ(receivedMsg.node_info().node_id(), "test-node");
+    EXPECT_EQ(receivedMsg.node_info().node_type(), "secondary");
+}
+
+TEST_F(RegisterNodeTest, ReceiveMessage)
+{
+    auto err = mService->Start();
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
+
+    iamanager::v6::IAMIncomingMessages incomingMsg;
+    incomingMsg.mutable_start_provisioning_request()->set_node_id("test-node");
+    incomingMsg.mutable_start_provisioning_request()->set_password("test-password");
+
+    ASSERT_TRUE(mStub->SendIncomingMessage(incomingMsg));
+
+    ASSERT_TRUE(mService->WaitForMessage());
+
+    EXPECT_EQ(mService->GetReceivedMessagesCount(), 1);
+
+    auto received = mService->GetLastMessage();
+    EXPECT_TRUE(received.has_start_provisioning_request());
+    EXPECT_EQ(received.start_provisioning_request().node_id(), "test-node");
+    EXPECT_EQ(received.start_provisioning_request().password(), "test-password");
+}
+
+TEST_F(RegisterNodeTest, SendMessageWhenNotConnected)
+{
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    outgoingMsg.mutable_node_info()->set_node_id("test-node");
+
+    auto err = mService->SendMessage(outgoingMsg);
+    EXPECT_EQ(err, aos::ErrorEnum::eCanceled);
+}
+
+TEST_F(RegisterNodeTest, MultipleStartCalls)
+{
+    auto err = mService->Start();
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    err = mService->Start();
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
+
+    mService->Stop();
+}
+
+TEST_F(RegisterNodeTest, StopWithoutStart)
+{
+    mService->Stop();
 }
