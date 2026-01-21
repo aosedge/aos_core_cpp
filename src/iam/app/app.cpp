@@ -247,6 +247,9 @@ void App::Init()
     err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
+    err = mTLSCredentials.Init(config.mValue.mIAMClient.mCACert, mCertHandler, mCertLoader, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize TLS credentials");
+
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
 
@@ -271,8 +274,8 @@ void App::Init()
     if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
         mIAMClient = std::make_unique<iamclient::IAMClient>();
 
-        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertHandler, mProvisionManager, mCertLoader,
-            mCryptoProvider, mCurrentNodeHandler, mProvisioning);
+        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertHandler, mProvisionManager, mTLSCredentials,
+            mCurrentNodeHandler, mProvisioning);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }
 }
