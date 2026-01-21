@@ -71,13 +71,13 @@ public:
 
 class StorageMock : public StorageItf {
 public:
-    MOCK_METHOD(Error, SetJournalCursor, (const String& cursor), (override));
-    MOCK_METHOD(Error, GetJournalCursor, (String & cursor), (const, override));
+    MOCK_METHOD(Error, SetJournalCursor, (const String&), (override));
+    MOCK_METHOD(Error, GetJournalCursor, (String&), (const, override));
 };
 
 class InstanceInfoProviderMock : public InstanceInfoProviderItf {
 public:
-    MOCK_METHOD(Error, GetInstanceInfoByID, (const String& id, ServiceInstanceData& instanceData), (override));
+    MOCK_METHOD(Error, GetInstanceInfoByID, (const String&, InstanceInfo&), (override));
 };
 
 /***********************************************************************************************************************
@@ -196,17 +196,17 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     entry.mSystemdUnit = "/system.slice/system-aos@service.slice/aos-service@service0.service";
     entry.mMessage     = "Hello World";
 
-    ServiceInstanceData serviceInfo {InstanceIdent {"service0", "service0", 0, UpdateItemTypeEnum::eService}, "0.0.0"};
+    InstanceInfo instanceInfo {InstanceIdent {"service0", "service0", 0, UpdateItemTypeEnum::eService}, "0.0.0"};
 
     InstanceAlert alert;
 
-    static_cast<InstanceIdent&>(alert) = serviceInfo.mInstanceIdent;
-    alert.mVersion                     = serviceInfo.mVersion;
+    static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
+    alert.mVersion                     = instanceInfo.mVersion;
     alert.mMessage                     = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
     EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"), _))
-        .WillOnce(DoAll(SetArgReferee<1>(serviceInfo), Return(Error())));
+        .WillOnce(DoAll(SetArgReferee<1>(instanceInfo), Return(Error())));
 
     EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
         .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
