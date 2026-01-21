@@ -32,14 +32,16 @@ static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
  **********************************************************************************************************************/
 
 Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
-    FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec)
+    FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
+    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+    oci::OCISpecItf& ociSpec)
     : mInstanceInfo(instance)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
     , mFileSystem(fileSystem)
     , mRunner(runner)
+    , mMonitoring(monitoring)
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
     , mPermHandler(permHandler)
@@ -53,14 +55,16 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
 }
 
 Instance::Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
-    FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-    networkmanager::NetworkManagerItf& networkManager, iamclient::PermHandlerItf& permHandler,
-    resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec)
+    FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
+    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+    oci::OCISpecItf& ociSpec)
     : mInstanceID(instanceID)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
     , mFileSystem(fileSystem)
     , mRunner(runner)
+    , mMonitoring(monitoring)
     , mItemInfoProvider(itemInfoProvider)
     , mNetworkManager(networkManager)
     , mPermHandler(permHandler)
@@ -115,6 +119,12 @@ Error Instance::Start()
         }
     }
 
+    if (mInstanceInfo.mMonitoringParams.HasValue()) {
+        if (err = mMonitoring.StartInstanceMonitoring(mInstanceID); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
     mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
     err        = mRunStatus.mError;
 
@@ -149,6 +159,12 @@ Error Instance::Stop()
         }
 
         mPermissionsRegistered = false;
+    }
+
+    if (mInstanceInfo.mMonitoringParams.HasValue()) {
+        if (auto err = mMonitoring.StopInstanceMonitoring(mInstanceID); !err.IsNone() && stopErr.IsNone()) {
+            stopErr = AOS_ERROR_WRAP(err);
+        }
     }
 
     if (mInstanceInfo.mNetworkParameters.HasValue()) {
