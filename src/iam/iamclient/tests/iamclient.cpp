@@ -10,13 +10,12 @@
 #include <grpcpp/server_builder.h>
 
 #include <core/common/tests/mocks/certprovidermock.hpp>
-#include <core/common/tests/mocks/cryptomock.hpp>
 #include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
-#include <core/iam/tests/mocks/certhandlermock.hpp>
-#include <core/iam/tests/mocks/certloadermock.hpp>
 #include <core/iam/tests/mocks/currentnodemock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
+
+#include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
@@ -439,10 +438,14 @@ protected:
     std::unique_ptr<IAMClient> CreateClient(
         [[maybe_unused]] bool provisionMode, [[maybe_unused]] const config::IAMClientConfig& config = GetConfig())
     {
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
+            .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+                grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+
         auto client = std::make_unique<IAMClient>();
 
         assert(client
-                   ->Init(config, &mIdentProvider, mCertProvider, mProvisionManager, mCertLoader, mCryptoProvider,
+                   ->Init(config, &mIdentProvider, mCertProvider, mProvisionManager, mTLSCredentialsMock,
                        mCurrentNodeHandler, provisionMode)
                    .IsNone());
 
@@ -482,8 +485,7 @@ protected:
     aos::iamclient::IdentProviderMock           mIdentProvider;
     iam::provisionmanager::ProvisionManagerMock mProvisionManager;
     aos::iamclient::CertProviderMock            mCertProvider;
-    crypto::CertLoaderMock                      mCertLoader;
-    crypto::x509::ProviderMock                  mCryptoProvider;
+    TLSCredentialsMock                          mTLSCredentialsMock;
     iam::currentnode::CurrentNodeHandlerMock    mCurrentNodeHandler;
 };
 

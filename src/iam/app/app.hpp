@@ -18,6 +18,7 @@
 #include <core/iam/permhandler/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
+#include <common/iamclient/tlscredentials.hpp>
 #include <common/logger/logger.hpp>
 #include <common/utils/cleanupmanager.hpp>
 #include <iam/currentnode/currentnodehandler.hpp>
@@ -66,6 +67,7 @@ private:
     nodemanager::NodeManager                      mNodeManager;
     provisionmanager::ProvisionManager            mProvisionManager;
     iamserver::IAMServer                          mIAMServer;
+    common::iamclient::TLSCredentials             mTLSCredentials;
     common::logger::Logger                        mLogger;
     std::unique_ptr<permhandler::PermHandler>     mPermHandler;
     std::unique_ptr<iamclient::IAMClient>         mIAMClient;

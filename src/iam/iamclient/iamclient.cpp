@@ -5,17 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <Poco/Pipe.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StreamCopier.h>
-
 #include <core/common/tools/logger.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
 #include <common/utils/exception.hpp>
-#include <common/utils/grpchelper.hpp>
 
 #include "iamclient.hpp"
 
@@ -27,54 +21,23 @@ namespace aos::iam::iamclient {
 
 Error IAMClient::Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
     aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
-    currentnode::CurrentNodeHandlerItf& currentNodeHandler, bool provisioningMode)
+    common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
+    bool provisioningMode)
 {
     mIdentProvider      = identProvider;
     mCurrentNodeHandler = &currentNodeHandler;
     mCertProvider       = &certProvider;
-    mCertLoader         = &certLoader;
-    mCryptoProvider     = &cryptoProvider;
     mProvisionManager   = &provisionManager;
-    mReconnectInterval  = config.mNodeReconnectInterval;
-    mCACert             = config.mCACert;
+    mCertStorage        = config.mCertStorage;
 
-    if (provisioningMode) {
-        mCredentialList.push_back(grpc::InsecureChannelCredentials());
-        if (!config.mCACert.empty()) {
-            mCredentialList.push_back(common::utils::GetTLSClientCredentials(config.mCACert.c_str()));
-        }
-
-        mServerURL = config.mMainIAMPublicServerURL;
-    } else {
-        CertInfo certInfo;
-
-        mCertStorage = config.mCertStorage;
-
-        if (auto err = mCertProvider->GetCert(String(mCertStorage.c_str()), {}, {}, certInfo); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        mCredentialList.push_back(
-            common::utils::GetMTLSClientCredentials(certInfo, config.mCACert.c_str(), certLoader, cryptoProvider));
-
-        mServerURL = config.mMainIAMProtectedServerURL;
-    }
-
-    return ErrorEnum::eNone;
+    return PublicNodesService::Init(
+        provisioningMode ? config.mMainIAMPublicServerURL : config.mMainIAMProtectedServerURL, tlsCredentials,
+        provisioningMode, provisioningMode, mCertStorage);
 }
 
 Error IAMClient::Start()
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Start IAM client";
-
-    if (!mStop) {
-        return ErrorEnum::eNone;
-    }
-
-    mStop = false;
 
     if (!mCertStorage.empty()) {
         if (auto err = mCertProvider->SubscribeListener(String(mCertStorage.c_str()), *this); !err.IsNone()) {
@@ -82,218 +45,112 @@ Error IAMClient::Start()
         }
     }
 
-    mConnectionThread = std::thread(&IAMClient::ConnectionLoop, this);
-
-    return ErrorEnum::eNone;
+    return PublicNodesService::Start();
 }
 
 Error IAMClient::Stop()
 {
-    Error err;
+    LOG_DBG() << "Stop IAM client";
 
-    {
-        std::unique_lock lock {mMutex};
+    PublicNodesService::Stop();
 
-        if (mStop) {
-            return ErrorEnum::eNone;
-        }
-
-        LOG_DBG() << "Stop IAM client";
-
-        if (!mCertStorage.empty()) {
-            err = AOS_ERROR_WRAP(mCertProvider->UnsubscribeListener(*this));
-        }
-
-        mStop = true;
-        mCondVar.notify_all();
-
-        if (mRegisterNodeCtx) {
-            mRegisterNodeCtx->TryCancel();
-        }
+    if (!mCertStorage.empty()) {
+        return AOS_ERROR_WRAP(mCertProvider->UnsubscribeListener(*this));
     }
 
-    if (mConnectionThread.joinable()) {
-        mConnectionThread.join();
+    return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
+ * Protected
+ **********************************************************************************************************************/
+
+Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
+{
+    if (msg.has_start_provisioning_request()) {
+        return ProcessStartProvisioning(msg.start_provisioning_request());
     }
 
-    return err;
+    if (msg.has_finish_provisioning_request()) {
+        return ProcessFinishProvisioning(msg.finish_provisioning_request());
+    }
+
+    if (msg.has_deprovision_request()) {
+        return ProcessDeprovision(msg.deprovision_request());
+    }
+
+    if (msg.has_pause_node_request()) {
+        return ProcessPauseNode(msg.pause_node_request());
+    }
+
+    if (msg.has_resume_node_request()) {
+        return ProcessResumeNode(msg.resume_node_request());
+    }
+
+    if (msg.has_create_key_request()) {
+        return ProcessCreateKey(msg.create_key_request());
+    }
+
+    if (msg.has_apply_cert_request()) {
+        return ProcessApplyCert(msg.apply_cert_request());
+    }
+
+    if (msg.has_get_cert_types_request()) {
+        return ProcessGetCertTypes(msg.get_cert_types_request());
+    }
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
+void IAMClient::OnConnected()
+{
+    LOG_DBG() << "IAM client connected";
+
+    mCurrentNodeHandler->SetConnected(true);
+
+    if (auto err = SendNodeInfo(); !err.IsNone()) {
+        LOG_ERR() << "Failed to send node info" << Log::Field(err);
+    }
+}
+
+void IAMClient::OnDisconnected()
+{
+    LOG_DBG() << "IAM client disconnected";
+
+    mCurrentNodeHandler->SetConnected(false);
 }
 
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::OnCertChanged(const CertInfo& info)
+void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
-    std::unique_lock lock {mMutex};
+    LOG_INF() << "Certificate changed, reconnecting";
 
-    mCredentialList.clear();
-    mCredentialList.push_back(
-        common::utils::GetMTLSClientCredentials(info, mCACert.c_str(), *mCertLoader, *mCryptoProvider));
-
-    mCredentialListUpdated = true;
-}
-
-std::unique_ptr<grpc::ClientContext> IAMClient::CreateClientContext()
-{
-    return std::make_unique<grpc::ClientContext>();
-}
-
-PublicNodeServiceStubPtr IAMClient::CreateStub(
-    const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials)
-{
-    auto channel = grpc::CreateCustomChannel(url, credentials, grpc::ChannelArguments());
-    if (!channel) {
-        LOG_ERR() << "Can't create client channel";
-
-        return nullptr;
-    }
-
-    return PublicNodeService::NewStub(channel);
-}
-
-bool IAMClient::RegisterNode(const std::string& url)
-{
-    std::unique_lock lock {mMutex};
-
-    for (const auto& credentials : mCredentialList) {
-        if (mStop) {
-            return false;
-        }
-
-        mPublicNodeServiceStub = CreateStub(url, credentials);
-        if (!mPublicNodeServiceStub) {
-            LOG_ERR() << "Stub is not created";
-
-            continue;
-        }
-
-        mRegisterNodeCtx = CreateClientContext();
-        mStream          = mPublicNodeServiceStub->RegisterNode(mRegisterNodeCtx.get());
-        if (!mStream) {
-            LOG_ERR() << "Stream creation problem";
-
-            continue;
-        }
-
-        if (!SendNodeInfo()) {
-            LOG_WRN() << "Connection failed with provided credentials";
-
-            continue;
-        }
-
-        LOG_DBG() << "Connection established";
-
-        mCredentialListUpdated = false;
-
-        return true;
-    }
-
-    return false;
-}
-
-void IAMClient::ConnectionLoop() noexcept
-{
-    LOG_DBG() << "IAMClient connection thread started";
-
-    while (true) {
-        LOG_DBG() << "Connecting to IAMServer...";
-
-        if (RegisterNode(mServerURL)) {
-            mCurrentNodeHandler->SetConnected(true);
-
-            HandleIncomingMessages();
-
-            mCurrentNodeHandler->SetConnected(false);
-
-            LOG_DBG() << "IAMClient connection closed";
-        }
-
-        std::unique_lock lock {mMutex};
-
-        mCondVar.wait_for(lock, std::chrono::nanoseconds(mReconnectInterval.Nanoseconds()), [this]() { return mStop; });
-        if (mStop) {
-            break;
-        }
-    }
-
-    LOG_DBG() << "IAMClient connection thread stopped";
-}
-
-void IAMClient::HandleIncomingMessages() noexcept
-{
-    try {
-        iamanager::v6::IAMIncomingMessages incomingMsg;
-
-        while (mStream->Read(&incomingMsg)) {
-            bool ok = true;
-
-            if (incomingMsg.has_start_provisioning_request()) {
-                ok = ProcessStartProvisioning(incomingMsg.start_provisioning_request());
-            } else if (incomingMsg.has_finish_provisioning_request()) {
-                ok = ProcessFinishProvisioning(incomingMsg.finish_provisioning_request());
-            } else if (incomingMsg.has_deprovision_request()) {
-                ok = ProcessDeprovision(incomingMsg.deprovision_request());
-            } else if (incomingMsg.has_pause_node_request()) {
-                ok = ProcessPauseNode(incomingMsg.pause_node_request());
-            } else if (incomingMsg.has_resume_node_request()) {
-                ok = ProcessResumeNode(incomingMsg.resume_node_request());
-            } else if (incomingMsg.has_create_key_request()) {
-                ok = ProcessCreateKey(incomingMsg.create_key_request());
-            } else if (incomingMsg.has_apply_cert_request()) {
-                ok = ProcessApplyCert(incomingMsg.apply_cert_request());
-            } else if (incomingMsg.has_get_cert_types_request()) {
-                ok = ProcessGetCertTypes(incomingMsg.get_cert_types_request());
-            } else {
-                AOS_ERROR_CHECK_AND_THROW(ErrorEnum::eNotSupported, "Not supported request type");
-            }
-
-            if (!ok) {
-                break;
-            }
-
-            {
-                std::unique_lock lock {mMutex};
-
-                if (mCredentialListUpdated) {
-                    LOG_DBG() << "Credential list updated: closing connection";
-
-                    mRegisterNodeCtx->TryCancel();
-
-                    break;
-                }
-            }
-        }
-    } catch (const std::exception& e) {
-        LOG_ERR() << "Failed to handle incoming message: err=" << common::utils::ToAosError(e);
+    if (auto err = Reconnect(); !err.IsNone()) {
+        LOG_ERR() << "Failed to reconnect" << Log::Field(err);
     }
 }
 
-bool IAMClient::SendNodeInfo()
+Error IAMClient::SendNodeInfo()
 {
-    auto                               nodeInfo = std::make_unique<NodeInfo>();
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    auto nodeInfo = std::make_unique<NodeInfo>();
 
     auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
     if (!err.IsNone()) {
-        LOG_ERR() << "Can't get node info: error=" << err.Message();
-
-        return false;
+        return AOS_ERROR_WRAP(err);
     }
 
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
     *outgoingMsg.mutable_node_info() = common::pbconvert::ConvertToProto(*nodeInfo);
 
     LOG_DBG() << "Send node info: state=" << nodeInfo->mState;
 
-    bool isOK = mStream->Write(outgoingMsg);
-    if (!isOK) {
-        LOG_WRN() << "Stream closed before sending node info";
-    }
-
-    return isOK;
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request)
+Error IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request)
 {
     LOG_DBG() << "Process start provisioning request";
 
@@ -306,16 +163,16 @@ bool IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningR
 
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mProvisionManager->StartProvisioning(request.password().c_str());
     common::pbconvert::SetErrorInfo(err, response);
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request)
+Error IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request)
 {
     LOG_DBG() << "Process finish provisioning request";
 
@@ -328,29 +185,29 @@ bool IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisionin
 
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mProvisionManager->FinishProvisioning(request.password().c_str());
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     common::pbconvert::SetErrorInfo(err, response);
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request)
+Error IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request)
 {
     LOG_DBG() << "Process deprovision request";
 
@@ -363,29 +220,29 @@ bool IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& requ
 
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mProvisionManager->Deprovision(request.password().c_str());
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eUnprovisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     common::pbconvert::SetErrorInfo(err, response);
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
+Error IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
 {
     LOG_DBG() << "Process pause node request";
 
@@ -400,22 +257,27 @@ bool IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
 
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::ePaused);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     common::pbconvert::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    err = SendNodeInfo();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request)
+Error IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request)
 {
     LOG_DBG() << "Process resume node request";
 
@@ -430,22 +292,27 @@ bool IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& reques
 
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
     if (!err.IsNone()) {
         common::pbconvert::SetErrorInfo(err, response);
 
-        return mStream->Write(outgoingMsg);
+        return SendMessage(outgoingMsg);
     }
 
     common::pbconvert::SetErrorInfo(err, response);
 
-    return SendNodeInfo() && mStream->Write(outgoingMsg);
+    err = SendNodeInfo();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
+Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
 {
     const String         nodeID   = request.node_id().c_str();
     const String         certType = request.type().c_str();
@@ -482,7 +349,7 @@ bool IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
     return SendCreateKeyResponse(nodeID, certType, *csr, err);
 }
 
-bool IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
+Error IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
 {
     const String nodeID   = request.node_id().c_str();
     const String certType = request.type().c_str();
@@ -496,7 +363,7 @@ bool IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
     return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
 }
 
-bool IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)
+Error IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)
 {
     const String nodeID = request.node_id().c_str();
 
@@ -529,7 +396,7 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
     return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }
 
-bool IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
+Error IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
 {
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
@@ -540,10 +407,10 @@ bool IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, 
 
     common::pbconvert::SetErrorInfo(error, response);
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::SendApplyCertResponse(
+Error IAMClient::SendApplyCertResponse(
     const String& nodeID, const String& type, const String& certURL, const Array<uint8_t>& serial, const Error& error)
 {
     iamanager::v6::IAMOutgoingMessages outgoingMsg;
@@ -568,10 +435,10 @@ bool IAMClient::SendApplyCertResponse(
 
     common::pbconvert::SetErrorInfo(error, response);
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
-bool IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error)
+Error IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error)
 {
     (void)error;
 
@@ -582,7 +449,7 @@ bool IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& type
         response.mutable_types()->Add(type.CStr());
     }
 
-    return mStream->Write(outgoingMsg);
+    return SendMessage(outgoingMsg);
 }
 
 } // namespace aos::iam::iamclient
