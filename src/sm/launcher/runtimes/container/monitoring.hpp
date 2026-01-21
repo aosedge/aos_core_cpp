@@ -27,9 +27,12 @@ public:
      * Starts instance monitoring.
      *
      * @param instanceID instance ID.
+     * @param uid instance user ID.
+     * @param partInfos partition infos.
      * @return Error.
      */
-    Error StartInstanceMonitoring(const std::string& instanceID) override;
+    Error StartInstanceMonitoring(
+        const std::string& instanceID, uid_t uid, const std::vector<PartitionInfo>& partInfos) override;
 
     /**
      * Stops instance monitoring.
@@ -55,17 +58,24 @@ private:
     static constexpr auto cMemUsageFile = "memory.current";
 
     struct CPUUsage {
-        size_t    mIdle      = 0;
-        size_t    mTotal     = 0;
+        size_t    mIdle {};
+        size_t    mTotal {};
         aos::Time mTimestamp = Time::Now();
+    };
+
+    struct MonitoringData {
+        CPUUsage                   mCPUUsage;
+        std::vector<PartitionInfo> mPartInfos;
+        uid_t                      mUID {0};
     };
 
     double GetInstanceCPUUsage(const std::string& instanceID);
     size_t GetInstanceCPUUSec(const std::string& instanceID);
     size_t GetInstanceRAMUsage(const std::string& instanceID);
+    size_t GetInstanceDiskUsage(const std::string& path, uid_t uid);
 
-    size_t                                    mCPUCount;
-    std::unordered_map<std::string, CPUUsage> mInstanceMonitoringCache;
+    size_t                                          mCPUCount;
+    std::unordered_map<std::string, MonitoringData> mInstanceMonitoringCache;
 };
 
 } // namespace aos::sm::launcher

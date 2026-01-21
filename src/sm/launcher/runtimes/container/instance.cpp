@@ -120,8 +120,8 @@ Error Instance::Start()
     }
 
     if (mInstanceInfo.mMonitoringParams.HasValue()) {
-        if (err = mMonitoring.StartInstanceMonitoring(mInstanceID); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+        if (err = StartMonitoring(); !err.IsNone()) {
+            return err;
         }
     }
 
@@ -804,6 +804,53 @@ Error Instance::AddNetworkHostsFromResource(const std::string& resource, std::ve
     }
 
     hosts.insert(hosts.end(), resourceInfo->mHosts.begin(), resourceInfo->mHosts.end());
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::StartMonitoring()
+{
+    std::vector<PartitionInfo> partInfos;
+
+    if (!mInstanceInfo.mStoragePath.IsEmpty()) {
+        auto partInfo = std::make_unique<PartitionInfo>();
+
+        partInfo->mName = cStoragePartitionName;
+
+        if (auto err = partInfo->mPath.Assign(
+                common::utils::JoinPath(mConfig.mStorageDir, mInstanceInfo.mStoragePath.CStr()).c_str());
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = partInfo->mTypes.EmplaceBack(cStoragePartitionName); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        partInfos.push_back(*partInfo);
+    }
+
+    if (!mInstanceInfo.mStatePath.IsEmpty()) {
+        auto partInfo = std::make_unique<PartitionInfo>();
+
+        partInfo->mName = cStatePartitionName;
+
+        if (auto err = partInfo->mPath.Assign(
+                common::utils::JoinPath(mConfig.mStateDir, mInstanceInfo.mStatePath.CStr()).c_str());
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = partInfo->mTypes.EmplaceBack(cStatePartitionName); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        partInfos.push_back(*partInfo);
+    }
+
+    if (auto err = mMonitoring.StartInstanceMonitoring(mInstanceID, mInstanceInfo.mUID, partInfos); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     return ErrorEnum::eNone;
 }

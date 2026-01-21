@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include <sys/quota.h>
 #include <thread>
 
 #include <core/common/tools/logger.hpp>
@@ -16,6 +17,25 @@
 
 namespace aos::sm::launcher {
 
+namespace {
+
+/***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
+
+bool QuotasSupported(const std::string& path)
+{
+    dqblk quota {};
+
+    if (auto res = quotactl(QCMD(Q_GETQUOTA, USRQUOTA), path.c_str(), 0, reinterpret_cast<char*>(&quota)); res == -1) {
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -25,12 +45,13 @@ Monitoring::Monitoring()
 {
 }
 
-Error Monitoring::StartInstanceMonitoring(const std::string& instanceID)
+Error Monitoring::StartInstanceMonitoring(
+    const std::string& instanceID, uid_t uid, const std::vector<PartitionInfo>& partInfos)
 {
     try {
         LOG_DBG() << "Start instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
-        mInstanceMonitoringCache.insert_or_assign(instanceID, CPUUsage());
+        mInstanceMonitoringCache.insert_or_assign(instanceID, MonitoringData {{}, partInfos, uid});
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -62,6 +83,24 @@ Error Monitoring::GetInstanceMonitoringData(
         LOG_DBG() << "Get instance monitoring data" << Log::Field("instanceID", instanceID.c_str())
                   << Log::Field("cpu", monitoringData.mMonitoringData.mCPU)
                   << Log::Field("ram", monitoringData.mMonitoringData.mRAM / cKilobyte);
+
+        const auto& cachedData = mInstanceMonitoringCache.at(instanceID);
+
+        for (const auto& partition : cachedData.mPartInfos) {
+            auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack();
+            if (!err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            auto& partitionUsage = monitoringData.mMonitoringData.mPartitions.Back();
+
+            partitionUsage.mName     = partition.mName;
+            partitionUsage.mUsedSize = GetInstanceDiskUsage(partition.mPath.CStr(), cachedData.mUID);
+
+            LOG_DBG() << "Get instance monitoring data" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field("partition", partition.mName)
+                      << Log::Field("usedSize", partitionUsage.mUsedSize / cKilobyte);
+        }
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -102,7 +141,7 @@ size_t Monitoring::GetInstanceCPUUSec(const std::string& instanceID)
 
 double Monitoring::GetInstanceCPUUsage(const std::string& instanceID)
 {
-    auto& cpuUsage = mInstanceMonitoringCache.at(instanceID);
+    auto& cpuUsage = mInstanceMonitoringCache.at(instanceID).mCPUUsage;
     auto  cpuUSec  = GetInstanceCPUUSec(instanceID);
 
     if (cpuUsage.mTotal > cpuUSec) {
@@ -139,6 +178,29 @@ size_t Monitoring::GetInstanceRAMUsage(const std::string& instanceID)
     }
 
     return std::stoull(line);
+}
+
+size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
+{
+    auto [devicePath, err] = common::utils::GetBlockDevice(path);
+    if (!err.IsNone()) {
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(err));
+    }
+
+    if (!QuotasSupported(devicePath)) {
+        LOG_ERR() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
+
+        return 0;
+    }
+
+    dqblk quota {};
+
+    if (auto res = quotactl(QCMD(Q_GETQUOTA, USRQUOTA), devicePath.c_str(), uid, reinterpret_cast<char*>(&quota));
+        res == -1) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get quota");
+    }
+
+    return static_cast<uint64_t>(quota.dqb_curspace);
 }
 
 }; // namespace aos::sm::launcher
