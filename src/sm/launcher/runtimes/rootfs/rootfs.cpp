@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include <Poco/String.h>
 #include <Poco/StringTokenizer.h>
 
 #include <core/common/tools/fs.hpp>
@@ -116,26 +117,21 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
     std::lock_guard lock {mMutex};
 
     LOG_DBG() << "Start instance" << Log::Field("ident", static_cast<const InstanceIdent&>(instance))
-              << Log::Field("manifestDigest", instance.mManifestDigest) << Log::Field("type", instance.mType);
+              << Log::Field("version", instance.mVersion) << Log::Field("manifestDigest", instance.mManifestDigest)
+              << Log::Field("type", instance.mType);
 
-    static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
+    FillInstanceStatus(instance, InstanceStateEnum::eActivating, status);
 
     if (static_cast<const InstanceIdent&>(mCurrentInstance) == static_cast<const InstanceIdent&>(instance)
         && instance.mManifestDigest == mCurrentInstance.mManifestDigest) {
-        status.mState   = InstanceStateEnum::eActive;
-        status.mError   = ErrorEnum::eNone;
-        status.mVersion = mCurrentVersion;
+        status.mState = InstanceStateEnum::eActive;
 
         mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
         return ErrorEnum::eNone;
     }
 
-    {
-        status.mState = InstanceStateEnum::eActivating;
-
-        mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
-    }
+    mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
     Error err = ErrorEnum::eNone;
 
@@ -167,8 +163,9 @@ Error RootfsRuntime::StopInstance(const InstanceIdent& instance, InstanceStatus&
 {
     LOG_DBG() << "Stop instance" << Log::Field("ident", instance);
 
-    status.mState = InstanceStateEnum::eInactive;
-    status.mError = ErrorEnum::eNone;
+    static_cast<InstanceIdent&>(status) = instance;
+    status.mState                       = InstanceStateEnum::eInactive;
+    status.mError                       = ErrorEnum::eNone;
 
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
@@ -222,17 +219,11 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
 }
 
-Error RootfsRuntime::InitInstalledData()
+RetWithError<StaticString<cVersionLen>> RootfsRuntime::GetCurrentVersion() const
 {
-    if (auto err = LoadInstanceInfo(fs::JoinPath(mRootfsConfig.mWorkingDir.c_str(), cInstalledInstanceFileName),
-            mCurrentInstance, mCurrentVersion);
-        !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
-        return err;
-    }
-
     std::ifstream versionFile(mRootfsConfig.mVersionFilePath);
     if (!versionFile.is_open()) {
-        return Error(ErrorEnum::eNotFound, "version file not found");
+        return {{}, Error(ErrorEnum::eNotFound, "version file not found")};
     }
 
     std::string versionFileContent;
@@ -241,17 +232,42 @@ Error RootfsRuntime::InitInstalledData()
     Poco::StringTokenizer tokenizer(versionFileContent, "=", Poco::StringTokenizer::TOK_TRIM);
 
     if (tokenizer.count() != 2 || tokenizer[0] != "VERSION") {
-        return Error(ErrorEnum::eInvalidArgument, "invalid version file format");
+        return {{}, Error(ErrorEnum::eInvalidArgument, "invalid version file format")};
     }
 
-    StaticString<2 + cVersionLen> versionStr;
+    std::string version = tokenizer[1].c_str();
+    Poco::removeInPlace(version, '"');
 
-    if (auto err = versionStr.Assign(tokenizer[1].c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    StaticString<cVersionLen> versionStr;
+
+    if (auto err = versionStr.Assign(version.c_str()); !err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(err)};
     }
 
-    if (auto err = mCurrentVersion.Assign(versionStr.Trim("\"")); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    return versionStr;
+}
+
+Error RootfsRuntime::InitInstalledData()
+{
+    const auto path = GetPath(cInstalledInstanceFileName);
+
+    if (!std::filesystem::exists(path)) {
+        auto [version, err] = GetCurrentVersion();
+        if (!err.IsNone()) {
+            return err;
+        }
+
+        mCurrentInstance.mType    = UpdateItemTypeEnum::eComponent;
+        mCurrentInstance.mVersion = version;
+
+        err = SaveInstanceInfo(mCurrentInstance, path);
+        if (!err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (auto err = LoadInstanceInfo(path, mCurrentInstance); !err.IsNone()) {
+        return err;
     }
 
     return ErrorEnum::eNone;
@@ -259,9 +275,12 @@ Error RootfsRuntime::InitInstalledData()
 
 Error RootfsRuntime::InitPendingData()
 {
-    if (auto err = LoadInstanceInfo(fs::JoinPath(mRootfsConfig.mWorkingDir.c_str(), cPendingInstanceFileName),
-            mPendingInstance, mPendingVersion);
-        !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
+    const auto path = GetPath(cPendingInstanceFileName);
+    if (!std::filesystem::exists(path)) {
+        return ErrorEnum::eNone;
+    }
+
+    if (auto err = LoadInstanceInfo(path, mPendingInstance); !err.IsNone()) {
         return err;
     }
 
@@ -318,19 +337,13 @@ Error RootfsRuntime::ProcessUpdateAction(Array<InstanceStatus>& statuses)
 
 Error RootfsRuntime::ProcessUpdated(Array<InstanceStatus>& statuses)
 {
-    mPendingVersion = mCurrentVersion;
-
-    if (auto err = SavePendingInstanceInfo(mPendingInstance, mPendingVersion); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     auto& status = statuses.Back();
 
-    FillInstanceStatus(mPendingInstance, mPendingVersion, InstanceStateEnum::eActivating, status);
+    FillInstanceStatus(mPendingInstance, InstanceStateEnum::eActivating, status);
 
     mHealthCheckThread.emplace(&RootfsRuntime::RunHealthCheck, this, std::make_unique<InstanceStatus>(status));
 
@@ -343,7 +356,7 @@ Error RootfsRuntime::ProcessFailed(Array<InstanceStatus>& statuses)
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mPendingInstance, mPendingVersion, InstanceStateEnum::eFailed, statuses.Back());
+    FillInstanceStatus(mPendingInstance, InstanceStateEnum::eFailed, statuses.Back());
 
     ClearUpdateArtifacts();
 
@@ -351,7 +364,7 @@ Error RootfsRuntime::ProcessFailed(Array<InstanceStatus>& statuses)
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mCurrentInstance, mCurrentVersion, InstanceStateEnum::eActive, statuses.Back());
+    FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, statuses.Back());
 
     return ErrorEnum::eNone;
 }
@@ -381,27 +394,25 @@ Error RootfsRuntime::ProcessNoAction(Array<InstanceStatus>& statuses)
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mCurrentInstance, mCurrentVersion, InstanceStateEnum::eActive, statuses.Back());
+    FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, statuses.Back());
 
     return ErrorEnum::eNone;
 }
 
 void RootfsRuntime::FillInstanceStatus(
-    const InstanceInfo& instanceInfo, const String& version, InstanceStateEnum state, InstanceStatus& status) const
+    const InstanceInfo& instanceInfo, InstanceStateEnum state, InstanceStatus& status) const
 {
     static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instanceInfo);
     status.mState                       = state;
-    status.mVersion                     = version;
+    status.mVersion                     = instanceInfo.mVersion;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mManifestDigest              = instanceInfo.mManifestDigest;
     status.mType                        = UpdateItemTypeEnum::eComponent;
     status.mPreinstalled                = status.mItemID.IsEmpty();
 }
 
-Error RootfsRuntime::SavePendingInstanceInfo(const InstanceInfo& instance, const String& version)
+Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const
 {
-    const auto path = std::filesystem::path(mRootfsConfig.mWorkingDir) / cPendingInstanceFileName;
-
     LOG_DBG() << "Save instance info" << Log::Field("ident", static_cast<const InstanceIdent&>(instance))
               << Log::Field("path", path.c_str());
 
@@ -416,7 +427,8 @@ Error RootfsRuntime::SavePendingInstanceInfo(const InstanceInfo& instance, const
         json->set("itemId", instance.mItemID.CStr());
         json->set("subjectId", instance.mSubjectID.CStr());
         json->set("manifestDigest", instance.mManifestDigest.CStr());
-        json->set("version", version.CStr());
+        json->set("type", instance.mType.ToString().CStr());
+        json->set("version", instance.mVersion.CStr());
 
         json->stringify(file);
     } catch (const std::exception& e) {
@@ -426,13 +438,13 @@ Error RootfsRuntime::SavePendingInstanceInfo(const InstanceInfo& instance, const
     return ErrorEnum::eNone;
 }
 
-Error RootfsRuntime::LoadInstanceInfo(const String& path, InstanceInfo& instance, String& version)
+Error RootfsRuntime::LoadInstanceInfo(const std::filesystem::path& path, InstanceInfo& instance)
 {
-    LOG_DBG() << "Load instance info" << Log::Field("path", path);
+    LOG_DBG() << "Load instance info" << Log::Field("path", path.c_str());
 
     instance.mType = UpdateItemTypeEnum::eComponent;
 
-    std::ifstream file(path.CStr());
+    std::ifstream file(path);
 
     if (!file.is_open()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "can't open instance info file"));
@@ -453,8 +465,10 @@ Error RootfsRuntime::LoadInstanceInfo(const String& path, InstanceInfo& instance
         err = instance.mManifestDigest.Assign(jsonObject.GetValue<std::string>("manifestDigest").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
 
-        err = version.Assign(jsonObject.GetValue<std::string>("version").c_str());
+        err = instance.mVersion.Assign(jsonObject.GetValue<std::string>("version").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
+
+        instance.mType = UpdateItemTypeEnum::eComponent;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -545,7 +559,7 @@ void RootfsRuntime::ClearUpdateArtifacts() const
 
 Error RootfsRuntime::StoreAction(const ActionType& action, const std::string& data) const
 {
-    const auto path = std::filesystem::path(mRootfsConfig.mWorkingDir) / action.ToString().CStr();
+    const auto path = GetPath(action.ToString().CStr());
 
     std::ofstream file(path);
     if (!file.is_open()) {
@@ -561,7 +575,7 @@ RootfsRuntime::ActionType RootfsRuntime::ReadAction() const
 {
     for (size_t i = 0; i < static_cast<size_t>(ActionTypeEnum::eNumActions); ++i) {
         const auto currentAction = ActionType(static_cast<ActionTypeEnum>(i));
-        const auto path          = std::filesystem::path(mRootfsConfig.mWorkingDir) / currentAction.ToString().CStr();
+        const auto path          = GetPath(currentAction.ToString().CStr());
 
         if (std::filesystem::exists(path)) {
             return currentAction;
@@ -597,11 +611,16 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = SavePendingInstanceInfo(instance, ""); !err.IsNone()) {
+    if (auto err = SaveInstanceInfo(instance, GetPath(cPendingInstanceFileName)); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
+}
+
+std::filesystem::path RootfsRuntime::GetPath(const std::string& fileName) const
+{
+    return std::filesystem::path(mRootfsConfig.mWorkingDir) / fileName;
 }
 
 } // namespace aos::sm::launcher
