@@ -38,19 +38,17 @@ public:
      * Gets MTLS configuration.
      *
      * @param certStorage Certificate storage.
-     * @param insecureConnection If true, returns insecure credentials.
      * @return MTLS credentials.
      */
     RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetMTLSClientCredentials(
-        const String& certStorage, bool insecureConnection) override;
+        const String& certStorage) override;
 
     /**
      * Gets TLS credentials.
      *
-     * @param insecureConnection If true, returns insecure credentials.
      * @return TLS credentials.
      */
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials(bool insecureConnection) override;
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() override;
 
 private:
     aos::iamclient::CertProviderItf* mCertProvider {};

@@ -37,12 +37,16 @@ Error PublicIdentityService::Init(
     mIAMPublicServerURL = iamPublicServerURL;
     mInsecureConnection = insecureConnection;
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
@@ -56,7 +60,7 @@ Error PublicIdentityService::Reconnect()
 
     LOG_INF() << "Reconnect public identity service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
+    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
     if (!err.IsNone()) {
         return err;
     }

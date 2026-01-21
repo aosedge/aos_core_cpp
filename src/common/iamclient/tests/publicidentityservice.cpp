@@ -30,7 +30,7 @@ protected:
 
         mStub = std::make_unique<IAMPublicIdentityServiceStub>();
 
-        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials(_))
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 

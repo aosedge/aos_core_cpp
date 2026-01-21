@@ -38,12 +38,16 @@ Error PublicCurrentNodeService::Init(
     mIAMPublicServerURL = iamPublicServerURL;
     mInsecureConnection = insecureConnection;
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMPublicCurrentNodeService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
@@ -57,7 +61,7 @@ Error PublicCurrentNodeService::Reconnect()
 
     LOG_INF() << "Reconnect public current node service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mInsecureConnection);
+    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
     if (!err.IsNone()) {
         return err;
     }

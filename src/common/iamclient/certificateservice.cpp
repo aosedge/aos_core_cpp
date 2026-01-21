@@ -32,12 +32,16 @@ Error CertificateService::Init(const std::string& iamProtectedServerURL, const s
     mCertStorage           = certStorage;
     mInsecureConnection    = insecureConnection;
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
@@ -51,7 +55,7 @@ Error CertificateService::Reconnect()
 
     LOG_INF() << "Reconnect certificate service";
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
+    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
     if (!err.IsNone()) {
         return err;
     }

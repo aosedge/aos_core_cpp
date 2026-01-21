@@ -31,12 +31,16 @@ Error ProvisioningService::Init(const std::string& iamProtectedServerURL, const 
     mCertStorage           = certStorage;
     mInsecureConnection    = insecureConnection;
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMProvisioningService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
@@ -50,7 +54,7 @@ Error ProvisioningService::Reconnect()
 
     LOG_INF() << "Reconnect provisioning service";
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
+    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
     if (!err.IsNone()) {
         return err;
     }

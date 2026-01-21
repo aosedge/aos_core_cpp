@@ -123,7 +123,7 @@ TEST_F(SMClientTest, RegisterSMSucceeds)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -200,7 +200,7 @@ TEST_F(SMClientTest, SendSMInfoWithMultipleRuntimesAndResources)
 
     auto statuses = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -265,7 +265,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusWithMultipleInstances)
         statuses->PushBack(status);
     }
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -338,7 +338,7 @@ TEST_F(SMClientTest, SecondStartReturnsError)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -393,7 +393,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusesCallback)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -457,7 +457,7 @@ TEST_F(SMClientTest, SendUpdateInstancesStatusesCallback)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -522,7 +522,7 @@ TEST_F(SMClientTest, SendMonitoringData)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -609,7 +609,7 @@ TEST_F(SMClientTest, SendAlert)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -790,7 +790,7 @@ TEST_F(SMClientTest, GetBlobsInfo)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -855,7 +855,7 @@ TEST_F(SMClientTest, ProcessGetNodeConfigStatus)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -920,7 +920,7 @@ TEST_F(SMClientTest, ProcessUpdateInstances)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -992,7 +992,7 @@ TEST_F(SMClientTest, ProcessGetAverageMonitoring)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -1062,7 +1062,7 @@ TEST_F(SMClientTest, ProcessSystemLogRequest)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
@@ -1124,7 +1124,7 @@ TEST_F(SMClientTest, ProcessUpdateNetworks)
     auto resources = CreateResourceInfos();
     auto statuses  = CreateInstanceStatuses();
 
-    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials(_))
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
         .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
             grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
     EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {

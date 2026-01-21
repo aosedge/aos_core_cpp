@@ -33,12 +33,16 @@ Error NodesService::Init(const std::string& iamProtectedServerURL, const std::st
     mCertStorage           = certStorage;
     mInsecureConnection    = insecureConnection;
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMNodesService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
@@ -52,7 +56,7 @@ Error NodesService::Reconnect()
 
     LOG_INF() << "Reconnect nodes service";
 
-    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str(), mInsecureConnection);
+    auto [credentials, err] = mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
     if (!err.IsNone()) {
         return err;
     }
