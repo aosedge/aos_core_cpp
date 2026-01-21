@@ -8,7 +8,6 @@
 
 #include "runtimes.hpp"
 #include "runtimes/boot/boot.hpp"
-#include "runtimes/container/container.hpp"
 #include "runtimes/rootfs/rootfs.hpp"
 
 namespace aos::sm::launcher {
@@ -74,6 +73,17 @@ Error Runtimes::GetRuntimes(Array<RuntimeItf*>& runtimes) const
     }
 
     return ErrorEnum::eNone;
+}
+
+ContainerRuntime* Runtimes::GetContainerRuntime() const
+{
+    for (const auto& runtime : mRuntimes) {
+        if (auto containerRuntime = dynamic_cast<ContainerRuntime*>(runtime.get()); containerRuntime != nullptr) {
+            return containerRuntime;
+        }
+    }
+
+    return nullptr;
 }
 
 } // namespace aos::sm::launcher
