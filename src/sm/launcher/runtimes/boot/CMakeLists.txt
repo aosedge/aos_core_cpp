@@ -26,8 +26,16 @@ pkg_check_modules(BLKID blkid REQUIRED)
 pkg_check_modules(EFIVAR efivar REQUIRED)
 pkg_check_modules(EFIBOOT efiboot REQUIRED)
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools ${BLKID_LIBRARIES} ${EFIVAR_LIBRARIES}
-              ${EFIBOOT_LIBRARIES}
+set(LIBRARIES
+    Poco::JSON
+    aos::common::utils
+    aos::sm::config
+    aos::sm::utils
+    aos::sm::runtimes::utils
+    aos::core::common::tools
+    ${BLKID_LIBRARIES}
+    ${EFIVAR_LIBRARIES}
+    ${EFIBOOT_LIBRARIES}
 )
 
 # ######################################################################################################################
