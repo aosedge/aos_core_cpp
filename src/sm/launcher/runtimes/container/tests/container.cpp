@@ -146,6 +146,33 @@ void CreateInstanceStatus(InstanceStatus& instanceStatus, const InstanceInfo& in
     instanceStatus.mError                       = error;
 }
 
+std::vector<PartitionInfo> CreatePartitionsInfos(const InstanceInfo& instanceInfo)
+{
+    std::vector<PartitionInfo> partitions;
+
+    if (!instanceInfo.mStoragePath.IsEmpty()) {
+        auto storagePart = std::make_unique<PartitionInfo>();
+
+        storagePart->mName = "storages";
+        storagePart->mTypes.EmplaceBack(storagePart->mName);
+        storagePart->mPath = (std::string("/var/aos/workdir/storages/") + instanceInfo.mStoragePath.CStr()).c_str();
+
+        partitions.push_back(*storagePart);
+    }
+
+    if (!instanceInfo.mStatePath.IsEmpty()) {
+        auto statePart = std::make_unique<PartitionInfo>();
+
+        statePart->mName = "states";
+        statePart->mTypes.EmplaceBack(statePart->mName);
+        statePart->mPath = (std::string("/var/aos/workdir/states/") + instanceInfo.mStatePath.CStr()).c_str();
+
+        partitions.push_back(*statePart);
+    }
+
+    return partitions;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -940,16 +967,24 @@ TEST_F(ContainerRuntimeTest, GetInstanceMonitoringData)
 {
     InstanceInfo instance;
 
-    instance.mItemID    = "item0";
-    instance.mSubjectID = "subject0";
-    instance.mInstance  = 0;
+    instance.mItemID      = "item0";
+    instance.mSubjectID   = "subject0";
+    instance.mInstance    = 0;
+    instance.mUID         = 1000;
+    instance.mStoragePath = "storage";
+    instance.mStatePath   = "state";
     instance.mMonitoringParams.EmplaceValue();
 
     auto instanceID     = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status         = std::make_unique<InstanceStatus>();
     auto monitoringData = std::make_unique<monitoring::InstanceMonitoringData>();
 
-    EXPECT_CALL(*mRuntime.mMonitoring, StartInstanceMonitoring(instanceID)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mFileSystem, GetAbsPath(_)).WillRepeatedly(Invoke([](const std::string& path) {
+        return RetWithError<std::string> {path};
+    }));
+    EXPECT_CALL(
+        *mRuntime.mMonitoring, StartInstanceMonitoring(instanceID, instance.mUID, CreatePartitionsInfos(instance)))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);
     ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
