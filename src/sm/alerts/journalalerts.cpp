@@ -275,16 +275,16 @@ std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::Journa
     if (unit.find(cAosServicePrefix) != std::string::npos) {
         const auto instanceID = ParseInstanceID(unit);
 
-        ServiceInstanceData serviceInstanceData;
+        InstanceInfo instanceInfo;
 
-        auto err = mInstanceInfoProvider->GetInstanceInfoByID(instanceID.c_str(), serviceInstanceData);
+        auto err = mInstanceInfoProvider->GetInstanceInfoByID(instanceID.c_str(), instanceInfo);
         AOS_ERROR_CHECK_AND_THROW(err, "can't get instance info for unit: " + unit);
 
         InstanceAlert alert;
 
         alert.mTimestamp                   = entry.mRealTime;
-        static_cast<InstanceIdent&>(alert) = serviceInstanceData.mInstanceIdent;
-        alert.mVersion                     = serviceInstanceData.mVersion;
+        static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
+        alert.mVersion                     = instanceInfo.mVersion;
 
         WriteAlertMsg(entry.mMessage, alert.mMessage);
 
