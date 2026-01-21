@@ -19,6 +19,7 @@
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
+#include <sm/launcher/runtimes/boot/itf/bootcontroller.hpp>
 #include <sm/utils/itf/systemdconn.hpp>
 
 #include "config.hpp"

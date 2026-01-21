@@ -10,13 +10,13 @@ set(TARGET_NAME boot_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES boot.cpp)
+set(SOURCES boot.cpp config.cpp eficontroller.cpp partitionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::common::tests::utils aos::sm::runtimes::boot GTest::gmock_main)
+set(LIBRARIES aos::common::tests::utils aos::core::common::tests::utils aos::sm::runtimes::boot GTest::gmock_main)
 
 # ######################################################################################################################
 # Target

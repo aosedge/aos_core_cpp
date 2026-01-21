@@ -14,13 +14,27 @@ set(TARGET_NAME boot)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES boot.cpp)
+set(SOURCES boot.cpp config.cpp eficontroller.cpp partitionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(EFIVAR efivar REQUIRED)
+pkg_check_modules(EFIBOOT efiboot REQUIRED)
+pkg_check_modules(BLKID blkid REQUIRED)
+
+set(LIBRARIES
+    aos::core::common::tools
+    aos::sm::config
+    aos::sm::utils
+    aos::sm::runtimes::utils
+    ${EFIVAR_LIBRARIES}
+    ${EFIBOOT_LIBRARIES}
+    ${BLKID_LIBRARIES}
+)
 
 # ######################################################################################################################
 # Target
