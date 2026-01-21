@@ -7,6 +7,7 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_ROOTFS_ROOTFS_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_ROOTFS_ROOTFS_HPP_
 
+#include <filesystem>
 #include <mutex>
 #include <thread>
 
@@ -144,25 +145,26 @@ private:
     using ActionTypeEnum = ActionTypeType::Enum;
     using ActionType     = EnumStringer<ActionTypeType>;
 
-    void  RunHealthCheck(std::unique_ptr<InstanceStatus> status);
-    Error InitInstalledData();
-    Error InitPendingData();
-    Error CreateRuntimeInfo();
-    Error ProcessUpdateAction(Array<InstanceStatus>& statuses);
-    Error ProcessUpdated(Array<InstanceStatus>& statuses);
-    Error ProcessFailed(Array<InstanceStatus>& statuses);
-    Error ProcessNoAction(Array<InstanceStatus>& statuses);
-    void  FillInstanceStatus(
-         const InstanceInfo& instanceInfo, const String& version, InstanceStateEnum state, InstanceStatus& status) const;
-    Error      SavePendingInstanceInfo(const InstanceInfo& instance, const String& version);
-    Error      LoadInstanceInfo(const String& path, InstanceInfo& instance, String& version);
-    Error      GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
-    Error      UnpackImage(const oci::ImageManifest& manifest) const;
-    Error      PrepareUpdateFileContent(const oci::ImageManifest& manifest, std::string& updateType) const;
-    void       ClearUpdateArtifacts() const;
-    Error      StoreAction(const ActionType& action, const std::string& data = "") const;
-    ActionType ReadAction() const;
-    Error      PrepareUpdate(const InstanceInfo& instance);
+    void                                    RunHealthCheck(std::unique_ptr<InstanceStatus> status);
+    RetWithError<StaticString<cVersionLen>> GetCurrentVersion() const;
+    Error                                   InitInstalledData();
+    Error                                   InitPendingData();
+    Error                                   CreateRuntimeInfo();
+    Error                                   ProcessUpdateAction(Array<InstanceStatus>& statuses);
+    Error                                   ProcessUpdated(Array<InstanceStatus>& statuses);
+    Error                                   ProcessFailed(Array<InstanceStatus>& statuses);
+    Error                                   ProcessNoAction(Array<InstanceStatus>& statuses);
+    void  FillInstanceStatus(const InstanceInfo& instanceInfo, InstanceStateEnum state, InstanceStatus& status) const;
+    Error SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const;
+    Error LoadInstanceInfo(const std::filesystem::path& path, InstanceInfo& instance);
+    Error GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
+    Error UnpackImage(const oci::ImageManifest& manifest) const;
+    Error PrepareUpdateFileContent(const oci::ImageManifest& manifest, std::string& updateType) const;
+    void  ClearUpdateArtifacts() const;
+    Error StoreAction(const ActionType& action, const std::string& data = "") const;
+    ActionType            ReadAction() const;
+    Error                 PrepareUpdate(const InstanceInfo& instance);
+    std::filesystem::path GetPath(const std::string& fileName) const;
 
     RuntimeConfig                          mRuntimeConfig;
     RootfsConfig                           mRootfsConfig;
@@ -175,7 +177,7 @@ private:
 
     mutable std::mutex         mMutex;
     std::optional<std::thread> mHealthCheckThread;
-    InstanceInfo               mCurrentInstance;
+    InstanceInfo               mCurrentInstance {};
     StaticString<cVersionLen>  mCurrentVersion;
     RuntimeInfo                mRuntimeInfo;
     InstanceInfo               mPendingInstance;
