@@ -75,7 +75,6 @@ public:
 
 private:
     static constexpr size_t cStatBlockSize = 512;
-    static constexpr auto   cMtabPath      = "/proc/mounts";
 };
 
 } // namespace aos::common::utils
