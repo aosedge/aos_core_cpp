@@ -14,7 +14,7 @@ set(TARGET_NAME boot)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES boot.cpp config.cpp efivar.cpp partitionmanager.cpp)
+set(SOURCES boot.cpp config.cpp efibootcontroller.cpp efivar.cpp partitionmanager.cpp)
 
 # ######################################################################################################################
 # Libraries
