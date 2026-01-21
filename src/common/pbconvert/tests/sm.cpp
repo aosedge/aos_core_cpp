@@ -197,6 +197,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     grpcStatus.set_version("2.0.0");
     grpcStatus.set_runtime_id("runc");
     grpcStatus.set_state("active");
+    grpcStatus.set_preinstalled(true);
 
     auto* envVarStatus1 = grpcStatus.add_env_vars();
     envVarStatus1->set_name("VAR1");
@@ -221,6 +222,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     EXPECT_EQ(aosStatus.mNodeID, String("node1"));
     EXPECT_EQ(aosStatus.mRuntimeID, String("runc"));
     EXPECT_EQ(aosStatus.mState, InstanceStateEnum::eActive);
+    EXPECT_TRUE(aosStatus.mPreinstalled);
     EXPECT_TRUE(aosStatus.mError.IsNone());
 
     ASSERT_EQ(aosStatus.mEnvVarsStatuses.Size(), 2);
