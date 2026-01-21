@@ -16,7 +16,9 @@
 #include <core/sm/launcher/itf/runtime.hpp>
 
 #include <common/utils/utils.hpp>
+#include <sm/alerts/itf/instanceinfoprovider.hpp>
 #include <sm/launcher/runtimes/config.hpp>
+#include <sm/logprovider/itf/instanceidprovider.hpp>
 
 #include "instance.hpp"
 
@@ -30,7 +32,10 @@ constexpr auto cRuntimeContainer = "container";
 /**
  * Container runtime implementation.
  */
-class ContainerRuntime : public RuntimeItf, public RunStatusReceiverItf {
+class ContainerRuntime : public RuntimeItf,
+                         public RunStatusReceiverItf,
+                         public alerts::InstanceInfoProviderItf,
+                         public logprovider::InstanceIDProviderItf {
 public:
     /**
      * Initializes container runtime.
@@ -45,9 +50,9 @@ public:
      * @param instanceStatusReceiver instance status receiver.
      * @return Error.
      */
-    Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
+    Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-        iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver);
 
     /**
@@ -107,6 +112,24 @@ public:
     Error GetInstanceMonitoringData(
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
+    /**
+     * Returns service instance info.
+     *
+     * @param instanceID instance id.
+     * @param[out] instanceInfo instance info.
+     * @return Error.
+     */
+    Error GetInstanceInfoByID(const String& instanceID, alerts::InstanceInfo& instanceInfo) override;
+
+    /**
+     * Returns service instance IDs.
+     *
+     * @param filter log filter.
+     * @param[out] instanceIDs instance IDs.
+     * @return Error.
+     */
+    Error GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs) override;
+
 private:
     virtual std::shared_ptr<RunnerItf>     CreateRunner();
     virtual std::shared_ptr<FileSystemItf> CreateFileSystem();
@@ -122,7 +145,7 @@ private:
 
     imagemanager::ItemInfoProviderItf*        mItemInfoProvider {};
     networkmanager::NetworkManagerItf*        mNetworkManager {};
-    iamclient::PermHandlerItf*                mPermHandler {};
+    aos::iamclient::PermHandlerItf*           mPermHandler {};
     resourcemanager::ResourceInfoProviderItf* mResourceInfoProvider {};
     oci::OCISpecItf*                          mOCISpec {};
     InstanceStatusReceiverItf*                mInstanceStatusReceiver {};
