@@ -32,10 +32,20 @@
 
 using namespace testing;
 
-std::ostream& operator<<(std::ostream& os, const aos::String& str)
+namespace aos {
+
+std::ostream& operator<<(std::ostream& os, const String& str)
 {
     return os << str.CStr();
 }
+
+std::ostream& operator<<(std::ostream& os, const InstanceStatus& info)
+{
+    return os << info.mItemID << ":" << info.mSubjectID << ":" << info.mInstance << info.mPreinstalled << ":"
+              << info.mNodeID << ":" << info.mRuntimeID << ":" << info.mManifestDigest << ":" << info.mVersion;
+}
+
+} // namespace aos
 
 namespace aos::sm::launcher {
 
@@ -135,7 +145,8 @@ protected:
             file << R"({
                 "itemId": "itemId",
                 "subjectId": "subjectId",
-                "manifestDigest": "manifestDigest"
+                "manifestDigest": "manifestDigest",
+                "version": "1.0.0"
             })";
         } else {
             throw std::runtime_error("can't create instance file");
@@ -250,6 +261,44 @@ TEST_F(RootfsRuntimeTest, StartInstance)
 
     ASSERT_EQ(rebootRuntimes.size(), 1u);
     EXPECT_STREQ(rebootRuntimes[0].CStr(), GetExpectedRuntimeID().c_str());
+
+    err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, StartPreinstalledInstance)
+{
+    fs::RemoveAll(cInstanceFile.c_str());
+    fs::RemoveAll(cUpdateInstanceFile.c_str());
+
+    auto err = mRootfsRuntime.Init(
+        mConfig, mCurrentNodeInfoProvider, mItemInfoProvider, mOCISpec, mStatusReceiver, mSystemdConn);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mRootfsRuntime.Start();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    std::vector<InstanceStatus> onStartStatuses;
+
+    err = mStatusReceiver.GetStatuses(onStartStatuses, std::chrono::seconds(1));
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+    ASSERT_EQ(onStartStatuses.size(), 1u);
+    EXPECT_TRUE(onStartStatuses[0].mPreinstalled);
+
+    std::vector<InstanceStatus> onStartInstanceStatuses;
+    auto                        status = std::make_unique<InstanceStatus>();
+
+    auto instance                          = std::make_unique<InstanceInfo>();
+    static_cast<InstanceIdent&>(*instance) = static_cast<const InstanceIdent&>(onStartStatuses[0]);
+    instance->mVersion                     = onStartStatuses[0].mVersion;
+
+    err = mRootfsRuntime.StartInstance(*instance, *status);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+    EXPECT_EQ(onStartStatuses[0], *status);
+
+    err = mStatusReceiver.GetStatuses(onStartInstanceStatuses, std::chrono::seconds(1));
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+    EXPECT_EQ(onStartStatuses, onStartInstanceStatuses);
 
     err = mRootfsRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
