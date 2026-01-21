@@ -16,24 +16,24 @@ namespace aos::sm::alerts {
  */
 
 /**
- * Service instance data.
+ * Instance info.
  */
-struct ServiceInstanceData {
+struct InstanceInfo {
     InstanceIdent             mInstanceIdent;
     StaticString<cVersionLen> mVersion;
 
     /**
      * Equality operator.
      */
-    bool operator==(const ServiceInstanceData& other) const
+    bool operator==(const InstanceInfo& rhs) const
     {
-        return mInstanceIdent == other.mInstanceIdent && mVersion == other.mVersion;
+        return mInstanceIdent == rhs.mInstanceIdent && mVersion == rhs.mVersion;
     }
 
     /**
      * Equality operator.
      */
-    bool operator!=(const ServiceInstanceData& other) const { return !(*this == other); }
+    bool operator!=(const InstanceInfo& rhs) const { return !(*this == rhs); }
 };
 
 /**
@@ -44,11 +44,11 @@ public:
     /**
      * Returns service instance info.
      *
-     * @param id instance id.
-     * @param[out] instanceData service instance data.
+     * @param instanceID instance id.
+     * @param[out] instanceInfo instance info.
      * @return Error.
      */
-    virtual Error GetInstanceInfoByID(const String& id, ServiceInstanceData& instanceData) = 0;
+    virtual Error GetInstanceInfoByID(const String& instanceID, InstanceInfo& instanceInfo) = 0;
 
     /**
      * Destructor.
