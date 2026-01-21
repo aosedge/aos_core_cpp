@@ -17,6 +17,7 @@
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
 #include "itf/filesystem.hpp"
+#include "itf/monitoring.hpp"
 #include "itf/runner.hpp"
 
 #include "config.hpp"
@@ -36,6 +37,7 @@ public:
      * @param nodeInfo current node info.
      * @param fileSystem file system interface.
      * @param runner runner interface.
+     * @param monitoring monitoring interface.
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
@@ -43,9 +45,10 @@ public:
      * @param ociSpec OCI spec interface.
      */
     Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
-        FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-        networkmanager::NetworkManagerItf& networkManager, aos::iamclient::PermHandlerItf& permHandler,
-        resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
+        FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Constructor.
@@ -55,6 +58,7 @@ public:
      * @param nodeInfo current node info.
      * @param fileSystem file system interface.
      * @param runner runner interface.
+     * @param monitoring monitoring interface.
      * @param itemInfoProvider item info provider.
      * @param networkManager network manager.
      * @param permHandler permission handler.
@@ -62,9 +66,10 @@ public:
      * @param ociSpec OCI spec interface.
      */
     Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
-        FileSystemItf& fileSystem, RunnerItf& runner, imagemanager::ItemInfoProviderItf& itemInfoProvider,
-        networkmanager::NetworkManagerItf& networkManager, aos::iamclient::PermHandlerItf& permHandler,
-        resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, oci::OCISpecItf& ociSpec);
+        FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
+        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+        oci::OCISpecItf& ociSpec);
 
     /**
      * Starts instance.
@@ -166,6 +171,7 @@ private:
     const NodeInfo&                           mNodeInfo;
     FileSystemItf&                            mFileSystem;
     RunnerItf&                                mRunner;
+    MonitoringItf&                            mMonitoring;
     imagemanager::ItemInfoProviderItf&        mItemInfoProvider;
     networkmanager::NetworkManagerItf&        mNetworkManager;
     aos::iamclient::PermHandlerItf&           mPermHandler;

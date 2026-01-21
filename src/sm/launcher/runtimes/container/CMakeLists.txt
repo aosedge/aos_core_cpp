@@ -14,7 +14,15 @@ set(TARGET_NAME container)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES config.cpp container.cpp filesystem.cpp instance.cpp runner.cpp runtimeconfig.cpp)
+set(SOURCES
+    config.cpp
+    container.cpp
+    filesystem.cpp
+    instance.cpp
+    monitoring.cpp
+    runner.cpp
+    runtimeconfig.cpp
+)
 
 # ######################################################################################################################
 # Libraries

@@ -66,7 +66,7 @@ public:
 class RunnerItf {
 public:
     /**
-     * Destructs runner interface.
+     * Destructor.
      */
     virtual ~RunnerItf() = default;
 

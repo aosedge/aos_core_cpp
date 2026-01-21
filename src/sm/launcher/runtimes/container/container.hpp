@@ -133,6 +133,7 @@ public:
 private:
     virtual std::shared_ptr<RunnerItf>     CreateRunner();
     virtual std::shared_ptr<FileSystemItf> CreateFileSystem();
+    virtual std::shared_ptr<MonitoringItf> CreateMonitoring();
 
     Error UpdateRunStatus(const std::vector<RunStatus>& instances) override;
 
@@ -142,6 +143,7 @@ private:
 
     std::shared_ptr<RunnerItf>     mRunner;
     std::shared_ptr<FileSystemItf> mFileSystem;
+    std::shared_ptr<MonitoringItf> mMonitoring;
 
     imagemanager::ItemInfoProviderItf*        mItemInfoProvider {};
     networkmanager::NetworkManagerItf*        mNetworkManager {};

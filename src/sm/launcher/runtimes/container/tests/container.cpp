@@ -19,6 +19,7 @@
 #include <sm/launcher/runtimes/container/container.hpp>
 
 #include "mocks/filesystemmock.hpp"
+#include "mocks/monitoringmock.hpp"
 #include "mocks/runnermock.hpp"
 
 using namespace testing;
@@ -155,10 +156,12 @@ class TestRuntime : public ContainerRuntime {
 public:
     std::shared_ptr<NiceMock<RunnerMock>>     mRunner     = std::make_shared<NiceMock<RunnerMock>>();
     std::shared_ptr<NiceMock<FileSystemMock>> mFileSystem = std::make_shared<NiceMock<FileSystemMock>>();
+    std::shared_ptr<NiceMock<MonitoringMock>> mMonitoring = std::make_shared<NiceMock<MonitoringMock>>();
 
 private:
     std::shared_ptr<RunnerItf>     CreateRunner() override { return mRunner; }
     std::shared_ptr<FileSystemItf> CreateFileSystem() override { return mFileSystem; }
+    std::shared_ptr<MonitoringItf> CreateMonitoring() override { return mMonitoring; }
 };
 
 /***********************************************************************************************************************
@@ -931,6 +934,51 @@ TEST_F(ContainerRuntimeTest, GetInstanceIDs)
     EXPECT_NE(std::find(instanceIDs.begin(), instanceIDs.end(),
                   CreateInstanceID(static_cast<const InstanceIdent&>(instance2))),
         instanceIDs.end());
+}
+
+TEST_F(ContainerRuntimeTest, GetInstanceMonitoringData)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+    instance.mMonitoringParams.EmplaceValue();
+
+    auto instanceID     = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status         = std::make_unique<InstanceStatus>();
+    auto monitoringData = std::make_unique<monitoring::InstanceMonitoringData>();
+
+    EXPECT_CALL(*mRuntime.mMonitoring, StartInstanceMonitoring(instanceID)).WillOnce(Return(ErrorEnum::eNone));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Get monitoring data
+
+    EXPECT_CALL(*mRuntime.mMonitoring, GetInstanceMonitoringData(instanceID, _))
+        .WillOnce(Invoke([](const std::string&, monitoring::InstanceMonitoringData& data) {
+            data.mMonitoringData.mTimestamp = Time::Unix(123, 456);
+            data.mMonitoringData.mCPU       = 12.5;
+            data.mMonitoringData.mRAM       = 256 * 1024 * 1024;
+
+            return ErrorEnum::eNone;
+        }));
+
+    err = mRuntime.GetInstanceMonitoringData(static_cast<const InstanceIdent&>(instance), *monitoringData);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance monitoring data: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(monitoringData->mInstanceIdent, static_cast<const InstanceIdent&>(instance));
+    EXPECT_EQ(monitoringData->mMonitoringData.mTimestamp, Time::Unix(123, 456));
+    EXPECT_EQ(monitoringData->mMonitoringData.mCPU, 12.5);
+    EXPECT_EQ(monitoringData->mMonitoringData.mRAM, 256 * 1024 * 1024);
+
+    // Stop instance
+
+    EXPECT_CALL(*mRuntime.mMonitoring, StopInstanceMonitoring(instanceID)).WillOnce(Return(ErrorEnum::eNone));
+
+    err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::sm::launcher
