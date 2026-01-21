@@ -8,8 +8,10 @@
 #include <cerrno>
 #include <cstdlib>
 #include <filesystem>
+#include <mntent.h>
 #include <numeric>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 
@@ -22,6 +24,16 @@
 namespace fs = std::filesystem;
 
 namespace aos::common::utils {
+
+namespace {
+
+/***********************************************************************************************************************
+ * Consts
+ **********************************************************************************************************************/
+
+constexpr auto cMtabPath = "/proc/mounts";
+
+}; // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -83,6 +95,75 @@ void ChangeOwner(const std::string& path, uid_t uid, gid_t gid)
     for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
         changeOwner(entry.path().string(), uid, gid);
     }
+}
+
+RetWithError<std::string> GetMountPoint(const std::string& dir)
+{
+    struct stat dirStat;
+
+    if (stat(dir.c_str(), &dirStat) != 0) {
+        return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
+    }
+
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    if (!mtab) {
+        return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
+    }
+
+    struct mntent* entry;
+    std::string    bestMountPoint;
+
+    while ((entry = getmntent(mtab.get())) != nullptr) {
+        struct stat mountStat;
+
+        if (stat(entry->mnt_dir, &mountStat) != 0) {
+            continue;
+        }
+
+        if (dirStat.st_dev == mountStat.st_dev) {
+            const char* mp = entry->mnt_dir;
+
+            if (strlen(mp) > bestMountPoint.length()) {
+                bestMountPoint = mp;
+            }
+        }
+    }
+
+    if (bestMountPoint.empty()) {
+        return {"", Error(ErrorEnum::eNotFound, "failed to find mount point")};
+    }
+
+    return bestMountPoint;
+}
+
+RetWithError<std::string> GetBlockDevice(const std::string& path)
+{
+    struct stat dirStat;
+
+    if (stat(path.c_str(), &dirStat) != 0) {
+        return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
+    }
+
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    if (!mtab) {
+        return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
+    }
+
+    struct mntent* entry;
+
+    while ((entry = getmntent(mtab.get())) != nullptr) {
+        struct stat mountStat;
+
+        if (stat(entry->mnt_dir, &mountStat) != 0) {
+            continue;
+        }
+
+        if (dirStat.st_dev == mountStat.st_dev) {
+            return std::string(entry->mnt_fsname);
+        }
+    }
+
+    return {"", Error(ErrorEnum::eNotFound, "failed to find block device")};
 }
 
 } // namespace aos::common::utils

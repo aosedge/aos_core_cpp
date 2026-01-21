@@ -68,6 +68,22 @@ std::string JoinPath(const std::string& base, const std::string& entry, Args&&..
     return path.string();
 }
 
+/**
+ * Gets mount point for the given directory.
+ *
+ * @param dir directory path.
+ * @return RetWithError<std::string>.
+ */
+RetWithError<std::string> GetMountPoint(const std::string& dir);
+
+/**
+ * Gets block device for the given path.
+ *
+ * @param path file or directory path.
+ * @return RetWithError<std::string>.
+ */
+RetWithError<std::string> GetBlockDevice(const std::string& path);
+
 } // namespace aos::common::utils
 
 #endif

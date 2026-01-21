@@ -6,9 +6,7 @@
 
 #include <filesystem>
 #include <memory>
-#include <mntent.h>
 #include <sys/quota.h>
-#include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
 
@@ -23,41 +21,12 @@ namespace aos::common::utils {
 
 RetWithError<StaticString<cFilePathLen>> FSPlatform::GetMountPoint(const String& dir) const
 {
-    struct stat dirStat;
-
-    if (stat(dir.CStr(), &dirStat) != 0) {
-        return {0, Error(ErrorEnum::eNotFound, "failed to stat directory")};
+    auto [mountPoint, err] = common::utils::GetMountPoint(dir.CStr());
+    if (!err.IsNone()) {
+        return {"", AOS_ERROR_WRAP(err)};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
-    if (!mtab) {
-        return {0, Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
-    }
-
-    struct mntent* entry;
-    std::string    bestMountPoint;
-
-    while ((entry = getmntent(mtab.get())) != nullptr) {
-        struct stat mountStat;
-
-        if (stat(entry->mnt_dir, &mountStat) != 0) {
-            continue;
-        }
-
-        if (dirStat.st_dev == mountStat.st_dev) {
-            const char* mp = entry->mnt_dir;
-
-            if (strlen(mp) > bestMountPoint.length()) {
-                bestMountPoint = mp;
-            }
-        }
-    }
-
-    if (bestMountPoint.empty()) {
-        return {0, Error(ErrorEnum::eNotFound, "failed to find mount point")};
-    }
-
-    return {bestMountPoint.c_str(), ErrorEnum::eNone};
+    return {mountPoint.c_str(), ErrorEnum::eNone};
 }
 
 RetWithError<size_t> FSPlatform::GetTotalSize(const String& dir) const
@@ -128,32 +97,12 @@ Error FSPlatform::ChangeOwner(const String& path, uint32_t uid, uint32_t gid) co
 
 RetWithError<StaticString<cDeviceNameLen>> FSPlatform::GetBlockDevice(const String& path) const
 {
-    struct stat dirStat;
-
-    if (stat(path.CStr(), &dirStat) != 0) {
-        return {0, Error(ErrorEnum::eNotFound, "failed to stat directory")};
+    auto [device, err] = common::utils::GetBlockDevice(path.CStr());
+    if (!err.IsNone()) {
+        return {"", AOS_ERROR_WRAP(err)};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
-    if (!mtab) {
-        return {0, Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
-    }
-
-    struct mntent* entry;
-
-    while ((entry = getmntent(mtab.get())) != nullptr) {
-        struct stat mountStat;
-
-        if (stat(entry->mnt_dir, &mountStat) != 0) {
-            continue;
-        }
-
-        if (dirStat.st_dev == mountStat.st_dev) {
-            return {entry->mnt_fsname, ErrorEnum::eNone};
-        }
-    }
-
-    return {0, Error(ErrorEnum::eNotFound, "failed to find block device")};
+    return {device.c_str(), ErrorEnum::eNone};
 }
 
 } // namespace aos::common::utils
