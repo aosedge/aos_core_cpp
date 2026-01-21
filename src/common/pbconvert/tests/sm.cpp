@@ -198,6 +198,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     grpcStatus.set_runtime_id("runc");
     grpcStatus.set_state("active");
     grpcStatus.set_preinstalled(true);
+    grpcStatus.set_manifest_digest("sha256:deadbeef");
 
     auto* envVarStatus1 = grpcStatus.add_env_vars();
     envVarStatus1->set_name("VAR1");
@@ -223,6 +224,7 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     EXPECT_EQ(aosStatus.mRuntimeID, String("runc"));
     EXPECT_EQ(aosStatus.mState, InstanceStateEnum::eActive);
     EXPECT_TRUE(aosStatus.mPreinstalled);
+    EXPECT_STREQ(aosStatus.mManifestDigest.CStr(), "sha256:deadbeef");
     EXPECT_TRUE(aosStatus.mError.IsNone());
 
     ASSERT_EQ(aosStatus.mEnvVarsStatuses.Size(), 2);
