@@ -1029,6 +1029,10 @@ Error ConvertFromProto(const servicemanager::v5::InstanceStatus& src, const Stri
         return AOS_ERROR_WRAP(err);
     }
 
+    if (auto err = dst.mManifestDigest.Assign(src.manifest_digest().c_str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     for (auto protoEnvVarStatus : src.env_vars()) {
         if (auto err = dst.mEnvVarsStatuses.EmplaceBack(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
