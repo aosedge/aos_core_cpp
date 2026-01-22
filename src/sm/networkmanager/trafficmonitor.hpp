@@ -73,7 +73,7 @@ public:
      * @param outputTraffic output traffic.
      * @return Error.
      */
-    Error GetSystemData(uint64_t& inputTraffic, uint64_t& outputTraffic) const override;
+    Error GetSystemTraffic(uint64_t& inputTraffic, uint64_t& outputTraffic) const override;
 
     /**
      * Returns instance traffic data.
