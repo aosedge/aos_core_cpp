@@ -45,6 +45,13 @@ Monitoring::Monitoring()
 {
 }
 
+Error Monitoring::Init(networkmanager::InstanceTrafficProviderItf& trafficProvider)
+{
+    mTrafficProvider = &trafficProvider;
+
+    return ErrorEnum::eNone;
+}
+
 Error Monitoring::StartInstanceMonitoring(
     const std::string& instanceID, uid_t uid, const std::vector<PartitionInfo>& partInfos)
 {
@@ -101,6 +108,16 @@ Error Monitoring::GetInstanceMonitoringData(
                       << Log::Field("partition", partition.mName)
                       << Log::Field("usedSize", partitionUsage.mUsedSize / cKilobyte);
         }
+
+        if (auto err = mTrafficProvider->GetInstanceTraffic(
+                instanceID.c_str(), monitoringData.mMonitoringData.mDownload, monitoringData.mMonitoringData.mUpload);
+            !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        LOG_DBG() << "Get instance monitoring data" << Log::Field("instanceID", instanceID.c_str())
+                  << Log::Field("download", monitoringData.mMonitoringData.mDownload / cKilobyte)
+                  << Log::Field("upload", monitoringData.mMonitoringData.mUpload / cKilobyte);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
