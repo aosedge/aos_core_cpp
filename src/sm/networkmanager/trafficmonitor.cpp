@@ -198,7 +198,7 @@ Error TrafficMonitor::StopInstanceMonitoring(const String& instanceID)
     return ErrorEnum::eNone;
 }
 
-Error TrafficMonitor::GetSystemData(uint64_t& inputTraffic, uint64_t& outputTraffic) const
+Error TrafficMonitor::GetSystemTraffic(uint64_t& inputTraffic, uint64_t& outputTraffic) const
 {
     std::shared_lock lock {mMutex};
 

@@ -140,7 +140,7 @@ TEST_F(TrafficMonitorTest, GetSystemData)
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
     uint64_t inputTraffic = 0, outputTraffic = 0;
-    EXPECT_EQ(mMonitor->GetSystemData(inputTraffic, outputTraffic), aos::ErrorEnum::eNone);
+    EXPECT_EQ(mMonitor->GetSystemTraffic(inputTraffic, outputTraffic), aos::ErrorEnum::eNone);
     EXPECT_EQ(inputTraffic, 100);
     EXPECT_EQ(outputTraffic, 200);
 }
