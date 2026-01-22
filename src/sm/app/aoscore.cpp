@@ -89,7 +89,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize node monitoring provider
 
-    err = mNodeMonitoringProvider.Init(mIAMClient, mTrafficMonitor);
+    err = mNodeMonitoringProvider.Init(mIAMClient, mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node monitoring provider");
 
     // Initialize runtimes

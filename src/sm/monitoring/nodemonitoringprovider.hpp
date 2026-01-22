@@ -9,7 +9,7 @@
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
 #include <core/common/monitoring/itf/nodemonitoringprovider.hpp>
-#include <core/sm/networkmanager/itf/trafficmonitor.hpp>
+#include <core/sm/networkmanager/itf/systemtrafficprovider.hpp>
 
 namespace aos::sm::monitoring {
 
@@ -22,11 +22,11 @@ public:
      * Initializes node monitoring provider.
      *
      * @param nodeInfoProvider current node info provider.
-     * @param trafficMonitor traffic monitor.
+     * @param trafficProvider system traffic provider.
      * @return Error.
      */
     Error Init(aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider,
-        sm::networkmanager::TrafficMonitorItf&             trafficMonitor);
+        networkmanager::SystemTrafficProviderItf&          trafficProvider);
 
     /**
      * Starts node monitoring provider.
@@ -65,7 +65,7 @@ private:
     RetWithError<uint64_t> GetSystemDiskUsage(const String& path);
 
     aos::iamclient::CurrentNodeInfoProviderItf* mNodeInfoProvider {};
-    sm::networkmanager::TrafficMonitorItf*      mTrafficMonitor {};
+    networkmanager::SystemTrafficProviderItf*   mTrafficProvider {};
     NodeInfo                                    mNodeInfo;
     CPUUsage                                    mPrevSysCPUUsage;
     size_t                                      mCPUCount {};
