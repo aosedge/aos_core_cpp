@@ -19,17 +19,9 @@ namespace aos::sm::monitoring {
 
 namespace {
 
-class TrafficMonitorMock : public sm::networkmanager::TrafficMonitorItf {
+class TrafficProviderMock : public networkmanager::SystemTrafficProviderItf {
 public:
-    MOCK_METHOD(Error, Start, (), (override));
-    MOCK_METHOD(Error, Stop, (), (override));
-    MOCK_METHOD(void, SetPeriod, (sm::networkmanager::TrafficPeriod period), (override));
-    MOCK_METHOD(Error, StartInstanceMonitoring,
-        (const String& instanceID, const String& IPAddress, uint64_t downloadLimit, uint64_t uploadLimit), (override));
-    MOCK_METHOD(Error, StopInstanceMonitoring, (const String& instanceID), (override));
-    MOCK_METHOD(Error, GetSystemData, (uint64_t & inputTraffic, uint64_t& outputTraffic), (const override));
-    MOCK_METHOD(Error, GetInstanceTraffic, (const String& instanceID, uint64_t& inputTraffic, uint64_t& outputTraffic),
-        (const override));
+    MOCK_METHOD(Error, GetSystemTraffic, (size_t&, size_t&), (const, override));
 };
 
 class CurrentNodeInfoProviderMock : public iamclient::CurrentNodeInfoProviderItf {
@@ -56,7 +48,7 @@ public:
     }
 
     NodeMonitoringProvider      mNodeMonitoringProvider;
-    TrafficMonitorMock          mTrafficMonitor;
+    TrafficProviderMock         mTrafficProvider;
     CurrentNodeInfoProviderMock mNodeInfoProvider;
     NodeInfo                    mNodeInfo;
 };
@@ -70,13 +62,13 @@ TEST_F(ResourceUsageProviderTest, GetNodeMonitoringData)
     auto monitoringData = std::make_unique<MonitoringData>();
     auto partitionInfos = std::make_unique<PartitionInfoArray>();
 
-    auto err = mNodeMonitoringProvider.Init(mNodeInfoProvider, mTrafficMonitor);
+    auto err = mNodeMonitoringProvider.Init(mNodeInfoProvider, mTrafficProvider);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     err = mNodeMonitoringProvider.Start();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_CALL(mTrafficMonitor, GetSystemData)
+    EXPECT_CALL(mTrafficProvider, GetSystemTraffic)
         .WillOnce(DoAll(SetArgReferee<0>(1024), SetArgReferee<1>(2048), Return(ErrorEnum::eNone)));
 
     err = mNodeMonitoringProvider.GetNodeMonitoringData(*monitoringData);
