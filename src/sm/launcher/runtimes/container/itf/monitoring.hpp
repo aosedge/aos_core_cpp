@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <core/common/monitoring/itf/monitoringdata.hpp>
+#include <core/sm/networkmanager/itf/instancetrafficprovider.hpp>
 
 namespace aos::sm::launcher {
 
@@ -23,6 +24,14 @@ public:
      * Destructor.
      */
     virtual ~MonitoringItf() = default;
+
+    /**
+     * Initializes monitoring.
+     *
+     * @param trafficProvider network traffic provider.
+     * @return Error.
+     */
+    virtual Error Init(networkmanager::InstanceTrafficProviderItf& trafficProvider) = 0;
 
     /**
      * Starts instance monitoring.

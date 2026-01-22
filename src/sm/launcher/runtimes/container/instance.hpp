@@ -144,8 +144,8 @@ private:
     static constexpr auto cInstanceStateFile  = "/state.dat";
     static constexpr auto cInstanceStorageDir = "/storage";
 
-    static constexpr auto cStatePartitionName   = "state";
-    static constexpr auto cStoragePartitionName = "storage";
+    static constexpr auto cStatePartitionName   = "states";
+    static constexpr auto cStoragePartitionName = "storages";
 
     void   GenerateInstanceID();
     Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);

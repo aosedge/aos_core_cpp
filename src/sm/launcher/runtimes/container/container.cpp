@@ -65,6 +65,10 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
             return AOS_ERROR_WRAP(err);
         }
 
+        if (auto err = mMonitoring->Init(*mNetworkManager); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         ParseContainerConfig(config.mConfig
                 ? common::utils::CaseInsensitiveObjectWrapper(config.mConfig)
                 : common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>()),

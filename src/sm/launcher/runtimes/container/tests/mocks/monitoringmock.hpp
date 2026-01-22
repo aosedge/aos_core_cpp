@@ -18,6 +18,7 @@ namespace aos::sm::launcher {
  */
 class MonitoringMock : public MonitoringItf {
 public:
+    MOCK_METHOD(Error, Init, (networkmanager::InstanceTrafficProviderItf&), (override));
     MOCK_METHOD(
         Error, StartInstanceMonitoring, (const std::string&, uid_t, const std::vector<PartitionInfo>&), (override));
     MOCK_METHOD(Error, StopInstanceMonitoring, (const std::string&), (override));
