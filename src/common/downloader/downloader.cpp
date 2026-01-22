@@ -224,6 +224,9 @@ int Downloader::XferInfoCallback(
 int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow,
     [[maybe_unused]] curl_off_t ultotal, [[maybe_unused]] curl_off_t ulnow)
 {
+    context->mDownloadedSize = context->mExistingOffset + dlnow;
+    context->mTotalSize      = dltotal;
+
     if (!mSender) {
         return 0;
     }
@@ -235,8 +238,6 @@ int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_of
     }
 
     context->mLastProgressTime = now;
-    context->mDownloadedSize   = context->mExistingOffset + dlnow;
-    context->mTotalSize        = dltotal;
 
     LOG_DBG() << "Download progress" << Log::Field("downloaded", context->mDownloadedSize)
               << Log::Field("total", context->mTotalSize);
