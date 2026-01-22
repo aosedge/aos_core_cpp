@@ -39,14 +39,14 @@ const auto cUnitMapping = std::map<std::string, size_t> {
  * Public
  **********************************************************************************************************************/
 
-Error NodeMonitoringProvider::Init(
-    aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider, sm::networkmanager::TrafficMonitorItf& trafficMonitor)
+Error NodeMonitoringProvider::Init(aos::iamclient::CurrentNodeInfoProviderItf& nodeInfoProvider,
+    networkmanager::SystemTrafficProviderItf&                                  trafficProvider)
 {
     LOG_DBG() << "Init node monitoring provider";
 
     mCPUCount         = std::thread::hardware_concurrency();
     mNodeInfoProvider = &nodeInfoProvider;
-    mTrafficMonitor   = &trafficMonitor;
+    mTrafficProvider  = &trafficProvider;
 
     return ErrorEnum::eNone;
 }
@@ -106,13 +106,13 @@ Error NodeMonitoringProvider::GetNodeMonitoringData(MonitoringData& monitoringDa
                   << Log::Field("usedSize", monitoringData.mPartitions.Back().mUsedSize / cKilobyte);
     }
 
-    if (mTrafficMonitor) {
-        if (err = mTrafficMonitor->GetSystemData(monitoringData.mDownload, monitoringData.mUpload); !err.IsNone()) {
+    if (mTrafficProvider) {
+        if (err = mTrafficProvider->GetSystemTraffic(monitoringData.mDownload, monitoringData.mUpload); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        LOG_DBG() << "Get node monitoring data" << Log::Field("download(K)", monitoringData.mDownload / cKilobyte)
-                  << Log::Field("upload(K)", monitoringData.mUpload / cKilobyte);
+        LOG_DBG() << "Get node monitoring data" << Log::Field("download", monitoringData.mDownload / cKilobyte)
+                  << Log::Field("upload", monitoringData.mUpload / cKilobyte);
     }
 
     return ErrorEnum::eNone;
