@@ -152,8 +152,29 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
 
             if (auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceInfo));
                 it != mCurrentInstances.end()) {
-                return AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "instance already running"));
+
+                instance = it->second;
+                instance->GetStatus(status);
+
+                if (status.mState == InstanceStateEnum::eActive) {
+                    LOG_DBG() << "Instance is already running"
+                              << Log::Field("instance", static_cast<const InstanceIdent&>(instanceInfo));
+
+                    return ErrorEnum::eNone;
+                }
             }
+        }
+
+        if (instance) {
+            if (auto err = instance->Stop(); !err.IsNone()) {
+                LOG_ERR() << "Failed to stop instance"
+                          << Log::Field("instance", static_cast<const InstanceIdent&>(instanceInfo)) << Log::Field(err);
+            }
+
+            instance->GetStatus(status);
+            SendInstanceStatus(status);
+        } else {
+            std::lock_guard lock {mMutex};
 
             instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner,
                 *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
@@ -192,7 +213,9 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
 
             auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceIdent));
             if (it == mCurrentInstances.end()) {
-                return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "instance not running"));
+                LOG_DBG() << "Instance is not running" << Log::Field("instance", instanceIdent);
+
+                return ErrorEnum::eNone;
             }
 
             instance = it->second;
