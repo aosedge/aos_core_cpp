@@ -14,7 +14,7 @@
 #include <grpcpp/server.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
-#include <core/cm/imagemanager/itf/blobinfoprovider.hpp>
+#include <core/cm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/cm/launcher/itf/envvarhandler.hpp>
 #include <core/cm/launcher/itf/instancerunner.hpp>
 #include <core/cm/launcher/itf/monitoringprovider.hpp>
@@ -49,7 +49,7 @@ public:
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
-     * @param blobInfoProvider blob info provider.
+     * @param itemInfoProvider item info provider.
      * @param alertsReceiver alerts receiver.
      * @param logSender log sender.
      * @param envVarsStatusSender env vars status sender.
@@ -61,7 +61,7 @@ public:
      */
     Error Init(const Config& config, cloudconnection::CloudConnectionItf& cloudConnection,
         aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-        crypto::x509::ProviderItf& cryptoProvider, imagemanager::BlobInfoProviderItf& blobInfoProvider,
+        crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
         nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, bool insecureConn = false);
@@ -202,7 +202,7 @@ private:
     crypto::CertLoaderItf*               mCertLoader {};
     crypto::x509::ProviderItf*           mCryptoProvider {};
     aos::iamclient::CertProviderItf*     mCertProvider {};
-    imagemanager::BlobInfoProviderItf*   mBlobInfoProvider {};
+    imagemanager::ItemInfoProviderItf*   mItemInfoProvider {};
     alerts::ReceiverItf*                 mAlertsReceiver {};
     SenderItf*                           mLogSender {};
     launcher::SenderItf*                 mEnvVarsStatusSender {};
