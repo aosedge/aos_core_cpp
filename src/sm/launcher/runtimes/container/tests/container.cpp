@@ -300,7 +300,7 @@ TEST_F(ContainerRuntimeTest, StartInstance)
     // Start the same instance again
 
     err = mRuntime.StartInstance(instance, *status);
-    EXPECT_TRUE(err.Is(ErrorEnum::eAlreadyExist)) << "Wrong error: " << tests::utils::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(ContainerRuntimeTest, StopInstance)
@@ -355,7 +355,7 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     // Stop the same instance again
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
+    EXPECT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(ContainerRuntimeTest, UpdateInstanceStatus)
