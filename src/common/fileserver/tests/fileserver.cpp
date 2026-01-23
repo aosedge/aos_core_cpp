@@ -58,7 +58,7 @@ protected:
 TEST_F(CommonFileserverTest, TranslateFilePathURL)
 {
     StaticString<256> url;
-    auto              err = mFileserver.TranslateFilePathURL("file://download/test_file.dat", url);
+    auto              err = mFileserver.TranslateFilePathURL("download/test_file.dat", url);
     EXPECT_EQ(err, ErrorEnum::eNone);
 
     EXPECT_EQ(url, "http://localhost:8000/test_file.dat");

@@ -14,13 +14,14 @@
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Path.h>
 #include <Poco/StreamCopier.h>
-#include <Poco/URI.h>
 
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
 
 #include "fileserver.hpp"
+
+namespace fs = std::filesystem;
 
 namespace aos::common::fileserver {
 
@@ -59,18 +60,22 @@ std::string GetMimeType(const std::string& ext)
 Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
 {
     try {
+        LOG_DBG() << "Init fileserver" << Log::Field("serverURL", serverURL.c_str())
+                  << Log::Field("rootDir", rootDir.c_str());
+
         mRootDir = rootDir;
-        Poco::URI uri(serverURL);
+        mURI     = serverURL.c_str();
 
-        mHost = uri.getHost();
-        mPort = uri.getPort();
-
-        if (mHost.empty()) {
-            mHost = "localhost";
+        if (mURI.getScheme().empty()) {
+            mURI.setScheme("http");
         }
 
-        if (mPort == 0) {
-            mPort = cDefaultPort;
+        if (mURI.getHost().empty()) {
+            mURI.setHost("localhost");
+        }
+
+        if (mURI.getPort() == 0) {
+            mURI.setPort(cDefaultPort);
         }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -81,20 +86,14 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
 
 Error Fileserver::TranslateFilePathURL(const String& filePath, String& outURL)
 {
-    if (mHost.empty() || mPort == 0) {
+    if (mURI.getScheme().empty() || mURI.getHost().empty() || mURI.getPort() == 0) {
         return Error(ErrorEnum::eWrongState, "server is not started");
     }
 
     try {
-        Poco::URI             uri(filePath.CStr());
-        std::filesystem::path path = uri.getPath();
+        auto uri = mURI;
 
-        auto filename = path.filename();
-
-        uri.setScheme("http");
-        uri.setHost(mHost);
-        uri.setPort(mPort);
-        uri.setPath(filename.string());
+        uri.setPath(fs::relative(fs::path(filePath.CStr()), mRootDir).string());
 
         outURL = uri.toString().c_str();
 
@@ -179,7 +178,7 @@ Error Fileserver::Start()
     mThread = std::thread([this]() {
         try {
             mServer = std::make_unique<Poco::Net::HTTPServer>(new FileRequestHandlerFactory(mRootDir),
-                Poco::Net::ServerSocket(mPort), new Poco::Net::HTTPServerParams);
+                Poco::Net::ServerSocket(mURI.getPort()), new Poco::Net::HTTPServerParams);
 
             mServer->start();
         } catch (const std::exception& e) {
