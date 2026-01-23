@@ -11,11 +11,11 @@
 #include <cm/smcontroller/smcontroller.hpp>
 
 #include "stubs/alertsreceiverstub.hpp"
-#include "stubs/blobinfoproviderstub.hpp"
 #include "stubs/certloaderstub.hpp"
 #include "stubs/certproviderstub.hpp"
 #include "stubs/cloudconnectionstub.hpp"
 #include "stubs/instancestatusreceiverstub.hpp"
+#include "stubs/iteminfoproviderstub.hpp"
 #include "stubs/launchersenderstub.hpp"
 #include "stubs/monitoringreceiverstub.hpp"
 #include "stubs/smclientstub.hpp"
@@ -43,7 +43,7 @@ protected:
         mConfig.mCMServerURL = "localhost:8094";
 
         auto err = mSMController.Init(mConfig, mCloudConnection, mCertProvider, mCertLoader, mX509Provider,
-            mBlobInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
+            mItemInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
             mInstanceStatusReceiver, mSMInfoReceiver, true);
         ASSERT_TRUE(err.IsNone()) << err.Message();
 
@@ -94,7 +94,7 @@ protected:
     iamclient::CertProviderStub          mCertProvider;
     crypto::CertLoaderStub               mCertLoader;
     crypto::x509::ProviderStub           mX509Provider;
-    BlobInfoProviderStub                 mBlobInfoProvider;
+    ItemInfoProviderStub                 mItemInfoProvider;
     alerts::ReceiverStub                 mAlertsReceiver;
     SenderStub                           mSMControllerSender;
     launcher::SenderStub                 mLauncherSender;
@@ -727,14 +727,8 @@ TEST_F(SMControllerTest, GetBlobsInfos)
     const std::string digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
     const std::string url    = "https://example.com/blob.tar";
 
-    // 1) Setup blob info in stub
-    BlobInfo blobInfo;
-    blobInfo.mDigest.Assign(digest.c_str());
-    blobInfo.mSize = 1024;
-    if (auto err = blobInfo.mURLs.EmplaceBack(url.c_str()); !err.IsNone()) {
-        FAIL() << "Failed to set blob URL: " << err.Message();
-    }
-    mBlobInfoProvider.SetBlobInfo(String(digest.c_str()), blobInfo);
+    // 1) Setup blob URL in stub
+    mItemInfoProvider.SetBlobURL(digest, url);
 
     // 2) Start client
     SMClientStub client;
