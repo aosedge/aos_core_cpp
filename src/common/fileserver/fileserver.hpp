@@ -16,6 +16,7 @@
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/URI.h>
 
 #include <core/cm/fileserver/itf/fileserver.hpp>
 #include <core/common/tools/error.hpp>
@@ -117,8 +118,7 @@ private:
 
     std::string                            mRootDir;
     std::unique_ptr<Poco::Net::HTTPServer> mServer;
-    std::string                            mHost;
-    uint16_t                               mPort {};
+    Poco::URI                              mURI;
     std::thread                            mThread;
 };
 
