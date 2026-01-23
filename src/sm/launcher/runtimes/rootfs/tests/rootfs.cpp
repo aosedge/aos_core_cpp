@@ -128,7 +128,8 @@ protected:
         WriteFiles();
 
         EXPECT_CALL(mCurrentNodeInfoProvider, GetCurrentNodeInfo(_)).WillRepeatedly(Invoke([](NodeInfo& nodeInfo) {
-            nodeInfo.mNodeID = "nodeId";
+            nodeInfo.mNodeID   = "nodeId";
+            nodeInfo.mNodeType = "nodeType";
 
             return ErrorEnum::eNone;
         }));
@@ -282,7 +283,12 @@ TEST_F(RootfsRuntimeTest, StartPreinstalledInstance)
 
     err = mStatusReceiver.GetStatuses(onStartStatuses, std::chrono::seconds(1));
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
     ASSERT_EQ(onStartStatuses.size(), 1u);
+    EXPECT_EQ(onStartStatuses[0].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(onStartStatuses[0].mItemID.CStr(), "rootfs");
+    EXPECT_STREQ(onStartStatuses[0].mSubjectID.CStr(), "nodeType");
+    EXPECT_STREQ(onStartStatuses[0].mVersion.CStr(), "1.0.0");
     EXPECT_TRUE(onStartStatuses[0].mPreinstalled);
 
     std::vector<InstanceStatus> onStartInstanceStatuses;

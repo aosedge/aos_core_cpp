@@ -174,6 +174,7 @@ private:
     InstanceStatusReceiverItf*             mStatusReceiver {};
     utils::SystemdUpdateChecker            mUpdateChecker;
     utils::SystemdRebooter                 mRebooter;
+    InstanceIdent                          mDefaultInstanceIdent;
 
     mutable std::mutex         mMutex;
     std::optional<std::thread> mHealthCheckThread;

@@ -257,8 +257,8 @@ Error RootfsRuntime::InitInstalledData()
             return err;
         }
 
-        mCurrentInstance.mType    = UpdateItemTypeEnum::eComponent;
-        mCurrentInstance.mVersion = version;
+        static_cast<InstanceIdent&>(mCurrentInstance) = mDefaultInstanceIdent;
+        mCurrentInstance.mVersion                     = version;
 
         err = SaveInstanceInfo(mCurrentInstance, path);
         if (!err.IsNone()) {
@@ -306,6 +306,11 @@ Error RootfsRuntime::CreateRuntimeInfo()
     }
 
     mRuntimeInfo.mMaxInstances = 1;
+
+    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance  = 0;
+    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
@@ -408,7 +413,7 @@ void RootfsRuntime::FillInstanceStatus(
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mManifestDigest              = instanceInfo.mManifestDigest;
     status.mType                        = UpdateItemTypeEnum::eComponent;
-    status.mPreinstalled                = status.mItemID.IsEmpty();
+    status.mPreinstalled                = static_cast<const InstanceIdent&>(instanceInfo) == mDefaultInstanceIdent;
 }
 
 Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const
