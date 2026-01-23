@@ -25,7 +25,7 @@ namespace aos::cm::smcontroller {
 
 Error SMController::Init(const Config& config, cloudconnection::CloudConnectionItf& cloudConnection,
     iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, imagemanager::BlobInfoProviderItf& blobInfoProvider,
+    crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
     alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
     nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, bool insecureConn)
@@ -37,7 +37,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     mCertProvider           = &certProvider;
     mCertLoader             = &certLoader;
     mCryptoProvider         = &cryptoProvider;
-    mBlobInfoProvider       = &blobInfoProvider;
+    mItemInfoProvider       = &itemInfoProvider;
     mAlertsReceiver         = &alertsReceiver;
     mLogSender              = &logSender;
     mEnvVarsStatusSender    = &envVarsStatusSender;
@@ -286,37 +286,19 @@ grpc::Status SMController::RegisterSM(grpc::ServerContext*                      
     return grpc::Status::OK;
 }
 
-grpc::Status SMController::GetBlobsInfos(grpc::ServerContext* /*context*/,
-    const servicemanager::v5::BlobsInfosRequest* request, servicemanager::v5::BlobsInfos* response)
+grpc::Status SMController::GetBlobsInfos(grpc::ServerContext*, const servicemanager::v5::BlobsInfosRequest* request,
+    servicemanager::v5::BlobsInfos* response)
 {
-    LOG_DBG() << "Get blobs info request received: digests count=" << request->digests_size();
-
-    std::vector<StaticString<oci::cDigestLen>> digests;
-    digests.reserve(request->digests_size());
+    LOG_DBG() << "Get blobs info request received" << Log::Field("digestsCount", request->digests_size());
 
     for (int i = 0; i < request->digests_size(); ++i) {
-        digests.push_back(request->digests(i).c_str());
-    }
+        StaticString<cURLLen> digestURL;
 
-    auto digestsArray = Array<StaticString<oci::cDigestLen>>(digests.data(), digests.size());
-
-    std::vector<BlobInfo> blobsInfo(request->digests_size());
-    auto                  blobsInfoArray = Array<BlobInfo>(blobsInfo.data(), blobsInfo.size());
-
-    if (auto err = mBlobInfoProvider->GetBlobsInfos(digestsArray, blobsInfoArray); !err.IsNone()) {
-        return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
-    }
-
-    if (blobsInfoArray.Size() != digestsArray.Size()) {
-        return grpc::Status(grpc::StatusCode::NOT_FOUND, "some blobs info not found");
-    }
-
-    for (const auto& blobInfo : blobsInfo) {
-        if (blobInfo.mURLs.Size() != 1) {
-            return grpc::Status(grpc::StatusCode::NOT_FOUND, "blob URL not found");
+        if (auto err = mItemInfoProvider->GetBlobURL(request->digests(i).c_str(), digestURL); !err.IsNone()) {
+            return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
         }
 
-        response->add_urls(blobInfo.mURLs[0].CStr());
+        response->add_urls(digestURL.CStr());
     }
 
     return grpc::Status::OK;
