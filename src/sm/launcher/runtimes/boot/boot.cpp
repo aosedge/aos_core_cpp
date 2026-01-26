@@ -314,10 +314,11 @@ Error BootRuntime::CreateRuntimeInfo()
 
     mRuntimeInfo.mMaxInstances = 1;
 
-    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
-    mDefaultInstanceIdent.mInstance  = 0;
-    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
-    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
+    mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance     = 0;
+    mDefaultInstanceIdent.mItemID       = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID    = nodeInfo->mNodeType;
+    mDefaultInstanceIdent.mPreinstalled = true;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
@@ -487,7 +488,7 @@ void BootRuntime::ToInstanceStatus(const BootData& data, InstanceStatus& status)
     status.mVersion                     = data.mVersion;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mType                        = UpdateItemTypeEnum::eComponent;
-    status.mPreinstalled                = static_cast<const InstanceIdent&>(data) == mDefaultInstanceIdent;
+    status.mPreinstalled                = data.mPreinstalled;
 }
 
 Error BootRuntime::InstallPendingUpdate()
@@ -627,6 +628,7 @@ Error BootRuntime::StoreData(const std::string_view filename, const BootData& da
         json->set("state", data.mState.ToString().CStr());
         json->set("type", data.mType.ToString().CStr());
         json->set("version", data.mVersion.CStr());
+        json->set("preinstalled", data.mPreinstalled);
 
         if (data.mPartitionIndex.HasValue()) {
             json->set("partitionIndex", data.mPartitionIndex.GetValue());
@@ -678,7 +680,8 @@ Error BootRuntime::LoadData(const std::string_view filename, BootData& data)
             data.mPartitionIndex.SetValue(object.GetValue<size_t>("partitionIndex"));
         }
 
-        data.mType = UpdateItemTypeEnum::eComponent;
+        data.mPreinstalled = object.GetValue<bool>("preinstalled");
+        data.mType         = UpdateItemTypeEnum::eComponent;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
