@@ -11,6 +11,7 @@ CREATE TABLE instances (
     subjectID TEXT NOT NULL,
     instance INTEGER NOT NULL,
     type TEXT NOT NULL DEFAULT 'service',
+    preinstalled INTEGER NOT NULL DEFAULT 0,
     version TEXT,
     manifestDigest TEXT,
     runtimeID TEXT,
@@ -24,7 +25,7 @@ CREATE TABLE instances (
     envVars TEXT,
     networkParameters TEXT,
     monitoringParams TEXT,
-    PRIMARY KEY(itemID, subjectID, instance, type)
+    PRIMARY KEY(itemID, subjectID, instance, type, preinstalled)
 );
 
 ALTER TABLE network ADD COLUMN bridgeIfName TEXT;
