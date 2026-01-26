@@ -282,12 +282,13 @@ private:
         eSubjectID,
         eInstance,
         eType,
+        ePreinstalled,
         eStorageQuota,
         eStateQuota,
         eStateChecksum
     };
     using StorageStateInstanceInfoRow
-        = Poco::Tuple<std::string, std::string, uint64_t, std::string, size_t, size_t, Poco::Data::BLOB>;
+        = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, size_t, size_t, Poco::Data::BLOB>;
 
     enum class NetworkManagerNetworkColumns : int { eNetworkID = 0, eSubnet, eVlanID };
     using NetworkManagerNetworkRow = Poco::Tuple<std::string, std::string, uint64_t>;
@@ -300,13 +301,14 @@ private:
         eSubjectID,
         eInstance,
         eType,
+        ePreinstalled,
         eNetworkID,
         eNodeID,
         eIP,
         eExposedPorts,
         eDNSServers
     };
-    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
+    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
         std::string, std::string, std::string, std::string>;
 
     enum class LauncherInstanceInfoColumns : int {
@@ -314,6 +316,7 @@ private:
         eSubjectID,
         eInstance,
         eType,
+        ePreinstalled,
         eManifestDigest,
         eNodeID,
         ePrevNodeID,
@@ -328,7 +331,7 @@ private:
         eSubjectType
     };
     using LauncherInstanceInfoRow
-        = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string, std::string, std::string,
+        = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string, std::string, std::string,
             std::string, uint32_t, uint32_t, uint64_t, std::string, bool, std::string, std::string, std::string>;
 
     enum class ImageManagerItemInfoColumns : int { eItemID = 0, eVersion, eIndexDigest, eState, eTimestamp };
