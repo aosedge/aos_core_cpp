@@ -194,10 +194,10 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     grpcStatus.mutable_instance()->set_item_id("service1");
     grpcStatus.mutable_instance()->set_subject_id("user1");
     grpcStatus.mutable_instance()->set_instance(0);
+    grpcStatus.mutable_instance()->set_preinstalled(true);
     grpcStatus.set_version("2.0.0");
     grpcStatus.set_runtime_id("runc");
     grpcStatus.set_state("active");
-    grpcStatus.set_preinstalled(true);
     grpcStatus.set_manifest_digest("sha256:deadbeef");
 
     auto* envVarStatus1 = grpcStatus.add_env_vars();
