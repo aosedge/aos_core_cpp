@@ -6,6 +6,9 @@
 
 #include <gmock/gmock.h>
 
+#include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
+
 #include <cm/database/database.hpp>
 #include <common/utils/exception.hpp>
 
@@ -26,14 +29,15 @@ std::vector<T> ToVector(const Array<T>& src)
 }
 
 InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
-    UpdateItemType itemType = UpdateItemTypeEnum::eService)
+    UpdateItemType itemType = UpdateItemTypeEnum::eService, bool preinstalled = true)
 {
     InstanceIdent ident;
 
-    ident.mItemID    = itemID;
-    ident.mSubjectID = subjectID;
-    ident.mInstance  = instance;
-    ident.mType      = itemType;
+    ident.mItemID       = itemID;
+    ident.mSubjectID    = subjectID;
+    ident.mInstance     = instance;
+    ident.mType         = itemType;
+    ident.mPreinstalled = preinstalled;
 
     return ident;
 }
@@ -165,6 +169,8 @@ private:
 
 class CMDatabaseTest : public Test {
 protected:
+    static void SetUpTestSuite() { tests::utils::InitLog(); }
+
     void SetUp() override
     {
         // Clean up on start.
