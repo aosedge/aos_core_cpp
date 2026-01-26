@@ -311,16 +311,16 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
     unitStatus->mInstances->Back().mInstances.Back().mError     = ErrorEnum::eFailed;
 
     unitStatus->mInstances->EmplaceBack();
-    unitStatus->mInstances->Back().mItemID    = "itemID2";
-    unitStatus->mInstances->Back().mSubjectID = "subjectID2";
-    unitStatus->mInstances->Back().mVersion   = "version2";
+    unitStatus->mInstances->Back().mItemID       = "itemID2";
+    unitStatus->mInstances->Back().mSubjectID    = "subjectID2";
+    unitStatus->mInstances->Back().mVersion      = "version2";
+    unitStatus->mInstances->Back().mPreinstalled = true;
 
     unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mPreinstalled = true;
-    unitStatus->mInstances->Back().mInstances.Back().mInstance     = 1;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID       = "nodeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID    = "runtimeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mState        = InstanceStateEnum::eActivating;
+    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
+    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID2";
+    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID2";
+    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActivating;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 

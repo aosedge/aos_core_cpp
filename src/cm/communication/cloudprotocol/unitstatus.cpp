@@ -240,14 +240,10 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    const auto isPreinstalled = statuses.mInstances.FindIf([](const UnitInstanceStatus& status) {
-        return status.mPreinstalled;
-    }) != statuses.mInstances.end();
-
     {
         AosIdentity identity;
 
-        if (isPreinstalled) {
+        if (statuses.mPreinstalled) {
             identity.mCodename = statuses.mItemID.CStr();
         } else {
             identity.mID = statuses.mItemID.CStr();
@@ -259,7 +255,7 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
     {
         AosIdentity identity;
 
-        if (isPreinstalled) {
+        if (statuses.mPreinstalled) {
             identity.mCodename = statuses.mSubjectID.CStr();
         } else {
             identity.mID = statuses.mSubjectID.CStr();
