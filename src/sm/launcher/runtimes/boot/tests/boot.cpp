@@ -360,7 +360,9 @@ TEST_F(BootRuntimeTest, UpdateSucceededOnStart)
         "instance": 0,
         "state": "active",
         "version": "1.0.0",
-        "partitionIndex": 0
+        "partitionIndex": 0,
+        "preinstalled": true
+
     })";
     constexpr auto cPending   = R"({
         "itemId": "updateItem1",
@@ -451,7 +453,8 @@ TEST_F(BootRuntimeTest, UpdateFailedOnStart)
         "instance": 0,
         "state": "active",
         "version": "1.0.0",
-        "partitionIndex": 0
+        "partitionIndex": 0,
+        "preinstalled": true
     })";
     constexpr auto cPending   = R"({
         "itemId": "updateItem1",
