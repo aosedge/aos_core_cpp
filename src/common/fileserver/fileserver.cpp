@@ -60,15 +60,14 @@ std::string GetMimeType(const std::string& ext)
 Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
 {
     try {
-        LOG_DBG() << "Init fileserver" << Log::Field("serverURL", serverURL.c_str())
-                  << Log::Field("rootDir", rootDir.c_str());
+        std::string uri = serverURL;
+
+        if (auto pos = serverURL.find("://"); pos == std::string::npos) {
+            uri = "http://" + serverURL;
+        }
 
         mRootDir = rootDir;
-        mURI     = serverURL.c_str();
-
-        if (mURI.getScheme().empty()) {
-            mURI.setScheme("http");
-        }
+        mURI     = uri;
 
         if (mURI.getHost().empty()) {
             mURI.setHost("localhost");
@@ -77,6 +76,9 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
         if (mURI.getPort() == 0) {
             mURI.setPort(cDefaultPort);
         }
+
+        LOG_DBG() << "Init fileserver" << Log::Field("serverURL", mURI.toString().c_str())
+                  << Log::Field("rootDir", rootDir.c_str());
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
