@@ -180,6 +180,7 @@ private:
         eSubjectID,
         eInstance,
         eType,
+        ePreinstalled,
         eVersion,
         eManifestDigest,
         eRuntimeID,
@@ -194,9 +195,9 @@ private:
         eNetworkParameters,
         eMonitoringParams
     };
-    using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string, std::string,
-        std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string, std::string,
-        std::string, std::string>;
+    using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string,
+        std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string,
+        std::string, std::string, std::string>;
 
     // Network info columns
     enum class NetworkInfoColumns : int { eNetworkID = 0, eIP, eSubnet, eVlanID, eVlanIfName, eBridgeIfName };
