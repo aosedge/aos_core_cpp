@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tests/utils/utils.hpp>
 
 #include <sm/database/database.hpp>
 
@@ -103,8 +104,11 @@ TEST_F(DatabaseTest, UpdateInstanceInfo)
 
     auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", 1);
 
-    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
-    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
+    auto err = mDB.UpdateInstanceInfo(instanceInfo);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    err = mDB.UpdateInstanceInfo(instanceInfo);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
 }
 
 TEST_F(DatabaseTest, RemoveInstanceInfo)
@@ -126,16 +130,20 @@ TEST_F(DatabaseTest, RemoveInstanceInfo)
 
 TEST_F(DatabaseTest, GetAllInstancesInfos)
 {
-    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+    auto err = mDB.Init(mWorkingDir.string(), mMigrationConfig);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
 
-    auto instanceInfo = CreateInstanceInfo("service-1", "subject-1", 1);
+    auto instanceInfo          = CreateInstanceInfo("service-1", "subject-1", 1);
+    instanceInfo.mPreinstalled = true;
 
-    ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
+    err = mDB.UpdateInstanceInfo(instanceInfo);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
 
     // aos::InstanceInfoArray result;
     auto result = std::make_unique<aos::InstanceInfoArray>();
 
-    ASSERT_TRUE(mDB.GetAllInstancesInfos(*result).IsNone());
+    err = mDB.GetAllInstancesInfos(*result);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
 
     ASSERT_EQ(result->Size(), 1);
 
@@ -145,6 +153,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfos)
     EXPECT_EQ(resultRef.mSubjectID, instanceInfo.mSubjectID);
     EXPECT_EQ(resultRef.mInstance, instanceInfo.mInstance);
     EXPECT_EQ(resultRef.mType, instanceInfo.mType);
+    EXPECT_TRUE(resultRef.mPreinstalled);
     EXPECT_EQ(resultRef.mManifestDigest, instanceInfo.mManifestDigest);
     EXPECT_EQ(resultRef.mRuntimeID, instanceInfo.mRuntimeID);
     EXPECT_EQ(resultRef.mSubjectType, instanceInfo.mSubjectType);

@@ -367,10 +367,10 @@ Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos
     try {
         std::vector<InstanceInfoRow> rows;
 
-        *mSession
-            << "SELECT itemID, subjectID, instance, type, version, manifestDigest, runtimeID, ownerID, subjectType, "
-               "uid, gid, priority, storagePath, statePath, envVars, networkParameters, monitoringParams "
-               "FROM instances;",
+        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, version, manifestDigest, "
+                     "runtimeID, ownerID, subjectType,uid, gid, priority, storagePath, statePath, "
+                     "envVars,networkParameters, monitoringParams "
+                     "FROM instances;",
             into(rows), now;
 
         auto instanceInfo = std::make_unique<InstanceInfo>();
@@ -400,9 +400,10 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
 
         FromAos(info, row);
 
-        *mSession << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, version, manifestDigest, "
-                     "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
-                     "networkParameters, monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        *mSession
+            << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, preinstalled, version, "
+               "manifestDigest, runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
+               "networkParameters, monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -420,9 +421,10 @@ Error Database::RemoveInstanceInfo(const InstanceIdent& ident)
     try {
         Poco::Data::Statement statement {*mSession};
 
-        statement << "DELETE FROM instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ?;",
+        statement << "DELETE FROM instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? "
+                     "AND preinstalled = ?;",
             bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
-            bind(ident.mType.ToString().CStr());
+            bind(ident.mType.ToString().CStr()), bind(ident.mPreinstalled);
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
@@ -759,6 +761,7 @@ void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
     dst.set<ToInt(InstanceInfoColumns::eSubjectID)>(src.mSubjectID.CStr());
     dst.set<ToInt(InstanceInfoColumns::eInstance)>(src.mInstance);
     dst.set<ToInt(InstanceInfoColumns::eType)>(src.mType.ToString().CStr());
+    dst.set<ToInt(InstanceInfoColumns::ePreinstalled)>(src.mPreinstalled);
     dst.set<ToInt(InstanceInfoColumns::eVersion)>(src.mVersion.CStr());
     dst.set<ToInt(InstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
     dst.set<ToInt(InstanceInfoColumns::eRuntimeID)>(src.mRuntimeID.CStr());
@@ -779,6 +782,7 @@ void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
     dst.mItemID         = src.get<ToInt(InstanceInfoColumns::eItemID)>().c_str();
     dst.mSubjectID      = src.get<ToInt(InstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstance       = src.get<ToInt(InstanceInfoColumns::eInstance)>();
+    dst.mPreinstalled   = src.get<ToInt(InstanceInfoColumns::ePreinstalled)>();
     dst.mVersion        = src.get<ToInt(InstanceInfoColumns::eVersion)>().c_str();
     dst.mManifestDigest = src.get<ToInt(InstanceInfoColumns::eManifestDigest)>().c_str();
     dst.mRuntimeID      = src.get<ToInt(InstanceInfoColumns::eRuntimeID)>().c_str();

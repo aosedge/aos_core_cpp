@@ -16,7 +16,7 @@ set(SOURCES database.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::database GTest::gmock_main)
+set(LIBRARIES aos::sm::database aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
