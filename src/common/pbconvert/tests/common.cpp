@@ -84,13 +84,14 @@ TEST_F(PBConvertCommon, ConvertAosErrorToGrpcStatus)
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToProto)
 {
-    aos::InstanceIdent          param {"item-id", "subject-id", 1, aos::UpdateItemTypeEnum::eComponent};
+    aos::InstanceIdent          param {"item-id", "subject-id", 1, aos::UpdateItemTypeEnum::eComponent, true};
     ::common::v2::InstanceIdent result = aos::common::pbconvert::ConvertToProto(param);
 
     EXPECT_EQ(result.item_id(), param.mItemID.CStr());
     EXPECT_EQ(result.subject_id(), param.mSubjectID.CStr());
     EXPECT_EQ(result.instance(), param.mInstance);
     EXPECT_EQ(result.type(), ::common::v2::ItemType::COMPONENT);
+    EXPECT_TRUE(result.preinstalled());
 }
 
 TEST_F(PBConvertCommon, ConvertInstanceIdentToAos)
@@ -100,12 +101,16 @@ TEST_F(PBConvertCommon, ConvertInstanceIdentToAos)
     param.set_item_id("item-id");
     param.set_subject_id("subject-id");
     param.set_instance(1);
+    param.set_type(::common::v2::ItemType::COMPONENT);
+    param.set_preinstalled(true);
 
     auto result = aos::common::pbconvert::ConvertToAos(param);
 
     EXPECT_EQ(result.mItemID, aos::String(param.item_id().c_str()));
     EXPECT_EQ(result.mSubjectID, aos::String(param.subject_id().c_str()));
     EXPECT_EQ(result.mInstance, param.instance());
+    EXPECT_EQ(result.mType, aos::UpdateItemTypeEnum::eComponent);
+    EXPECT_TRUE(result.mPreinstalled);
 }
 
 TEST_F(PBConvertCommon, ConvertTimestampToAos)
