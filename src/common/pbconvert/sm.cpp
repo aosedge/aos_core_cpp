@@ -1047,8 +1047,6 @@ Error ConvertFromProto(const servicemanager::v5::InstanceStatus& src, const Stri
         return AOS_ERROR_WRAP(err);
     }
 
-    dst.mPreinstalled = src.preinstalled();
-
     dst.mError = pbconvert::ConvertFromProto(src.error());
 
     return ErrorEnum::eNone;
@@ -1152,7 +1150,6 @@ void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatu
 {
     dst.mutable_instance()->CopyFrom(ConvertToProto(static_cast<const InstanceIdent&>(src)));
     dst.set_version(src.mVersion.CStr());
-    dst.set_preinstalled(src.mPreinstalled);
     dst.set_runtime_id(src.mRuntimeID.CStr());
     dst.set_manifest_digest(src.mManifestDigest.CStr());
 
