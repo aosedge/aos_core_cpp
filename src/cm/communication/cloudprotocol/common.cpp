@@ -86,14 +86,24 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
         {
             AosIdentity identity;
 
-            identity.mID = instanceIdent.mItemID.CStr();
+            if (instanceIdent.mPreinstalled) {
+                identity.mCodename = instanceIdent.mItemID.CStr();
+            } else {
+                identity.mID = instanceIdent.mItemID.CStr();
+            }
+
             json.set("item", CreateAosIdentity(identity));
         }
 
         {
             AosIdentity identity;
 
-            identity.mID = instanceIdent.mSubjectID.CStr();
+            if (instanceIdent.mPreinstalled) {
+                identity.mCodename = instanceIdent.mSubjectID.CStr();
+            } else {
+                identity.mID = instanceIdent.mSubjectID.CStr();
+            }
+
             json.set("subject", CreateAosIdentity(identity));
         }
 
