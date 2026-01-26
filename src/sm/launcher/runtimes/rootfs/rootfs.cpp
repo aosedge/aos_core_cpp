@@ -307,10 +307,11 @@ Error RootfsRuntime::CreateRuntimeInfo()
 
     mRuntimeInfo.mMaxInstances = 1;
 
-    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
-    mDefaultInstanceIdent.mInstance  = 0;
-    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
-    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
+    mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance     = 0;
+    mDefaultInstanceIdent.mItemID       = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID    = nodeInfo->mNodeType;
+    mDefaultInstanceIdent.mPreinstalled = true;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
@@ -413,7 +414,7 @@ void RootfsRuntime::FillInstanceStatus(
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mManifestDigest              = instanceInfo.mManifestDigest;
     status.mType                        = UpdateItemTypeEnum::eComponent;
-    status.mPreinstalled                = static_cast<const InstanceIdent&>(instanceInfo) == mDefaultInstanceIdent;
+    status.mPreinstalled                = instanceInfo.mPreinstalled;
 }
 
 Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const
@@ -434,6 +435,7 @@ Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::f
         json->set("manifestDigest", instance.mManifestDigest.CStr());
         json->set("type", instance.mType.ToString().CStr());
         json->set("version", instance.mVersion.CStr());
+        json->set("preinstalled", instance.mPreinstalled);
 
         json->stringify(file);
     } catch (const std::exception& e) {
@@ -473,7 +475,8 @@ Error RootfsRuntime::LoadInstanceInfo(const std::filesystem::path& path, Instanc
         err = instance.mVersion.Assign(jsonObject.GetValue<std::string>("version").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
 
-        instance.mType = UpdateItemTypeEnum::eComponent;
+        instance.mType         = UpdateItemTypeEnum::eComponent;
+        instance.mPreinstalled = jsonObject.GetValue<bool>("preinstalled");
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }

@@ -147,7 +147,8 @@ protected:
                 "itemId": "itemId",
                 "subjectId": "subjectId",
                 "manifestDigest": "manifestDigest",
-                "version": "1.0.0"
+                "version": "1.0.0",
+                "preinstalled": true
             })";
         } else {
             throw std::runtime_error("can't create instance file");
