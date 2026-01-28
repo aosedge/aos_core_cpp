@@ -80,6 +80,10 @@ constexpr auto cImageConfig       = R"(
     "osVersion": "6.0.8",
     "variant": "6",
     "config": {
+        "exposedPorts": {
+            "8080/tcp": {},
+            "53/udp": {}
+        },
         "cmd": [
             "test-cmd",
             "arg1",
@@ -178,6 +182,10 @@ constexpr auto cServiceConfig     = R"(
             "main.py"
         ],
         "WorkingDir": "/"
+    },
+    "allowedConnections": {
+        "9931560c-be75-4f60-9abf-08297d905332/8087-8088/tcp": {},
+        "9931560c-be75-4f60-9abf-08297d905332/1515/udp": {}
     },
     "resources": [
         "resource1",
