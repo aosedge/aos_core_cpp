@@ -26,7 +26,7 @@ public:
  */
 class RunnerMock : public RunnerItf {
 public:
-    MOCK_METHOD(Error, Init, (RunStatusReceiverItf&), (override));
+    MOCK_METHOD(Error, Init, (RunStatusReceiverItf&, utils::SystemdConnItf&), (override));
     MOCK_METHOD(Error, Start, (), (override));
     MOCK_METHOD(Error, Stop, (), (override));
     MOCK_METHOD(RunStatus, StartInstance, (const std::string&, const RunParameters&), (override));
