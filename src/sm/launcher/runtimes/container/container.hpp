@@ -48,12 +48,14 @@ public:
      * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      * @param instanceStatusReceiver instance status receiver.
+     * @param systemdConn systemd connection.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver);
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
+        utils::SystemdConnItf& systemdConn);
 
     /**
      * Starts runtime.
