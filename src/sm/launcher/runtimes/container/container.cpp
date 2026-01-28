@@ -37,7 +37,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver)
+    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver, utils::SystemdConnItf& systemdConn)
 {
     try {
         LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
@@ -61,7 +61,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         mOCISpec                = &ociSpec;
         mInstanceStatusReceiver = &instanceStatusReceiver;
 
-        if (auto err = mRunner->Init(*this); !err.IsNone()) {
+        if (auto err = mRunner->Init(*this, systemdConn); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 

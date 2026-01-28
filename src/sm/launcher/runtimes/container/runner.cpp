@@ -66,9 +66,10 @@ Error CreateDir(const std::string& path, unsigned perms)
  * Implementation
  **********************************************************************************************************************/
 
-Error Runner::Init(RunStatusReceiverItf& listener)
+Error Runner::Init(RunStatusReceiverItf& listener, utils::SystemdConnItf& systemdConn)
 {
     mRunStatusReceiver = &listener;
+    mSystemd           = &systemdConn;
 
     return ErrorEnum::eNone;
 }
@@ -76,12 +77,6 @@ Error Runner::Init(RunStatusReceiverItf& listener)
 Error Runner::Start()
 {
     LOG_DBG() << "Start runner";
-
-    try {
-        mSystemd = CreateSystemdConn();
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
 
     mClosed           = false;
     mMonitoringThread = std::thread(&Runner::MonitorUnits, this);
@@ -107,8 +102,6 @@ Error Runner::Stop()
     if (mMonitoringThread.joinable()) {
         mMonitoringThread.join();
     }
-
-    mSystemd.reset();
 
     return ErrorEnum::eNone;
 }

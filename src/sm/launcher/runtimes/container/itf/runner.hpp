@@ -11,6 +11,8 @@
 
 #include <core/common/types/instance.hpp>
 
+#include <sm/utils/itf/systemdconn.hpp>
+
 namespace aos::sm::launcher {
 
 /**
@@ -74,9 +76,10 @@ public:
      * Initializes runner.
      *
      * @param receiver run status receiver.
+     * @param systemdConn systemd connection.
      * @return Error.
      */
-    virtual Error Init(RunStatusReceiverItf& receiver) = 0;
+    virtual Error Init(RunStatusReceiverItf& receiver, utils::SystemdConnItf& systemdConn) = 0;
 
     /**
      * Starts runner.
