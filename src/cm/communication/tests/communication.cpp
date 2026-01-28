@@ -160,6 +160,9 @@ public:
         err = mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize certificate loader: " << tests::utils::ErrorToStr(err);
 
+        err = mFileInfoProvider.Init(mCryptoProvider);
+        ASSERT_TRUE(err.IsNone()) << "Failed to initialize file info provider: " << tests::utils::ErrorToStr(err);
+
         RegisterPKCS11Module(cCertificate);
         ASSERT_TRUE(mCertHandler.SetOwner(cCertificate, cPIN).IsNone());
 
@@ -179,7 +182,7 @@ public:
         EXPECT_EQ(err2, ErrorEnum::eNone);
 
         err = mCryptoHelper.Init(mCertProviderStub, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
-            mConfig.mCACert.c_str());
+            mConfig.mCACert.c_str(), mFileInfoProvider);
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
 
         StartHTTPServer();
@@ -346,6 +349,7 @@ protected:
     CertInfo                      mServerInfo;
     crypto::DefaultCryptoProvider mCryptoProvider;
     crypto::CryptoHelper          mCryptoHelper;
+    fs::FileInfoProvider          mFileInfoProvider;
     UUIDItfStub                   mUUIDProvider;
     iamclient::CertProviderStub   mCertProviderStub {mCertHandler};
     crypto::CertLoader            mCertLoader;
