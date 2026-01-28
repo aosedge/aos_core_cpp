@@ -36,7 +36,8 @@ TEST_F(SystemdRebooterTest, Reboot)
     auto err = mRebooter.Init(mSystemdConn);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_CALL(mSystemdConn, StartUnit("reboot.target", "replace", Time::cMinutes)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mSystemdConn, StartUnit("reboot.target", "replace-irreversibly", Time::cMinutes))
+        .WillOnce(Return(ErrorEnum::eNone));
 
     err = mRebooter.Reboot();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
