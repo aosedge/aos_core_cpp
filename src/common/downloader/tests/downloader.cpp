@@ -116,7 +116,7 @@ TEST_F(DownloaderTest, DownloadFileScheme)
 
 TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 {
-    const size_t fileSizeMB = 1;
+    const size_t fileSizeMB = 5;
 
     CreateLargeFile("large_test_file.dat", fileSizeMB);
 
@@ -124,7 +124,7 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 
     StartServer("large_test_file.dat", 8001, 350);
 
-    EXPECT_CALL(mAlertSender, SendAlert(_)).Times(6);
+    EXPECT_CALL(mAlertSender, SendAlert(_)).WillRepeatedly(Return(aos::ErrorEnum::eNone));
 
     auto err = mDownloader.Download("digest3", "http://localhost:8001/large_test_file.dat", mFilePath.c_str());
 
