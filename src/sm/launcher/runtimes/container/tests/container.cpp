@@ -17,6 +17,7 @@
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
+#include <sm/tests/mocks/systemdconnmock.hpp>
 
 #include "mocks/filesystemmock.hpp"
 #include "mocks/monitoringmock.hpp"
@@ -208,14 +209,15 @@ protected:
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo(_))
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
-        EXPECT_CALL(*mRuntime.mRunner, Init(_)).WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver) {
-            mRunStatusReceiver = &runStatusReceiver;
+        EXPECT_CALL(*mRuntime.mRunner, Init)
+            .WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver, utils::SystemdConnItf&) {
+                mRunStatusReceiver = &runStatusReceiver;
 
-            return ErrorEnum::eNone;
-        }));
+                return ErrorEnum::eNone;
+            }));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -244,6 +246,7 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     RunStatusReceiverItf*                               mRunStatusReceiver {};
+    utils::SystemdConnMock                              mSystemdConnMock;
 };
 
 /***********************************************************************************************************************

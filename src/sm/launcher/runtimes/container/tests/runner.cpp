@@ -21,11 +21,7 @@ namespace aos::sm::launcher {
 
 class TestRunner : public Runner {
 public:
-    std::shared_ptr<utils::SystemdConnMock> mSystemd = std::make_shared<utils::SystemdConnMock>();
-
 private:
-    std::shared_ptr<utils::SystemdConnItf> CreateSystemdConn() override { return mSystemd; }
-
     std::string GetSystemdDropInsDir() const override
     {
         const auto testDir = std::filesystem::canonical("/proc/self/exe").parent_path();
@@ -38,11 +34,12 @@ class ContainerRunnerTest : public Test {
 public:
     static void SetUpTestSuite() { tests::utils::InitLog(); }
 
-    void SetUp() override { mRunner.Init(mRunStatusReceiver); }
+    void SetUp() override { mRunner.Init(mRunStatusReceiver, mSystemdMock); }
 
 protected:
-    RunStatusReceiverMock mRunStatusReceiver;
-    TestRunner            mRunner;
+    RunStatusReceiverMock  mRunStatusReceiver;
+    utils::SystemdConnMock mSystemdMock;
+    TestRunner             mRunner;
 };
 
 /***********************************************************************************************************************
@@ -55,11 +52,11 @@ TEST_F(ContainerRunnerTest, StartInstance)
     utils::UnitStatus status = {"aos-service@service0.service", utils::UnitStateEnum::eActive, 0};
     Error             err    = ErrorEnum::eNone;
 
-    EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(err));
-    EXPECT_CALL(*mRunner.mSystemd, GetUnitStatus(_)).WillOnce(Return(RetWithError<utils::UnitStatus>(status, err)));
+    EXPECT_CALL(mSystemdMock, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(err));
+    EXPECT_CALL(mSystemdMock, GetUnitStatus(_)).WillOnce(Return(RetWithError<utils::UnitStatus>(status, err)));
 
     std::vector<utils::UnitStatus> units = {status};
-    EXPECT_CALL(*mRunner.mSystemd, ListUnits())
+    EXPECT_CALL(mSystemdMock, ListUnits())
         .WillRepeatedly(Return(RetWithError<std::vector<utils::UnitStatus>>(units, err)));
     std::vector<RunStatus> expectedInstances {{"service0", InstanceStateEnum::eActive, Error()}};
 
@@ -73,8 +70,8 @@ TEST_F(ContainerRunnerTest, StartInstance)
 
     sleep(2); // wait to monitor
 
-    EXPECT_CALL(*mRunner.mSystemd, StopUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(err));
-    EXPECT_CALL(*mRunner.mSystemd, ResetFailedUnit("aos-service@service0.service")).WillOnce(Return(err));
+    EXPECT_CALL(mSystemdMock, StopUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(err));
+    EXPECT_CALL(mSystemdMock, ResetFailedUnit("aos-service@service0.service")).WillOnce(Return(err));
 
     EXPECT_TRUE(mRunner.StopInstance("service0").IsNone());
 
@@ -85,7 +82,7 @@ TEST_F(ContainerRunnerTest, StartUnitFailed)
 {
     RunParameters params = {};
 
-    EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _))
+    EXPECT_CALL(mSystemdMock, StartUnit("aos-service@service0.service", "replace", _))
         .WillOnce(Return(ErrorEnum::eFailed));
 
     mRunner.Start();
@@ -105,8 +102,8 @@ TEST_F(ContainerRunnerTest, GetUnitStatusFailed)
     utils::UnitStatus status = {"aos-service@service0.service", utils::UnitStateEnum::eFailed, 1};
     Error             err    = ErrorEnum::eFailed;
 
-    EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(Error()));
-    EXPECT_CALL(*mRunner.mSystemd, GetUnitStatus("aos-service@service0.service"))
+    EXPECT_CALL(mSystemdMock, StartUnit("aos-service@service0.service", "replace", _)).WillOnce(Return(Error()));
+    EXPECT_CALL(mSystemdMock, GetUnitStatus("aos-service@service0.service"))
         .WillOnce(Return(RetWithError<utils::UnitStatus>(status, err)));
 
     const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eFailed, ErrorEnum::eFailed};
@@ -122,7 +119,7 @@ TEST_F(ContainerRunnerTest, ListUnitsFailed)
 
     RunParameters params = {};
 
-    EXPECT_CALL(*mRunner.mSystemd, StartUnit("aos-service@service0.service", "replace", _))
+    EXPECT_CALL(mSystemdMock, StartUnit("aos-service@service0.service", "replace", _))
         .WillOnce(Return(ErrorEnum::eFailed));
 
     const auto expectedRes = RunStatus {"service0", InstanceStateEnum::eFailed, ErrorEnum::eFailed};
@@ -132,7 +129,7 @@ TEST_F(ContainerRunnerTest, ListUnitsFailed)
     utils::UnitStatus              status = {"aos-service@service0.service", utils::UnitStateEnum::eFailed, 1};
     std::vector<utils::UnitStatus> units  = {status};
 
-    EXPECT_CALL(*mRunner.mSystemd, ListUnits())
+    EXPECT_CALL(mSystemdMock, ListUnits())
         .WillOnce(Return(RetWithError<std::vector<utils::UnitStatus>>(units, Error(ErrorEnum::eFailed))));
     sleep(2); // wait to monitor
 

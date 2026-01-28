@@ -32,9 +32,10 @@ public:
      * Initializes Runner instance.
      *
      * @param receiver run status receiver.
+     * @param systemdConn systemd connection.
      * @return Error.
      */
-    Error Init(RunStatusReceiverItf& receiver) override;
+    Error Init(RunStatusReceiverItf& receiver, utils::SystemdConnItf& systemdConn) override;
 
     /**
      * Starts monitoring thread.
@@ -105,10 +106,10 @@ private:
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
-    std::shared_ptr<utils::SystemdConnItf> mSystemd;
-    std::thread                            mMonitoringThread;
-    std::mutex                             mMutex;
-    std::condition_variable                mCondVar;
+    utils::SystemdConnItf*  mSystemd = {};
+    std::thread             mMonitoringThread;
+    std::mutex              mMutex;
+    std::condition_variable mCondVar;
 
     std::map<std::string, StartingUnitData> mStartingUnits;
     std::map<std::string, RunningUnitData>  mRunningUnits;
