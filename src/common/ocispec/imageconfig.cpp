@@ -24,6 +24,13 @@ namespace {
 
 void ConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::Config& config)
 {
+    if (object.Has("exposedPorts")) {
+        for (const auto& port : object.GetObject("exposedPorts").GetNames()) {
+            auto err = config.mExposedPorts.EmplaceBack(port.c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "exposedPorts parsing error");
+        }
+    }
+
     for (const auto& env : utils::GetArrayValue<std::string>(object, "env")) {
         auto err = config.mEnv.EmplaceBack(env.c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "env parsing error");
@@ -46,6 +53,16 @@ void ConfigFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci:
 Poco::JSON::Object ConfigToJSON(const aos::oci::Config& config)
 {
     Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    if (!config.mExposedPorts.IsEmpty()) {
+        Poco::JSON::Object exposedPortsObj {Poco::JSON_PRESERVE_KEY_ORDER};
+
+        for (const auto& port : config.mExposedPorts) {
+            exposedPortsObj.set(port.CStr(), Poco::JSON::Object {});
+        }
+
+        object.set("exposedPorts", exposedPortsObj);
+    }
 
     if (!config.mEnv.IsEmpty()) {
         object.set("env", utils::ToJsonArray(config.mEnv, utils::ToStdString));

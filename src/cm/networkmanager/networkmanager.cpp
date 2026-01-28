@@ -309,7 +309,7 @@ bool NetworkManager::RuleExists(const Instance& instance, const std::string& por
     });
 }
 
-FirewallRule NetworkManager::GetInstanceRule(const std::string& itemID, const std::string& port,
+std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& itemID, const std::string& port,
     const std::string& protocol, const std::string& subnet, const String& ip)
 {
     for (auto& [_, networkState] : mNetworkStates) {
@@ -321,7 +321,7 @@ FirewallRule NetworkManager::GetInstanceRule(const std::string& itemID, const st
 
                 // instance is in the same subnet could be connected without firewall rules
                 if (common::network::NetworkContainsIP(subnet, instance.mIP.CStr())) {
-                    continue;
+                    return std::nullopt;
                 }
 
                 if (RuleExists(instance, port, protocol)) {
@@ -352,7 +352,10 @@ Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const Stri
             std::string itemID, port, protocol;
             ParseAllowConnection(connection, itemID, port, protocol);
             auto rule = GetInstanceRule(itemID, port, protocol, subnet, ip);
-            result.mFirewallRules.PushBack(rule);
+
+            if (rule) {
+                result.mFirewallRules.PushBack(*rule);
+            }
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
