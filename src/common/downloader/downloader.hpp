@@ -78,6 +78,7 @@ private:
         curl_off_t                            mDownloadedSize {0};
     };
 
+    bool  SupportsRangeRequests(const String& url);
     Error DownloadImage(const String& url, const String& path, ProgressContext* context);
     Error CopyFile(const Poco::URI& uri, const String& outfilename);
     Error RetryDownload(const String& url, const String& path, ProgressContext* context);
