@@ -28,13 +28,9 @@ Error TLSCredentials::Init(const std::string& caCert, aos::iamclient::CertProvid
 }
 
 RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSClientCredentials(
-    const String& certStorage, bool insecureConnection)
+    const String& certStorage)
 {
     LOG_DBG() << "Get MTLS config" << Log::Field("certStorage", certStorage);
-
-    if (insecureConnection) {
-        return {grpc::InsecureChannelCredentials(), ErrorEnum::eNone};
-    }
 
     CertInfo certInfo;
 
@@ -46,13 +42,9 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSC
         ErrorEnum::eNone};
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetTLSClientCredentials(bool insecureConnection)
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetTLSClientCredentials()
 {
     LOG_DBG() << "Get TLS config";
-
-    if (insecureConnection) {
-        return {grpc::InsecureChannelCredentials(), ErrorEnum::eNone};
-    }
 
     if (!mCACert.empty()) {
         return {common::utils::GetTLSClientCredentials(mCACert.c_str()), ErrorEnum::eNone};

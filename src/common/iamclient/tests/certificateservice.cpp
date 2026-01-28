@@ -28,7 +28,7 @@ protected:
 
         mStub = std::make_unique<IAMCertificateServiceStub>();
 
-        EXPECT_CALL(mTLSCredentialsMock, GetMTLSClientCredentials(_, _))
+        EXPECT_CALL(mTLSCredentialsMock, GetMTLSClientCredentials(_))
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 
