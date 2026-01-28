@@ -470,6 +470,13 @@ Error OCISpec::LoadServiceConfig(const String& path, aos::oci::ServiceConfig& se
                 RequestedResourcesFromJSON(wrapper.GetObject("requestedResources")));
         }
 
+        if (wrapper.Has("allowedConnections")) {
+            for (const auto& connection : wrapper.GetObject("allowedConnections").GetNames()) {
+                err = serviceConfig.mAllowedConnections.PushBack(connection.c_str());
+                AOS_ERROR_CHECK_AND_THROW(err, "allowedConnections parsing error");
+            }
+        }
+
         for (const auto& resource : utils::GetArrayValue<std::string>(wrapper, "resources")) {
             err = serviceConfig.mResources.PushBack(resource.c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "resources parsing error");
@@ -530,6 +537,16 @@ Error OCISpec::SaveServiceConfig(const String& path, const aos::oci::ServiceConf
 
         if (serviceConfig.mRequestedResources.HasValue()) {
             object->set("requestedResources", RequestedResourcesToJSON(serviceConfig.mRequestedResources.GetValue()));
+        }
+
+        if (!serviceConfig.mAllowedConnections.IsEmpty()) {
+            Poco::JSON::Object allowedConnectionsObj {Poco::JSON_PRESERVE_KEY_ORDER};
+
+            for (const auto& connection : serviceConfig.mAllowedConnections) {
+                allowedConnectionsObj.set(connection.CStr(), Poco::JSON::Object {});
+            }
+
+            object->set("allowedConnections", allowedConnectionsObj);
         }
 
         if (!serviceConfig.mResources.IsEmpty()) {
