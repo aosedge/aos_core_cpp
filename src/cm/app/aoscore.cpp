@@ -42,8 +42,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize crypto helper
 
-    err = mCryptoHelper.Init(
-        mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
+    err = mCryptoHelper.Init(mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
+        mConfig.mCACert.c_str(), mFileInfoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
 
     // Initialize file info provider

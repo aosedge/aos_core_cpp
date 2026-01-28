@@ -65,7 +65,7 @@ private:
     constexpr static std::chrono::milliseconds cDelay {1000};
     constexpr static std::chrono::milliseconds cMaxDelay {5000};
     constexpr static int                       cMaxRetryCount {3};
-    constexpr static int                       cTimeoutSec {10};
+    constexpr static int                       cTimeoutSec {600};
 
     struct ProgressContext {
         Downloader*                           mDownloader {};
