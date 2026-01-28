@@ -7,6 +7,7 @@
 #ifndef AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 #define AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 
@@ -105,9 +106,9 @@ private:
     bool  IsHostExist(const std::string& hostName) const;
     Error AddHosts(const std::vector<std::string>& hosts, const std::string& ip);
 
-    FirewallRule GetInstanceRule(const std::string& itemID, const std::string& port, const std::string& protocol,
-        const std::string& subnet, const String& ip);
-    bool         RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
+    std::optional<FirewallRule> GetInstanceRule(const std::string& itemID, const std::string& port,
+        const std::string& protocol, const std::string& subnet, const String& ip);
+    bool  RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
     void  ParseAllowConnection(const String& connection, std::string& itemID, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkParameters& result);
