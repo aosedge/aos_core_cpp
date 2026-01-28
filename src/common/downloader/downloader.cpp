@@ -75,6 +75,39 @@ Error Downloader::Download(const String& digest, const String& url, const String
  * Private
  **********************************************************************************************************************/
 
+bool Downloader::SupportsRangeRequests(const String& url)
+{
+    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
+    if (!curl) {
+        return false;
+    }
+
+    bool supportsRange = false;
+
+    auto headerCallback = [](char* buffer, size_t size, size_t nitems, void* userdata) -> size_t {
+        auto*       supports = static_cast<bool*>(userdata);
+        std::string header(buffer, size * nitems);
+
+        if (header.find("Accept-Ranges: bytes") != std::string::npos) {
+            *supports = true;
+        }
+
+        return size * nitems;
+    };
+
+    curl_easy_setopt(curl.get(), CURLOPT_URL, url.CStr());
+    curl_easy_setopt(curl.get(), CURLOPT_NOBODY, 1L);
+    curl_easy_setopt(curl.get(), CURLOPT_HEADERFUNCTION, static_cast<curl_write_callback>(headerCallback));
+    curl_easy_setopt(curl.get(), CURLOPT_HEADERDATA, &supportsRange);
+    curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
+
+    if (curl_easy_perform(curl.get()) != CURLE_OK) {
+        return false;
+    }
+
+    return supportsRange;
+}
+
 Error Downloader::DownloadImage(const String& url, const String& path, ProgressContext* context)
 {
     Poco::URI uri(url.CStr());
@@ -87,6 +120,24 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return Error(ErrorEnum::eFailed, "failed to init curl");
     }
 
+    curl_off_t existingSize = 0;
+
+    if (std::filesystem::exists(path.CStr())) {
+        existingSize = std::filesystem::file_size(path.CStr());
+    }
+
+    bool canResume = false;
+
+    if (existingSize > 0) {
+        canResume = SupportsRangeRequests(url);
+
+        if (!canResume) {
+            LOG_DBG() << "Server does not support range requests, starting from beginning";
+        }
+    }
+
+    const char* fileMode = (canResume) ? "ab" : "wb";
+
     auto fileCloser = [](FILE* fp) {
         if (fp) {
             if (auto res = fclose(fp); res != 0) {
@@ -95,24 +146,25 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         }
     };
 
-    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), "ab"), fileCloser);
+    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), fileMode), fileCloser);
     if (!fp) {
         return Error(ErrorEnum::eFailed, "failed to open file");
     }
 
-    fseek(fp.get(), 0, SEEK_END);
-
-    context->mExistingOffset = ftell(fp.get());
+    context->mExistingOffset = canResume ? existingSize : 0;
 
     if (uri.getScheme() == "http" || uri.getScheme() == "https") {
         curl_easy_setopt(curl.get(), CURLOPT_FAILONERROR, 1L);
     }
 
     curl_easy_setopt(curl.get(), CURLOPT_URL, url.CStr());
-    curl_easy_setopt(curl.get(), CURLOPT_RESUME_FROM_LARGE, context->mExistingOffset);
+
+    if (canResume) {
+        curl_easy_setopt(curl.get(), CURLOPT_RESUME_FROM_LARGE, context->mExistingOffset);
+    }
+
     curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, fp.get());
-    curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, cTimeoutSec); // Timeout in seconds
     curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
 
     context->mLastProgressTime = steady_clock::now();
