@@ -35,7 +35,7 @@ public:
 
 private:
     static constexpr auto cRebootTarget = "reboot.target";
-    static constexpr auto cReplaceMode  = "replace";
+    static constexpr auto cReplaceMode  = "replace-irreversibly";
     static constexpr auto cTimeout      = Time::cMinutes;
 
     aos::sm::utils::SystemdConnItf* mSystemdConn {};
