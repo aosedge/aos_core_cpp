@@ -14,7 +14,15 @@ set(TARGET_NAME ocispec)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES common.cpp imagemanifest.cpp imageconfig.cpp imageindex.cpp runtimeconfig.cpp serviceconfig.cpp)
+set(SOURCES
+    common.cpp
+    componentconfig.cpp
+    imagemanifest.cpp
+    imageconfig.cpp
+    imageindex.cpp
+    runtimeconfig.cpp
+    serviceconfig.cpp
+)
 
 # ######################################################################################################################
 # Libraries

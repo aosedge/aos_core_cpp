@@ -215,6 +215,15 @@ constexpr auto cServiceConfig     = R"(
 }
 )";
 
+const auto     cComponentConfigPath = fs::JoinPath(cTestBaseDir, "component_config.json");
+constexpr auto cComponentConfig     = R"(
+{
+    "created": "2024-01-31T12:00:00Z",
+    "author": "Aos cloud",
+    "runner": "rootfs"
+}
+)";
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -294,6 +303,7 @@ public:
         fs::WriteStringToFile(cImageManifestPath, cImageManifest, S_IRUSR | S_IWUSR);
         fs::WriteStringToFile(cImageConfigPath, cImageConfig, S_IRUSR | S_IWUSR);
         fs::WriteStringToFile(cServiceConfigPath, cServiceConfig, S_IRUSR | S_IWUSR);
+        fs::WriteStringToFile(cComponentConfigPath, cComponentConfig, S_IRUSR | S_IWUSR);
     }
 
     oci::OCISpec mOCISpec;
@@ -372,6 +382,27 @@ TEST_F(OCISpecTest, LoadAndSaveServiceConfig)
     ASSERT_TRUE(mOCISpec.LoadServiceConfig(cSavePath, *rhsServiceConfig).IsNone());
 
     ASSERT_EQ(*lhsServiceConfig, *rhsServiceConfig);
+}
+
+TEST_F(OCISpecTest, LoadAndSaveComponentConfig)
+{
+    auto lhsComponentConfig = std::make_unique<aos::oci::ComponentConfig>();
+    auto rhsComponentConfig = std::make_unique<aos::oci::ComponentConfig>();
+
+    const auto cSavePath = fs::JoinPath(cTestBaseDir, "component-config-save.json");
+
+    ASSERT_TRUE(mOCISpec.LoadComponentConfig(cComponentConfigPath, *lhsComponentConfig).IsNone());
+
+    const auto cTime = Time::Unix(1706702400); // 2024-01-31T12:00:00Z
+
+    EXPECT_EQ(lhsComponentConfig->mCreated, cTime) << lhsComponentConfig->mCreated.ToUTCString().mValue.CStr();
+    EXPECT_EQ(lhsComponentConfig->mAuthor, "Aos cloud");
+    EXPECT_EQ(lhsComponentConfig->mRunner, "rootfs");
+
+    ASSERT_TRUE(mOCISpec.SaveComponentConfig(cSavePath, *lhsComponentConfig).IsNone());
+    ASSERT_TRUE(mOCISpec.LoadComponentConfig(cSavePath, *rhsComponentConfig).IsNone());
+
+    ASSERT_EQ(*lhsComponentConfig, *rhsComponentConfig);
 }
 
 TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)

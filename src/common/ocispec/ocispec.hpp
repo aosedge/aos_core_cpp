@@ -89,6 +89,24 @@ public:
     Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override;
 
     /**
+     * Loads Aos component config.
+     *
+     * @param path file path.
+     * @param componentConfig component config.
+     * @return Error.
+     */
+    Error LoadComponentConfig(const String& path, aos::oci::ComponentConfig& componentConfig) override;
+
+    /**
+     * Saves Aos component config.
+     *
+     * @param path file path.
+     * @param componentConfig component config.
+     * @return Error.
+     */
+    Error SaveComponentConfig(const String& path, const aos::oci::ComponentConfig& componentConfig) override;
+
+    /**
      * Loads OCI runtime config.
      *
      * @param path file path.
