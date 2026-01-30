@@ -686,7 +686,7 @@ Error Database::UpdateItemState(const String& id, const String& version, ItemSta
     return ErrorEnum::eNone;
 }
 
-Error Database::GetItemsInfo(Array<imagemanager::ItemInfo>& items)
+Error Database::GetAllItemsInfos(Array<imagemanager::ItemInfo>& items)
 {
     std::lock_guard lock {mMutex};
 
@@ -710,7 +710,7 @@ Error Database::GetItemsInfo(Array<imagemanager::ItemInfo>& items)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetItemsInfos(const String& itemID, Array<imagemanager::ItemInfo>& items)
+Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& items)
 {
     std::lock_guard lock {mMutex};
 
@@ -718,7 +718,7 @@ Error Database::GetItemsInfos(const String& itemID, Array<imagemanager::ItemInfo
         std::vector<ImageManagerItemInfoRow> rows;
 
         *mSession << "SELECT itemID, version, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
-            bind(itemID.CStr()), into(rows), now;
+            bind(id.CStr()), into(rows), now;
 
         auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
 
