@@ -7,7 +7,7 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_BOOT_EFICONTROLLER_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_BOOT_EFICONTROLLER_HPP_
 
-#include <efivar/efivar-types.h>
+#include <efivar/efivar.h>
 
 #include "itf/efivar.hpp"
 
