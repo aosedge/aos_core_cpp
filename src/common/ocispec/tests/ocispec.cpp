@@ -112,8 +112,8 @@ constexpr auto cImageConfig       = R"(
     }
 }
 )";
-const auto     cServiceConfigPath = fs::JoinPath(cTestBaseDir, "service_config.json");
-constexpr auto cServiceConfig     = R"(
+const auto     cItemConfigPath    = fs::JoinPath(cTestBaseDir, "item_config.json");
+constexpr auto cItemConfig        = R"(
 {
     "created": "2024-12-31T23:59:59Z",
     "author": "Aos cloud",
@@ -301,7 +301,7 @@ public:
         fs::WriteStringToFile(cImageIndexPath, cImageIndex, S_IRUSR | S_IWUSR);
         fs::WriteStringToFile(cImageManifestPath, cImageManifest, S_IRUSR | S_IWUSR);
         fs::WriteStringToFile(cImageConfigPath, cImageConfig, S_IRUSR | S_IWUSR);
-        fs::WriteStringToFile(cServiceConfigPath, cServiceConfig, S_IRUSR | S_IWUSR);
+        fs::WriteStringToFile(cItemConfigPath, cItemConfig, S_IRUSR | S_IWUSR);
     }
 
     oci::OCISpec mOCISpec;
@@ -368,18 +368,17 @@ TEST_F(OCISpecTest, LoadAndSaveRuntimeConfig)
     ASSERT_EQ(*lhsRuntimeConfig, *rhsRuntimeConfig);
 }
 
-TEST_F(OCISpecTest, LoadAndSaveServiceConfig)
+TEST_F(OCISpecTest, LoadAndSaveItemConfig)
 {
-    auto lhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
-    auto rhsServiceConfig = std::make_unique<aos::oci::ServiceConfig>();
+    auto lhsItemConfig = std::make_unique<aos::oci::ItemConfig>();
+    auto rhsItemConfig = std::make_unique<aos::oci::ItemConfig>();
 
-    const auto cSavePath = fs::JoinPath(cTestBaseDir, "service-config-save.json");
+    const auto cSavePath = fs::JoinPath(cTestBaseDir, "item-config-save.json");
 
-    ASSERT_TRUE(mOCISpec.LoadServiceConfig(cServiceConfigPath, *lhsServiceConfig).IsNone());
-    ASSERT_TRUE(mOCISpec.SaveServiceConfig(cSavePath, *lhsServiceConfig).IsNone());
-    ASSERT_TRUE(mOCISpec.LoadServiceConfig(cSavePath, *rhsServiceConfig).IsNone());
-
-    ASSERT_EQ(*lhsServiceConfig, *rhsServiceConfig);
+    ASSERT_TRUE(mOCISpec.LoadItemConfig(cItemConfigPath, *lhsItemConfig).IsNone());
+    ASSERT_TRUE(mOCISpec.SaveItemConfig(cSavePath, *lhsItemConfig).IsNone());
+    ASSERT_TRUE(mOCISpec.LoadItemConfig(cSavePath, *rhsItemConfig).IsNone());
+    ASSERT_EQ(*lhsItemConfig, *rhsItemConfig);
 }
 
 TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)
@@ -400,12 +399,12 @@ TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)
 
         EXPECT_EQ(common::utils::WriteJsonToFile(ToJSON(runParams[i]), configPath.CStr()), ErrorEnum::eNone);
 
-        auto expectedServiceConfig            = std::make_unique<aos::oci::ServiceConfig>();
-        expectedServiceConfig->mRunParameters = runParams[i];
-        auto parsedServiceConfig              = std::make_unique<aos::oci::ServiceConfig>();
+        auto expectedItemConfig            = std::make_unique<aos::oci::ItemConfig>();
+        expectedItemConfig->mRunParameters = runParams[i];
+        auto parsedItemConfig              = std::make_unique<aos::oci::ItemConfig>();
 
-        ASSERT_EQ(mOCISpec.LoadServiceConfig(configPath, *parsedServiceConfig), ErrorEnum::eNone);
-        ASSERT_EQ(expectedServiceConfig->mRunParameters, parsedServiceConfig->mRunParameters);
+        ASSERT_EQ(mOCISpec.LoadItemConfig(configPath, *parsedItemConfig), ErrorEnum::eNone);
+        ASSERT_EQ(expectedItemConfig->mRunParameters, parsedItemConfig->mRunParameters);
     }
 }
 
