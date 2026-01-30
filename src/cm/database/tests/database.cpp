@@ -690,7 +690,7 @@ TEST_F(CMDatabaseTest, ImageManagerAddItem)
 
     StaticArray<imagemanager::ItemInfo, 3> items;
 
-    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
 
     EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
 }
@@ -713,7 +713,7 @@ TEST_F(CMDatabaseTest, ImageManagerRemoveItem)
 
     StaticArray<imagemanager::ItemInfo, 2> items;
 
-    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
 
     EXPECT_THAT(ToVector(items), UnorderedElementsAre(item2, item3));
 }
@@ -735,14 +735,14 @@ TEST_F(CMDatabaseTest, ImageManagerUpdateItemState)
 
     StaticArray<imagemanager::ItemInfo, 1> items;
 
-    ASSERT_TRUE(mDB.GetItemsInfos("service1", items).IsNone());
+    ASSERT_TRUE(mDB.GetItemInfos("service1", items).IsNone());
     ASSERT_EQ(items.Size(), 1);
     EXPECT_EQ(items[0].mState, ItemStateEnum::eInstalled);
     EXPECT_EQ(items[0].mTimestamp, newTimestamp);
 
     StaticArray<imagemanager::ItemInfo, 1> items2;
 
-    ASSERT_TRUE(mDB.GetItemsInfos("service2", items2).IsNone());
+    ASSERT_TRUE(mDB.GetItemInfos("service2", items2).IsNone());
     ASSERT_EQ(items2.Size(), 1);
     EXPECT_EQ(items2[0].mState, ItemStateEnum::ePending);
 }
@@ -753,7 +753,7 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfo)
 
     StaticArray<imagemanager::ItemInfo, 3> emptyItems;
 
-    ASSERT_TRUE(mDB.GetItemsInfo(emptyItems).IsNone());
+    ASSERT_TRUE(mDB.GetAllItemsInfos(emptyItems).IsNone());
     EXPECT_EQ(emptyItems.Size(), 0);
 
     auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
@@ -766,7 +766,7 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfo)
 
     StaticArray<imagemanager::ItemInfo, 3> items;
 
-    ASSERT_TRUE(mDB.GetItemsInfo(items).IsNone());
+    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
 
     EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
 }
@@ -785,17 +785,17 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfos)
 
     StaticArray<imagemanager::ItemInfo, 2> service1Items;
 
-    ASSERT_TRUE(mDB.GetItemsInfos("service1", service1Items).IsNone());
+    ASSERT_TRUE(mDB.GetItemInfos("service1", service1Items).IsNone());
     EXPECT_THAT(ToVector(service1Items), UnorderedElementsAre(item1, item2));
 
     StaticArray<imagemanager::ItemInfo, 1> service2Items;
 
-    ASSERT_TRUE(mDB.GetItemsInfos("service2", service2Items).IsNone());
+    ASSERT_TRUE(mDB.GetItemInfos("service2", service2Items).IsNone());
     EXPECT_THAT(ToVector(service2Items), UnorderedElementsAre(item3));
 
     StaticArray<imagemanager::ItemInfo, 1> nonExistentItems;
 
-    ASSERT_TRUE(mDB.GetItemsInfos("nonexistent", nonExistentItems).IsNone());
+    ASSERT_TRUE(mDB.GetItemInfos("nonexistent", nonExistentItems).IsNone());
     EXPECT_EQ(nonExistentItems.Size(), 0);
 }
 
