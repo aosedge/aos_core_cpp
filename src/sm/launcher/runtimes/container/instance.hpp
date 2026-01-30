@@ -148,13 +148,13 @@ private:
     static constexpr auto cStoragePartitionName = "storages";
 
     void   GenerateInstanceID();
-    Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig);
+    Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ItemConfig& itemConfig);
     Error  CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
-         const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
+         const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
     Error  BindHostDirs(oci::RuntimeConfig& runtimeConfig);
     Error  CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
     Error  ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
-    Error  ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig);
+    Error  ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
     size_t GetNumCPUCores() const;
     Error  AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig);
     Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
@@ -163,7 +163,7 @@ private:
     Error  PrepareStateStorage();
     Error  PrepareRootFS(
          const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
-    Error SetupNetwork(const std::string& runtimeDir, const oci::ServiceConfig& serviceConfig);
+    Error SetupNetwork(const std::string& runtimeDir, const oci::ItemConfig& itemConfig);
     Error AddNetworkHostsFromResource(const std::string& resource, std::vector<Host>& hosts);
     Error StartMonitoring();
 
