@@ -15,18 +15,15 @@
 #include <Poco/Data/Session.h>
 #include <Poco/Tuple.h>
 
-#include <core/sm/launcher/itf/storage.hpp>
-#include <core/sm/networkmanager/itf/storage.hpp>
+#include <core/sm/database/itf/database.hpp>
 
 #include <common/migration/migration.hpp>
-#include <sm/alerts/itf/instanceinfoprovider.hpp>
 #include <sm/alerts/itf/storage.hpp>
 #include <sm/config/config.hpp>
-#include <sm/logprovider/itf/instanceidprovider.hpp>
 
 namespace aos::sm::database {
 
-class Database : public sm::launcher::StorageItf, public sm::networkmanager::StorageItf, public sm::alerts::StorageItf {
+class Database : public DatabaseItf, public sm::alerts::StorageItf {
 public:
     /**
      * Creates database instance.
