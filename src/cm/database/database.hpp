@@ -18,9 +18,7 @@
 
 #include <cm/networkmanager/itf/storage.hpp>
 #include <common/migration/migration.hpp>
-#include <core/cm/imagemanager/itf/storage.hpp>
-#include <core/cm/launcher/itf/storage.hpp>
-#include <core/cm/storagestate/itf/storage.hpp>
+#include <core/cm/database/itf/database.hpp>
 
 #include "config.hpp"
 
@@ -29,10 +27,7 @@ namespace aos::cm::database {
 /**
  * Database class.
  */
-class Database : public storagestate::StorageItf,
-                 public networkmanager::StorageItf,
-                 public launcher::StorageItf,
-                 public imagemanager::StorageItf {
+class Database : public DatabaseItf, public networkmanager::StorageItf {
 public:
     /**
      * Creates database instance.
