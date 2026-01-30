@@ -12,8 +12,8 @@
 
 extern "C" {
 #include <efivar/efiboot.h>
-#include <efivar/efivar.h>
 }
+#include <efivar/efivar.h>
 
 #include <gtest/gtest.h>
 
