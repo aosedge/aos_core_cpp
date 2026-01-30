@@ -320,11 +320,11 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     CreateInstanceStatus(*receivedStatus, instance, InstanceStateEnum::eInactive);
 
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
-        manifest.mAosService.EmplaceValue();
+        manifest.mItemConfig.EmplaceValue();
 
         return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _)).WillOnce(Invoke([](const String&, oci::ServiceConfig& config) {
+    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _)).WillOnce(Invoke([](const String&, oci::ItemConfig& config) {
         config.mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
 
         return ErrorEnum::eNone;
@@ -505,7 +505,7 @@ TEST_F(ContainerRuntimeTest, ImageConfig)
     EXPECT_TRUE(CheckEnvVar(*runtimeConfig, "ENV_VAR3=value3").IsNone());
 }
 
-TEST_F(ContainerRuntimeTest, ServiceConfig)
+TEST_F(ContainerRuntimeTest, ItemConfig)
 {
     InstanceInfo instance;
 
@@ -516,7 +516,7 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
     auto instanceID    = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
-    auto serviceConfig = std::make_unique<oci::ServiceConfig>();
+    auto itemConfig    = std::make_unique<oci::ItemConfig>();
 
     std::vector<resourcemanager::ResourceInfo> resourceInfos;
 
@@ -545,29 +545,29 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
     std::vector<std::string> devicePermissions = {"rw", "ro"};
 
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
-        manifest.mAosService.EmplaceValue();
+        manifest.mItemConfig.EmplaceValue();
 
         return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _))
-        .WillOnce(Invoke([&serviceConfig](const String&, oci::ServiceConfig& config) {
-            serviceConfig->mHostname.SetValue("example-host");
-            serviceConfig->mSysctl.Emplace("net.ipv4.ip_forward", "1");
-            serviceConfig->mSysctl.Emplace("net.ipv4.conf.all.rp_filter", "1");
-            serviceConfig->mSysctl.Emplace("net.ipv4.conf.default.rp_filter", "1");
+    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _))
+        .WillOnce(Invoke([&itemConfig](const String&, oci::ItemConfig& config) {
+            itemConfig->mHostname.SetValue("example-host");
+            itemConfig->mSysctl.Emplace("net.ipv4.ip_forward", "1");
+            itemConfig->mSysctl.Emplace("net.ipv4.conf.all.rp_filter", "1");
+            itemConfig->mSysctl.Emplace("net.ipv4.conf.default.rp_filter", "1");
 
-            serviceConfig->mQuotas.mCPUDMIPSLimit = 5000;
-            serviceConfig->mQuotas.mRAMLimit      = 256 * 1024 * 1024;
-            serviceConfig->mQuotas.mPIDsLimit     = 100;
-            serviceConfig->mQuotas.mNoFileLimit   = 2048;
-            serviceConfig->mQuotas.mTmpLimit      = 512 * 1024 * 1024;
+            itemConfig->mQuotas.mCPUDMIPSLimit = 5000;
+            itemConfig->mQuotas.mRAMLimit      = 256 * 1024 * 1024;
+            itemConfig->mQuotas.mPIDsLimit     = 100;
+            itemConfig->mQuotas.mNoFileLimit   = 2048;
+            itemConfig->mQuotas.mTmpLimit      = 512 * 1024 * 1024;
 
-            serviceConfig->mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
+            itemConfig->mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
 
-            serviceConfig->mResources.EmplaceBack("resource1");
-            serviceConfig->mResources.EmplaceBack("resource2");
+            itemConfig->mResources.EmplaceBack("resource1");
+            itemConfig->mResources.EmplaceBack("resource2");
 
-            config = *serviceConfig;
+            config = *itemConfig;
 
             return ErrorEnum::eNone;
         }));
@@ -613,45 +613,45 @@ TEST_F(ContainerRuntimeTest, ServiceConfig)
 
     // Check hostname
 
-    EXPECT_EQ(runtimeConfig->mHostname, *serviceConfig->mHostname);
+    EXPECT_EQ(runtimeConfig->mHostname, *itemConfig->mHostname);
 
     // Check sysctl
 
-    EXPECT_EQ(runtimeConfig->mLinux->mSysctl, serviceConfig->mSysctl);
+    EXPECT_EQ(runtimeConfig->mLinux->mSysctl, itemConfig->mSysctl);
 
     // Check CPU quota
 
     ASSERT_TRUE(runtimeConfig->mLinux->mResources.HasValue());
     ASSERT_TRUE(runtimeConfig->mLinux->mResources->mCPU.HasValue());
     EXPECT_EQ(*runtimeConfig->mLinux->mResources->mCPU->mQuota,
-        100000 * mNodeInfo.mCPUs[0].mNumCores * (*serviceConfig->mQuotas.mCPUDMIPSLimit) / mNodeInfo.mMaxDMIPS);
+        100000 * mNodeInfo.mCPUs[0].mNumCores * (*itemConfig->mQuotas.mCPUDMIPSLimit) / mNodeInfo.mMaxDMIPS);
     EXPECT_EQ(runtimeConfig->mLinux->mResources->mCPU->mPeriod, 100000);
 
     // Check memory quota
 
     ASSERT_TRUE(runtimeConfig->mLinux->mResources->mMemory.HasValue());
-    EXPECT_EQ(runtimeConfig->mLinux->mResources->mMemory->mLimit, *serviceConfig->mQuotas.mRAMLimit);
+    EXPECT_EQ(runtimeConfig->mLinux->mResources->mMemory->mLimit, *itemConfig->mQuotas.mRAMLimit);
 
     // Check PID limit
 
     ASSERT_TRUE(runtimeConfig->mLinux->mResources->mPids.HasValue());
-    EXPECT_EQ(runtimeConfig->mLinux->mResources->mPids->mLimit, *serviceConfig->mQuotas.mPIDsLimit);
+    EXPECT_EQ(runtimeConfig->mLinux->mResources->mPids->mLimit, *itemConfig->mQuotas.mPIDsLimit);
 
     EXPECT_TRUE(CheckRLimits(*runtimeConfig,
-        oci::POSIXRlimit {"RLIMIT_NPROC", *serviceConfig->mQuotas.mPIDsLimit, *serviceConfig->mQuotas.mPIDsLimit})
+        oci::POSIXRlimit {"RLIMIT_NPROC", *itemConfig->mQuotas.mPIDsLimit, *itemConfig->mQuotas.mPIDsLimit})
                     .IsNone());
 
     // Check NoFile limit
 
     EXPECT_TRUE(CheckRLimits(*runtimeConfig,
-        oci::POSIXRlimit {"RLIMIT_NOFILE", *serviceConfig->mQuotas.mNoFileLimit, *serviceConfig->mQuotas.mNoFileLimit})
+        oci::POSIXRlimit {"RLIMIT_NOFILE", *itemConfig->mQuotas.mNoFileLimit, *itemConfig->mQuotas.mNoFileLimit})
                     .IsNone());
 
     // Check /tmp limit
 
     EXPECT_TRUE(CheckMount(*runtimeConfig,
         Mount {"tmpfs", "/tmp", "tmpfs",
-            ("nosuid,strictatime,mode=1777,size=" + std::to_string(*serviceConfig->mQuotas.mTmpLimit)).c_str()})
+            ("nosuid,strictatime,mode=1777,size=" + std::to_string(*itemConfig->mQuotas.mTmpLimit)).c_str()})
                     .IsNone());
 
     // Check permissions registration
@@ -842,12 +842,12 @@ TEST_F(ContainerRuntimeTest, Network)
     networkParams->mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
 
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
-        manifest.mAosService.EmplaceValue();
+        manifest.mItemConfig.EmplaceValue();
 
         return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mOCISpecMock, LoadServiceConfig(_, _))
-        .WillOnce(Invoke([&networkParams](const String&, oci::ServiceConfig& config) {
+    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _))
+        .WillOnce(Invoke([&networkParams](const String&, oci::ItemConfig& config) {
             config.mHostname.SetValue(networkParams->mHostname);
             config.mResources.EmplaceBack("resource1");
             config.mResources.EmplaceBack("resource2");

@@ -94,14 +94,14 @@ Error Instance::Start()
     }
 
     auto imageConfig   = std::make_unique<oci::ImageConfig>();
-    auto serviceConfig = std::make_unique<oci::ServiceConfig>();
+    auto itemConfig    = std::make_unique<oci::ItemConfig>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
 
-    if (err = LoadConfigs(*imageConfig, *serviceConfig); !err.IsNone()) {
+    if (err = LoadConfigs(*imageConfig, *itemConfig); !err.IsNone()) {
         return err;
     }
 
-    if (err = CreateRuntimeConfig(runtimeDir, *imageConfig, *serviceConfig, *runtimeConfig); !err.IsNone()) {
+    if (err = CreateRuntimeConfig(runtimeDir, *imageConfig, *itemConfig, *runtimeConfig); !err.IsNone()) {
         return err;
     }
 
@@ -114,7 +114,7 @@ Error Instance::Start()
     }
 
     if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (err = SetupNetwork(runtimeDir, *serviceConfig); !err.IsNone()) {
+        if (err = SetupNetwork(runtimeDir, *itemConfig); !err.IsNone()) {
             return err;
         }
     }
@@ -125,7 +125,7 @@ Error Instance::Start()
         }
     }
 
-    mRunStatus = mRunner.StartInstance(mInstanceID, serviceConfig->mRunParameters);
+    mRunStatus = mRunner.StartInstance(mInstanceID, itemConfig->mRunParameters);
     err        = mRunStatus.mError;
 
     if (!err.IsNone()) {
@@ -225,7 +225,7 @@ void Instance::GenerateInstanceID()
     mInstanceID = common::utils::NameUUID(idStr);
 }
 
-Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& serviceConfig)
+Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ItemConfig& itemConfig)
 {
     auto path = std::make_unique<StaticString<cFilePathLen>>();
 
@@ -247,12 +247,12 @@ Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& s
         return AOS_ERROR_WRAP(err);
     }
 
-    if (manifest->mAosService.HasValue()) {
-        if (auto err = mItemInfoProvider.GetBlobPath(manifest->mAosService->mDigest, *path); !err.IsNone()) {
+    if (manifest->mItemConfig.HasValue()) {
+        if (auto err = mItemInfoProvider.GetBlobPath(manifest->mItemConfig->mDigest, *path); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = mOCISpec.LoadServiceConfig(*path, serviceConfig); !err.IsNone()) {
+        if (auto err = mOCISpec.LoadItemConfig(*path, itemConfig); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -261,7 +261,7 @@ Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ServiceConfig& s
 }
 
 Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
-    const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig)
+    const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig)
 {
     LOG_DBG() << "Create runtime config" << Log::Field("instanceID", mInstanceID.c_str());
 
@@ -310,7 +310,7 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = ApplyServiceConfig(serviceConfig, runtimeConfig); !err.IsNone()) {
+    if (auto err = ApplyItemConfig(itemConfig, runtimeConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -418,17 +418,16 @@ Error Instance::ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::Runti
     return ErrorEnum::eNone;
 }
 
-Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci::RuntimeConfig& runtimeConfig)
+Error Instance::ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig)
 {
-    if (serviceConfig.mHostname.HasValue()) {
-        runtimeConfig.mHostname = *serviceConfig.mHostname;
+    if (itemConfig.mHostname.HasValue()) {
+        runtimeConfig.mHostname = *itemConfig.mHostname;
     }
 
-    runtimeConfig.mLinux->mSysctl = serviceConfig.mSysctl;
+    runtimeConfig.mLinux->mSysctl = itemConfig.mSysctl;
 
-    if (serviceConfig.mQuotas.mCPUDMIPSLimit.HasValue()) {
-        int64_t quota
-            = *serviceConfig.mQuotas.mCPUDMIPSLimit * cDefaultCPUPeriod * GetNumCPUCores() / mNodeInfo.mMaxDMIPS;
+    if (itemConfig.mQuotas.mCPUDMIPSLimit.HasValue()) {
+        int64_t quota = *itemConfig.mQuotas.mCPUDMIPSLimit * cDefaultCPUPeriod * GetNumCPUCores() / mNodeInfo.mMaxDMIPS;
         if (quota < cMinCPUQuota) {
             quota = cMinCPUQuota;
         }
@@ -438,14 +437,14 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
-    if (serviceConfig.mQuotas.mRAMLimit.HasValue()) {
-        if (auto err = SetRAMLimit(*serviceConfig.mQuotas.mRAMLimit, runtimeConfig); !err.IsNone()) {
+    if (itemConfig.mQuotas.mRAMLimit.HasValue()) {
+        if (auto err = SetRAMLimit(*itemConfig.mQuotas.mRAMLimit, runtimeConfig); !err.IsNone()) {
             return err;
         }
     }
 
-    if (serviceConfig.mQuotas.mPIDsLimit.HasValue()) {
-        auto pidLimit = *serviceConfig.mQuotas.mPIDsLimit;
+    if (itemConfig.mQuotas.mPIDsLimit.HasValue()) {
+        auto pidLimit = *itemConfig.mQuotas.mPIDsLimit;
 
         if (auto err = SetPIDLimit(pidLimit, runtimeConfig); !err.IsNone()) {
             return err;
@@ -456,8 +455,8 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
-    if (serviceConfig.mQuotas.mNoFileLimit.HasValue()) {
-        auto noFileLimit = *serviceConfig.mQuotas.mNoFileLimit;
+    if (itemConfig.mQuotas.mNoFileLimit.HasValue()) {
+        auto noFileLimit = *itemConfig.mQuotas.mNoFileLimit;
 
         if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NOFILE", noFileLimit, noFileLimit}, runtimeConfig);
             !err.IsNone()) {
@@ -465,10 +464,10 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
-    if (serviceConfig.mQuotas.mTmpLimit.HasValue()) {
+    if (itemConfig.mQuotas.mTmpLimit.HasValue()) {
         StaticString<cFSMountOptionLen> tmpFSOpts;
 
-        if (auto err = tmpFSOpts.Format("nosuid,strictatime,mode=1777,size=%lu", *serviceConfig.mQuotas.mTmpLimit);
+        if (auto err = tmpFSOpts.Format("nosuid,strictatime,mode=1777,size=%lu", *itemConfig.mQuotas.mTmpLimit);
             !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -480,8 +479,8 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
-    if (!serviceConfig.mPermissions.IsEmpty()) {
-        auto [secret, err] = mPermHandler.RegisterInstance(mInstanceInfo, serviceConfig.mPermissions);
+    if (!itemConfig.mPermissions.IsEmpty()) {
+        auto [secret, err] = mPermHandler.RegisterInstance(mInstanceInfo, itemConfig.mPermissions);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -499,7 +498,7 @@ Error Instance::ApplyServiceConfig(const oci::ServiceConfig& serviceConfig, oci:
         }
     }
 
-    if (auto err = AddResources(serviceConfig.mResources, runtimeConfig); !err.IsNone()) {
+    if (auto err = AddResources(itemConfig.mResources, runtimeConfig); !err.IsNone()) {
         return err;
     }
 
@@ -727,7 +726,7 @@ Error Instance::PrepareRootFS(
     return ErrorEnum::eNone;
 }
 
-Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ServiceConfig& serviceConfig)
+Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ItemConfig& itemConfig)
 {
     LOG_DBG() << "Setup network" << Log::Field("instanceID", mInstanceID.c_str());
 
@@ -749,7 +748,7 @@ Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ServiceCo
 
     auto hosts = mConfig.mHosts;
 
-    for (const auto& resource : serviceConfig.mResources) {
+    for (const auto& resource : itemConfig.mResources) {
         if (auto err = AddNetworkHostsFromResource(resource.CStr(), hosts); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -763,24 +762,24 @@ Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ServiceCo
 
     networkParams->mNetworkParameters = *mInstanceInfo.mNetworkParameters;
 
-    if (serviceConfig.mHostname.HasValue()) {
-        networkParams->mHostname = *serviceConfig.mHostname;
+    if (itemConfig.mHostname.HasValue()) {
+        networkParams->mHostname = *itemConfig.mHostname;
     }
 
-    if (serviceConfig.mQuotas.mDownloadSpeed.HasValue()) {
-        networkParams->mIngressKbit = *serviceConfig.mQuotas.mDownloadSpeed;
+    if (itemConfig.mQuotas.mDownloadSpeed.HasValue()) {
+        networkParams->mIngressKbit = *itemConfig.mQuotas.mDownloadSpeed;
     }
 
-    if (serviceConfig.mQuotas.mUploadSpeed.HasValue()) {
-        networkParams->mEgressKbit = *serviceConfig.mQuotas.mUploadSpeed;
+    if (itemConfig.mQuotas.mUploadSpeed.HasValue()) {
+        networkParams->mEgressKbit = *itemConfig.mQuotas.mUploadSpeed;
     }
 
-    if (serviceConfig.mQuotas.mDownloadLimit.HasValue()) {
-        networkParams->mDownloadLimit = *serviceConfig.mQuotas.mDownloadLimit;
+    if (itemConfig.mQuotas.mDownloadLimit.HasValue()) {
+        networkParams->mDownloadLimit = *itemConfig.mQuotas.mDownloadLimit;
     }
 
-    if (serviceConfig.mQuotas.mUploadLimit.HasValue()) {
-        networkParams->mUploadLimit = *serviceConfig.mQuotas.mUploadLimit;
+    if (itemConfig.mQuotas.mUploadLimit.HasValue()) {
+        networkParams->mUploadLimit = *itemConfig.mQuotas.mUploadLimit;
     }
 
     if (auto err = mFileSystem.PrepareNetworkDir(common::utils::JoinPath(runtimeDir, cMountPointsDir)); !err.IsNone()) {
