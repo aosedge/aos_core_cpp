@@ -252,21 +252,21 @@ public:
     Error UpdateItemState(const String& id, const String& version, ItemState state, Time timestamp = {}) override;
 
     /**
-     * Gets items info.
+     * Gets all items info.
      *
      * @param items Items info.
      * @return Error.
      */
-    Error GetItemsInfo(Array<imagemanager::ItemInfo>& items) override;
+    Error GetAllItemsInfos(Array<imagemanager::ItemInfo>& items) override;
 
     /**
      * Gets items info by ID.
      *
-     * @param itemID Item ID.
+     * @param id Item ID.
      * @param items Items info.
      * @return Error.
      */
-    Error GetItemsInfos(const String& itemID, Array<imagemanager::ItemInfo>& items) override;
+    Error GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& items) override;
 
 private:
     static constexpr int  cVersion    = 0;
