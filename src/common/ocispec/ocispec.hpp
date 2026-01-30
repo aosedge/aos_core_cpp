@@ -71,22 +71,22 @@ public:
     Error SaveImageConfig(const String& path, const aos::oci::ImageConfig& imageConfig) override;
 
     /**
-     * Loads Aos service config.
+     * Loads Aos item config.
      *
      * @param path file path.
-     * @param serviceConfig service config.
+     * @param itemConfig item config.
      * @return Error.
      */
-    Error LoadServiceConfig(const String& path, aos::oci::ServiceConfig& serviceConfig) override;
+    Error LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConfig) override;
 
     /**
-     * Saves Aos service config.
+     * Saves Aos item config.
      *
      * @param path file path.
-     * @param serviceConfig service config.
+     * @param itemConfig item config.
      * @return Error.
      */
-    Error SaveServiceConfig(const String& path, const aos::oci::ServiceConfig& serviceConfig) override;
+    Error SaveItemConfig(const String& path, const aos::oci::ItemConfig& itemConfig) override;
 
     /**
      * Loads OCI runtime config.
