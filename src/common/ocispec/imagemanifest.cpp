@@ -56,10 +56,10 @@ Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& ma
             }
         }
 
-        if (wrapper.Has("aosService")) {
-            manifest.mAosService.SetValue({});
+        if (wrapper.Has("aosItemConfig")) {
+            manifest.mItemConfig.SetValue({});
 
-            ContentDescriptorFromJSONObject(wrapper.GetObject("aosService"), *manifest.mAosService);
+            ContentDescriptorFromJSONObject(wrapper.GetObject("aosItemConfig"), *manifest.mItemConfig);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
@@ -76,8 +76,8 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
         object->set("schemaVersion", manifest.mSchemaVersion);
         object->set("config", ContentDescriptorToJSONObject(manifest.mConfig));
 
-        if (manifest.mAosService.HasValue()) {
-            object->set("aosService", ContentDescriptorToJSONObject(*manifest.mAosService));
+        if (manifest.mItemConfig.HasValue()) {
+            object->set("aosItemConfig", ContentDescriptorToJSONObject(*manifest.mItemConfig));
         }
 
         if (!manifest.mLayers.IsEmpty()) {
