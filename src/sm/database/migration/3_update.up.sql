@@ -5,6 +5,17 @@ DROP TABLE IF EXISTS services;
 DROP TABLE IF EXISTS layers;
 DROP TABLE IF EXISTS instances;
 
+-- Create new items table
+CREATE TABLE items (
+    itemID TEXT,
+    type TEXT,
+    version TEXT,
+    manifestDigest TEXT,
+    state TEXT,
+    timestamp INTEGER,
+    PRIMARY KEY(itemID, type, version)
+);
+
 -- Create new instances table with updated schema
 CREATE TABLE instances (
     itemID TEXT NOT NULL,
