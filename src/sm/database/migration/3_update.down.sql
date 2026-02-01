@@ -1,6 +1,7 @@
 BEGIN TRANSACTION;
 
 DROP TABLE IF EXISTS instances;
+DROP TABLE IF EXISTS items;
 
 -- Recreate old instances
 CREATE TABLE instances (
