@@ -674,7 +674,7 @@ Error Database::UpdateItemState(const String& id, const String& version, ItemSta
         Poco::Data::Statement statement {*mSession};
 
         statement << "UPDATE imagemanager SET state = ?, timestamp = ? WHERE itemID = ? AND version = ?;",
-            bind(static_cast<int>(state)), bind(timestamp.UnixNano()), bind(id.CStr()), bind(version.CStr());
+            bind(state.ToString().CStr()), bind(timestamp.UnixNano()), bind(id.CStr()), bind(version.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -762,7 +762,7 @@ void Database::CreateTables()
                  "itemID TEXT,"
                  "version TEXT,"
                  "indexDigest TEXT,"
-                 "state INTEGER,"
+                 "state TEXT,"
                  "timestamp INTEGER,"
                  "PRIMARY KEY(itemID,version)"
                  ");",
@@ -988,7 +988,7 @@ void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRo
     dst.set<ToInt(ImageManagerItemInfoColumns::eItemID)>(src.mItemID.CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eVersion)>(src.mVersion.CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>(src.mIndexDigest.CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eState)>(static_cast<int>(src.mState));
+    dst.set<ToInt(ImageManagerItemInfoColumns::eState)>(src.mState.ToString().CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
 }
 
@@ -997,8 +997,8 @@ void Database::ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo&
     dst.mItemID      = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
     dst.mVersion     = src.get<ToInt(ImageManagerItemInfoColumns::eVersion)>().c_str();
     dst.mIndexDigest = src.get<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>().c_str();
-    dst.mState       = static_cast<ItemStateEnum>(src.get<ToInt(ImageManagerItemInfoColumns::eState)>());
-
+    auto err         = dst.mState.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eState)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
     auto timestamp = src.get<ToInt(ImageManagerItemInfoColumns::eTimestamp)>();
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
 }

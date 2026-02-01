@@ -332,7 +332,7 @@ private:
         std::string, std::string, std::string, size_t>;
 
     enum class ImageManagerItemInfoColumns : int { eItemID = 0, eVersion, eIndexDigest, eState, eTimestamp };
-    using ImageManagerItemInfoRow = Poco::Tuple<std::string, std::string, std::string, int, uint64_t>;
+    using ImageManagerItemInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string, uint64_t>;
 
     // make virtual for unit tests
     virtual int GetVersion() const;
