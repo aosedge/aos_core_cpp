@@ -125,7 +125,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize image manager
 
     err = mImageManager.Init(mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader, mFileInfoProvider,
-        mOCISpec, mImageHandler);
+        mOCISpec, mImageHandler, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
     // Initialize launcher

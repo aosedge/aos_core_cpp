@@ -44,6 +44,57 @@ public:
      */
     Error Init(const std::string& workDir, const common::config::Migration& migrationConfig);
 
+    // sm::imagemanager::StorageItf interface
+
+    /**
+     * Adds update item to storage.
+     *
+     * @param updateItem update item to add.
+     * @return Error.
+     */
+    Error AddUpdateItem(const imagemanager::UpdateItemData& updateItem) override;
+
+    /**
+     * Updates update item in storage.
+     *
+     * @param updateItem update item to update.
+     * @return Error.
+     */
+    Error UpdateUpdateItem(const imagemanager::UpdateItemData& updateItem) override;
+
+    /**
+     * Removes previously stored update item.
+     *
+     * @param itemID update item ID to remove.
+     * @param version update item version.
+     * @return Error.
+     */
+    Error RemoveUpdateItem(const String& itemID, const String& version) override;
+
+    /**
+     * Returns update item versions by item ID.
+     *
+     * @param itemID update item ID.
+     * @param[out] itemData array to store update item data.
+     * @return Error.
+     */
+    Error GetUpdateItem(const String& itemID, Array<imagemanager::UpdateItemData>& itemData) override;
+
+    /**
+     * Returns all update items.
+     *
+     * @param itemsData[out] array to store update items data.
+     * @return Error.
+     */
+    Error GetAllUpdateItems(Array<imagemanager::UpdateItemData>& itemsData) override;
+
+    /**
+     * Returns count of stored update items.
+     *
+     * @return RetWithError<size_t>.
+     */
+    RetWithError<size_t> GetUpdateItemsCount() override;
+
     // sm::launcher::StorageItf interface
 
     /**
@@ -171,6 +222,18 @@ private:
     static constexpr int  sVersion    = 3;
     static constexpr auto cDBFileName = "servicemanager.db";
 
+    // Item data columns
+    enum class ItemDataColumns : int {
+        eItemID = 0,
+        eType,
+        eVersion,
+        eManifestDigest,
+        eState,
+        eTimestamp,
+    };
+
+    using ItemDataRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t>;
+
     // Instance info columns
     enum class InstanceInfoColumns : int {
         eItemID = 0,
@@ -192,12 +255,21 @@ private:
         eNetworkParameters,
         eMonitoringParams
     };
+
     using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string,
         std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string,
         std::string, std::string, std::string>;
 
     // Network info columns
-    enum class NetworkInfoColumns : int { eNetworkID = 0, eIP, eSubnet, eVlanID, eVlanIfName, eBridgeIfName };
+    enum class NetworkInfoColumns : int {
+        eNetworkID = 0,
+        eIP,
+        eSubnet,
+        eVlanID,
+        eVlanIfName,
+        eBridgeIfName,
+    };
+
     using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string>;
 
     bool TableExist(const std::string& tableName);
@@ -205,6 +277,10 @@ private:
     void CreateTables();
 
     // FromAos/ToAos conversion methods
+
+    static void FromAos(const imagemanager::UpdateItemData& src, ItemDataRow& dst);
+    static void ToAos(const ItemDataRow& src, imagemanager::UpdateItemData& dst);
+
     static void FromAos(const InstanceInfo& src, InstanceInfoRow& dst);
     static void ToAos(const InstanceInfoRow& src, InstanceInfo& dst);
 

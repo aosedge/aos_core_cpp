@@ -347,11 +347,165 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
         mMigration->MigrateToVersion(sVersion);
+
+        return ErrorEnum::eNone;
+
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
+}
 
-    return ErrorEnum::eNone;
+/***********************************************************************************************************************
+ * sm::imagemanager::StorageItf implementation
+ **********************************************************************************************************************/
+
+Error Database::AddUpdateItem(const imagemanager::UpdateItemData& updateItem)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Add update item" << Log::Field("id", updateItem.mID) << Log::Field("type", updateItem.mType)
+              << Log::Field("version", updateItem.mVersion) << Log::Field("state", updateItem.mState);
+
+    try {
+        ItemDataRow row;
+
+        FromAos(updateItem, row);
+
+        *mSession
+            << "INSERT INTO items (itemID, type, version, manifestDigest, state, timestamp) VALUES (?, ?, ?, ?, ?, ?);",
+            bind(row), now;
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::UpdateUpdateItem(const imagemanager::UpdateItemData& updateItem)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Update update item" << Log::Field("id", updateItem.mID) << Log::Field("type", updateItem.mType)
+              << Log::Field("version", updateItem.mVersion) << Log::Field("state", updateItem.mState);
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "UPDATE items SET manifestDigest = ?, state = ?, timestamp = ? WHERE itemID = ? AND type = ? AND "
+                     "version = ?;",
+            bind(updateItem.mManifestDigest.CStr()), bind(updateItem.mState.ToString().CStr()),
+            bind(updateItem.mTimestamp.UnixNano()), bind(updateItem.mID.CStr()),
+            bind(updateItem.mType.ToString().CStr()), bind(updateItem.mVersion.CStr());
+
+        if (statement.execute() != 1) {
+            return ErrorEnum::eNotFound;
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::RemoveUpdateItem(const String& itemID, const String& version)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Remove update item" << Log::Field("id", itemID) << Log::Field("version", version);
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "DELETE FROM items WHERE itemID = ? AND version = ?;", bind(itemID.CStr()), bind(version.CStr());
+
+        if (statement.execute() == 0) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::GetUpdateItem(const String& itemID, Array<imagemanager::UpdateItemData>& itemData)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get update item" << Log::Field("id", itemID);
+
+    try {
+        std::vector<ItemDataRow> rows;
+        Poco::Data::Statement    statement {*mSession};
+
+        statement << "SELECT * FROM items WHERE itemID = ?;", bind(itemID.CStr()), into(rows);
+
+        if (statement.execute() == 0) {
+            return ErrorEnum::eNotFound;
+        }
+
+        for (const auto& row : rows) {
+            imagemanager::UpdateItemData updateItem;
+
+            ToAos(row, updateItem);
+
+            if (auto err = itemData.PushBack(updateItem); !err.IsNone()) {
+                return AOS_ERROR_WRAP(Error(err, "db items count exceeds application limit"));
+            }
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::GetAllUpdateItems(Array<imagemanager::UpdateItemData>& itemsData)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get all update items";
+
+    try {
+        std::vector<ItemDataRow> rows;
+        Poco::Data::Statement    statement {*mSession};
+
+        statement << "SELECT * FROM items;", into(rows);
+
+        statement.execute();
+
+        for (const auto& row : rows) {
+            imagemanager::UpdateItemData updateItem;
+
+            ToAos(row, updateItem);
+
+            if (auto err = itemsData.PushBack(updateItem); !err.IsNone()) {
+                return AOS_ERROR_WRAP(Error(err, "db items count exceeds application limit"));
+            }
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+RetWithError<size_t> Database::GetUpdateItemsCount()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get update items count";
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+        size_t                count;
+
+        statement << "SELECT COUNT(*) FROM items;", into(count), now;
+
+        return {count, ErrorEnum::eNone};
+    } catch (const std::exception& e) {
+        return {0, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
+    }
 }
 
 /***********************************************************************************************************************
@@ -753,6 +907,36 @@ void Database::CreateTables()
                  "statePath TEXT, "
                  "network BLOB)",
         now;
+}
+
+void Database::FromAos(const imagemanager::UpdateItemData& src, ItemDataRow& dst)
+{
+    dst.set<ToInt(ItemDataColumns::eItemID)>(src.mID.CStr());
+    dst.set<ToInt(ItemDataColumns::eType)>(src.mType.ToString().CStr());
+    dst.set<ToInt(ItemDataColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(ItemDataColumns::eManifestDigest)>(src.mManifestDigest.CStr());
+    dst.set<ToInt(ItemDataColumns::eState)>(src.mState.ToString().CStr());
+    dst.set<ToInt(ItemDataColumns::eTimestamp)>(src.mTimestamp.UnixNano());
+}
+
+void Database::ToAos(const ItemDataRow& src, imagemanager::UpdateItemData& dst)
+{
+    auto err = dst.mID.Assign(src.get<ToInt(ItemDataColumns::eItemID)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to assign item ID");
+
+    err = dst.mType.FromString(src.get<ToInt(ItemDataColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item type");
+
+    err = dst.mVersion.Assign(src.get<ToInt(ItemDataColumns::eVersion)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to assign item version");
+
+    err = dst.mManifestDigest.Assign(src.get<ToInt(ItemDataColumns::eManifestDigest)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to assign manifest digest");
+
+    err = dst.mState.FromString(src.get<ToInt(ItemDataColumns::eState)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
+
+    dst.mTimestamp = ConvertTimestamp(src.get<ToInt(ItemDataColumns::eTimestamp)>());
 }
 
 void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)

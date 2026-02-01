@@ -57,6 +57,21 @@ aos::InstanceInfo CreateInstanceInfo(
     return info;
 }
 
+aos::sm::imagemanager::UpdateItemData CreateUpdateItemData(const aos::String& id, aos::UpdateItemType type,
+    const aos::String& version, const aos::String& manifestDigest, aos::ItemState state, aos::Time timestamp)
+{
+    aos::sm::imagemanager::UpdateItemData item;
+
+    item.mID             = id;
+    item.mType           = type;
+    item.mVersion        = version;
+    item.mManifestDigest = manifestDigest;
+    item.mState          = state;
+    item.mTimestamp      = timestamp;
+
+    return item;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -93,6 +108,223 @@ protected:
     aos::common::config::Migration mMigrationConfig;
     aos::sm::database::Database    mDB;
 };
+
+/***********************************************************************************************************************
+ * Tests - imagemanager::StorageItf
+ **********************************************************************************************************************/
+
+TEST_F(DatabaseTest, AddUpdateItem)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto item1v1 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest1",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item1v2 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "2.0.0", "sha256:digest2",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item2v1 = CreateUpdateItemData("item2", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest3",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+
+    // Add item1 v1
+
+    auto err = mDB.AddUpdateItem(item1v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Try to add same item again
+
+    err = mDB.AddUpdateItem(item1v1);
+    ASSERT_FALSE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item1 v2
+
+    err = mDB.AddUpdateItem(item1v2);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item2 v1
+
+    err = mDB.AddUpdateItem(item2v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Get item1
+
+    auto itemData = std::make_unique<aos::StaticArray<aos::sm::imagemanager::UpdateItemData, 2>>();
+
+    err = mDB.GetUpdateItem("item1", *itemData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 2);
+    EXPECT_EQ((*itemData)[0], item1v1);
+    EXPECT_EQ((*itemData)[1], item1v2);
+
+    // Get item2
+
+    itemData->Clear();
+
+    err = mDB.GetUpdateItem("item2", *itemData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 1);
+    EXPECT_EQ((*itemData)[0], item2v1);
+}
+
+TEST_F(DatabaseTest, UpdateUpdateItem)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto item1 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest1",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item2 = CreateUpdateItemData("item2", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest3",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+
+    // Add item1
+
+    auto err = mDB.AddUpdateItem(item1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item2
+
+    err = mDB.AddUpdateItem(item2);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    item1.mState = aos::ItemStateEnum::eRemoved;
+    item2.mState = aos::ItemStateEnum::eRemoved;
+
+    // Update item1
+
+    err = mDB.UpdateUpdateItem(item1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Update item2
+
+    err = mDB.UpdateUpdateItem(item2);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Get item1
+
+    auto itemData = std::make_unique<aos::StaticArray<aos::sm::imagemanager::UpdateItemData, 2>>();
+
+    err = mDB.GetUpdateItem("item1", *itemData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 1);
+    EXPECT_EQ((*itemData)[0], item1);
+
+    // Get item2
+
+    itemData->Clear();
+
+    err = mDB.GetUpdateItem("item2", *itemData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 1);
+    EXPECT_EQ((*itemData)[0], item2);
+}
+
+TEST_F(DatabaseTest, RemoveUpdateItem)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto item1v1 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest1",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item1v2 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "2.0.0", "sha256:digest2",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item2v1 = CreateUpdateItemData("item2", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest3",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+
+    // Add item 1 v1
+
+    auto err = mDB.AddUpdateItem(item1v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item 1 v2
+
+    err = mDB.AddUpdateItem(item1v2);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item 2 v1
+
+    err = mDB.AddUpdateItem(item2v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Remove item1 v1 with wrong version
+
+    err = mDB.RemoveUpdateItem(item1v1.mID, "3.0.0");
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << aos::tests::utils::ErrorToStr(err);
+
+    // Remove item1 v1
+
+    err = mDB.RemoveUpdateItem(item1v1.mID, item1v1.mVersion);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Remove item2 v1
+
+    err = mDB.RemoveUpdateItem(item2v1.mID, item2v1.mVersion);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Get item1
+
+    auto itemData = std::make_unique<aos::StaticArray<aos::sm::imagemanager::UpdateItemData, 2>>();
+
+    err = mDB.GetUpdateItem("item1", *itemData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 1);
+    EXPECT_EQ((*itemData)[0], item1v2);
+
+    // Get item2
+
+    itemData->Clear();
+
+    err = mDB.GetUpdateItem("item2", *itemData);
+    ASSERT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemData->Size(), 0);
+}
+
+TEST_F(DatabaseTest, GetAllUpdateItems)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto item1v1 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest1",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item1v2 = CreateUpdateItemData("item1", aos::UpdateItemTypeEnum::eService, "2.0.0", "sha256:digest2",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+    auto item2v1 = CreateUpdateItemData("item2", aos::UpdateItemTypeEnum::eService, "1.0.0", "sha256:digest3",
+        aos::ItemStateEnum::eInstalled, aos::Time::Now());
+
+    // Add item1 v1
+
+    auto err = mDB.AddUpdateItem(item1v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item1 v2
+
+    err = mDB.AddUpdateItem(item1v2);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Add item2 v1
+
+    err = mDB.AddUpdateItem(item2v1);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    // Get all update items
+
+    auto itemsData = std::make_unique<aos::StaticArray<aos::sm::imagemanager::UpdateItemData, 3>>();
+
+    err = mDB.GetAllUpdateItems(*itemsData);
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemsData->Size(), 3);
+    EXPECT_EQ((*itemsData)[0], item1v1);
+    EXPECT_EQ((*itemsData)[1], item1v2);
+    EXPECT_EQ((*itemsData)[2], item2v1);
+
+    size_t count = 0;
+
+    Tie(count, err) = mDB.GetUpdateItemsCount();
+    ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(count, itemsData->Size());
+}
 
 /***********************************************************************************************************************
  * Tests - launcher::StorageItf
