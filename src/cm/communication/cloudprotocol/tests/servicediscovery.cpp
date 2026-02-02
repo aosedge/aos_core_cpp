@@ -33,14 +33,15 @@ TEST_F(CloudProtocolServiceDiscovery, DiscoveryRequest)
 {
     constexpr auto cJSON = R"({"version":1,"systemId":"test-system-id","supportedProtocols":["wss"]})";
 
-    auto request      = std::make_unique<ServiceDiscoveryRequest>();
-    request->mVersion = 1;
-    request->mSystemID.Assign("test-system-id");
-    request->mSupportedProtocols.EmplaceBack("wss");
+    ServiceDiscoveryRequest request;
+
+    request.mVersion  = 1;
+    request.mSystemID = "test-system-id";
+    request.mSupportedProtocols.emplace_back("wss");
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    auto err = ToJSON(*request, *json);
+    auto err = ToJSON(request, *json);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
@@ -61,22 +62,22 @@ TEST_F(CloudProtocolServiceDiscovery, DiscoveryResponse)
         "errorCode": 1
     })";
 
-    auto response = std::make_unique<ServiceDiscoveryResponse>();
+    ServiceDiscoveryResponse response;
 
-    auto err = FromJSON(cJSON, *response);
+    auto err = FromJSON(cJSON, response);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_EQ(response->mVersion, 1);
-    EXPECT_EQ(response->mSystemID.CStr(), std::string("test-system-id"));
-    EXPECT_EQ(response->mNextRequestDelay.Milliseconds(), 30);
-    ASSERT_EQ(response->mConnectionInfo.Size(), 3u);
+    EXPECT_EQ(response.mVersion, 1);
+    EXPECT_EQ(response.mSystemID, "test-system-id");
+    EXPECT_EQ(response.mNextRequestDelay.Milliseconds(), 30);
+    ASSERT_EQ(response.mConnectionInfo.size(), 3u);
 
-    EXPECT_EQ(response->mConnectionInfo[0].CStr(), std::string("wss://example.com"));
-    EXPECT_EQ(response->mConnectionInfo[1].CStr(), std::string("https://example.com"));
-    EXPECT_EQ(response->mConnectionInfo[2].CStr(), std::string("http://example.com"));
+    EXPECT_EQ(response.mConnectionInfo[0], "wss://example.com");
+    EXPECT_EQ(response.mConnectionInfo[1], "https://example.com");
+    EXPECT_EQ(response.mConnectionInfo[2], "http://example.com");
 
-    EXPECT_EQ(response->mAuthToken.CStr(), std::string("test-auth-token"));
-    EXPECT_EQ(response->mErrorCode.GetValue(), ServiceDiscoveryResponseErrorEnum::eRedirect);
+    EXPECT_EQ(response.mAuthToken, "test-auth-token");
+    EXPECT_EQ(response.mErrorCode.GetValue(), ServiceDiscoveryResponseErrorEnum::eRedirect);
 }
 
 } // namespace aos::cm::communication::cloudprotocol
