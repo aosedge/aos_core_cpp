@@ -35,7 +35,7 @@ public:
      * @param systemdConn systemd connection.
      * @return Error.
      */
-    Error Init(RunStatusReceiverItf& receiver, utils::SystemdConnItf& systemdConn) override;
+    Error Init(RunStatusReceiverItf& receiver, sm::utils::SystemdConnItf& systemdConn) override;
 
     /**
      * Starts monitoring thread.
@@ -81,8 +81,8 @@ private:
     static constexpr auto cSystemdDropInsDir       = "/run/systemd/system";
     static constexpr auto cParametersFileName      = "parameters.conf";
 
-    virtual std::shared_ptr<utils::SystemdConnItf> CreateSystemdConn();
-    virtual std::string                            GetSystemdDropInsDir() const;
+    virtual std::shared_ptr<sm::utils::SystemdConnItf> CreateSystemdConn();
+    virtual std::string                                GetSystemdDropInsDir() const;
 
     void                        MonitorUnits();
     std::vector<RunStatus>&     GetRunningInstances() const;
@@ -95,7 +95,7 @@ private:
 
     struct StartingUnitData {
         std::condition_variable mCondVar;
-        utils::UnitState        mRunState;
+        sm::utils::UnitState    mRunState;
         Optional<int32_t>       mExitCode;
     };
 
@@ -106,10 +106,10 @@ private:
 
     RunStatusReceiverItf* mRunStatusReceiver = nullptr;
 
-    utils::SystemdConnItf*  mSystemd = {};
-    std::thread             mMonitoringThread;
-    std::mutex              mMutex;
-    std::condition_variable mCondVar;
+    sm::utils::SystemdConnItf* mSystemd = {};
+    std::thread                mMonitoringThread;
+    std::mutex                 mMutex;
+    std::condition_variable    mCondVar;
 
     std::map<std::string, StartingUnitData> mStartingUnits;
     std::map<std::string, RunningUnitData>  mRunningUnits;

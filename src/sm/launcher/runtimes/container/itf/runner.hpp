@@ -79,7 +79,7 @@ public:
      * @param systemdConn systemd connection.
      * @return Error.
      */
-    virtual Error Init(RunStatusReceiverItf& receiver, utils::SystemdConnItf& systemdConn) = 0;
+    virtual Error Init(RunStatusReceiverItf& receiver, sm::utils::SystemdConnItf& systemdConn) = 0;
 
     /**
      * Starts runner.

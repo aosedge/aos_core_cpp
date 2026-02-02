@@ -10,6 +10,8 @@
 #include <common/utils/json.hpp>
 #include <common/utils/utils.hpp>
 
+#include <sm/launcher/runtimes/utils/utils.hpp>
+
 #include "container.hpp"
 #include "filesystem.hpp"
 #include "monitoring.hpp"
@@ -37,7 +39,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver, utils::SystemdConnItf& systemdConn)
+    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver, sm::utils::SystemdConnItf& systemdConn)
 {
     try {
         LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
@@ -323,24 +325,9 @@ std::shared_ptr<MonitoringItf> ContainerRuntime::CreateMonitoring()
 
 Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo)
 {
-    auto runtimeID = runtimeType + "-" + nodeInfo.mNodeID.CStr();
-
-    if (auto err = mRuntimeInfo.mRuntimeID.Assign(common::utils::NameUUID(runtimeID).c_str()); !err.IsNone()) {
+    if (auto err = utils::CreateRuntimeInfo(runtimeType, nodeInfo, cMaxNumInstances, mRuntimeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    if (auto err = mRuntimeInfo.mRuntimeType.Assign(runtimeType.c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    mRuntimeInfo.mOSInfo = nodeInfo.mOSInfo;
-
-    if (nodeInfo.mCPUs.IsEmpty()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "can't define runtime arch info"));
-    }
-
-    mRuntimeInfo.mArchInfo     = nodeInfo.mCPUs[0].mArchInfo;
-    mRuntimeInfo.mMaxInstances = cMaxNumInstances;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
