@@ -503,18 +503,14 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 
 std::string Communication::CreateDiscoveryRequestBody() const
 {
-    auto discoveryRequest      = std::make_unique<ServiceDiscoveryRequest>();
-    discoveryRequest->mVersion = cProtocolVersion;
+    cloudprotocol::ServiceDiscoveryRequest discoveryRequest;
+    auto                                   requestJSON = Poco::makeShared<Poco::JSON::Object>();
 
-    auto err = discoveryRequest->mSystemID.Assign(mSystemInfo.mSystemID);
-    AOS_ERROR_CHECK_AND_THROW(err, "Failed to assign system ID");
+    discoveryRequest.mVersion  = cProtocolVersion;
+    discoveryRequest.mSystemID = mSystemInfo.mSystemID.CStr();
+    discoveryRequest.mSupportedProtocols.emplace_back("wss");
 
-    err = discoveryRequest->mSupportedProtocols.PushBack("wss");
-    AOS_ERROR_CHECK_AND_THROW(err, "Failed to add supported protocol");
-
-    auto requestJSON = Poco::makeShared<Poco::JSON::Object>();
-
-    err = cloudprotocol::ToJSON(*discoveryRequest, *requestJSON);
+    auto err = cloudprotocol::ToJSON(discoveryRequest, *requestJSON);
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery request to JSON");
 
     return common::utils::Stringify(*requestJSON);
@@ -522,7 +518,7 @@ std::string Communication::CreateDiscoveryRequestBody() const
 
 bool Communication::ConnectionInfoIsSet() const
 {
-    return mDiscoveryResponse && !mDiscoveryResponse->mConnectionInfo.IsEmpty();
+    return mDiscoveryResponse && !mDiscoveryResponse->mConnectionInfo.empty();
 }
 
 void Communication::ReceiveDiscoveryResponse(
@@ -627,13 +623,12 @@ Error Communication::ConnectToCloud()
                 return AOS_ERROR_WRAP(err);
             }
 
-            mCloudHttpRequest.set(
-                "Authorization", std::string("Bearer ").append(mDiscoveryResponse->mAuthToken.CStr()));
+            mCloudHttpRequest.set("Authorization", std::string("Bearer ").append(mDiscoveryResponse->mAuthToken));
         }
 
         auto it = mDiscoveryResponse->mConnectionInfo.begin();
         try {
-            auto uri = Poco::URI(it->CStr());
+            auto uri = Poco::URI(*it);
 
             mClientSession = CreateSession(uri);
 
@@ -650,7 +645,7 @@ Error Communication::ConnectToCloud()
                 mDiscoveryResponse.reset();
             }
 
-            mDiscoveryResponse->mConnectionInfo.Erase(it);
+            mDiscoveryResponse->mConnectionInfo.erase(it);
 
             mWebSocket.reset();
 
