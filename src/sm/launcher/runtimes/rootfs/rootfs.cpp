@@ -17,6 +17,8 @@
 #include <common/utils/json.hpp>
 #include <common/utils/utils.hpp>
 
+#include <sm/launcher/runtimes/utils/utils.hpp>
+
 #include "config.hpp"
 #include "rootfs.hpp"
 
@@ -295,17 +297,10 @@ Error RootfsRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    auto runtimeID = mRuntimeConfig.mType + "-" + nodeInfo->mNodeID.CStr();
-
-    if (auto err = mRuntimeInfo.mRuntimeID.Assign(common::utils::NameUUID(runtimeID).c_str()); !err.IsNone()) {
+    if (auto err = utils::CreateRuntimeInfo(mRuntimeConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    if (auto err = mRuntimeInfo.mRuntimeType.Assign(mRuntimeConfig.mType.c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    mRuntimeInfo.mMaxInstances = 1;
 
     mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
     mDefaultInstanceIdent.mInstance     = 0;

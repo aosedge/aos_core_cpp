@@ -131,6 +131,11 @@ protected:
             nodeInfo.mNodeID   = "nodeId";
             nodeInfo.mNodeType = "nodeType";
 
+            nodeInfo.mCPUs.EmplaceBack();
+            nodeInfo.mCPUs[0].mArchInfo.mArchitecture = "amd64";
+
+            nodeInfo.mOSInfo.mOS = "linux";
+
             return ErrorEnum::eNone;
         }));
     }
@@ -209,6 +214,8 @@ TEST_F(RootfsRuntimeTest, GetRuntimeInfo)
     EXPECT_EQ(info->mMaxInstances, 1u);
     EXPECT_STREQ(info->mRuntimeID.CStr(), GetExpectedRuntimeID().c_str());
 
+    EXPECT_STREQ(info->mArchInfo.mArchitecture.CStr(), "amd64");
+    EXPECT_STREQ(info->mOSInfo.mOS.CStr(), "linux");
     err = mRootfsRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
