@@ -14,7 +14,7 @@ set(TARGET_NAME utils_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES systemdrebooter.cpp systemdupdatechecker.cpp)
+set(SOURCES systemdrebooter.cpp systemdupdatechecker.cpp utils.cpp)
 
 # ######################################################################################################################
 # Libraries
