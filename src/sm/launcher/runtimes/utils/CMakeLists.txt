@@ -10,7 +10,7 @@ set(TARGET_NAME utils)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES systemdrebooter.cpp systemdupdatechecker.cpp)
+set(SOURCES systemdrebooter.cpp systemdupdatechecker.cpp utils.cpp)
 
 # ######################################################################################################################
 # Libraries
