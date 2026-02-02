@@ -24,11 +24,11 @@
 #include <core/common/types/state.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 
+#include <common/cloudprotocol/servicediscovery.hpp>
 #include <common/tests/stubs/storagestub.hpp>
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/pkcs11helper.hpp>
 
-#include <cm/communication/cloudprotocol/servicediscovery.hpp>
 #include <cm/communication/communication.hpp>
 
 #include "mocks/launchermock.hpp"

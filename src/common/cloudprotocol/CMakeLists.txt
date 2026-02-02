@@ -8,29 +8,33 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME communication)
+set(TARGET_NAME cloudprotocol)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES communication.cpp)
+set(SOURCES
+    alerts.cpp
+    blobs.cpp
+    certificates.cpp
+    common.cpp
+    desiredstatus.cpp
+    envvars.cpp
+    log.cpp
+    monitoring.cpp
+    provisioning.cpp
+    servicediscovery.cpp
+    state.cpp
+    status.cpp
+    unitstatus.cpp
+)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    aos::core::common::crypto
-    aos::common::utils
-    aos::common::config
-    aos::common::cloudprotocol
-    Poco::Crypto
-    Poco::Foundation
-    Poco::Net
-    Poco::NetSSL
-    Poco::JSON
-)
+set(LIBRARIES aos::common::utils)
 
 # ######################################################################################################################
 # Target

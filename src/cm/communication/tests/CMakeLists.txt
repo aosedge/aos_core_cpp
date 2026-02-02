@@ -16,14 +16,8 @@ set(SOURCES communication.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    aos::cm::communication
-    aos::cm::communication::cloudprotocol
-    aos::common::tests::stubs
-    aos::common::tests::utils
-    aos::core::common::tests::crypto
-    aos::core::common::tests::utils
-    GTest::gmock_main
+set(LIBRARIES aos::cm::communication aos::common::tests::stubs aos::common::tests::utils
+              aos::core::common::tests::crypto aos::core::common::tests::utils GTest::gmock_main
 )
 
 # ######################################################################################################################
