@@ -8,50 +8,44 @@
 # Target name
 # ######################################################################################################################
 
-set(TARGET_NAME communication)
+set(TARGET_NAME cloudprotocol_test)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES communication.cpp)
+set(SOURCES
+    alerts.cpp
+    blobs.cpp
+    certificates.cpp
+    common.cpp
+    desiredstatus.cpp
+    envvars.cpp
+    log.cpp
+    monitoring.cpp
+    provisioning.cpp
+    servicediscovery.cpp
+    state.cpp
+    status.cpp
+    unitstatus.cpp
+)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    aos::core::common::crypto
-    aos::common::utils
-    aos::common::config
-    aos::common::cloudprotocol
-    Poco::Crypto
-    Poco::Foundation
-    Poco::Net
-    Poco::NetSSL
-    Poco::JSON
-)
+set(LIBRARIES aos::common::cloudprotocol aos::core::common::tests::utils GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
 # ######################################################################################################################
 
-add_module(
+add_test(
     TARGET_NAME
     ${TARGET_NAME}
     LOG_MODULE
-    STACK_USAGE
-    ${AOS_STACK_USAGE}
     SOURCES
     ${SOURCES}
     LIBRARIES
     ${LIBRARIES}
 )
-
-# ######################################################################################################################
-# Tests
-# ######################################################################################################################
-
-if(WITH_TEST)
-    add_subdirectory(tests)
-endif()

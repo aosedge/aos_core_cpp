@@ -40,13 +40,11 @@
 #include <core/common/types/provisioning.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
+#include <cm/config/config.hpp>
+#include <common/cloudprotocol/servicediscovery.hpp>
+#include <common/cloudprotocol/status.hpp>
 #include <common/utils/json.hpp>
 #include <common/utils/time.hpp>
-
-#include <cm/config/config.hpp>
-
-#include "cloudprotocol/servicediscovery.hpp"
-#include "cloudprotocol/status.hpp"
 
 namespace aos::cm::communication {
 
@@ -260,8 +258,8 @@ private:
     Error EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived = {});
     Error DequeueMessage(const Message& msg);
 
-    void  HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack);
-    void  HandleMessage(const ResponseInfo& info, const cloudprotocol::Nack& nack);
+    void  HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Ack& ack);
+    void  HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Nack& nack);
     void  HandleMessage(const ResponseInfo& info, const BlobURLsInfo& urls);
     void  HandleMessage(const ResponseInfo& info, const DesiredStatus& status);
     void  HandleMessage(const ResponseInfo& info, const RequestLog& request);
@@ -279,30 +277,30 @@ private:
     Error SendInstallUnitCertsConfirmation(const InstallUnitCertsConfirmation& confirmation);
     void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
 
-    const config::Config*                                  mConfig {};
-    iamclient::CurrentNodeInfoProviderItf*                 mCurrentNodeInfoProvider {};
-    iamclient::IdentProviderItf*                           mIdentityProvider {};
-    iamclient::CertProviderItf*                            mCertProvider {};
-    crypto::CertLoaderItf*                                 mCertLoader {};
-    crypto::x509::ProviderItf*                             mCryptoProvider {};
-    crypto::CryptoHelper*                                  mCryptoHelper {};
-    crypto::UUIDItf*                                       mUUIDProvider {};
-    updatemanager::UpdateManagerItf*                       mUpdateManager {};
-    storagestate::StateHandlerItf*                         mStateHandler {};
-    smcontroller::LogProviderItf*                          mLogProvider {};
-    launcher::EnvVarHandlerItf*                            mEnvVarHandler {};
-    iamclient::CertHandlerItf*                             mCertHandler {};
-    iamclient::ProvisioningItf*                            mProvisioningHandler {};
-    std::atomic_bool                                       mIsRunning {};
-    SystemInfo                                             mSystemInfo;
-    std::mutex                                             mSubscribersMutex;
-    std::vector<cloudconnection::ConnectionListenerItf*>   mSubscribers;
-    std::optional<cloudprotocol::ServiceDiscoveryResponse> mDiscoveryResponse;
-    std::mutex                                             mMutex;
-    std::condition_variable                                mCondVar;
-    StaticString<cIDLen>                                   mMainNodeID;
-    Duration                                               mReconnectTimeout {cReconnectTimeout};
-    Poco::URI                                              mConfigServiceDiscoveryURI;
+    const config::Config*                                          mConfig {};
+    iamclient::CurrentNodeInfoProviderItf*                         mCurrentNodeInfoProvider {};
+    iamclient::IdentProviderItf*                                   mIdentityProvider {};
+    iamclient::CertProviderItf*                                    mCertProvider {};
+    crypto::CertLoaderItf*                                         mCertLoader {};
+    crypto::x509::ProviderItf*                                     mCryptoProvider {};
+    crypto::CryptoHelper*                                          mCryptoHelper {};
+    crypto::UUIDItf*                                               mUUIDProvider {};
+    updatemanager::UpdateManagerItf*                               mUpdateManager {};
+    storagestate::StateHandlerItf*                                 mStateHandler {};
+    smcontroller::LogProviderItf*                                  mLogProvider {};
+    launcher::EnvVarHandlerItf*                                    mEnvVarHandler {};
+    iamclient::CertHandlerItf*                                     mCertHandler {};
+    iamclient::ProvisioningItf*                                    mProvisioningHandler {};
+    std::atomic_bool                                               mIsRunning {};
+    SystemInfo                                                     mSystemInfo;
+    std::mutex                                                     mSubscribersMutex;
+    std::vector<cloudconnection::ConnectionListenerItf*>           mSubscribers;
+    std::optional<common::cloudprotocol::ServiceDiscoveryResponse> mDiscoveryResponse;
+    std::mutex                                                     mMutex;
+    std::condition_variable                                        mCondVar;
+    StaticString<cIDLen>                                           mMainNodeID;
+    Duration                                                       mReconnectTimeout {cReconnectTimeout};
+    Poco::URI                                                      mConfigServiceDiscoveryURI;
 
     SessionPtr                          mClientSession;
     std::optional<Poco::Net::WebSocket> mWebSocket;
