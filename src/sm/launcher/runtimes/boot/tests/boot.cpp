@@ -184,6 +184,11 @@ protected:
         mNodeInfo.mNodeID   = "node1";
         mNodeInfo.mNodeType = "nodeType";
 
+        mNodeInfo.mCPUs.EmplaceBack();
+        mNodeInfo.mCPUs[0].mArchInfo.mArchitecture = "amd64";
+
+        mNodeInfo.mOSInfo.mOS = "linux";
+
         EXPECT_CALL(mCurrentNodeInfoProvider, GetCurrentNodeInfo)
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
     }
@@ -239,6 +244,9 @@ TEST_F(BootRuntimeTest, GetRuntimeInfo)
     EXPECT_STREQ(info->mRuntimeType.CStr(), cRuntimeBoot);
     EXPECT_EQ(info->mMaxInstances, 1u);
     EXPECT_STREQ(info->mRuntimeID.CStr(), cRuntimeID);
+
+    EXPECT_STREQ(info->mArchInfo.mArchitecture.CStr(), "amd64");
+    EXPECT_STREQ(info->mOSInfo.mOS.CStr(), "linux");
 
     err = mBootRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
