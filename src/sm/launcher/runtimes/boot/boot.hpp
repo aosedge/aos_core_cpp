@@ -116,6 +116,7 @@ private:
     static constexpr auto cImagesDir         = "images";
     static constexpr auto cMountDirName      = "mnt";
     static constexpr auto cUpdateStateFile   = "update.state";
+    static constexpr auto cMaxNumInstances   = 1;
 
     struct BootData : public InstanceIdent {
         StaticString<cVersionLen>     mVersion;
