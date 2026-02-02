@@ -37,6 +37,7 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_common)
 # Modules
 # ######################################################################################################################
 
+add_subdirectory(cloudprotocol)
 add_subdirectory(config)
 add_subdirectory(downloader)
 add_subdirectory(fileserver)

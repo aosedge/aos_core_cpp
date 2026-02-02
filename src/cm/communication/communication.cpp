@@ -12,24 +12,22 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/cloudprotocol/alerts.hpp>
+#include <common/cloudprotocol/blobs.hpp>
+#include <common/cloudprotocol/certificates.hpp>
+#include <common/cloudprotocol/common.hpp>
+#include <common/cloudprotocol/desiredstatus.hpp>
+#include <common/cloudprotocol/envvars.hpp>
+#include <common/cloudprotocol/log.hpp>
+#include <common/cloudprotocol/monitoring.hpp>
+#include <common/cloudprotocol/provisioning.hpp>
+#include <common/cloudprotocol/state.hpp>
+#include <common/cloudprotocol/unitstatus.hpp>
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 #include <common/utils/pkcs11helper.hpp>
 #include <common/utils/retry.hpp>
-
-#include "cloudprotocol/alerts.hpp"
-#include "cloudprotocol/blobs.hpp"
-#include "cloudprotocol/certificates.hpp"
-#include "cloudprotocol/common.hpp"
-#include "cloudprotocol/desiredstatus.hpp"
-#include "cloudprotocol/envvars.hpp"
-#include "cloudprotocol/log.hpp"
-#include "cloudprotocol/monitoring.hpp"
-#include "cloudprotocol/provisioning.hpp"
-#include "cloudprotocol/servicediscovery.hpp"
-#include "cloudprotocol/state.hpp"
-#include "cloudprotocol/unitstatus.hpp"
 
 #include "communication.hpp"
 
@@ -41,9 +39,9 @@ namespace {
  * Types
  **********************************************************************************************************************/
 
-using RecievedMessageVariant = std::variant<cloudprotocol::Ack, cloudprotocol::Nack, BlobURLsInfo, DesiredStatus,
-    RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts, OverrideEnvVarsRequest,
-    StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
+using ReceivedMessageVariant = std::variant<common::cloudprotocol::Ack, common::cloudprotocol::Nack, BlobURLsInfo,
+    DesiredStatus, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
+    OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
 
 /***********************************************************************************************************************
  * Statics
@@ -59,108 +57,108 @@ Poco::JSON::Object::Ptr CreateMessageData(const T& data)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    auto err = cloudprotocol::ToJSON(data, *json);
+    auto err = common::cloudprotocol::ToJSON(data, *json);
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return json;
 }
 
-std::unique_ptr<RecievedMessageVariant> ParseMessage(const common::utils::CaseInsensitiveObjectWrapper& json)
+std::unique_ptr<ReceivedMessageVariant> ParseMessage(const common::utils::CaseInsensitiveObjectWrapper& json)
 {
-    auto result = std::make_unique<RecievedMessageVariant>();
+    auto result = std::make_unique<ReceivedMessageVariant>();
 
-    cloudprotocol::MessageType type;
+    common::cloudprotocol::MessageType type;
 
     auto err = type.FromString(json.GetValue<std::string>("messageType").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse message type");
 
     switch (type.GetValue()) {
-    case cloudprotocol::MessageTypeEnum::eAck: {
-        err = cloudprotocol::FromJSON(json, result->emplace<cloudprotocol::Ack>());
+    case common::cloudprotocol::MessageTypeEnum::eAck: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<common::cloudprotocol::Ack>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eNack: {
-        err = cloudprotocol::FromJSON(json, result->emplace<cloudprotocol::Nack>());
+    case common::cloudprotocol::MessageTypeEnum::eNack: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<common::cloudprotocol::Nack>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eBlobUrls: {
-        err = cloudprotocol::FromJSON(json, result->emplace<BlobURLsInfo>());
+    case common::cloudprotocol::MessageTypeEnum::eBlobUrls: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<BlobURLsInfo>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eDesiredStatus: {
-        err = cloudprotocol::FromJSON(json, result->emplace<DesiredStatus>());
+    case common::cloudprotocol::MessageTypeEnum::eDesiredStatus: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<DesiredStatus>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eRequestLog: {
-        err = cloudprotocol::FromJSON(json, result->emplace<RequestLog>());
+    case common::cloudprotocol::MessageTypeEnum::eRequestLog: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<RequestLog>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eStateAcceptance: {
-        err = cloudprotocol::FromJSON(json, result->emplace<StateAcceptance>());
+    case common::cloudprotocol::MessageTypeEnum::eStateAcceptance: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<StateAcceptance>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eUpdateState: {
-        err = cloudprotocol::FromJSON(json, result->emplace<UpdateState>());
+    case common::cloudprotocol::MessageTypeEnum::eUpdateState: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<UpdateState>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eRenewCertificatesNotification: {
-        err = cloudprotocol::FromJSON(json, result->emplace<RenewCertsNotification>());
+    case common::cloudprotocol::MessageTypeEnum::eRenewCertificatesNotification: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<RenewCertsNotification>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eIssuedUnitCertificates: {
-        err = cloudprotocol::FromJSON(json, result->emplace<IssuedUnitCerts>());
+    case common::cloudprotocol::MessageTypeEnum::eIssuedUnitCertificates: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<IssuedUnitCerts>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eOverrideEnvVars: {
-        err = cloudprotocol::FromJSON(json, result->emplace<OverrideEnvVarsRequest>());
+    case common::cloudprotocol::MessageTypeEnum::eOverrideEnvVars: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<OverrideEnvVarsRequest>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eStartProvisioningRequest: {
-        err = cloudprotocol::FromJSON(json, result->emplace<StartProvisioningRequest>());
+    case common::cloudprotocol::MessageTypeEnum::eStartProvisioningRequest: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<StartProvisioningRequest>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eFinishProvisioningRequest: {
-        err = cloudprotocol::FromJSON(json, result->emplace<FinishProvisioningRequest>());
+    case common::cloudprotocol::MessageTypeEnum::eFinishProvisioningRequest: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<FinishProvisioningRequest>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
     }
 
-    case cloudprotocol::MessageTypeEnum::eDeprovisioningRequest: {
-        err = cloudprotocol::FromJSON(json, result->emplace<DeprovisioningRequest>());
+    case common::cloudprotocol::MessageTypeEnum::eDeprovisioningRequest: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<DeprovisioningRequest>());
         AOS_ERROR_CHECK_AND_THROW(err);
 
         return result;
@@ -503,14 +501,14 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 
 std::string Communication::CreateDiscoveryRequestBody() const
 {
-    cloudprotocol::ServiceDiscoveryRequest discoveryRequest;
-    auto                                   requestJSON = Poco::makeShared<Poco::JSON::Object>();
+    common::cloudprotocol::ServiceDiscoveryRequest discoveryRequest;
+    auto                                           requestJSON = Poco::makeShared<Poco::JSON::Object>();
 
     discoveryRequest.mVersion  = cProtocolVersion;
     discoveryRequest.mSystemID = mSystemInfo.mSystemID.CStr();
     discoveryRequest.mSupportedProtocols.emplace_back("wss");
 
-    auto err = cloudprotocol::ToJSON(discoveryRequest, *requestJSON);
+    auto err = common::cloudprotocol::ToJSON(discoveryRequest, *requestJSON);
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery request to JSON");
 
     return common::utils::Stringify(*requestJSON);
@@ -538,7 +536,7 @@ void Communication::ReceiveDiscoveryResponse(
 
     mDiscoveryResponse.emplace();
 
-    auto err = cloudprotocol::FromJSON(responseBody, *mDiscoveryResponse);
+    auto err = common::cloudprotocol::FromJSON(responseBody, *mDiscoveryResponse);
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery response from JSON");
 }
 
@@ -1067,7 +1065,7 @@ Error Communication::DequeueMessage(const Message& msg)
     return ErrorEnum::eNone;
 }
 
-void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Ack& ack)
+void Communication::HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Ack& ack)
 {
     std::lock_guard lock {mMutex};
 
@@ -1077,7 +1075,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol:
     mSentMessages.erase(info.mTxn);
 }
 
-void Communication::HandleMessage(const ResponseInfo& info, const cloudprotocol::Nack& nack)
+void Communication::HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Nack& nack)
 {
     std::unique_lock lock {mMutex};
 
@@ -1386,7 +1384,7 @@ Error Communication::SendAck(const std::string& txn)
 
     try {
         msg->set("header", CreateMessageHeader(txn));
-        msg->set("data", std::move(CreateMessageData(cloudprotocol::Ack())));
+        msg->set("data", std::move(CreateMessageData(common::cloudprotocol::Ack())));
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
