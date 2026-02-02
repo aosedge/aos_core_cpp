@@ -81,8 +81,7 @@ private:
     static constexpr auto cSystemdDropInsDir       = "/run/systemd/system";
     static constexpr auto cParametersFileName      = "parameters.conf";
 
-    virtual std::shared_ptr<sm::utils::SystemdConnItf> CreateSystemdConn();
-    virtual std::string                                GetSystemdDropInsDir() const;
+    virtual std::string GetSystemdDropInsDir() const;
 
     void                        MonitorUnits();
     std::vector<RunStatus>&     GetRunningInstances() const;
