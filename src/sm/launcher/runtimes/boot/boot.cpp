@@ -15,6 +15,8 @@
 #include <common/utils/filesystem.hpp>
 #include <common/utils/utils.hpp>
 
+#include <sm/launcher/runtimes/utils/utils.hpp>
+
 #include "boot.hpp"
 #include "efibootcontroller.hpp"
 #include "partitionmanager.hpp"
@@ -302,17 +304,9 @@ Error BootRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    auto runtimeID = mConfig.mType + "-" + nodeInfo->mNodeID.CStr();
-
-    if (auto err = mRuntimeInfo.mRuntimeID.Assign(common::utils::NameUUID(runtimeID).c_str()); !err.IsNone()) {
+    if (auto err = utils::CreateRuntimeInfo(mConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
-
-    if (auto err = mRuntimeInfo.mRuntimeType.Assign(mConfig.mType.c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    mRuntimeInfo.mMaxInstances = 1;
 
     mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
     mDefaultInstanceIdent.mInstance     = 0;
