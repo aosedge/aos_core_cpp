@@ -114,6 +114,7 @@ private:
     static constexpr auto cIncrementalMediaTypePrefix = "vnd.aos.image.component.inc";
     static constexpr auto cInstalledInstanceFileName  = "installed_instance.json";
     static constexpr auto cPendingInstanceFileName    = "pending_instance.json";
+    static constexpr auto cMaxNumInstances            = 1;
 
     /**
      * Action type type.
