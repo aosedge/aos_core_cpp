@@ -28,7 +28,7 @@ set(SOURCES
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::sm::utils)
+set(LIBRARIES Poco::JSON aos::common::utils aos::sm::runtimes::utils aos::sm::utils)
 
 # ######################################################################################################################
 # Target

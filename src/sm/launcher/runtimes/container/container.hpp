@@ -55,7 +55,7 @@ public:
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
-        utils::SystemdConnItf& systemdConn);
+        sm::utils::SystemdConnItf& systemdConn);
 
     /**
      * Starts runtime.
