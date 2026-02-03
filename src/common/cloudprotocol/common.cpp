@@ -201,4 +201,22 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Protocol
     return ErrorEnum::eNone;
 }
 
+Error LabelsFromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& object, Array<StaticString<cLabelNameLen>>& outLabels)
+{
+    const auto labels = common::utils::GetArrayValue<std::string>(object, "labels");
+
+    for (const auto& label : labels) {
+        if (auto err = outLabels.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = outLabels.Back().Assign(label.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::cloudprotocol

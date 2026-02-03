@@ -168,6 +168,16 @@ Error ToJSON(const Protocol& protocol, Poco::JSON::Object& json);
  */
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Protocol& protocol);
 
+/**
+ * Parses labels from JSON array.
+ *
+ * @param object
+ * @param outLabels
+ * @return Error
+ */
+Error LabelsFromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& object, Array<StaticString<cLabelNameLen>>& outLabels);
+
 } // namespace aos::common::cloudprotocol
 
 #endif

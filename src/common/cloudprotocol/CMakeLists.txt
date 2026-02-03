@@ -27,6 +27,7 @@ set(SOURCES
     servicediscovery.cpp
     state.cpp
     status.cpp
+    unitconfig.cpp
     unitstatus.cpp
 )
 
