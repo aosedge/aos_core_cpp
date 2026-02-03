@@ -27,9 +27,13 @@ constexpr auto cTestUnitConfigJSON = R"({
     "formatVersion": "7",
     "nodes": [
         {
-            "nodeId": "node-1",
-            "nodeType": "mainType",
             "version": "1.0.0",
+            "node": {
+                "codename": "node-1"
+            },
+            "nodeGroupSubject": {
+                "codename": "mainType"
+            },
             "alertRules": {
                 "ram": {
                     "minTimeout": "PT1S",
@@ -72,9 +76,13 @@ constexpr auto cTestUnitConfigJSON = R"({
             "priority": 1
         },
         {
-            "nodeId": "node-2",
-            "nodeType": "secondaryType",
             "version": "1.0.0",
+            "node": {
+                "codename": "node-2"
+            },
+            "nodeGroupSubject": {
+                "codename": "secondaryType"
+            },
             "labels": [
                 "secondaryNode"
             ],
@@ -94,9 +102,13 @@ constexpr auto cTestUnitConfigMinimalJSON = R"({
     "formatVersion": "7",
     "nodes": [
         {
-            "nodeId": "node-1",
-            "nodeType": "type1",
             "version": "1.0.0",
+            "node": {
+                "codename": "node-1"
+            },
+            "nodeGroupSubject": {
+                "codename": "type1"
+            },
             "priority": 0
         }
     ]
@@ -216,7 +228,7 @@ void CompareUnitConfig(const UnitConfig& unitConfig, const UnitConfig& expectedU
 
 class JSONProviderTest : public Test {
 public:
-    void SetUp() override { tests::utils::InitLog(); }
+    static void SetUpTestSuite() { tests::utils::InitLog(); }
 
     JSONProvider mProvider;
 };
