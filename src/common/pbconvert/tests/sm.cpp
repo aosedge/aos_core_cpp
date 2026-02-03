@@ -693,7 +693,8 @@ TEST_F(PBConvertSMTest, ConvertSMInfoFromProto)
 TEST_F(PBConvertSMTest, ConvertNodeConfigToCheckNodeConfigProto)
 {
     static constexpr auto cExpectedNodeConfigJSON
-        = R"({"version":"2.5.0","nodeType":"main","nodeId":"config-node","labels":[],"priority":0})";
+        = R"({"version":"2.5.0","node":{"codename":"config-node"},)"
+          R"("nodeGroupSubject":{"codename":"main"},"labels":[],"priority":0})";
 
     NodeConfig config;
 
@@ -713,7 +714,8 @@ TEST_F(PBConvertSMTest, ConvertNodeConfigToCheckNodeConfigProto)
 TEST_F(PBConvertSMTest, ConvertNodeConfigToSetNodeConfigProto)
 {
     static constexpr auto cExpectedNodeConfigJSON
-        = R"({"version":"3.0.0","nodeType":"main","nodeId":"config-node","labels":[],"priority":0})";
+        = R"({"version":"3.0.0","node":{"codename":"config-node"},)"
+          R"("nodeGroupSubject":{"codename":"main"},"labels":[],"priority":0})";
 
     NodeConfig config;
 

@@ -21,9 +21,13 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cTestNodeConfigJSON = R"({
-    "nodeId": "node-id",
-    "nodeType": "mainType",
     "version": "1.0.0",
+    "node": {
+        "codename": "node-id"
+    },
+    "nodeGroupSubject": {
+        "codename": "mainType"
+    },
     "alertRules": {
         "ram": {
             "minTimeout": "PT1S",
@@ -71,13 +75,16 @@ constexpr auto cTestNodeConfigJSON = R"({
     ],
     "priority": 1
 }
-
 )";
 
 constexpr auto cNodeConfigLabelOverflowBuffer = R"({
-    "nodeId": "node-id",
-    "nodeType": "mainType",
     "version": "1.0.0",
+    "node": {
+        "codename": "node-id"
+    },
+    "nodeGroupSubject": {
+        "codename": "mainType"
+    },
     "labels": [
         "label that is expected to trigger no memory error due to its length"
     ],
@@ -173,7 +180,7 @@ void CompareNodeConfig(const NodeConfig& nodeConfig, const NodeConfig& expectedN
 
 class JSONProviderTest : public Test {
 public:
-    void SetUp() override { tests::utils::InitLog(); }
+    static void SetUpTestSuite() { tests::utils::InitLog(); }
 
     JSONProvider mProvider;
 };
