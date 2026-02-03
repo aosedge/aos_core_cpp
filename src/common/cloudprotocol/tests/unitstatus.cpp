@@ -61,7 +61,7 @@ public:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(CloudProtocolUnitStatus, UnitConfig)
+TEST_F(CloudProtocolUnitStatus, UnitStatus)
 {
     constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"unitConfig":[)"
                            R"({"version":"0.0.1","state":"failed","errorInfo":{"aosCode":1,"exitCode":0,)"
