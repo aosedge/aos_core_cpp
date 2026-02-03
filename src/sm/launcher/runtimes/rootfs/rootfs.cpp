@@ -133,6 +133,15 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
         return ErrorEnum::eNone;
     }
 
+    if (static_cast<const InstanceIdent&>(mPendingInstance) == static_cast<const InstanceIdent&>(instance)
+        && instance.mManifestDigest == mPendingInstance.mManifestDigest) {
+        status.mState = InstanceStateEnum::eActivating;
+
+        mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+
+        return ErrorEnum::eNone;
+    }
+
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
     Error err = ErrorEnum::eNone;
@@ -197,11 +206,13 @@ Error RootfsRuntime::GetInstanceMonitoringData(
 
 void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
 {
-    LOG_DBG() << "Start health check for rootfs update" << Log::Field("version", mPendingVersion);
+    LOG_DBG() << "Start health check for rootfs update" << Log::Field("version", mPendingInstance.mVersion);
 
     ActionType nextAction = ActionTypeEnum::eDoApply;
 
     if (auto err = mUpdateChecker.Check(); !err.IsNone()) {
+        LOG_ERR() << "Health check for rootfs update failed" << err;
+
         status->mState = InstanceStateEnum::eFailed;
         status->mError = AOS_ERROR_WRAP(err);
 
@@ -209,13 +220,14 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
     }
 
     if (auto err = StoreAction(nextAction); !err.IsNone()) {
+        LOG_ERR() << "Failed to store rootfs update action" << err;
+
         status->mState = InstanceStateEnum::eFailed;
         status->mError = AOS_ERROR_WRAP(err);
     }
 
     if (auto err = mRebooter.Reboot(); !err.IsNone()) {
-        status->mState = InstanceStateEnum::eFailed;
-        status->mError = AOS_ERROR_WRAP(err);
+        LOG_WRN() << "Failed to reboot system after rootfs update health check" << err;
     }
 
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
@@ -427,6 +439,7 @@ Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::f
     try {
         json->set("itemId", instance.mItemID.CStr());
         json->set("subjectId", instance.mSubjectID.CStr());
+        json->set("instance", instance.mInstance);
         json->set("manifestDigest", instance.mManifestDigest.CStr());
         json->set("type", instance.mType.ToString().CStr());
         json->set("version", instance.mVersion.CStr());
@@ -463,6 +476,8 @@ Error RootfsRuntime::LoadInstanceInfo(const std::filesystem::path& path, Instanc
 
         err = instance.mSubjectID.Assign(jsonObject.GetValue<std::string>("subjectId").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
+
+        instance.mInstance = jsonObject.GetValue<uint64_t>("instance");
 
         err = instance.mManifestDigest.Assign(jsonObject.GetValue<std::string>("manifestDigest").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
