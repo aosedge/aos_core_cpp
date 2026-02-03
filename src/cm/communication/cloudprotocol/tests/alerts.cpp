@@ -26,6 +26,7 @@ std::unique_ptr<AlertVariant> CreateCoreAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto coreAlert    = std::make_unique<CoreAlert>();
 
+    coreAlert->mTimestamp = Time::Unix(0);
     coreAlert->mNodeID.Assign("test_node");
     coreAlert->mCoreComponent = CoreComponentEnum::eCM;
     coreAlert->mMessage.Assign("Test core alert message");
@@ -40,6 +41,7 @@ std::unique_ptr<AlertVariant> CreateResourceAllocateAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<ResourceAllocateAlert>();
 
+    alert->mTimestamp = Time::Unix(0);
     alert->mItemID    = "itemID";
     alert->mSubjectID = "subjectID";
     alert->mInstance  = 1;
@@ -58,7 +60,8 @@ std::unique_ptr<AlertVariant> CreateDownloadAlert(const Optional<String>& reason
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<DownloadAlert>();
 
-    alert->mDigest = "testDigest";
+    alert->mTimestamp = Time::Unix(0);
+    alert->mDigest    = "testDigest";
     alert->mURL.Assign("http://example.com/download");
     alert->mDownloadedBytes = 100;
     alert->mTotalBytes      = 1000;
@@ -80,6 +83,7 @@ std::unique_ptr<AlertVariant> CreateInstanceQuotaAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<InstanceQuotaAlert>();
 
+    alert->mTimestamp = Time::Unix(0);
     alert->mItemID    = "itemID";
     alert->mSubjectID = "subjectID";
     alert->mInstance  = 1;
@@ -97,6 +101,7 @@ std::unique_ptr<AlertVariant> CreateInstanceAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<InstanceAlert>();
 
+    alert->mTimestamp = Time::Unix(0);
     alert->mItemID    = "itemID";
     alert->mSubjectID = "subjectID";
     alert->mInstance  = 1;
@@ -114,6 +119,7 @@ std::unique_ptr<AlertVariant> CreateSystemAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<SystemAlert>();
 
+    alert->mTimestamp = Time::Unix(0);
     alert->mNodeID.Assign("test_node");
     alert->mMessage.Assign("Test system alert message");
 
@@ -127,6 +133,7 @@ std::unique_ptr<AlertVariant> CreateSystemQuotaAlert()
     auto alertVariant = std::make_unique<AlertVariant>();
     auto alert        = std::make_unique<SystemQuotaAlert>();
 
+    alert->mTimestamp = Time::Unix(0);
     alert->mNodeID.Assign("test_node");
     alert->mParameter.Assign("test_parameter");
     alert->mValue = 100;
