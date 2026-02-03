@@ -23,7 +23,13 @@ struct CheckAlertEqual : StaticVisitor<bool> {
     {
     }
 
-    bool Visit(const AlertType& src) const { return src == mVal; }
+    bool Visit(const AlertType& src) const
+    {
+        auto copy       = src;
+        copy.mTimestamp = mVal.mTimestamp; // ignore timestamp in comparison
+
+        return copy == mVal;
+    }
 
     template <typename T>
     bool Visit(const T& src) const
