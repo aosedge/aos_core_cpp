@@ -83,11 +83,11 @@ TEST_F(CloudProtocolDesiredStatus, UnitConfig)
             "formatVersion": "1.0",
             "nodes": [
                 {
-                    "nodeGroupSubject": {
-                        "codename": "main"
-                    },
                     "node": {
                         "codename": "node-1"
+                    },
+                    "nodeGroupSubject": {
+                        "codename": "main"
                     },
                     "alertRules": {
                         "cpu": {
