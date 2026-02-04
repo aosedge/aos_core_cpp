@@ -4,10 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <Poco/Base64Decoder.h>
-
 #include <common/utils/exception.hpp>
 #include <common/utils/time.hpp>
+#include <common/utils/utils.hpp>
 
 #include "blobs.hpp"
 #include "common.hpp"
@@ -20,24 +19,16 @@ namespace {
  * Statics
  **********************************************************************************************************************/
 
-std::string Base64Decode(const std::string& encoded)
-{
-    std::istringstream  encodedStream(encoded);
-    Poco::Base64Decoder decoder(encodedStream);
-
-    return std::string(std::istreambuf_iterator<char>(decoder), std::istreambuf_iterator<char>());
-}
-
 void DecryptInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, crypto::DecryptInfo& decryptInfo)
 {
     auto err = decryptInfo.mBlockAlg.Assign(json.GetValue<std::string>("blockAlg").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockAlg");
 
-    const auto iv = Base64Decode(json.GetValue<std::string>("blockIv"));
+    const auto iv = common::utils::Base64Decode(json.GetValue<std::string>("blockIv"));
     err           = decryptInfo.mBlockIV.Assign(String(iv.c_str()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockIv");
 
-    const auto key = Base64Decode(json.GetValue<std::string>("blockKey"));
+    const auto key = common::utils::Base64Decode(json.GetValue<std::string>("blockKey"));
     err            = decryptInfo.mBlockKey.Assign(String(key.c_str()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockKey");
 }
@@ -50,7 +41,7 @@ void SignInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, c
     err = signInfo.mAlg.Assign(json.GetValue<std::string>("alg").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo alg");
 
-    const auto value = Base64Decode(json.GetValue<std::string>("value"));
+    const auto value = common::utils::Base64Decode(json.GetValue<std::string>("value"));
     err              = signInfo.mValue.Assign(String(value.c_str()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo value");
 

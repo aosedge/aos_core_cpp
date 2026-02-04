@@ -8,6 +8,7 @@
 
 #include <common/utils/exception.hpp>
 #include <common/utils/time.hpp>
+#include <common/utils/utils.hpp>
 
 #include "common.hpp"
 #include "desiredstatus.hpp"
@@ -20,14 +21,6 @@ namespace {
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
-
-std::string Base64Decode(const std::string& encoded)
-{
-    std::istringstream  encodedStream(encoded);
-    Poco::Base64Decoder decoder(encodedStream);
-
-    return std::string(std::istreambuf_iterator<char>(decoder), std::istreambuf_iterator<char>());
-}
 
 void DesiredNodeStateInfoFromJson(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredNodeStateInfo& node)
 {
@@ -145,12 +138,14 @@ void SubjectInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json
 
     err = subject.mSubjectType.FromString(json.GetValue<std::string>("type").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject type");
+
+    subject.mIsUnitSubject = json.GetValue<bool>("isReportedFromUnit");
 }
 
 void CertificateInfoFromJSON(
     const common::utils::CaseInsensitiveObjectWrapper& json, crypto::CertificateInfo& certificateInfo)
 {
-    const auto certificate = Base64Decode(json.GetValue<std::string>("certificate"));
+    const auto certificate = common::utils::Base64Decode(json.GetValue<std::string>("certificate"));
 
     auto err = certificateInfo.mCertificate.Assign(String(certificate.c_str()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse certificate");
@@ -174,11 +169,142 @@ void CertificateChainFromJSON(
     });
 }
 
+Poco::JSON::Object::Ptr DesiredNodeStateInfoToJson(const DesiredNodeStateInfo& node)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    AosIdentity identity;
+    identity.mCodename = node.mNodeID.CStr();
+
+    object->set("item", CreateAosIdentity(identity));
+    object->set("state", node.mState.ToString().CStr());
+
+    return object;
+}
+
+Poco::JSON::Object::Ptr UpdateItemInfoToJSON(const UpdateItemInfo& updateItemInfo)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    {
+        AosIdentity identity;
+        identity.mID   = updateItemInfo.mItemID.CStr();
+        identity.mType = updateItemInfo.mType;
+
+        object->set("item", CreateAosIdentity(identity));
+    }
+
+    object->set("version", updateItemInfo.mVersion.CStr());
+
+    {
+        AosIdentity identity;
+        identity.mID = updateItemInfo.mOwnerID.CStr();
+
+        object->set("owner", CreateAosIdentity(identity));
+    }
+
+    object->set("indexDigest", updateItemInfo.mIndexDigest.CStr());
+
+    return object;
+}
+
+Poco::JSON::Object::Ptr DesiredInstanceInfoToJSON(const DesiredInstanceInfo& instance)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    {
+        AosIdentity identity;
+        identity.mID = instance.mItemID.CStr();
+
+        object->set("item", CreateAosIdentity(identity));
+    }
+
+    {
+        AosIdentity identity;
+        identity.mID = instance.mSubjectID.CStr();
+
+        object->set("subject", CreateAosIdentity(identity));
+    }
+
+    object->set("priority", instance.mPriority);
+    object->set("numInstances", instance.mNumInstances);
+    object->set("labels", common::utils::ToJsonArray(instance.mLabels, common::utils::ToStdString));
+
+    return object;
+}
+
+Poco::JSON::Object::Ptr SubjectInfoToJSON(const SubjectInfo& subject)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    {
+        AosIdentity identity;
+        identity.mID = subject.mSubjectID.CStr();
+
+        object->set("identity", CreateAosIdentity(identity));
+    }
+
+    object->set("type", subject.mSubjectType.ToString().CStr());
+    object->set("isReportedFromUnit", subject.mIsUnitSubject);
+
+    return object;
+}
+
+Poco::JSON::Object::Ptr CertificateInfoToJSON(const crypto::CertificateInfo& certificateInfo)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    const auto certificate = common::utils::Base64Encode(std::string(
+        reinterpret_cast<const char*>(certificateInfo.mCertificate.Get()), certificateInfo.mCertificate.Size()));
+
+    object->set("certificate", certificate);
+    object->set("fingerprint", certificateInfo.mFingerprint.CStr());
+
+    return object;
+}
+
+Poco::JSON::Object::Ptr CertificateChainToJSON(const crypto::CertificateChainInfo& certificateChain)
+{
+    auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    object->set("name", certificateChain.mName.CStr());
+    object->set("fingerprints", common::utils::ToJsonArray(certificateChain.mFingerprints, common::utils::ToStdString));
+
+    return object;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
+
+Error ToJSON(const DesiredStatus& desiredStatus, Poco::JSON::Object& json)
+{
+    try {
+        json.set("nodes", common::utils::ToJsonArray(desiredStatus.mNodes, DesiredNodeStateInfoToJson));
+
+        if (desiredStatus.mUnitConfig.HasValue()) {
+            auto unitConfigJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+            auto err = ToJSON(*desiredStatus.mUnitConfig, *unitConfigJson);
+            AOS_ERROR_CHECK_AND_THROW(err, "can't convert unitConfig to JSON");
+
+            json.set("unitConfig", unitConfigJson);
+        }
+
+        json.set("items", common::utils::ToJsonArray(desiredStatus.mUpdateItems, UpdateItemInfoToJSON));
+        json.set("instances", common::utils::ToJsonArray(desiredStatus.mInstances, DesiredInstanceInfoToJSON));
+        json.set("subjects", common::utils::ToJsonArray(desiredStatus.mSubjects, SubjectInfoToJSON));
+        json.set("certificates", common::utils::ToJsonArray(desiredStatus.mCertificates, CertificateInfoToJSON));
+        json.set(
+            "certificateChains", common::utils::ToJsonArray(desiredStatus.mCertificateChains, CertificateChainToJSON));
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+}
 
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, DesiredStatus& desiredStatus)
 {

@@ -62,6 +62,22 @@ RetWithError<std::string> ExecCommand(const std::vector<std::string>& args);
  */
 std::string NameUUID(const std::string& name);
 
+/**
+ * Decodes base64 encoded string.
+ *
+ * @param encoded base64 encoded string.
+ * @return std::string.
+ */
+std::string Base64Decode(const std::string& encoded);
+
+/**
+ * Encodes string to base64.
+ *
+ * @param decoded string to encode.
+ * @return std::string.
+ */
+std::string Base64Encode(const std::string& decoded);
+
 } // namespace aos::common::utils
 
 #endif
