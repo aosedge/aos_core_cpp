@@ -16,6 +16,15 @@
 namespace aos::common::cloudprotocol {
 
 /**
+ * Converts desired status object to JSON.
+ *
+ * @param desiredStatus desired status object to convert.
+ * @param[out] json json object to fill.
+ * @return Error.
+ */
+Error ToJSON(const DesiredStatus& desiredStatus, Poco::JSON::Object& json);
+
+/**
  * Converts JSON object to desired status object.
  *
  * @param json json object representation.
