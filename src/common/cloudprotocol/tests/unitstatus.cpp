@@ -98,14 +98,15 @@ TEST_F(CloudProtocolUnitStatus, Nodes)
           R"("maxDmips":10000,"physicalRam":8096,"totalRam":16384,"osInfo":{"os":"Linux",)"
           R"("version":"5.10","features":["feature1","feature2"]},"cpus":[{"modelName":)"
           R"("Intel Xeon","totalNumCores":8,"totalNumThreads":16,"archInfo":{"architecture":)"
-          R"("x86_64","variant":"variant1"},"maxDmips":5000}],"atts":{"attr1":"value1",)"
+          R"("x86_64","variant":"variant1"},"maxDmips":5000}],"attrs":{"attr1":"value1",)"
           R"("attr2":"value2"},"partitions":[{"name":"part1","types":["type1","type2"],)"
-          R"("totalSize":1073741824}],"runtimes":[{"identity":{"codename":"runtimeID1"},)"
+          R"("totalSize":1073741824}],"state":"provisioned","isConnected":true,)"
+          R"("runtimes":[{"identity":{"codename":"runtimeID1"},)"
           R"("runtimeType":"type1","archInfo":{"architecture":"x86_64","variant":"variant1"},)"
           R"("osInfo":{"os":"Linux","version":"5.10","features":["feature1","feature2"]},)"
           R"("maxDmips":2000,"allowedDmips":1000,"totalRam":4096,"allowedRam":2048,)"
           R"("maxInstances":10}],"resources":[{"name":"resourceID1","sharedCount":1},)"
-          R"({"name":"resourceID2","sharedCount":2}],"state":"provisioned","isConnected":true},)"
+          R"({"name":"resourceID2","sharedCount":2}]},)"
           R"({"identity":{"codename":"nodeID2","title":"title2"},"nodeGroupSubject":{"codename":"type2"},)"
           R"("maxDmips":20000,"totalRam":8096,"osInfo":{"os":"Linux","version":"5.10",)"
           R"("features":["feature1","feature2"]},"state":"error","isConnected":false,)"
@@ -349,6 +350,50 @@ TEST_F(CloudProtocolUnitStatus, Subjects)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
+}
+
+TEST_F(CloudProtocolUnitStatus, NodeInfo)
+{
+    auto json        = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+    auto inNodeInfo  = std::make_unique<NodeInfo>();
+    auto outNodeInfo = std::make_unique<NodeInfo>();
+
+    inNodeInfo->mNodeID   = "nodeID";
+    inNodeInfo->mNodeType = "nodeType";
+    inNodeInfo->mTitle    = "nodeTitle";
+    inNodeInfo->mMaxDMIPS = 10000;
+    inNodeInfo->mTotalRAM = 16384;
+    inNodeInfo->mPhysicalRAM.EmplaceValue(8192);
+    inNodeInfo->mOSInfo.mOS = "Linux";
+    inNodeInfo->mOSInfo.mVersion.EmplaceValue("5.10");
+    inNodeInfo->mOSInfo.mFeatures.EmplaceBack("feature1");
+    inNodeInfo->mOSInfo.mFeatures.EmplaceBack("feature2");
+    inNodeInfo->mCPUs.EmplaceBack();
+    inNodeInfo->mCPUs.Back().mModelName  = "Intel Xeon";
+    inNodeInfo->mCPUs.Back().mNumCores   = 8;
+    inNodeInfo->mCPUs.Back().mNumThreads = 16;
+    inNodeInfo->mCPUs.Back().mMaxDMIPS.EmplaceValue(5000);
+    inNodeInfo->mCPUs.Back().mArchInfo.mArchitecture = "amd64";
+    inNodeInfo->mCPUs.Back().mArchInfo.mVariant.EmplaceValue("variant1");
+    inNodeInfo->mPartitions.EmplaceBack();
+    inNodeInfo->mPartitions.Back().mName = "part1";
+    inNodeInfo->mPartitions.Back().mPath = "/var/aos/workdirs";
+    inNodeInfo->mPartitions.Back().mTypes.EmplaceBack("type1");
+    inNodeInfo->mPartitions.Back().mTypes.EmplaceBack("type2");
+    inNodeInfo->mPartitions.Back().mTotalSize = 1073741824;
+    inNodeInfo->mAttrs.EmplaceBack(NodeAttribute {"attr1", "value1"});
+    inNodeInfo->mAttrs.EmplaceBack(NodeAttribute {"attr2", "value2"});
+    inNodeInfo->mState       = NodeStateEnum::eProvisioned;
+    inNodeInfo->mIsConnected = true;
+    inNodeInfo->mError       = Error(ErrorEnum::eFailed, "error message");
+
+    auto err = ToJSON(*inNodeInfo, *json);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = FromJSON(common::utils::CaseInsensitiveObjectWrapper(json), *outNodeInfo);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(*outNodeInfo, *inNodeInfo);
 }
 
 } // namespace aos::common::cloudprotocol

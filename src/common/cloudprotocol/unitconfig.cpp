@@ -290,9 +290,9 @@ Error ToJSON(const UnitConfig& unitConfig, Poco::JSON::Object& json)
         json.set("version", unitConfig.mVersion.CStr());
         json.set("formatVersion", unitConfig.mFormatVersion.CStr());
         json.set("nodes", common::utils::ToJsonArray(unitConfig.mNodes, [](const auto& nodeConfig) {
-            Poco::JSON::Object nodeJson(Poco::JSON_PRESERVE_KEY_ORDER);
+            auto nodeJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-            auto err = ToJSON(nodeConfig, nodeJson);
+            auto err = ToJSON(nodeConfig, *nodeJson);
             AOS_ERROR_CHECK_AND_THROW(err, "failed to convert nodeConfig to JSON");
 
             return nodeJson;
