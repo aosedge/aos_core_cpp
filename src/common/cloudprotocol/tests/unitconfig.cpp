@@ -433,14 +433,7 @@ TEST_F(CloudProtocolUnitConfig, UnitConfigToJSON)
     auto err = ToJSON(unitConfig, *json);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    auto jsonStr = common::utils::Stringify(json);
-
-    Poco::Dynamic::Var jsonVar;
-
-    Tie(jsonVar, err) = common::utils::ParseJson(jsonStr);
-    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
-
-    err = FromJSON(common::utils::CaseInsensitiveObjectWrapper(jsonVar), *parsedUnitConfig);
+    err = FromJSON(common::utils::CaseInsensitiveObjectWrapper(json), *parsedUnitConfig);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     CompareUnitConfig(*parsedUnitConfig, unitConfig);
