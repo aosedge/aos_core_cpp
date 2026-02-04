@@ -107,6 +107,15 @@ struct AosIdentity {
 Error ToJSON(const Error& error, Poco::JSON::Object& json);
 
 /**
+ * Converts JSON object to Error.
+ *
+ * @param json JSON object to convert.
+ * @param[out] error Error object to fill.
+ * @return Error.
+ */
+Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Error& error);
+
+/**
  * Creates AosIdentity JSON object.
  *
  * @param identity AosIdentity object to convert.

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <string>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 #include <common/utils/time.hpp>
@@ -72,6 +74,11 @@ Poco::JSON::Object::Ptr PartitionToJSON(const PartitionInfo& partition)
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     json->set("name", partition.mName.CStr());
+
+    if (!partition.mPath.IsEmpty()) {
+        json->set("path", partition.mPath.CStr());
+    }
+
     json->set("types", common::utils::ToJsonArray(partition.mTypes, [](const auto& type) { return type.CStr(); }));
     json->set("totalSize", partition.mTotalSize);
 
@@ -154,41 +161,8 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    {
-        AosIdentity identity;
-        identity.mCodename = nodeInfo.mNodeID.CStr();
-        identity.mTitle    = nodeInfo.mTitle.CStr();
-
-        json->set("identity", CreateAosIdentity(identity));
-    }
-
-    {
-        AosIdentity identity;
-        identity.mCodename = nodeInfo.mNodeType.CStr();
-
-        json->set("nodeGroupSubject", CreateAosIdentity(identity));
-    }
-
-    json->set("maxDmips", nodeInfo.mMaxDMIPS);
-
-    if (nodeInfo.mPhysicalRAM.HasValue()) {
-        json->set("physicalRam", *nodeInfo.mPhysicalRAM);
-    }
-
-    json->set("totalRam", nodeInfo.mTotalRAM);
-    json->set("osInfo", OSInfoToJSON(nodeInfo.mOSInfo));
-
-    if (!nodeInfo.mCPUs.IsEmpty()) {
-        json->set("cpus", common::utils::ToJsonArray(nodeInfo.mCPUs, CPUInfoToJSON));
-    }
-
-    if (!nodeInfo.mAttrs.IsEmpty()) {
-        json->set("atts", NodeAttrsToJSON(nodeInfo.mAttrs));
-    }
-
-    if (!nodeInfo.mPartitions.IsEmpty()) {
-        json->set("partitions", common::utils::ToJsonArray(nodeInfo.mPartitions, PartitionToJSON));
-    }
+    auto err = ToJSON(nodeInfo, *json);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't convert NodeInfo to JSON");
 
     if (!nodeInfo.mRuntimes.IsEmpty()) {
         json->set("runtimes", common::utils::ToJsonArray(nodeInfo.mRuntimes, RuntimeInfoToJSON));
@@ -196,18 +170,6 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 
     if (!nodeInfo.mResources.IsEmpty()) {
         json->set("resources", common::utils::ToJsonArray(nodeInfo.mResources, ResourceInfoToJSON));
-    }
-
-    json->set("state", nodeInfo.mState.ToString().CStr());
-    json->set("isConnected", nodeInfo.mIsConnected);
-
-    if (!nodeInfo.mError.IsNone()) {
-        auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-
-        auto err = ToJSON(nodeInfo.mError, *errorInfo);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't convert errorInfo to JSON");
-
-        json->set("errorInfo", errorInfo);
     }
 
     return json;
@@ -315,11 +277,231 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
     return json;
 }
 
+void OSInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, OSInfo& dst)
+{
+    auto err = dst.mOS.Assign(object.GetValue<std::string>("os").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse OS name");
+
+    if (auto version = object.GetOptionalValue<std::string>("version"); version.has_value()) {
+        dst.mVersion.EmplaceValue();
+
+        err = dst.mVersion->Assign(version->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse OS version");
+    }
+
+    common::utils::ForEach(object, "features", [&dst](const Poco::Dynamic::Var& value) {
+        auto err = dst.mFeatures.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse feature");
+
+        err = dst.mFeatures.Back().Assign(value.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse feature");
+    });
+}
+
+void ArchInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, ArchInfo& dst)
+{
+    auto err = dst.mArchitecture.Assign(object.GetValue<std::string>("architecture").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse architecture");
+
+    if (auto variant = object.GetOptionalValue<std::string>("variant"); variant.has_value()) {
+        dst.mVariant.EmplaceValue();
+
+        err = dst.mVariant->Assign(variant->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse architecture variant");
+    }
+}
+
+void CPUInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, CPUInfo& dst)
+{
+    auto err = dst.mModelName.Assign(object.GetValue<std::string>("modelName").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse CPU model name");
+
+    dst.mNumCores   = object.GetValue<size_t>("totalNumCores");
+    dst.mNumThreads = object.GetValue<size_t>("totalNumThreads");
+
+    if (!object.Has("archInfo")) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "can't parse ArchInfo");
+    }
+
+    ArchInfoFromJSON(object.GetObject("archInfo"), dst.mArchInfo);
+
+    if (auto maxDMIPS = object.GetOptionalValue<size_t>("maxDMIPS"); maxDMIPS.has_value()) {
+        dst.mMaxDMIPS.SetValue(maxDMIPS.value());
+    }
+}
+
+void PartitionInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, PartitionInfo& dst)
+{
+    auto err = dst.mName.Assign(object.GetValue<std::string>("name").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse partition name");
+
+    common::utils::ForEach(object, "types", [&dst](const Poco::Dynamic::Var& value) {
+        auto err = dst.mTypes.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse partition type");
+
+        err = dst.mTypes.Back().Assign(value.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse partition type");
+    });
+
+    if (object.Has("path")) {
+        err = dst.mPath.Assign(object.GetValue<std::string>("path").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse partition path");
+    }
+
+    dst.mTotalSize = object.GetValue<size_t>("totalSize");
+}
+
+void NodeAttrsFromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, Array<NodeAttribute>& dst)
+{
+    for (const auto& name : object.GetNames()) {
+        auto err = dst.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node attribute");
+
+        err = dst.Back().mName.Assign(name.c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse attribute name");
+
+        err = dst.Back().mValue.Assign(object.GetValue<std::string>(name).c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse attribute value");
+    }
+}
+
 } // namespace
 
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
+
+Error ToJSON(const NodeInfo& nodeInfo, Poco::JSON::Object& json)
+{
+    try {
+        {
+            AosIdentity identity;
+            identity.mCodename = nodeInfo.mNodeID.CStr();
+            identity.mTitle    = nodeInfo.mTitle.CStr();
+
+            json.set("identity", CreateAosIdentity(identity));
+        }
+
+        {
+            AosIdentity identity;
+            identity.mCodename = nodeInfo.mNodeType.CStr();
+
+            json.set("nodeGroupSubject", CreateAosIdentity(identity));
+        }
+
+        json.set("maxDmips", nodeInfo.mMaxDMIPS);
+
+        if (nodeInfo.mPhysicalRAM.HasValue()) {
+            json.set("physicalRam", *nodeInfo.mPhysicalRAM);
+        }
+
+        json.set("totalRam", nodeInfo.mTotalRAM);
+        json.set("osInfo", OSInfoToJSON(nodeInfo.mOSInfo));
+
+        if (!nodeInfo.mCPUs.IsEmpty()) {
+            json.set("cpus", common::utils::ToJsonArray(nodeInfo.mCPUs, CPUInfoToJSON));
+        }
+
+        if (!nodeInfo.mAttrs.IsEmpty()) {
+            json.set("attrs", NodeAttrsToJSON(nodeInfo.mAttrs));
+        }
+
+        if (!nodeInfo.mPartitions.IsEmpty()) {
+            json.set("partitions", common::utils::ToJsonArray(nodeInfo.mPartitions, PartitionToJSON));
+        }
+
+        json.set("state", nodeInfo.mState.ToString().CStr());
+        json.set("isConnected", nodeInfo.mIsConnected);
+
+        if (!nodeInfo.mError.IsNone()) {
+            auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+            auto err = ToJSON(nodeInfo.mError, *errorInfo);
+            AOS_ERROR_CHECK_AND_THROW(err, "can't convert errorInfo to JSON");
+
+            json.set("errorInfo", errorInfo);
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+}
+
+Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, NodeInfo& dst)
+{
+    try {
+        AosIdentity identity;
+
+        auto err = ParseAosIdentity(object.GetObject("identity"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node identity");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item codename is missing");
+        }
+
+        err = dst.mNodeID.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse nodeID");
+
+        err = dst.mTitle.Assign(identity.mTitle.value_or("").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node title");
+
+        err = ParseAosIdentity(object.GetObject("nodeGroupSubject"), identity);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node group subject");
+
+        if (!identity.mCodename.has_value()) {
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item codename is missing");
+        }
+
+        err = dst.mNodeType.Assign(identity.mCodename->c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node type");
+
+        dst.mMaxDMIPS = object.GetValue<size_t>("maxDMIPS");
+        dst.mTotalRAM = object.GetValue<size_t>("totalRAM");
+
+        if (auto physicalRAM = object.GetOptionalValue<size_t>("physicalRAM"); physicalRAM.has_value()) {
+            dst.mPhysicalRAM.SetValue(physicalRAM.value());
+        }
+
+        if (!object.Has("osInfo")) {
+            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "can't parse OSInfo");
+        }
+
+        OSInfoFromJSON(object.GetObject("osInfo"), dst.mOSInfo);
+
+        common::utils::ForEach(object, "cpus", [&dst](const Poco::Dynamic::Var& value) {
+            auto err = dst.mCPUs.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse CPU info");
+
+            CPUInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(value), dst.mCPUs.Back());
+        });
+
+        common::utils::ForEach(object, "partitions", [&dst](const Poco::Dynamic::Var& value) {
+            auto err = dst.mPartitions.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse Partition info");
+
+            PartitionInfoFromJSON(common::utils::CaseInsensitiveObjectWrapper(value), dst.mPartitions.Back());
+        });
+
+        if (object.Has("attrs")) {
+            NodeAttrsFromJSON(common::utils::CaseInsensitiveObjectWrapper(object.GetObject("attrs")), dst.mAttrs);
+        }
+
+        dst.mIsConnected = object.GetValue<bool>("isConnected");
+
+        err = dst.mState.FromString(object.GetValue<std::string>("state").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse node state");
+
+        if (object.Has("errorInfo")) {
+            err = FromJSON(object.GetObject("errorInfo"), dst.mError);
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse errorInfo");
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+}
 
 Error ToJSON(const UnitStatus& unitStatus, Poco::JSON::Object& json)
 {
