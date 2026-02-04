@@ -120,7 +120,7 @@ TEST_F(ImageManagerTest, UnpackLayer)
 
     size_t unpackedSize;
 
-    Tie(unpackedSize, err) = mImageHandler.GetUnpackedLayerSize(archivePath.c_str(), oci::cOCILayerTarGZip);
+    Tie(unpackedSize, err) = mImageHandler.GetUnpackedLayerSize(archivePath.c_str(), oci::cMediaTypeLayerTarGZip);
     EXPECT_TRUE(err.IsNone()) << "Failed to get unpacked layer size: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(unpackedSize, layerSize) << "Unpacked layer size mismatch, expected: " << layerSize
@@ -128,7 +128,7 @@ TEST_F(ImageManagerTest, UnpackLayer)
 
     auto unpackedPath = std::filesystem::path(cTestDirRoot) / "unpacked-layer";
 
-    err = mImageHandler.UnpackLayer(archivePath.c_str(), unpackedPath.string().c_str(), oci::cOCILayerTarGZip);
+    err = mImageHandler.UnpackLayer(archivePath.c_str(), unpackedPath.string().c_str(), oci::cMediaTypeLayerTarGZip);
     EXPECT_TRUE(err.IsNone()) << "Failed to unpack layer: " << tests::utils::ErrorToStr(err);
 
     StaticString<oci::cDigestLen> unpackedDigest;
