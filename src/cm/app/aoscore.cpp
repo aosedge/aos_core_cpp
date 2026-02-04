@@ -106,7 +106,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     err = mUpdateManager.Init({mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig, mNodeInfoProvider,
-        mImageManager, mLauncher, mCommunication, mCommunication);
+        mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize update manager");
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSIP);

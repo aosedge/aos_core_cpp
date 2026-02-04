@@ -268,6 +268,37 @@ public:
      */
     Error GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& items) override;
 
+    /**
+     * Stores desired status in storage.
+     *
+     * @param desiredStatus desired status to store.
+     * @return Error.
+     */
+    Error StoreDesiredStatus(const DesiredStatus& desiredStatus) override;
+
+    /**
+     * Stores update state in storage.
+     *
+     * @param state update state to store.
+     * @return Error.
+     */
+    Error StoreUpdateState(const updatemanager::UpdateState& state) override;
+
+    /**
+     * Retrieves desired status from storage.
+     *
+     * @param desiredStatus desired status to retrieve.
+     * @return Error.
+     */
+    Error GetDesiredStatus(DesiredStatus& desiredStatus) override;
+
+    /**
+     * Retrieves update state from storage.
+     *
+     * @return RetWithError<UpdateState>.
+     */
+    RetWithError<updatemanager::UpdateState> GetUpdateState() override;
+
 private:
     static constexpr int  cVersion    = 0;
     static constexpr auto cDBFileName = "cm.db";
