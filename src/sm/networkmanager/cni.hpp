@@ -7,6 +7,7 @@
 #ifndef AOS_SM_NETWORKMANAGER_CNI_HPP_
 #define AOS_SM_NETWORKMANAGER_CNI_HPP_
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -138,6 +139,7 @@ private:
 
     std::string mConfigDir;
     ExecItf*    mExec {};
+    std::mutex  mMutex;
 };
 } // namespace aos::sm::cni
 
