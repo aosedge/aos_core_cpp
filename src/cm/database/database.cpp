@@ -15,6 +15,7 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/cloudprotocol/desiredstatus.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 
@@ -38,32 +39,32 @@ constexpr int ToInt(E e)
 
 std::string SerializeExposedPorts(const Array<networkmanager::ExposedPort>& ports)
 {
-    Poco::JSON::Array portsJson;
+    Poco::JSON::Array portsJSON;
 
     for (const auto& port : ports) {
         Poco::JSON::Object portObj;
 
         portObj.set("protocol", port.mProtocol.CStr());
         portObj.set("port", port.mPort.CStr());
-        portsJson.add(portObj);
+        portsJSON.add(portObj);
     }
 
-    return common::utils::Stringify(portsJson);
+    return common::utils::Stringify(portsJSON);
 }
 
 void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::ExposedPort>& ports)
 {
     Poco::JSON::Parser parser;
 
-    auto portsJson = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
-    if (portsJson == nullptr) {
+    auto portsJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+    if (portsJSON == nullptr) {
         AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed ports array");
     }
 
     ports.Clear();
 
-    for (const auto& portJson : *portsJson) {
-        const auto portObj = portJson.extract<Poco::JSON::Object::Ptr>();
+    for (const auto& portJSON : *portsJSON) {
+        const auto portObj = portJSON.extract<Poco::JSON::Object::Ptr>();
         if (portObj == nullptr) {
             AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed port");
         }
@@ -91,16 +92,16 @@ void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cIPLen
 {
     Poco::JSON::Parser parser;
 
-    auto dnsJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
-    if (dnsJSON == nullptr) {
+    auto dnsServersJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+    if (dnsServersJSON == nullptr) {
         AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse DNS servers array");
     }
 
     dnsServers.Clear();
 
-    for (const auto& dnsJson : *dnsJSON) {
+    for (const auto& dnsJSON : *dnsServersJSON) {
         AOS_ERROR_CHECK_AND_THROW(
-            dnsServers.EmplaceBack(dnsJson.convert<std::string>().c_str()), "can't add DNS server");
+            dnsServers.EmplaceBack(dnsJSON.convert<std::string>().c_str()), "can't add DNS server");
     }
 }
 
@@ -129,6 +130,25 @@ void DeserializeLabels(const std::string& jsonStr, aos::LabelsArray& labels)
     for (const auto& labelJson : *labelsJSON) {
         AOS_ERROR_CHECK_AND_THROW(labels.EmplaceBack(labelJson.convert<std::string>().c_str()), "can't add label");
     }
+}
+
+std::string SerializeDesiredStatus(const DesiredStatus& desiredStatus)
+{
+    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    auto err = common::cloudprotocol::ToJSON(desiredStatus, *json);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to serialize desired status");
+
+    return common::utils::Stringify(json);
+}
+
+void DeserializeDesiredStatus(const std::string& jsonStr, DesiredStatus& desiredStatus)
+{
+    auto [json, err] = common::utils::ParseJson(jsonStr);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse desired status JSON");
+
+    err = common::cloudprotocol::FromJSON(common::utils::CaseInsensitiveObjectWrapper(json), desiredStatus);
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to deserialize desired status");
 }
 
 } // namespace
@@ -735,13 +755,109 @@ Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& it
     return ErrorEnum::eNone;
 }
 
+Error Database::StoreDesiredStatus(const DesiredStatus& desiredStatus)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "UPDATE updatemanager SET desiredStatus = ?;", bind(SerializeDesiredStatus(desiredStatus));
+
+        if (statement.execute() == 0) {
+            return ErrorEnum::eNotFound;
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::StoreUpdateState(const updatemanager::UpdateState& state)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "UPDATE updatemanager SET updateState = ?;", bind(state.ToString().CStr());
+
+        if (statement.execute() == 0) {
+            return ErrorEnum::eNotFound;
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+Error Database::GetDesiredStatus(DesiredStatus& desiredStatus)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+        std::string           desiredStatusStr;
+
+        statement << "SELECT desiredStatus FROM updatemanager;", into(desiredStatusStr), now;
+
+        if (statement.execute() == 0) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+
+        DeserializeDesiredStatus(desiredStatusStr, desiredStatus);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+RetWithError<updatemanager::UpdateState> Database::GetUpdateState()
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+        std::string           stateStr;
+
+        statement << "SELECT updateState FROM updatemanager;", into(stateStr), now;
+
+        if (statement.execute() == 0) {
+            return {updatemanager::UpdateStateEnum::eNone, AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+        }
+
+        updatemanager::UpdateState state;
+
+        if (auto err = state.FromString(stateStr.c_str()); !err.IsNone()) {
+            return {updatemanager::UpdateStateEnum::eNone, AOS_ERROR_WRAP(err)};
+        }
+
+        return state;
+    } catch (const std::exception& e) {
+        return {updatemanager::UpdateStateEnum::eNone, AOS_ERROR_WRAP(common::utils::ToAosError(e))};
+    }
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
 void Database::CreateTables()
 {
-    LOG_INF() << "Create storagestate table";
+    LOG_INF() << "Create update manager table";
+
+    *mSession << "CREATE TABLE IF NOT EXISTS updatemanager ("
+                 "desiredStatus TEXT,"
+                 "updateState TEXT"
+                 ");",
+        now;
+
+    *mSession << "INSERT INTO updatemanager (desiredStatus, updateState) "
+                 "SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM updatemanager);",
+        bind("{}"), bind(updatemanager::UpdateState().ToString().CStr()), now;
 
     *mSession << "CREATE TABLE IF NOT EXISTS storagestate ("
                  "itemID TEXT,"
