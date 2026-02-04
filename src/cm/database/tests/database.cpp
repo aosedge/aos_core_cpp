@@ -799,4 +799,119 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfos)
     EXPECT_EQ(nonExistentItems.Size(), 0);
 }
 
+/***********************************************************************************************************************
+ * updatemanager::StorageItf tests
+ **********************************************************************************************************************/
+
+TEST_F(CMDatabaseTest, StoreGetUpdateState)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    ASSERT_TRUE(mDB.StoreUpdateState(updatemanager::UpdateStateEnum::eDownloading).IsNone());
+    ASSERT_TRUE(mDB.StoreUpdateState(updatemanager::UpdateStateEnum::ePending).IsNone());
+    ASSERT_TRUE(mDB.StoreUpdateState(updatemanager::UpdateStateEnum::eInstalling).IsNone());
+
+    auto [state, err] = mDB.GetUpdateState();
+    ASSERT_TRUE(err.IsNone());
+
+    EXPECT_EQ(state, updatemanager::UpdateStateEnum::eInstalling);
+}
+
+TEST_F(CMDatabaseTest, StoreGetDesiredStatus)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto setDesiredStatus = std::make_unique<DesiredStatus>();
+
+    // Nodes
+    setDesiredStatus->mNodes.EmplaceBack();
+    setDesiredStatus->mNodes.Back().mNodeID = "node1";
+    setDesiredStatus->mNodes.Back().mState  = DesiredNodeStateEnum::eProvisioned;
+    setDesiredStatus->mNodes.EmplaceBack();
+    setDesiredStatus->mNodes.Back().mNodeID = "node2";
+    setDesiredStatus->mNodes.Back().mState  = DesiredNodeStateEnum::ePaused;
+    // UnitConfig
+    setDesiredStatus->mUnitConfig.EmplaceValue();
+    auto& unitConfig          = *setDesiredStatus->mUnitConfig;
+    unitConfig.mFormatVersion = "1.0.0";
+    unitConfig.mVersion       = "2.0.0";
+    unitConfig.mNodes.EmplaceBack();
+    auto& nodeConfig1     = unitConfig.mNodes.Back();
+    nodeConfig1.mNodeID   = "node1";
+    nodeConfig1.mNodeType = "main";
+    nodeConfig1.mPriority = 5;
+    unitConfig.mNodes.EmplaceBack();
+    auto& nodeConfig2     = unitConfig.mNodes.Back();
+    nodeConfig2.mNodeID   = "node2";
+    nodeConfig2.mNodeType = "secondary";
+    nodeConfig2.mPriority = 10;
+    // Items
+    setDesiredStatus->mUpdateItems.EmplaceBack();
+    auto& updateItem1        = setDesiredStatus->mUpdateItems.Back();
+    updateItem1.mItemID      = "item1";
+    updateItem1.mType        = UpdateItemTypeEnum::eService;
+    updateItem1.mVersion     = "1.0.0";
+    updateItem1.mOwnerID     = "owner1";
+    updateItem1.mIndexDigest = "sha256:abcdef";
+    setDesiredStatus->mUpdateItems.EmplaceBack();
+    auto& updateItem2        = setDesiredStatus->mUpdateItems.Back();
+    updateItem2.mItemID      = "item2";
+    updateItem2.mType        = UpdateItemTypeEnum::eComponent;
+    updateItem2.mVersion     = "2.0.0";
+    updateItem2.mOwnerID     = "owner2";
+    updateItem2.mIndexDigest = "sha256:123456";
+    // Instances
+    setDesiredStatus->mInstances.EmplaceBack();
+    auto& instance1         = setDesiredStatus->mInstances.Back();
+    instance1.mItemID       = "item1";
+    instance1.mSubjectID    = "subject1";
+    instance1.mPriority     = 1;
+    instance1.mNumInstances = 2;
+    instance1.mLabels.PushBack("main");
+    setDesiredStatus->mInstances.EmplaceBack();
+    auto& instance2      = setDesiredStatus->mInstances.Back();
+    instance2.mItemID    = "item2";
+    instance2.mSubjectID = "subject2";
+    instance2.mPriority  = 5;
+    // Subjects
+    setDesiredStatus->mSubjects.EmplaceBack();
+    auto& subject1          = setDesiredStatus->mSubjects.Back();
+    subject1.mSubjectID     = "subject1";
+    subject1.mSubjectType   = SubjectTypeEnum::eUser;
+    subject1.mIsUnitSubject = true;
+    setDesiredStatus->mSubjects.EmplaceBack();
+    auto& subject2          = setDesiredStatus->mSubjects.Back();
+    subject2.mSubjectID     = "subject2";
+    subject2.mSubjectType   = SubjectTypeEnum::eGroup;
+    subject2.mIsUnitSubject = false;
+    // Certificates
+    setDesiredStatus->mCertificates.EmplaceBack();
+    auto& certificate1        = setDesiredStatus->mCertificates.Back();
+    certificate1.mCertificate = String("der certificate example").AsByteArray();
+    certificate1.mFingerprint = "fingerprint1";
+    setDesiredStatus->mCertificates.EmplaceBack();
+    auto& certificate2        = setDesiredStatus->mCertificates.Back();
+    certificate2.mCertificate = String("another der certificate").AsByteArray();
+    certificate2.mFingerprint = "fingerprint2";
+    // Certificate chains
+    setDesiredStatus->mCertificateChains.EmplaceBack();
+    auto& certificateChain1 = setDesiredStatus->mCertificateChains.Back();
+    certificateChain1.mName = "chain1";
+    certificateChain1.mFingerprints.PushBack("fingerprint1");
+    certificateChain1.mFingerprints.PushBack("fingerprint2");
+    setDesiredStatus->mCertificateChains.EmplaceBack();
+    auto& certificateChain2 = setDesiredStatus->mCertificateChains.Back();
+    certificateChain2.mName = "chain2";
+    certificateChain2.mFingerprints.PushBack("fingerprint3");
+
+    auto getDesiredStatus = std::make_unique<DesiredStatus>();
+
+    ASSERT_TRUE(mDB.StoreDesiredStatus(*setDesiredStatus).IsNone());
+
+    auto err = mDB.GetDesiredStatus(*getDesiredStatus);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(*getDesiredStatus, *setDesiredStatus);
+}
+
 } // namespace aos::cm::database
