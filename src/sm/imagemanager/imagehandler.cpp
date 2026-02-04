@@ -108,7 +108,7 @@ RetWithError<size_t> ImageHandler::GetUnpackedLayerSize(const String& path, cons
         return {0, err};
     }
 
-    auto [size, err] = common::utils::GetUnpackedArchiveSize(path.CStr(), mediaType == oci::cOCILayerTarGZip);
+    auto [size, err] = common::utils::GetUnpackedArchiveSize(path.CStr(), mediaType == oci::cMediaTypeLayerTarGZip);
     if (!err.IsNone()) {
         return {0, AOS_ERROR_WRAP(err)};
     }
@@ -140,7 +140,7 @@ RetWithError<StaticString<oci::cDigestLen>> ImageHandler::GetUnpackedLayerDigest
 
 Error ImageHandler::CheckMediaType(const String& mediaType) const
 {
-    if (mediaType != oci::cOCILayerTar && mediaType != oci::cOCILayerTarGZip) {
+    if (mediaType != oci::cMediaTypeLayerTar && mediaType != oci::cMediaTypeLayerTarGZip) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "unsupported layer media type"));
     }
 
