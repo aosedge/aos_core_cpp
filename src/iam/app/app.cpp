@@ -282,7 +282,7 @@ void App::Init()
 
 void App::Start()
 {
-    LOG_INF() << "Start IAM";
+    LOG_INF() << "Start IAM" << Log::Field("provisioning", mProvisioning);
 
     if (mIdentifier) {
         auto err = mIdentifier->Start();

@@ -478,7 +478,7 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 {
     const auto isSecured = IsSecured(uri);
 
-    LOG_DBG() << "Create client session" << Log::Field("uri", uri.toString().c_str())
+    LOG_INF() << "Create client session" << Log::Field("uri", uri.toString().c_str())
               << Log::Field("secured", isSecured);
 
     if (!isSecured) {
@@ -532,7 +532,7 @@ void Communication::ReceiveDiscoveryResponse(
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "Discovery request failed");
     }
 
-    LOG_DBG() << "Received discovery response" << Log::Field("content", responseBody.c_str());
+    LOG_INF() << "Received discovery response" << Log::Field("content", responseBody.c_str());
 
     mDiscoveryResponse.emplace();
 
@@ -550,7 +550,7 @@ Error Communication::SendDiscoveryRequest(const String& url)
             }
         });
 
-        LOG_DBG() << "Send discovery request" << Log::Field("url", url.CStr());
+        LOG_INF() << "Send discovery request" << Log::Field("url", url.CStr());
 
         const auto requestBody = CreateDiscoveryRequestBody();
 
@@ -704,7 +704,7 @@ void Communication::NotifyConnectionEstablished()
 {
     std::lock_guard lock {mSubscribersMutex};
 
-    LOG_INF() << "Notifying connection established" << Log::Field("subscribersCount", mSubscribers.size());
+    LOG_INF() << "Connection established";
 
     for (auto& subscriber : mSubscribers) {
         subscriber->OnConnect();
@@ -715,7 +715,7 @@ void Communication::NotifyConnectionLost()
 {
     std::lock_guard lock {mSubscribersMutex};
 
-    LOG_INF() << "Notifying connection lost" << Log::Field("subscribersCount", mSubscribers.size());
+    LOG_INF() << "Connection lost";
 
     for (auto& subscriber : mSubscribers) {
         subscriber->OnDisconnect();

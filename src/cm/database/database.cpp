@@ -847,7 +847,7 @@ RetWithError<updatemanager::UpdateState> Database::GetUpdateState()
 
 void Database::CreateTables()
 {
-    LOG_INF() << "Create update manager table";
+    LOG_DBG() << "Create CM tables if not exist";
 
     *mSession << "CREATE TABLE IF NOT EXISTS updatemanager ("
                  "desiredStatus TEXT,"
@@ -872,8 +872,6 @@ void Database::CreateTables()
                  ");",
         now;
 
-    LOG_INF() << "Create imagemanager table";
-
     *mSession << "CREATE TABLE IF NOT EXISTS imagemanager ("
                  "itemID TEXT,"
                  "version TEXT,"
@@ -884,8 +882,6 @@ void Database::CreateTables()
                  ");",
         now;
 
-    LOG_INF() << "Create networks table";
-
     *mSession << "CREATE TABLE IF NOT EXISTS networks ("
                  "networkID TEXT,"
                  "subnet TEXT,"
@@ -893,8 +889,6 @@ void Database::CreateTables()
                  "PRIMARY KEY(networkID)"
                  ");",
         now;
-
-    LOG_INF() << "Create hosts table";
 
     *mSession << "CREATE TABLE IF NOT EXISTS hosts ("
                  "networkID TEXT,"
@@ -904,8 +898,6 @@ void Database::CreateTables()
                  "FOREIGN KEY(networkID) REFERENCES networks(networkID)"
                  ");",
         now;
-
-    LOG_INF() << "Create networkmanager instances table";
 
     *mSession << "CREATE TABLE IF NOT EXISTS networkmanager_instances ("
                  "itemID TEXT,"
@@ -923,8 +915,6 @@ void Database::CreateTables()
                  "FOREIGN KEY(networkID,nodeID) REFERENCES hosts(networkID,nodeID)"
                  ");",
         now;
-
-    LOG_INF() << "Create launcher instances table";
 
     *mSession << "CREATE TABLE IF NOT EXISTS launcher_instances ("
                  "itemID TEXT,"

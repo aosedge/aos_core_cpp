@@ -322,7 +322,7 @@ SMClient::StubPtr SMClient::CreateStub(
 
 bool SMClient::SendSMInfo()
 {
-    LOG_INF() << "Send SM info";
+    LOG_DBG() << "Send SM info";
 
     if (!mStream) {
         return false;
@@ -360,7 +360,7 @@ bool SMClient::SendSMInfo()
 
 bool SMClient::SendNodeInstancesStatus()
 {
-    LOG_INF() << "Send node instances status";
+    LOG_DBG() << "Send node instances status";
 
     if (!mStream) {
         return false;

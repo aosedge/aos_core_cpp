@@ -41,8 +41,6 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    LOG_INF() << "IAM client initialized successfully";
-
     return ErrorEnum::eNone;
 }
 

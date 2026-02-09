@@ -56,7 +56,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     bool provisioningMode)
 {
-    LOG_DBG() << "IAM Server init";
+    LOG_DBG() << "Init IAM server";
 
     mConfig           = config;
     mCertLoader       = &certLoader;
@@ -72,6 +72,15 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     }
 
     if (nodeInfo->IsMainNode()) {
+        SystemInfo sysInfo;
+
+        if (err = identProvider.GetSystemInfo(sysInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        LOG_INF() << "System info" << Log::Field("systemID", sysInfo.mSystemID)
+                  << Log::Field("model", sysInfo.mUnitModel) << Log::Field("version", sysInfo.mVersion);
+
         nodeInfo->mIsConnected = true;
 
         if (err = nodeManager.SetNodeInfo(*nodeInfo); !err.IsNone()) {
@@ -184,9 +193,9 @@ Error IAMServer::OnStartProvisioning(const String& password)
 {
     (void)password;
 
-    LOG_DBG() << "Process on start provisioning";
-
     if (!mConfig.mStartProvisioningCmdArgs.empty()) {
+        LOG_INF() << "Process on start provisioning";
+
         auto [_, err] = common::utils::ExecCommand(mConfig.mStartProvisioningCmdArgs);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -200,9 +209,9 @@ Error IAMServer::OnFinishProvisioning(const String& password)
 {
     (void)password;
 
-    LOG_DBG() << "Process on finish provisioning";
-
     if (!mConfig.mFinishProvisioningCmdArgs.empty()) {
+        LOG_INF() << "Process on finish provisioning";
+
         auto [_, err] = common::utils::ExecCommand(mConfig.mFinishProvisioningCmdArgs);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -216,9 +225,9 @@ Error IAMServer::OnDeprovision(const String& password)
 {
     (void)password;
 
-    LOG_DBG() << "Process on deprovisioning";
-
     if (!mConfig.mDeprovisionCmdArgs.empty()) {
+        LOG_INF() << "Process on deprovisioning";
+
         auto [_, err] = common::utils::ExecCommand(mConfig.mDeprovisionCmdArgs);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -232,9 +241,9 @@ Error IAMServer::OnEncryptDisk(const String& password)
 {
     (void)password;
 
-    LOG_DBG() << "Process on encrypt disk";
-
     if (!mConfig.mDiskEncryptionCmdArgs.empty()) {
+        LOG_INF() << "Process on encrypt disk";
+
         auto [_, err] = common::utils::ExecCommand(mConfig.mDiskEncryptionCmdArgs);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -259,6 +268,8 @@ void IAMServer::OnNodeInfoChanged(const NodeInfo& info)
 
 void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
 {
+    LOG_INF() << "Subjects changed" << Log::Field("count", subjects.Size());
+
     mPublicMessageHandler.SubjectsChanged(subjects);
     mProtectedMessageHandler.SubjectsChanged(subjects);
 }
@@ -279,7 +290,7 @@ void IAMServer::OnCertChanged(const CertInfo& info)
 
 void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
 {
-    LOG_DBG() << "Process create public server: URL=" << addr.c_str();
+    LOG_INF() << "Create public server" << Log::Field("url", addr.c_str());
 
     grpc::ServerBuilder builder;
 
@@ -293,7 +304,7 @@ void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_pt
 void IAMServer::CreateProtectedServer(
     const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
 {
-    LOG_DBG() << "Process create protected server: URL=" << addr.c_str();
+    LOG_INF() << "Create protected server" << Log::Field("url", addr.c_str());
 
     grpc::ServerBuilder builder;
 

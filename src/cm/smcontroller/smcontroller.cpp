@@ -51,7 +51,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
 
 Error SMController::Start()
 {
-    LOG_INF() << "Start SM Controller";
+    LOG_DBG() << "Start SM Controller";
 
     if (auto err = CreateServerCredentials(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -74,7 +74,7 @@ Error SMController::Start()
 
 Error SMController::Stop()
 {
-    LOG_INF() << "Stop SM Controller";
+    LOG_DBG() << "Stop SM Controller";
 
     if (auto err = StopServer(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -232,7 +232,7 @@ Error SMController::GetAverageMonitoring(const String& nodeID, aos::monitoring::
 
 void SMController::OnConnect()
 {
-    LOG_INF() << "Cloud connected";
+    LOG_DBG() << "Cloud connected";
 
     std::lock_guard lock {mMutex};
 
@@ -243,7 +243,7 @@ void SMController::OnConnect()
 
 void SMController::OnDisconnect()
 {
-    LOG_INF() << "Cloud disconnected";
+    LOG_DBG() << "Cloud disconnected";
 
     std::lock_guard lock {mMutex};
 
@@ -410,7 +410,7 @@ Error SMController::StartServer()
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to start CM server"));
     }
 
-    LOG_INF() << "CM server started on: " << correctedAddress.c_str();
+    LOG_INF() << "CM server started on" << Log::Field("url", correctedAddress.c_str());
 
     return ErrorEnum::eNone;
 }

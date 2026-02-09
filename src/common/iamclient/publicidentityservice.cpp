@@ -134,7 +134,7 @@ Error PublicIdentityService::SubscribeListener(aos::iamclient::SubjectsListenerI
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Subscribe to subjects changed";
+    LOG_DBG() << "Subscribe to subjects changed";
 
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
@@ -168,7 +168,7 @@ Error PublicIdentityService::UnsubscribeListener(aos::iamclient::SubjectsListene
         return ErrorEnum::eNone;
     }
 
-    LOG_INF() << "Unsubscribe from subjects changed";
+    LOG_DBG() << "Unsubscribe from subjects changed";
 
     if (mSubscriptionManager->Unsubscribe(subjectsListener)) {
         mSubscriptionManager.reset();

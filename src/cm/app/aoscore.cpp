@@ -23,6 +23,7 @@ void AosCore::Init(const std::string& configFile)
     auto err = mLogger.Init();
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logger");
 
+    LOG_INF() << "Init CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
     LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(AosCore));
 
     // Initialize Aos modules
@@ -117,6 +118,8 @@ void AosCore::Init(const std::string& configFile)
 
 void AosCore::Start()
 {
+    LOG_INF() << "Start CM";
+
     auto err = mFSWatcher.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start FS watcher");
 
@@ -219,6 +222,8 @@ void AosCore::Start()
 
 void AosCore::Stop()
 {
+    LOG_INF() << "Stop CM";
+
     mCleanupManager.ExecuteCleanups();
 }
 

@@ -38,7 +38,7 @@ SMHandler::SMHandler(grpc::ServerContext*                                       
 
 void SMHandler::Start()
 {
-    LOG_INF() << "Start SM handler";
+    LOG_DBG() << "Start SM handler";
 
     mStopProcessing.store(false);
 
@@ -66,7 +66,7 @@ void SMHandler::Wait()
 
 void SMHandler::Stop()
 {
-    LOG_INF() << "Stop SM handler";
+    LOG_DBG() << "Stop SM handler";
 
     mStopProcessing.store(true);
 

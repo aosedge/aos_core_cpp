@@ -138,7 +138,7 @@ Error PublicNodesService::SubscribeListener(aos::iamclient::NodeInfoListenerItf&
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Subscribe to node info changed";
+    LOG_DBG() << "Subscribe to node info changed";
 
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
@@ -167,7 +167,7 @@ Error PublicNodesService::UnsubscribeListener(aos::iamclient::NodeInfoListenerIt
         return ErrorEnum::eNone;
     }
 
-    LOG_INF() << "Unsubscribe from node info changed";
+    LOG_DBG() << "Unsubscribe from node info changed";
 
     if (mSubscriptionManager->Unsubscribe(listener)) {
         mSubscriptionManager.reset();
