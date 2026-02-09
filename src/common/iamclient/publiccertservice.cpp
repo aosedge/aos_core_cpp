@@ -86,7 +86,7 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Subscribe to certificate changed" << Log::Field("certType", certType);
+    LOG_DBG() << "Subscribe to certificate changed" << Log::Field("certType", certType);
 
     auto& manager = mSubscriptions[certType.CStr()];
     if (!manager) {
@@ -113,13 +113,14 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& ce
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Unsubscribe from certificate changed";
+    LOG_DBG() << "Unsubscribe from certificate changed";
 
     for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
         auto& manager = it->second;
 
         if (manager->Unsubscribe(certListener)) {
-            LOG_INF() << "Unsubscribe from certificate changed: certType=" << it->first.c_str();
+            LOG_DBG() << "Unsubscribe from certificate changed" << Log::Field("certType", it->first.c_str());
+
             it = mSubscriptions.erase(it);
         } else {
             ++it;
@@ -134,7 +135,7 @@ Error PublicCertService::GetCert(
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Get certificate" << Log::Field("certType", certType);
+    LOG_DBG() << "Get certificate" << Log::Field("certType", certType);
 
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);

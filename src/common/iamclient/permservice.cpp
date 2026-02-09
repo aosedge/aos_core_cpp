@@ -72,8 +72,7 @@ RetWithError<StaticString<cSecretLen>> PermissionsService::RegisterInstance(
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Register instance" << Log::Field("itemID", instanceIdent.mItemID)
-              << Log::Field("subjectID", instanceIdent.mSubjectID) << Log::Field("instance", instanceIdent.mInstance);
+    LOG_INF() << "Register instance" << Log::Field("instance", instanceIdent);
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
@@ -97,8 +96,7 @@ Error PermissionsService::UnregisterInstance(const InstanceIdent& instanceIdent)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Unregister instance" << Log::Field("itemID", instanceIdent.mItemID)
-              << Log::Field("subjectID", instanceIdent.mSubjectID) << Log::Field("instance", instanceIdent.mInstance);
+    LOG_INF() << "Unregister instance" << Log::Field("instance", instanceIdent);
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
