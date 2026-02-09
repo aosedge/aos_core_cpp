@@ -43,10 +43,6 @@ private:
     void HandleVersion(const std::string& name, const std::string& value);
     void HandleJournal(const std::string& name, const std::string& value);
 
-    void Init();
-    void Start();
-    void Stop();
-
     std::unique_ptr<AosCore> mAosCore;
     common::logger::Logger   mLogger;
     bool                     mStopProcessing {};
