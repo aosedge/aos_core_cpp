@@ -554,12 +554,12 @@ void NetworkManager::CleanupHostFromNetwork(NetworkState& networkState, const St
 
     auto& hostInstances = itHost->second;
 
-    if (auto err = mStorage->RemoveHost(networkState.mNetwork.mNetworkID, nodeID); !err.IsNone()) {
-        LOG_ERR() << "Error removing host" << Log::Field("err", err);
-    }
-
     for (auto& [instanceID, instance] : hostInstances.mInstances) {
         RemoveInstanceNetwork(networkState.mNetwork.mNetworkID.CStr(), instance.mIP.CStr(), instanceID);
+    }
+
+    if (auto err = mStorage->RemoveHost(networkState.mNetwork.mNetworkID, nodeID); !err.IsNone()) {
+        LOG_ERR() << "Error removing host" << Log::Field("err", err);
     }
 
     networkState.mHostInstances.erase(itHost);
