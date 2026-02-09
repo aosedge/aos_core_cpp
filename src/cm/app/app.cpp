@@ -170,22 +170,6 @@ void App::defineOptions(Poco::Util::OptionSet& options)
  * Private
  **********************************************************************************************************************/
 
-void App::Init()
-{
-    LOG_INF() << "Init CM" << Log::Field("version", AOS_CORE_CPP_VERSION);
-    LOG_DBG() << "Aos core size" << Log::Field("size", sizeof(AosCore));
-}
-
-void App::Start()
-{
-    LOG_INF() << "Start CM";
-}
-
-void App::Stop()
-{
-    LOG_INF() << "Stop CM";
-}
-
 void App::HandleHelp(const std::string& name, const std::string& value)
 {
     (void)name;
