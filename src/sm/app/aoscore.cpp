@@ -169,21 +169,21 @@ void AosCore::Init(const std::string& configFile)
 
 void AosCore::Start()
 {
-    auto err = mLauncher.Start();
-    AOS_ERROR_CHECK_AND_THROW(err, "can't start launcher");
-
-    mCleanupManager.AddCleanup([this]() {
-        if (auto err = mLauncher.Stop(); !err.IsNone()) {
-            LOG_ERR() << "Can't stop launcher: err=" << err;
-        }
-    });
-
-    err = mNetworkManager.Start();
+    auto err = mNetworkManager.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start network manager");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mNetworkManager.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop network manager: err=" << err;
+        }
+    });
+
+    err = mLauncher.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start launcher");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mLauncher.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop launcher: err=" << err;
         }
     });
 
