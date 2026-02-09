@@ -54,7 +54,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     }
 
     if (mNodeInfo.IsMainNode()) {
-        LOG_INF() << "Register services on main node";
+        LOG_DBG() << "Register services on main node";
 
         if (GetIdentProvider() != nullptr) {
             builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
