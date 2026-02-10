@@ -6,8 +6,8 @@
 
 #include <fstream>
 
-#include <common/logger/logmodule.hpp>
 #include <common/utils/json.hpp>
+#include <core/common/tools/logger.hpp>
 
 #include "config.hpp"
 
@@ -71,10 +71,10 @@ IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
     };
 }
 
-aos::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
+aos::logging::Config ParseLogProviderConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
 {
     if (!object.Has("LogProvider")) {
-        return aos::logprovider::Config {
+        return aos::logging::Config {
             cDefaultMaxLogPartSize,
             cDefaultMaxLogPartCount,
         };
@@ -82,7 +82,7 @@ aos::logprovider::Config ParseLogProviderConfig(const common::utils::CaseInsensi
 
     auto logProviderObject = object.GetObject("LogProvider");
 
-    return aos::logprovider::Config {
+    return aos::logging::Config {
         logProviderObject.GetValue<uint64_t>("MaxPartSize", cDefaultMaxLogPartSize),
         logProviderObject.GetValue<uint64_t>("MaxPartCount", cDefaultMaxLogPartCount),
     };
@@ -123,15 +123,15 @@ RetWithError<Config> ParseConfig(const std::string& filename)
     try {
         common::utils::CaseInsensitiveObjectWrapper object(result.mValue.extract<Poco::JSON::Object::Ptr>());
 
-        config.mWorkingDir        = object.GetValue<std::string>("WorkingDir");
-        config.mVChan             = ParseVChanConfig(object.GetObject("VChan"));
-        config.mCMConfig          = ParseCMConfig(object.GetObject("CMConfig"));
-        config.mCertStorage       = object.GetValue<std::string>("CertStorage");
-        config.mCACert            = object.GetValue<std::string>("CACert");
-        config.mImageStoreDir     = object.GetValue<std::string>("ImageStoreDir");
-        config.mDownload          = ParseDownloader(object.GetObject("Downloader"));
-        config.mIAMConfig         = ParseIAMConfig(object.GetObject("IAMConfig"));
-        config.mLogProviderConfig = ParseLogProviderConfig(object);
+        config.mWorkingDir    = object.GetValue<std::string>("WorkingDir");
+        config.mVChan         = ParseVChanConfig(object.GetObject("VChan"));
+        config.mCMConfig      = ParseCMConfig(object.GetObject("CMConfig"));
+        config.mCertStorage   = object.GetValue<std::string>("CertStorage");
+        config.mCACert        = object.GetValue<std::string>("CACert");
+        config.mImageStoreDir = object.GetValue<std::string>("ImageStoreDir");
+        config.mDownload      = ParseDownloader(object.GetObject("Downloader"));
+        config.mIAMConfig     = ParseIAMConfig(object.GetObject("IAMConfig"));
+        config.mLogConfig     = ParseLogProviderConfig(object);
     } catch (const std::exception& e) {
         return {config, Error(ErrorEnum::eFailed, e.what())};
     }
