@@ -60,7 +60,7 @@ conan_setup() {
 build_project() {
     local with_cm="ON"
     local with_iam="ON"
-    local with_mp="OFF"
+    local with_mp="ON"
     local with_sm="ON"
 
     if [[ -n "$ARG_AOS_SERVICES" ]]; then
