@@ -9,11 +9,13 @@
 
 #include <gtest/gtest.h>
 
+#include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 
-#include <mp/iamclient/publicnodeclient.hpp>
+#include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
 
-#include "mocks/certprovider.hpp"
+#include <mp/iamclient/iamclient.hpp>
+
 #include "stubs/iamserver.hpp"
 
 using namespace testing;
@@ -42,11 +44,13 @@ protected:
         mClient.emplace();
     }
 
+    void TearDown() override { mClient->Stop(); }
+
     std::optional<TestIAMServer> mIAMServerStub;
 
-    std::optional<PublicNodeClient> mClient;
-    crypto::x509::ProviderItf*      mCryptoProvider {};
-    config::Config                  mConfig {};
+    std::optional<IAMClient>   mClient;
+    crypto::x509::ProviderItf* mCryptoProvider {};
+    config::Config             mConfig {};
 };
 
 /***********************************************************************************************************************
@@ -55,16 +59,18 @@ protected:
 
 TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 {
-    common::iamclient::MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
+    aos::iamclient::CertProviderMock certProvider {};
+    TLSCredentialsMock               tlsCredentials {};
 
-    auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
+    auto err = mClient->Init(mConfig.mIAMConfig, certProvider, tlsCredentials, true);
     ASSERT_EQ(err, ErrorEnum::eNone);
 
-    mClient->OnConnected();
+    err = mClient->Start();
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v5::IAMOutgoingMessages outgoingMsg;
+    iamanager::v6::IAMOutgoingMessages outgoingMsg;
 
     // send StartProvisioningResponse
     outgoingMsg.mutable_start_provisioning_response();
@@ -137,22 +143,22 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
     mIAMServerStub->WaitResponse();
     outgoingMsg = mIAMServerStub->GetOutgoingMessage();
     EXPECT_TRUE(outgoingMsg.has_cert_types_response());
-
-    mClient->OnDisconnected();
 }
 
 TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 {
-    common::iamclient::MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetTLSClientCredentials()).WillOnce(testing::Return(grpc::InsecureChannelCredentials()));
+    aos::iamclient::CertProviderMock certProvider {};
+    TLSCredentialsMock               tlsCredentials {};
 
-    auto err = mClient->Init(mConfig.mIAMConfig, certProvider);
+    auto err = mClient->Init(mConfig.mIAMConfig, certProvider, tlsCredentials, true);
     ASSERT_EQ(err, ErrorEnum::eNone);
 
-    mClient->OnConnected();
+    err = mClient->Start();
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v5::IAMIncomingMessages incomingMsg;
+    iamanager::v6::IAMIncomingMessages incomingMsg;
 
     // receive StartProvisioningRequest
     incomingMsg.mutable_start_provisioning_request();
@@ -217,28 +223,35 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_apply_cert_request());
-
-    mClient->OnDisconnected();
 }
 
 TEST_F(IamClientTest, CertChanged)
 {
-    common::iamclient::MockCertProvider certProvider {};
-    EXPECT_CALL(certProvider, GetMTLSClientCredentials(_))
+    aos::iamclient::CertProviderMock certProvider {};
+    TLSCredentialsMock               tlsCredentials {};
+    EXPECT_CALL(tlsCredentials, GetMTLSClientCredentials(_))
         .Times(2)
         .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
-    auto err = mClient->Init(mConfig.mIAMConfig, certProvider, false);
+    EXPECT_CALL(certProvider, SubscribeListener(_, _)).WillOnce(testing::Return(ErrorEnum::eNone));
+    EXPECT_CALL(certProvider, UnsubscribeListener(_)).WillOnce(testing::Return(ErrorEnum::eNone));
+
+    mConfig.mIAMConfig.mCertStorage = "iam";
+
+    auto err = mClient->Init(mConfig.mIAMConfig, certProvider, tlsCredentials);
     ASSERT_EQ(err, ErrorEnum::eNone);
 
-    mClient->OnConnected();
+    err = mClient->Start();
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    mClient->OnCertChanged(CertInfo {});
+    err = mClient->Reconnect();
+    EXPECT_EQ(err, ErrorEnum::eNone);
 
     EXPECT_TRUE(mIAMServerStub->WaitForDisconnection());
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    mClient->OnDisconnected();
+    mClient->Stop();
 }
 
 } // namespace aos::mp::iamclient
