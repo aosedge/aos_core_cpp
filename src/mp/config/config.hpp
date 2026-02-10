@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <core/common/logprovider/config.hpp>
+#include <core/common/logging/config.hpp>
 #include <core/common/tools/error.hpp>
 
 #include <common/utils/time.hpp>
@@ -66,15 +66,15 @@ struct CMConfig {
  * Configuration.
  */
 struct Config {
-    std::string              mWorkingDir;
-    VChanConfig              mVChan;
-    CMConfig                 mCMConfig;
-    std::string              mCertStorage;
-    std::string              mCACert;
-    std::string              mImageStoreDir;
-    Download                 mDownload;
-    IAMConfig                mIAMConfig;
-    aos::logprovider::Config mLogProviderConfig;
+    std::string          mWorkingDir;
+    VChanConfig          mVChan;
+    CMConfig             mCMConfig;
+    std::string          mCertStorage;
+    std::string          mCACert;
+    std::string          mImageStoreDir;
+    Download             mDownload;
+    IAMConfig            mIAMConfig;
+    aos::logging::Config mLogConfig;
 };
 
 /***********************************************************************************************************************

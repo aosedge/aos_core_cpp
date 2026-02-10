@@ -61,7 +61,7 @@ Error CMConnection::Init(const config::Config& cfg, HandlerItf& handler, Communi
 
     mHandler = &handler;
 
-    if (auto err = mArchiveManager.Init(*this, cfg.mLogProviderConfig); !err.IsNone()) {
+    if (auto err = mArchiveManager.Init(*this, cfg.mLogConfig); !err.IsNone()) {
         return err;
     }
 
