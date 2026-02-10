@@ -52,11 +52,5 @@ endif()
 # Modules
 # ######################################################################################################################
 
-add_subdirectory(app)
-add_subdirectory(cmclient)
-add_subdirectory(communication)
 add_subdirectory(config)
-add_subdirectory(filechunker)
 add_subdirectory(iamclient)
-add_subdirectory(imageunpacker)
-add_subdirectory(logprovider)
