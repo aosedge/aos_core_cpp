@@ -75,6 +75,10 @@ Error PublicNodesService::Reconnect()
         mSubscriptionManager->Reconnect(mStub.get());
     }
 
+    if (mRegisterNodeCtx) {
+        mRegisterNodeCtx->TryCancel();
+    }
+
     return ErrorEnum::eNone;
 }
 
