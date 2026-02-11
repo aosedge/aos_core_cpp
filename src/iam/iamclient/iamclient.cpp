@@ -28,7 +28,7 @@ Error IAMClient::Init(const config::IAMClientConfig& config, aos::iamclient::Ide
     mCurrentNodeHandler = &currentNodeHandler;
     mCertProvider       = &certProvider;
     mProvisionManager   = &provisionManager;
-    mCertStorage        = config.mCertStorage;
+    mCertStorage        = !provisioningMode ? config.mCertStorage : "";
 
     return PublicNodesService::Init(
         provisioningMode ? config.mMainIAMPublicServerURL : config.mMainIAMProtectedServerURL, tlsCredentials,

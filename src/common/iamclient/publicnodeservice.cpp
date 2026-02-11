@@ -251,6 +251,8 @@ void PublicNodesService::ConnectionLoop()
 
         std::unique_lock lock {mMutex};
 
+        LOG_WRN() << "Connection failed" << Log::Field("retryingInSec", cReconnectInterval.count());
+
         mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
     }
 

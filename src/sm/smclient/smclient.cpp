@@ -683,7 +683,8 @@ void SMClient::ConnectionLoop() noexcept
     LOG_DBG() << "SM client connection thread started";
 
     while (true) {
-        LOG_DBG() << "Connecting to SM server...";
+        LOG_DBG() << "Connecting to SM server" << Log::Field("url", mConfig.mCMServerURL.c_str())
+                  << Log::Field("secure", mSecureConnection);
 
         if (RegisterSM(mConfig.mCMServerURL)) {
             if (!SendSMInfo()) {
