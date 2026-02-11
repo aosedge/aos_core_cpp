@@ -119,6 +119,8 @@ Error NetworkManager::RemoveInstanceNetworkParameters(const InstanceIdent& insta
 
             LOG_DBG() << "Removed instance network parameters" << Log::Field("networkID", networkID.c_str())
                       << Log::Field("instanceIdent", instanceIdent);
+
+            return ErrorEnum::eNone;
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
