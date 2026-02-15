@@ -180,10 +180,8 @@ private:
     mutable std::mutex         mMutex;
     std::optional<std::thread> mHealthCheckThread;
     InstanceInfo               mCurrentInstance {};
-    StaticString<cVersionLen>  mCurrentVersion;
     RuntimeInfo                mRuntimeInfo;
     InstanceInfo               mPendingInstance;
-    StaticString<cVersionLen>  mPendingVersion;
 };
 
 } // namespace aos::sm::launcher
