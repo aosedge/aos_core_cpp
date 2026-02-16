@@ -38,9 +38,11 @@ SMHandler::SMHandler(grpc::ServerContext*                                       
 
 void SMHandler::Start()
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Start SM handler";
 
-    mStopProcessing.store(false);
+    mStopProcessing = false;
 
     mSyncMessageSender.Init(mStream, cResponseTime);
     mSyncMessageSender.RegisterResponseHandler(
@@ -54,25 +56,36 @@ void SMHandler::Start()
             dst.mutable_average_monitoring()->CopyFrom(src.average_monitoring());
         });
 
-    mProcessThread = std::thread([this]() { ProcessMessages(); });
+    mReadThread    = std::thread([this]() { ReadMessages(); });
+    mMessageThread = std::thread([this]() { ProcessMessages(); });
 }
 
 void SMHandler::Wait()
 {
-    if (mProcessThread.joinable()) {
-        mProcessThread.join();
+    LOG_DBG() << "Wait SM handler";
+
+    if (mReadThread.joinable()) {
+        mReadThread.join();
+    }
+
+    if (mMessageThread.joinable()) {
+        mMessageThread.join();
     }
 }
 
 void SMHandler::Stop()
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Stop SM handler";
 
-    mStopProcessing.store(true);
+    mStopProcessing = true;
 
     if (mContext) {
         mContext->TryCancel();
     }
+
+    mCondVar.notify_one();
 }
 
 String SMHandler::GetNodeID() const
@@ -213,13 +226,56 @@ Error SMHandler::UpdateNetworks(const Array<UpdateNetworkParameters>& networkPar
  * Private
  **********************************************************************************************************************/
 
-Error SMHandler::ProcessMessages()
+void SMHandler::ReadMessages()
 {
     try {
         servicemanager::v5::SMOutgoingMessages outgoingMsg;
 
-        while (!mStopProcessing.load() && mStream->Read(&outgoingMsg)) {
+        while (mStream->Read(&outgoingMsg)) {
+            if (auto err = mSyncMessageSender.ProcessResponse(outgoingMsg); err.HasValue()) {
+                if (!err->IsNone()) {
+                    LOG_ERR() << "Failed to process response" << Log::Field("nodeID", GetNodeID())
+                              << Log::Field(AOS_ERROR_WRAP(*err));
+                }
+            } else {
+                std::lock_guard lock {mMutex};
+
+                mMessageQueue.push(outgoingMsg);
+                mCondVar.notify_one();
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Handle incoming messages failed" << Log::Field(AOS_ERROR_WRAP(common::utils::ToAosError(e)));
+    }
+
+    mConnStatusListener->OnNodeDisconnected(GetNodeID());
+
+    std::lock_guard lock {mMutex};
+
+    mStopProcessing = true;
+    mCondVar.notify_one();
+}
+
+void SMHandler::ProcessMessages()
+{
+    while (true) {
+        try {
+            std::unique_lock lock {mMutex};
+
+            mCondVar.wait(lock, [this]() { return mStopProcessing || !mMessageQueue.empty(); });
+
+            if (mStopProcessing) {
+                break;
+            }
+
             Error err;
+            auto  outgoingMsg = mMessageQueue.front();
+
+            mMessageQueue.pop();
+
+            // Process message without holding the lock to allow sending new messages in parallel
+
+            lock.unlock();
 
             if (outgoingMsg.has_sm_info()) {
                 err = ProcessSMInfo(outgoingMsg.sm_info());
@@ -233,8 +289,6 @@ Error SMHandler::ProcessMessages()
                 err = ProcessInstantMonitoring(outgoingMsg.instant_monitoring());
             } else if (outgoingMsg.has_alert()) {
                 err = ProcessAlert(outgoingMsg.alert());
-            } else if (auto processErr = mSyncMessageSender.ProcessResponse(outgoingMsg); processErr.HasValue()) {
-                err = processErr.GetValue();
             } else {
                 LOG_WRN() << "Unknown message type received";
             }
@@ -242,14 +296,11 @@ Error SMHandler::ProcessMessages()
             if (!err.IsNone()) {
                 LOG_ERR() << "Failed to process message" << Log::Field("nodeID", GetNodeID()) << Log::Field(err);
             }
+        } catch (const std::exception& e) {
+            LOG_ERR() << "Process message failed" << Log::Field("nodeID", GetNodeID())
+                      << Log::Field(AOS_ERROR_WRAP(common::utils::ToAosError(e)));
         }
-    } catch (const std::exception& e) {
-        LOG_ERR() << "Handle incoming messages failed" << Log::Field(AOS_ERROR_WRAP(common::utils::ToAosError(e)));
     }
-
-    mConnStatusListener->OnNodeDisconnected(GetNodeID());
-
-    return ErrorEnum::eNone;
 }
 
 Error SMHandler::SendMessage(const servicemanager::v5::SMIncomingMessages& message)
