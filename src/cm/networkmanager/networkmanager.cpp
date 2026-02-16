@@ -30,8 +30,7 @@ constexpr int cExposedPortConfigExpectedLen  = 2;
  **********************************************************************************************************************/
 
 Error NetworkManager::Init(
-    StorageItf& storage, crypto::RandomItf& random, NodeNetworkItf& nodeNetwork, DNSServerItf& dnsServer)
-{
+    StorageItf& storage, crypto::RandomItf& random, NodeNetworkItf& nodeNetwork, DNSServerItf& dnsServer) {
     mStorage     = &storage;
     mRandom      = &random;
     mNodeNetwork = &nodeNetwork;
