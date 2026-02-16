@@ -417,46 +417,32 @@ void SMClient::HandleIncomingMessages()
     smproto::SMIncomingMessages incomingMsg;
 
     while (mStream->Read(&incomingMsg)) {
+        Error err;
+
         if (incomingMsg.has_get_node_config_status()) {
-            if (auto err = ProcessGetNodeConfigStatus(); !err.IsNone()) {
-                LOG_ERR() << "Failed to process get node config status: err=" << err;
-            }
+            err = ProcessGetNodeConfigStatus();
         } else if (incomingMsg.has_check_node_config()) {
-            if (auto err = ProcessCheckNodeConfig(incomingMsg.check_node_config()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process check node config: err=" << err;
-            }
+            err = ProcessCheckNodeConfig(incomingMsg.check_node_config());
         } else if (incomingMsg.has_set_node_config()) {
-            if (auto err = ProcessSetNodeConfig(incomingMsg.set_node_config()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process set node config: err=" << err;
-            }
+            err = ProcessSetNodeConfig(incomingMsg.set_node_config());
         } else if (incomingMsg.has_update_instances()) {
-            if (auto err = ProcessUpdateInstances(incomingMsg.update_instances()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process update instances: err=" << err;
-            }
+            err = ProcessUpdateInstances(incomingMsg.update_instances());
         } else if (incomingMsg.has_system_log_request()) {
-            if (auto err = ProcessSystemLogRequest(incomingMsg.system_log_request()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process system log request: err=" << err;
-            }
+            err = ProcessSystemLogRequest(incomingMsg.system_log_request());
         } else if (incomingMsg.has_instance_log_request()) {
-            if (auto err = ProcessInstanceLogRequest(incomingMsg.instance_log_request()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process instance log request: err=" << err;
-            }
+            err = ProcessInstanceLogRequest(incomingMsg.instance_log_request());
         } else if (incomingMsg.has_instance_crash_log_request()) {
-            if (auto err = ProcessInstanceCrashLogRequest(incomingMsg.instance_crash_log_request()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process instance crash log request: err=" << err;
-            }
+            err = ProcessInstanceCrashLogRequest(incomingMsg.instance_crash_log_request());
         } else if (incomingMsg.has_get_average_monitoring()) {
-            if (auto err = ProcessGetAverageMonitoring(); !err.IsNone()) {
-                LOG_ERR() << "Failed to process get average monitoring: err=" << err;
-            }
+            err = ProcessGetAverageMonitoring();
         } else if (incomingMsg.has_connection_status()) {
-            if (auto err = ProcessConnectionStatus(incomingMsg.connection_status()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process connection status: err=" << err;
-            }
+            err = ProcessConnectionStatus(incomingMsg.connection_status());
         } else if (incomingMsg.has_update_networks()) {
-            if (auto err = ProcessUpdateNetworks(incomingMsg.update_networks()); !err.IsNone()) {
-                LOG_ERR() << "Failed to process update networks: err=" << err;
-            }
+            err = ProcessUpdateNetworks(incomingMsg.update_networks());
+        }
+
+        if (!err.IsNone()) {
+            LOG_ERR() << "Failed to process incoming message" << Log::Field(err);
         }
     }
 }
