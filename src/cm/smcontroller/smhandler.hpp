@@ -11,6 +11,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <queue>
 #include <thread>
 
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
@@ -181,8 +182,8 @@ private:
 
     Error SendMessage(const servicemanager::v5::SMIncomingMessages& message);
 
-    // Message processing methods
-    Error ProcessMessages();
+    void ReadMessages();
+    void ProcessMessages();
 
     Error ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo);
     Error ProcessUpdateInstancesStatus(const servicemanager::v5::UpdateInstancesStatus& status);
@@ -205,12 +206,15 @@ private:
     nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
     NodeConnectionStatusListenerItf*     mConnStatusListener {};
 
-    std::mutex           mMutex;
     bool                 mCredentialListUpdated {};
     grpc::ServerContext* mCtx {};
 
-    std::thread       mProcessThread;
-    std::atomic<bool> mStopProcessing {};
+    std::mutex                                         mMutex;
+    std::condition_variable                            mCondVar;
+    std::thread                                        mReadThread;
+    std::thread                                        mMessageThread;
+    bool                                               mStopProcessing {};
+    std::queue<servicemanager::v5::SMOutgoingMessages> mMessageQueue;
 
     StaticString<cIDLen> mNodeID;
 };
