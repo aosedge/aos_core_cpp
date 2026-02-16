@@ -168,7 +168,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mStateDir, (std::filesystem::path("workingDir") / "states").string());
     EXPECT_EQ(config.mUnitConfigFile, (std::filesystem::path("workingDir") / "aos_unit.cfg").string());
 
-    EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 30);
+    EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 10);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cSeconds * 10);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
