@@ -113,16 +113,16 @@ protected:
 
         std::filesystem::create_directories(mTmpDir);
 
-        mConfig.mIAMConfig.mOpenPort             = 8081;
-        mConfig.mIAMConfig.mSecurePort           = 8080;
-        mConfig.mVChan.mIAMCertStorage           = "server";
-        mConfig.mVChan.mSMCertStorage            = "server";
-        mConfig.mDownload.mDownloadDir           = "download";
-        mConfig.mImageStoreDir                   = "images";
-        mConfig.mCMConfig.mOpenPort              = 30001;
-        mConfig.mCMConfig.mSecurePort            = 30002;
-        mConfig.mLogProviderConfig.mMaxPartSize  = 1024;
-        mConfig.mLogProviderConfig.mMaxPartCount = 10;
+        mConfig.mIAMConfig.mOpenPort     = 8081;
+        mConfig.mIAMConfig.mSecurePort   = 8080;
+        mConfig.mVChan.mIAMCertStorage   = "server";
+        mConfig.mVChan.mSMCertStorage    = "server";
+        mConfig.mDownload.mDownloadDir   = "download";
+        mConfig.mImageStoreDir           = "images";
+        mConfig.mCMConfig.mOpenPort      = 30001;
+        mConfig.mCMConfig.mSecurePort    = 30002;
+        mConfig.mLogConfig.mMaxPartSize  = 1024;
+        mConfig.mLogConfig.mMaxPartCount = 10;
 
         mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
 
