@@ -25,7 +25,10 @@ Poco::JSON::Object::Ptr UnitConfigToJSON(const UnitConfigStatus& unitConfigStatu
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("version", unitConfigStatus.mVersion.CStr());
+    if (!unitConfigStatus.mVersion.IsEmpty()) {
+        json->set("version", unitConfigStatus.mVersion.CStr());
+    }
+
     json->set("state", unitConfigStatus.mState.ToString().CStr());
 
     if (!unitConfigStatus.mError.IsNone()) {
