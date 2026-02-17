@@ -136,11 +136,12 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
 }
 
 imagemanager::ItemInfo CreateImageManagerItemInfo(
-    const char* itemID, const char* version, const char* indexDigest, ItemState state)
+    const char* itemID, const UpdateItemType& type, const char* version, const char* indexDigest, ItemState state)
 {
     imagemanager::ItemInfo info;
 
     info.mItemID      = itemID;
+    info.mType        = type;
     info.mVersion     = version;
     info.mIndexDigest = indexDigest;
     info.mState       = state;
@@ -677,15 +678,19 @@ TEST_F(CMDatabaseTest, ImageManagerAddItem)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+    auto item1 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo(
+        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
 
     ASSERT_TRUE(mDB.AddItem(item1).IsNone());
     ASSERT_TRUE(mDB.AddItem(item2).IsNone());
     ASSERT_TRUE(mDB.AddItem(item3).IsNone());
 
-    auto duplicateItem = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:xyz999", ItemStateEnum::eInstalled);
+    auto duplicateItem = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:xyz999", ItemStateEnum::eInstalled);
     ASSERT_FALSE(mDB.AddItem(duplicateItem).IsNone());
 
     StaticArray<imagemanager::ItemInfo, 3> items;
@@ -699,9 +704,12 @@ TEST_F(CMDatabaseTest, ImageManagerRemoveItem)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+    auto item1 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo(
+        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
 
     ASSERT_TRUE(mDB.AddItem(item1).IsNone());
     ASSERT_TRUE(mDB.AddItem(item2).IsNone());
@@ -722,8 +730,10 @@ TEST_F(CMDatabaseTest, ImageManagerUpdateItemState)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::ePending);
-    auto item2 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:def456", ItemStateEnum::ePending);
+    auto item1 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::ePending);
+    auto item2 = CreateImageManagerItemInfo(
+        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:def456", ItemStateEnum::ePending);
 
     ASSERT_TRUE(mDB.AddItem(item1).IsNone());
     ASSERT_TRUE(mDB.AddItem(item2).IsNone());
@@ -756,9 +766,12 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfo)
     ASSERT_TRUE(mDB.GetAllItemsInfos(emptyItems).IsNone());
     EXPECT_EQ(emptyItems.Size(), 0);
 
-    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+    auto item1 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo(
+        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
 
     ASSERT_TRUE(mDB.AddItem(item1).IsNone());
     ASSERT_TRUE(mDB.AddItem(item2).IsNone());
@@ -775,9 +788,12 @@ TEST_F(CMDatabaseTest, ImageManagerGetItemsInfos)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto item1 = CreateImageManagerItemInfo("service1", "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo("service1", "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo("service2", "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
+    auto item1 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
+    auto item2 = CreateImageManagerItemInfo(
+        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
+    auto item3 = CreateImageManagerItemInfo(
+        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
 
     ASSERT_TRUE(mDB.AddItem(item1).IsNone());
     ASSERT_TRUE(mDB.AddItem(item2).IsNone());
