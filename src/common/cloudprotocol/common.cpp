@@ -42,12 +42,12 @@ Poco::JSON::Object::Ptr CreateAosIdentity(const AosIdentity& identity)
         json->set("id", *identity.mID);
     }
 
-    if (identity.mType.has_value()) {
-        json->set("type", identity.mType->ToString().CStr());
-    }
-
     if (identity.mCodename.has_value()) {
         json->set("codename", *identity.mCodename);
+    }
+
+    if (identity.mType.has_value()) {
+        json->set("type", identity.mType->ToString().CStr());
     }
 
     if (identity.mTitle.has_value()) {

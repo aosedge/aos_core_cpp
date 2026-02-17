@@ -215,6 +215,8 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
             identity.mID = statuses.mItemID.CStr();
         }
 
+        identity.mType = statuses.mType;
+
         json->set("item", CreateAosIdentity(identity));
     }
 
