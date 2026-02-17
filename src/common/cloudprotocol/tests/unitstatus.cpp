@@ -229,13 +229,17 @@ TEST_F(CloudProtocolUnitStatus, Items)
 
 TEST_F(CloudProtocolUnitStatus, Instances)
 {
-    constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
-          R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
-          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
-          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
-          R"({"item":{"id":"itemID2"},"subject":{"id":"subjectID2"},"version":"version2","instances":[)"
-          R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
+                           R"({"item":{"id":"itemID1","type":"service"},"subject":{"id":"subjectID1"},)"
+                           R"("version":"version1","instances":[)"
+                           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},)"
+                           R"("instance":1,"stateChecksum":"12345678","state":"active"},)"
+                           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},)"
+                           R"("instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+                           R"({"item":{"id":"itemID2","type":"component"},"subject":{"id":"subjectID2"},)"
+                           R"("version":"version2","instances":[)"
+                           R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},)"
+                           R"("instance":1,"state":"activating"}]}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
     unitStatus->mCorrelationID = "id";
@@ -244,6 +248,7 @@ TEST_F(CloudProtocolUnitStatus, Instances)
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID    = "itemID1";
+    unitStatus->mInstances->Back().mType      = UpdateItemTypeEnum::eService;
     unitStatus->mInstances->Back().mSubjectID = "subjectID1";
     unitStatus->mInstances->Back().mVersion   = "version1";
 
@@ -263,6 +268,7 @@ TEST_F(CloudProtocolUnitStatus, Instances)
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID    = "itemID2";
+    unitStatus->mInstances->Back().mType      = UpdateItemTypeEnum::eComponent;
     unitStatus->mInstances->Back().mSubjectID = "subjectID2";
     unitStatus->mInstances->Back().mVersion   = "version2";
 
@@ -282,13 +288,17 @@ TEST_F(CloudProtocolUnitStatus, Instances)
 
 TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
 {
-    constexpr auto cJSON
-        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
-          R"({"item":{"id":"itemID1"},"subject":{"id":"subjectID1"},"version":"version1","instances":[)"
-          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":1,"stateChecksum":"12345678","state":"active"},)"
-          R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},"instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
-          R"({"item":{"codename":"itemID2"},"subject":{"codename":"subjectID2"},"version":"version2","instances":[)"
-          R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},"instance":1,"state":"activating"}]}]})";
+    constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
+                           R"({"item":{"id":"itemID1","type":"service"},"subject":{"id":"subjectID1"},)"
+                           R"("version":"version1","instances":[)"
+                           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},)"
+                           R"("instance":1,"stateChecksum":"12345678","state":"active"},)"
+                           R"({"node":{"codename":"nodeID1"},"runtime":{"codename":"runtimeID1"},)"
+                           R"("instance":2,"state":"failed","errorInfo":{"aosCode":1,"exitCode":0,"message":""}}]},)"
+                           R"({"item":{"codename":"itemID2","type":"component"},"subject":{"codename":"subjectID2"},)"
+                           R"("version":"version2","instances":[)"
+                           R"({"node":{"codename":"nodeID2"},"runtime":{"codename":"runtimeID2"},)"
+                           R"("instance":1,"state":"activating"}]}]})";
 
     auto unitStatus            = std::make_unique<UnitStatus>();
     unitStatus->mCorrelationID = "id";
@@ -297,6 +307,7 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID    = "itemID1";
+    unitStatus->mInstances->Back().mType      = UpdateItemTypeEnum::eService;
     unitStatus->mInstances->Back().mSubjectID = "subjectID1";
     unitStatus->mInstances->Back().mVersion   = "version1";
 
@@ -316,6 +327,7 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID       = "itemID2";
+    unitStatus->mInstances->Back().mType         = UpdateItemTypeEnum::eComponent;
     unitStatus->mInstances->Back().mSubjectID    = "subjectID2";
     unitStatus->mInstances->Back().mVersion      = "version2";
     unitStatus->mInstances->Back().mPreinstalled = true;
