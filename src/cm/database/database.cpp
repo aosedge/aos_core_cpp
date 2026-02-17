@@ -656,8 +656,8 @@ Error Database::AddItem(const imagemanager::ItemInfo& item)
         ImageManagerItemInfoRow row;
 
         FromAos(item, row);
-        *mSession
-            << "INSERT INTO imagemanager (itemID, version, indexDigest, state, timestamp) VALUES (?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO imagemanager (itemID, type, version, indexDigest, state, timestamp) VALUES "
+                     "(?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -713,7 +713,7 @@ Error Database::GetAllItemsInfos(Array<imagemanager::ItemInfo>& items)
     try {
         std::vector<ImageManagerItemInfoRow> rows;
 
-        *mSession << "SELECT itemID, version, indexDigest, state, timestamp FROM imagemanager;", into(rows), now;
+        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager;", into(rows), now;
 
         auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
 
@@ -737,7 +737,7 @@ Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& it
     try {
         std::vector<ImageManagerItemInfoRow> rows;
 
-        *mSession << "SELECT itemID, version, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
+        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
             bind(id.CStr()), into(rows), now;
 
         auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
@@ -874,6 +874,7 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS imagemanager ("
                  "itemID TEXT,"
+                 "type TEXT,"
                  "version TEXT,"
                  "indexDigest TEXT,"
                  "state TEXT,"
@@ -1093,6 +1094,7 @@ void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRo
 {
     dst.set<ToInt(ImageManagerItemInfoColumns::eItemID)>(src.mItemID.CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(ImageManagerItemInfoColumns::eType)>(src.mType.ToString().CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>(src.mIndexDigest.CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eState)>(src.mState.ToString().CStr());
     dst.set<ToInt(ImageManagerItemInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
@@ -1100,10 +1102,12 @@ void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRo
 
 void Database::ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst)
 {
-    dst.mItemID      = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
+    dst.mItemID = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
+    auto err    = dst.mType.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item type");
     dst.mVersion     = src.get<ToInt(ImageManagerItemInfoColumns::eVersion)>().c_str();
     dst.mIndexDigest = src.get<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>().c_str();
-    auto err         = dst.mState.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eState)>().c_str());
+    err              = dst.mState.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eState)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
     auto timestamp = src.get<ToInt(ImageManagerItemInfoColumns::eTimestamp)>();
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
