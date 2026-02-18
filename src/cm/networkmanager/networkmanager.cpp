@@ -398,10 +398,10 @@ void NetworkManager::PrepareInstanceIdentHosts(
     if (instanceIdent.mInstance == 0) {
         hostName.Format("%s.%s", instanceIdent.mSubjectID.CStr(), instanceIdent.mItemID.CStr());
         hosts.push_back(hostName.CStr());
-    }
 
-    hostName.Format("%s.%s.%s", instanceIdent.mSubjectID.CStr(), instanceIdent.mItemID.CStr(), networkID.CStr());
-    hosts.push_back(hostName.CStr());
+        hostName.Format("%s.%s.%s", instanceIdent.mSubjectID.CStr(), instanceIdent.mItemID.CStr(), networkID.CStr());
+        hosts.push_back(hostName.CStr());
+    }
 }
 
 bool NetworkManager::IsHostExist(const std::string& hostName) const
