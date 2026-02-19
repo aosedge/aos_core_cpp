@@ -72,7 +72,7 @@ Error FSPlatform::SetUserQuota(const String& path, uid_t uid, size_t quota) cons
 
     dqblk dq {};
 
-    dq.dqb_bhardlimit = quota;
+    dq.dqb_bhardlimit = (quota + 1023) / 1024;
     dq.dqb_valid      = QIF_BLIMITS;
 
     if (auto res

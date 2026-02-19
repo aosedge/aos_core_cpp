@@ -217,7 +217,7 @@ size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
         AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get quota");
     }
 
-    return static_cast<uint64_t>(quota.dqb_curspace);
+    return static_cast<uint64_t>(quota.dqb_curspace * 1024);
 }
 
 }; // namespace aos::sm::launcher
