@@ -205,7 +205,7 @@ size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
     }
 
     if (!QuotasSupported(devicePath)) {
-        LOG_ERR() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
+        LOG_WRN() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
 
         return 0;
     }
