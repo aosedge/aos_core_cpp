@@ -207,8 +207,10 @@ Error ToJSON(const NodeConfig& nodeConfig, Poco::JSON::Object& json)
 
     AosIdentity identity;
 
-    identity.mCodename = nodeConfig.mNodeID.CStr();
-    json.set("node", CreateAosIdentity(identity));
+    if (!nodeConfig.mNodeID.IsEmpty()) {
+        identity.mCodename = nodeConfig.mNodeID.CStr();
+        json.set("node", CreateAosIdentity(identity));
+    }
 
     identity.mCodename = nodeConfig.mNodeType.CStr();
     json.set("nodeGroupSubject", CreateAosIdentity(identity));
@@ -221,7 +223,10 @@ Error ToJSON(const NodeConfig& nodeConfig, Poco::JSON::Object& json)
         json.set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
     }
 
-    json.set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
+    if (nodeConfig.mLabels.Size() > 0) {
+        json.set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
+    }
+
     json.set("priority", nodeConfig.mPriority);
 
     return ErrorEnum::eNone;
@@ -249,7 +254,7 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, NodeConf
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse codename");
         }
 
-        {
+        if (json.Has("node")) {
             AosIdentity identity;
 
             auto err = ParseAosIdentity(json.GetObject("node"), identity);
@@ -276,7 +281,9 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, NodeConf
             AOS_ERROR_CHECK_AND_THROW(err, "can't parse labels");
         }
 
-        nodeConfig.mPriority = json.GetValue<uint64_t>("priority");
+        if (json.Has("priority")) {
+            nodeConfig.mPriority = json.GetValue<uint64_t>("priority");
+        }
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -287,8 +294,8 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, NodeConf
 Error ToJSON(const UnitConfig& unitConfig, Poco::JSON::Object& json)
 {
     try {
-        json.set("version", unitConfig.mVersion.CStr());
         json.set("formatVersion", unitConfig.mFormatVersion.CStr());
+        json.set("version", unitConfig.mVersion.CStr());
         json.set("nodes", common::utils::ToJsonArray(unitConfig.mNodes, [](const auto& nodeConfig) {
             auto nodeJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -307,11 +314,11 @@ Error ToJSON(const UnitConfig& unitConfig, Poco::JSON::Object& json)
 Error FromJSON(const utils::CaseInsensitiveObjectWrapper& json, UnitConfig& unitConfig)
 {
     try {
-        auto err = unitConfig.mVersion.Assign(json.GetValue<std::string>("version").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "parsed version length exceeds application limit");
-
-        err = unitConfig.mFormatVersion.Assign(json.GetValue<std::string>("formatVersion").c_str());
+        auto err = unitConfig.mFormatVersion.Assign(json.GetValue<std::string>("formatVersion").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "parsed format version length exceeds application limit");
+
+        err = unitConfig.mVersion.Assign(json.GetValue<std::string>("version").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "parsed version length exceeds application limit");
 
         common::utils::ForEach(json, "nodes", [&unitConfig](const auto& value) {
             auto err = unitConfig.mNodes.EmplaceBack();
