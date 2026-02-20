@@ -56,7 +56,7 @@ RetWithError<size_t> FSPlatform::GetAvailableSize(const String& dir) const
     return size_t(st.f_bavail) * st.f_frsize;
 }
 
-Error FSPlatform::SetUserQuota(const String& path, size_t quota, size_t uid) const
+Error FSPlatform::SetUserQuota(const String& path, uid_t uid, size_t quota) const
 {
     if (quota == 0) {
         return ErrorEnum::eNone;
@@ -72,7 +72,7 @@ Error FSPlatform::SetUserQuota(const String& path, size_t quota, size_t uid) con
 
     dqblk dq {};
 
-    dq.dqb_bhardlimit = quota;
+    dq.dqb_bhardlimit = (quota + 1023) / 1024;
     dq.dqb_valid      = QIF_BLIMITS;
 
     if (auto res

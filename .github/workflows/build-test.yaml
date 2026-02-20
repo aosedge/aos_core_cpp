@@ -41,6 +41,10 @@ jobs:
           repository: ${{github.event.pull_request.head.repo.full_name}}
           fetch-depth: 0
 
+      - name: Static analysis
+        run: |
+          ./build.sh lint --aos-service cm --aos-service iam --aos-service sm
+
       - name: Install SonarQube build wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
 
@@ -55,10 +59,6 @@ jobs:
       - name: Test
         run: |
           ./build.sh coverage --aos-service cm --aos-service iam --aos-service sm
-
-      - name: Static analysis
-        run: |
-          ./build.sh lint --aos-service cm --aos-service iam --aos-service sm
 
       - name: Upload codecov report
         uses: codecov/codecov-action@v4

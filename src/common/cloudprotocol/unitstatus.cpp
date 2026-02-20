@@ -25,7 +25,10 @@ Poco::JSON::Object::Ptr UnitConfigToJSON(const UnitConfigStatus& unitConfigStatu
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    json->set("version", unitConfigStatus.mVersion.CStr());
+    if (!unitConfigStatus.mVersion.IsEmpty()) {
+        json->set("version", unitConfigStatus.mVersion.CStr());
+    }
+
     json->set("state", unitConfigStatus.mState.ToString().CStr());
 
     if (!unitConfigStatus.mError.IsNone()) {
@@ -178,7 +181,8 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 Poco::JSON::Object::Ptr UpdateItemToJSON(const UpdateItemStatus& status)
 {
     AosIdentity identity;
-    identity.mID = status.mItemID.CStr();
+    identity.mID   = status.mItemID.CStr();
+    identity.mType = status.mType;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -210,6 +214,8 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
         } else {
             identity.mID = statuses.mItemID.CStr();
         }
+
+        identity.mType = statuses.mType;
 
         json->set("item", CreateAosIdentity(identity));
     }

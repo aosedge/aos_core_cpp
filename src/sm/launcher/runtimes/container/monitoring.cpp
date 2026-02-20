@@ -205,7 +205,7 @@ size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
     }
 
     if (!QuotasSupported(devicePath)) {
-        LOG_ERR() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
+        LOG_WRN() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
 
         return 0;
     }
@@ -217,7 +217,7 @@ size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
         AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get quota");
     }
 
-    return static_cast<uint64_t>(quota.dqb_curspace);
+    return static_cast<uint64_t>(quota.dqb_curspace * 1024);
 }
 
 }; // namespace aos::sm::launcher
