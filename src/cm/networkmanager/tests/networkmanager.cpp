@@ -765,4 +765,80 @@ TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_CrossNetworkFirewa
     }
 }
 
+TEST_F(CMNetworkManagerTest, PrepareInstanceNetworkParameters_MigrateInstance_Success)
+{
+    InstanceIdent instanceIdent;
+    instanceIdent.mItemID    = "service1";
+    instanceIdent.mSubjectID = "subject1";
+    instanceIdent.mInstance  = 1;
+
+    String networkID = "network1";
+    String nodeID1   = "node1";
+    String nodeID2   = "node2";
+
+    cm::networkmanager::NetworkServiceData instanceData;
+    InstanceNetworkParameters              result1;
+    InstanceNetworkParameters              result2;
+    InstanceNetworkParameters              result3;
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network network;
+        network.mNetworkID = "network1";
+        network.mSubnet    = "172.17.0.0/16";
+        network.mVlanID    = 1000;
+        networks.PushBack(network);
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network1"), _))
+        .WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+            Host host1;
+            host1.mNodeID = "node1";
+            host1.mIP     = "172.17.0.1";
+            hosts.PushBack(host1);
+
+            Host host2;
+            host2.mNodeID = "node2";
+            host2.mIP     = "172.17.0.2";
+            hosts.PushBack(host2);
+
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, GetInstances(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*mStorage, AddInstance(_)).Times(2);
+    EXPECT_CALL(*mStorage, RemoveNetworkInstance(instanceIdent)).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*mDNSServer, GetIP()).WillOnce(Return("8.8.8.8"));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mNodeNetwork, *mDNSServer);
+    ASSERT_TRUE(err.IsNone());
+
+    err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID1, instanceData, result1);
+    ASSERT_TRUE(err.IsNone());
+    EXPECT_FALSE(result1.mIP.IsEmpty());
+    EXPECT_EQ(result1.mDNSServers.Size(), 1);
+    EXPECT_EQ(result1.mDNSServers[0], "8.8.8.8");
+
+    err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID2, instanceData, result2);
+    ASSERT_TRUE(err.IsNone());
+
+    EXPECT_EQ(result2.mIP, result1.mIP);
+    EXPECT_EQ(result2.mDNSServers.Size(), 1);
+    EXPECT_EQ(result2.mDNSServers[0], "8.8.8.8");
+    EXPECT_EQ(result2.mNetworkID, "network1");
+    EXPECT_EQ(result2.mSubnet, "172.17.0.0/16");
+
+    EXPECT_CALL(*mDNSServer, UpdateHostsFile(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, Restart()).WillOnce(Return(ErrorEnum::eNone));
+
+    err = mNetworkManager->RestartDNSServer();
+    ASSERT_TRUE(err.IsNone());
+
+    err = mNetworkManager->PrepareInstanceNetworkParameters(instanceIdent, networkID, nodeID2, instanceData, result3);
+    ASSERT_TRUE(err.IsNone());
+    EXPECT_EQ(result3.mIP, result1.mIP);
+}
+
 } // namespace aos::cm::networkmanager
