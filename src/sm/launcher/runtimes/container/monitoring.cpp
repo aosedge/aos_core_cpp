@@ -5,36 +5,17 @@
  */
 
 #include <fstream>
-#include <sys/quota.h>
 #include <thread>
 
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/filesystem.hpp>
+#include <common/utils/utils.hpp>
 
 #include "monitoring.hpp"
 
 namespace aos::sm::launcher {
-
-namespace {
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-bool QuotasSupported(const std::string& path)
-{
-    dqblk quota {};
-
-    if (auto res = quotactl(QCMD(Q_GETQUOTA, USRQUOTA), path.c_str(), 0, reinterpret_cast<char*>(&quota)); res == -1) {
-        return false;
-    }
-
-    return true;
-}
-
-} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -199,25 +180,38 @@ size_t Monitoring::GetInstanceRAMUsage(const std::string& instanceID)
 
 size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
 {
-    auto [devicePath, err] = common::utils::GetBlockDevice(path);
+    auto [mountPoint, err] = common::utils::GetMountPoint(path);
     if (!err.IsNone()) {
         AOS_ERROR_THROW(AOS_ERROR_WRAP(err));
     }
 
-    if (!QuotasSupported(devicePath)) {
-        LOG_WRN() << "Quotas are not supported on device" << Log::Field("devicePath", devicePath.c_str());
+    std::string quotaOutput;
 
-        return 0;
+    Tie(quotaOutput, err)
+        = common::utils::ExecCommand({"quota", "-u", std::to_string(uid), "-w", "--filesystem", mountPoint});
+    if (!err.IsNone()) {
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(err));
     }
 
-    dqblk quota {};
+    std::istringstream quotaStream(quotaOutput);
+    std::string        line;
 
-    if (auto res = quotactl(QCMD(Q_GETQUOTA, USRQUOTA), devicePath.c_str(), uid, reinterpret_cast<char*>(&quota));
-        res == -1) {
-        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get quota");
+    // Skip header lines, find the data line starting with the filesystem
+    while (std::getline(quotaStream, line)) {
+        std::istringstream lineStream(line);
+        std::string        filesystem;
+        size_t             blocks = 0;
+
+        if (lineStream >> filesystem >> blocks) {
+            if (filesystem == "Filesystem") {
+                continue; // Skip header line
+            }
+
+            return blocks * cKilobyte;
+        }
     }
 
-    return static_cast<uint64_t>(quota.dqb_curspace * 1024);
+    AOS_ERROR_THROW(ErrorEnum::eNotFound, "can't parse quota output");
 }
 
 }; // namespace aos::sm::launcher
