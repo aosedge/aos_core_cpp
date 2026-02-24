@@ -113,6 +113,9 @@ private:
     Error PrepareFirewallRules(const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkParameters& result);
 
+    bool  MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
+         const std::string& currentNodeID, StaticString<cIPLen>& ip,
+         StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers);
     Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
 
     StorageItf*        mStorage {};
