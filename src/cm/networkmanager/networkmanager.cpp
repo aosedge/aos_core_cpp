@@ -197,18 +197,31 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
             return AddHosts(hosts, itInstance->second.mIP.CStr());
         }
 
-        auto IP    = mIpSubnet.GetAvailableIP(networkID.CStr());
-        auto dnsIP = mDNSServer->GetIP();
+        std::string IP;
 
-        result.mIP = IP.c_str();
-        result.mDNSServers.PushBack(dnsIP.c_str());
+        StaticString<cIPLen>                                 migratedIP;
+        StaticArray<StaticString<cIPLen>, cMaxNumDNSServers> migratedDNS;
+        Instance                                             instance;
 
-        Instance instance;
         instance.mNetworkID     = networkID;
         instance.mNodeID        = nodeID;
         instance.mInstanceIdent = instanceIdent;
-        instance.mIP            = IP.c_str();
-        instance.mDNSServers.PushBack(dnsIP.c_str());
+
+        if (MigrateInstanceFromOtherNode(instanceIdent, it->second, nodeID.CStr(), migratedIP, migratedDNS)) {
+            IP                   = migratedIP.CStr();
+            result.mIP           = migratedIP;
+            result.mDNSServers   = migratedDNS;
+            instance.mDNSServers = migratedDNS;
+        } else {
+            auto dnsIP = mDNSServer->GetIP();
+
+            IP         = mIpSubnet.GetAvailableIP(networkID.CStr());
+            result.mIP = IP.c_str();
+            result.mDNSServers.PushBack(dnsIP.c_str());
+            instance.mDNSServers.PushBack(dnsIP.c_str());
+        }
+
+        instance.mIP = IP.c_str();
 
         if (auto err = ParseExposedPorts(networkData.mExposedPorts, instance); !err.IsNone()) {
             return err;
@@ -594,6 +607,35 @@ void NetworkManager::RemoveInstanceNetwork(
 
     auto err = mStorage->RemoveNetworkInstance(instanceIdent);
     AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
+}
+
+bool NetworkManager::MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
+    const std::string& currentNodeID, StaticString<cIPLen>& IP,
+    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers)
+{
+    for (auto& [otherNodeID, otherHostInstances] : networkState.mHostInstances) {
+        if (otherNodeID == currentNodeID) {
+            continue;
+        }
+
+        auto itInstance = otherHostInstances.mInstances.find(instanceIdent);
+        if (itInstance == otherHostInstances.mInstances.end()) {
+            continue;
+        }
+
+        LOG_DBG() << "Migrating instance" << Log::Field("instanceIdent", instanceIdent)
+                  << Log::Field("fromNodeID", otherNodeID.c_str()) << Log::Field("toNodeID", currentNodeID.c_str());
+
+        IP         = itInstance->second.mIP;
+        dnsServers = itInstance->second.mDNSServers;
+
+        RemoveInstanceNetwork(networkState.mNetwork.mNetworkID.CStr(), IP.CStr(), instanceIdent);
+        otherHostInstances.mInstances.erase(itInstance);
+
+        return true;
+    }
+
+    return false;
 }
 
 void NetworkManager::RemoveExistedNetworks()
