@@ -122,16 +122,25 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
               << Log::Field("version", instance.mVersion) << Log::Field("manifestDigest", instance.mManifestDigest)
               << Log::Field("type", instance.mType);
 
-    FillInstanceStatus(instance, InstanceStateEnum::eActivating, status);
-
-    if (static_cast<const InstanceIdent&>(mCurrentInstance) == static_cast<const InstanceIdent&>(instance)
-        && instance.mManifestDigest == mCurrentInstance.mManifestDigest) {
-        status.mState = InstanceStateEnum::eActive;
-
+    auto notify = DeferRelease(&status, [&](const InstanceStatus*) {
         mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+    });
+
+    if (static_cast<const InstanceIdent&>(instance) == static_cast<const InstanceIdent&>(mCurrentInstance)
+        && mCurrentInstance.mManifestDigest == instance.mManifestDigest) {
+        FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, status);
 
         return ErrorEnum::eNone;
     }
+
+    if (static_cast<const InstanceIdent&>(instance) == static_cast<const InstanceIdent&>(mPendingInstance)
+        && mPendingInstance.mManifestDigest == instance.mManifestDigest) {
+        FillInstanceStatus(mPendingInstance, InstanceStateEnum::eActivating, status);
+
+        return ErrorEnum::eNone;
+    }
+
+    FillInstanceStatus(instance, InstanceStateEnum::eActivating, status);
 
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
@@ -144,8 +153,6 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
             status.mState = InstanceStateEnum::eFailed;
             status.mError = *err;
         }
-
-        mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
     });
 
     err = PrepareUpdate(instance);
@@ -197,7 +204,7 @@ Error RootfsRuntime::GetInstanceMonitoringData(
 
 void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
 {
-    LOG_DBG() << "Start health check for rootfs update" << Log::Field("version", mPendingVersion);
+    LOG_DBG() << "Start health check for rootfs update";
 
     ActionType nextAction = ActionTypeEnum::eDoApply;
 
@@ -375,6 +382,12 @@ Error RootfsRuntime::ProcessNoAction(Array<InstanceStatus>& statuses)
     const auto pendingPath = std::filesystem::path(mRootfsConfig.mWorkingDir) / cPendingInstanceFileName;
 
     if (std::filesystem::exists(pendingPath)) {
+        if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eInactive, statuses.Back());
+
         std::error_code ec;
 
         const auto installedPath = std::filesystem::path(mRootfsConfig.mWorkingDir) / cInstalledInstanceFileName;
@@ -384,11 +397,6 @@ Error RootfsRuntime::ProcessNoAction(Array<InstanceStatus>& statuses)
         InitInstalledData();
 
         ClearUpdateArtifacts();
-
-        if (ec) {
-            statuses.Back().mState = InstanceStateEnum::eFailed;
-            statuses.Back().mError = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, ec.message().c_str()));
-        }
     }
 
     if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
