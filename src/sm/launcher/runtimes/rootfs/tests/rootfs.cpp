@@ -411,12 +411,19 @@ TEST_F(RootfsRuntimeTest, UpdateIsCompleted)
     err = mStatusReceiver.GetStatuses(statuses, std::chrono::seconds(1));
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    ASSERT_EQ(statuses.size(), 1u);
-    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActive);
-    EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
-    EXPECT_STREQ(statuses[0].mSubjectID.CStr(), "updateSubjectId");
-    EXPECT_STREQ(statuses[0].mManifestDigest.CStr(), "updateManifestDigest");
-    EXPECT_STREQ(statuses[0].mVersion.CStr(), "1.0.1");
+    ASSERT_EQ(statuses.size(), 2u);
+
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eInactive);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "itemId");
+    EXPECT_STREQ(statuses[0].mSubjectID.CStr(), "subjectId");
+    EXPECT_STREQ(statuses[0].mManifestDigest.CStr(), "manifestDigest");
+    EXPECT_STREQ(statuses[0].mVersion.CStr(), "1.0.0");
+
+    EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(statuses[1].mItemID.CStr(), "updateItemId");
+    EXPECT_STREQ(statuses[1].mSubjectID.CStr(), "updateSubjectId");
+    EXPECT_STREQ(statuses[1].mManifestDigest.CStr(), "updateManifestDigest");
+    EXPECT_STREQ(statuses[1].mVersion.CStr(), "1.0.1");
 
     for (const auto& entry : std::filesystem::directory_iterator(cWorkingDir)) {
         EXPECT_TRUE(std::find(cExpectedFiles.begin(), cExpectedFiles.end(), entry.path()) != cExpectedFiles.end())
