@@ -151,7 +151,8 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
     Tie(status.mState, status.mError) = GetStartingUnitState(unitName, startTime);
 
     LOG_DBG() << "Start instance" << Log::Field("instanceID", instanceID.c_str())
-              << Log::Field("name", unitName.c_str()) << Log::Field(status.mError);
+              << Log::Field("name", unitName.c_str()) << Log::Field("state", status.mState)
+              << Log::Field("error", status.mError);
 
     return status;
 }
@@ -222,6 +223,9 @@ void Runner::MonitorUnits()
             if (startUnitIt != mStartingUnits.end()) {
                 startUnitIt->second.mRunState = unit.mActiveState;
                 startUnitIt->second.mExitCode = unit.mExitCode;
+
+                LOG_DBG() << "==== Unit state updated" << Log::Field("unit", unit.mName.c_str())
+                          << Log::Field("state", unit.mActiveState) << Log::Field("exitCode", unit.mExitCode);
 
                 // systemd doesn't change the state of failed unit => notify listener about final state.
                 if (unit.mActiveState == utils::UnitStateEnum::eFailed) {
@@ -312,14 +316,14 @@ RetWithError<InstanceState> Runner::GetStartingUnitState(const std::string& unit
         // Wait specified duration for unit state updates.
         std::ignore   = mStartingUnits[unitName].mCondVar.wait_for(lock, timeout);
         auto runState = mStartingUnits[unitName].mRunState;
-        auto exitCode = mStartingUnits[unitName].mExitCode;
+        auto exitCode
+            = mStartingUnits[unitName].mExitCode.HasValue() ? mStartingUnits[unitName].mExitCode.GetValue() : 0;
 
         mStartingUnits.erase(unitName);
 
         if (runState.GetValue() != utils::UnitStateEnum::eActive) {
-
             const auto errMsg = "failed to start unit";
-            err = exitCode.HasValue() ? Error(exitCode.GetValue(), errMsg) : Error(ErrorEnum::eFailed, errMsg);
+            err               = (exitCode) ? Error(exitCode, errMsg) : Error(ErrorEnum::eFailed, errMsg);
 
             return {InstanceStateEnum::eFailed, AOS_ERROR_WRAP(err)};
         }

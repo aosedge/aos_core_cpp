@@ -128,7 +128,7 @@ Error Instance::Start()
     mRunStatus = mRunner.StartInstance(mInstanceID, itemConfig->mRunParameters);
     err        = mRunStatus.mError;
 
-    if (!err.IsNone()) {
+    if (mRunStatus.mState != InstanceStateEnum::eActive) {
         return AOS_ERROR_WRAP(err);
     }
 
