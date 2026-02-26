@@ -28,6 +28,7 @@ constexpr auto cDefaultRemoveOutdatedPeriod = "24h";
 constexpr auto cDefaultHealthCheckTimeout   = "35s";
 constexpr auto cDefaultCMReconnectTimeout   = "10s";
 const auto     cEmptyObject                 = Poco::makeShared<Poco::JSON::Object>();
+constexpr auto cResourceConfigFileName      = "/etc/aos/resources.cfg";
 
 namespace aos::sm::config {
 
@@ -121,6 +122,9 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         config.mNodeConfigFile = object.GetOptionalValue<std::string>("nodeConfigFile")
                                      .value_or(common::utils::JoinPath(config.mWorkingDir, "aos_node.cfg"));
+
+        config.mResourcesConfigFile
+            = object.GetOptionalValue<std::string>("resourcesConfigFile").value_or(cResourceConfigFileName);
 
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 

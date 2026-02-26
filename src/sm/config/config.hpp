@@ -36,6 +36,7 @@ struct Config {
     std::string                   mCertStorage;
     std::string                   mIAMProtectedServerURL;
     std::string                   mNodeConfigFile;
+    std::string                   mResourcesConfigFile;
     std::string                   mWorkingDir;
     common::config::JournalAlerts mJournalAlerts;
     common::config::Migration     mMigration;

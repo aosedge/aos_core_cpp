@@ -76,6 +76,7 @@ static constexpr auto cTestServiceManagerJSON          = R"({
         "pollPeriod": "1h1m5s"
     },
     "nodeConfigFile": "/var/aos/aos_node.cfg",
+    "resourcesConfigFile": "/var/aos/resources.cfg",
     "workingDir": "workingDir"
 })";
 static constexpr auto cTestDefaultValuesJSON           = R"({
@@ -192,6 +193,7 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(config->mMonitoring.mPollPeriod, aos::Time::cHours + aos::Time::cMinutes + 5 * aos::Time::cSeconds);
 
     EXPECT_EQ(config->mNodeConfigFile, "/var/aos/aos_node.cfg");
+    EXPECT_EQ(config->mResourcesConfigFile, "/var/aos/resources.cfg");
     EXPECT_EQ(config->mWorkingDir, "workingDir");
 }
 
@@ -218,6 +220,7 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     ASSERT_EQ(config->mWorkingDir, "test");
 
     EXPECT_EQ(config->mNodeConfigFile, "test/aos_node.cfg");
+    EXPECT_EQ(config->mResourcesConfigFile, "/etc/aos/resources.cfg");
 }
 
 TEST_F(ConfigTest, ErrorReturnedOnFileMissing)
