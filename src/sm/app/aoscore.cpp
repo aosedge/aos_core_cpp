@@ -59,7 +59,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize resource manager
 
-    err = mResourceManager.Init({mConfig.mNodeConfigFile.c_str()});
+    err = mResourceManager.Init({mConfig.mResourcesConfigFile.c_str()});
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize resource manager");
 
     // Initialize database
