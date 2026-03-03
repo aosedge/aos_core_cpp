@@ -22,18 +22,19 @@ namespace aos::cm::config {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultAlertsSendPeriod               = "10s";
-constexpr auto cDefaultCloudResponseWaitTimeout       = "10s";
-constexpr auto cDefaultLauncherInstanceTTL            = "30d";
-constexpr auto cDefaultLauncherNodesConnectionTimeout = "10m";
-constexpr auto cDefaultMonitoringSendPeriod           = "1m";
-constexpr auto cDefaultSMConnectionTimeout            = "1m";
-constexpr auto cDefaultUnitStatusSendTimeout          = "10s";
-constexpr auto cDefaultUpdateItemTTL                  = "30d";
-constexpr auto cDefaultRemoveOutdatedPeriod           = "24h";
-constexpr auto cDefaultMigrationPath                  = "/usr/share/aos/communicationmanager/migration";
-constexpr auto cDefaultCertStorage                    = "/var/aos/crypt/cm/";
-constexpr auto cDefaultDNSStoragePath                 = "/var/aos/dns";
+constexpr auto cDefaultAlertsSendPeriod                   = "10s";
+constexpr auto cDefaultCloudResponseWaitTimeout           = "10s";
+constexpr auto cDefaultLauncherInstanceTTL                = "30d";
+constexpr auto cDefaultLauncherCheckOverrideEnvVarsPeriod = "1m";
+constexpr auto cDefaultLauncherNodesConnectionTimeout     = "10m";
+constexpr auto cDefaultMonitoringSendPeriod               = "1m";
+constexpr auto cDefaultSMConnectionTimeout                = "1m";
+constexpr auto cDefaultUnitStatusSendTimeout              = "10s";
+constexpr auto cDefaultUpdateItemTTL                      = "30d";
+constexpr auto cDefaultRemoveOutdatedPeriod               = "24h";
+constexpr auto cDefaultMigrationPath                      = "/usr/share/aos/communicationmanager/migration";
+constexpr auto cDefaultCertStorage                        = "/var/aos/crypt/cm/";
+constexpr auto cDefaultDNSStoragePath                     = "/var/aos/dns";
 
 /***********************************************************************************************************************
  * Static
@@ -102,6 +103,10 @@ void ParseLauncherConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
     Tie(config.mInstanceTTL, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("instanceTtl", cDefaultLauncherInstanceTTL));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing instanceTtl tag");
+
+    Tie(config.mCheckOverrideEnvVarsPeriod, err) = common::utils::ParseDuration(
+        object.GetValue<std::string>("checkOverrideEnvVarsPeriod", cDefaultLauncherCheckOverrideEnvVarsPeriod));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing checkOverrideEnvVarsPeriod tag");
 }
 
 } // namespace
