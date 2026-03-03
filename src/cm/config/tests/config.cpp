@@ -53,7 +53,8 @@ constexpr auto cFullTestConfigJSON = R"({
     },
     "launcher": {
         "nodesConnectionTimeout": "1m",
-        "instanceTtl": "1d"
+        "instanceTtl": "1d",
+        "checkOverrideEnvVarsPeriod": "2m"
     },
     "migration": {
         "migrationPath": "/usr/share/aos_communicationmanager/migration",
@@ -139,6 +140,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     EXPECT_EQ(config.mLauncher.mNodesConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mLauncher.mInstanceTTL, aos::Time::cDay * 1);
+    EXPECT_EQ(config.mLauncher.mCheckOverrideEnvVarsPeriod, aos::Time::cMinutes * 2);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos_communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, "/var/aos/communicationmanager/migration");
