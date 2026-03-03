@@ -150,6 +150,51 @@ imagemanager::ItemInfo CreateImageManagerItemInfo(
     return info;
 }
 
+EnvVarInfo CreateEnvVarInfo(const char* name, const char* value, const Optional<Time>& ttl = {})
+{
+    EnvVarInfo var;
+
+    AOS_ERROR_CHECK_AND_THROW(var.mName.Assign(name), "can't assign name");
+    AOS_ERROR_CHECK_AND_THROW(var.mValue.Assign(value), "can't assign value");
+
+    if (ttl.HasValue()) {
+        var.mTTL.SetValue(ttl.GetValue());
+    }
+
+    return var;
+}
+
+EnvVarsInstanceInfo CreateEnvVarsInstanceInfo(const char* itemID = nullptr, const char* subjectID = nullptr,
+    std::optional<uint64_t> instance = std::nullopt, const std::vector<std::pair<const char*, const char*>>& vars = {},
+    const std::vector<std::tuple<const char*, const char*, Time>>& varsWithTTL = {})
+{
+    EnvVarsInstanceInfo item;
+
+    if (itemID != nullptr) {
+        item.mItemID.SetValue(itemID);
+    }
+
+    if (subjectID != nullptr) {
+        item.mSubjectID.SetValue(subjectID);
+    }
+
+    if (instance) {
+        item.mInstance.SetValue(*instance);
+    }
+
+    for (const auto& [name, value] : vars) {
+        auto var = CreateEnvVarInfo(name, value);
+        AOS_ERROR_CHECK_AND_THROW(item.mVariables.PushBack(var), "can't add var");
+    }
+
+    for (const auto& [name, value, ttl] : varsWithTTL) {
+        auto var = CreateEnvVarInfo(name, value, Optional<Time>(ttl));
+        AOS_ERROR_CHECK_AND_THROW(item.mVariables.PushBack(var), "can't add var");
+    }
+
+    return item;
+}
+
 std::string GetMigrationSourceDir()
 {
     std::filesystem::path curFilePath(__FILE__);
@@ -610,11 +655,9 @@ TEST_F(CMDatabaseTest, LauncherGetInstance)
 
     ASSERT_TRUE(mDB.GetInstance(instance1.mInstanceIdent, retrievedInstance).IsNone());
     EXPECT_EQ(retrievedInstance, instance1);
-    EXPECT_EQ(retrievedInstance.mVersion, "1.0.0");
 
     ASSERT_TRUE(mDB.GetInstance(instance2.mInstanceIdent, retrievedInstance).IsNone());
     EXPECT_EQ(retrievedInstance, instance2);
-    EXPECT_EQ(retrievedInstance.mVersion, "2.0.0");
 
     // Get non-existent instance
     auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
@@ -668,6 +711,78 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
     // Remove non-existent instance
     auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
     ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent).IsNone());
+}
+
+TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVarsReplacesExisting)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto item1 = CreateEnvVarsInstanceInfo("service1", nullptr, std::nullopt, {{"VAR1", "value1"}});
+    auto item2 = CreateEnvVarsInstanceInfo("service2", nullptr, std::nullopt, {{"VAR2", "value2"}});
+
+    OverrideEnvVarsRequest request1;
+    OverrideEnvVarsRequest request2;
+    OverrideEnvVarsRequest retrieved;
+
+    // Save first override env vars
+    AOS_ERROR_CHECK_AND_THROW(request1.mItems.PushBack(item1), "can't add item");
+    ASSERT_TRUE(mDB.SaveOverrideEnvVars(request1).IsNone());
+
+    // Save second override env vars
+    AOS_ERROR_CHECK_AND_THROW(request2.mItems.PushBack(item2), "can't add item");
+    ASSERT_TRUE(mDB.SaveOverrideEnvVars(request2).IsNone());
+
+    // Verify only second override env vars are saved
+    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    EXPECT_EQ(request2, retrieved);
+}
+
+TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVarsEmpty)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    OverrideEnvVarsRequest empty;
+    OverrideEnvVarsRequest retrieved;
+
+    // Save empty request
+    ASSERT_TRUE(mDB.SaveOverrideEnvVars(empty).IsNone());
+
+    // Verify it's empty
+    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    EXPECT_EQ(retrieved.mItems.Size(), 0);
+}
+
+TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVars)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    uint64_t instance0 = 0;
+    uint64_t instance1 = 1;
+    uint64_t instance2 = 2;
+    auto     ttl       = Time::Now().Add(Time::cHours * 2);
+
+    // Create multiple items with different configurations
+    auto item1 = CreateEnvVarsInstanceInfo(
+        "service1", "subject1", instance0, {{"VAR1", "value1"}, {"VAR2", "value2"}}, {{"VAR3", "value3", ttl}});
+    auto item2 = CreateEnvVarsInstanceInfo("service2", "subject2", instance1, {{"VAR4", "value4"}});
+    auto item3
+        = CreateEnvVarsInstanceInfo("service3", nullptr, instance2, {{"VAR5", "value5"}}, {{"VAR6", "value6", ttl}});
+    auto item4 = CreateEnvVarsInstanceInfo(nullptr, "subject4", std::nullopt, {{"VAR7", "value7"}});
+
+    OverrideEnvVarsRequest request;
+    OverrideEnvVarsRequest retrieved;
+
+    AOS_ERROR_CHECK_AND_THROW(request.mItems.PushBack(item1), "can't add item");
+    AOS_ERROR_CHECK_AND_THROW(request.mItems.PushBack(item2), "can't add item");
+    AOS_ERROR_CHECK_AND_THROW(request.mItems.PushBack(item3), "can't add item");
+    AOS_ERROR_CHECK_AND_THROW(request.mItems.PushBack(item4), "can't add item");
+
+    // Save env vars
+    ASSERT_TRUE(mDB.SaveOverrideEnvVars(request).IsNone());
+
+    // Verify all items are saved correctly
+    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    EXPECT_EQ(request, retrieved);
 }
 
 /***********************************************************************************************************************
