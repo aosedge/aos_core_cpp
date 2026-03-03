@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/Transaction.h>
 #include <Poco/JSON/Array.h>
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
@@ -58,7 +59,7 @@ void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::E
 
     auto portsJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
     if (portsJSON == nullptr) {
-        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed ports array");
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed ports array");
     }
 
     ports.Clear();
@@ -66,7 +67,7 @@ void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::E
     for (const auto& portJSON : *portsJSON) {
         const auto portObj = portJSON.extract<Poco::JSON::Object::Ptr>();
         if (portObj == nullptr) {
-            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed port");
+            AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse exposed port");
         }
 
         networkmanager::ExposedPort port;
@@ -94,7 +95,7 @@ void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cIPLen
 
     auto dnsServersJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
     if (dnsServersJSON == nullptr) {
-        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse DNS servers array");
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse DNS servers array");
     }
 
     dnsServers.Clear();
@@ -122,7 +123,7 @@ void DeserializeLabels(const std::string& jsonStr, aos::LabelsArray& labels)
 
     auto labelsJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
     if (labelsJSON == nullptr) {
-        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse labels array");
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse labels array");
     }
 
     labels.Clear();
@@ -149,6 +150,61 @@ void DeserializeDesiredStatus(const std::string& jsonStr, DesiredStatus& desired
 
     err = common::cloudprotocol::FromJSON(common::utils::CaseInsensitiveObjectWrapper(json), desiredStatus);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to deserialize desired status");
+}
+
+std::string SerializeEnvVars(const EnvVarInfoArray& variables)
+{
+    auto varsArray = Poco::makeShared<Poco::JSON::Array>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    for (const auto& var : variables) {
+        auto varObj = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+        varObj->set("name", var.mName.CStr());
+        varObj->set("value", var.mValue.CStr());
+
+        if (var.mTTL.HasValue()) {
+            varObj->set("ttl", static_cast<int64_t>(var.mTTL.GetValue().UnixNano()));
+        }
+
+        varsArray->add(varObj);
+    }
+
+    return common::utils::Stringify(varsArray);
+}
+
+void DeserializeEnvVars(const std::string& jsonStr, EnvVarInfoArray& variables)
+{
+    Poco::JSON::Parser parser;
+
+    auto varsArrayJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+    if (varsArrayJSON == nullptr) {
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse env vars array");
+    }
+
+    variables.Clear();
+
+    for (const auto& varJSON : *varsArrayJSON) {
+        const auto varObj = varJSON.extract<Poco::JSON::Object::Ptr>();
+        if (varObj == nullptr) {
+            AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse env var");
+        }
+
+        EnvVarInfo var;
+
+        auto err = var.mName.Assign(varObj->getValue<std::string>("name").c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign env var name");
+
+        err = var.mValue.Assign(varObj->getValue<std::string>("value").c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign env var value");
+
+        if (varObj->has("ttl")) {
+            int64_t ttlNano = varObj->getValue<int64_t>("ttl");
+            var.mTTL.SetValue(
+                Time::Unix(ttlNano / Time::cSeconds.Nanoseconds(), ttlNano % Time::cSeconds.Nanoseconds()));
+        }
+
+        AOS_ERROR_CHECK_AND_THROW(variables.PushBack(var), "can't add env var");
+    }
 }
 
 } // namespace
@@ -644,6 +700,56 @@ Error Database::RemoveInstance(const InstanceIdent& instanceIdent)
     return ErrorEnum::eNone;
 }
 
+Error Database::SaveOverrideEnvVars(const OverrideEnvVarsRequest& envVars)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Transaction transaction(*mSession);
+
+        *mSession << "DELETE FROM launcher_override_envvars;", now;
+
+        for (const auto& item : envVars.mItems) {
+            LauncherOverrideEnvVarsRow row;
+            FromAos(item, row);
+            *mSession << "INSERT INTO launcher_override_envvars (itemID, subjectID, instance, variables) "
+                         "VALUES (?, ?, ?, ?);",
+                bind(row), now;
+        }
+        transaction.commit();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::GetOverrideEnvVars(OverrideEnvVarsRequest& envVars)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        std::vector<LauncherOverrideEnvVarsRow> rows;
+
+        *mSession << "SELECT itemID, subjectID, instance, variables FROM launcher_override_envvars;", into(rows), now;
+
+        auto item = std::make_unique<EnvVarsInstanceInfo>();
+        envVars.mCorrelationID.Clear();
+        envVars.mItems.Clear();
+
+        for (const auto& row : rows) {
+            ToAos(row, *item);
+
+            auto err = envVars.mItems.PushBack(*item);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add env vars item");
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * imagemanager::StorageItf implementation
  **********************************************************************************************************************/
@@ -858,6 +964,14 @@ void Database::CreateTables()
     *mSession << "INSERT INTO updatemanager (desiredStatus, updateState) "
                  "SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM updatemanager);",
         bind("{}"), bind(updatemanager::UpdateState().ToString().CStr()), now;
+
+    *mSession << "CREATE TABLE IF NOT EXISTS launcher_override_envvars ("
+                 "itemID TEXT,"
+                 "subjectID TEXT,"
+                 "instance TEXT,"
+                 "variables TEXT"
+                 ");",
+        now;
 
     *mSession << "CREATE TABLE IF NOT EXISTS storagestate ("
                  "itemID TEXT,"
@@ -1111,6 +1225,59 @@ void Database::ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo&
     AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
     auto timestamp = src.get<ToInt(ImageManagerItemInfoColumns::eTimestamp)>();
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
+}
+
+void Database::FromAos(const EnvVarsInstanceInfo& src, LauncherOverrideEnvVarsRow& dst)
+{
+    std::string itemID;
+    std::string subjectID;
+    std::string instanceStr;
+
+    if (src.mItemID.HasValue()) {
+        itemID = src.mItemID.GetValue().CStr();
+    }
+
+    if (src.mSubjectID.HasValue()) {
+        subjectID = src.mSubjectID.GetValue().CStr();
+    }
+
+    if (src.mInstance.HasValue()) {
+        instanceStr = std::to_string(src.mInstance.GetValue());
+    }
+
+    dst.set<ToInt(LauncherOverrideEnvVarsColumns::eItemID)>(itemID);
+    dst.set<ToInt(LauncherOverrideEnvVarsColumns::eSubjectID)>(subjectID);
+    dst.set<ToInt(LauncherOverrideEnvVarsColumns::eInstance)>(instanceStr);
+    dst.set<ToInt(LauncherOverrideEnvVarsColumns::eVariables)>(SerializeEnvVars(src.mVariables));
+}
+
+void Database::ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo& dst)
+{
+    dst.mItemID.Reset();
+    dst.mSubjectID.Reset();
+    dst.mInstance.Reset();
+    dst.mVariables.Clear();
+
+    const auto& itemID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eItemID)>();
+    if (!itemID.empty()) {
+        dst.mItemID.EmplaceValue();
+        AOS_ERROR_CHECK_AND_THROW(dst.mItemID.GetValue().Assign(itemID.c_str()));
+    }
+
+    const auto& subjectID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eSubjectID)>();
+    if (!subjectID.empty()) {
+        dst.mSubjectID.EmplaceValue();
+        AOS_ERROR_CHECK_AND_THROW(dst.mSubjectID.GetValue().Assign(subjectID.c_str()));
+    }
+
+    const auto& instanceStr = src.get<ToInt(LauncherOverrideEnvVarsColumns::eInstance)>();
+    if (!instanceStr.empty()) {
+        uint64_t instanceValue = std::stoull(instanceStr);
+        dst.mInstance.SetValue(instanceValue);
+    }
+
+    const auto& variablesJson = src.get<ToInt(LauncherOverrideEnvVarsColumns::eVariables)>();
+    DeserializeEnvVars(variablesJson, dst.mVariables);
 }
 
 } // namespace aos::cm::database
