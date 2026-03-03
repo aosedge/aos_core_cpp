@@ -17,4 +17,9 @@
  */
 #define AOS_CONFIG_URL_LEN 512
 
+/**
+ * Host device name len.
+ */
+#define AOS_CONFIG_TYPES_DEVICE_NAME_LEN 128
+
 #endif
