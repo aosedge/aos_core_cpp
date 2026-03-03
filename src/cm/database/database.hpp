@@ -219,6 +219,22 @@ public:
      */
     Error RemoveInstance(const InstanceIdent& instanceIdent) override;
 
+    /**
+     * Saves override environment variables.
+     *
+     * @param envVars Override environment variables.
+     * @return Error.
+     */
+    Error SaveOverrideEnvVars(const OverrideEnvVarsRequest& envVars) override;
+
+    /**
+     * Returns override environment variables.
+     *
+     * @param[out] envVars Override environment variables.
+     * @return Error.
+     */
+    Error GetOverrideEnvVars(OverrideEnvVarsRequest& envVars) override;
+
     //
     // imagemanager::StorageItf interface
     //
@@ -377,6 +393,9 @@ private:
     using ImageManagerItemInfoRow
         = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t>;
 
+    enum class LauncherOverrideEnvVarsColumns : int { eItemID = 0, eSubjectID, eInstance, eVariables };
+    using LauncherOverrideEnvVarsRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
+
     // make virtual for unit tests
     virtual int GetVersion() const;
     void        CreateTables();
@@ -398,6 +417,9 @@ private:
 
     static void FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRow& dst);
     static void ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst);
+
+    static void FromAos(const EnvVarsInstanceInfo& src, LauncherOverrideEnvVarsRow& dst);
+    static void ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo& dst);
 
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;
