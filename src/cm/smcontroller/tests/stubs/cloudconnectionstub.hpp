@@ -37,6 +37,8 @@ public:
      */
     void TriggerConnect()
     {
+        mIsConnected = true;
+
         if (mListener) {
             mListener->OnConnect();
         }
@@ -47,13 +49,18 @@ public:
      */
     void TriggerDisconnect()
     {
+        mIsConnected = false;
+
         if (mListener) {
             mListener->OnDisconnect();
         }
     }
 
+    bool IsConnected() const override { return mIsConnected; }
+
 private:
-    cloudconnection::ConnectionListenerItf* mListener = nullptr;
+    cloudconnection::ConnectionListenerItf* mListener {};
+    bool                                    mIsConnected {};
 };
 
 } // namespace aos::cm::smcontroller
