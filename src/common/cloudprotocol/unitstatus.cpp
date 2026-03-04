@@ -181,7 +181,13 @@ Poco::JSON::Object::Ptr NodeInfoToJSON(const UnitNodeInfo& nodeInfo)
 Poco::JSON::Object::Ptr UpdateItemToJSON(const UpdateItemStatus& status)
 {
     AosIdentity identity;
-    identity.mID   = status.mItemID.CStr();
+
+    if (status.mPreinstalled) {
+        identity.mCodename = status.mItemID.CStr();
+    } else {
+        identity.mID = status.mItemID.CStr();
+    }
+
     identity.mType = status.mType;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
