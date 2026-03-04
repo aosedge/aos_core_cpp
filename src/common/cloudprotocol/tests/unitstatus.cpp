@@ -227,6 +227,46 @@ TEST_F(CloudProtocolUnitStatus, Items)
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
 }
 
+TEST_F(CloudProtocolUnitStatus, PreinstalledItems)
+{
+    constexpr auto cJSON
+        = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"items":[)"
+          R"({"item":{"id":"itemID1","type":"service"},"version":"version1","state":"downloading"},)"
+          R"({"item":{"id":"itemID2","type":"service"},"version":"version1","state":"installed"},)"
+          R"({"item":{"codename":"itemID3","type":"component"},"version":"version1","state":"failed"}]})";
+
+    auto unitStatus            = std::make_unique<UnitStatus>();
+    unitStatus->mCorrelationID = "id";
+
+    unitStatus->mUpdateItems.EmplaceValue();
+
+    unitStatus->mUpdateItems->EmplaceBack();
+    unitStatus->mUpdateItems->Back().mItemID  = "itemID1";
+    unitStatus->mUpdateItems->Back().mType    = UpdateItemTypeEnum::eService;
+    unitStatus->mUpdateItems->Back().mVersion = "version1";
+    unitStatus->mUpdateItems->Back().mState   = ItemStateEnum::eDownloading;
+
+    unitStatus->mUpdateItems->EmplaceBack();
+    unitStatus->mUpdateItems->Back().mItemID  = "itemID2";
+    unitStatus->mUpdateItems->Back().mType    = UpdateItemTypeEnum::eService;
+    unitStatus->mUpdateItems->Back().mVersion = "version1";
+    unitStatus->mUpdateItems->Back().mState   = ItemStateEnum::eInstalled;
+
+    unitStatus->mUpdateItems->EmplaceBack();
+    unitStatus->mUpdateItems->Back().mItemID       = "itemID3";
+    unitStatus->mUpdateItems->Back().mType         = UpdateItemTypeEnum::eComponent;
+    unitStatus->mUpdateItems->Back().mVersion      = "version1";
+    unitStatus->mUpdateItems->Back().mState        = ItemStateEnum::eFailed;
+    unitStatus->mUpdateItems->Back().mPreinstalled = true;
+
+    auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+    auto err = ToJSON(*unitStatus, *json);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(common::utils::Stringify(json), cJSON);
+}
+
 TEST_F(CloudProtocolUnitStatus, Instances)
 {
     constexpr auto cJSON = R"({"messageType":"unitStatus","correlationId":"id","isDeltaInfo":false,"instances":[)"
