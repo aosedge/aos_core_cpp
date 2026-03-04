@@ -298,6 +298,13 @@ Error SMClient::UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf&
     return ErrorEnum::eNone;
 }
 
+bool SMClient::IsConnected() const
+{
+    std::lock_guard lock {mMutex};
+
+    return mIsConnected;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -636,8 +643,10 @@ Error SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& status)
 
     std::lock_guard lock {mMutex};
 
+    mIsConnected = status.cloud_status() == smproto::ConnectionEnum::CONNECTED;
+
     for (auto* listener : mConnectionListeners) {
-        if (status.cloud_status() == smproto::ConnectionEnum::CONNECTED) {
+        if (mIsConnected) {
             listener->OnConnect();
         } else {
             listener->OnDisconnect();
