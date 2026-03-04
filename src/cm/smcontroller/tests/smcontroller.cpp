@@ -584,19 +584,26 @@ TEST_F(SMControllerTest, CloudConnectedReceived)
     err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // 3) Trigger cloud connection event
+    // 3) Wait for cloud connection
+    err = client.WaitCloudConnection();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+    EXPECT_FALSE(client.IsCloudConnected());
+
+    client.ResetCloudStatus();
+
+    // 4) Trigger cloud connection event
     mCloudConnection.TriggerConnect();
 
-    // 4) Wait for cloud connection
+    // 5) Wait for cloud connection
     err = client.WaitCloudConnection();
     ASSERT_TRUE(err.IsNone()) << err.Message();
     EXPECT_TRUE(client.IsCloudConnected());
 
-    // 5) Stop client
+    // 6) Stop client
     err = client.Stop();
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // 6) Wait for disconnect
+    // 7) Wait for disconnect
     err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }

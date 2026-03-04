@@ -302,7 +302,7 @@ bool SMClient::IsConnected() const
 {
     std::lock_guard lock {mMutex};
 
-    return mIsConnected;
+    return mConnectionStatus == servicemanager::v5::ConnectionEnum::CONNECTED;
 }
 
 /***********************************************************************************************************************
@@ -639,14 +639,19 @@ Error SMClient::ProcessGetAverageMonitoring()
 
 Error SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& status)
 {
-    LOG_DBG() << "Process connection status: " << status.cloud_status();
-
     std::lock_guard lock {mMutex};
 
-    mIsConnected = status.cloud_status() == smproto::ConnectionEnum::CONNECTED;
+    LOG_DBG() << "Process connection status" << Log::Field("current", mConnectionStatus)
+              << Log::Field("new", status.cloud_status());
+
+    if (mConnectionStatus == status.cloud_status()) {
+        return ErrorEnum::eNone;
+    }
+
+    mConnectionStatus = status.cloud_status();
 
     for (auto* listener : mConnectionListeners) {
-        if (mIsConnected) {
+        if (mConnectionStatus == servicemanager::v5::ConnectionEnum::CONNECTED) {
             listener->OnConnect();
         } else {
             listener->OnDisconnect();
