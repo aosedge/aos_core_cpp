@@ -175,6 +175,13 @@ public:
      */
     Error UnsubscribeListener(cloudconnection::ConnectionListenerItf& listener) override;
 
+    /**
+     * Checks if the connection is established.
+     *
+     * @return true if connected, false otherwise.
+     */
+    bool IsConnected() const override;
+
 private:
     static constexpr auto cProtocolVersion         = 7;
     static constexpr auto cReconnectTries          = 5;
@@ -296,11 +303,12 @@ private:
     std::mutex                                                     mSubscribersMutex;
     std::vector<cloudconnection::ConnectionListenerItf*>           mSubscribers;
     std::optional<common::cloudprotocol::ServiceDiscoveryResponse> mDiscoveryResponse;
-    std::mutex                                                     mMutex;
+    mutable std::mutex                                             mMutex;
     std::condition_variable                                        mCondVar;
     StaticString<cIDLen>                                           mMainNodeID;
     Duration                                                       mReconnectTimeout {cReconnectTimeout};
     Poco::URI                                                      mConfigServiceDiscoveryURI;
+    bool                                                           mIsConnected {};
 
     SessionPtr                          mClientSession;
     std::optional<Poco::Net::WebSocket> mWebSocket;
