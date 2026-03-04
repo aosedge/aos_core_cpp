@@ -172,6 +172,13 @@ public:
     Error UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener) override;
 
     /**
+     * Checks if the connection is established.
+     *
+     * @return true if connected, false otherwise.
+     */
+    bool IsConnected() const override;
+
+    /**
      * Destroys object instance.
      */
     ~SMClient() = default;
@@ -223,8 +230,9 @@ private:
     StubPtr                              mStub;
 
     std::thread             mConnectionThread;
-    std::mutex              mMutex;
-    bool                    mStopped = true;
+    mutable std::mutex      mMutex;
+    bool                    mStopped {true};
+    bool                    mIsConnected {};
     std::condition_variable mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
