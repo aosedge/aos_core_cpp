@@ -177,6 +177,13 @@ public:
      */
     void OnDisconnect();
 
+    /**
+     * Sends cloud connection status.
+     *
+     * @param connected connection status.
+     */
+    void SendCloudConnectionStatus(bool connected);
+
 private:
     static constexpr auto cResponseTime = std::chrono::seconds(5);
 

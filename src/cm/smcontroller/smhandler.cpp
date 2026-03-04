@@ -476,24 +476,21 @@ Error SMHandler::GetAverageMonitoring(aos::monitoring::NodeMonitoringData& monit
 
 void SMHandler::OnConnect()
 {
-    LOG_DBG() << "Node connected" << Log::Field("nodeID", GetNodeID());
-
-    servicemanager::v5::SMIncomingMessages inMsg;
-    auto*                                  connectionStatus = inMsg.mutable_connection_status();
-    connectionStatus->set_cloud_status(servicemanager::v5::CONNECTED);
-
-    if (auto err = SendMessage(inMsg); !err.IsNone()) {
-        LOG_ERR() << "Failed to send connection status" << Log::Field(err);
-    }
+    SendCloudConnectionStatus(true);
 }
 
 void SMHandler::OnDisconnect()
 {
-    LOG_DBG() << "Node disconnected" << Log::Field("nodeID", GetNodeID());
+    SendCloudConnectionStatus(false);
+}
+
+void SMHandler::SendCloudConnectionStatus(bool connected)
+{
+    LOG_DBG() << "Send cloud status" << Log::Field("connected", connected);
 
     servicemanager::v5::SMIncomingMessages inMsg;
     auto*                                  connectionStatus = inMsg.mutable_connection_status();
-    connectionStatus->set_cloud_status(servicemanager::v5::DISCONNECTED);
+    connectionStatus->set_cloud_status(connected ? servicemanager::v5::CONNECTED : servicemanager::v5::DISCONNECTED);
 
     if (auto err = SendMessage(inMsg); !err.IsNone()) {
         LOG_ERR() << "Failed to send connection status" << Log::Field(err);

@@ -195,6 +195,13 @@ public:
         return ErrorEnum::eNone;
     }
 
+    void ResetCloudStatus()
+    {
+        std::lock_guard lock {mMutex};
+
+        mCloudStatus.Reset();
+    }
+
     bool IsCloudConnected() const
     {
         std::lock_guard lock {mMutex};
