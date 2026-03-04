@@ -470,6 +470,13 @@ Error Communication::UnsubscribeListener(cloudconnection::ConnectionListenerItf&
     return ErrorEnum::eNotFound;
 }
 
+bool Communication::IsConnected() const
+{
+    std::lock_guard lock {mMutex};
+
+    return mIsConnected;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -704,6 +711,8 @@ void Communication::NotifyConnectionEstablished()
 {
     std::lock_guard lock {mSubscribersMutex};
 
+    mIsConnected = true;
+
     LOG_INF() << "Connection established";
 
     for (auto& subscriber : mSubscribers) {
@@ -714,6 +723,8 @@ void Communication::NotifyConnectionEstablished()
 void Communication::NotifyConnectionLost()
 {
     std::lock_guard lock {mSubscribersMutex};
+
+    mIsConnected = false;
 
     LOG_INF() << "Connection lost";
 
