@@ -270,6 +270,8 @@ grpc::Status SMController::RegisterSM(grpc::ServerContext*                      
 
         handler->Start();
 
+        handler->SendCloudConnectionStatus(mCloudConnection->IsConnected());
+
         mSMHandlers.push_back(handler);
     }
 
