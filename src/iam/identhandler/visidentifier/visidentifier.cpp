@@ -229,6 +229,7 @@ void VISIdentifier::WaitUntilConnected()
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
 void VISIdentifier::Close()
 {
     try {
@@ -248,6 +249,7 @@ void VISIdentifier::Close()
         }
 
         mWSClientIsConnected.reset();
+        mWsClientPtr.reset();
 
         LOG_INF() << "VISIdentifier has been closed";
 
