@@ -96,59 +96,78 @@ Error VISIdentifier::Stop()
 
 Error VISIdentifier::GetSystemInfo(SystemInfo& info)
 {
-    std::lock_guard lock {mMutex};
+    {
+        std::lock_guard lock {mMutex};
 
-    if (!mSystemInfo) {
-        mSystemInfo.emplace();
+        if (mSystemInfo) {
+            info = *mSystemInfo;
 
-        try {
-            SetSystemID(*mSystemInfo);
-            SetUnitModelAndVersion(*mSystemInfo);
-        } catch (const std::exception& e) {
-            mSystemInfo.reset();
-
-            return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+            return ErrorEnum::eNone;
         }
     }
 
-    info = *mSystemInfo;
+    SystemInfo localInfo;
+
+    try {
+        SetSystemID(localInfo);
+        SetUnitModelAndVersion(localInfo);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    {
+        std::lock_guard lock {mMutex};
+
+        mSystemInfo = localInfo;
+        info        = localInfo;
+    }
 
     return ErrorEnum::eNone;
 }
 
 Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
 {
-    std::lock_guard lock(mMutex);
+    {
+        std::lock_guard lock {mMutex};
 
-    if (mSubjects.IsEmpty()) {
-        try {
-            const VISMessage responseMessage(SendGetRequest(cSubjectsVISPath));
-
-            if (!responseMessage.Is(VISActionEnum::eGet)) {
-                return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+        if (!mSubjects.IsEmpty()) {
+            if (auto err = mSubjects.Assign(subjects); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
             }
 
-            const auto responseSubjects = GetValueArrayByPath(responseMessage.GetJSON(), cSubjectsVISPath);
-
-            for (const auto& subject : responseSubjects) {
-                if (auto err = mSubjects.PushBack(subject.c_str()); !err.IsNone()) {
-                    mSubjects.Clear();
-
-                    return AOS_ERROR_WRAP(err);
-                }
-            }
-        } catch (const Poco::Exception& e) {
-            LOG_ERR() << "Failed to get subjects: error = " << e.message().c_str();
-
-            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+            return ErrorEnum::eNone;
         }
     }
 
-    if (mSubjects.Size() > subjects.MaxSize()) {
-        return AOS_ERROR_WRAP(ErrorEnum::eNoMemory);
+    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> localSubjects;
+
+    try {
+        const VISMessage responseMessage(SendGetRequest(cSubjectsVISPath));
+
+        if (!responseMessage.Is(VISActionEnum::eGet)) {
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+        }
+
+        const auto responseSubjects = GetValueArrayByPath(responseMessage.GetJSON(), cSubjectsVISPath);
+
+        for (const auto& subject : responseSubjects) {
+            if (auto err = localSubjects.PushBack(subject.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
     }
 
-    subjects = mSubjects;
+    std::lock_guard lock {mMutex};
+
+    if (auto err = mSubjects.Assign(localSubjects); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = subjects.Assign(localSubjects); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     return ErrorEnum::eNone;
 }
@@ -264,11 +283,15 @@ void VISIdentifier::HandleConnection()
         try {
             mWsClientPtr->Connect();
 
+            {
+                std::lock_guard lock(mMutex);
+
+                mSystemInfo.reset();
+                mSubjects.Clear();
+            }
+
             Subscribe(
                 cSubjectsVISPath, std::bind(&VISIdentifier::HandleSubjectsSubscription, this, std::placeholders::_1));
-
-            mSystemInfo.reset();
-            mSubjects.Clear();
 
             mWSClientIsConnected.set();
 
