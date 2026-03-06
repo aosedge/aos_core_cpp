@@ -1,0 +1,44 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - feature*
+      - release*
+
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
+    branches:
+      - main
+      - develop
+      - feature*
+      - release*
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    permissions: read-all
+    container:
+      image: ghcr.io/aosedge/aos-core-build:latest
+      options: "--entrypoint /usr/bin/bash"
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Static analysis
+        run: |
+          ./build.sh lint
