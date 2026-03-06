@@ -1,4 +1,4 @@
-name: Build and test
+name: Build (Debug) and test
 
 on:
   push:
@@ -22,7 +22,8 @@ on:
       - release*
 
 jobs:
-  build:
+  build-debug-test:
+    name: Build (Debug) and test
     runs-on: ubuntu-22.04
     permissions: read-all
     container:
@@ -37,40 +38,32 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
           fetch-depth: 0
 
-      - name: Static analysis
-        run: |
-          ./build.sh lint --aos-service cm --aos-service iam --aos-service sm
-
       - name: Install SonarQube build wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v7
 
-      - name: Build (Release)
+      - name: Build
         run: |
-          ./build.sh build --aos-service cm --aos-service iam --aos-service sm --build-type Release
-
-      - name: Build (Debug)
-        run: |
-          ./build.sh build --aos-service cm --aos-service iam --aos-service sm --ci --clean
+          ./build.sh build --build-type Debug --ci --clean
 
       - name: Test
         run: |
-          ./build.sh coverage --aos-service cm --aos-service iam --aos-service sm
+          ./build.sh coverage
 
       - name: Upload codecov report
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.total
 
       - name: SonarQube analysis (on push)
         if: github.event_name == 'push'
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -81,7 +74,7 @@ jobs:
 
       - name: SonarQube analysis (on pull request)
         if: github.event_name == 'pull_request_target'
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
