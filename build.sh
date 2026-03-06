@@ -116,6 +116,15 @@ cmake_configure() {
         -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -G "Unix Makefiles"
+
+    print_next_step "Generate API targets"
+
+    for api in iam sm; do
+        var="with_$api"
+        if [ "${!var}" == "ON" ]; then
+            cmake --build build --target "aos_api_${api}"
+        fi
+    done
 }
 
 build_project() {
