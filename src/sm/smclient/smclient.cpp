@@ -641,10 +641,9 @@ Error SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& status)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Process connection status" << Log::Field("current", mConnectionStatus)
-              << Log::Field("new", status.cloud_status());
+    LOG_DBG() << "Process connection status" << Log::Field("status", status.cloud_status());
 
-    if (mConnectionStatus == status.cloud_status()) {
+    if (mConnectionStatus.has_value() && mConnectionStatus == status.cloud_status()) {
         return ErrorEnum::eNone;
     }
 
