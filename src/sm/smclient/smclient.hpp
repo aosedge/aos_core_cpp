@@ -229,11 +229,11 @@ private:
     StreamPtr                            mStream;
     StubPtr                              mStub;
 
-    std::thread                        mConnectionThread;
-    mutable std::mutex                 mMutex;
-    bool                               mStopped {true};
-    servicemanager::v5::ConnectionEnum mConnectionStatus {servicemanager::v5::ConnectionEnum::DISCONNECTED};
-    std::condition_variable            mStoppedCV;
+    std::thread                                       mConnectionThread;
+    mutable std::mutex                                mMutex;
+    bool                                              mStopped {true};
+    std::optional<servicemanager::v5::ConnectionEnum> mConnectionStatus;
+    std::condition_variable                           mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
 };
