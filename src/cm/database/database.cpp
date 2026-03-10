@@ -72,9 +72,14 @@ void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::E
 
         networkmanager::ExposedPort port;
 
-        AOS_ERROR_CHECK_AND_THROW(port.mProtocol.Assign(portObj->getValue<std::string>("protocol").c_str()));
-        AOS_ERROR_CHECK_AND_THROW(port.mPort.Assign(portObj->getValue<std::string>("port").c_str()));
-        AOS_ERROR_CHECK_AND_THROW(ports.PushBack(port), "can't add exposed port");
+        auto err = port.mProtocol.Assign(portObj->getValue<std::string>("protocol").c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign protocol");
+
+        err = port.mPort.Assign(portObj->getValue<std::string>("port").c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign port");
+
+        err = ports.PushBack(port);
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add exposed port");
     }
 }
 
@@ -101,8 +106,8 @@ void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cIPLen
     dnsServers.Clear();
 
     for (const auto& dnsJSON : *dnsServersJSON) {
-        AOS_ERROR_CHECK_AND_THROW(
-            dnsServers.EmplaceBack(dnsJSON.convert<std::string>().c_str()), "can't add DNS server");
+        auto err = dnsServers.EmplaceBack(dnsJSON.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add DNS server");
     }
 }
 
@@ -129,7 +134,8 @@ void DeserializeLabels(const std::string& jsonStr, aos::LabelsArray& labels)
     labels.Clear();
 
     for (const auto& labelJson : *labelsJSON) {
-        AOS_ERROR_CHECK_AND_THROW(labels.EmplaceBack(labelJson.convert<std::string>().c_str()), "can't add label");
+        auto err = labels.EmplaceBack(labelJson.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add label");
     }
 }
 
@@ -203,7 +209,8 @@ void DeserializeEnvVars(const std::string& jsonStr, EnvVarInfoArray& variables)
                 Time::Unix(ttlNano / Time::cSeconds.Nanoseconds(), ttlNano % Time::cSeconds.Nanoseconds()));
         }
 
-        AOS_ERROR_CHECK_AND_THROW(variables.PushBack(var), "can't add env var");
+        err = variables.PushBack(var);
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add env var");
     }
 }
 
@@ -318,7 +325,8 @@ Error Database::GetAllStorageStateInfo(Array<storagestate::InstanceInfo>& info)
 
         for (const auto& row : rows) {
             ToAos(row, *instanceInfo);
-            AOS_ERROR_CHECK_AND_THROW(info.PushBack(*instanceInfo), "can't add storage state info");
+            auto err = info.PushBack(*instanceInfo);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add storage state info");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -447,7 +455,8 @@ Error Database::GetNetworks(Array<networkmanager::Network>& networks)
 
         for (const auto& row : rows) {
             ToAos(row, *network);
-            AOS_ERROR_CHECK_AND_THROW(networks.PushBack(*network), "can't add network");
+            auto err = networks.PushBack(*network);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add network");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -472,7 +481,8 @@ Error Database::GetHosts(const String& networkID, Array<networkmanager::Host>& h
 
         for (const auto& row : rows) {
             ToAos(row, *host);
-            AOS_ERROR_CHECK_AND_THROW(hosts.PushBack(*host), "can't add host");
+            auto err = hosts.PushBack(*host);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add host");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -498,7 +508,8 @@ Error Database::GetInstances(const String& networkID, const String& nodeID, Arra
 
         for (const auto& row : rows) {
             ToAos(row, *instance);
-            AOS_ERROR_CHECK_AND_THROW(instances.PushBack(*instance), "can't add instance");
+            auto err = instances.PushBack(*instance);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add instance");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -668,7 +679,8 @@ Error Database::GetActiveInstances(Array<launcher::InstanceInfo>& instances) con
 
         for (const auto& row : rows) {
             ToAos(row, *instanceInfo);
-            AOS_ERROR_CHECK_AND_THROW(instances.PushBack(*instanceInfo), "can't add instance");
+            auto err = instances.PushBack(*instanceInfo);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add instance");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -827,7 +839,8 @@ Error Database::GetAllItemsInfos(Array<imagemanager::ItemInfo>& items)
 
         for (const auto& row : rows) {
             ToAos(row, *itemInfo);
-            AOS_ERROR_CHECK_AND_THROW(items.PushBack(*itemInfo), "can't add item info");
+            auto err = items.PushBack(*itemInfo);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add item info");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -852,7 +865,8 @@ Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& it
 
         for (const auto& row : rows) {
             ToAos(row, *itemInfo);
-            AOS_ERROR_CHECK_AND_THROW(items.PushBack(*itemInfo), "can't add item info");
+            auto err = items.PushBack(*itemInfo);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add item info");
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -1084,10 +1098,11 @@ void Database::ToAos(const StorageStateInstanceInfoRow& src, storagestate::Insta
     dst.mInstanceIdent.mPreinstalled = src.get<ToInt(StorageStateInstanceInfoColumns::ePreinstalled)>();
     dst.mStorageQuota                = src.get<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>();
     dst.mStateQuota                  = src.get<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>();
-    AOS_ERROR_CHECK_AND_THROW(
-        dst.mInstanceIdent.mType.FromString(src.get<ToInt(StorageStateInstanceInfoColumns::eType)>().c_str()),
-        "failed to parse instance type");
-    AOS_ERROR_CHECK_AND_THROW(dst.mStateChecksum.Assign(Array<uint8_t>(blob.rawContent(), blob.size())));
+    auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(StorageStateInstanceInfoColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
+
+    err = dst.mStateChecksum.Assign(Array<uint8_t>(blob.rawContent(), blob.size()));
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign state checksum");
 }
 
 void Database::FromAos(const networkmanager::Network& src, NetworkManagerNetworkRow& dst)
@@ -1136,9 +1151,10 @@ void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Insta
     dst.mInstanceIdent.mItemID    = src.get<ToInt(NetworkManagerInstanceColumns::eItemID)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(NetworkManagerInstanceColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(NetworkManagerInstanceColumns::eInstance)>();
-    AOS_ERROR_CHECK_AND_THROW(
-        dst.mInstanceIdent.mType.FromString(src.get<ToInt(NetworkManagerInstanceColumns::eType)>().c_str()),
-        "failed to parse instance type");
+
+    auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(NetworkManagerInstanceColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
+
     dst.mInstanceIdent.mPreinstalled = src.get<ToInt(NetworkManagerInstanceColumns::ePreinstalled)>();
     dst.mNetworkID                   = src.get<ToInt(NetworkManagerInstanceColumns::eNetworkID)>().c_str();
     dst.mNodeID                      = src.get<ToInt(NetworkManagerInstanceColumns::eNodeID)>().c_str();
@@ -1176,9 +1192,10 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     dst.mInstanceIdent.mItemID    = src.get<ToInt(LauncherInstanceInfoColumns::eItemID)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(LauncherInstanceInfoColumns::eInstance)>();
-    AOS_ERROR_CHECK_AND_THROW(
-        dst.mInstanceIdent.mType.FromString(src.get<ToInt(LauncherInstanceInfoColumns::eType)>().c_str()),
-        "failed to parse instance type");
+
+    auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(LauncherInstanceInfoColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
+
     dst.mInstanceIdent.mPreinstalled = src.get<ToInt(LauncherInstanceInfoColumns::ePreinstalled)>();
     dst.mManifestDigest              = src.get<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>().c_str();
     dst.mNodeID                      = src.get<ToInt(LauncherInstanceInfoColumns::eNodeID)>().c_str();
@@ -1191,14 +1208,18 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
 
     const auto& stateStr = src.get<ToInt(LauncherInstanceInfoColumns::eState)>();
-    AOS_ERROR_CHECK_AND_THROW(dst.mState.FromString(stateStr.c_str()), "failed to parse instance state");
+
+    err = dst.mState.FromString(stateStr.c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance state");
 
     dst.mIsUnitSubject = src.get<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>();
     dst.mVersion       = src.get<ToInt(LauncherInstanceInfoColumns::eVersion)>().c_str();
     dst.mOwnerID       = src.get<ToInt(LauncherInstanceInfoColumns::eOwnerID)>().c_str();
 
     const auto& subjectTypeStr = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectType)>();
-    AOS_ERROR_CHECK_AND_THROW(dst.mSubjectType.FromString(subjectTypeStr.c_str()), "failed to parse subject type");
+
+    err = dst.mSubjectType.FromString(subjectTypeStr.c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse subject type");
 
     DeserializeLabels(src.get<ToInt(LauncherInstanceInfoColumns::eLabels)>(), dst.mLabels);
     dst.mPriority = src.get<ToInt(LauncherInstanceInfoColumns::ePriority)>();
@@ -1261,13 +1282,17 @@ void Database::ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo&
     const auto& itemID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eItemID)>();
     if (!itemID.empty()) {
         dst.mItemID.EmplaceValue();
-        AOS_ERROR_CHECK_AND_THROW(dst.mItemID.GetValue().Assign(itemID.c_str()));
+
+        auto err = dst.mItemID.GetValue().Assign(itemID.c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign item ID");
     }
 
     const auto& subjectID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eSubjectID)>();
     if (!subjectID.empty()) {
         dst.mSubjectID.EmplaceValue();
-        AOS_ERROR_CHECK_AND_THROW(dst.mSubjectID.GetValue().Assign(subjectID.c_str()));
+
+        auto err = dst.mSubjectID.GetValue().Assign(subjectID.c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign subject ID");
     }
 
     const auto& instanceStr = src.get<ToInt(LauncherOverrideEnvVarsColumns::eInstance)>();
