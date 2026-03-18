@@ -50,7 +50,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
                         {
                             "name": "var2",
                             "value": "val2",
-                            "ttl": "2024-01-31T12:00:00Z"
+                            "ttl": "2024-01-31T12:00:00.000000Z"
                         }
                     ]
                 },
@@ -88,7 +88,7 @@ TEST_F(CloudProtocolEnvVars, OverrideEnvVarsRequest)
 
     EXPECT_STREQ(envVars->mItems[0].mVariables[1].mName.CStr(), "var2");
     EXPECT_STREQ(envVars->mItems[0].mVariables[1].mValue.CStr(), "val2");
-    EXPECT_STREQ(envVars->mItems[0].mVariables[1].mTTL->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00Z");
+    EXPECT_STREQ(envVars->mItems[0].mVariables[1].mTTL->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00.000000Z");
 
     ASSERT_EQ(envVars->mItems[1].mVariables.Size(), 0);
     EXPECT_STREQ(envVars->mItems[1].mItemID->CStr(), "zeroVars");

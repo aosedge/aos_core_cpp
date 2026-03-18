@@ -423,7 +423,7 @@ Error OCISpec::LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConf
         utils::CaseInsensitiveObjectWrapper wrapper(object);
 
         if (const auto created = wrapper.GetOptionalValue<std::string>("created")) {
-            Tie(itemConfig.mCreated, err) = utils::FromUTCString(created->c_str());
+            Tie(itemConfig.mCreated, err) = Time::UTC(created->c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
         }
 
@@ -505,10 +505,10 @@ Error OCISpec::SaveItemConfig(const String& path, const aos::oci::ItemConfig& it
     try {
         auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-        auto [created, err] = utils::ToUTCString(itemConfig.mCreated);
+        auto [created, err] = itemConfig.mCreated.ToUTCString();
         AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
 
-        object->set("created", created);
+        object->set("created", created.CStr());
         object->set("author", itemConfig.mAuthor.CStr());
         object->set("skipResourceLimits", itemConfig.mSkipResourceLimits);
 

@@ -173,37 +173,4 @@ RetWithError<Duration> ParseDuration(const std::string& durationStr)
     return {{}, Error(ErrorEnum::eInvalidArgument, "invalid duration string")};
 }
 
-RetWithError<Time> FromUTCString(const std::string& utcTimeStr)
-{
-    struct tm timeInfo = {};
-
-    if (!strptime(utcTimeStr.c_str(), "%Y-%m-%dT%H:%M:%SZ", &timeInfo)) {
-        return {Time(), ErrorEnum::eInvalidArgument};
-    }
-
-    return {Time::Unix(mktime(&timeInfo)), ErrorEnum::eNone};
-}
-
-RetWithError<std::string> ToUTCString(const Time& time)
-{
-    tm   timeInfo {};
-    auto timespec = time.UnixTime();
-
-    timespec.tv_sec = timegm(localtime_r(&timespec.tv_sec, &timeInfo));
-
-    if (!gmtime_r(&timespec.tv_sec, &timeInfo)) {
-        return {"", ErrorEnum::eFailed};
-    }
-
-    std::array<char, cTimeStrLen> buffer;
-
-    auto size = strftime(buffer.begin(), buffer.size(), "%Y-%m-%dT%H:%M:%SZ", &timeInfo);
-
-    if (size == 0) {
-        return {"", ErrorEnum::eFailed};
-    }
-
-    return {{buffer.begin(), buffer.begin() + size}, ErrorEnum::eNone};
-}
-
 } // namespace aos::common::utils

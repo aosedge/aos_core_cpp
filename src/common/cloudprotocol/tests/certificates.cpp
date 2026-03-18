@@ -47,7 +47,7 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
                     "codename": "node2"
                 },
                 "serial": "serial_2",
-                "validTill": "2024-01-31T12:00:00Z"
+                "validTill": "2024-01-31T12:00:00.000000Z"
             },
             {
                 "type": "cm",
@@ -101,7 +101,8 @@ TEST_F(CloudProtocolCertificates, RenewCertsNotification)
     EXPECT_EQ(parsedNotification->mCertificates[1].mNodeID, "node2");
     EXPECT_EQ(parsedNotification->mCertificates[1].mSerial, "serial_2");
     ASSERT_TRUE(parsedNotification->mCertificates[1].mValidTill.HasValue());
-    EXPECT_STREQ(parsedNotification->mCertificates[1].mValidTill->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00Z");
+    EXPECT_STREQ(
+        parsedNotification->mCertificates[1].mValidTill->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00.000000Z");
 
     EXPECT_EQ(parsedNotification->mCertificates[2].mType, CertTypeEnum::eCM);
     EXPECT_EQ(parsedNotification->mCertificates[2].mNodeID, "node3");

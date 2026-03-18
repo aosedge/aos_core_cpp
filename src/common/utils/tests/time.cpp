@@ -22,12 +22,6 @@ namespace aos::common::utils {
 
 namespace {
 
-void SetTimezone(const std::string& timezone)
-{
-    setenv("TZ", timezone.c_str(), 1);
-    tzset();
-}
-
 class ExpectedDateTime {
 public:
     ExpectedDateTime& SetYear(int year)
@@ -184,39 +178,6 @@ TEST_F(TimeTest, ParseDurationFromInvalidString)
     for (const auto& test : tests) {
         auto [duration, error] = ParseDuration(test);
         ASSERT_FALSE(error.IsNone());
-    }
-}
-
-TEST_F(TimeTest, FromToUTCString)
-{
-    tests::utils::InitLog();
-
-    struct Test {
-        std::string      input;
-        std::string      expectedUTCString;
-        std::string      timezone;
-        ExpectedDateTime expectedLocalTime;
-    };
-
-    std::vector<Test> tests = {
-        {"2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z", "GMT+1",
-            ExpectedDateTime().SetYear(2024).SetDay(1).SetMonth(1).SetHour(1)},
-        {"2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z", "GMT-1",
-            ExpectedDateTime().SetYear(2023).SetDay(31).SetMonth(12).SetHour(23).SetMinute(0)},
-    };
-
-    for (const auto& test : tests) {
-        SetTimezone(test.timezone);
-
-        auto [time, fromError] = FromUTCString(test.input);
-        ASSERT_TRUE(fromError.IsNone());
-
-        auto [timeStr, toError] = ToUTCString(time);
-
-        ASSERT_TRUE(toError.IsNone());
-        ASSERT_EQ(timeStr, test.expectedUTCString);
-
-        ASSERT_EQ(test.expectedLocalTime, time);
     }
 }
 
