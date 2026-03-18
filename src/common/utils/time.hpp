@@ -29,22 +29,6 @@ namespace aos::common::utils {
  */
 RetWithError<Duration> ParseDuration(const std::string& duration);
 
-/**
- * Creates time object from a UTC formatted string.
- *
- * @param utcTimeStr UTC formatted time string.
- * @return RetWithError<Time>.
- */
-RetWithError<Time> FromUTCString(const std::string& utcTimeStr);
-
-/**
- * Converts time into a UTC string.
- *
- * @param time time object.
- * @return RetWithError<std::string>.
- */
-RetWithError<std::string> ToUTCString(const Time& time);
-
 } // namespace aos::common::utils
 
 #endif

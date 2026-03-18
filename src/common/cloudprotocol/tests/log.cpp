@@ -35,8 +35,8 @@ TEST_F(CloudProtocolLog, RequestLog)
         "correlationId": "logID",
         "logType": "systemLog",
         "filter": {
-            "from": "2024-01-01T12:00:00Z",
-            "till": "2024-01-31T12:00:00Z",
+            "from": "2024-01-01T12:00:00.000000Z",
+            "till": "2024-01-31T12:00:00.000000Z",
             "nodeIds": [
                 {
                     "codename": "node1"
@@ -67,8 +67,8 @@ TEST_F(CloudProtocolLog, RequestLog)
 
     EXPECT_EQ(requestLog->mCorrelationID, "logID");
     EXPECT_EQ(requestLog->mLogType.GetValue(), LogTypeEnum::eSystemLog);
-    EXPECT_STREQ(requestLog->mFilter.mFrom->ToUTCString().mValue.CStr(), "2024-01-01T12:00:00Z");
-    EXPECT_STREQ(requestLog->mFilter.mTill->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00Z");
+    EXPECT_STREQ(requestLog->mFilter.mFrom->ToUTCString().mValue.CStr(), "2024-01-01T12:00:00.000000Z");
+    EXPECT_STREQ(requestLog->mFilter.mTill->ToUTCString().mValue.CStr(), "2024-01-31T12:00:00.000000Z");
 
     ASSERT_EQ(requestLog->mFilter.mNodes.Size(), 2);
     EXPECT_STREQ(requestLog->mFilter.mNodes[0].CStr(), "node1");
