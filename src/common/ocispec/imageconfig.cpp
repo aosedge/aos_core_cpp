@@ -135,7 +135,7 @@ Error OCISpec::LoadImageConfig(const String& path, aos::oci::ImageConfig& imageC
         PlatformFromJSONObject(wrapper, imageConfig);
 
         if (const auto created = wrapper.GetOptionalValue<std::string>("created")) {
-            Tie(imageConfig.mCreated, err) = utils::FromUTCString(created->c_str());
+            Tie(imageConfig.mCreated, err) = Time::UTC(created->c_str());
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
         }
 
@@ -159,10 +159,10 @@ Error OCISpec::SaveImageConfig(const String& path, const aos::oci::ImageConfig& 
         auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
         if (!imageConfig.mCreated.IsZero()) {
-            auto [created, err] = utils::ToUTCString(imageConfig.mCreated);
+            auto [createdStr, err] = imageConfig.mCreated.ToUTCString();
             AOS_ERROR_CHECK_AND_THROW(err, "created time parsing error");
 
-            object->set("created", created);
+            object->set("created", createdStr.CStr());
         }
 
         if (!imageConfig.mAuthor.IsEmpty()) {

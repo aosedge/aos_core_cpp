@@ -82,20 +82,20 @@ TEST_F(CloudProtocolMonitoring, Monitoring)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationId":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","state":"unprovisioned","isConnected":true}],)"
-                           R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
+                           R"({"timestamp":"2024-01-31T12:00:00.000000Z","state":"provisioned","isConnected":true},)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","state":"unprovisioned","isConnected":true}],)"
+                           R"("items":[{"timestamp":"2024-01-31T12:00:00.000000Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","ram":2048,"cpu":11,"download":1000,)"
                            R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
+                           R"({"timestamp":"2024-01-31T12:00:00.000000Z","state":"error","isConnected":false}],)"
                            R"("items":[]}],"instances":[{"item":{"id":"instance1"},"subject":{"id":"subject1"},)"
                            R"("instance":0,"node":{"codename":"node1"},"itemStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"active"},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","state":"failed"}],)"
-                           R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":4096,"cpu":20,"download":2000,)"
+                           R"({"timestamp":"2024-01-31T12:00:00.000000Z","state":"active"},)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","state":"failed"}],)"
+                           R"("items":[{"timestamp":"2024-01-31T12:00:00.000000Z","ram":4096,"cpu":20,"download":2000,)"
                            R"("upload":1000,"partitions":[{"name":"partition1","usedSize":200000}]},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","ram":4096,"cpu":21,"download":2000,)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","ram":4096,"cpu":21,"download":2000,)"
                            R"("upload":1000,"partitions":[{"name":"partition1","usedSize":210000}]}]}]})";
 
     auto monitoring            = std::make_unique<Monitoring>();
@@ -144,13 +144,13 @@ TEST_F(CloudProtocolMonitoring, MonitoringNoInstances)
 {
     constexpr auto cJSON = R"({"messageType":"monitoringData","correlationId":"id",)"
                            R"("nodes":[{"node":{"codename":"node1"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"provisioned","isConnected":true},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","state":"provisioned","isConnected":false}],)"
-                           R"("items":[{"timestamp":"2024-01-31T12:00:00Z","ram":2048,"cpu":10,"download":1000,)"
+                           R"({"timestamp":"2024-01-31T12:00:00.000000Z","state":"provisioned","isConnected":true},)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","state":"provisioned","isConnected":false}],)"
+                           R"("items":[{"timestamp":"2024-01-31T12:00:00.000000Z","ram":2048,"cpu":10,"download":1000,)"
                            R"("upload":500,"partitions":[{"name":"partition1","usedSize":100000}]},)"
-                           R"({"timestamp":"2024-01-31T12:01:00Z","ram":2048,"cpu":11,"download":1000,)"
+                           R"({"timestamp":"2024-01-31T12:01:00.000000Z","ram":2048,"cpu":11,"download":1000,)"
                            R"("upload":500}]},{"node":{"codename":"node2"},"nodeStates":[)"
-                           R"({"timestamp":"2024-01-31T12:00:00Z","state":"error","isConnected":false}],)"
+                           R"({"timestamp":"2024-01-31T12:00:00.000000Z","state":"error","isConnected":false}],)"
                            R"("items":[]}]})";
 
     auto monitoring            = std::make_unique<Monitoring>();
