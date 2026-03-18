@@ -584,10 +584,9 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
     ASSERT_TRUE(mDB.AddInstance(instance1v2).IsNone());
 
     // Verify instances
-    StaticArray<launcher::InstanceInfo, 4> instances;
-    ASSERT_TRUE(mDB.GetActiveInstances(instances).IsNone());
-
-    EXPECT_THAT(ToVector(instances), UnorderedElementsAre(instance1, instance2, instance3, instance1v2));
+    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
+    ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2, instance3, instance1v2));
 }
 
 TEST_F(CMDatabaseTest, LauncherUpdateInstance)
@@ -623,45 +622,10 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
         UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.0.0");
     ASSERT_FALSE(mDB.UpdateInstance(nonExistentInstance).IsNone());
 
-    // Verify updated instance
-    launcher::InstanceInfo retrievedInstance;
-    ASSERT_TRUE(mDB.GetInstance(instance1.mInstanceIdent, retrievedInstance).IsNone());
-
-    EXPECT_EQ(retrievedInstance, instance1);
-
-    // Verify second instance was not affected
-    ASSERT_TRUE(mDB.GetInstance(instance2.mInstanceIdent, retrievedInstance).IsNone());
-
-    EXPECT_EQ(retrievedInstance, instance2);
-}
-
-TEST_F(CMDatabaseTest, LauncherGetInstance)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
-        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "1.0.0", "owner1",
-        SubjectTypeEnum::eUser, 25, {"label1", "label2"});
-    auto instance2
-        = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2", UpdateItemTypeEnum::eService,
-            launcher::InstanceStateEnum::eCached, true, "2.0.0", "owner2", SubjectTypeEnum::eUser, 150, {"label3"});
-
-    // Add instances
-    ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
-    ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
-
-    // Get existing instances
-    launcher::InstanceInfo retrievedInstance;
-
-    ASSERT_TRUE(mDB.GetInstance(instance1.mInstanceIdent, retrievedInstance).IsNone());
-    EXPECT_EQ(retrievedInstance, instance1);
-
-    ASSERT_TRUE(mDB.GetInstance(instance2.mInstanceIdent, retrievedInstance).IsNone());
-    EXPECT_EQ(retrievedInstance, instance2);
-
-    // Get non-existent instance
-    auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
-    ASSERT_FALSE(mDB.GetInstance(nonExistentIdent, retrievedInstance).IsNone());
+    // Verify updated instance and second instance unchanged
+    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
+    ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2));
 }
 
 TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
@@ -669,9 +633,9 @@ TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
     // Get instances when database is empty
-    StaticArray<launcher::InstanceInfo, 3> emptyInstances;
-    ASSERT_TRUE(mDB.GetActiveInstances(emptyInstances).IsNone());
-    EXPECT_EQ(emptyInstances.Size(), 0);
+    auto emptyInstances = std::make_unique<StaticArray<launcher::InstanceInfo, 3>>();
+    ASSERT_TRUE(mDB.LoadActiveInstances(*emptyInstances).IsNone());
+    EXPECT_EQ(emptyInstances->Size(), 0);
 
     auto instance1
         = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1", UpdateItemTypeEnum::eService,
@@ -685,10 +649,9 @@ TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Get all instances
-    StaticArray<launcher::InstanceInfo, 2> instances;
-    ASSERT_TRUE(mDB.GetActiveInstances(instances).IsNone());
-
-    EXPECT_THAT(ToVector(instances), UnorderedElementsAre(instance1, instance2));
+    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 2>>();
+    ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2));
 }
 
 TEST_F(CMDatabaseTest, LauncherRemoveInstance)
@@ -733,7 +696,7 @@ TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVarsReplacesExisting)
     ASSERT_TRUE(mDB.SaveOverrideEnvVars(request2).IsNone());
 
     // Verify only second override env vars are saved
-    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    ASSERT_TRUE(mDB.LoadOverrideEnvVars(retrieved).IsNone());
     EXPECT_EQ(request2, retrieved);
 }
 
@@ -748,7 +711,7 @@ TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVarsEmpty)
     ASSERT_TRUE(mDB.SaveOverrideEnvVars(empty).IsNone());
 
     // Verify it's empty
-    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    ASSERT_TRUE(mDB.LoadOverrideEnvVars(retrieved).IsNone());
     EXPECT_EQ(retrieved.mItems.Size(), 0);
 }
 
@@ -781,7 +744,7 @@ TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVars)
     ASSERT_TRUE(mDB.SaveOverrideEnvVars(request).IsNone());
 
     // Verify all items are saved correctly
-    ASSERT_TRUE(mDB.GetOverrideEnvVars(retrieved).IsNone());
+    ASSERT_TRUE(mDB.LoadOverrideEnvVars(retrieved).IsNone());
     EXPECT_EQ(request, retrieved);
 }
 
