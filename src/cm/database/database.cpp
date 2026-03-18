@@ -735,6 +735,57 @@ Error Database::LoadOverrideEnvVars(OverrideEnvVarsRequest& envVars) const
     return ErrorEnum::eNone;
 }
 
+Error Database::LoadRunRequests(Array<launcher::RunInstanceRequest>& requests) const
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        std::vector<LauncherRunRequestRow> rows;
+
+        *mSession << "SELECT itemID, type, version, ownerID, subjectID, subjectType, isUnitSubject, priority, "
+                     "numInstances, labels FROM launcher_run_requests ORDER BY rowid;",
+            into(rows), now;
+
+        requests.Clear();
+        auto request = std::make_unique<launcher::RunInstanceRequest>();
+
+        for (const auto& row : rows) {
+            ToAos(row, *request);
+            auto err = requests.PushBack(*request);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add run request");
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::SaveRunRequests(const Array<launcher::RunInstanceRequest>& requests)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        Poco::Data::Transaction transaction(*mSession);
+
+        *mSession << "DELETE FROM launcher_run_requests;", now;
+
+        for (const auto& request : requests) {
+            LauncherRunRequestRow row;
+
+            FromAos(request, row);
+            *mSession << "INSERT INTO launcher_run_requests (itemID, type, version, ownerID, subjectID, subjectType, "
+                         "isUnitSubject, priority, numInstances, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                bind(row), now;
+        }
+        transaction.commit();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * imagemanager::StorageItf implementation
  **********************************************************************************************************************/
@@ -1041,6 +1092,20 @@ void Database::CreateTables()
                  "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled,version)"
                  ");",
         now;
+
+    *mSession << "CREATE TABLE IF NOT EXISTS launcher_run_requests ("
+                 "itemID TEXT,"
+                 "type TEXT,"
+                 "version TEXT,"
+                 "ownerID TEXT,"
+                 "subjectID TEXT,"
+                 "subjectType TEXT,"
+                 "isUnitSubject INTEGER,"
+                 "priority INTEGER,"
+                 "numInstances INTEGER,"
+                 "labels TEXT"
+                 ");",
+        now;
 }
 
 int Database::GetVersion() const
@@ -1276,6 +1341,39 @@ void Database::ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo&
 
     const auto& variablesJson = src.get<ToInt(LauncherOverrideEnvVarsColumns::eVariables)>();
     DeserializeEnvVars(variablesJson, dst.mVariables);
+}
+
+void Database::FromAos(const launcher::RunInstanceRequest& src, LauncherRunRequestRow& dst)
+{
+    dst.set<ToInt(LauncherRunRequestColumns::eItemID)>(src.mItemID.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eType)>(src.mUpdateItemType.ToString().CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eOwnerID)>(src.mOwnerID.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eSubjectID)>(src.mSubjectInfo.mSubjectID.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eSubjectType)>(src.mSubjectInfo.mSubjectType.ToString().CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eIsUnitSubject)>(src.mSubjectInfo.mIsUnitSubject);
+    dst.set<ToInt(LauncherRunRequestColumns::ePriority)>(src.mPriority);
+    dst.set<ToInt(LauncherRunRequestColumns::eNumInstances)>(src.mNumInstances);
+    dst.set<ToInt(LauncherRunRequestColumns::eLabels)>(SerializeLabels(src.mLabels));
+}
+
+void Database::ToAos(const LauncherRunRequestRow& src, launcher::RunInstanceRequest& dst)
+{
+    dst.mItemID       = src.get<ToInt(LauncherRunRequestColumns::eItemID)>().c_str();
+    dst.mVersion      = src.get<ToInt(LauncherRunRequestColumns::eVersion)>().c_str();
+    dst.mOwnerID      = src.get<ToInt(LauncherRunRequestColumns::eOwnerID)>().c_str();
+    dst.mPriority     = src.get<ToInt(LauncherRunRequestColumns::ePriority)>();
+    dst.mNumInstances = src.get<ToInt(LauncherRunRequestColumns::eNumInstances)>();
+
+    auto err = dst.mUpdateItemType.FromString(src.get<ToInt(LauncherRunRequestColumns::eType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse update item type");
+
+    dst.mSubjectInfo.mSubjectID = src.get<ToInt(LauncherRunRequestColumns::eSubjectID)>().c_str();
+    err = dst.mSubjectInfo.mSubjectType.FromString(src.get<ToInt(LauncherRunRequestColumns::eSubjectType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse subject type");
+    dst.mSubjectInfo.mIsUnitSubject = src.get<ToInt(LauncherRunRequestColumns::eIsUnitSubject)>();
+
+    DeserializeLabels(src.get<ToInt(LauncherRunRequestColumns::eLabels)>(), dst.mLabels);
 }
 
 } // namespace aos::cm::database
