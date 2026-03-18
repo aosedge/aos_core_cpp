@@ -426,13 +426,6 @@ TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
     envVar2.mValue = "value2";
     instanceInfo.mEnvVars.PushBack(envVar2);
 
-    // Add network parameters
-    instanceInfo.mNetworkParameters.EmplaceValue();
-    instanceInfo.mNetworkParameters.GetValue().mNetworkID = "network-1";
-    instanceInfo.mNetworkParameters.GetValue().mSubnet    = "192.168.1.0/24";
-    instanceInfo.mNetworkParameters.GetValue().mIP        = "192.168.1.10";
-    instanceInfo.mNetworkParameters.GetValue().mDNSServers.EmplaceBack("8.8.8.8");
-
     // Add monitoring params
     instanceInfo.mMonitoringParams.EmplaceValue();
     instanceInfo.mMonitoringParams.GetValue().mAlertRules.EmplaceValue();
