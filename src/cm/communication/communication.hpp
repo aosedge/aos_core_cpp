@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <fstream>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -283,6 +284,7 @@ private:
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);
     Error SendInstallUnitCertsConfirmation(const InstallUnitCertsConfirmation& confirmation);
     void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
+    void  WriteToMessageLog(const std::string& direction, const std::string& message);
 
     const config::Config*                                          mConfig {};
     iamclient::CurrentNodeInfoProviderItf*                         mCurrentNodeInfoProvider {};
@@ -322,6 +324,7 @@ private:
     std::map<std::string, Message>                mSentMessages;
     std::map<std::string, OnResponseReceivedFunc> mResponseHandlers;
     std::vector<std::thread>                      mThreadPool;
+    std::ofstream                                 mMessageLogFile;
 };
 
 } // namespace aos::cm::communication

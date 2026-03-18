@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <filesystem>
 #include <future>
 #include <variant>
 
@@ -243,6 +244,16 @@ Error Communication::Start()
         mMainNodeID = nodeInfo->mNodeID;
         mIsRunning  = true;
 
+        if (!mConfig->mCloudMessageLog.empty()) {
+            std::filesystem::create_directories(std::filesystem::path(mConfig->mCloudMessageLog).parent_path());
+
+            mMessageLogFile.open(mConfig->mCloudMessageLog, std::ios::app);
+            if (!mMessageLogFile.is_open()) {
+                LOG_ERR() << "Failed to open cloud message log file"
+                          << Log::Field("file", mConfig->mCloudMessageLog.c_str());
+            }
+        }
+
         mThreadPool.emplace_back(&Communication::HandleConnection, this);
         mThreadPool.emplace_back(&Communication::HandleSendQueue, this);
         mThreadPool.emplace_back(&Communication::HandleUnacknowledgedMessages, this);
@@ -286,6 +297,10 @@ Error Communication::Stop()
 
         mClientSession.reset();
         mWebSocket.reset();
+
+        if (mMessageLogFile.is_open()) {
+            mMessageLogFile.close();
+        }
 
         LOG_DBG() << "Communication stopped";
     }
@@ -802,6 +817,8 @@ Error Communication::ReceiveFrames()
 
                 LOG_DBG() << "Received message" << Log::Field("message", message.c_str());
 
+                WriteToMessageLog("RX", message);
+
                 mReceiveQueue.emplace(std::move(message));
                 mCondVar.notify_all();
             }
@@ -873,6 +890,8 @@ void Communication::HandleSendQueue()
 
         try {
             const auto data = it->Payload();
+
+            WriteToMessageLog("TX", data);
 
             const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_BINARY);
 
@@ -1457,6 +1476,15 @@ void Communication::OnResponseReceived(const ResponseInfo& info, ResponseMessage
     if (callback) {
         callback(std::move(message));
     }
+}
+
+void Communication::WriteToMessageLog(const std::string& direction, const std::string& message)
+{
+    if (!mMessageLogFile.is_open()) {
+        return;
+    }
+
+    mMessageLogFile << direction << ": " << message << std::endl;
 }
 
 } // namespace aos::cm::communication
