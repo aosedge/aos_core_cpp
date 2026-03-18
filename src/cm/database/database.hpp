@@ -403,6 +403,21 @@ private:
     enum class LauncherOverrideEnvVarsColumns : int { eItemID = 0, eSubjectID, eInstance, eVariables };
     using LauncherOverrideEnvVarsRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
 
+    enum class LauncherRunRequestColumns : int {
+        eItemID = 0,
+        eType,
+        eVersion,
+        eOwnerID,
+        eSubjectID,
+        eSubjectType,
+        eIsUnitSubject,
+        ePriority,
+        eNumInstances,
+        eLabels
+    };
+    using LauncherRunRequestRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string,
+        std::string, bool, size_t, size_t, std::string>;
+
     // make virtual for unit tests
     virtual int GetVersion() const;
     void        CreateTables();
@@ -427,6 +442,9 @@ private:
 
     static void FromAos(const EnvVarsInstanceInfo& src, LauncherOverrideEnvVarsRow& dst);
     static void ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo& dst);
+
+    static void FromAos(const launcher::RunInstanceRequest& src, LauncherRunRequestRow& dst);
+    static void ToAos(const LauncherRunRequestRow& src, launcher::RunInstanceRequest& dst);
 
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;
