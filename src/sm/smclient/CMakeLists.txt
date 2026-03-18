@@ -16,7 +16,7 @@ set(SOURCES smclient.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::sm::smclient aos::common::pbconvert aos::common::iamclient)
+set(LIBRARIES aos::core::sm::smclient aos::common::pbconvert aos::common::iamclient aos::core::common::networkmanager)
 
 # ######################################################################################################################
 # Target
