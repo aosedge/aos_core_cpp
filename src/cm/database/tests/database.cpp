@@ -195,6 +195,30 @@ EnvVarsInstanceInfo CreateEnvVarsInstanceInfo(const char* itemID = nullptr, cons
     return item;
 }
 
+launcher::RunInstanceRequest CreateRunInstanceRequest(const char* itemID, UpdateItemType itemType, const char* version,
+    const char* ownerID, const char* subjectID, SubjectTypeEnum subjectType, bool isUnitSubject, size_t priority,
+    size_t numInstances, std::vector<const char*> labels = {})
+{
+    launcher::RunInstanceRequest request;
+
+    AOS_ERROR_CHECK_AND_THROW(request.mItemID.Assign(itemID), "can't assign itemID");
+    request.mUpdateItemType = itemType;
+    AOS_ERROR_CHECK_AND_THROW(request.mVersion.Assign(version), "can't assign version");
+    AOS_ERROR_CHECK_AND_THROW(request.mOwnerID.Assign(ownerID), "can't assign ownerID");
+    AOS_ERROR_CHECK_AND_THROW(request.mSubjectInfo.mSubjectID.Assign(subjectID), "can't assign subjectID");
+    request.mSubjectInfo.mSubjectType   = subjectType;
+    request.mSubjectInfo.mIsUnitSubject = isUnitSubject;
+    request.mPriority                   = priority;
+    request.mNumInstances               = numInstances;
+    request.mLabels.Clear();
+
+    for (const char* label : labels) {
+        AOS_ERROR_CHECK_AND_THROW(request.mLabels.EmplaceBack(), "can't add label")
+        AOS_ERROR_CHECK_AND_THROW(request.mLabels.Back().Assign(label), "can't assign label");
+    }
+    return request;
+}
+
 std::string GetMigrationSourceDir()
 {
     std::filesystem::path curFilePath(__FILE__);
@@ -746,6 +770,40 @@ TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVars)
     // Verify all items are saved correctly
     ASSERT_TRUE(mDB.LoadOverrideEnvVars(retrieved).IsNone());
     EXPECT_EQ(request, retrieved);
+}
+
+TEST_F(CMDatabaseTest, LauncherSaveRunRequestsEmpty)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    StaticArray<launcher::RunInstanceRequest, 4> emptyRequests;
+    ASSERT_TRUE(mDB.SaveRunRequests(emptyRequests).IsNone());
+
+    auto loaded = std::make_unique<StaticArray<launcher::RunInstanceRequest, 4>>();
+    ASSERT_TRUE(mDB.LoadRunRequests(*loaded).IsNone());
+    EXPECT_TRUE(loaded->IsEmpty());
+}
+
+TEST_F(CMDatabaseTest, LauncherSaveRunRequests)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto request1 = CreateRunInstanceRequest("service1", UpdateItemTypeEnum::eService, "1.0.0", "owner1", "subject1",
+        SubjectTypeEnum::eUser, true, 10, 2, {"label1", "label2"});
+    auto request2 = CreateRunInstanceRequest("service2", UpdateItemTypeEnum::eComponent, "2.0.0", "owner2", "subject2",
+        SubjectTypeEnum::eGroup, false, 20, 1, {"label3"});
+
+    auto requestsToSave = std::make_unique<StaticArray<launcher::RunInstanceRequest, 4>>();
+
+    AOS_ERROR_CHECK_AND_THROW(requestsToSave->PushBack(request1), "can't add request");
+    AOS_ERROR_CHECK_AND_THROW(requestsToSave->PushBack(request2), "can't add request");
+
+    ASSERT_TRUE(mDB.SaveRunRequests(*requestsToSave).IsNone());
+
+    auto loaded = std::make_unique<StaticArray<launcher::RunInstanceRequest, 4>>();
+
+    ASSERT_TRUE(mDB.LoadRunRequests(*loaded).IsNone());
+    EXPECT_THAT(ToVector(*loaded), UnorderedElementsAre(request1, request2));
 }
 
 /***********************************************************************************************************************
