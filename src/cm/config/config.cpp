@@ -152,6 +152,7 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         config.mServiceDiscoveryURL         = object.GetValue<std::string>("serviceDiscoveryUrl");
         config.mOverrideServiceDiscoveryURL = object.GetValue<std::string>("overrideServiceDiscoveryUrl", "");
+        config.mCloudMessageLog             = object.GetValue<std::string>("cloudMessageLog", "");
         config.mIAMProtectedServerURL       = object.GetValue<std::string>("iamProtectedServerUrl");
         config.mIAMPublicServerURL          = object.GetValue<std::string>("iamPublicServerUrl");
         config.mFileServerURL               = object.GetValue<std::string>("fileServerUrl");

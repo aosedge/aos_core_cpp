@@ -48,6 +48,7 @@ struct Config {
     std::string               mCertStorage;
     std::string               mServiceDiscoveryURL;
     std::string               mOverrideServiceDiscoveryURL;
+    std::string               mCloudMessageLog;
     std::string               mIAMProtectedServerURL;
     std::string               mIAMPublicServerURL;
     std::string               mFileServerURL;
