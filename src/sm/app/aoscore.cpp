@@ -85,7 +85,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CNI");
 
     err = mNetworkManager.Init(mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager,
-        mCryptoProvider, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str());
+        mCryptoProvider, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str(), mSMClient, nodeInfo->mNodeID.CStr());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
 
     // Initialize node monitoring provider
@@ -158,8 +158,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize SM client
 
     err = mSMClient.Init(mConfig.mSMClientConfig, nodeInfo->mNodeID.CStr(), mTLSCredentials, mIAMClient, mLauncher,
-        mResourceManager, mNodeConfigHandler, mLauncher, mLogProvider, mNetworkManager, mMonitoring, mLauncher,
-        mJSONProvider);
+        mResourceManager, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mLauncher, mJSONProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
     // // Initialize journalalerts
