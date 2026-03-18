@@ -634,34 +634,7 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetInstance(const InstanceIdent& instanceID, launcher::InstanceInfo& info) const
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        std::vector<LauncherInstanceInfoRow> rows;
-
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, manifestDigest, nodeID, prevNodeID, "
-                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType, labels, "
-                     "priority "
-                     "FROM launcher_instances WHERE itemID = ? AND subjectID = ? AND instance = ? "
-                     "AND type = ? AND preinstalled = ?;",
-            bind(instanceID.mItemID.CStr()), bind(instanceID.mSubjectID.CStr()), bind(instanceID.mInstance),
-            bind(instanceID.mType.ToString().CStr()), bind(instanceID.mPreinstalled), into(rows), now;
-
-        if (rows.size() != 1) {
-            return ErrorEnum::eNotFound;
-        }
-
-        ToAos(rows[0], info);
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetActiveInstances(Array<launcher::InstanceInfo>& instances) const
+Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) const
 {
     std::lock_guard lock {mMutex};
 
@@ -736,7 +709,7 @@ Error Database::SaveOverrideEnvVars(const OverrideEnvVarsRequest& envVars)
     return ErrorEnum::eNone;
 }
 
-Error Database::GetOverrideEnvVars(OverrideEnvVarsRequest& envVars)
+Error Database::LoadOverrideEnvVars(OverrideEnvVarsRequest& envVars) const
 {
     std::lock_guard lock {mMutex};
 
