@@ -164,7 +164,8 @@ private:
     Error  PrepareStateStorage();
     Error  PrepareRootFS(
          const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
-    Error SetupNetwork(const std::string& runtimeDir, const oci::ItemConfig& itemConfig);
+    Error SetupNetwork(
+        const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::ItemConfig& itemConfig);
     Error AddNetworkHostsFromResource(const std::string& resource, std::vector<Host>& hosts);
     Error StartMonitoring();
 
