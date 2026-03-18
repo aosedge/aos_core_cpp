@@ -113,10 +113,8 @@ Error Instance::Start()
         return err;
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (err = SetupNetwork(runtimeDir, *itemConfig); !err.IsNone()) {
-            return err;
-        }
+    if (err = SetupNetwork(runtimeDir, *imageConfig, *itemConfig); !err.IsNone()) {
+        return err;
     }
 
     if (mInstanceInfo.mMonitoringParams.HasValue()) {
@@ -167,11 +165,16 @@ Error Instance::Stop()
         }
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (auto err = mNetworkManager.RemoveInstanceFromNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
-            !err.IsNone() && stopErr.IsNone()) {
-            stopErr = err;
-        }
+    if (auto err = mNetworkManager.StopInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
+        !err.IsNone() && stopErr.IsNone()) {
+        stopErr = err;
+    }
+
+    // TODO: ReleaseInstanceNetwork should be called on instance removal, not on stop.
+    // When Launcher has a separate "remove instance" flow, move Release there.
+    if (auto err = mNetworkManager.ReleaseInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
+        !err.IsNone() && stopErr.IsNone()) {
+        stopErr = err;
     }
 
     auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
@@ -290,13 +293,14 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return err;
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        auto [instanceNetns, err] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+    {
+        auto [instanceNetns, netnsErr] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
+        if (!netnsErr.IsNone()) {
+            return AOS_ERROR_WRAP(netnsErr);
         }
 
-        if (err = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
+        if (auto err
+            = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
             !err.IsNone()) {
             return err;
         }
@@ -726,25 +730,14 @@ Error Instance::PrepareRootFS(
     return ErrorEnum::eNone;
 }
 
-Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ItemConfig& itemConfig)
+Error Instance::SetupNetwork(
+    const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::ItemConfig& itemConfig)
 {
     LOG_DBG() << "Setup network" << Log::Field("instanceID", mInstanceID.c_str());
 
-    auto networkParams = std::make_unique<networkmanager::InstanceNetworkParameters>();
+    auto networkConfig = std::make_unique<networkmanager::InstanceNetworkConfig>();
 
-    networkParams->mInstanceIdent = mInstanceInfo;
-
-    auto etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
-
-    if (auto err = networkParams->mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
-        !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = networkParams->mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
-        !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
+    networkConfig->mInstanceIdent = mInstanceInfo;
 
     auto hosts = mConfig.mHosts;
 
@@ -755,38 +748,66 @@ Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ItemConfi
     }
 
     for (const auto& host : hosts) {
-        if (auto err = networkParams->mHosts.PushBack(host); !err.IsNone()) {
+        if (auto err = networkConfig->mHosts.PushBack(host); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    networkParams->mNetworkParameters = *mInstanceInfo.mNetworkParameters;
-
     if (itemConfig.mHostname.HasValue()) {
-        networkParams->mHostname = *itemConfig.mHostname;
+        networkConfig->mHostname = *itemConfig.mHostname;
     }
 
     if (itemConfig.mQuotas.mDownloadSpeed.HasValue()) {
-        networkParams->mIngressKbit = *itemConfig.mQuotas.mDownloadSpeed;
+        networkConfig->mIngressKbit = *itemConfig.mQuotas.mDownloadSpeed;
     }
 
     if (itemConfig.mQuotas.mUploadSpeed.HasValue()) {
-        networkParams->mEgressKbit = *itemConfig.mQuotas.mUploadSpeed;
+        networkConfig->mEgressKbit = *itemConfig.mQuotas.mUploadSpeed;
     }
 
     if (itemConfig.mQuotas.mDownloadLimit.HasValue()) {
-        networkParams->mDownloadLimit = *itemConfig.mQuotas.mDownloadLimit;
+        networkConfig->mDownloadLimit = *itemConfig.mQuotas.mDownloadLimit;
     }
 
     if (itemConfig.mQuotas.mUploadLimit.HasValue()) {
-        networkParams->mUploadLimit = *itemConfig.mQuotas.mUploadLimit;
+        networkConfig->mUploadLimit = *itemConfig.mQuotas.mUploadLimit;
+    }
+
+    for (const auto& port : imageConfig.mConfig.mExposedPorts) {
+        if (auto err = networkConfig->mExposedPorts.PushBack(port); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& conn : itemConfig.mAllowedConnections) {
+        if (auto err = networkConfig->mAllowedConnections.PushBack(conn); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     if (auto err = mFileSystem.PrepareNetworkDir(common::utils::JoinPath(runtimeDir, cMountPointsDir)); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mNetworkManager.AddInstanceToNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, *networkParams);
+    if (auto err = mNetworkManager.CreateInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, *networkConfig);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto                                         etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
+    networkmanager::InstanceNetworkRuntimeParams runtimeParams;
+
+    if (auto err = runtimeParams.mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = runtimeParams.mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mNetworkManager.StartInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, runtimeParams);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
