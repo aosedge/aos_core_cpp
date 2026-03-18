@@ -109,7 +109,7 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService,
     launcher::InstanceStateEnum state = launcher::InstanceStateEnum::eCached, bool isUnitSubject = false,
     const char* version = "1.0.0", const char* ownerID = "owner1", SubjectTypeEnum subjectType = SubjectTypeEnum::eUser,
-    size_t priority = 0, std::vector<const char*> labels = {})
+    size_t priority = 0, std::vector<const char*> labels = {}, bool disableRebalancing = false)
 {
     launcher::InstanceInfo info;
 
@@ -130,7 +130,8 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     for (const char* label : labels) {
         AOS_ERROR_CHECK_AND_THROW(info.mLabels.EmplaceBack(label), "can't add label");
     }
-    info.mPriority = priority;
+    info.mPriority           = priority;
+    info.mDisableRebalancing = disableRebalancing;
 
     return info;
 }
@@ -661,12 +662,12 @@ TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
     ASSERT_TRUE(mDB.LoadActiveInstances(*emptyInstances).IsNone());
     EXPECT_EQ(emptyInstances->Size(), 0);
 
-    auto instance1
-        = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1", UpdateItemTypeEnum::eService,
-            launcher::InstanceStateEnum::eActive, false, "1.0.0", "owner1", SubjectTypeEnum::eUser, 80, {"label4"});
+    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "1.0.0", "owner1",
+        SubjectTypeEnum::eUser, 80, {"label4"}, true);
     auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
         UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eDisabled, true, "2.0.0", "owner2",
-        SubjectTypeEnum::eUser, 200, {"label5", "label6", "label7"});
+        SubjectTypeEnum::eUser, 200, {"label5", "label6", "label7"}, false);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());

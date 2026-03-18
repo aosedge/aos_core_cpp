@@ -593,8 +593,8 @@ Error Database::AddInstance(const launcher::InstanceInfo& info)
         FromAos(info, row);
         *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, preinstalled, manifestDigest, "
                      "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
-                     "subjectType, labels, priority) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "subjectType, labels, priority, disableRebalancing) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -613,16 +613,17 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
         statement
             << "UPDATE launcher_instances SET manifestDigest = ?, nodeID = ?, prevNodeID = ?, runtimeID = ?, uid = ?, "
                "gid = ?, timestamp = ?, state = ?, isUnitSubject = ?, ownerID = ?, subjectType = ?, labels = ?, "
-               "priority = ? "
+               "priority = ?, disableRebalancing = ? "
                "WHERE itemID = ? AND subjectID = ? AND instance = ? "
                "AND type = ? AND preinstalled = ? AND version = ?;",
             bind(info.mManifestDigest.CStr()), bind(info.mNodeID.CStr()), bind(info.mPrevNodeID.CStr()),
             bind(info.mRuntimeID.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mTimestamp.UnixNano()),
             bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mOwnerID.CStr()),
             bind(info.mSubjectType.ToString().CStr()), bind(SerializeLabels(info.mLabels)), bind(info.mPriority),
-            bind(info.mInstanceIdent.mItemID.CStr()), bind(info.mInstanceIdent.mSubjectID.CStr()),
-            bind(info.mInstanceIdent.mInstance), bind(info.mInstanceIdent.mType.ToString().CStr()),
-            bind(info.mInstanceIdent.mPreinstalled), bind(info.mVersion.CStr());
+            bind(info.mDisableRebalancing), bind(info.mInstanceIdent.mItemID.CStr()),
+            bind(info.mInstanceIdent.mSubjectID.CStr()), bind(info.mInstanceIdent.mInstance),
+            bind(info.mInstanceIdent.mType.ToString().CStr()), bind(info.mInstanceIdent.mPreinstalled),
+            bind(info.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -643,7 +644,7 @@ Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) co
 
         *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, manifestDigest, nodeID, prevNodeID, "
                      "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType, labels, "
-                     "priority "
+                     "priority, disableRebalancing "
                      "FROM launcher_instances;",
             into(rows), now;
 
@@ -1089,6 +1090,7 @@ void Database::CreateTables()
                  "subjectType TEXT,"
                  "labels TEXT,"
                  "priority INTEGER,"
+                 "disableRebalancing INTEGER,"
                  "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled,version)"
                  ");",
         now;
@@ -1223,6 +1225,7 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
     dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eLabels)>(SerializeLabels(src.mLabels));
     dst.set<ToInt(LauncherInstanceInfoColumns::ePriority)>(src.mPriority);
+    dst.set<ToInt(LauncherInstanceInfoColumns::eDisableRebalancing)>(src.mDisableRebalancing);
 }
 
 void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst)
@@ -1260,7 +1263,8 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse subject type");
 
     DeserializeLabels(src.get<ToInt(LauncherInstanceInfoColumns::eLabels)>(), dst.mLabels);
-    dst.mPriority = src.get<ToInt(LauncherInstanceInfoColumns::ePriority)>();
+    dst.mPriority           = src.get<ToInt(LauncherInstanceInfoColumns::ePriority)>();
+    dst.mDisableRebalancing = src.get<ToInt(LauncherInstanceInfoColumns::eDisableRebalancing)>();
 }
 
 void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRow& dst)
