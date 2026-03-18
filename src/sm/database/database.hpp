@@ -219,7 +219,7 @@ public:
     Error GetJournalCursor(String& cursor) const override;
 
 private:
-    static constexpr int  sVersion    = 3;
+    static constexpr int  sVersion    = 4;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Item data columns
@@ -252,13 +252,12 @@ private:
         eStoragePath,
         eStatePath,
         eEnvVars,
-        eNetworkParameters,
         eMonitoringParams
     };
 
-    using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string,
-        std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string,
-        std::string, std::string, std::string>;
+    using InstanceInfoRow
+        = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string, std::string, std::string,
+            std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string, std::string, std::string>;
 
     // Network info columns
     enum class NetworkInfoColumns : int {
@@ -271,6 +270,16 @@ private:
     };
 
     using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string>;
+
+    // Instance network info columns
+    enum class InstanceNetworkInfoColumns : int {
+        eInstanceID = 0,
+        eNetworkID,
+        eNetworkConfig,
+        eAllocatedParams,
+    };
+
+    using InstanceNetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
 
     bool TableExist(const std::string& tableName);
     void CreateConfigTable();
@@ -286,6 +295,9 @@ private:
 
     static void FromAos(const sm::networkmanager::NetworkInfo& src, NetworkInfoRow& dst);
     static void ToAos(const NetworkInfoRow& src, sm::networkmanager::NetworkInfo& dst);
+
+    static void FromAos(const sm::networkmanager::InstanceNetworkInfo& src, InstanceNetworkInfoRow& dst);
+    static void ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::InstanceNetworkInfo& dst);
 
     mutable std::unique_ptr<Poco::Data::Session> mSession;
     std::optional<common::migration::Migration>  mMigration;
