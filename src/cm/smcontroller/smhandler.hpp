@@ -142,14 +142,6 @@ public:
     Error RequestLog(const aos::RequestLog& log);
 
     /**
-     * Updates network parameters.
-     *
-     * @param networkParameters network parameters.
-     * @return Error code.
-     */
-    Error UpdateNetworks(const Array<UpdateNetworkParameters>& networkParameters);
-
-    /**
      * Updates instances.
      *
      * @param stopInstances instances to stop.
