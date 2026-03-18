@@ -195,21 +195,12 @@ public:
     Error UpdateInstance(const launcher::InstanceInfo& info) override;
 
     /**
-     * Gets launcher instance.
-     *
-     * @param instanceID Instance identifier.
-     * @param[out] info Instance information.
-     * @return Error.
-     */
-    Error GetInstance(const InstanceIdent& instanceID, launcher::InstanceInfo& info) const override;
-
-    /**
-     * Gets all active launcher instances.
+     * Loads all active launcher instances from storage.
      *
      * @param[out] instances Instances.
      * @return Error.
      */
-    Error GetActiveInstances(Array<launcher::InstanceInfo>& instances) const override;
+    Error LoadActiveInstances(Array<launcher::InstanceInfo>& instances) const override;
 
     /**
      * Removes launcher instance.
@@ -233,7 +224,23 @@ public:
      * @param[out] envVars Override environment variables.
      * @return Error.
      */
-    Error GetOverrideEnvVars(OverrideEnvVarsRequest& envVars) override;
+    Error LoadOverrideEnvVars(OverrideEnvVarsRequest& envVars) const override;
+
+    /**
+     * Loads all run requests from storage.
+     *
+     * @param[out] requests Run requests to load.
+     * @return Error.
+     */
+    Error LoadRunRequests(Array<launcher::RunInstanceRequest>& requests) const override;
+
+    /**
+     * Saves all run requests to storage.
+     *
+     * @param requests Run requests to save.
+     * @return Error.
+     */
+    Error SaveRunRequests(const Array<launcher::RunInstanceRequest>& requests) override;
 
     //
     // imagemanager::StorageItf interface
