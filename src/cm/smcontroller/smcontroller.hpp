@@ -7,18 +7,20 @@
 #ifndef AOS_CM_SMCONTROLLER_SMCONTROLLER_HPP_
 #define AOS_CM_SMCONTROLLER_SMCONTROLLER_HPP_
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include <grpcpp/server.h>
+#include <servicemanager/v5/network.grpc.pb.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 #include <core/cm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/cm/launcher/itf/envvarhandler.hpp>
 #include <core/cm/launcher/itf/instancerunner.hpp>
 #include <core/cm/launcher/itf/monitoringprovider.hpp>
-#include <core/cm/networkmanager/itf/nodenetwork.hpp>
 #include <core/cm/nodeinfoprovider/itf/sminforeceiver.hpp>
 #include <core/cm/smcontroller/itf/logprovider.hpp>
 #include <core/cm/smcontroller/itf/smcontroller.hpp>
@@ -26,6 +28,8 @@
 #include <core/common/cloudconnection/itf/cloudconnection.hpp>
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/networkmanager/itf/networkprovider.hpp>
+#include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 
 #include "config.hpp"
 #include "smhandler.hpp"
@@ -36,10 +40,12 @@ namespace aos::cm::smcontroller {
  * Service Manager Controller.
  */
 class SMController : public SMControllerItf,
+                     public networkmanager::PendingUpdateHandlerItf,
                      private cloudconnection::ConnectionListenerItf,
                      private NodeConnectionStatusListenerItf,
                      private aos::iamclient::CertListenerItf,
-                     private servicemanager::v5::SMService::Service {
+                     private servicemanager::v5::SMService::Service,
+                     private servicemanager::v5::NetworkService::Service {
 public:
     /**
      * Initializes the SM controller.
@@ -64,7 +70,8 @@ public:
         crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
-        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, bool insecureConn = false);
+        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, networkmanager::NetworkProviderItf& networkProvider,
+        bool insecureConn = false);
 
     /**
      * Starts the SM controller.
@@ -124,19 +131,6 @@ public:
     Error RequestLog(const aos::RequestLog& log) override;
 
     //
-    // NodeNetworkItf interface methods
-    //
-
-    /**
-     * Updates network parameters for a node.
-     *
-     * @param nodeID Node ID.
-     * @param networkParameters Network parameters.
-     * @return Error.
-     */
-    Error UpdateNetworks(const String& nodeID, const Array<UpdateNetworkParameters>& networkParameters) override;
-
-    //
     // InstanceRunnerItf interface methods
     //
 
@@ -164,6 +158,19 @@ public:
      */
     Error GetAverageMonitoring(const String& nodeID, aos::monitoring::NodeMonitoringData& monitoring) override;
 
+    //
+    // PendingUpdateHandlerItf interface methods
+    //
+
+    /**
+     * Called when pending firewall rules are resolved for an instance.
+     *
+     * @param nodeID node ID where the instance resides.
+     * @param update pending firewall update.
+     */
+    void OnPendingFirewallUpdate(
+        const String& nodeID, const aos::networkmanager::PendingFirewallUpdate& update) override;
+
 private:
     //
     // ConnectionListenerItf interface methods
@@ -183,12 +190,38 @@ private:
     grpc::Status GetBlobsInfos(grpc::ServerContext* context, const servicemanager::v5::BlobsInfosRequest* request,
         servicemanager::v5::BlobsInfos* response) override;
 
+    //
+    // NetworkService::Service GRPC service methods
+    //
+
+    grpc::Status GetNodeNetworkParams(grpc::ServerContext*     context,
+        const servicemanager::v5::GetNodeNetworkParamsRequest* request,
+        servicemanager::v5::GetNodeNetworkParamsResponse*      response) override;
+
+    grpc::Status AllocateInstanceNetwork(grpc::ServerContext*     context,
+        const servicemanager::v5::AllocateInstanceNetworkRequest* request,
+        servicemanager::v5::AllocateInstanceNetworkResponse*      response) override;
+
+    grpc::Status ReleaseInstanceNetwork(grpc::ServerContext*     context,
+        const servicemanager::v5::ReleaseInstanceNetworkRequest* request,
+        servicemanager::v5::ReleaseInstanceNetworkResponse*      response) override;
+
+    grpc::Status ReleaseNodeNetwork(grpc::ServerContext*     context,
+        const servicemanager::v5::ReleaseNodeNetworkRequest* request,
+        servicemanager::v5::ReleaseNodeNetworkResponse*      response) override;
+
+    grpc::Status SubscribeInstanceNetworkUpdates(grpc::ServerContext*              context,
+        const servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest*          request,
+        grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>* writer) override;
+
     // iamclient::CertListenerItf interface
     void OnCertChanged(const CertInfo& info) override;
 
     // NodeConnectionStatusListenerItf interface
     void OnNodeConnected(const String& nodeID) override;
     void OnNodeDisconnected(const String& nodeID) override;
+
+    static constexpr auto cStreamPollInterval = std::chrono::seconds(1);
 
     SMHandler* FindNode(const String& nodeID);
 
@@ -209,6 +242,7 @@ private:
     monitoring::ReceiverItf*             mMonitoringReceiver {};
     launcher::InstanceStatusReceiverItf* mInstanceStatusReceiver {};
     nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
+    networkmanager::NetworkProviderItf*  mNetworkProvider {};
     bool                                 mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
@@ -217,6 +251,16 @@ private:
     std::shared_ptr<grpc::ServerCredentials> mCredentials;
 
     std::vector<std::shared_ptr<SMHandler>> mSMHandlers;
+
+    // Stream writers for SubscribeInstanceNetworkUpdates per nodeID
+    struct NetworkUpdateStream {
+        grpc::ServerContext*                                                       mContext {};
+        grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>* mWriter {};
+    };
+
+    std::mutex                                           mStreamMutex;
+    std::condition_variable                              mStreamCV;
+    std::unordered_map<std::string, NetworkUpdateStream> mNetworkUpdateStreams;
 };
 
 } // namespace aos::cm::smcontroller
