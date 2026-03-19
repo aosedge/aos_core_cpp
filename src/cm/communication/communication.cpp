@@ -1264,7 +1264,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const RenewCertsNoti
         }
 
         if (auto err = mCertHandler->CreateKey(
-                cert.mNodeID, cert.mType.ToString(), {}, itSecrets->mSecret, newCerts->mRequests.Back().mCSR);
+                cert.mNodeID, cert.mType.ToString(), "", itSecrets->mSecret, newCerts->mRequests.Back().mCSR);
             !err.IsNone()) {
             LOG_ERR() << "Create key failed" << Log::Field(err);
             return;
