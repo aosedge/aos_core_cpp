@@ -62,6 +62,13 @@ std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const CertInf
  */
 std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::String& rootCertPath);
 
+/**
+ * Create common gRPC channel arguments for clients.
+ *
+ * @return channel arguments.
+ */
+grpc::ChannelArguments CreateGRPCChannelArguments();
+
 } // namespace aos::common::utils
 
 #endif

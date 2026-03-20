@@ -63,7 +63,7 @@ protected:
             return nullptr;
         }
 
-        auto channel = grpc::CreateCustomChannel(url, tlsChannelCreds, grpc::ChannelArguments());
+        auto channel = grpc::CreateCustomChannel(url, tlsChannelCreds, common::utils::CreateGRPCChannelArguments());
         if (channel == nullptr) {
             return nullptr;
         }

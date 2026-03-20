@@ -17,6 +17,8 @@
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
+#include <common/utils/grpchelper.hpp>
+
 #include <iam/iamserver/nodecontroller.hpp>
 
 using namespace testing;
@@ -86,7 +88,8 @@ private:
 
 std::unique_ptr<iamproto::IAMPublicNodesService::Stub> CreateClientStub(const std::string& url)
 {
-    auto channel = grpc::CreateCustomChannel(url, grpc::InsecureChannelCredentials(), grpc::ChannelArguments());
+    auto channel = grpc::CreateCustomChannel(
+        url, grpc::InsecureChannelCredentials(), common::utils::CreateGRPCChannelArguments());
     if (channel == nullptr) {
         return nullptr;
     }

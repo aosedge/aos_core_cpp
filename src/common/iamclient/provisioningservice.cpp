@@ -9,6 +9,7 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "provisioningservice.hpp"
 
@@ -43,7 +44,7 @@ Error ProvisioningService::Init(const std::string& iamProtectedServerURL, const 
     }
 
     mStub = iamanager::v6::IAMProvisioningService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -62,7 +63,7 @@ Error ProvisioningService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMProvisioningService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }

@@ -171,7 +171,7 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CMClient::CreateCredenti
 
 SMServiceStubPtr CMClient::CreateSMStub(const std::string& url)
 {
-    auto channel = grpc::CreateCustomChannel(url, mCredentials, grpc::ChannelArguments());
+    auto channel = grpc::CreateCustomChannel(url, mCredentials, common::utils::CreateGRPCChannelArguments());
     if (!channel) {
         throw std::runtime_error("failed to create channel");
     }
