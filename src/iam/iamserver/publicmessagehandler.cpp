@@ -292,19 +292,19 @@ grpc::Status PublicMessageHandler::GetSubjects([[maybe_unused]] grpc::ServerCont
 {
     LOG_DBG() << "Process get subjects";
 
-    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> subjects;
+    auto subjects = std::make_unique<SubjectArray>();
 
     if (!GetIdentProvider()) {
         return grpc::Status(grpc::StatusCode::UNAVAILABLE, "ident provider is not available");
     }
 
-    if (auto err = GetIdentProvider()->GetSubjects(subjects); !err.IsNone()) {
+    if (auto err = GetIdentProvider()->GetSubjects(*subjects); !err.IsNone()) {
         LOG_ERR() << "Failed to get subjects: " << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    for (const auto& subj : subjects) {
+    for (const auto& subj : *subjects) {
         response->add_subjects(subj.CStr());
     }
 
