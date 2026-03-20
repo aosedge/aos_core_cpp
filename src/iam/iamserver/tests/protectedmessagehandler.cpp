@@ -46,7 +46,7 @@ std::unique_ptr<typename T::Stub> CreateClientStub()
         return nullptr;
     }
 
-    auto channel = grpc::CreateCustomChannel(cServerURL, tlsChannelCreds, grpc::ChannelArguments());
+    auto channel = grpc::CreateCustomChannel(cServerURL, tlsChannelCreds, common::utils::CreateGRPCChannelArguments());
     if (channel == nullptr) {
         return nullptr;
     }

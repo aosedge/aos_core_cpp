@@ -9,6 +9,7 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "publicidentityservice.hpp"
 
@@ -49,7 +50,7 @@ Error PublicIdentityService::Init(
     }
 
     mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -68,7 +69,7 @@ Error PublicIdentityService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     if (mSubscriptionManager) {
         mSubscriptionManager->Reconnect(mStub.get());

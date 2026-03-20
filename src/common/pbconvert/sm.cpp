@@ -498,7 +498,7 @@ Error ConvertFromProto(const servicemanager::v5::AlertRulePercents& src, AlertRu
     dst.mMaxThreshold = src.max_threshold();
 
     if (src.has_duration()) {
-        dst.mMinTimeout = Duration(src.duration().nanos());
+        dst.mMinTimeout = src.duration().seconds() * Time::cSeconds + Duration(src.duration().nanos());
     }
 
     return ErrorEnum::eNone;
@@ -510,7 +510,7 @@ Error ConvertFromProto(const servicemanager::v5::AlertRulePoints& src, AlertRule
     dst.mMaxThreshold = src.max_threshold();
 
     if (src.has_duration()) {
-        dst.mMinTimeout = Duration(src.duration().nanos());
+        dst.mMinTimeout = src.duration().seconds() * Time::cSeconds + Duration(src.duration().nanos());
     }
 
     return ErrorEnum::eNone;
@@ -527,7 +527,7 @@ Error ConvertFromProto(const servicemanager::v5::PartitionAlertRule& src, Partit
     dst.mMaxThreshold = src.max_threshold();
 
     if (src.has_duration()) {
-        dst.mMinTimeout = Duration(src.duration().nanos());
+        dst.mMinTimeout = src.duration().seconds() * Time::cSeconds + Duration(src.duration().nanos());
     }
 
     return ErrorEnum::eNone;

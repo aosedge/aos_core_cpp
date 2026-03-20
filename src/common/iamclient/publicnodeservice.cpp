@@ -10,6 +10,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "publicnodeservice.hpp"
 
@@ -50,7 +51,7 @@ Error PublicNodesService::Init(const std::string& iamServerURL, TLSCredentialsIt
     }
 
     mStub = iamanager::v6::IAMPublicNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -69,7 +70,7 @@ Error PublicNodesService::Reconnect()
     }
 
     mStub = iamanager::v6::IAMPublicNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     if (mSubscriptionManager) {
         mSubscriptionManager->Reconnect(mStub.get());
