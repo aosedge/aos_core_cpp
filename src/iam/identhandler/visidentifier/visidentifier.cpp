@@ -139,7 +139,7 @@ Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
         }
     }
 
-    StaticArray<StaticString<cIDLen>, cMaxNumSubjects> localSubjects;
+    auto localSubjects = std::make_unique<SubjectArray>();
 
     try {
         const VISMessage responseMessage(SendGetRequest(cSubjectsVISPath));
@@ -151,7 +151,7 @@ Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
         const auto responseSubjects = GetValueArrayByPath(responseMessage.GetJSON(), cSubjectsVISPath);
 
         for (const auto& subject : responseSubjects) {
-            if (auto err = localSubjects.PushBack(subject.c_str()); !err.IsNone()) {
+            if (auto err = localSubjects->PushBack(subject.c_str()); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
         }
@@ -161,11 +161,11 @@ Error VISIdentifier::GetSubjects(Array<StaticString<cIDLen>>& subjects)
 
     std::lock_guard lock {mMutex};
 
-    if (auto err = mSubjects.Assign(localSubjects); !err.IsNone()) {
+    if (auto err = mSubjects.Assign(*localSubjects); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = subjects.Assign(localSubjects); !err.IsNone()) {
+    if (auto err = subjects.Assign(*localSubjects); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -321,20 +321,20 @@ void VISIdentifier::HandleConnection()
 Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
 {
     try {
-        StaticArray<StaticString<cIDLen>, cMaxNumSubjects> newSubjects;
+        auto newSubjects = std::make_unique<SubjectArray>();
 
         const auto responseSubjects = GetValueArrayByPath(value, cSubjectsVISPath);
 
         for (const auto& subject : responseSubjects) {
-            if (auto err = newSubjects.PushBack(subject.c_str()); !err.IsNone()) {
+            if (auto err = newSubjects->PushBack(subject.c_str()); !err.IsNone()) {
                 return err;
             }
         }
 
         std::lock_guard lock(mMutex);
 
-        if (mSubjects != newSubjects) {
-            mSubjects = std::move(newSubjects);
+        if (mSubjects != *newSubjects) {
+            mSubjects = std::move(*newSubjects);
 
             NotifySubjectsChanged(mSubjects);
         }
