@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <chrono>
 #include <fstream>
 #include <numeric>
 #include <regex>
@@ -142,6 +143,34 @@ std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::Str
     options.set_root_cert_name("root");
 
     return grpc::experimental::TlsCredentials(options);
+}
+
+grpc::ChannelArguments CreateGRPCChannelArguments()
+{
+    constexpr auto cKeepAliveTime           = 10 * Time::cSeconds;
+    constexpr auto cKeepAliveTimeout        = 3 * Time::cSeconds;
+    constexpr auto cMinReconnectBackoff     = 1 * Time::cSeconds;
+    constexpr auto cInitialReconnectBackoff = 1 * Time::cSeconds;
+    constexpr auto cMaxReconnectBackoff     = 3 * Time::cSeconds;
+
+    grpc::ChannelArguments args;
+
+    // Default: disabled for clients (no periodic keepalive pings).
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, static_cast<int>(cKeepAliveTime.Milliseconds()));
+    // Default: 20 seconds.
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, static_cast<int>(cKeepAliveTimeout.Milliseconds()));
+    // Default: 0 (false).
+    args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+    // Default: 2.
+    args.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
+    // Default: 1 second.
+    args.SetInt(GRPC_ARG_INITIAL_RECONNECT_BACKOFF_MS, static_cast<int>(cInitialReconnectBackoff.Milliseconds()));
+    // Default: 20 seconds.
+    args.SetInt(GRPC_ARG_MIN_RECONNECT_BACKOFF_MS, static_cast<int>(cMinReconnectBackoff.Milliseconds()));
+    // Default: 120 seconds.
+    args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, static_cast<int>(cMaxReconnectBackoff.Milliseconds()));
+
+    return args;
 }
 
 } // namespace aos::common::utils

@@ -11,6 +11,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "nodesservice.hpp"
 
@@ -45,7 +46,7 @@ Error NodesService::Init(const std::string& iamProtectedServerURL, const std::st
     }
 
     mStub = iamanager::v6::IAMNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -64,7 +65,7 @@ Error NodesService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }

@@ -1,3 +1,4 @@
+#include <common/utils/grpchelper.hpp>
 /*
  * Copyright (C) 2025 EPAM Systems, Inc.
  *
@@ -317,7 +318,7 @@ std::unique_ptr<grpc::ClientContext> SMClient::CreateClientContext()
 SMClient::StubPtr SMClient::CreateStub(
     const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials)
 {
-    auto channel = grpc::CreateCustomChannel(url, credentials, grpc::ChannelArguments());
+    auto channel = grpc::CreateCustomChannel(url, credentials, common::utils::CreateGRPCChannelArguments());
     if (!channel) {
         LOG_ERR() << "Can't create client channel";
 

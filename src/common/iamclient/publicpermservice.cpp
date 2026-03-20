@@ -12,6 +12,7 @@
 
 #include <common/pbconvert/iam.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "publicpermservice.hpp"
 
@@ -45,7 +46,7 @@ Error PublicPermissionsService::Init(
     }
 
     mStub = iamanager::v6::IAMPublicPermissionsService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -64,7 +65,7 @@ Error PublicPermissionsService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMPublicPermissionsService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }

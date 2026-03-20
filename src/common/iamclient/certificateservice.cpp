@@ -10,6 +10,7 @@
 
 #include <common/pbconvert/iam.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "certificateservice.hpp"
 
@@ -44,7 +45,7 @@ Error CertificateService::Init(const std::string& iamProtectedServerURL, const s
     }
 
     mStub = iamanager::v6::IAMCertificateService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -63,7 +64,7 @@ Error CertificateService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMCertificateService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }

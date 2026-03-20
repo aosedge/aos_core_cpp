@@ -9,6 +9,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 
 #include "permservice.hpp"
 
@@ -43,7 +44,7 @@ Error PermissionsService::Init(const std::string& iamProtectedServerURL, const s
     }
 
     mStub = iamanager::v6::IAMPermissionsService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
@@ -62,7 +63,7 @@ Error PermissionsService::Reconnect()
     mCredentials = credentials;
 
     mStub = iamanager::v6::IAMPermissionsService::NewStub(
-        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, grpc::ChannelArguments()));
+        grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
