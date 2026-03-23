@@ -72,8 +72,8 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
                 "size": 1000,
                 "decryptInfo": {
                     "blockAlg": "AES256/CBC/pkcs7",
-                    "blockIv": "YmxvY2tJdg==",
-                    "blockKey": "YmxvY2tLZXk="
+                    "blockIv": "MTYgYnl0ZXMgaXYgIHN0cg==",
+                    "blockKey": "MTYgYnl0ZXMga2V5IHN0cg=="
                 },
                 "signInfo": {
                     "chainName": "chainName",
@@ -117,8 +117,11 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
 
     ASSERT_TRUE(image.mDecryptInfo.HasValue());
     EXPECT_STREQ(image.mDecryptInfo->mBlockAlg.CStr(), "AES256/CBC/pkcs7");
-    EXPECT_EQ(image.mDecryptInfo->mBlockIV, String("blockIv").AsByteArray());
-    EXPECT_EQ(image.mDecryptInfo->mBlockKey, String("blockKey").AsByteArray());
+    EXPECT_EQ(image.mDecryptInfo->mBlockIV.Size(), 16);
+    EXPECT_EQ(image.mDecryptInfo->mBlockIV, String("16 bytes iv  str").AsByteArray());
+
+    EXPECT_EQ(image.mDecryptInfo->mBlockKey, String("16 bytes key str").AsByteArray());
+    EXPECT_EQ(image.mDecryptInfo->mBlockKey.Size(), 16);
 
     ASSERT_TRUE(image.mSignInfo.HasValue());
     EXPECT_STREQ(image.mSignInfo->mChainName.CStr(), "chainName");
