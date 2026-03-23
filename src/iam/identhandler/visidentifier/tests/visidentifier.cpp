@@ -9,8 +9,8 @@
 
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/mocks/identprovidermock.hpp>
+#include <core/common/tests/utils/log.hpp>
 
-#include <common/logger/logger.hpp>
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
 #include <iam/identhandler/visidentifier/vismessage.hpp>
@@ -62,14 +62,7 @@ protected:
     config::IdentifierConfig                       mConfig;
 
     // This method is called before any test cases in the test suite
-    static void SetUpTestSuite()
-    {
-        static common::logger::Logger mLogger;
-
-        mLogger.SetBackend(common::logger::Logger::Backend::eStdIO);
-        mLogger.SetLogLevel(LogLevelEnum::eDebug);
-        mLogger.Init();
-    }
+    static void SetUpTestSuite() { tests::utils::InitLog(); }
 
     void SetUp() override
     {

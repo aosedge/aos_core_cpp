@@ -5,7 +5,6 @@
  */
 
 #include <common/jsonprovider/jsonprovider.hpp>
-#include <common/logger/logger.hpp>
 #include <common/pbconvert/common.hpp>
 
 #include "sm.hpp"
