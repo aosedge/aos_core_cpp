@@ -45,15 +45,15 @@ void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
     {
         AosIdentity identity;
 
-        auto err = ParseAosIdentity(json.GetObject("item"), identity);
+        auto err = ParseAosIdentity(json.GetObject("identity"), identity);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
 
         if (!identity.mID.has_value()) {
-            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item id is missing");
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item ID is missing");
         }
 
         err = updateItemInfo.mItemID.Assign(identity.mID->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse itemID");
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse item ID");
 
         if (!identity.mType.has_value()) {
             AOS_ERROR_THROW(ErrorEnum::eNotFound, "item type is missing");
@@ -72,11 +72,11 @@ void UpdateItemInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse owner");
 
         if (!identity.mID.has_value()) {
-            AOS_ERROR_THROW(ErrorEnum::eNotFound, "owner id is missing");
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "owner ID is missing");
         }
 
         err = updateItemInfo.mOwnerID.Assign(identity.mID->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse ownerID");
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse owner ID");
     }
 
     err = updateItemInfo.mIndexDigest.Assign(json.GetValue<std::string>("indexDigest").c_str());
@@ -92,11 +92,11 @@ void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapp
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse item");
 
         if (!identity.mID.has_value()) {
-            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item id is missing");
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "item ID is missing");
         }
 
         err = instance.mItemID.Assign(identity.mID->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse itemID");
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse item ID");
     }
 
     {
@@ -106,11 +106,11 @@ void DesiredInstanceInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapp
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject");
 
         if (!identity.mID.has_value()) {
-            AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject id is missing");
+            AOS_ERROR_THROW(ErrorEnum::eNotFound, "subject ID is missing");
         }
 
         err = instance.mSubjectID.Assign(identity.mID->c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse subjectID");
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse subject ID");
     }
 
     instance.mPriority     = json.GetValue<size_t>("priority");
@@ -191,7 +191,7 @@ Poco::JSON::Object::Ptr UpdateItemInfoToJSON(const UpdateItemInfo& updateItemInf
         identity.mID   = updateItemInfo.mItemID.CStr();
         identity.mType = updateItemInfo.mType;
 
-        object->set("item", CreateAosIdentity(identity));
+        object->set("identity", CreateAosIdentity(identity));
     }
 
     object->set("version", updateItemInfo.mVersion.CStr());
