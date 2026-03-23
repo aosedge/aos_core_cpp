@@ -25,11 +25,11 @@ void DecryptInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockAlg");
 
     const auto iv = common::utils::Base64Decode(json.GetValue<std::string>("blockIv"));
-    err           = decryptInfo.mBlockIV.Assign(String(iv.c_str()).AsByteArray());
+    err           = decryptInfo.mBlockIV.Assign(String(iv.data(), iv.size()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockIv");
 
     const auto key = common::utils::Base64Decode(json.GetValue<std::string>("blockKey"));
-    err            = decryptInfo.mBlockKey.Assign(String(key.c_str()).AsByteArray());
+    err            = decryptInfo.mBlockKey.Assign(String(key.data(), key.size()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse blockKey");
 }
 
