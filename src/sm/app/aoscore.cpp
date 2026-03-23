@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 #include <sm/config/config.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "aoscore.hpp"
 

@@ -6,8 +6,9 @@
 
 #include <algorithm>
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/pbconvert/sm.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "smclient.hpp"
 
