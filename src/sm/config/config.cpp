@@ -10,12 +10,12 @@
 #include <Poco/JSON/Parser.h>
 
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/logger.hpp>
 #include <core/common/types/log.hpp>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/filesystem.hpp>
 #include <common/utils/json.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "config.hpp"
 

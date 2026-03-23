@@ -9,10 +9,10 @@
 #include <systemd/sd-bus-protocol.h>
 #include <thread>
 
+#include <core/common/tools/logger.hpp>
 #include <core/common/tools/memory.hpp>
 
 #include <common/utils/exception.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "systemdconn.hpp"
 

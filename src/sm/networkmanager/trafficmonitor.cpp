@@ -4,8 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <sstream>
+
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "trafficmonitor.hpp"
 

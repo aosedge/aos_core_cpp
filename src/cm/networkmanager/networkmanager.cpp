@@ -6,9 +6,10 @@
 
 #include <algorithm>
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/network/utils.hpp>
 #include <common/utils/exception.hpp>
-#include <sm/logger/logmodule.hpp>
 
 #include "networkmanager.hpp"
 

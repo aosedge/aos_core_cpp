@@ -10,8 +10,6 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include <common/logger/logger.hpp>
-
 #include "aoscore.hpp"
 
 namespace aos::cm::app {
