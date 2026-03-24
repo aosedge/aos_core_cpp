@@ -1,0 +1,6 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE instances ADD COLUMN runtimeDeps TEXT;
+ALTER TABLE instances ADD COLUMN unitStateDeps TEXT;
+
+COMMIT;

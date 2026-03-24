@@ -306,6 +306,55 @@ void DeserializeMonitoringParams(const std::string& jsonStr, Optional<InstanceMo
     }
 }
 
+std::string SerializeRuntimeDeps(const Array<RuntimeDependency>& deps)
+{
+    auto jsonArray = Poco::makeShared<Poco::JSON::Array>();
+
+    for (const auto& dep : deps) {
+        auto obj = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+        obj->set("itemID", dep.mItemID.CStr());
+        obj->set("version", dep.mVersion.CStr());
+        obj->set("condition", dep.mCondition.ToString().CStr());
+
+        jsonArray->add(obj);
+    }
+
+    return common::utils::Stringify(jsonArray);
+}
+
+void DeserializeRuntimeDeps(const std::string& jsonStr, Array<RuntimeDependency>& deps)
+{
+    deps.Clear();
+
+    if (jsonStr.empty()) {
+        return;
+    }
+
+    Poco::JSON::Parser parser;
+
+    auto jsonArray = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+    if (jsonArray == nullptr) {
+        return;
+    }
+
+    for (const auto& item : *jsonArray) {
+        const auto obj = item.extract<Poco::JSON::Object::Ptr>();
+        if (obj == nullptr) {
+            continue;
+        }
+
+        AOS_ERROR_CHECK_AND_THROW(deps.EmplaceBack(), "can't add runtime dependency");
+
+        RuntimeDependency& dep = deps.Back();
+
+        AOS_ERROR_CHECK_AND_THROW(dep.mItemID.Assign(obj->getValue<std::string>("itemID").c_str()));
+        AOS_ERROR_CHECK_AND_THROW(dep.mVersion.Assign(obj->getValue<std::string>("version").c_str()));
+        AOS_ERROR_CHECK_AND_THROW(
+            dep.mCondition.FromString(obj->getValue<std::string>("condition").c_str()), "failed to parse condition");
+    }
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -522,8 +571,8 @@ Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos
         std::vector<InstanceInfoRow> rows;
 
         *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, version, manifestDigest, "
-                     "runtimeID, ownerID, subjectType,uid, gid, priority, storagePath, statePath, "
-                     "envVars,networkParameters, monitoringParams "
+                     "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, "
+                     "envVars, networkParameters, monitoringParams, runtimeDeps, unitStateDeps "
                      "FROM instances;",
             into(rows), now;
 
@@ -557,7 +606,8 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
         *mSession
             << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, preinstalled, version, "
                "manifestDigest, runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
-               "networkParameters, monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+               "networkParameters, monitoringParams, runtimeDeps, unitStateDeps) "
+               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -959,6 +1009,8 @@ void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
     dst.set<ToInt(InstanceInfoColumns::eEnvVars)>(SerializeEnvVars(src.mEnvVars));
     dst.set<ToInt(InstanceInfoColumns::eNetworkParameters)>(SerializeNetworkParameters(src.mNetworkParameters));
     dst.set<ToInt(InstanceInfoColumns::eMonitoringParams)>(SerializeMonitoringParams(src.mMonitoringParams));
+    dst.set<ToInt(InstanceInfoColumns::eRuntimeDeps)>(SerializeRuntimeDeps(src.mRuntimeDeps));
+    dst.set<ToInt(InstanceInfoColumns::eUnitStateDeps)>(src.mUnitStateDeps.CStr());
 }
 
 void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
@@ -986,6 +1038,10 @@ void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
     DeserializeEnvVars(src.get<ToInt(InstanceInfoColumns::eEnvVars)>(), dst.mEnvVars);
     DeserializeNetworkParameters(src.get<ToInt(InstanceInfoColumns::eNetworkParameters)>(), dst.mNetworkParameters);
     DeserializeMonitoringParams(src.get<ToInt(InstanceInfoColumns::eMonitoringParams)>(), dst.mMonitoringParams);
+    DeserializeRuntimeDeps(src.get<ToInt(InstanceInfoColumns::eRuntimeDeps)>(), dst.mRuntimeDeps);
+
+    AOS_ERROR_CHECK_AND_THROW(dst.mUnitStateDeps.Assign(src.get<ToInt(InstanceInfoColumns::eUnitStateDeps)>().c_str()),
+        "failed to parse unit state dependencies");
 }
 
 void Database::FromAos(const sm::networkmanager::NetworkInfo& src, NetworkInfoRow& dst)

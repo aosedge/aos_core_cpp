@@ -219,7 +219,7 @@ public:
     Error GetJournalCursor(String& cursor) const override;
 
 private:
-    static constexpr int  sVersion    = 3;
+    static constexpr int  sVersion    = 4;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Item data columns
@@ -253,12 +253,14 @@ private:
         eStatePath,
         eEnvVars,
         eNetworkParameters,
-        eMonitoringParams
+        eMonitoringParams,
+        eRuntimeDeps,
+        eUnitStateDeps
     };
 
     using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string,
         std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string,
-        std::string, std::string, std::string>;
+        std::string, std::string, std::string, std::string, std::string>;
 
     // Network info columns
     enum class NetworkInfoColumns : int {

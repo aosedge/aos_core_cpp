@@ -394,6 +394,8 @@ TEST_F(DatabaseTest, GetAllInstancesInfos)
     EXPECT_EQ(resultRef.mPriority, instanceInfo.mPriority);
     EXPECT_EQ(resultRef.mStoragePath, instanceInfo.mStoragePath);
     EXPECT_EQ(resultRef.mStatePath, instanceInfo.mStatePath);
+    EXPECT_TRUE(resultRef.mRuntimeDeps.IsEmpty());
+    EXPECT_TRUE(resultRef.mUnitStateDeps.IsEmpty());
 }
 
 TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
@@ -441,6 +443,20 @@ TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
     instanceInfo.mMonitoringParams.GetValue().mAlertRules.GetValue().mRAM.GetValue().mMaxThreshold = 90;
     instanceInfo.mMonitoringParams.GetValue().mAlertRules.GetValue().mRAM.GetValue().mMinTimeout
         = aos::Duration(1000000000);
+
+    // Add runtime deps
+    instanceInfo.mRuntimeDeps.EmplaceBack();
+    instanceInfo.mRuntimeDeps.Back().mItemID    = "dep-service-1";
+    instanceInfo.mRuntimeDeps.Back().mVersion   = "1.0.0";
+    instanceInfo.mRuntimeDeps.Back().mCondition = aos::DependencyConditionEnum::eStarted;
+
+    instanceInfo.mRuntimeDeps.EmplaceBack();
+    instanceInfo.mRuntimeDeps.Back().mItemID    = "dep-service-2";
+    instanceInfo.mRuntimeDeps.Back().mVersion   = "2.0.0";
+    instanceInfo.mRuntimeDeps.Back().mCondition = aos::DependencyConditionEnum::eHealthy;
+
+    // Set unit state deps
+    instanceInfo.mUnitStateDeps = "network.target";
 
     ASSERT_TRUE(mDB.UpdateInstanceInfo(instanceInfo).IsNone());
 
