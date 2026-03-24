@@ -78,7 +78,7 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
                 "signInfo": {
                     "chainName": "chainName",
                     "alg": "RSA/SHA256",
-                    "value": "dmFsdWU=",
+                    "value": "ZGVyAGNlcnRpZmljYXRlAGV4YW1wbGUA",
                     "trustedTimestamp": "2023-10-01T12:00:00Z",
                     "ocspValues": [
                         "ocspValue1",
@@ -126,7 +126,9 @@ TEST_F(CloudProtocolBlobs, BlobURLsInfo)
     ASSERT_TRUE(image.mSignInfo.HasValue());
     EXPECT_STREQ(image.mSignInfo->mChainName.CStr(), "chainName");
     EXPECT_STREQ(image.mSignInfo->mAlg.CStr(), "RSA/SHA256");
-    EXPECT_EQ(image.mSignInfo->mValue, String("value").AsByteArray());
+    constexpr const char cExpectedSignValue[] = "der\0certificate\0example";
+    static_assert(sizeof(cExpectedSignValue) == 24);
+    EXPECT_EQ(image.mSignInfo->mValue, String(cExpectedSignValue, sizeof(cExpectedSignValue)).AsByteArray());
     EXPECT_EQ(image.mSignInfo->mTrustedTimestamp, Time::UTC("2023-10-01T12:00:00Z").mValue);
     ASSERT_EQ(image.mSignInfo->mOCSPValues.Size(), 2);
     EXPECT_STREQ(image.mSignInfo->mOCSPValues[0].CStr(), "ocspValue1");

@@ -384,7 +384,7 @@ TEST_F(CloudProtocolDesiredStatus, Certificates)
         "messageType": "desiredStatus",
         "certificates": [
             {
-                "certificate": "ZGVyIGNlcnRpZmljYXRlIGV4YW1wbGU=",
+                "certificate": "ZGVyAGNlcnRpZmljYXRlAGV4YW1wbGUA",
                 "fingerprint": "fingerprint"
             }
         ]
@@ -401,7 +401,10 @@ TEST_F(CloudProtocolDesiredStatus, Certificates)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     ASSERT_EQ(desiredStatus->mCertificates.Size(), 1);
-    EXPECT_EQ(desiredStatus->mCertificates[0].mCertificate, String("der certificate example").AsByteArray());
+    constexpr const char cExpectedCert[] = "der\0certificate\0example";
+    static_assert(sizeof(cExpectedCert) == 24);
+
+    EXPECT_EQ(desiredStatus->mCertificates[0].mCertificate, String(cExpectedCert, sizeof(cExpectedCert)).AsByteArray());
     EXPECT_STREQ(desiredStatus->mCertificates[0].mFingerprint.CStr(), "fingerprint");
 }
 
