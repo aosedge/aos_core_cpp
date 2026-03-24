@@ -42,7 +42,7 @@ void SignInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, c
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo alg");
 
     const auto value = common::utils::Base64Decode(json.GetValue<std::string>("value"));
-    err              = signInfo.mValue.Assign(String(value.c_str()).AsByteArray());
+    err              = signInfo.mValue.Assign(String(value.c_str(), value.size()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse signInfo value");
 
     const auto trustedTimestamp = json.GetOptionalValue<std::string>("trustedTimestamp");
