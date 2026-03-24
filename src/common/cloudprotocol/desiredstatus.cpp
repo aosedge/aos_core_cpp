@@ -147,7 +147,7 @@ void CertificateInfoFromJSON(
 {
     const auto certificate = common::utils::Base64Decode(json.GetValue<std::string>("certificate"));
 
-    auto err = certificateInfo.mCertificate.Assign(String(certificate.c_str()).AsByteArray());
+    auto err = certificateInfo.mCertificate.Assign(String(certificate.data(), certificate.size()).AsByteArray());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse certificate");
 
     err = certificateInfo.mFingerprint.Assign(json.GetValue<std::string>("fingerprint").c_str());
