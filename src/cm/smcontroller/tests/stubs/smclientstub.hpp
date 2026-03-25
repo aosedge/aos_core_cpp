@@ -95,6 +95,10 @@ public:
                 mContext->TryCancel();
             }
 
+            if (mNetworkUpdateCtx) {
+                mNetworkUpdateCtx->TryCancel();
+            }
+
             if (mStream) {
                 mStream->WritesDone();
                 mStream->Finish();
@@ -105,7 +109,57 @@ public:
             mReadThread.join();
         }
 
+        if (mNetworkUpdateThread.joinable()) {
+            mNetworkUpdateThread.join();
+        }
+
         return ErrorEnum::eNone;
+    }
+
+    Error SubscribeInstanceNetworkUpdates()
+    {
+        std::lock_guard lock {mMutex};
+
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
+
+        mNetworkUpdateCtx = std::make_unique<grpc::ClientContext>();
+
+        mNetworkUpdateThread = std::thread([this]() {
+            servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest request;
+            request.set_node_id(mNodeID);
+
+            auto reader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
+
+            servicemanager::v5::InstanceNetworkUpdateNotification notification;
+
+            while (reader->Read(&notification)) {
+                if (notification.has_pending_firewall_update()) {
+                    std::lock_guard lock {mMutex};
+                    mReceivedUpdates.push_back(notification.pending_firewall_update());
+                    mNetworkUpdateCV.notify_all();
+                }
+            }
+        });
+
+        return ErrorEnum::eNone;
+    }
+
+    Error WaitPendingFirewallUpdate(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mMutex};
+
+        if (!mNetworkUpdateCV.wait_for(lock, timeout, [this]() { return !mReceivedUpdates.empty(); })) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "timeout waiting for pending firewall update"));
+        }
+
+        return ErrorEnum::eNone;
+    }
+
+    const std::vector<servicemanager::v5::PendingFirewallUpdate>& GetReceivedUpdates() const
+    {
+        return mReceivedUpdates;
     }
 
     void SendOutgoingMessage(const servicemanager::v5::SMOutgoingMessages& msg)
@@ -568,16 +622,20 @@ private:
     std::string                                               mNodeID;
     std::atomic<bool>                                         mRunning;
     std::thread                                               mReadThread;
+    std::thread                                               mNetworkUpdateThread;
     mutable std::mutex                                        mMutex;
     std::unique_ptr<servicemanager::v5::SMService::Stub>      mStub;
     std::unique_ptr<servicemanager::v5::NetworkService::Stub> mNetworkStub;
     std::unique_ptr<grpc::ClientContext>                      mContext;
+    std::unique_ptr<grpc::ClientContext>                      mNetworkUpdateCtx;
     std::unique_ptr<
         grpc::ClientReaderWriter<servicemanager::v5::SMOutgoingMessages, servicemanager::v5::SMIncomingMessages>>
         mStream;
 
-    Optional<servicemanager::v5::ConnectionEnum> mCloudStatus;
-    std::condition_variable                      mCloudConnectionCV;
+    Optional<servicemanager::v5::ConnectionEnum>           mCloudStatus;
+    std::condition_variable                                mCloudConnectionCV;
+    std::condition_variable                                mNetworkUpdateCV;
+    std::vector<servicemanager::v5::PendingFirewallUpdate> mReceivedUpdates;
 };
 
 } // namespace aos::cm::smcontroller
