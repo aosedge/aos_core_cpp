@@ -192,34 +192,17 @@ constexpr auto cItemConfig        = R"(
         "resource2",
         "resource3"
     ],
-    "permissions": [
-        {
-            "name": "name1",
-            "permissions": [
-                {
-                    "function": "function1.1",
-                    "permissions": "permissions1.1"
-                },
-                {
-                    "function": "function1.2",
-                    "permissions": "permissions1.2"
-                }
-            ]
+    "permissions":{
+        "vis": {
+            "Attribute.Body.Vehicle.VIN": "r",
+            "Signal.Doors.*": "r"
         },
-        {
-            "name": "name2",
-            "permissions": [
-                {
-                    "function": "function2.1",
-                    "permissions": "permissions2.1"
-                },
-                {
-                    "function": "function2.2",
-                    "permissions": "permissions2.2"
-                }
-            ]
+        "systemCore": {
+            "Services.Restart": "w",
+            "SomeRole": "rw",
+            "AnotherRole": "r"
         }
-    ]
+    }
 }
 )";
 
@@ -375,10 +358,41 @@ TEST_F(OCISpecTest, LoadAndSaveItemConfig)
 
     const auto cSavePath = fs::JoinPath(cTestBaseDir, "item-config-save.json");
 
-    ASSERT_TRUE(mOCISpec.LoadItemConfig(cItemConfigPath, *lhsItemConfig).IsNone());
-    ASSERT_TRUE(mOCISpec.SaveItemConfig(cSavePath, *lhsItemConfig).IsNone());
-    ASSERT_TRUE(mOCISpec.LoadItemConfig(cSavePath, *rhsItemConfig).IsNone());
+    auto err = mOCISpec.LoadItemConfig(cItemConfigPath, *lhsItemConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mOCISpec.SaveItemConfig(cSavePath, *lhsItemConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mOCISpec.LoadItemConfig(cSavePath, *rhsItemConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
     ASSERT_EQ(*lhsItemConfig, *rhsItemConfig);
+
+    ASSERT_EQ(lhsItemConfig->mPermissions.Size(), 2);
+
+    auto itVisPerms = lhsItemConfig->mPermissions.FindIf([](const auto& perm) { return perm.mName == "vis"; });
+    ASSERT_TRUE(itVisPerms != lhsItemConfig->mPermissions.end());
+
+    auto checkKeyAndValue = [](const auto& perms, const char* key, const char* value) {
+        auto it = std::find_if(perms.begin(), perms.end(), [key](const auto& perm) { return perm.mFunction == key; });
+        ASSERT_TRUE(it != perms.end());
+
+        EXPECT_STREQ(it->mPermissions.CStr(), value);
+    };
+
+    ASSERT_EQ(itVisPerms->mPermissions.Size(), 2);
+    checkKeyAndValue(itVisPerms->mPermissions, "Attribute.Body.Vehicle.VIN", "r");
+    checkKeyAndValue(itVisPerms->mPermissions, "Signal.Doors.*", "r");
+
+    auto itSystemCorePems
+        = lhsItemConfig->mPermissions.FindIf([](const auto& perm) { return perm.mName == "systemCore"; });
+    ASSERT_TRUE(itSystemCorePems != lhsItemConfig->mPermissions.end());
+
+    ASSERT_EQ(itSystemCorePems->mPermissions.Size(), 3);
+    checkKeyAndValue(itSystemCorePems->mPermissions, "Services.Restart", "w");
+    checkKeyAndValue(itSystemCorePems->mPermissions, "SomeRole", "rw");
+    checkKeyAndValue(itSystemCorePems->mPermissions, "AnotherRole", "r");
 }
 
 TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)

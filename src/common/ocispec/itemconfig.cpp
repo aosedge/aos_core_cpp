@@ -231,47 +231,58 @@ Poco::JSON::Object RequestedResourcesToJSON(const aos::oci::RequestedResources& 
     return object;
 }
 
-FunctionPermissions FunctionPermissionsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
+void FunctionServicePermissionsFromJSON(const Poco::Dynamic::Var& var, Array<FunctionServicePermissions>& permissions)
 {
-    const auto function    = object.GetValue<std::string>("function");
-    const auto permissions = object.GetValue<std::string>("permissions");
+    auto permissionsObj = var.extract<Poco::JSON::Object::Ptr>();
 
-    return {function.c_str(), permissions.c_str()};
-}
+    if (!permissionsObj) {
+        AOS_ERROR_THROW(ErrorEnum::eFailed, "permissions object parsing error");
+    }
 
-Poco::JSON::Object FunctionPermissionsToJSON(const FunctionPermissions& permissions)
-{
-    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+    for (const auto& [name, permVar] : *permissionsObj) {
+        const auto permObj = permVar.extract<Poco::JSON::Object::Ptr>();
+        if (!permObj) {
+            continue;
+        }
 
-    object.set("function", permissions.mFunction.CStr());
-    object.set("permissions", permissions.mPermissions.CStr());
+        auto err = permissions.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
 
-    return object;
-}
+        auto& parsedPermission = permissions.Back();
 
-void FunctionServicePermissionsFromJSON(
-    const utils::CaseInsensitiveObjectWrapper& object, FunctionServicePermissions& functionServicePermissions)
-{
-    const auto name        = object.GetValue<std::string>("name");
-    const auto permissions = utils::GetArrayValue<FunctionPermissions>(object, "permissions",
-        [](const auto& value) { return FunctionPermissionsFromJSON(utils::CaseInsensitiveObjectWrapper(value)); });
+        err = parsedPermission.mName.Assign(name.c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
 
-    functionServicePermissions.mName = name.c_str();
+        for (const auto& [key, value] : *permObj) {
+            err = parsedPermission.mPermissions.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
 
-    for (const auto& permission : permissions) {
-        auto err = functionServicePermissions.mPermissions.PushBack(permission);
-        AOS_ERROR_CHECK_AND_THROW(err, "function permissions parsing error");
+            auto& parsedFuncPermission = parsedPermission.mPermissions.Back();
+
+            err = parsedFuncPermission.mFunction.Assign(key.c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "permission key parsing error");
+
+            err = parsedFuncPermission.mPermissions.Assign(value.convert<std::string>().c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "permission value parsing error");
+        }
     }
 }
 
-Poco::JSON::Object FunctionServicePermissionsToJSON(const FunctionServicePermissions& permissions)
+Poco::JSON::Object FunctionServicePermissionsToJSON(const Array<FunctionServicePermissions>& permissions)
 {
-    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+    Poco::JSON::Object result;
 
-    object.set("name", permissions.mName.CStr());
-    object.set("permissions", utils::ToJsonArray(permissions.mPermissions, FunctionPermissionsToJSON));
+    for (const auto& permission : permissions) {
+        Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
 
-    return object;
+        for (const auto& funcPermission : permission.mPermissions) {
+            object.set(funcPermission.mFunction.CStr(), funcPermission.mPermissions.CStr());
+        }
+
+        result.set(permission.mName.CStr(), object);
+    }
+
+    return result;
 }
 
 AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWrapper& object)
@@ -482,13 +493,9 @@ Error OCISpec::LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConf
             AOS_ERROR_CHECK_AND_THROW(err, "resources parsing error");
         }
 
-        utils::ForEach(wrapper, "permissions", [&itemConfig](const auto& value) {
-            auto err = itemConfig.mPermissions.EmplaceBack();
-            AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
-
-            return FunctionServicePermissionsFromJSON(
-                utils::CaseInsensitiveObjectWrapper(value), itemConfig.mPermissions.Back());
-        });
+        if (wrapper.Has("permissions")) {
+            FunctionServicePermissionsFromJSON(wrapper.Get("permissions"), itemConfig.mPermissions);
+        }
 
         if (wrapper.Has("alertRules")) {
             itemConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
@@ -553,7 +560,7 @@ Error OCISpec::SaveItemConfig(const String& path, const aos::oci::ItemConfig& it
         }
 
         if (!itemConfig.mPermissions.IsEmpty()) {
-            object->set("permissions", utils::ToJsonArray(itemConfig.mPermissions, FunctionServicePermissionsToJSON));
+            object->set("permissions", FunctionServicePermissionsToJSON(itemConfig.mPermissions));
         }
 
         if (itemConfig.mAlertRules.HasValue()) {
