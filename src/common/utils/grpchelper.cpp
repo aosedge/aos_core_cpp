@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <grpc/grpc.h>
 #include <numeric>
 #include <regex>
 #include <streambuf>
@@ -17,6 +18,12 @@
 #include "pkcs11helper.hpp"
 
 using namespace aos;
+
+namespace {
+
+constexpr auto cGrpcClientKeepAliveTime = 10 * Time::cSeconds;
+
+} // namespace
 
 /***********************************************************************************************************************
  * Statics
@@ -147,7 +154,6 @@ std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::Str
 
 grpc::ChannelArguments CreateGRPCChannelArguments()
 {
-    constexpr auto cKeepAliveTime           = 10 * Time::cSeconds;
     constexpr auto cKeepAliveTimeout        = 3 * Time::cSeconds;
     constexpr auto cMinReconnectBackoff     = 1 * Time::cSeconds;
     constexpr auto cInitialReconnectBackoff = 1 * Time::cSeconds;
@@ -156,7 +162,7 @@ grpc::ChannelArguments CreateGRPCChannelArguments()
     grpc::ChannelArguments args;
 
     // Default: disabled for clients (no periodic keepalive pings).
-    args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, static_cast<int>(cKeepAliveTime.Milliseconds()));
+    args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, static_cast<int>(cGrpcClientKeepAliveTime.Milliseconds()));
     // Default: 20 seconds.
     args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, static_cast<int>(cKeepAliveTimeout.Milliseconds()));
     // Default: 0 (false).
@@ -171,6 +177,15 @@ grpc::ChannelArguments CreateGRPCChannelArguments()
     args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, static_cast<int>(cMaxReconnectBackoff.Milliseconds()));
 
     return args;
+}
+
+void SetGRPCServerOptions(grpc::ServerBuilder& builder)
+{
+    const auto keepAlivePingMs = static_cast<int>(cGrpcClientKeepAliveTime.Milliseconds());
+
+    // Client uses GRPC_ARG_KEEPALIVE_TIME_MS = keepAlivePingMs; server default min interval between
+    // PINGs without data is much larger, which triggers ENHANCE_YOUR_CALM / too_many_pings GOAWAY.
+    (void)builder.AddChannelArgument(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, keepAlivePingMs);
 }
 
 } // namespace aos::common::utils

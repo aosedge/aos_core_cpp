@@ -19,6 +19,8 @@
 
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
+#include <common/utils/grpchelper.hpp>
+
 /**
  * Test stub for IAMPublicCertService v6.
  */
@@ -83,6 +85,8 @@ private:
     std::unique_ptr<grpc::Server> CreateServer()
     {
         grpc::ServerBuilder builder;
+
+        aos::common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort("localhost:8003", grpc::InsecureServerCredentials());
         builder.RegisterService(this);

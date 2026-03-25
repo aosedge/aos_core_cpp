@@ -11,6 +11,8 @@
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server_builder.h>
 
+#include <common/utils/grpchelper.hpp>
+
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <core/iam/certhandler/certhandler.hpp>
@@ -93,6 +95,9 @@ private:
     std::unique_ptr<grpc::Server> CreateServer()
     {
         grpc::ServerBuilder builder;
+
+        aos::common::utils::SetGRPCServerOptions(builder);
+
         builder.AddListeningPort("localhost:8002", grpc::InsecureServerCredentials());
         builder.RegisterService(static_cast<iamanager::v6::IAMPublicNodesService::Service*>(this));
 

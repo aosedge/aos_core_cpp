@@ -16,6 +16,8 @@
 #include <gmock/gmock.h>
 #include <grpcpp/server_builder.h>
 
+#include <common/utils/grpchelper.hpp>
+
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 namespace smproto = servicemanager::v5;
@@ -300,6 +302,8 @@ private:
         const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
     {
         grpc::ServerBuilder builder;
+
+        aos::common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort(addr, credentials);
         builder.RegisterService(static_cast<smproto::SMService::Service*>(this));
