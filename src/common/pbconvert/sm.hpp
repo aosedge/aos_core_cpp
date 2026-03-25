@@ -13,6 +13,7 @@
 #include <core/cm/nodeinfoprovider/itf/sminforeceiver.hpp>
 #include <core/common/monitoring/itf/monitoringdata.hpp>
 #include <core/common/monitoring/monitoring.hpp>
+#include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 #include <core/common/types/alerts.hpp>
 #include <core/common/types/common.hpp>
 #include <core/common/types/envvars.hpp>
@@ -296,6 +297,35 @@ Error ConvertToProto(const NetworkParams& src, servicemanager::v5::GetNodeNetwor
  * @return Error.
  */
 Error ConvertToProto(const InstanceNetworkAllocation& src, servicemanager::v5::AllocateInstanceNetworkResponse& dst);
+
+/**
+ * Converts AllocateInstanceNetworkResponse from proto to Aos.
+ *
+ * @param src proto response.
+ * @param[out] dst Aos instance network allocation.
+ * @return Error.
+ */
+Error ConvertFromProto(const servicemanager::v5::AllocateInstanceNetworkResponse& src, InstanceNetworkAllocation& dst);
+
+/**
+ * Converts PendingFirewallUpdate to proto.
+ *
+ * @param src Aos pending firewall update.
+ * @param[out] dst proto pending firewall update.
+ * @return Error.
+ */
+Error ConvertToProto(
+    const aos::networkmanager::PendingFirewallUpdate& src, servicemanager::v5::PendingFirewallUpdate& dst);
+
+/**
+ * Converts PendingFirewallUpdate from proto.
+ *
+ * @param src proto pending firewall update.
+ * @param[out] dst Aos pending firewall update.
+ * @return Error.
+ */
+Error ConvertFromProto(
+    const servicemanager::v5::PendingFirewallUpdate& src, aos::networkmanager::PendingFirewallUpdate& dst);
 
 } // namespace aos::common::pbconvert
 
