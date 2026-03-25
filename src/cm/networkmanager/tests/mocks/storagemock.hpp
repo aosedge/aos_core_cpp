@@ -25,6 +25,12 @@ public:
     MOCK_METHOD(Error, RemoveNetwork, (const String& networkID), (override));
     MOCK_METHOD(Error, RemoveHost, (const String& networkID, const String& nodeID), (override));
     MOCK_METHOD(Error, RemoveNetworkInstance, (const InstanceIdent& instanceIdent), (override));
+    MOCK_METHOD(Error, AddPendingConnection, (const PendingConnection& connection), (override));
+    MOCK_METHOD(Error, GetPendingConnectionsByTarget,
+        (const String& targetItemID, Array<PendingConnection>& connections), (override));
+    MOCK_METHOD(Error, GetAllPendingConnections, (Array<PendingConnection> & connections), (override));
+    MOCK_METHOD(Error, RemovePendingConnection, (const PendingConnection& connection), (override));
+    MOCK_METHOD(Error, RemovePendingConnections, (const InstanceIdent& requesterIdent), (override));
 };
 
 } // namespace aos::cm::networkmanager
