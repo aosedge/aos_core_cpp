@@ -95,10 +95,20 @@ Error SMClient::Stop()
         if (mCtx) {
             mCtx->TryCancel();
         }
+
+        if (mNetworkUpdateCtx) {
+            mNetworkUpdateCtx->TryCancel();
+        }
+
+        mNetworkUpdateCV.notify_all();
     }
 
     if (mConnectionThread.joinable()) {
         mConnectionThread.join();
+    }
+
+    if (mNetworkUpdateThread.joinable()) {
+        mNetworkUpdateThread.join();
     }
 
     return ErrorEnum::eNone;
@@ -367,13 +377,8 @@ Error SMClient::AllocateInstanceNetwork(const InstanceIdent& instance, const Str
         return common::pbconvert::ConvertFromProto(response.error());
     }
 
-    result.mSubnet = response.subnet().c_str();
-    result.mIP     = response.ip().c_str();
-
-    for (const auto& dnsServer : response.dns_servers()) {
-        if (auto err = result.mDNSServers.PushBack(dnsServer.c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    if (auto err = common::pbconvert::ConvertFromProto(response, result); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
@@ -564,6 +569,8 @@ bool SMClient::RegisterSM(const std::string& url)
 
         return false;
     }
+
+    mNetworkUpdateCV.notify_all();
 
     mCtx = CreateClientContext();
 
