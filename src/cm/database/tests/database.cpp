@@ -105,6 +105,24 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
     return inst;
 }
 
+networkmanager::PendingConnection CreatePendingConnection(const char* requesterItemID, const char* requesterSubjectID,
+    uint64_t requesterInstance, const char* nodeID, const char* networkID, const char* requesterIP,
+    const char* requesterSubnet, const char* targetItemID, const char* port, const char* protocol)
+{
+    networkmanager::PendingConnection conn;
+
+    conn.mRequesterIdent  = CreateInstanceIdent(requesterItemID, requesterSubjectID, requesterInstance);
+    conn.mNodeID          = nodeID;
+    conn.mNetworkID       = networkID;
+    conn.mRequesterIP     = requesterIP;
+    conn.mRequesterSubnet = requesterSubnet;
+    conn.mTargetItemID    = targetItemID;
+    conn.mPort            = port;
+    conn.mProtocol        = protocol;
+
+    return conn;
+}
+
 launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char* subjectID, uint64_t instance,
     const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService,
     launcher::InstanceStateEnum state = launcher::InstanceStateEnum::eCached, bool isUnitSubject = false,
@@ -1083,6 +1101,90 @@ TEST_F(CMDatabaseTest, StoreGetDesiredStatus)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(*getDesiredStatus, *setDesiredStatus);
+}
+
+/***********************************************************************************************************************
+ * PendingConnection tests
+ **********************************************************************************************************************/
+
+TEST_F(CMDatabaseTest, PendingConnectionAddAndGet)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto conn1 = CreatePendingConnection(
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceB", "8080", "tcp");
+    auto conn2 = CreatePendingConnection(
+        "serviceC", "subject1", 0, "node2", "network2", "172.18.0.10", "172.18.0.0/16", "serviceB", "443", "tcp");
+    auto conn3 = CreatePendingConnection(
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceD", "9090", "udp");
+
+    ASSERT_TRUE(mDB.AddPendingConnection(conn1).IsNone());
+    ASSERT_TRUE(mDB.AddPendingConnection(conn2).IsNone());
+    ASSERT_TRUE(mDB.AddPendingConnection(conn3).IsNone());
+
+    // Get by target "serviceB" — should return conn1 and conn2
+    StaticArray<networkmanager::PendingConnection, 3> connections;
+    ASSERT_TRUE(mDB.GetPendingConnectionsByTarget("serviceB", connections).IsNone());
+
+    EXPECT_THAT(ToVector(connections), UnorderedElementsAre(conn1, conn2));
+
+    // Get by target "serviceD" — should return conn3
+    connections.Clear();
+    ASSERT_TRUE(mDB.GetPendingConnectionsByTarget("serviceD", connections).IsNone());
+
+    ASSERT_EQ(connections.Size(), 1);
+    EXPECT_EQ(connections[0], conn3);
+
+    // Get by non-existent target — should return empty
+    connections.Clear();
+    ASSERT_TRUE(mDB.GetPendingConnectionsByTarget("nonexistent", connections).IsNone());
+
+    EXPECT_TRUE(connections.IsEmpty());
+}
+
+TEST_F(CMDatabaseTest, PendingConnectionGetAll)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto conn1 = CreatePendingConnection(
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceB", "8080", "tcp");
+    auto conn2 = CreatePendingConnection(
+        "serviceC", "subject1", 0, "node2", "network2", "172.18.0.10", "172.18.0.0/16", "serviceB", "443", "tcp");
+
+    ASSERT_TRUE(mDB.AddPendingConnection(conn1).IsNone());
+    ASSERT_TRUE(mDB.AddPendingConnection(conn2).IsNone());
+
+    StaticArray<networkmanager::PendingConnection, 3> connections;
+    ASSERT_TRUE(mDB.GetAllPendingConnections(connections).IsNone());
+
+    EXPECT_THAT(ToVector(connections), UnorderedElementsAre(conn1, conn2));
+}
+
+TEST_F(CMDatabaseTest, PendingConnectionRemove)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto conn1 = CreatePendingConnection(
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceB", "8080", "tcp");
+    auto conn2 = CreatePendingConnection(
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceD", "9090", "udp");
+    auto conn3 = CreatePendingConnection(
+        "serviceC", "subject1", 0, "node2", "network2", "172.18.0.10", "172.18.0.0/16", "serviceB", "443", "tcp");
+
+    ASSERT_TRUE(mDB.AddPendingConnection(conn1).IsNone());
+    ASSERT_TRUE(mDB.AddPendingConnection(conn2).IsNone());
+    ASSERT_TRUE(mDB.AddPendingConnection(conn3).IsNone());
+
+    // Remove all pending for serviceA — should remove conn1 and conn2
+    auto identA = CreateInstanceIdent("serviceA", "subject1", 0);
+    ASSERT_TRUE(mDB.RemovePendingConnections(identA).IsNone());
+
+    // Only conn3 should remain
+    StaticArray<networkmanager::PendingConnection, 3> connections;
+    ASSERT_TRUE(mDB.GetAllPendingConnections(connections).IsNone());
+
+    ASSERT_EQ(connections.Size(), 1);
+    EXPECT_EQ(connections[0], conn3);
 }
 
 } // namespace aos::cm::database
