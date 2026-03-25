@@ -21,6 +21,7 @@
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/instancestatusprovider/itf/instancestatusprovider.hpp>
 #include <core/common/monitoring/itf/monitoring.hpp>
+#include <core/common/networkmanager/itf/networkprovider.hpp>
 #include <core/common/nodeconfig/itf/jsonprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/types/instance.hpp>
@@ -214,6 +215,14 @@ public:
     Error ReleaseNodeNetwork(const String& networkID, const String& nodeID) override;
 
     /**
+     * Subscribes to instance network updates from CM.
+     *
+     * @param handler handler for network update notifications.
+     * @return Error.
+     */
+    Error SubscribeInstanceNetworkUpdates(aos::networkmanager::PendingUpdateHandlerItf& handler);
+
+    /**
      * Checks if the connection is established.
      *
      * @return true if connected, false otherwise.
@@ -277,6 +286,13 @@ private:
     std::condition_variable                           mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
+
+    // Network update stream
+    aos::networkmanager::PendingUpdateHandlerItf* mNetworkUpdateHandler = nullptr;
+    std::thread                                   mNetworkUpdateThread;
+    std::condition_variable                       mNetworkUpdateCV;
+    std::unique_ptr<grpc::ClientContext>          mNetworkUpdateCtx;
+    std::unique_ptr<grpc::ClientReader<servicemanager::v5::InstanceNetworkUpdateNotification>> mNetworkUpdateReader;
 };
 
 } // namespace aos::sm::smclient
