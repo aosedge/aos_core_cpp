@@ -17,6 +17,24 @@ namespace {
  * Statics
  **********************************************************************************************************************/
 
+void ConvertFirewallRuleToProto(const FirewallRule& src, servicemanager::v5::FirewallRule& dst)
+{
+    dst.set_dst_ip(src.mDstIP.CStr());
+    dst.set_dst_port(src.mDstPort.CStr());
+    dst.set_proto(src.mProto.CStr());
+    dst.set_src_ip(src.mSrcIP.CStr());
+}
+
+Error ConvertFirewallRuleFromProto(const servicemanager::v5::FirewallRule& src, FirewallRule& dst)
+{
+    dst.mDstIP   = src.dst_ip().c_str();
+    dst.mDstPort = src.dst_port().c_str();
+    dst.mProto   = src.proto().c_str();
+    dst.mSrcIP   = src.src_ip().c_str();
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertFromProto(const servicemanager::v5::PartitionUsage& src, aos::PartitionUsage& dst)
 {
     if (auto err = dst.mName.Assign(src.name().c_str()); !err.IsNone()) {
@@ -1196,6 +1214,68 @@ Error ConvertToProto(const InstanceNetworkAllocation& src, servicemanager::v5::A
 
     for (const auto& dnsServer : src.mDNSServers) {
         dst.add_dns_servers(dnsServer.CStr());
+    }
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::AllocateInstanceNetworkResponse& src, InstanceNetworkAllocation& dst)
+{
+    dst.mSubnet = src.subnet().c_str();
+    dst.mIP     = src.ip().c_str();
+
+    for (const auto& dnsServer : src.dns_servers()) {
+        if (auto err = dst.mDNSServers.PushBack(dnsServer.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToProto(
+    const aos::networkmanager::PendingFirewallUpdate& src, servicemanager::v5::PendingFirewallUpdate& dst)
+{
+    *dst.mutable_instance() = ConvertToProto(src.mInstanceIdent);
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(
+    const servicemanager::v5::PendingFirewallUpdate& src, aos::networkmanager::PendingFirewallUpdate& dst)
+{
+    dst.mInstanceIdent = ConvertToAos(src.instance());
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
