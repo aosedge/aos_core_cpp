@@ -103,6 +103,9 @@ void PublicMessageHandlerTest::SetUp()
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();
 
     grpc::ServerBuilder builder;
+
+    common::utils::SetGRPCServerOptions(builder);
+
     builder.AddListeningPort(cServerURL, grpc::InsecureServerCredentials());
     mPublicMessageHandler.RegisterServices(builder);
     mPublicServer = builder.BuildAndStart();

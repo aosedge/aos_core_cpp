@@ -294,6 +294,8 @@ void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_pt
 
     grpc::ServerBuilder builder;
 
+    common::utils::SetGRPCServerOptions(builder);
+
     builder.AddListeningPort(addr, credentials);
 
     mPublicMessageHandler.RegisterServices(builder);
@@ -307,6 +309,8 @@ void IAMServer::CreateProtectedServer(
     LOG_INF() << "Create protected server" << Log::Field("url", addr.c_str());
 
     grpc::ServerBuilder builder;
+
+    common::utils::SetGRPCServerOptions(builder);
 
     builder.AddListeningPort(addr, credentials);
 

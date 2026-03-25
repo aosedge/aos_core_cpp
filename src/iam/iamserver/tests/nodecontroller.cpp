@@ -56,6 +56,8 @@ public:
     {
         grpc::ServerBuilder serverBuilder;
 
+        common::utils::SetGRPCServerOptions(serverBuilder);
+
         serverBuilder.AddListeningPort(cServerURL, grpc::InsecureServerCredentials());
         serverBuilder.RegisterService(this);
 

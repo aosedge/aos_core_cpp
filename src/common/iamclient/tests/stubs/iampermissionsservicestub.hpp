@@ -15,6 +15,8 @@
 #include <iamanager/v6/iamanager.grpc.pb.h>
 #include <iamanager/v6/iamanager.pb.h>
 
+#include <common/utils/grpchelper.hpp>
+
 /**
  * Test stub for IAMPermissionsService v6.
  */
@@ -23,6 +25,9 @@ public:
     IAMPermissionsServiceStub()
     {
         grpc::ServerBuilder builder;
+
+        aos::common::utils::SetGRPCServerOptions(builder);
+
         builder.AddListeningPort("localhost:8011", grpc::InsecureServerCredentials());
         builder.RegisterService(this);
         mServer = builder.BuildAndStart();

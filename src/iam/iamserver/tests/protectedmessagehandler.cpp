@@ -85,6 +85,8 @@ void ProtectedMessageHandlerTest::InitServer()
 {
     grpc::ServerBuilder builder;
 
+    common::utils::SetGRPCServerOptions(builder);
+
     builder.AddListeningPort(cServerURL, grpc::InsecureServerCredentials());
     mServerHandler.RegisterServices(builder);
 
