@@ -110,7 +110,7 @@ void AosCore::Init(const std::string& configFile)
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSIP);
 
-    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer);
+    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer, &mSMController);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
 
     InitSMController();
