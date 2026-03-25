@@ -10,6 +10,7 @@
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/server_credentials.h>
+#include <grpcpp/server_builder.h>
 
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/crypto.hpp>
@@ -68,6 +69,14 @@ std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::Str
  * @return channel arguments.
  */
 grpc::ChannelArguments CreateGRPCChannelArguments();
+
+/**
+ * Sets server channel arguments so HTTP/2 PING / keepalive from clients matches CreateGRPCChannelArguments()
+ * (avoids GOAWAY ENHANCE_YOUR_CALM "too_many_pings").
+ *
+ * @param builder server builder.
+ */
+void SetGRPCServerOptions(grpc::ServerBuilder& builder);
 
 } // namespace aos::common::utils
 

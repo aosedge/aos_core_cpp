@@ -14,6 +14,8 @@
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server_builder.h>
 
+#include <common/utils/grpchelper.hpp>
+
 #include <servicemanager/v4/servicemanager.grpc.pb.h>
 
 /**
@@ -465,6 +467,8 @@ private:
         const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
     {
         grpc::ServerBuilder builder;
+
+        aos::common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort(addr, credentials);
         builder.RegisterService(static_cast<servicemanager::v4::SMService::Service*>(this));

@@ -20,6 +20,7 @@
 #include <iamanager/v6/iamanager.grpc.pb.h>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/grpchelper.hpp>
 #include <iam/iamclient/iamclient.hpp>
 
 using namespace testing;
@@ -395,6 +396,8 @@ private:
         const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials)
     {
         grpc::ServerBuilder builder;
+
+        common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort(addr, credentials);
         builder.RegisterService(static_cast<iamanager::v6::IAMPublicNodesService::Service*>(this));

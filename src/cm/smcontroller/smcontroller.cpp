@@ -404,6 +404,8 @@ Error SMController::StartServer()
 
     grpc::ServerBuilder builder;
 
+    common::utils::SetGRPCServerOptions(builder);
+
     builder.AddListeningPort(correctedAddress, mCredentials);
     builder.RegisterService(this);
 
