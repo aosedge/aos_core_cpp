@@ -239,6 +239,58 @@ Error CNI::DeleteNetworkList(const NetworkConfigList& net, const RuntimeConf& rt
     }
 }
 
+Error CNI::UpdateFirewall(const FirewallPluginConf& oldFirewall, const NetworkConfigList& net, const RuntimeConf& rt)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Update firewall: name=" << net.mName.CStr();
+
+    try {
+        auto prevResult = ResultToJSON(net.mPrevResult);
+
+        // DEL old firewall rules
+        {
+            auto delNet       = std::make_unique<NetworkConfigList>();
+            delNet->mName     = net.mName;
+            delNet->mVersion  = net.mVersion;
+            delNet->mFirewall = oldFirewall;
+
+            auto                     args = ArgsAsString(rt, ActionEnum::eDel);
+            std::vector<std::string> plugins;
+            ExecuteFirewallPlugin(*delNet, prevResult, args, plugins);
+        }
+
+        // ADD new firewall rules
+        {
+            auto                     args = ArgsAsString(rt, ActionEnum::eAdd);
+            std::vector<std::string> plugins;
+            ExecuteFirewallPlugin(net, prevResult, args, plugins);
+        }
+
+        // Rebuild full plugins list from all configs in net for cache
+        std::vector<std::string> allPlugins;
+        if (!net.mBridge.mType.IsEmpty()) {
+            allPlugins.push_back(CreateBridgePluginConfig(net.mBridge));
+        }
+        if (!net.mDNS.mType.IsEmpty()) {
+            allPlugins.push_back(CreateDNSPluginConfig(net.mDNS));
+        }
+        if (!net.mFirewall.mType.IsEmpty()) {
+            allPlugins.push_back(CreateFirewallPluginConfig(net.mFirewall));
+        }
+        if (!net.mBandwidth.mType.IsEmpty()) {
+            allPlugins.push_back(CreateBandwidthPluginConfig(net.mBandwidth));
+        }
+
+        auto path = std::filesystem::path(mConfigDir) / (net.mName.CStr() + std::string("-") + rt.mContainerID.CStr());
+        WriteCacheEntryToFile(CreateCacheEntry(net, rt, prevResult, allPlugins), path);
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
 Error CNI::ValidateNetworkList(const NetworkConfigList& net)
 {
     (void)net;
