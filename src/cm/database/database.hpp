@@ -174,6 +174,48 @@ public:
      */
     Error RemoveNetworkInstance(const InstanceIdent& instanceIdent) override;
 
+    /**
+     * Adds pending connection.
+     *
+     * @param connection Pending connection.
+     * @return Error.
+     */
+    Error AddPendingConnection(const networkmanager::PendingConnection& connection) override;
+
+    /**
+     * Gets pending connections by target item ID.
+     *
+     * @param targetItemID Target item ID.
+     * @param[out] connections Pending connections.
+     * @return Error.
+     */
+    Error GetPendingConnectionsByTarget(
+        const String& targetItemID, Array<networkmanager::PendingConnection>& connections) override;
+
+    /**
+     * Gets all pending connections.
+     *
+     * @param[out] connections All pending connections.
+     * @return Error.
+     */
+    Error GetAllPendingConnections(Array<networkmanager::PendingConnection>& connections) override;
+
+    /**
+     * Removes a specific pending connection.
+     *
+     * @param connection Pending connection to remove.
+     * @return Error.
+     */
+    Error RemovePendingConnection(const networkmanager::PendingConnection& connection) override;
+
+    /**
+     * Removes all pending connections for a requester instance.
+     *
+     * @param requesterIdent Requester instance identifier.
+     * @return Error.
+     */
+    Error RemovePendingConnections(const InstanceIdent& requesterIdent) override;
+
     //
     // launcher::StorageItf interface
     //
@@ -365,6 +407,23 @@ private:
     using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
         std::string, std::string, std::string, std::string>;
 
+    enum class PendingConnectionColumns : int {
+        eRequesterItemID = 0,
+        eRequesterSubjectID,
+        eRequesterInstance,
+        eRequesterType,
+        eRequesterPreinstalled,
+        eNodeID,
+        eNetworkID,
+        eRequesterIP,
+        eRequesterSubnet,
+        eTargetItemID,
+        ePort,
+        eProtocol
+    };
+    using PendingConnectionRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
+        std::string, std::string, std::string, std::string, std::string, std::string>;
+
     enum class LauncherInstanceInfoColumns : int {
         eItemID = 0,
         eSubjectID,
@@ -435,6 +494,9 @@ private:
 
     static void FromAos(const networkmanager::Instance& src, NetworkManagerInstanceRow& dst);
     static void ToAos(const NetworkManagerInstanceRow& src, networkmanager::Instance& dst);
+
+    static void FromAos(const networkmanager::PendingConnection& src, PendingConnectionRow& dst);
+    static void ToAos(const PendingConnectionRow& src, networkmanager::PendingConnection& dst);
 
     static void FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRow& dst);
     static void ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst);
