@@ -226,6 +226,9 @@ void AosCore::Start()
     err = mSMClient.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start SM client");
 
+    err = mSMClient.SubscribeInstanceNetworkUpdates(mNetworkManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to instance network updates");
+
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mSMClient.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop SM client: err=" << err;
