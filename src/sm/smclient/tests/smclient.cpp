@@ -15,6 +15,7 @@
 #include <core/common/tests/utils/log.hpp>
 
 #include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
+#include <core/common/networkmanager/tests/mocks/pendingupdatehandlermock.hpp>
 #include <core/common/tests/mocks/instancestatusprovidermock.hpp>
 #include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
@@ -1394,6 +1395,91 @@ TEST_F(SMClientTest, ReleaseNodeNetwork)
 
     err = client->ReleaseNodeNetwork("network1", "node1");
     ASSERT_TRUE(err.IsNone()) << "ReleaseNodeNetwork failed: " << err.Message();
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SubscribeInstanceNetworkUpdates_ReceivesUpdate)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mInstanceStatusProvider,
+        mJSONProvider, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    StrictMock<PendingUpdateHandlerMock> handler;
+
+    err = client->SubscribeInstanceNetworkUpdates(handler);
+    ASSERT_TRUE(err.IsNone()) << "SubscribeInstanceNetworkUpdates failed";
+
+    ASSERT_TRUE(server->WaitNetworkUpdateSubscribed());
+
+    smproto::PendingFirewallUpdate protoUpdate;
+    protoUpdate.mutable_instance()->set_item_id("serviceA");
+    protoUpdate.mutable_instance()->set_subject_id("subject1");
+    protoUpdate.mutable_instance()->set_instance(1);
+
+    auto* rule = protoUpdate.add_firewall_rules();
+    rule->set_dst_ip("10.0.0.5");
+    rule->set_dst_port("8080");
+    rule->set_proto("tcp");
+    rule->set_src_ip("192.168.1.2");
+
+    std::promise<void> handlerCalled;
+
+    EXPECT_CALL(handler, OnPendingFirewallUpdate(_, _))
+        .WillOnce(Invoke([&](const String& nodeID, const aos::networkmanager::PendingFirewallUpdate& update) {
+            EXPECT_EQ(nodeID, "test-node");
+            EXPECT_EQ(update.mInstanceIdent.mItemID, "serviceA");
+            EXPECT_EQ(update.mFirewallRules.Size(), 1);
+            EXPECT_EQ(update.mFirewallRules[0].mDstPort, "8080");
+            handlerCalled.set_value();
+        }));
+
+    server->SendPendingFirewallUpdate(protoUpdate);
+
+    ASSERT_EQ(handlerCalled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
 
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
