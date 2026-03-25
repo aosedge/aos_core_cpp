@@ -880,4 +880,57 @@ TEST_F(SMControllerTest, GetBlobsInfos)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
+TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesPendingFirewallUpdate)
+{
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SubscribeInstanceNetworkUpdates();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    PendingFirewallUpdate update;
+    update.mInstanceIdent.mItemID    = "serviceA";
+    update.mInstanceIdent.mSubjectID = "subject1";
+    update.mInstanceIdent.mInstance  = 1;
+
+    FirewallRule rule;
+    rule.mDstIP   = "10.0.0.5";
+    rule.mDstPort = "8080";
+    rule.mProto   = "tcp";
+    rule.mSrcIP   = "192.168.1.2";
+    update.mFirewallRules.PushBack(rule);
+
+    mSMController.OnPendingFirewallUpdate(cMainNodeID, update);
+
+    err = client.WaitPendingFirewallUpdate();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    auto& received = client.GetReceivedUpdates();
+    ASSERT_EQ(received.size(), 1);
+    EXPECT_EQ(received[0].instance().item_id(), "serviceA");
+    EXPECT_EQ(received[0].instance().subject_id(), "subject1");
+    EXPECT_EQ(received[0].instance().instance(), 1);
+    ASSERT_EQ(received[0].firewall_rules_size(), 1);
+    EXPECT_EQ(received[0].firewall_rules(0).dst_ip(), "10.0.0.5");
+    EXPECT_EQ(received[0].firewall_rules(0).dst_port(), "8080");
+    EXPECT_EQ(received[0].firewall_rules(0).proto(), "tcp");
+    EXPECT_EQ(received[0].firewall_rules(0).src_ip(), "192.168.1.2");
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
 } // namespace aos::cm::smcontroller

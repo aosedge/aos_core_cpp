@@ -146,6 +146,45 @@ public:
         return OnReleaseNodeNetwork(request, response);
     }
 
+    grpc::Status SubscribeInstanceNetworkUpdates(grpc::ServerContext* context,
+        const smproto::SubscribeInstanceNetworkUpdatesRequest*,
+        grpc::ServerWriter<smproto::InstanceNetworkUpdateNotification>* writer) override
+    {
+        {
+            std::lock_guard lock {mLock};
+            mNetworkUpdateWriter     = writer;
+            mNetworkUpdateContext    = context;
+            mNetworkUpdateSubscribed = true;
+            mCV.notify_all();
+        }
+
+        std::unique_lock lock {mLock};
+        while (!context->IsCancelled()) {
+            mCV.wait_for(lock, std::chrono::milliseconds(100));
+        }
+
+        mNetworkUpdateWriter = nullptr;
+
+        return grpc::Status::OK;
+    }
+
+    void SendPendingFirewallUpdate(const smproto::PendingFirewallUpdate& update)
+    {
+        std::lock_guard lock {mLock};
+
+        if (mNetworkUpdateWriter) {
+            smproto::InstanceNetworkUpdateNotification notification;
+            *notification.mutable_pending_firewall_update() = update;
+            mNetworkUpdateWriter->Write(notification);
+        }
+    }
+
+    bool WaitNetworkUpdateSubscribed(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mLock};
+        return mCV.wait_for(lock, timeout, [this]() { return mNetworkUpdateSubscribed; });
+    }
+
     MOCK_METHOD(grpc::Status, OnGetNodeNetworkParams,
         (const smproto::GetNodeNetworkParamsRequest*, smproto::GetNodeNetworkParamsResponse*));
     MOCK_METHOD(grpc::Status, OnAllocateInstanceNetwork,
@@ -350,6 +389,10 @@ private:
     bool                          mAverageMonitoringReceived {};
     bool                          mLogDataReceived {};
     std::unique_ptr<grpc::Server> mServer;
+
+    grpc::ServerWriter<smproto::InstanceNetworkUpdateNotification>* mNetworkUpdateWriter {};
+    grpc::ServerContext*                                            mNetworkUpdateContext {};
+    bool                                                            mNetworkUpdateSubscribed {};
 };
 
 #endif
