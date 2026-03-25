@@ -76,6 +76,9 @@ public:
      */
     Error GetNetworkListCachedConfig(NetworkConfigList& net, RuntimeConf& rt) override;
 
+    Error UpdateFirewall(
+        const FirewallPluginConf& oldFirewall, const NetworkConfigList& net, const RuntimeConf& rt) override;
+
 private:
     class ActionType {
     public:
