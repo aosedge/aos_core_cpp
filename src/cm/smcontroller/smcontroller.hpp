@@ -40,7 +40,7 @@ namespace aos::cm::smcontroller {
  * Service Manager Controller.
  */
 class SMController : public SMControllerItf,
-                     public networkmanager::PendingUpdateHandlerItf,
+                     public aos::networkmanager::PendingUpdateHandlerItf,
                      private cloudconnection::ConnectionListenerItf,
                      private NodeConnectionStatusListenerItf,
                      private aos::iamclient::CertListenerItf,
@@ -70,7 +70,7 @@ public:
         crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
-        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, networkmanager::NetworkProviderItf& networkProvider,
+        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
         bool insecureConn = false);
 
     /**
@@ -135,15 +135,13 @@ public:
     //
 
     /**
-     * Updates instances on specified node.
+     * Runs instances on specified node.
      *
      * @param nodeID Node ID.
-     * @param stopInstances Instance list to stop.
-     * @param startInstances Instance list to start.
+     * @param instances Instance list to run.
      * @return Error.
      */
-    Error UpdateInstances(const String& nodeID, const Array<aos::InstanceInfo>& stopInstances,
-        const Array<aos::InstanceInfo>& startInstances) override;
+    Error RunInstances(const String& nodeID, const Array<aos::InstanceInfo>& instances) override;
 
     //
     // MonitoringProviderItf interface methods
@@ -230,20 +228,20 @@ private:
     Error                     StartServer();
     Error                     StopServer();
 
-    Config                               mConfig {};
-    cloudconnection::CloudConnectionItf* mCloudConnection {};
-    crypto::CertLoaderItf*               mCertLoader {};
-    crypto::x509::ProviderItf*           mCryptoProvider {};
-    aos::iamclient::CertProviderItf*     mCertProvider {};
-    imagemanager::ItemInfoProviderItf*   mItemInfoProvider {};
-    alerts::ReceiverItf*                 mAlertsReceiver {};
-    SenderItf*                           mLogSender {};
-    launcher::SenderItf*                 mEnvVarsStatusSender {};
-    monitoring::ReceiverItf*             mMonitoringReceiver {};
-    launcher::InstanceStatusReceiverItf* mInstanceStatusReceiver {};
-    nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
-    networkmanager::NetworkProviderItf*  mNetworkProvider {};
-    bool                                 mInsecureConn {};
+    Config                                   mConfig {};
+    cloudconnection::CloudConnectionItf*     mCloudConnection {};
+    crypto::CertLoaderItf*                   mCertLoader {};
+    crypto::x509::ProviderItf*               mCryptoProvider {};
+    aos::iamclient::CertProviderItf*         mCertProvider {};
+    imagemanager::ItemInfoProviderItf*       mItemInfoProvider {};
+    alerts::ReceiverItf*                     mAlertsReceiver {};
+    SenderItf*                               mLogSender {};
+    launcher::SenderItf*                     mEnvVarsStatusSender {};
+    monitoring::ReceiverItf*                 mMonitoringReceiver {};
+    launcher::InstanceStatusReceiverItf*     mInstanceStatusReceiver {};
+    nodeinfoprovider::SMInfoReceiverItf*     mSMInfoReceiver {};
+    aos::networkmanager::NetworkProviderItf* mNetworkProvider {};
+    bool                                     mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
     std::mutex                               mMutex;

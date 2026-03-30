@@ -517,7 +517,7 @@ TEST_F(SMControllerTest, ReleaseNodeNetwork)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(SMControllerTest, UpdateInstances)
+TEST_F(SMControllerTest, RunInstances)
 {
     // 1) Start client
     SMClientStub client;
@@ -534,31 +534,25 @@ TEST_F(SMControllerTest, UpdateInstances)
 
     ASSERT_TRUE(mSMInfoReceiver.HasSMInfo(cMainNodeID));
 
-    // 3) Update instances
-    StaticArray<InstanceInfo, 2> stopInstances;
-    InstanceInfo                 stopInstance1;
-
-    static_cast<InstanceIdent&>(stopInstance1) = CreateInstanceIdent("service1", "subject1", 0);
-    stopInstances.PushBack(stopInstance1);
-
-    StaticArray<InstanceInfo, 2> startInstances;
+    // 3) Run instances
+    StaticArray<InstanceInfo, 2> instancesToRun;
     InstanceInfo                 startInstance1;
 
     static_cast<InstanceIdent&>(startInstance1) = CreateInstanceIdent("service2", "subject2", 1);
 
     startInstance1.mManifestDigest = "image2";
-    startInstances.PushBack(startInstance1);
+    instancesToRun.PushBack(startInstance1);
 
-    // update OK
-    err = mSMController.UpdateInstances(cMainNodeID, stopInstances, startInstances);
+    // run OK
+    err = mSMController.RunInstances(cMainNodeID, instancesToRun);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 
-    // Wait for start instance status
+    // Wait for instance status (stub echoes run request as activating)
     err = mInstanceStatusReceiver.WaitInstanceStatus(cMainNodeID, startInstance1);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 
-    // update Not Found
-    err = mSMController.UpdateInstances(cSecondaryNodeID, stopInstances, startInstances);
+    // run Not Found
+    err = mSMController.RunInstances(cSecondaryNodeID, instancesToRun);
     EXPECT_FALSE(err.IsNone()) << err.Message();
 
     // 4) Stop client
@@ -898,7 +892,7 @@ TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesPendingFirewall
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    PendingFirewallUpdate update;
+    aos::networkmanager::PendingFirewallUpdate update;
     update.mInstanceIdent.mItemID    = "serviceA";
     update.mInstanceIdent.mSubjectID = "subject1";
     update.mInstanceIdent.mInstance  = 1;
