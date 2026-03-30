@@ -277,13 +277,12 @@ public:
         }
 
         servicemanager::v5::SMOutgoingMessages outMsg;
-        auto*                                  updateStatus   = outMsg.mutable_update_instances_status();
-        auto*                                  instanceStatus = updateStatus->add_instances();
+        auto*                                  updateStatus = outMsg.mutable_instance_status();
 
-        instanceStatus->mutable_instance()->set_item_id(instanceIdent.mItemID.CStr());
-        instanceStatus->mutable_instance()->set_subject_id(instanceIdent.mSubjectID.CStr());
-        instanceStatus->mutable_instance()->set_instance(instanceIdent.mInstance);
-        instanceStatus->set_state(state.ToString().CStr());
+        updateStatus->mutable_instance()->set_item_id(instanceIdent.mItemID.CStr());
+        updateStatus->mutable_instance()->set_subject_id(instanceIdent.mSubjectID.CStr());
+        updateStatus->mutable_instance()->set_instance(instanceIdent.mInstance);
+        updateStatus->set_state(state.ToString().CStr());
 
         if (!mStream->Write(outMsg)) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to write update instances status"));
@@ -520,23 +519,41 @@ private:
         }
     }
 
-    void ProcessUpdateInstances(const servicemanager::v5::UpdateInstances& updateInstances)
+    void ProcessRunInstances(const servicemanager::v5::RunInstances& runInstances)
     {
-        if (!mStream) {
+        if (!mStream || runInstances.instances_size() == 0) {
             return;
         }
 
         servicemanager::v5::SMOutgoingMessages outMsg;
         auto*                                  nodeStatus = outMsg.mutable_node_instances_status();
 
-        for (const auto& instance : updateInstances.start_instances()) {
-            auto* instanceStatus = nodeStatus->add_instances();
+        for (int i = 0; i < runInstances.instances_size(); ++i) {
+            const auto& grpcInfo          = runInstances.instances(i);
+            auto*       outInstanceStatus = nodeStatus->add_instances();
 
-            instanceStatus->mutable_instance()->set_item_id(instance.instance().item_id());
-            instanceStatus->mutable_instance()->set_subject_id(instance.instance().subject_id());
-            instanceStatus->mutable_instance()->set_instance(instance.instance().instance());
-            instanceStatus->set_state("activating");
+            outInstanceStatus->mutable_instance()->CopyFrom(grpcInfo.instance());
+            outInstanceStatus->set_version(grpcInfo.version());
+            outInstanceStatus->set_runtime_id(grpcInfo.runtime_id());
+            outInstanceStatus->set_manifest_digest(grpcInfo.manifest_digest());
+            outInstanceStatus->set_state("activating");
         }
+
+        mStream->Write(outMsg);
+    }
+
+    void ProcessInstanceStatus(const servicemanager::v5::InstanceStatus& instanceStatus)
+    {
+        if (!mStream) {
+            return;
+        }
+
+        servicemanager::v5::SMOutgoingMessages outMsg;
+        auto*                                  nodeStatus        = outMsg.mutable_node_instances_status();
+        auto*                                  outInstanceStatus = nodeStatus->add_instances();
+
+        outInstanceStatus->CopyFrom(instanceStatus);
+        outInstanceStatus->set_state("activating");
 
         mStream->Write(outMsg);
     }
@@ -604,8 +621,12 @@ private:
                     ProcessInstanceCrashLogRequest(msg.instance_crash_log_request());
                 }
 
-                if (msg.has_update_instances()) {
-                    ProcessUpdateInstances(msg.update_instances());
+                if (msg.has_run_instances()) {
+                    ProcessRunInstances(msg.run_instances());
+                }
+
+                if (msg.has_instance_status()) {
+                    ProcessInstanceStatus(msg.instance_status());
                 }
 
                 if (msg.has_get_average_monitoring()) {

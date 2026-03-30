@@ -501,39 +501,32 @@ TEST_F(PBConvertSMTest, ConvertInstanceAlertFromProto)
 
 TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
 {
-    StaticArray<InstanceInfo, 2> stopInstances;
-    StaticArray<InstanceInfo, 2> startInstances;
+    StaticArray<InstanceInfo, 2> updateInstances;
 
-    InstanceInfo stop1;
+    InstanceInfo instance1;
 
-    stop1.mItemID    = "old-service";
-    stop1.mSubjectID = "user1";
-    stop1.mInstance  = 0;
-    stopInstances.PushBack(stop1);
-
-    InstanceInfo start1;
-
-    start1.mItemID      = "new-service";
-    start1.mVersion     = "2.0.0";
-    start1.mSubjectID   = "user1";
-    start1.mInstance    = 0;
-    start1.mRuntimeID   = "runc";
-    start1.mOwnerID     = "owner1";
-    start1.mUID         = 1000;
-    start1.mGID         = 1000;
-    start1.mPriority    = 50;
-    start1.mStoragePath = "/storage";
-    start1.mStatePath   = "/state";
+    instance1.mItemID         = "new-service";
+    instance1.mVersion        = "2.0.0";
+    instance1.mSubjectID      = "user1";
+    instance1.mInstance       = 0;
+    instance1.mRuntimeID      = "runc";
+    instance1.mManifestDigest = "manifest-digest";
+    instance1.mOwnerID        = "owner1";
+    instance1.mUID            = 1000;
+    instance1.mGID            = 1000;
+    instance1.mPriority       = 50;
+    instance1.mStoragePath    = "/storage";
+    instance1.mStatePath      = "/state";
 
     EnvVar envVar1;
     envVar1.mName  = "ENV_VAR1";
     envVar1.mValue = "value1";
-    start1.mEnvVars.PushBack(envVar1);
+    instance1.mEnvVars.PushBack(envVar1);
 
     EnvVar envVar2;
     envVar2.mName  = "ENV_VAR2";
     envVar2.mValue = "value2";
-    start1.mEnvVars.PushBack(envVar2);
+    instance1.mEnvVars.PushBack(envVar2);
 
     InstanceMonitoringParams monitoringParams;
 
@@ -546,62 +539,50 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
         PartitionAlertRule {300 * Time::cSeconds, 70.0, 90.0, "part2"});
     monitoringParams.mAlertRules->mDownload.EmplaceValue(AlertRulePoints {180 * Time::cSeconds, 1000, 2000});
     monitoringParams.mAlertRules->mUpload.EmplaceValue(AlertRulePoints {10 * Time::cSeconds, 2000, 3000});
-    start1.mMonitoringParams.SetValue(monitoringParams);
+    instance1.mMonitoringParams.SetValue(monitoringParams);
 
-    startInstances.PushBack(start1);
+    updateInstances.PushBack(instance1);
 
-    servicemanager::v5::UpdateInstances result;
+    servicemanager::v5::RunInstances result;
 
-    auto err = ConvertToProto(stopInstances, startInstances, result);
+    auto err = ConvertToProto(updateInstances, result);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    ASSERT_EQ(result.stop_instances_size(), 1);
-    EXPECT_EQ(result.stop_instances(0).item_id(), "old-service");
-    EXPECT_EQ(result.stop_instances(0).subject_id(), "user1");
-    EXPECT_EQ(result.stop_instances(0).instance(), 0);
+    ASSERT_EQ(result.instances_size(), 1);
+    EXPECT_EQ(result.instances(0).instance().item_id(), "new-service");
+    EXPECT_EQ(result.instances(0).instance().subject_id(), "user1");
+    EXPECT_EQ(result.instances(0).instance().instance(), 0);
+    EXPECT_EQ(result.instances(0).version(), "2.0.0");
+    EXPECT_EQ(result.instances(0).runtime_id(), "runc");
+    EXPECT_EQ(result.instances(0).manifest_digest(), "manifest-digest");
 
-    ASSERT_EQ(result.start_instances_size(), 1);
-    EXPECT_EQ(result.start_instances(0).instance().item_id(), "new-service");
-    EXPECT_EQ(result.start_instances(0).version(), "2.0.0");
-    EXPECT_EQ(result.start_instances(0).instance().subject_id(), "user1");
-    EXPECT_EQ(result.start_instances(0).instance().instance(), 0);
-    EXPECT_EQ(result.start_instances(0).owner_id(), "owner1");
-    EXPECT_EQ(result.start_instances(0).runtime_id(), "runc");
-    EXPECT_EQ(result.start_instances(0).uid(), 1000);
-
-    ASSERT_EQ(result.start_instances(0).env_vars_size(), 2);
-    EXPECT_EQ(result.start_instances(0).env_vars(0).name(), "ENV_VAR1");
-    EXPECT_EQ(result.start_instances(0).env_vars(0).value(), "value1");
-    EXPECT_EQ(result.start_instances(0).env_vars(1).name(), "ENV_VAR2");
-    EXPECT_EQ(result.start_instances(0).env_vars(1).value(), "value2");
-
-    ASSERT_TRUE(result.start_instances(0).has_monitoring_parameters());
-    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().has_alert_rules());
-    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_ram());
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().duration().seconds(), 120);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().min_threshold(), 80.0);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().ram().max_threshold(), 95.0);
-    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_cpu());
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().duration().seconds(), 20);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().min_threshold(), 80.0);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().cpu().max_threshold(), 95.0);
-    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_download());
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().duration().seconds(), 180);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().min_threshold(), 1000);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().download().max_threshold(), 2000);
-    ASSERT_TRUE(result.start_instances(0).monitoring_parameters().alert_rules().has_upload());
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().duration().seconds(), 10);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().min_threshold(), 2000);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().upload().max_threshold(), 3000);
-    ASSERT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions_size(), 2);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).name(), "part1");
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).duration().seconds(), 300);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).min_threshold(), 70.0);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(0).max_threshold(), 90.0);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).name(), "part2");
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).duration().seconds(), 300);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).min_threshold(), 70.0);
-    EXPECT_EQ(result.start_instances(0).monitoring_parameters().alert_rules().partitions(1).max_threshold(), 90.0);
+    ASSERT_TRUE(result.instances(0).has_monitoring_parameters());
+    ASSERT_TRUE(result.instances(0).monitoring_parameters().has_alert_rules());
+    ASSERT_TRUE(result.instances(0).monitoring_parameters().alert_rules().has_ram());
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().ram().duration().seconds(), 120);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().ram().min_threshold(), 80.0);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().ram().max_threshold(), 95.0);
+    ASSERT_TRUE(result.instances(0).monitoring_parameters().alert_rules().has_cpu());
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().cpu().duration().seconds(), 20);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().cpu().min_threshold(), 80.0);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().cpu().max_threshold(), 95.0);
+    ASSERT_TRUE(result.instances(0).monitoring_parameters().alert_rules().has_download());
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().download().duration().seconds(), 180);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().download().min_threshold(), 1000);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().download().max_threshold(), 2000);
+    ASSERT_TRUE(result.instances(0).monitoring_parameters().alert_rules().has_upload());
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().upload().duration().seconds(), 10);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().upload().min_threshold(), 2000);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().upload().max_threshold(), 3000);
+    ASSERT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions_size(), 2);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(0).name(), "part1");
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(0).duration().seconds(), 300);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(0).min_threshold(), 70.0);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(0).max_threshold(), 90.0);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(1).name(), "part2");
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(1).duration().seconds(), 300);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(1).min_threshold(), 70.0);
+    EXPECT_EQ(result.instances(0).monitoring_parameters().alert_rules().partitions(1).max_threshold(), 90.0);
 }
 
 TEST_F(PBConvertSMTest, ConvertSMInfoFromProto)
