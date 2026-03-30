@@ -261,8 +261,8 @@ void SMHandler::ProcessMessages()
 
             if (outgoingMsg.has_sm_info()) {
                 err = ProcessSMInfo(outgoingMsg.sm_info());
-            } else if (outgoingMsg.has_update_instances_status()) {
-                err = ProcessUpdateInstancesStatus(outgoingMsg.update_instances_status());
+            } else if (outgoingMsg.has_instance_status()) {
+                err = ProcessInstancesStatus(outgoingMsg.instance_status());
             } else if (outgoingMsg.has_node_instances_status()) {
                 err = ProcessNodeInstancesStatus(outgoingMsg.node_instances_status());
             } else if (outgoingMsg.has_log()) {
@@ -319,21 +319,18 @@ Error SMHandler::ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo)
     return ErrorEnum::eNone;
 }
 
-Error SMHandler::ProcessUpdateInstancesStatus(const servicemanager::v5::UpdateInstancesStatus& status)
+Error SMHandler::ProcessInstancesStatus(const servicemanager::v5::InstanceStatus& status)
 {
-    LOG_DBG() << "Process update instances status" << Log::Field("nodeID", GetNodeID());
+    LOG_DBG() << "Process instances status" << Log::Field("nodeID", GetNodeID());
 
-    for (const auto& grpcInstanceStatus : status.instances()) {
-        auto instanceStatus = std::make_unique<InstanceStatus>();
+    auto instanceStatus = std::make_unique<InstanceStatus>();
 
-        if (auto err = common::pbconvert::ConvertFromProto(grpcInstanceStatus, GetNodeID(), *instanceStatus);
-            !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    if (auto err = common::pbconvert::ConvertFromProto(status, GetNodeID(), *instanceStatus); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
-        if (auto err = mInstanceStatusReceiver->OnInstanceStatusReceived(*instanceStatus); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    if (auto err = mInstanceStatusReceiver->OnInstanceStatusReceived(*instanceStatus); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
@@ -416,15 +413,14 @@ Error SMHandler::ProcessAlert(const servicemanager::v5::Alert& alert)
     return ErrorEnum::eNone;
 }
 
-Error SMHandler::UpdateInstances(
-    const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances)
+Error SMHandler::RunInstances(const Array<aos::InstanceInfo>& instances)
 {
-    LOG_DBG() << "Update instances for node" << Log::Field("nodeID", GetNodeID());
+    LOG_DBG() << "Run instances" << Log::Field("nodeID", GetNodeID());
 
     servicemanager::v5::SMIncomingMessages inMsg;
-    auto*                                  updateInstances = inMsg.mutable_update_instances();
+    auto*                                  runRequest = inMsg.mutable_run_instances();
 
-    if (auto err = common::pbconvert::ConvertToProto(stopInstances, startInstances, *updateInstances); !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertToProto(instances, *runRequest); !err.IsNone()) {
         return err;
     }
 
