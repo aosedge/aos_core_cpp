@@ -612,8 +612,8 @@ void SMClient::HandleIncomingMessages()
             err = ProcessCheckNodeConfig(incomingMsg.check_node_config());
         } else if (incomingMsg.has_set_node_config()) {
             err = ProcessSetNodeConfig(incomingMsg.set_node_config());
-        } else if (incomingMsg.has_update_instances()) {
-            err = ProcessUpdateInstances(incomingMsg.update_instances());
+        } else if (incomingMsg.has_run_instances()) {
+            err = ProcessRunInstances(incomingMsg.run_instances());
         } else if (incomingMsg.has_system_log_request()) {
             err = ProcessSystemLogRequest(incomingMsg.system_log_request());
         } else if (incomingMsg.has_instance_log_request()) {
@@ -723,19 +723,17 @@ Error SMClient::ProcessSetNodeConfig(const smproto::SetNodeConfig& setConfig)
     return ErrorEnum::eNone;
 }
 
-Error SMClient::ProcessUpdateInstances(const smproto::UpdateInstances& updateInstances)
+Error SMClient::ProcessRunInstances(const smproto::RunInstances& runInstances)
 {
-    LOG_DBG() << "Process update instances";
+    LOG_DBG() << "Process run instances";
 
-    auto stopInstances  = std::make_unique<StaticArray<InstanceIdent, cMaxNumInstances>>();
-    auto startInstances = std::make_unique<InstanceInfoArray>();
+    auto instancesToRun = std::make_unique<InstanceInfoArray>();
 
-    if (auto err = common::pbconvert::ConvertFromProto(updateInstances, *stopInstances, *startInstances);
-        !err.IsNone()) {
+    if (auto err = common::pbconvert::ConvertFromProto(runInstances, *instancesToRun); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mLauncher->UpdateInstances(*stopInstances, *startInstances); !err.IsNone()) {
+    if (auto err = mLauncher->RunInstances(*instancesToRun); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

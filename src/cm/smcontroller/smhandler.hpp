@@ -142,14 +142,12 @@ public:
     Error RequestLog(const aos::RequestLog& log);
 
     /**
-     * Updates instances.
+     * Runs instances.
      *
-     * @param stopInstances instances to stop.
-     * @param startInstances instances to start.
+     * @param instances instances to run.
      * @return Error code.
      */
-    Error UpdateInstances(
-        const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances);
+    Error RunInstances(const Array<aos::InstanceInfo>& instances);
 
     /**
      * Gets average monitoring data.
@@ -185,7 +183,7 @@ private:
     void ProcessMessages();
 
     Error ProcessSMInfo(const servicemanager::v5::SMInfo& smInfo);
-    Error ProcessUpdateInstancesStatus(const servicemanager::v5::UpdateInstancesStatus& status);
+    Error ProcessInstancesStatus(const servicemanager::v5::InstanceStatus& status);
     Error ProcessNodeInstancesStatus(const servicemanager::v5::NodeInstancesStatus& status);
     Error ProcessLogData(const servicemanager::v5::LogData& logData);
     Error ProcessInstantMonitoring(const servicemanager::v5::InstantMonitoring& monitoring);

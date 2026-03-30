@@ -254,7 +254,7 @@ private:
     Error ProcessGetNodeConfigStatus();
     Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);
     Error ProcessSetNodeConfig(const smproto::SetNodeConfig& setConfig);
-    Error ProcessUpdateInstances(const smproto::UpdateInstances& updateInstances);
+    Error ProcessRunInstances(const smproto::RunInstances& runInstances);
     Error ProcessSystemLogRequest(const smproto::SystemLogRequest& request);
     Error ProcessInstanceLogRequest(const smproto::InstanceLogRequest& request);
     Error ProcessInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request);

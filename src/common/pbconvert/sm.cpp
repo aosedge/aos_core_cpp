@@ -808,15 +808,10 @@ Error ConvertFromProto(const servicemanager::v5::LogData& grpcLogData, const Str
     return ErrorEnum::eNone;
 }
 
-Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances,
-    servicemanager::v5::UpdateInstances& result)
+Error ConvertToProto(const Array<aos::InstanceInfo>& instances, servicemanager::v5::RunInstances& result)
 {
-    for (const auto& instance : stopInstances) {
-        *result.add_stop_instances() = ConvertToProto(static_cast<const InstanceIdent&>(instance));
-    }
-
-    for (const auto& instance : startInstances) {
-        auto* grpcInstance = result.add_start_instances();
+    for (const auto& instance : instances) {
+        auto* grpcInstance = result.add_instances();
         if (auto err = ConvertToProto(instance, *grpcInstance); !err.IsNone()) {
             return err;
         }
@@ -825,21 +820,14 @@ Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<
     return ErrorEnum::eNone;
 }
 
-Error ConvertFromProto(const servicemanager::v5::UpdateInstances& src, Array<InstanceIdent>& stopInstances,
-    Array<InstanceInfo>& startInstances)
+Error ConvertFromProto(const servicemanager::v5::RunInstances& src, Array<InstanceInfo>& instances)
 {
-    for (const auto& instance : src.stop_instances()) {
-        if (auto err = stopInstances.EmplaceBack(ConvertToAos(instance)); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    for (const auto& instance : src.start_instances()) {
-        if (auto err = startInstances.EmplaceBack(); !err.IsNone()) {
+    for (const auto& instance : src.instances()) {
+        if (auto err = instances.EmplaceBack(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = ConvertFromProto(instance, startInstances.Back()); !err.IsNone()) {
+        if (auto err = ConvertFromProto(instance, instances.Back()); !err.IsNone()) {
             return err;
         }
     }
