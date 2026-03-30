@@ -136,26 +136,22 @@ Error ConvertFromProto(const servicemanager::v5::InstanceCrashLogRequest& src, R
 Error ConvertFromProto(const servicemanager::v5::LogData& grpcLogData, const String& nodeID, PushLog& aosPushLog);
 
 /**
- * Converts Aos instance info arrays to grpc update instances message.
+ * Converts Aos instance info arrays to grpc run instances message.
  *
- * @param stopInstances Aos instances to stop.
- * @param startInstances Aos instances to start.
- * @param result grpc update instances message.
+ * @param instances Aos instances to run.
+ * @param result grpc run instances message.
  * @return Error.
  */
-Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances,
-    servicemanager::v5::UpdateInstances& result);
+Error ConvertToProto(const Array<aos::InstanceInfo>& instances, servicemanager::v5::RunInstances& result);
 
 /**
- * Converts grpc update instances to Aos instance arrays.
+ * Converts grpc run instances to Aos instance arrays.
  *
- * @param src grpc update instances.
- * @param[out] stopInstances Aos instances to stop.
- * @param[out] startInstances Aos instances to start.
+ * @param src grpc run instances.
+ * @param[out] instances Aos instances to run.
  * @return Error.
  */
-Error ConvertFromProto(const servicemanager::v5::UpdateInstances& src, Array<InstanceIdent>& stopInstances,
-    Array<InstanceInfo>& startInstances);
+Error ConvertFromProto(const servicemanager::v5::RunInstances& src, Array<InstanceInfo>& instances);
 
 /**
  * Converts grpc average monitoring to Aos node monitoring data.
