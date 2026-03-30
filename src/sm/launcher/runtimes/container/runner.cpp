@@ -224,9 +224,6 @@ void Runner::MonitorUnits()
                 startUnitIt->second.mRunState = unit.mActiveState;
                 startUnitIt->second.mExitCode = unit.mExitCode;
 
-                LOG_DBG() << "==== Unit state updated" << Log::Field("unit", unit.mName.c_str())
-                          << Log::Field("state", unit.mActiveState) << Log::Field("exitCode", unit.mExitCode);
-
                 // systemd doesn't change the state of failed unit => notify listener about final state.
                 if (unit.mActiveState == utils::UnitStateEnum::eFailed) {
                     startUnitIt->second.mCondVar.notify_all();
