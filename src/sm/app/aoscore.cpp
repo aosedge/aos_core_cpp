@@ -152,7 +152,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize logprovider
 
-    err = mLogProvider.Init(mConfig.mLogging, *containerRuntime);
+    err = mLogProvider.Init(mConfig.mLogging, *containerRuntime, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logprovider");
 
     // Initialize SM client

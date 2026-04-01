@@ -44,8 +44,7 @@ public:
 
         auto config = aos::logging::Config {200, 10};
 
-        mLogProvider.Init(config, mInstanceIDProvider);
-        mLogProvider.Subscribe(mLogSender);
+        mLogProvider.Init(config, mInstanceIDProvider, mLogSender);
         mLogProvider.Start();
     }
 
