@@ -234,15 +234,15 @@ Error SMClient::SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& st
         return Error(ErrorEnum::eFailed, "stream not available");
     }
 
-    smproto::SMOutgoingMessages outgoingMsg;
-    auto&                       updateStatus = *outgoingMsg.mutable_update_instances_status();
-
     for (const auto& status : statuses) {
-        common::pbconvert::ConvertToProto(status, *updateStatus.add_instances());
-    }
+        LOG_DBG() << "Send update instance status" << Log::Field("instance", status);
 
-    if (!mStream->Write(outgoingMsg)) {
-        return Error(ErrorEnum::eFailed, "can't send update instances statuses");
+        smproto::SMOutgoingMessages outgoingMsg;
+        common::pbconvert::ConvertToProto(status, *outgoingMsg.mutable_instance_status());
+
+        if (!mStream->Write(outgoingMsg)) {
+            return Error(ErrorEnum::eFailed, "can't send instance status");
+        }
     }
 
     return ErrorEnum::eNone;
