@@ -464,20 +464,6 @@ std::unique_ptr<grpc::ClientContext> SMClient::CreateClientContext()
     return std::make_unique<grpc::ClientContext>();
 }
 
-<<<<<<< HEAD
-SMClient::StubPtr SMClient::CreateStub(
-    const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials)
-{
-    auto channel = grpc::CreateCustomChannel(url, credentials, common::utils::CreateGRPCChannelArguments());
-    if (!channel) {
-        LOG_ERR() << "Can't create client channel";
-
-        return nullptr;
-    }
-
-    return smproto::SMService::NewStub(channel);
-}
-
 bool SMClient::SendSMInfo()
 {
     LOG_DBG() << "Send SM info";
