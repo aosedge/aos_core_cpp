@@ -943,16 +943,12 @@ TEST_F(SMClientTest, ProcessUpdateInstances)
             return ErrorEnum::eNone;
         }));
 
-    EXPECT_CALL(mLauncher, UpdateInstances(_, _))
-        .WillOnce(Invoke([](const Array<InstanceIdent>& stopInstances, const Array<InstanceInfo>& startInstances) {
-            EXPECT_EQ(stopInstances.Size(), 1);
-            EXPECT_EQ(stopInstances[0].mItemID, "stop-service");
+    EXPECT_CALL(mLauncher, RunInstances).WillOnce(Invoke([](const Array<InstanceInfo>& instances) {
+        EXPECT_EQ(instances.Size(), 1);
+        EXPECT_EQ(instances[0].mItemID, "start-service");
 
-            EXPECT_EQ(startInstances.Size(), 1);
-            EXPECT_EQ(startInstances[0].mItemID, "start-service");
-
-            return ErrorEnum::eNone;
-        }));
+        return ErrorEnum::eNone;
+    }));
 
     EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
     EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
@@ -974,7 +970,7 @@ TEST_F(SMClientTest, ProcessUpdateInstances)
     startInstance.mutable_instance()->set_subject_id("subject1");
     startInstance.mutable_instance()->set_instance(0);
 
-    server->SendUpdateInstances({startInstance}, {"stop-service"});
+    server->SendRunInstances({startInstance});
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
