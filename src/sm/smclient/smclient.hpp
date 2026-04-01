@@ -30,6 +30,7 @@
 #include <core/sm/logging/itf/logprovider.hpp>
 #include <core/sm/nodeconfig/itf/nodeconfighandler.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
+#include <core/sm/smclient/itf/connection.hpp>
 #include <core/sm/smclient/itf/smclient.hpp>
 
 #include <common/iamclient/itf/tlscredentials.hpp>
@@ -60,6 +61,7 @@ public:
      * @param monitoring monitoring.
      * @param instanceStatusProvider instance status provider.
      * @param jsonProvider JSON provider.
+     * @param networkUpdateHandler handler for pending firewall update notifications.
      * @param secureConnection secure connection flag.
      * @return Error.
      */
@@ -69,8 +71,9 @@ public:
         resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         nodeconfig::NodeConfigHandlerItf& nodeConfigHandler, launcher::LauncherItf& launcher,
         logging::LogProviderItf& logProvider, aos::monitoring::MonitoringItf& monitoring,
-        aos::instancestatusprovider::ProviderItf& instanceStatusProvider,
-        aos::nodeconfig::JSONProviderItf& jsonProvider, bool secureConnection = true);
+        aos::instancestatusprovider::ProviderItf&     instanceStatusProvider,
+        aos::nodeconfig::JSONProviderItf&             jsonProvider,
+        aos::networkmanager::PendingUpdateHandlerItf& networkUpdateHandler, bool secureConnection = true);
 
     /**
      * Starts the client.
@@ -215,12 +218,31 @@ public:
     Error ReleaseNodeNetwork(const String& networkID, const String& nodeID) override;
 
     /**
-     * Subscribes to instance network updates from CM.
+     * Sends current instance network state to CM for reconciliation.
      *
-     * @param handler handler for network update notifications.
+     * @param nodeID node identifier.
+     * @param instances array of instance network state info.
      * @return Error.
      */
-    Error SubscribeInstanceNetworkUpdates(aos::networkmanager::PendingUpdateHandlerItf& handler);
+    Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override;
+
+    // ConnectionItf interface
+
+    /**
+     * Subscribes to connection events.
+     *
+     * @param listener listener reference.
+     * @return Error.
+     */
+    Error SubscribeListener(ConnectListenerItf& listener) override;
+
+    /**
+     * Unsubscribes from connection events.
+     *
+     * @param listener listener reference.
+     * @return Error.
+     */
+    Error UnsubscribeListener(ConnectListenerItf& listener) override;
 
     /**
      * Checks if the connection is established.
@@ -248,6 +270,7 @@ private:
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
     void HandleIncomingMessages();
+    void StartNetworkUpdateSubscription();
 
     Error ProcessGetNodeConfigStatus();
     Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);
@@ -286,6 +309,7 @@ private:
     std::condition_variable                           mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
+    std::vector<aos::sm::smclient::ConnectListenerItf*>       mConnectListeners;
 
     // Network update stream
     aos::networkmanager::PendingUpdateHandlerItf* mNetworkUpdateHandler = nullptr;
