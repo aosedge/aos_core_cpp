@@ -22,12 +22,14 @@ namespace aos::sm::logprovider {
  * Public
  **********************************************************************************************************************/
 
-Error LogProvider::Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider)
+Error LogProvider::Init(
+    const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider, aos::logging::SenderItf& logSender)
 {
     LOG_DBG() << "Init log provider";
 
     mConfig           = config;
     mInstanceProvider = &instanceProvider;
+    mLogSender        = &logSender;
 
     return ErrorEnum::eNone;
 }
@@ -124,26 +126,6 @@ Error LogProvider::GetSystemLog(const RequestLog& request)
     LOG_DBG() << "Get system log: correlationId=" << request.mCorrelationID;
 
     ScheduleGetLog({}, request.mCorrelationID, request.mFilter.mFrom, request.mFilter.mTill);
-
-    return ErrorEnum::eNone;
-}
-
-Error LogProvider::Subscribe(aos::logging::SenderItf& sender)
-{
-    std::unique_lock<std::mutex> lock {mMutex};
-
-    mLogSender = &sender;
-
-    return ErrorEnum::eNone;
-}
-
-Error LogProvider::Unsubscribe(const aos::logging::SenderItf& sender)
-{
-    (void)sender;
-
-    std::unique_lock<std::mutex> lock {mMutex};
-
-    mLogSender = nullptr;
 
     return ErrorEnum::eNone;
 }

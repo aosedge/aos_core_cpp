@@ -33,9 +33,11 @@ public:
      * @param instanceProvider instance provider.
      * @param logReceiver log receiver.
      * @param config log provider config.
+     * @param logSender log sender.
      * @return Error.
      */
-    Error Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider);
+    Error Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider,
+        aos::logging::SenderItf& logSender);
 
     /**
      * Starts requests processing thread.
@@ -79,22 +81,6 @@ public:
      * @return bool.
      */
     Error GetSystemLog(const RequestLog& request) override;
-
-    /**
-     * Subscribes on logs.
-     *
-     * @param sender log sender.
-     * @return Error.
-     */
-    Error Subscribe(aos::logging::SenderItf& sender);
-
-    /**
-     * Unsubscribes from logs.
-     *
-     * @param sender log sender.
-     * @return Error.
-     */
-    Error Unsubscribe(const aos::logging::SenderItf& sender);
 
 private:
     static constexpr auto cAOSServicePrefix = "aos-service@";
