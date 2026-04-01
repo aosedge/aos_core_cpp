@@ -158,7 +158,8 @@ void AosCore::Init(const std::string& configFile)
     // Initialize SM client
 
     err = mSMClient.Init(mConfig.mSMClientConfig, nodeInfo->mNodeID.CStr(), mTLSCredentials, mIAMClient, mLauncher,
-        mResourceManager, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mLauncher, mJSONProvider);
+        mResourceManager, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mLauncher, mJSONProvider,
+        mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
     // // Initialize journalalerts
@@ -223,15 +224,20 @@ void AosCore::Start()
         }
     });
 
+    // ConnectListener must be subscribed before Start() to not miss the first OnConnect.
+    err = mSMClient.SubscribeListener(mNetworkManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe connect listener");
+
     err = mSMClient.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start SM client");
-
-    err = mSMClient.SubscribeInstanceNetworkUpdates(mNetworkManager);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to instance network updates");
 
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mSMClient.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop SM client: err=" << err;
+        }
+
+        if (auto err = mSMClient.UnsubscribeListener(mNetworkManager); !err.IsNone()) {
+            LOG_ERR() << "Can't unsubscribe connect listener" << Log::Field(err);
         }
     });
 }
