@@ -444,6 +444,40 @@ Error SMClient::ReleaseNodeNetwork(const String& networkID, const String& nodeID
     return ErrorEnum::eNone;
 }
 
+Error SMClient::SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Sync network state" << Log::Field("nodeID", nodeID) << Log::Field("instancesCount", instances.Size());
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::SyncNetworkStateRequest request;
+    request.set_node_id(nodeID.CStr());
+
+    for (const auto& instance : instances) {
+        if (auto err = common::pbconvert::ConvertToProto(instance, *request.add_instances()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    grpc::ClientContext               context;
+    smproto::SyncNetworkStateResponse response;
+
+    auto status = mNetworkStub->SyncNetworkState(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
