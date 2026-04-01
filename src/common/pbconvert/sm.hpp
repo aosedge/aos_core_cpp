@@ -326,6 +326,15 @@ Error ConvertToProto(
 Error ConvertFromProto(
     const servicemanager::v5::PendingFirewallUpdate& src, aos::networkmanager::PendingFirewallUpdate& dst);
 
+/**
+ * Converts InstanceNetworkStateInfo to proto.
+ *
+ * @param src Aos instance network state info.
+ * @param[out] dst proto instance network state info.
+ * @return Error.
+ */
+Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::InstanceNetworkStateInfo& dst);
+
 } // namespace aos::common::pbconvert
 
 #endif
