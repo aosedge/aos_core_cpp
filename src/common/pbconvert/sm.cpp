@@ -1281,4 +1281,17 @@ Error ConvertFromProto(
     return ErrorEnum::eNone;
 }
 
+Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::InstanceNetworkStateInfo& dst)
+{
+    *dst.mutable_instance() = ConvertToProto(src.mInstanceIdent);
+    dst.set_network_id(src.mNetworkID.CStr());
+    dst.set_ip(src.mIP.CStr());
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::pbconvert
