@@ -65,10 +65,10 @@ public:
                 OnNodeInstancesStatus(msg.node_instances_status());
                 mNodeInstancesStatusReceived = true;
                 mCV.notify_all();
-            } else if (msg.has_update_instances_status()) {
+            } else if (msg.has_instance_status()) {
                 std::lock_guard lock {mLock};
 
-                OnUpdateInstancesStatus(msg.update_instances_status());
+                OnUpdateInstancesStatus(msg.instance_status());
                 mUpdateInstancesStatusReceived = true;
                 mCV.notify_all();
             } else if (msg.has_instant_monitoring()) {
@@ -196,7 +196,7 @@ public:
 
     MOCK_METHOD(void, OnSMInfo, (const smproto::SMInfo&));
     MOCK_METHOD(void, OnNodeInstancesStatus, (const smproto::NodeInstancesStatus&));
-    MOCK_METHOD(void, OnUpdateInstancesStatus, (const smproto::UpdateInstancesStatus&));
+    MOCK_METHOD(void, OnUpdateInstancesStatus, (const smproto::InstanceStatus&));
     MOCK_METHOD(void, OnInstantMonitoring, (const smproto::InstantMonitoring&));
     MOCK_METHOD(void, OnAlert, (const smproto::Alert&));
     MOCK_METHOD(void, OnNodeConfigStatus, (const smproto::NodeConfigStatus&));
@@ -228,19 +228,12 @@ public:
         mStream->Write(msg);
     }
 
-    void SendUpdateInstances(
-        const std::vector<smproto::InstanceInfo>& startInstances, const std::vector<std::string>& stopServiceIds)
+    void SendRunInstances(const std::vector<smproto::InstanceInfo>& instances)
     {
         smproto::SMIncomingMessages msg;
-        auto*                       updateInstances = msg.mutable_update_instances();
 
-        for (const auto& instance : startInstances) {
-            *updateInstances->add_start_instances() = instance;
-        }
-
-        for (const auto& serviceId : stopServiceIds) {
-            auto* ident = updateInstances->add_stop_instances();
-            ident->set_item_id(serviceId);
+        for (const auto& instance : instances) {
+            *msg.mutable_run_instances()->add_instances() = instance;
         }
 
         mStream->Write(msg);
