@@ -26,7 +26,7 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, nodeconfig::NodeConfigHandlerItf& nodeConfigHandler,
     launcher::LauncherItf& launcher, logging::LogProviderItf& logProvider, aos::monitoring::MonitoringItf& monitoring,
     aos::instancestatusprovider::ProviderItf& instanceStatusProvider, aos::nodeconfig::JSONProviderItf& jsonProvider,
-    bool secureConnection)
+    aos::networkmanager::PendingUpdateHandlerItf& networkUpdateHandler, bool secureConnection)
 {
     LOG_DBG() << "Init SM client";
 
@@ -42,6 +42,7 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     mMonitoring             = &monitoring;
     mInstanceStatusProvider = &instanceStatusProvider;
     mJSONProvider           = &jsonProvider;
+    mNetworkUpdateHandler   = &networkUpdateHandler;
     mSecureConnection       = secureConnection;
 
     return ErrorEnum::eNone;
@@ -69,6 +70,7 @@ Error SMClient::Start()
 
     mStopped = false;
 
+    StartNetworkUpdateSubscription();
     mConnectionThread = std::thread(&SMClient::ConnectionLoop, this);
 
     return ErrorEnum::eNone;
@@ -850,6 +852,17 @@ void SMClient::ConnectionLoop() noexcept
             } else if (!SendNodeInstancesStatus()) {
                 LOG_ERR() << "Can't send node instances status";
             } else {
+                std::vector<aos::sm::smclient::ConnectListenerItf*> listeners;
+
+                {
+                    std::lock_guard lock {mMutex};
+                    listeners = mConnectListeners;
+                }
+
+                for (auto* listener : listeners) {
+                    listener->OnConnect();
+                }
+
                 HandleIncomingMessages();
             }
 
@@ -869,10 +882,34 @@ void SMClient::ConnectionLoop() noexcept
     LOG_DBG() << "SM client connection thread stopped";
 }
 
-Error SMClient::SubscribeInstanceNetworkUpdates(aos::networkmanager::PendingUpdateHandlerItf& handler)
+Error SMClient::SubscribeListener(ConnectListenerItf& listener)
 {
-    mNetworkUpdateHandler = &handler;
+    std::lock_guard lock {mMutex};
 
+    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+    if (it != mConnectListeners.end()) {
+        return Error(ErrorEnum::eAlreadyExist, "listener already subscribed");
+    }
+
+    mConnectListeners.push_back(&listener);
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::UnsubscribeListener(ConnectListenerItf& listener)
+{
+    std::lock_guard lock {mMutex};
+
+    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+    if (it != mConnectListeners.end()) {
+        mConnectListeners.erase(it);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+void SMClient::StartNetworkUpdateSubscription()
+{
     mNetworkUpdateThread = std::thread([this]() {
         LOG_DBG() << "Network update subscription thread started";
 
@@ -931,8 +968,6 @@ Error SMClient::SubscribeInstanceNetworkUpdates(aos::networkmanager::PendingUpda
 
         LOG_DBG() << "Network update subscription thread stopped";
     });
-
-    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::smclient
