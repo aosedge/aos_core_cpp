@@ -1294,4 +1294,25 @@ Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::In
     return ErrorEnum::eNone;
 }
 
+Error ConvertFromProto(const servicemanager::v5::InstanceNetworkStateInfo& src, InstanceNetworkStateInfo& dst)
+{
+    dst.mInstanceIdent = ConvertToAos(src.instance());
+    dst.mNetworkID     = src.network_id().c_str();
+    dst.mIP            = src.ip().c_str();
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::pbconvert
