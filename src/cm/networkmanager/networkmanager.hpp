@@ -85,6 +85,15 @@ public:
      */
     Error ReleaseNodeNetwork(const String& networkID, const String& nodeID) override;
 
+    /**
+     * Reconciles network state with SM on (re)connect.
+     *
+     * @param nodeID Node ID.
+     * @param instances Array of instance network state from SM.
+     * @return Error.
+     */
+    Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override;
+
 private:
     static constexpr uint64_t cMaxVlanID           = 4096;
     static constexpr int      cVlanGenerateRetries = 4;
