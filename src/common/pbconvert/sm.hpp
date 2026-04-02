@@ -335,6 +335,15 @@ Error ConvertFromProto(
  */
 Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::InstanceNetworkStateInfo& dst);
 
+/**
+ * Converts InstanceNetworkStateInfo from proto.
+ *
+ * @param src proto instance network state info.
+ * @param[out] dst Aos instance network state info.
+ * @return Error.
+ */
+Error ConvertFromProto(const servicemanager::v5::InstanceNetworkStateInfo& src, InstanceNetworkStateInfo& dst);
+
 } // namespace aos::common::pbconvert
 
 #endif
