@@ -357,10 +357,7 @@ Error NetworkManager::ReleaseInstanceNetwork(const InstanceIdent& instanceIdent,
 
             auto itInstance = itHost->second.mInstances.find(instanceIdent);
             if (itInstance == itHost->second.mInstances.end()) {
-                LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent)
-                          << Log::Field("nodeID", nodeID);
-
-                return ErrorEnum::eNone;
+                continue;
             }
 
             mIpSubnet.ReleaseIPToSubnet(networkID, itInstance->second.mIP.CStr());
@@ -504,9 +501,25 @@ Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<Instanc
         }
     }
 
-    // Step 2: Re-resolve pending connections for this node
-    for (const auto& smInstance : instances) {
-        ResolvePendingConnections(smInstance.mInstanceIdent);
+    // Step 2: Clean confirmed pending connections from DB
+    {
+        std::lock_guard lock {mMutex};
+
+        CleanConfirmedPendingConnections(nodeID, instances);
+
+        ReloadPendingConnections(nodeID);
+
+        for (const auto& [networkID, networkState] : mNetworkStates) {
+            for (const auto& [hostNodeID, hostInstances] : networkState.mHostInstances) {
+                for (const auto& [instanceIdent, instance] : hostInstances.mInstances) {
+                    allInstances.push_back(instanceIdent);
+                }
+            }
+        }
+    }
+
+    for (const auto& instanceIdent : allInstances) {
+        ResolvePendingConnections(instanceIdent);
     }
 
     return ErrorEnum::eNone;
@@ -887,11 +900,7 @@ void NetworkManager::ResolvePendingConnections(const InstanceIdent& newInstanceI
                 update.mInstanceIdent  = pending.mRequesterIdent;
                 update.mFirewallRules.PushBack(*rule);
 
-                if (auto err = mStorage->RemovePendingConnection(pending); !err.IsNone()) {
-                    LOG_ERR() << "Failed to remove resolved pending connection"
-                              << Log::Field("instanceIdent", pending.mRequesterIdent) << Log::Field(err);
-                }
-
+                // Remove from memory only; keep in DB until SM confirms via SyncNetworkState
                 it = mPendingConnections.erase(it);
             } else {
                 ++it;

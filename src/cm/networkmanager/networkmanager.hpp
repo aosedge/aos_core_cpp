@@ -125,6 +125,8 @@ private:
     void  StorePendingConnections(const InstanceIdent& requesterIdent, const String& nodeID, const String& networkID,
          const String& ip, const std::string& subnet, const std::vector<UnresolvedConnection>& unresolvedConnections);
     void  ResolvePendingConnections(const InstanceIdent& newInstanceIdent);
+    void  ReloadPendingConnections(const String& nodeID);
+    void  CleanConfirmedPendingConnections(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances);
 
     bool  MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
          const std::string& currentNodeID, StaticString<cIPLen>& ip,
