@@ -1054,4 +1054,284 @@ TEST_F(CMNetworkManagerTest, ReleaseInstanceNetwork_CleansPending)
     EXPECT_TRUE(err.IsNone());
 }
 
+TEST_F(CMNetworkManagerTest, SyncNetworkState_ReleasesStaleInstances)
+{
+    InstanceIdent identA;
+    identA.mItemID    = "serviceA";
+    identA.mSubjectID = "subject1";
+    identA.mInstance  = 1;
+
+    InstanceIdent identB;
+    identB.mItemID    = "serviceB";
+    identB.mSubjectID = "subject1";
+    identB.mInstance  = 1;
+
+    String networkID = "network1";
+    String nodeID    = "node1";
+
+    UpdateItemNetworkParams data;
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network net;
+        net.mNetworkID = "network1";
+        net.mSubnet    = "172.17.0.0/16";
+        net.mVlanID    = 1000;
+        networks.PushBack(net);
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(_, _)).WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+        Host host;
+        host.mNodeID = "node1";
+        host.mIP     = "172.17.0.1";
+        hosts.PushBack(host);
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetInstances(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, AddInstance(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, RemoveNetworkInstance(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, GetIP()).WillRepeatedly(Return("8.8.8.8"));
+    EXPECT_CALL(*mDNSServer, UpdateHostsFile(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, Restart()).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer);
+    ASSERT_TRUE(err.IsNone());
+
+    InstanceNetworkAllocation resultA, resultB;
+    err = mNetworkManager->AllocateInstanceNetwork(identA, networkID, nodeID, data, resultA);
+    ASSERT_TRUE(err.IsNone());
+
+    err = mNetworkManager->AllocateInstanceNetwork(identB, networkID, nodeID, data, resultB);
+    ASSERT_TRUE(err.IsNone());
+
+    StaticArray<InstanceNetworkStateInfo, cMaxNumInstances> smState;
+    smState.EmplaceBack(identA, networkID, resultA.mIP, resultA.mFirewallRules);
+
+    err = mNetworkManager->SyncNetworkState(nodeID, smState);
+    EXPECT_TRUE(err.IsNone());
+
+    err = mNetworkManager->ReleaseInstanceNetwork(identB, nodeID);
+    EXPECT_TRUE(err.IsNone());
+}
+
+TEST_F(CMNetworkManagerTest, SyncNetworkState_ReResolvePendingConnections)
+{
+    PendingUpdateHandlerMock handler;
+
+    InstanceIdent identA;
+    identA.mItemID    = "serviceA";
+    identA.mSubjectID = "subject1";
+    identA.mInstance  = 1;
+
+    InstanceIdent identB;
+    identB.mItemID    = "serviceB";
+    identB.mSubjectID = "subject1";
+    identB.mInstance  = 1;
+
+    String networkID1 = "network1";
+    String networkID2 = "network2";
+    String nodeID1    = "node1";
+    String nodeID2    = "node2";
+
+    UpdateItemNetworkParams dataA;
+    dataA.mAllowedConnections.PushBack("serviceB/8080/tcp");
+
+    UpdateItemNetworkParams dataB;
+    dataB.mExposedPorts.PushBack("8080/tcp");
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network net1;
+        net1.mNetworkID = "network1";
+        net1.mSubnet    = "172.17.0.0/16";
+        net1.mVlanID    = 1000;
+        networks.PushBack(net1);
+
+        Network net2;
+        net2.mNetworkID = "network2";
+        net2.mSubnet    = "172.18.0.0/16";
+        net2.mVlanID    = 1001;
+        networks.PushBack(net2);
+
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network1"), _))
+        .WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+            Host host;
+            host.mNodeID = "node1";
+            host.mIP     = "172.17.0.1";
+            hosts.PushBack(host);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network2"), _))
+        .WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+            Host host;
+            host.mNodeID = "node2";
+            host.mIP     = "172.18.0.1";
+            hosts.PushBack(host);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, GetInstances(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, AddInstance(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, GetIP()).WillRepeatedly(Return("8.8.8.8"));
+    EXPECT_CALL(*mDNSServer, UpdateHostsFile(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, Restart()).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer, &handler);
+    ASSERT_TRUE(err.IsNone());
+
+    InstanceNetworkAllocation resultA;
+    err = mNetworkManager->AllocateInstanceNetwork(identA, networkID1, nodeID1, dataA, resultA);
+    ASSERT_TRUE(err.IsNone());
+    EXPECT_TRUE(resultA.mFirewallRules.IsEmpty());
+
+    EXPECT_CALL(handler, OnPendingFirewallUpdate(_, _)).Times(1);
+
+    InstanceNetworkAllocation resultB;
+    err = mNetworkManager->AllocateInstanceNetwork(identB, networkID2, nodeID2, dataB, resultB);
+    ASSERT_TRUE(err.IsNone());
+
+    StaticArray<InstanceNetworkStateInfo, cMaxNumInstances> smState;
+    StaticArray<FirewallRule, cMaxNumFirewallRules>         emptyRules;
+    smState.EmplaceBack(identA, networkID1, resultA.mIP, emptyRules);
+
+    EXPECT_CALL(*mStorage, GetAllPendingConnections(_))
+        .WillRepeatedly(Invoke([&](Array<PendingConnection>& connections) -> Error {
+            PendingConnection pending;
+            pending.mRequesterIdent  = identA;
+            pending.mNodeID          = nodeID1;
+            pending.mNetworkID       = networkID1;
+            pending.mRequesterIP     = resultA.mIP;
+            pending.mRequesterSubnet = resultA.mSubnet;
+            pending.mTargetItemID    = "serviceB";
+            pending.mPort            = "8080";
+            pending.mProtocol        = "tcp";
+            connections.PushBack(pending);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(handler, OnPendingFirewallUpdate(_, _))
+        .WillOnce(Invoke([&](const String& /*nodeID*/, const aos::networkmanager::PendingFirewallUpdate& update) {
+            EXPECT_EQ(update.mInstanceIdent, identA);
+            EXPECT_EQ(update.mFirewallRules.Size(), 1);
+        }));
+
+    err = mNetworkManager->SyncNetworkState(nodeID1, smState);
+    EXPECT_TRUE(err.IsNone());
+}
+
+TEST_F(CMNetworkManagerTest, SyncNetworkState_ConfirmedPendingCleanedFromDB)
+{
+    PendingUpdateHandlerMock handler;
+
+    InstanceIdent identA;
+    identA.mItemID    = "serviceA";
+    identA.mSubjectID = "subject1";
+    identA.mInstance  = 1;
+
+    InstanceIdent identB;
+    identB.mItemID    = "serviceB";
+    identB.mSubjectID = "subject1";
+    identB.mInstance  = 1;
+
+    String networkID1 = "network1";
+    String networkID2 = "network2";
+    String nodeID1    = "node1";
+    String nodeID2    = "node2";
+
+    UpdateItemNetworkParams dataA;
+    dataA.mAllowedConnections.PushBack("serviceB/8080/tcp");
+
+    UpdateItemNetworkParams dataB;
+    dataB.mExposedPorts.PushBack("8080/tcp");
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network net1;
+        net1.mNetworkID = "network1";
+        net1.mSubnet    = "172.17.0.0/16";
+        net1.mVlanID    = 1000;
+        networks.PushBack(net1);
+
+        Network net2;
+        net2.mNetworkID = "network2";
+        net2.mSubnet    = "172.18.0.0/16";
+        net2.mVlanID    = 1001;
+        networks.PushBack(net2);
+
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network1"), _))
+        .WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+            Host host;
+            host.mNodeID = "node1";
+            host.mIP     = "172.17.0.1";
+            hosts.PushBack(host);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network2"), _))
+        .WillOnce(Invoke([](const String&, Array<Host>& hosts) -> Error {
+            Host host;
+            host.mNodeID = "node2";
+            host.mIP     = "172.18.0.1";
+            hosts.PushBack(host);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, GetInstances(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, AddInstance(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, GetIP()).WillRepeatedly(Return("8.8.8.8"));
+    EXPECT_CALL(*mDNSServer, UpdateHostsFile(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mDNSServer, Restart()).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer, &handler);
+    ASSERT_TRUE(err.IsNone());
+
+    InstanceNetworkAllocation resultA;
+    err = mNetworkManager->AllocateInstanceNetwork(identA, networkID1, nodeID1, dataA, resultA);
+    ASSERT_TRUE(err.IsNone());
+
+    EXPECT_CALL(handler, OnPendingFirewallUpdate(_, _)).Times(AnyNumber());
+
+    InstanceNetworkAllocation resultB;
+    err = mNetworkManager->AllocateInstanceNetwork(identB, networkID2, nodeID2, dataB, resultB);
+    ASSERT_TRUE(err.IsNone());
+
+    StaticArray<InstanceNetworkStateInfo, cMaxNumInstances> smState;
+
+    StaticArray<FirewallRule, cMaxNumFirewallRules> fwRules;
+    FirewallRule                                    rule;
+    rule.mDstIP   = resultB.mIP;
+    rule.mDstPort = "8080";
+    rule.mProto   = "tcp";
+    rule.mSrcIP   = resultA.mIP;
+    fwRules.PushBack(rule);
+
+    smState.EmplaceBack(identA, networkID1, resultA.mIP, fwRules);
+
+    EXPECT_CALL(*mStorage, GetAllPendingConnections(_))
+        .WillRepeatedly(Invoke([&](Array<PendingConnection>& connections) -> Error {
+            PendingConnection pending;
+            pending.mRequesterIdent  = identA;
+            pending.mNodeID          = nodeID1;
+            pending.mNetworkID       = networkID1;
+            pending.mRequesterIP     = resultA.mIP;
+            pending.mRequesterSubnet = resultA.mSubnet;
+            pending.mTargetItemID    = "serviceB";
+            pending.mPort            = "8080";
+            pending.mProtocol        = "tcp";
+            connections.PushBack(pending);
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*mStorage, RemovePendingConnection(_)).WillOnce(Return(ErrorEnum::eNone));
+
+    err = mNetworkManager->SyncNetworkState(nodeID1, smState);
+    EXPECT_TRUE(err.IsNone());
+}
+
 } // namespace aos::cm::networkmanager
