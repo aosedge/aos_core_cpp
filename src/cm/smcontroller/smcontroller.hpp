@@ -217,6 +217,10 @@ private:
         const servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest*          request,
         grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>* writer) override;
 
+    grpc::Status SyncNetworkState(grpc::ServerContext*     context,
+        const servicemanager::v5::SyncNetworkStateRequest* request,
+        servicemanager::v5::SyncNetworkStateResponse*      response) override;
+
     // iamclient::CertListenerItf interface
     void OnCertChanged(const CertInfo& info) override;
 
