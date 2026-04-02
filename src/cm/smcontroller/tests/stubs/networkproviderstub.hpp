@@ -63,9 +63,18 @@ public:
         return mError;
     }
 
+    Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override
+    {
+        mLastNodeID         = nodeID;
+        mSyncInstancesCount = instances.Size();
+
+        return mError;
+    }
+
     StaticString<cIDLen> mLastNetworkID;
     StaticString<cIDLen> mLastNodeID;
     InstanceIdent        mLastInstance;
+    size_t               mSyncInstancesCount {};
 
 private:
     NetworkParams             mNodeNetworkParams;
