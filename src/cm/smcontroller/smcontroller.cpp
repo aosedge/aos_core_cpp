@@ -559,6 +559,37 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
     return grpc::Status::OK;
 }
 
+grpc::Status SMController::SyncNetworkState(grpc::ServerContext*,
+    const servicemanager::v5::SyncNetworkStateRequest* request, servicemanager::v5::SyncNetworkStateResponse* response)
+{
+    LOG_DBG() << "Sync network state" << Log::Field("nodeID", request->node_id().c_str())
+              << Log::Field("instancesCount", request->instances_size());
+
+    auto instances = std::make_unique<StaticArray<InstanceNetworkStateInfo, cMaxNumInstances>>();
+
+    for (const auto& protoInstance : request->instances()) {
+        InstanceNetworkStateInfo info;
+
+        if (auto err = common::pbconvert::ConvertFromProto(protoInstance, info); !err.IsNone()) {
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+
+        if (auto err = instances->PushBack(info); !err.IsNone()) {
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+    }
+
+    if (auto err = mNetworkProvider->SyncNetworkState(request->node_id().c_str(), *instances); !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+    }
+
+    return grpc::Status::OK;
+}
+
 void SMController::OnPendingFirewallUpdate(
     const String& nodeID, const aos::networkmanager::PendingFirewallUpdate& update)
 {
