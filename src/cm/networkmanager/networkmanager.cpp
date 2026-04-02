@@ -501,7 +501,8 @@ Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<Instanc
         }
     }
 
-    // Step 2: Clean confirmed pending connections from DB
+    std::vector<InstanceIdent> allInstances;
+
     {
         std::lock_guard lock {mMutex};
 
@@ -871,7 +872,6 @@ void NetworkManager::CleanConfirmedPendingConnections(
         }
     }
 }
-
 void NetworkManager::ResolvePendingConnections(const InstanceIdent& newInstanceIdent)
 {
     std::unordered_map<InstanceIdent, std::pair<std::string /*nodeID*/, aos::networkmanager::PendingFirewallUpdate>>
