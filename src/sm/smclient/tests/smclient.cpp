@@ -107,7 +107,7 @@ protected:
     testing::NiceMock<monitoring::MonitoringMock>                    mMonitoring;
     testing::NiceMock<instancestatusprovider::ProviderMock>          mInstanceStatusProvider;
     testing::NiceMock<nodeconfig::JSONProviderMock>                  mJSONProvider;
-    testing::NiceMock<PendingUpdateHandlerMock>                     mPendingUpdateHandler;
+    testing::NiceMock<PendingUpdateHandlerMock>                      mPendingUpdateHandler;
 };
 
 /***********************************************************************************************************************
@@ -1530,27 +1530,27 @@ TEST_F(SMClientTest, SyncNetworkState_SendsStateToServer)
     server->WaitNodeInstancesStatus();
 
     EXPECT_CALL(*server, OnSyncNetworkState(_, _))
-        .WillOnce(Invoke([](const smproto::SyncNetworkStateRequest* request,
-                             smproto::SyncNetworkStateResponse*) -> grpc::Status {
-            EXPECT_EQ(request->node_id(), "test-node");
-            EXPECT_EQ(request->instances_size(), 1);
-            EXPECT_EQ(request->instances(0).network_id(), "network1");
-            EXPECT_EQ(request->instances(0).ip(), "172.17.0.2");
-            EXPECT_EQ(request->instances(0).instance().item_id(), "serviceA");
-            EXPECT_EQ(request->instances(0).firewall_rules_size(), 1);
-            EXPECT_EQ(request->instances(0).firewall_rules(0).dst_port(), "8080");
+        .WillOnce(Invoke(
+            [](const smproto::SyncNetworkStateRequest* request, smproto::SyncNetworkStateResponse*) -> grpc::Status {
+                EXPECT_EQ(request->node_id(), "test-node");
+                EXPECT_EQ(request->instances_size(), 1);
+                EXPECT_EQ(request->instances(0).network_id(), "network1");
+                EXPECT_EQ(request->instances(0).ip(), "172.17.0.2");
+                EXPECT_EQ(request->instances(0).instance().item_id(), "serviceA");
+                EXPECT_EQ(request->instances(0).firewall_rules_size(), 1);
+                EXPECT_EQ(request->instances(0).firewall_rules(0).dst_port(), "8080");
 
-            return grpc::Status::OK;
-        }));
+                return grpc::Status::OK;
+            }));
 
     StaticArray<InstanceNetworkStateInfo, cMaxNumInstances> instances;
-    InstanceIdent ident;
+    InstanceIdent                                           ident;
     ident.mItemID    = "serviceA";
     ident.mSubjectID = "subject1";
     ident.mInstance  = 1;
 
     StaticArray<FirewallRule, cMaxNumFirewallRules> rules;
-    FirewallRule rule;
+    FirewallRule                                    rule;
     rule.mDstPort = "8080";
     rule.mProto   = "tcp";
     rules.PushBack(rule);
@@ -1564,7 +1564,7 @@ TEST_F(SMClientTest, SyncNetworkState_SendsStateToServer)
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
 
-TEST_F(SMClientTest, SubscribeConnectListener_NotifiesOnConnect)
+TEST_F(SMClientTest, SubscribeListener_NotifiesOnConnect)
 {
     auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
     auto client = std::make_unique<sm::smclient::SMClient>();
@@ -1605,7 +1605,7 @@ TEST_F(SMClientTest, SubscribeConnectListener_NotifiesOnConnect)
         mJSONProvider, mPendingUpdateHandler, false);
     ASSERT_TRUE(err.IsNone());
 
-    struct TestConnectListener : public aos::connection::ConnectListenerItf {
+    struct TestConnectListener : public aos::sm::smclient::ConnectListenerItf {
         std::promise<void> mConnected;
 
         void OnConnect() override { mConnected.set_value(); }
@@ -1613,7 +1613,7 @@ TEST_F(SMClientTest, SubscribeConnectListener_NotifiesOnConnect)
 
     TestConnectListener listener;
 
-    err = client->SubscribeConnectListener(listener);
+    err = client->SubscribeListener(listener);
     ASSERT_TRUE(err.IsNone());
 
     err = client->Start();

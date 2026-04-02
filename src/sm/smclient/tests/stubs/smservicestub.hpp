@@ -146,6 +146,12 @@ public:
         return OnReleaseNodeNetwork(request, response);
     }
 
+    grpc::Status SyncNetworkState(grpc::ServerContext*, const smproto::SyncNetworkStateRequest* request,
+        smproto::SyncNetworkStateResponse* response) override
+    {
+        return OnSyncNetworkState(request, response);
+    }
+
     grpc::Status SubscribeInstanceNetworkUpdates(grpc::ServerContext* context,
         const smproto::SubscribeInstanceNetworkUpdatesRequest*,
         grpc::ServerWriter<smproto::InstanceNetworkUpdateNotification>* writer) override
@@ -193,6 +199,8 @@ public:
         (const smproto::ReleaseInstanceNetworkRequest*, smproto::ReleaseInstanceNetworkResponse*));
     MOCK_METHOD(grpc::Status, OnReleaseNodeNetwork,
         (const smproto::ReleaseNodeNetworkRequest*, smproto::ReleaseNodeNetworkResponse*));
+    MOCK_METHOD(grpc::Status, OnSyncNetworkState,
+        (const smproto::SyncNetworkStateRequest*, smproto::SyncNetworkStateResponse*));
 
     MOCK_METHOD(void, OnSMInfo, (const smproto::SMInfo&));
     MOCK_METHOD(void, OnNodeInstancesStatus, (const smproto::NodeInstancesStatus&));
