@@ -467,6 +467,51 @@ Error NetworkManager::ReleaseNodeNetwork(const String& networkID, const String& 
     return ErrorEnum::eNone;
 }
 
+Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances)
+{
+    LOG_DBG() << "Syncing network state" << Log::Field("nodeID", nodeID)
+              << Log::Field("instancesCount", instances.Size());
+
+    std::vector<InstanceIdent> instancesToRelease;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        for (auto& [networkID, networkState] : mNetworkStates) {
+            auto itHost = networkState.mHostInstances.find(nodeID.CStr());
+            if (itHost == networkState.mHostInstances.end()) {
+                continue;
+            }
+
+            for (const auto& [cmInstanceIdent, cmInstance] : itHost->second.mInstances) {
+                auto foundInSM = std::any_of(instances.begin(), instances.end(),
+                    [&](const auto& smInstance) { return smInstance.mInstanceIdent == cmInstanceIdent; });
+
+                if (!foundInSM) {
+                    LOG_DBG() << "Instance in CM but not in SM, releasing"
+                              << Log::Field("instanceIdent", cmInstanceIdent);
+
+                    instancesToRelease.push_back(cmInstanceIdent);
+                }
+            }
+        }
+    }
+
+    for (const auto& instanceIdent : instancesToRelease) {
+        if (auto err = ReleaseInstanceNetwork(instanceIdent, nodeID); !err.IsNone()) {
+            LOG_ERR() << "Failed to release stale instance" << Log::Field("instanceIdent", instanceIdent)
+                      << Log::Field(err);
+        }
+    }
+
+    // Step 2: Re-resolve pending connections for this node
+    for (const auto& smInstance : instances) {
+        ResolvePendingConnections(smInstance.mInstanceIdent);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -722,6 +767,94 @@ void NetworkManager::StorePendingConnections(const InstanceIdent& requesterIdent
         } else {
             LOG_DBG() << "Stored pending connection" << Log::Field("requester", requesterIdent)
                       << Log::Field("targetItemID", unresolved.mItemID.c_str());
+        }
+    }
+}
+
+void NetworkManager::ReloadPendingConnections(const String& nodeID)
+{
+    auto pendingConnections = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
+
+    if (auto err = mStorage->GetAllPendingConnections(*pendingConnections); !err.IsNone()) {
+        LOG_ERR() << "Failed to get pending connections from DB" << Log::Field(err);
+
+        return;
+    }
+
+    for (const auto& pending : *pendingConnections) {
+        if (pending.mNodeID != nodeID) {
+            continue;
+        }
+
+        auto key   = pending.mTargetItemID.CStr();
+        bool found = false;
+        auto range = mPendingConnections.equal_range(key);
+
+        for (auto it = range.first; it != range.second; ++it) {
+            if (it->second == pending) {
+                found = true;
+
+                break;
+            }
+        }
+
+        if (!found) {
+            mPendingConnections.emplace(key, pending);
+        }
+    }
+}
+
+void NetworkManager::CleanConfirmedPendingConnections(
+    const String& nodeID, const Array<InstanceNetworkStateInfo>& instances)
+{
+    auto dbPending = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
+
+    if (auto err = mStorage->GetAllPendingConnections(*dbPending); !err.IsNone()) {
+        LOG_ERR() << "Failed to get pending connections for cleanup" << Log::Field(err);
+
+        return;
+    }
+
+    for (const auto& pending : *dbPending) {
+        if (pending.mNodeID != nodeID) {
+            continue;
+        }
+
+        for (const auto& smInstance : instances) {
+            if (smInstance.mInstanceIdent != pending.mRequesterIdent) {
+                continue;
+            }
+
+            bool instanceFound = false;
+            auto rule = GetInstanceRule(pending.mTargetItemID.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
+                pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
+
+            if (!rule) {
+                break;
+            }
+
+            auto confirmed = std::any_of(smInstance.mFirewallRules.begin(), smInstance.mFirewallRules.end(),
+                [&](const auto& smRule) { return smRule == *rule; });
+
+            if (confirmed) {
+                if (auto err = mStorage->RemovePendingConnection(pending); !err.IsNone()) {
+                    LOG_ERR() << "Failed to remove confirmed pending connection"
+                              << Log::Field("instanceIdent", pending.mRequesterIdent) << Log::Field(err);
+                }
+
+                auto key   = pending.mTargetItemID.CStr();
+                auto range = mPendingConnections.equal_range(key);
+
+                for (auto it = range.first; it != range.second; ++it) {
+                    if (it->second == pending) {
+                        mPendingConnections.erase(it);
+
+                        break;
+                    }
+                }
+            }
+
+            break;
         }
     }
 }
