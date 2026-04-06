@@ -412,6 +412,33 @@ Poco::JSON::Object AlertRulesToJSON(const AlertRules& rules)
     return object;
 }
 
+void RuntimeDependencyFromJSON(
+    const utils::CaseInsensitiveObjectWrapper& object, aos::oci::RuntimeDependency& dependency)
+{
+    auto err = dependency.mItemID.Assign(object.GetValue<std::string>("itemID").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "runtime dependency itemID parsing error");
+
+    err = dependency.mVersions.Assign(object.GetValue<std::string>("versions").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "runtime dependency versions parsing error");
+
+    dependency.mAllowPrereleases = object.GetValue<bool>("allowPrereleases");
+
+    err = dependency.mCondition.FromString(object.GetValue<std::string>("condition").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "runtime dependency condition parsing error");
+}
+
+Poco::JSON::Object RuntimeDependencyToJSON(const aos::oci::RuntimeDependency& dependency)
+{
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    object.set("itemID", dependency.mItemID.CStr());
+    object.set("versions", dependency.mVersions.CStr());
+    object.set("allowPrereleases", dependency.mAllowPrereleases);
+    object.set("condition", dependency.mCondition.ToString().CStr());
+
+    return object;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -500,6 +527,15 @@ Error OCISpec::LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConf
         if (wrapper.Has("alertRules")) {
             itemConfig.mAlertRules.SetValue(AlertRulesFromJSON(wrapper.GetObject("alertRules")));
         }
+
+        common::utils::ForEach(wrapper, "runtimesDeps", [&](const auto& depVar) {
+            if (auto err = itemConfig.mRuntimesDeps.EmplaceBack(); !err.IsNone()) {
+                AOS_ERROR_CHECK_AND_THROW(err, "runtimesDeps parsing error");
+            }
+
+            RuntimeDependencyFromJSON(
+                common::utils::CaseInsensitiveObjectWrapper(depVar), itemConfig.mRuntimesDeps.Back());
+        });
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
@@ -565,6 +601,10 @@ Error OCISpec::SaveItemConfig(const String& path, const aos::oci::ItemConfig& it
 
         if (itemConfig.mAlertRules.HasValue()) {
             object->set("alertRules", AlertRulesToJSON(itemConfig.mAlertRules.GetValue()));
+        }
+
+        if (!itemConfig.mRuntimesDeps.IsEmpty()) {
+            object->set("runtimesDeps", common::utils::ToJsonArray(itemConfig.mRuntimesDeps, RuntimeDependencyToJSON));
         }
 
         err = utils::WriteJsonToFile(object, path.CStr());

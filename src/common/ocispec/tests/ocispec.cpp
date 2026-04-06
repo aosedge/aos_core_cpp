@@ -202,7 +202,20 @@ constexpr auto cItemConfig        = R"(
             "SomeRole": "rw",
             "AnotherRole": "r"
         }
-    }
+    },
+    "runtimesDeps": [
+        {
+            "itemID": "runtime1",
+            "versions": "1.0;1.0.1",
+            "allowPrereleases": true,
+            "condition": "completed"
+        },
+        {
+            "itemID": "runtime2",
+            "versions": "2.0",
+            "condition": "started"
+        }
+    ]
 }
 )";
 
@@ -393,6 +406,23 @@ TEST_F(OCISpecTest, LoadAndSaveItemConfig)
     checkKeyAndValue(itSystemCorePems->mPermissions, "Services.Restart", "w");
     checkKeyAndValue(itSystemCorePems->mPermissions, "SomeRole", "rw");
     checkKeyAndValue(itSystemCorePems->mPermissions, "AnotherRole", "r");
+
+    // Check runtimesDeps
+    {
+        ASSERT_EQ(lhsItemConfig->mRuntimesDeps.Size(), 2);
+
+        auto& dep1 = lhsItemConfig->mRuntimesDeps[0];
+        EXPECT_STREQ(dep1.mItemID.CStr(), "runtime1");
+        EXPECT_STREQ(dep1.mVersions.CStr(), "1.0;1.0.1");
+        EXPECT_TRUE(dep1.mAllowPrereleases);
+        EXPECT_STREQ(dep1.mCondition.ToString().CStr(), "completed");
+
+        auto& dep2 = lhsItemConfig->mRuntimesDeps[1];
+        EXPECT_STREQ(dep2.mItemID.CStr(), "runtime2");
+        EXPECT_STREQ(dep2.mVersions.CStr(), "2.0");
+        EXPECT_FALSE(dep2.mAllowPrereleases);
+        EXPECT_STREQ(dep2.mCondition.ToString().CStr(), "started");
+    }
 }
 
 TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)
