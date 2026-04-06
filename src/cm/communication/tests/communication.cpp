@@ -592,6 +592,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
     mUUIDProvider.SetUUID(cRequestCorrelationID);
     mUUIDProvider.SetUUID(cRequestTxnID);
 
+    // cppcheck-suppress templateRecursion
     StaticArray<StaticString<oci::cDigestLen>, 1> digests;
     digests.EmplaceBack(cDigest);
 
