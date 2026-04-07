@@ -663,7 +663,7 @@ Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) co
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveInstance(const InstanceIdent& instanceIdent)
+Error Database::RemoveInstance(const InstanceIdent& instanceIdent, const String& version)
 {
     std::lock_guard lock {mMutex};
 
@@ -672,9 +672,10 @@ Error Database::RemoveInstance(const InstanceIdent& instanceIdent)
 
         statement.reset(*mSession);
         statement << "DELETE FROM launcher_instances "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ?;",
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ? AND "
+                     "version = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled);
+            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled), bind(version.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
