@@ -109,10 +109,11 @@ Error NetworkManager::RemoveInstanceNetworkParameters(const InstanceIdent& insta
 
             auto itInstance = itHost->second.mInstances.find(instanceIdent);
             if (itInstance == itHost->second.mInstances.end()) {
-                LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent)
-                          << Log::Field("nodeID", nodeID);
+                LOG_DBG() << "Instance network parameters not found in network"
+                          << Log::Field("instanceIdent", instanceIdent)
+                          << Log::Field("networkID", networkID.c_str()) << Log::Field("nodeID", nodeID);
 
-                return ErrorEnum::eNone;
+                continue;
             }
 
             RemoveInstanceNetwork(networkID, itInstance->second.mIP.CStr(), instanceIdent);
