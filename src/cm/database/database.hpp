@@ -206,9 +206,10 @@ public:
      * Removes launcher instance.
      *
      * @param instanceIdent Instance identifier.
+     * @param version Version.
      * @return Error.
      */
-    Error RemoveInstance(const InstanceIdent& instanceIdent) override;
+    Error RemoveInstance(const InstanceIdent& instanceIdent, const String& version) override;
 
     /**
      * Saves override environment variables.

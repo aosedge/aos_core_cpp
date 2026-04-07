@@ -618,13 +618,16 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
 {
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
-        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.0.0");
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
-        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, true, "1.0.0");
+    auto instance1   = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+          UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.0.0");
+    auto instance1v1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.0.1");
+    auto instance2   = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+          UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, true, "1.0.0");
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
+    ASSERT_TRUE(mDB.AddInstance(instance1v1).IsNone());
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Update instance
@@ -647,10 +650,11 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
         UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.0.0");
     ASSERT_FALSE(mDB.UpdateInstance(nonExistentInstance).IsNone());
 
-    // Verify updated instance and second instance unchanged
+    // Verify UpdateInstance updates only instance1 (1.0.0), leaves instance1v1 (same ident, 1.0.1) untouched, and
+    // leaves instance2 unchanged.
     auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
     ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
-    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2));
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance1v1, instance2));
 }
 
 TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
@@ -662,21 +666,25 @@ TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
     ASSERT_TRUE(mDB.LoadActiveInstances(*emptyInstances).IsNone());
     EXPECT_EQ(emptyInstances->Size(), 0);
 
-    auto instance1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
-        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "1.0.0", "owner1",
+    auto instance1   = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+          UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "1.0.0", "owner1",
+          SubjectTypeEnum::eUser, 80, {"label4"}, true);
+    auto instance1v1 = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "1.0.1", "owner1",
         SubjectTypeEnum::eUser, 80, {"label4"}, true);
-    auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
-        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eDisabled, true, "2.0.0", "owner2",
-        SubjectTypeEnum::eUser, 200, {"label5", "label6", "label7"}, false);
+    auto instance2   = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
+          UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eDisabled, true, "2.0.0", "owner2",
+          SubjectTypeEnum::eUser, 200, {"label5", "label6", "label7"}, false);
 
     // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
+    ASSERT_TRUE(mDB.AddInstance(instance1v1).IsNone());
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Get all instances
-    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 2>>();
+    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 3>>();
     ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
-    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2));
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance1v1, instance2));
 }
 
 TEST_F(CMDatabaseTest, LauncherRemoveInstance)
@@ -686,19 +694,29 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
     auto instance1
         = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1", UpdateItemTypeEnum::eService,
             launcher::InstanceStateEnum::eCached, true, "1.0.0", "owner1", SubjectTypeEnum::eUser, 30, {"label8"});
+    auto instance1v1
+        = CreateLauncherInstanceInfo("service1", "subject1", 0, "image1", "node1", UpdateItemTypeEnum::eService,
+            launcher::InstanceStateEnum::eCached, true, "1.0.1", "owner1", SubjectTypeEnum::eUser, 30, {"label8"});
     auto instance2 = CreateLauncherInstanceInfo("service2", "subject2", 0, "image2", "node2",
         UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eActive, false, "2.0.0", "owner2",
         SubjectTypeEnum::eUser, 175, {"label9", "label10"});
 
+    // Add instances
     ASSERT_TRUE(mDB.AddInstance(instance1).IsNone());
+    ASSERT_TRUE(mDB.AddInstance(instance1v1).IsNone());
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Remove instance
-    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent).IsNone());
+    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent, instance1.mVersion).IsNone());
 
     // Remove non-existent instance
     auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
-    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent).IsNone());
+    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent, "1.0.0").IsNone());
+
+    // Verify remaining instances
+    auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
+    ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
+    EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1v1, instance2));
 }
 
 TEST_F(CMDatabaseTest, LauncherSaveOverrideEnvVarsReplacesExisting)
