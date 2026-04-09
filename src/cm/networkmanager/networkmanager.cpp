@@ -228,8 +228,6 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
             return err;
         }
 
-        itHost->second.mInstances.emplace(instanceIdent, instance);
-
         if (auto err = PrepareFirewallRules(
                 it->second.mNetwork.mSubnet.CStr(), IP.c_str(), networkData.mAllowedConnections, result);
             !err.IsNone()) {
@@ -243,6 +241,8 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
         if (auto err = mStorage->AddInstance(instance); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
+
+        itHost->second.mInstances.emplace(instanceIdent, instance);
 
         LOG_DBG() << "Prepared instance network parameters" << Log::Field("networkID", networkID)
                   << Log::Field("nodeID", nodeID) << Log::Field("instanceIdent", instanceIdent)
