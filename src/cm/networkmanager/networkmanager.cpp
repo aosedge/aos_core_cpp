@@ -228,19 +228,29 @@ Error NetworkManager::PrepareInstanceNetworkParameters(const InstanceIdent& inst
             return err;
         }
 
-        itHost->second.mInstances.emplace(instanceIdent, instance);
+        auto [itInstance2, _] = itHost->second.mInstances.emplace(instanceIdent, instance);
 
-        if (auto err = PrepareFirewallRules(
+        Error err;
+
+        auto cleanupInstance = DeferRelease(&err, [this, &itHost, &itInstance2, &networkID, &IP](const Error* err) {
+            if (!err->IsNone()) {
+                itHost->second.mInstances.erase(itInstance2);
+                mHosts.erase(IP);
+                mIpSubnet.ReleaseIPToSubnet(networkID.CStr(), IP);
+            }
+        });
+
+        if (err = PrepareFirewallRules(
                 it->second.mNetwork.mSubnet.CStr(), IP.c_str(), networkData.mAllowedConnections, result);
             !err.IsNone()) {
             return err;
         }
 
-        if (auto err = AddHosts(hosts, IP); !err.IsNone()) {
+        if (err = AddHosts(hosts, IP); !err.IsNone()) {
             return err;
         }
 
-        if (auto err = mStorage->AddInstance(instance); !err.IsNone()) {
+        if (err = mStorage->AddInstance(instance); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -382,11 +392,11 @@ Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const Stri
 
 Error NetworkManager::AddHosts(const std::vector<std::string>& hosts, const std::string& ip)
 {
-    for (const auto& host : hosts) {
-        if (IsHostExist(host)) {
-            return Error(ErrorEnum::eAlreadyExist, "host already exists");
-        }
+    if (std::any_of(hosts.begin(), hosts.end(), [this](const auto& host) { return IsHostExist(host); })) {
+        return Error(ErrorEnum::eAlreadyExist, "host already exists");
+    }
 
+    for (const auto& host : hosts) {
         mHosts[ip].push_back(host);
     }
 
