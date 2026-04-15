@@ -21,6 +21,21 @@ namespace aos::common::oci {
 
 namespace {
 
+void RuntimeFromJSON(const utils::CaseInsensitiveObjectWrapper& wrapper, String& runtime)
+{
+    auto err = runtime.Assign(wrapper.GetValue<std::string>("codename").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "runtime parsing error");
+}
+
+Poco::JSON::Object RuntimeToJSON(const String& runtime)
+{
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    object.set("codename", runtime.CStr());
+
+    return object;
+}
+
 void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
     if (const auto startBurst = object.GetOptionalValue<long>("startBurst")) {
@@ -453,11 +468,12 @@ Error OCISpec::LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConf
             AOS_ERROR_CHECK_AND_THROW(err, "balancing policy parsing error");
         }
 
-        const auto runtimes = utils::GetArrayValue<std::string>(wrapper, "runtimes");
-        for (const auto& runtime : runtimes) {
-            err = itemConfig.mRuntimes.PushBack(runtime.c_str());
+        utils::ForEach(wrapper, "runtimes", [&itemConfig](const auto& value) {
+            auto err = itemConfig.mRuntimes.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW(err, "runtimes parsing error");
-        }
+
+            RuntimeFromJSON(utils::CaseInsensitiveObjectWrapper(value), itemConfig.mRuntimes.Back());
+        });
 
         if (wrapper.Has("runParameters")) {
             RunParametersFromJSON(wrapper.GetObject("runParameters"), itemConfig.mRunParameters);
@@ -524,7 +540,10 @@ Error OCISpec::SaveItemConfig(const String& path, const aos::oci::ItemConfig& it
         }
 
         object->set("balancingPolicy", itemConfig.mBalancingPolicy.ToString().CStr());
-        object->set("runtimes", utils::ToJsonArray(itemConfig.mRuntimes, utils::ToStdString));
+
+        if (!itemConfig.mRuntimes.IsEmpty()) {
+            object->set("runtimes", utils::ToJsonArray(itemConfig.mRuntimes, RuntimeToJSON));
+        }
 
         if (auto runParametersObject = RunParametersToJSON(itemConfig.mRunParameters); runParametersObject.size() > 0) {
             object->set("runParameters", runParametersObject);
