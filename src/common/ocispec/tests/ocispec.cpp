@@ -121,8 +121,12 @@ constexpr auto cItemConfig        = R"(
     "balancingPolicy": "disabled",
     "hostname": "test-hostname",
     "runtimes": [
-        "crun",
-        "runc"
+        {
+            "codename": "crun"
+        },
+        {
+            "codename": "runc"
+        }
     ],
     "runParameters": {
         "startInterval": "PT1M",
