@@ -228,17 +228,31 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             StorePendingConnections(instanceIdent, nodeID, networkID, itInstance->second.mIP,
                 it->second.mNetwork.mSubnet.CStr(), unresolvedConnections);
 
+            Error err;
+
+            auto savedHosts = mHosts[itInstance->second.mIP.CStr()];
+
+            auto rollbackHosts = DeferRelease(&err, [this, &itInstance, &savedHosts](const Error* err) {
+                if (!err->IsNone()) {
+                    mHosts[itInstance->second.mIP.CStr()] = savedHosts;
+                }
+            });
+
             mHosts.erase(itInstance->second.mIP.CStr());
 
             for (const auto& host : hosts) {
                 if (IsHostExist(host)) {
-                    return Error(ErrorEnum::eAlreadyExist, "host already exists");
+                    err = Error(ErrorEnum::eAlreadyExist, "host already exists");
+
+                    return err;
                 }
 
                 mHosts[itInstance->second.mIP.CStr()].push_back(host);
             }
 
-            return RestartDNS();
+            err = RestartDNS();
+
+            return err;
         }
 
         std::string IP;
