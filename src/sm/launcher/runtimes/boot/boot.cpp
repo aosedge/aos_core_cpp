@@ -144,6 +144,12 @@ Error BootRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& s
     }
 
     if (mPending.HasValue()) {
+        if (mPending->mManifestDigest == instance.mManifestDigest) {
+            ToInstanceStatus(*mPending, status);
+
+            return ErrorEnum::eNone;
+        }
+
         LOG_DBG() << "Another update is already in progress"
                   << Log::Field("instance", static_cast<const InstanceIdent&>(*mPending))
                   << Log::Field("digest", mPending->mManifestDigest);
@@ -157,6 +163,7 @@ Error BootRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& s
     mPending->mManifestDigest              = instance.mManifestDigest;
     mPending->mState                       = InstanceStateEnum::eActivating;
     mPending->mPartitionIndex              = GetNextPartitionIndex(mInstalled.mPartitionIndex.GetValue());
+    mPending->mVersion                     = instance.mVersion;
 
     if (auto err = StoreData(cPendingInstance, *mPending); !err.IsNone()) {
         mPending->mError = AOS_ERROR_WRAP(err);
