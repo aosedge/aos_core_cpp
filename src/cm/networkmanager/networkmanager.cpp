@@ -293,7 +293,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             return err;
         }
 
-        auto [itInstance2, _] = itHost->second.mInstances.emplace(instanceIdent, instance);
+        itHost->second.mInstances.emplace(instanceIdent, instance);
 
         auto rollbackInstance = DeferRelease(&instanceIdent, [this, &itHost, &IP, &err](const InstanceIdent* ident) {
             if (!err.IsNone()) {
