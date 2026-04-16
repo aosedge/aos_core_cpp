@@ -166,7 +166,6 @@ private:
     RuntimeInfo                            mRuntimeInfo;
     size_t                                 mMainPartition {};
     size_t                                 mCurrentPartition {};
-    std::string                            mCurrentPartitionVersion;
     BootData                               mInstalled;
     Optional<BootData>                     mPending;
     std::vector<std::string>               mPartitionDevices;

@@ -257,11 +257,6 @@ Error BootRuntime::InitBootData()
         return AOS_ERROR_WRAP(err);
     }
 
-    Tie(mCurrentPartitionVersion, err) = GetPartitionVersion(mCurrentPartition);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     return ErrorEnum::eNone;
 }
 
@@ -270,9 +265,19 @@ Error BootRuntime::InitInstalledData()
     if (!std::filesystem::exists(GetPath(cInstalledInstance))) {
         mInstalled.mPartitionIndex.SetValue(mCurrentPartition);
         static_cast<InstanceIdent&>(mInstalled) = mDefaultInstanceIdent;
-        mInstalled.mVersion                     = mCurrentPartitionVersion.c_str();
 
-        if (auto err = StoreData(cInstalledInstance, mInstalled); !err.IsNone()) {
+        auto [version, err] = GetPartitionVersion(mCurrentPartition);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        err = mInstalled.mVersion.Assign(version.c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        err = StoreData(cInstalledInstance, mInstalled);
+        if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -294,10 +299,6 @@ Error BootRuntime::InitPendingData()
 
     if (auto err = LoadData(cPendingInstance, *mPending); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
-    }
-
-    if (mPending->mPartitionIndex.HasValue() && mPending->mPartitionIndex.GetValue() == mCurrentPartition) {
-        mPending->mVersion = mCurrentPartitionVersion.c_str();
     }
 
     return ErrorEnum::eNone;

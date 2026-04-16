@@ -320,18 +320,6 @@ TEST_F(BootRuntimeTest, InstalledStatusIsSentOnStart)
     EXPECT_CALL(*mMockBootController, GetCurrentBoot).WillOnce(Return(0u));
     EXPECT_CALL(*mMockBootController, GetMainBoot).WillOnce(Return(0u));
     EXPECT_CALL(*mMockBootController, SetBootOK).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mPartitionManager, GetPartInfo(cPartition1.string(), _))
-        .WillOnce(DoAll(SetArgReferee<1>(mBootAPartition), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*mPartitionManager, Mount(mBootAPartition, cBootPartitionMountDir.string(), _))
-        .WillOnce(Invoke([](const PartInfo&, const std::string&, int) {
-            std::filesystem::create_directory(cBootPartitionMountDir);
-
-            std::filesystem::copy_file(cPartition1 / "version.txt", cBootPartitionMountDir / "version.txt",
-                std::filesystem::copy_options::overwrite_existing);
-
-            return ErrorEnum::eNone;
-        }));
-    EXPECT_CALL(*mPartitionManager, Unmount(cBootPartitionMountDir.string())).WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mBootRuntime.Init(
         mConfig, mCurrentNodeInfoProvider, mItemInfoProvider, mOCISpec, mStatusReceiver, mSystemdConn);
@@ -378,6 +366,7 @@ TEST_F(BootRuntimeTest, UpdateSucceededOnStart)
         "instance": 1,
         "manifestDigest": "updateDigest",
         "state": "active",
+        "version": "1.0.1",
         "partitionIndex": 1
     })";
 
@@ -394,18 +383,6 @@ TEST_F(BootRuntimeTest, UpdateSucceededOnStart)
     EXPECT_CALL(*mMockBootController, GetCurrentBoot).WillOnce(Return(1u));
     EXPECT_CALL(*mMockBootController, GetMainBoot).WillOnce(Return(1u));
     EXPECT_CALL(*mMockBootController, SetBootOK).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mPartitionManager, GetPartInfo(cPartition2.string(), _))
-        .WillOnce(DoAll(SetArgReferee<1>(mBootBPartition), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*mPartitionManager, Mount(mBootBPartition, cBootPartitionMountDir.string(), _))
-        .WillOnce(Invoke([](const PartInfo&, const std::string&, int) {
-            std::filesystem::create_directory(cBootPartitionMountDir);
-
-            std::filesystem::copy_file(cPartition2 / "version.txt", cBootPartitionMountDir / "version.txt",
-                std::filesystem::copy_options::overwrite_existing);
-
-            return ErrorEnum::eNone;
-        }));
-    EXPECT_CALL(*mPartitionManager, Unmount(cBootPartitionMountDir.string())).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mPartitionManager, CopyDevice(cPartition2.string(), cPartition1.string()))
         .WillOnce(Invoke([](const std::string& from, const std::string& to) {
             std::filesystem::copy_file(
@@ -441,7 +418,7 @@ TEST_F(BootRuntimeTest, UpdateSucceededOnStart)
     EXPECT_STREQ(statuses[1].mItemID.CStr(), "updateItem1");
     EXPECT_STREQ(statuses[1].mSubjectID.CStr(), "updateSubject1");
     EXPECT_EQ(statuses[1].mInstance, 1u);
-    EXPECT_EQ(statuses[1].mVersion, "1.0.1");
+    EXPECT_STREQ(statuses[1].mVersion.CStr(), "1.0.1");
     EXPECT_FALSE(statuses[1].mPreinstalled);
 
     for (const auto& partition : {cPartition1, cPartition2}) {
@@ -487,18 +464,6 @@ TEST_F(BootRuntimeTest, UpdateFailedOnStart)
     EXPECT_CALL(*mMockBootController, GetCurrentBoot).WillOnce(Return(0u));
     EXPECT_CALL(*mMockBootController, GetMainBoot).WillOnce(Return(1u));
     EXPECT_CALL(*mMockBootController, SetBootOK).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mPartitionManager, GetPartInfo(cPartition1.string(), _))
-        .WillOnce(DoAll(SetArgReferee<1>(mBootAPartition), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*mPartitionManager, Mount(mBootAPartition, cBootPartitionMountDir.string(), _))
-        .WillOnce(Invoke([](const PartInfo&, const std::string&, int) {
-            std::filesystem::create_directory(cBootPartitionMountDir);
-
-            std::filesystem::copy_file(cPartition1 / "version.txt", cBootPartitionMountDir / "version.txt",
-                std::filesystem::copy_options::overwrite_existing);
-
-            return ErrorEnum::eNone;
-        }));
-    EXPECT_CALL(*mPartitionManager, Unmount(cBootPartitionMountDir.string())).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mPartitionManager, CopyDevice(cPartition1.string(), cPartition2.string()))
         .WillOnce(Invoke([](const std::string& from, const std::string& to) {
             std::filesystem::copy_file(
