@@ -186,6 +186,9 @@ void SetGRPCServerOptions(grpc::ServerBuilder& builder)
     // Client uses GRPC_ARG_KEEPALIVE_TIME_MS = keepAlivePingMs; server default min interval between
     // PINGs without data is much larger, which triggers ENHANCE_YOUR_CALM / too_many_pings GOAWAY.
     (void)builder.AddChannelArgument(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, keepAlivePingMs);
+    // Disable ping strike mechanism to avoid GOAWAY due to timing jitter when client and server
+    // keepalive intervals are equal.
+    (void)builder.AddChannelArgument(GRPC_ARG_HTTP2_MAX_PING_STRIKES, 0);
 }
 
 } // namespace aos::common::utils
