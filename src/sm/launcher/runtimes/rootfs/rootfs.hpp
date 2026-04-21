@@ -159,7 +159,7 @@ private:
     Error SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const;
     Error LoadInstanceInfo(const std::filesystem::path& path, InstanceInfo& instance);
     Error GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
-    Error UnpackImage(const oci::ImageManifest& manifest) const;
+    Error CopyImage(const oci::ImageManifest& manifest) const;
     Error PrepareUpdateFileContent(const oci::ImageManifest& manifest, std::string& updateType) const;
     void  ClearUpdateArtifacts() const;
     Error StoreAction(const ActionType& action, const std::string& data = "") const;

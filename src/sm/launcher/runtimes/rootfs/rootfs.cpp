@@ -502,7 +502,7 @@ Error RootfsRuntime::GetImageManifest(const String& digest, oci::ImageManifest& 
     return ErrorEnum::eNone;
 }
 
-Error RootfsRuntime::UnpackImage(const oci::ImageManifest& manifest) const
+Error RootfsRuntime::CopyImage(const oci::ImageManifest& manifest) const
 {
     if (manifest.mLayers.Size() == 0) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "image manifest has no layers"));
@@ -517,11 +517,13 @@ Error RootfsRuntime::UnpackImage(const oci::ImageManifest& manifest) const
     LOG_DBG() << "Unpack image layer" << Log::Field("digest", manifest.mLayers[0].mDigest)
               << Log::Field("path", imageArchivePath.CStr());
 
-    const std::vector<std::string> cmdArgs {"tar", "xzf", imageArchivePath.CStr(), "-C", mRootfsConfig.mWorkingDir};
+    std::error_code ec;
 
-    auto [_, err] = common::utils::ExecCommand(cmdArgs);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    std::filesystem::copy_file(imageArchivePath.CStr(), GetPath("image.squashfs").c_str(),
+        std::filesystem::copy_options::overwrite_existing, ec);
+
+    if (ec.value() != 0) {
+        return AOS_ERROR_WRAP(Error(ec.value(), ec.message().c_str()));
     }
 
     return ErrorEnum::eNone;
@@ -608,7 +610,7 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = UnpackImage(*imageManifest); !err.IsNone()) {
+    if (auto err = CopyImage(*imageManifest); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
