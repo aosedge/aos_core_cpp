@@ -628,6 +628,8 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
         return AOS_ERROR_WRAP(err);
     }
 
+    mPendingInstance = instance;
+
     return ErrorEnum::eNone;
 }
 
