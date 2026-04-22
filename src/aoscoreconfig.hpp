@@ -15,6 +15,6 @@
 /**
  * URL len.
  */
-#define AOS_CONFIG_URL_LEN 512
+#define AOS_CONFIG_URL_LEN 4096
 
 #endif
