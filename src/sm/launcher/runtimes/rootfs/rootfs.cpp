@@ -220,7 +220,7 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
         status->mError = AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mRebooter.Reboot(); !err.IsNone()) {
+    if (auto err = mStatusReceiver->RebootRequired(mRuntimeInfo.mRuntimeID); !err.IsNone()) {
         status->mState = InstanceStateEnum::eFailed;
         status->mError = AOS_ERROR_WRAP(err);
     }
