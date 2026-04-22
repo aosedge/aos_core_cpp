@@ -306,23 +306,23 @@ void Downloader::SendAlert(ProgressContext* context, DownloadState state, size_t
         return;
     }
 
-    DownloadAlert alert;
+    auto alert = std::make_unique<DownloadAlert>();
 
-    alert.mDigest          = context->mDigest.c_str();
-    alert.mURL             = context->mURL.c_str();
-    alert.mState           = state;
-    alert.mDownloadedBytes = downloadedBytes;
-    alert.mTotalBytes      = totalBytes;
+    alert->mDigest          = context->mDigest.c_str();
+    alert->mURL             = context->mURL.c_str();
+    alert->mState           = state;
+    alert->mDownloadedBytes = downloadedBytes;
+    alert->mTotalBytes      = totalBytes;
 
     if (!reason.empty()) {
-        alert.mReason.SetValue(reason.c_str());
+        alert->mReason.SetValue(reason.c_str());
     }
 
-    alert.mError = error;
+    alert->mError = error;
 
     AlertVariant param;
 
-    param.SetValue<DownloadAlert>(alert);
+    param.SetValue<DownloadAlert>(*alert);
 
     mSender->SendAlert(param);
 }

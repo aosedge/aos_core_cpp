@@ -387,11 +387,10 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
         });
     }
 
-    const auto pemCert = String(request->cert().c_str());
+    const auto pemCert  = String(request->cert().c_str());
+    auto       certInfo = std::make_unique<CertInfo>();
 
-    CertInfo certInfo;
-
-    if (auto err = mProvisionManager->ApplyCert(certType, pemCert, certInfo); !err.IsNone()) {
+    if (auto err = mProvisionManager->ApplyCert(certType, pemCert, *certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -402,7 +401,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     Error       err;
     std::string serial;
 
-    Tie(serial, err) = common::pbconvert::ConvertSerialToProto(certInfo.mSerial);
+    Tie(serial, err) = common::pbconvert::ConvertSerialToProto(certInfo->mSerial);
     if (!err.IsNone()) {
         LOG_ERR() << "Convert serial failed: error=" << err;
 
@@ -411,7 +410,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
         return grpc::Status::OK;
     }
 
-    response->mutable_cert_info()->set_cert_url(certInfo.mCertURL.CStr());
+    response->mutable_cert_info()->set_cert_url(certInfo->mCertURL.CStr());
     response->mutable_cert_info()->set_serial(serial);
 
     return grpc::Status::OK;

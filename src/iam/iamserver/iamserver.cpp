@@ -102,16 +102,16 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
 
     try {
         if (!mProvisioningMode) {
-            CertInfo certInfo;
+            auto certInfo = std::make_unique<CertInfo>();
 
-            err = certHandler.GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, certInfo);
+            err = certHandler.GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo);
             if (!err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
-            mPublicCred    = common::utils::GetTLSServerCredentials(certInfo, certLoader, cryptoProvider);
+            mPublicCred    = common::utils::GetTLSServerCredentials(*certInfo, certLoader, cryptoProvider);
             mProtectedCred = common::utils::GetMTLSServerCredentials(
-                certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
+                *certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
         } else {
             mPublicCred    = grpc::InsecureServerCredentials();
             mProtectedCred = grpc::InsecureServerCredentials();
