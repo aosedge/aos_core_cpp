@@ -49,7 +49,7 @@ Poco::JSON::Object::Ptr ResourceAllocateAlertToJSON(const ResourceAllocateAlert&
 {
     auto json = AlertItemToJSON(alert);
 
-    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), *json);
+    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), false, *json);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert instanceIdent to JSON");
 
     AosIdentity identity;
@@ -92,7 +92,7 @@ Poco::JSON::Object::Ptr InstanceQuotaAlertToJSON(const InstanceQuotaAlert& alert
 {
     auto json = AlertItemToJSON(alert);
 
-    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), *json);
+    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), false, *json);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert instanceIdent to JSON");
 
     json->set("parameter", alert.mParameter.CStr());
@@ -105,7 +105,7 @@ Poco::JSON::Object::Ptr InstanceAlertToJSON(const InstanceAlert& alert)
 {
     auto json = AlertItemToJSON(alert);
 
-    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), *json);
+    auto err = ToJSON(static_cast<const InstanceIdent&>(alert), false, *json);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert instanceIdent to JSON");
 
     json->set("version", alert.mVersion.CStr());

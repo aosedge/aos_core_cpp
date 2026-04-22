@@ -97,7 +97,7 @@ Poco::JSON::Object::Ptr InstanceMonitoringDataToJSON(const InstanceMonitoringDat
 {
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    auto err = ToJSON(static_cast<const InstanceIdent&>(instance), *json);
+    auto err = ToJSON(static_cast<const InstanceIdent&>(instance), false, *json);
     AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
     AosIdentity identity;

@@ -80,13 +80,13 @@ Error ParseAosIdentity(const common::utils::CaseInsensitiveObjectWrapper& json, 
     return ErrorEnum::eNone;
 }
 
-Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
+Error ToJSON(const InstanceIdent& instanceIdent, bool preinstalled, Poco::JSON::Object& json)
 {
     try {
         {
             AosIdentity identity;
 
-            if (instanceIdent.mPreinstalled) {
+            if (preinstalled) {
                 identity.mCodename = instanceIdent.mItemID.CStr();
             } else {
                 identity.mID = instanceIdent.mItemID.CStr();
@@ -98,7 +98,7 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
         {
             AosIdentity identity;
 
-            if (instanceIdent.mPreinstalled) {
+            if (preinstalled) {
                 identity.mCodename = instanceIdent.mSubjectID.CStr();
             } else {
                 identity.mID = instanceIdent.mSubjectID.CStr();
@@ -108,6 +108,10 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
         }
 
         json.set("instance", instanceIdent.mInstance);
+
+        if (!instanceIdent.mVersion.IsEmpty()) {
+            json.set("version", instanceIdent.mVersion.CStr());
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -139,6 +143,11 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Instance
         }
 
         instanceIdent.mInstance = json.GetValue<uint64_t>("instance", 0);
+
+        if (const auto version = json.GetOptionalValue<std::string>("version"); version.has_value()) {
+            auto err = instanceIdent.mVersion.Assign(version->c_str());
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse instance version");
+        }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

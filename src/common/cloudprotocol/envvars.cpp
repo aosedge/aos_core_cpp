@@ -51,7 +51,7 @@ void EnvVarsInstanceStatusToJSON(const EnvVarsInstanceStatus& status, Poco::JSON
 {
     auto instanceIdentJSON = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    auto err = ToJSON(static_cast<const InstanceIdent&>(status), *instanceIdentJSON);
+    auto err = ToJSON(static_cast<const InstanceIdent&>(status), false, *instanceIdentJSON);
     AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
     for (const auto& envVar : status.mStatuses) {

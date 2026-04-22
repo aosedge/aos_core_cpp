@@ -84,7 +84,7 @@ Error ToJSON(const NewState& state, Poco::JSON::Object& json)
         auto err = ToJSON(static_cast<const Protocol&>(state), json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert correlation ID to JSON");
 
-        err = ToJSON(static_cast<const InstanceIdent&>(state), json);
+        err = ToJSON(static_cast<const InstanceIdent&>(state), false, json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
         StaticString<2 * crypto::cSHA256Size> checksumStr;
@@ -111,7 +111,7 @@ Error ToJSON(const StateRequest& state, Poco::JSON::Object& json)
         auto err = ToJSON(static_cast<const Protocol&>(state), json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert correlation ID to JSON");
 
-        err = ToJSON(static_cast<const InstanceIdent&>(state), json);
+        err = ToJSON(static_cast<const InstanceIdent&>(state), false, json);
         AOS_ERROR_CHECK_AND_THROW(err, "can't convert instance ident to JSON");
 
         json.set("default", state.mDefault);

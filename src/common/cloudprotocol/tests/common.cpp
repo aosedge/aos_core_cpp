@@ -87,7 +87,8 @@ TEST_F(CloudProtocolCommon, InstanceIdentFromJSON)
         "subject": {
             "id": "subject-id"
         },
-        "instance": 42
+        "instance": 42,
+        "version": "2.1.0"
     })";
 
     auto [jsonVar, err] = common::utils::ParseJson(cJSON);
@@ -102,6 +103,7 @@ TEST_F(CloudProtocolCommon, InstanceIdentFromJSON)
     EXPECT_STREQ(instanceIdent.mItemID.CStr(), "item-id");
     EXPECT_STREQ(instanceIdent.mSubjectID.CStr(), "subject-id");
     EXPECT_EQ(instanceIdent.mInstance, 42);
+    EXPECT_STREQ(instanceIdent.mVersion.CStr(), "2.1.0");
 }
 
 TEST_F(CloudProtocolCommon, InstanceIdent)
@@ -114,7 +116,7 @@ TEST_F(CloudProtocolCommon, InstanceIdent)
     instanceIdent.mInstance  = 42;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-    ASSERT_EQ(ToJSON(instanceIdent, *json), ErrorEnum::eNone);
+    ASSERT_EQ(ToJSON(instanceIdent, false, *json), ErrorEnum::eNone);
 
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
 }
@@ -124,13 +126,12 @@ TEST_F(CloudProtocolCommon, PreinstalledInstanceIdent)
     constexpr auto cJSON = R"({"item":{"codename":"item-id"},"subject":{"codename":"subject-id"},"instance":42})";
 
     InstanceIdent instanceIdent;
-    instanceIdent.mItemID       = "item-id";
-    instanceIdent.mSubjectID    = "subject-id";
-    instanceIdent.mInstance     = 42;
-    instanceIdent.mPreinstalled = true;
+    instanceIdent.mItemID    = "item-id";
+    instanceIdent.mSubjectID = "subject-id";
+    instanceIdent.mInstance  = 42;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-    ASSERT_EQ(ToJSON(instanceIdent, *json), ErrorEnum::eNone);
+    ASSERT_EQ(ToJSON(instanceIdent, true, *json), ErrorEnum::eNone);
 
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
 }
