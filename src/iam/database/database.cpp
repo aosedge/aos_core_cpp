@@ -132,11 +132,11 @@ Error Database::GetCertsInfo(const String& certType, Array<aos::CertInfo>& certs
         *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(certType.CStr()), into(result), now;
 
         for (const auto& cert : result) {
-            aos::CertInfo certInfo {};
+            auto certInfo = std::make_unique<aos::CertInfo>();
 
-            ToAosCertInfo(cert, certInfo);
+            ToAosCertInfo(cert, *certInfo);
 
-            if (auto err = certsInfo.PushBack(certInfo); !err.IsNone()) {
+            if (auto err = certsInfo.PushBack(*certInfo); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
         }

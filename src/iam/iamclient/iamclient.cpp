@@ -357,10 +357,10 @@ Error IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request
 
     LOG_DBG() << "Process apply cert request: type=" << certType;
 
-    CertInfo certInfo;
-    Error    err = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, certInfo));
+    auto  certInfo = std::make_unique<CertInfo>();
+    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, *certInfo));
 
-    return SendApplyCertResponse(nodeID, certType, certInfo.mCertURL, certInfo.mSerial, err);
+    return SendApplyCertResponse(nodeID, certType, certInfo->mCertURL, certInfo->mSerial, err);
 }
 
 Error IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)

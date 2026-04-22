@@ -32,13 +32,13 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSC
 {
     LOG_DBG() << "Get MTLS config" << Log::Field("certStorage", certStorage);
 
-    CertInfo certInfo;
+    auto certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = mCertProvider->GetCert(certStorage, {}, {}, certInfo); !err.IsNone()) {
+    if (auto err = mCertProvider->GetCert(certStorage, {}, {}, *certInfo); !err.IsNone()) {
         return {nullptr, err};
     }
 
-    return {common::utils::GetMTLSClientCredentials(certInfo, mCACert.c_str(), *mCertLoader, *mCryptoProvider),
+    return {common::utils::GetMTLSClientCredentials(*certInfo, mCACert.c_str(), *mCertLoader, *mCryptoProvider),
         ErrorEnum::eNone};
 }
 
