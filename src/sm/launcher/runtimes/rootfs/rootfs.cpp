@@ -435,6 +435,7 @@ Error RootfsRuntime::SaveInstanceInfo(const InstanceInfo& instance, const std::f
     try {
         json->set("itemId", instance.mItemID.CStr());
         json->set("subjectId", instance.mSubjectID.CStr());
+        json->set("instance", instance.mInstance);
         json->set("manifestDigest", instance.mManifestDigest.CStr());
         json->set("type", instance.mType.ToString().CStr());
         json->set("version", instance.mVersion.CStr());
@@ -471,6 +472,8 @@ Error RootfsRuntime::LoadInstanceInfo(const std::filesystem::path& path, Instanc
 
         err = instance.mSubjectID.Assign(jsonObject.GetValue<std::string>("subjectId").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
+
+        instance.mInstance = jsonObject.GetValue<uint64_t>("instance");
 
         err = instance.mManifestDigest.Assign(jsonObject.GetValue<std::string>("manifestDigest").c_str());
         AOS_ERROR_CHECK_AND_THROW(err);
