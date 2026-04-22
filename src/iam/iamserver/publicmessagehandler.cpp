@@ -205,17 +205,17 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    CertInfo certInfo;
+    auto certInfo = std::make_unique<CertInfo>();
 
-    err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, certInfo);
+    err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, *certInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get cert: " << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    response->set_key_url(certInfo.mKeyURL.CStr());
-    response->set_cert_url(certInfo.mCertURL.CStr());
+    response->set_key_url(certInfo->mKeyURL.CStr());
+    response->set_cert_url(certInfo->mCertURL.CStr());
 
     return grpc::Status::OK;
 }
