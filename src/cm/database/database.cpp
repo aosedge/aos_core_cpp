@@ -278,7 +278,7 @@ Error Database::AddStorageStateInfo(const storagestate::InstanceInfo& info)
         StorageStateInstanceInfoRow row;
 
         FromAos(info, row);
-        *mSession << "INSERT INTO storagestate (itemID, subjectID, instance, type,  preinstalled, storageQuota, "
+        *mSession << "INSERT INTO storagestate (itemID, version, subjectID, instance, type, storageQuota, "
                      "stateQuota, stateChecksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
@@ -296,9 +296,9 @@ Error Database::RemoveStorageStateInfo(const InstanceIdent& instanceIdent)
         Poco::Data::Statement statement {*mSession};
 
         statement << "DELETE FROM storagestate "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ?;",
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled);
+            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -316,7 +316,7 @@ Error Database::GetAllStorageStateInfo(Array<storagestate::InstanceInfo>& info)
 
     try {
         std::vector<StorageStateInstanceInfoRow> rows;
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, storageQuota, stateQuota, stateChecksum "
+        *mSession << "SELECT itemID, version, subjectID, instance, type, storageQuota, stateQuota, stateChecksum "
                      "FROM storagestate;",
             into(rows), now;
 
@@ -343,11 +343,11 @@ Error Database::GetStorageStateInfo(const InstanceIdent& instanceIdent, storages
         StorageStateInstanceInfoRow row;
         Poco::Data::Statement       statement {*mSession};
 
-        statement << "SELECT itemID, subjectID, instance, type, preinstalled, storageQuota, stateQuota, stateChecksum "
+        statement << "SELECT itemID, version, subjectID, instance, type, storageQuota, stateQuota, stateChecksum "
                      "FROM storagestate "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ?;",
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled), into(row);
+            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mVersion.CStr()), into(row);
 
         if (statement.execute() == 0) {
             return ErrorEnum::eNotFound;
@@ -370,11 +370,11 @@ Error Database::UpdateStorageStateInfo(const storagestate::InstanceInfo& info)
         Poco::Data::BLOB      checksumBlob(info.mStateChecksum.begin(), info.mStateChecksum.Size());
 
         statement << "UPDATE storagestate SET storageQuota = ?, stateQuota = ?, stateChecksum = ? WHERE "
-                     "itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ?;",
+                     "itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(info.mStorageQuota), bind(info.mStateQuota), bind(checksumBlob),
             bind(info.mInstanceIdent.mItemID.CStr()), bind(info.mInstanceIdent.mSubjectID.CStr()),
             bind(info.mInstanceIdent.mInstance), bind(info.mInstanceIdent.mType.ToString().CStr()),
-            bind(info.mInstanceIdent.mPreinstalled);
+            bind(info.mInstanceIdent.mVersion.CStr());
 
         if (statement.execute() == 0) {
             return ErrorEnum::eNotFound;
@@ -430,7 +430,7 @@ Error Database::AddInstance(const networkmanager::Instance& instance)
         NetworkManagerInstanceRow row;
 
         FromAos(instance, row);
-        *mSession << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, "
+        *mSession << "INSERT INTO networkmanager_instances (itemID, version, subjectID, instance, type, "
                      "networkID, nodeID, ip, exposedPorts, dnsServers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
@@ -498,7 +498,7 @@ Error Database::GetInstances(const String& networkID, const String& nodeID, Arra
     try {
         std::vector<NetworkManagerInstanceRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, networkID, nodeID, ip, exposedPorts, "
+        *mSession << "SELECT itemID, version, subjectID, instance, type, networkID, nodeID, ip, exposedPorts, "
                      "dnsServers FROM networkmanager_instances WHERE networkID = ? AND nodeID = ?;",
             bind(networkID.CStr()), bind(nodeID.CStr()), into(rows), now;
 
@@ -565,9 +565,9 @@ Error Database::RemoveNetworkInstance(const InstanceIdent& instanceIdent)
         Poco::Data::Statement statement {*mSession};
 
         statement << "DELETE FROM networkmanager_instances "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ?;",
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled);
+            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -587,8 +587,8 @@ Error Database::AddPendingConnection(const networkmanager::PendingConnection& co
         PendingConnectionRow row;
 
         FromAos(connection, row);
-        *mSession << "INSERT INTO pending_connections (requesterItemID, requesterSubjectID, requesterInstance, "
-                     "requesterType, requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, "
+        *mSession << "INSERT INTO pending_connections (requesterItemID, requesterVersion, requesterSubjectID, "
+                     "requesterInstance, requesterType, nodeID, networkID, requesterIP, requesterSubnet, "
                      "targetItemID, port, protocol) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
@@ -606,8 +606,8 @@ Error Database::GetPendingConnectionsByTarget(
     try {
         std::vector<PendingConnectionRow> rows;
 
-        *mSession << "SELECT requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
-                     "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
+        *mSession << "SELECT requesterItemID, requesterVersion, requesterSubjectID, requesterInstance, "
+                     "requesterType, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
                      "port, protocol FROM pending_connections WHERE targetItemID = ?;",
             bind(targetItemID.CStr()), into(rows), now;
 
@@ -635,8 +635,8 @@ Error Database::GetAllPendingConnections(Array<networkmanager::PendingConnection
     try {
         std::vector<PendingConnectionRow> rows;
 
-        *mSession << "SELECT requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
-                     "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
+        *mSession << "SELECT requesterItemID, requesterVersion, requesterSubjectID, requesterInstance, "
+                     "requesterType, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
                      "port, protocol FROM pending_connections;",
             into(rows), now;
 
@@ -664,11 +664,11 @@ Error Database::RemovePendingConnection(const networkmanager::PendingConnection&
     try {
         *mSession << "DELETE FROM pending_connections "
                      "WHERE requesterItemID = ? AND requesterSubjectID = ? AND requesterInstance = ? "
-                     "AND requesterType = ? AND requesterPreinstalled = ? AND targetItemID = ? "
+                     "AND requesterType = ? AND requesterVersion = ? AND targetItemID = ? "
                      "AND port = ? AND protocol = ?;",
             bind(connection.mRequesterIdent.mItemID.CStr()), bind(connection.mRequesterIdent.mSubjectID.CStr()),
             bind(connection.mRequesterIdent.mInstance), bind(connection.mRequesterIdent.mType.ToString().CStr()),
-            bind(connection.mRequesterIdent.mPreinstalled), bind(connection.mTargetItemID.CStr()),
+            bind(connection.mRequesterIdent.mVersion.CStr()), bind(connection.mTargetItemID.CStr()),
             bind(connection.mPort.CStr()), bind(connection.mProtocol.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -684,9 +684,9 @@ Error Database::RemovePendingConnections(const InstanceIdent& requesterIdent)
     try {
         *mSession << "DELETE FROM pending_connections "
                      "WHERE requesterItemID = ? AND requesterSubjectID = ? AND requesterInstance = ? "
-                     "AND requesterType = ? AND requesterPreinstalled = ?;",
+                     "AND requesterType = ? AND requesterVersion = ?;",
             bind(requesterIdent.mItemID.CStr()), bind(requesterIdent.mSubjectID.CStr()), bind(requesterIdent.mInstance),
-            bind(requesterIdent.mType.ToString().CStr()), bind(requesterIdent.mPreinstalled), now;
+            bind(requesterIdent.mType.ToString().CStr()), bind(requesterIdent.mVersion.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -706,10 +706,10 @@ Error Database::AddInstance(const launcher::InstanceInfo& info)
         LauncherInstanceInfoRow row;
 
         FromAos(info, row);
-        *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, preinstalled, manifestDigest, "
-                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
+        *mSession << "INSERT INTO launcher_instances (itemID, version, subjectID, instance, type, manifestDigest, "
+                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, ownerID, "
                      "subjectType, labels, priority, disableRebalancing) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -730,15 +730,14 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
                "gid = ?, timestamp = ?, state = ?, isUnitSubject = ?, ownerID = ?, subjectType = ?, labels = ?, "
                "priority = ?, disableRebalancing = ? "
                "WHERE itemID = ? AND subjectID = ? AND instance = ? "
-               "AND type = ? AND preinstalled = ? AND version = ?;",
+               "AND type = ? AND version = ?;",
             bind(info.mManifestDigest.CStr()), bind(info.mNodeID.CStr()), bind(info.mPrevNodeID.CStr()),
             bind(info.mRuntimeID.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mTimestamp.UnixNano()),
             bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mOwnerID.CStr()),
             bind(info.mSubjectType.ToString().CStr()), bind(SerializeLabels(info.mLabels)), bind(info.mPriority),
             bind(info.mDisableRebalancing), bind(info.mInstanceIdent.mItemID.CStr()),
             bind(info.mInstanceIdent.mSubjectID.CStr()), bind(info.mInstanceIdent.mInstance),
-            bind(info.mInstanceIdent.mType.ToString().CStr()), bind(info.mInstanceIdent.mPreinstalled),
-            bind(info.mVersion.CStr());
+            bind(info.mInstanceIdent.mType.ToString().CStr()), bind(info.mInstanceIdent.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -757,8 +756,8 @@ Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) co
     try {
         std::vector<LauncherInstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, manifestDigest, nodeID, prevNodeID, "
-                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType, labels, "
+        *mSession << "SELECT itemID, version, subjectID, instance, type, manifestDigest, nodeID, prevNodeID, "
+                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, ownerID, subjectType, labels, "
                      "priority, disableRebalancing "
                      "FROM launcher_instances;",
             into(rows), now;
@@ -778,7 +777,7 @@ Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) co
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveInstance(const InstanceIdent& instanceIdent, const String& version)
+Error Database::RemoveInstance(const InstanceIdent& instanceIdent)
 {
     std::lock_guard lock {mMutex};
 
@@ -787,10 +786,9 @@ Error Database::RemoveInstance(const InstanceIdent& instanceIdent, const String&
 
         statement.reset(*mSession);
         statement << "DELETE FROM launcher_instances "
-                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND preinstalled = ? AND "
-                     "version = ?;",
+                     "WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? AND version = ?;",
             bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()), bind(instanceIdent.mInstance),
-            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mPreinstalled), bind(version.CStr());
+            bind(instanceIdent.mType.ToString().CStr()), bind(instanceIdent.mVersion.CStr());
 
         if (statement.execute() != 1) {
             return ErrorEnum::eNotFound;
@@ -859,7 +857,7 @@ Error Database::LoadRunRequests(Array<launcher::RunInstanceRequest>& requests) c
     try {
         std::vector<LauncherRunRequestRow> rows;
 
-        *mSession << "SELECT itemID, type, version, ownerID, subjectID, subjectType, isUnitSubject, priority, "
+        *mSession << "SELECT itemID, version, type, ownerID, subjectID, subjectType, isUnitSubject, priority, "
                      "numInstances, labels FROM launcher_run_requests ORDER BY rowid;",
             into(rows), now;
 
@@ -891,7 +889,7 @@ Error Database::SaveRunRequests(const Array<launcher::RunInstanceRequest>& reque
             LauncherRunRequestRow row;
 
             FromAos(request, row);
-            *mSession << "INSERT INTO launcher_run_requests (itemID, type, version, ownerID, subjectID, subjectType, "
+            *mSession << "INSERT INTO launcher_run_requests (itemID, version, type, ownerID, subjectID, subjectType, "
                          "isUnitSubject, priority, numInstances, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                 bind(row), now;
         }
@@ -915,7 +913,7 @@ Error Database::AddItem(const imagemanager::ItemInfo& item)
         ImageManagerItemInfoRow row;
 
         FromAos(item, row);
-        *mSession << "INSERT INTO imagemanager (itemID, type, version, indexDigest, state, timestamp) VALUES "
+        *mSession << "INSERT INTO imagemanager (itemID, version, type, indexDigest, state, timestamp) VALUES "
                      "(?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
@@ -972,7 +970,7 @@ Error Database::GetAllItemsInfos(Array<imagemanager::ItemInfo>& items)
     try {
         std::vector<ImageManagerItemInfoRow> rows;
 
-        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager;", into(rows), now;
+        *mSession << "SELECT itemID, version, type, indexDigest, state, timestamp FROM imagemanager;", into(rows), now;
 
         auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
 
@@ -997,7 +995,7 @@ Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& it
     try {
         std::vector<ImageManagerItemInfoRow> rows;
 
-        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
+        *mSession << "SELECT itemID, version, type, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
             bind(id.CStr()), into(rows), now;
 
         auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
@@ -1130,21 +1128,21 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS storagestate ("
                  "itemID TEXT,"
+                 "version TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
                  "type TEXT,"
-                 "preinstalled INTEGER,"
                  "storageQuota INTEGER,"
                  "stateQuota INTEGER,"
                  "stateChecksum BLOB,"
-                 "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled)"
+                 "PRIMARY KEY(itemID,version,subjectID,instance,type)"
                  ");",
         now;
 
     *mSession << "CREATE TABLE IF NOT EXISTS imagemanager ("
                  "itemID TEXT,"
-                 "type TEXT,"
                  "version TEXT,"
+                 "type TEXT,"
                  "indexDigest TEXT,"
                  "state TEXT,"
                  "timestamp INTEGER,"
@@ -1171,16 +1169,16 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS networkmanager_instances ("
                  "itemID TEXT,"
+                 "version TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
                  "type TEXT,"
-                 "preinstalled INTEGER,"
                  "networkID TEXT,"
                  "nodeID TEXT,"
                  "ip TEXT,"
                  "exposedPorts TEXT,"
                  "dnsServers TEXT,"
-                 "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled),"
+                 "PRIMARY KEY(itemID,version,subjectID,instance,type),"
                  "FOREIGN KEY(networkID) REFERENCES networks(networkID),"
                  "FOREIGN KEY(networkID,nodeID) REFERENCES hosts(networkID,nodeID)"
                  ");",
@@ -1188,10 +1186,10 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS pending_connections ("
                  "requesterItemID TEXT,"
+                 "requesterVersion TEXT,"
                  "requesterSubjectID TEXT,"
                  "requesterInstance INTEGER,"
                  "requesterType TEXT,"
-                 "requesterPreinstalled INTEGER,"
                  "nodeID TEXT,"
                  "networkID TEXT,"
                  "requesterIP TEXT,"
@@ -1204,10 +1202,10 @@ void Database::CreateTables()
 
     *mSession << "CREATE TABLE IF NOT EXISTS launcher_instances ("
                  "itemID TEXT,"
+                 "version TEXT,"
                  "subjectID TEXT,"
                  "instance INTEGER,"
                  "type TEXT,"
-                 "preinstalled INTEGER,"
                  "manifestDigest TEXT,"
                  "nodeID TEXT,"
                  "prevNodeID TEXT,"
@@ -1217,20 +1215,19 @@ void Database::CreateTables()
                  "timestamp INTEGER,"
                  "state TEXT,"
                  "isUnitSubject INTEGER,"
-                 "version TEXT,"
                  "ownerID TEXT,"
                  "subjectType TEXT,"
                  "labels TEXT,"
                  "priority INTEGER,"
                  "disableRebalancing INTEGER,"
-                 "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled,version)"
+                 "PRIMARY KEY(itemID,version,subjectID,instance,type)"
                  ");",
         now;
 
     *mSession << "CREATE TABLE IF NOT EXISTS launcher_run_requests ("
                  "itemID TEXT,"
-                 "type TEXT,"
                  "version TEXT,"
+                 "type TEXT,"
                  "ownerID TEXT,"
                  "subjectID TEXT,"
                  "subjectType TEXT,"
@@ -1250,10 +1247,10 @@ int Database::GetVersion() const
 void Database::FromAos(const storagestate::InstanceInfo& src, StorageStateInstanceInfoRow& dst)
 {
     dst.set<ToInt(StorageStateInstanceInfoColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
+    dst.set<ToInt(StorageStateInstanceInfoColumns::eVersion)>(src.mInstanceIdent.mVersion.CStr());
     dst.set<ToInt(StorageStateInstanceInfoColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(StorageStateInstanceInfoColumns::eInstance)>(src.mInstanceIdent.mInstance);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
-    dst.set<ToInt(StorageStateInstanceInfoColumns::ePreinstalled)>(src.mInstanceIdent.mPreinstalled);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>(src.mStorageQuota);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>(src.mStateQuota);
     dst.set<ToInt(StorageStateInstanceInfoColumns::eStateChecksum)>(
@@ -1264,12 +1261,12 @@ void Database::ToAos(const StorageStateInstanceInfoRow& src, storagestate::Insta
 {
     const auto& blob = src.get<ToInt(StorageStateInstanceInfoColumns::eStateChecksum)>();
 
-    dst.mInstanceIdent.mItemID       = src.get<ToInt(StorageStateInstanceInfoColumns::eItemID)>().c_str();
-    dst.mInstanceIdent.mSubjectID    = src.get<ToInt(StorageStateInstanceInfoColumns::eSubjectID)>().c_str();
-    dst.mInstanceIdent.mInstance     = src.get<ToInt(StorageStateInstanceInfoColumns::eInstance)>();
-    dst.mInstanceIdent.mPreinstalled = src.get<ToInt(StorageStateInstanceInfoColumns::ePreinstalled)>();
-    dst.mStorageQuota                = src.get<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>();
-    dst.mStateQuota                  = src.get<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>();
+    dst.mInstanceIdent.mItemID    = src.get<ToInt(StorageStateInstanceInfoColumns::eItemID)>().c_str();
+    dst.mInstanceIdent.mVersion   = src.get<ToInt(StorageStateInstanceInfoColumns::eVersion)>().c_str();
+    dst.mInstanceIdent.mSubjectID = src.get<ToInt(StorageStateInstanceInfoColumns::eSubjectID)>().c_str();
+    dst.mInstanceIdent.mInstance  = src.get<ToInt(StorageStateInstanceInfoColumns::eInstance)>();
+    dst.mStorageQuota             = src.get<ToInt(StorageStateInstanceInfoColumns::eStorageQuota)>();
+    dst.mStateQuota               = src.get<ToInt(StorageStateInstanceInfoColumns::eStateQuota)>();
     auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(StorageStateInstanceInfoColumns::eType)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
 
@@ -1307,10 +1304,10 @@ void Database::ToAos(const NetworkManagerHostRow& src, networkmanager::Host& dst
 void Database::FromAos(const networkmanager::Instance& src, NetworkManagerInstanceRow& dst)
 {
     dst.set<ToInt(NetworkManagerInstanceColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
+    dst.set<ToInt(NetworkManagerInstanceColumns::eVersion)>(src.mInstanceIdent.mVersion.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eInstance)>(src.mInstanceIdent.mInstance);
     dst.set<ToInt(NetworkManagerInstanceColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
-    dst.set<ToInt(NetworkManagerInstanceColumns::ePreinstalled)>(src.mInstanceIdent.mPreinstalled);
     dst.set<ToInt(NetworkManagerInstanceColumns::eNetworkID)>(src.mNetworkID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eIP)>(src.mIP.CStr());
@@ -1321,16 +1318,16 @@ void Database::FromAos(const networkmanager::Instance& src, NetworkManagerInstan
 void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Instance& dst)
 {
     dst.mInstanceIdent.mItemID    = src.get<ToInt(NetworkManagerInstanceColumns::eItemID)>().c_str();
+    dst.mInstanceIdent.mVersion   = src.get<ToInt(NetworkManagerInstanceColumns::eVersion)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(NetworkManagerInstanceColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(NetworkManagerInstanceColumns::eInstance)>();
 
     auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(NetworkManagerInstanceColumns::eType)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
 
-    dst.mInstanceIdent.mPreinstalled = src.get<ToInt(NetworkManagerInstanceColumns::ePreinstalled)>();
-    dst.mNetworkID                   = src.get<ToInt(NetworkManagerInstanceColumns::eNetworkID)>().c_str();
-    dst.mNodeID                      = src.get<ToInt(NetworkManagerInstanceColumns::eNodeID)>().c_str();
-    dst.mIP                          = src.get<ToInt(NetworkManagerInstanceColumns::eIP)>().c_str();
+    dst.mNetworkID = src.get<ToInt(NetworkManagerInstanceColumns::eNetworkID)>().c_str();
+    dst.mNodeID    = src.get<ToInt(NetworkManagerInstanceColumns::eNodeID)>().c_str();
+    dst.mIP        = src.get<ToInt(NetworkManagerInstanceColumns::eIP)>().c_str();
 
     DeserializeExposedPorts(src.get<ToInt(NetworkManagerInstanceColumns::eExposedPorts)>(), dst.mExposedPorts);
     DeserializeDNSServers(src.get<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(), dst.mDNSServers);
@@ -1339,10 +1336,10 @@ void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Insta
 void Database::FromAos(const networkmanager::PendingConnection& src, PendingConnectionRow& dst)
 {
     dst.set<ToInt(PendingConnectionColumns::eRequesterItemID)>(src.mRequesterIdent.mItemID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterVersion)>(src.mRequesterIdent.mVersion.CStr());
     dst.set<ToInt(PendingConnectionColumns::eRequesterSubjectID)>(src.mRequesterIdent.mSubjectID.CStr());
     dst.set<ToInt(PendingConnectionColumns::eRequesterInstance)>(src.mRequesterIdent.mInstance);
     dst.set<ToInt(PendingConnectionColumns::eRequesterType)>(src.mRequesterIdent.mType.ToString().CStr());
-    dst.set<ToInt(PendingConnectionColumns::eRequesterPreinstalled)>(src.mRequesterIdent.mPreinstalled);
     dst.set<ToInt(PendingConnectionColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(PendingConnectionColumns::eNetworkID)>(src.mNetworkID.CStr());
     dst.set<ToInt(PendingConnectionColumns::eRequesterIP)>(src.mRequesterIP.CStr());
@@ -1355,29 +1352,28 @@ void Database::FromAos(const networkmanager::PendingConnection& src, PendingConn
 void Database::ToAos(const PendingConnectionRow& src, networkmanager::PendingConnection& dst)
 {
     dst.mRequesterIdent.mItemID    = src.get<ToInt(PendingConnectionColumns::eRequesterItemID)>().c_str();
+    dst.mRequesterIdent.mVersion   = src.get<ToInt(PendingConnectionColumns::eRequesterVersion)>().c_str();
     dst.mRequesterIdent.mSubjectID = src.get<ToInt(PendingConnectionColumns::eRequesterSubjectID)>().c_str();
     dst.mRequesterIdent.mInstance  = src.get<ToInt(PendingConnectionColumns::eRequesterInstance)>();
 
     auto err = dst.mRequesterIdent.mType.FromString(src.get<ToInt(PendingConnectionColumns::eRequesterType)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
-
-    dst.mRequesterIdent.mPreinstalled = src.get<ToInt(PendingConnectionColumns::eRequesterPreinstalled)>();
-    dst.mNodeID                       = src.get<ToInt(PendingConnectionColumns::eNodeID)>().c_str();
-    dst.mNetworkID                    = src.get<ToInt(PendingConnectionColumns::eNetworkID)>().c_str();
-    dst.mRequesterIP                  = src.get<ToInt(PendingConnectionColumns::eRequesterIP)>().c_str();
-    dst.mRequesterSubnet              = src.get<ToInt(PendingConnectionColumns::eRequesterSubnet)>().c_str();
-    dst.mTargetItemID                 = src.get<ToInt(PendingConnectionColumns::eTargetItemID)>().c_str();
-    dst.mPort                         = src.get<ToInt(PendingConnectionColumns::ePort)>().c_str();
-    dst.mProtocol                     = src.get<ToInt(PendingConnectionColumns::eProtocol)>().c_str();
+    dst.mNodeID          = src.get<ToInt(PendingConnectionColumns::eNodeID)>().c_str();
+    dst.mNetworkID       = src.get<ToInt(PendingConnectionColumns::eNetworkID)>().c_str();
+    dst.mRequesterIP     = src.get<ToInt(PendingConnectionColumns::eRequesterIP)>().c_str();
+    dst.mRequesterSubnet = src.get<ToInt(PendingConnectionColumns::eRequesterSubnet)>().c_str();
+    dst.mTargetItemID    = src.get<ToInt(PendingConnectionColumns::eTargetItemID)>().c_str();
+    dst.mPort            = src.get<ToInt(PendingConnectionColumns::ePort)>().c_str();
+    dst.mProtocol        = src.get<ToInt(PendingConnectionColumns::eProtocol)>().c_str();
 }
 
 void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRow& dst)
 {
     dst.set<ToInt(LauncherInstanceInfoColumns::eItemID)>(src.mInstanceIdent.mItemID.CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eVersion)>(src.mInstanceIdent.mVersion.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectID)>(src.mInstanceIdent.mSubjectID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eInstance)>(src.mInstanceIdent.mInstance);
     dst.set<ToInt(LauncherInstanceInfoColumns::eType)>(src.mInstanceIdent.mType.ToString().CStr());
-    dst.set<ToInt(LauncherInstanceInfoColumns::ePreinstalled)>(src.mInstanceIdent.mPreinstalled);
     dst.set<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>(src.mPrevNodeID.CStr());
@@ -1387,7 +1383,6 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
     dst.set<ToInt(LauncherInstanceInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
     dst.set<ToInt(LauncherInstanceInfoColumns::eState)>(src.mState.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>(src.mIsUnitSubject);
-    dst.set<ToInt(LauncherInstanceInfoColumns::eVersion)>(src.mVersion.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eOwnerID)>(src.mOwnerID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eLabels)>(SerializeLabels(src.mLabels));
@@ -1398,19 +1393,19 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
 void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst)
 {
     dst.mInstanceIdent.mItemID    = src.get<ToInt(LauncherInstanceInfoColumns::eItemID)>().c_str();
+    dst.mInstanceIdent.mVersion   = src.get<ToInt(LauncherInstanceInfoColumns::eVersion)>().c_str();
     dst.mInstanceIdent.mSubjectID = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstanceIdent.mInstance  = src.get<ToInt(LauncherInstanceInfoColumns::eInstance)>();
 
     auto err = dst.mInstanceIdent.mType.FromString(src.get<ToInt(LauncherInstanceInfoColumns::eType)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
 
-    dst.mInstanceIdent.mPreinstalled = src.get<ToInt(LauncherInstanceInfoColumns::ePreinstalled)>();
-    dst.mManifestDigest              = src.get<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>().c_str();
-    dst.mNodeID                      = src.get<ToInt(LauncherInstanceInfoColumns::eNodeID)>().c_str();
-    dst.mPrevNodeID                  = src.get<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>().c_str();
-    dst.mRuntimeID                   = src.get<ToInt(LauncherInstanceInfoColumns::eRuntimeID)>().c_str();
-    dst.mUID                         = src.get<ToInt(LauncherInstanceInfoColumns::eUID)>();
-    dst.mGID                         = src.get<ToInt(LauncherInstanceInfoColumns::eGID)>();
+    dst.mManifestDigest = src.get<ToInt(LauncherInstanceInfoColumns::eManifestDigest)>().c_str();
+    dst.mNodeID         = src.get<ToInt(LauncherInstanceInfoColumns::eNodeID)>().c_str();
+    dst.mPrevNodeID     = src.get<ToInt(LauncherInstanceInfoColumns::ePrevNodeID)>().c_str();
+    dst.mRuntimeID      = src.get<ToInt(LauncherInstanceInfoColumns::eRuntimeID)>().c_str();
+    dst.mUID            = src.get<ToInt(LauncherInstanceInfoColumns::eUID)>();
+    dst.mGID            = src.get<ToInt(LauncherInstanceInfoColumns::eGID)>();
 
     auto timestamp = src.get<ToInt(LauncherInstanceInfoColumns::eTimestamp)>();
     dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
@@ -1421,7 +1416,6 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance state");
 
     dst.mIsUnitSubject = src.get<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>();
-    dst.mVersion       = src.get<ToInt(LauncherInstanceInfoColumns::eVersion)>().c_str();
     dst.mOwnerID       = src.get<ToInt(LauncherInstanceInfoColumns::eOwnerID)>().c_str();
 
     const auto& subjectTypeStr = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectType)>();
@@ -1446,10 +1440,10 @@ void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRo
 
 void Database::ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst)
 {
-    dst.mItemID = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
-    auto err    = dst.mType.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eType)>().c_str());
+    dst.mItemID  = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
+    dst.mVersion = src.get<ToInt(ImageManagerItemInfoColumns::eVersion)>().c_str();
+    auto err     = dst.mType.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eType)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item type");
-    dst.mVersion     = src.get<ToInt(ImageManagerItemInfoColumns::eVersion)>().c_str();
     dst.mIndexDigest = src.get<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>().c_str();
     err              = dst.mState.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eState)>().c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
@@ -1517,8 +1511,8 @@ void Database::ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo&
 void Database::FromAos(const launcher::RunInstanceRequest& src, LauncherRunRequestRow& dst)
 {
     dst.set<ToInt(LauncherRunRequestColumns::eItemID)>(src.mItemID.CStr());
-    dst.set<ToInt(LauncherRunRequestColumns::eType)>(src.mUpdateItemType.ToString().CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eType)>(src.mUpdateItemType.ToString().CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eOwnerID)>(src.mOwnerID.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eSubjectID)>(src.mSubjectInfo.mSubjectID.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eSubjectType)>(src.mSubjectInfo.mSubjectType.ToString().CStr());

@@ -248,10 +248,9 @@ public:
      * Removes launcher instance.
      *
      * @param instanceIdent Instance identifier.
-     * @param version Version.
      * @return Error.
      */
-    Error RemoveInstance(const InstanceIdent& instanceIdent, const String& version) override;
+    Error RemoveInstance(const InstanceIdent& instanceIdent) override;
 
     /**
      * Saves override environment variables.
@@ -370,21 +369,21 @@ public:
     RetWithError<updatemanager::UpdateState> GetUpdateState() override;
 
 private:
-    static constexpr int  cVersion    = 0;
+    static constexpr int  cVersion    = 1;
     static constexpr auto cDBFileName = "cm.db";
 
     enum class StorageStateInstanceInfoColumns : int {
         eItemID = 0,
+        eVersion,
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
         eStorageQuota,
         eStateQuota,
         eStateChecksum
     };
     using StorageStateInstanceInfoRow
-        = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, size_t, size_t, Poco::Data::BLOB>;
+        = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, size_t, size_t, Poco::Data::BLOB>;
 
     enum class NetworkManagerNetworkColumns : int { eNetworkID = 0, eSubnet, eVlanID };
     using NetworkManagerNetworkRow = Poco::Tuple<std::string, std::string, uint64_t>;
@@ -394,25 +393,25 @@ private:
 
     enum class NetworkManagerInstanceColumns : int {
         eItemID = 0,
+        eVersion,
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
         eNetworkID,
         eNodeID,
         eIP,
         eExposedPorts,
         eDNSServers
     };
-    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
-        std::string, std::string, std::string, std::string>;
+    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string,
+        std::string, std::string, std::string, std::string, std::string>;
 
     enum class PendingConnectionColumns : int {
         eRequesterItemID = 0,
+        eRequesterVersion,
         eRequesterSubjectID,
         eRequesterInstance,
         eRequesterType,
-        eRequesterPreinstalled,
         eNodeID,
         eNetworkID,
         eRequesterIP,
@@ -421,15 +420,15 @@ private:
         ePort,
         eProtocol
     };
-    using PendingConnectionRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
+    using PendingConnectionRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string,
         std::string, std::string, std::string, std::string, std::string, std::string>;
 
     enum class LauncherInstanceInfoColumns : int {
         eItemID = 0,
+        eVersion,
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
         eManifestDigest,
         eNodeID,
         ePrevNodeID,
@@ -439,21 +438,20 @@ private:
         eTimestamp,
         eState,
         eIsUnitSubject,
-        eVersion,
         eOwnerID,
         eSubjectType,
         eLabels,
         ePriority,
         eDisableRebalancing
     };
-    using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
-        std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool, std::string,
+    using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string,
+        std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool,
         std::string, std::string, std::string, size_t, bool>;
 
     enum class ImageManagerItemInfoColumns : int {
         eItemID = 0,
-        eType,
         eVersion,
+        eType,
         eIndexDigest,
         eState,
         eTimestamp,
@@ -466,8 +464,8 @@ private:
 
     enum class LauncherRunRequestColumns : int {
         eItemID = 0,
-        eType,
         eVersion,
+        eType,
         eOwnerID,
         eSubjectID,
         eSubjectType,

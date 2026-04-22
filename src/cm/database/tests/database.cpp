@@ -6,6 +6,8 @@
 
 #include <gmock/gmock.h>
 
+#include <Poco/Data/Session.h>
+
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 
@@ -13,6 +15,7 @@
 #include <common/utils/exception.hpp>
 
 using namespace testing;
+using namespace Poco::Data::Keywords;
 
 namespace aos::cm::database {
 
@@ -28,27 +31,27 @@ std::vector<T> ToVector(const Array<T>& src)
     return std::vector<T>(src.begin(), src.end());
 }
 
-InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
-    UpdateItemType itemType = UpdateItemTypeEnum::eService, bool preinstalled = true)
+InstanceIdent CreateInstanceIdent(const char* itemID, const char* version, const char* subjectID, uint64_t instance,
+    UpdateItemType itemType = UpdateItemTypeEnum::eService)
 {
     InstanceIdent ident;
 
-    ident.mItemID       = itemID;
-    ident.mSubjectID    = subjectID;
-    ident.mInstance     = instance;
-    ident.mType         = itemType;
-    ident.mPreinstalled = preinstalled;
+    ident.mItemID    = itemID;
+    ident.mSubjectID = subjectID;
+    ident.mInstance  = instance;
+    ident.mType      = itemType;
+    ident.mVersion   = version;
 
     return ident;
 }
 
-storagestate::InstanceInfo CreateStorageStateInstanceInfo(
-    const char* itemID, const char* subjectID, uint64_t instance, size_t storageQuota, size_t stateQuota)
+storagestate::InstanceInfo CreateStorageStateInstanceInfo(const char* itemID, const char* subjectID, uint64_t instance,
+    size_t storageQuota, size_t stateQuota, const char* version = "1.0.0")
 {
     storagestate::InstanceInfo info;
     std::vector<uint8_t>       checksum = {0xde, 0xad, 0xbe, 0xef};
 
-    info.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance);
+    info.mInstanceIdent = CreateInstanceIdent(itemID, version, subjectID, instance, UpdateItemTypeEnum::eService);
     info.mStorageQuota  = storageQuota;
     info.mStateQuota    = stateQuota;
     info.mStateChecksum = Array<uint8_t>(checksum.data(), checksum.size());
@@ -78,11 +81,12 @@ networkmanager::Host CreateHost(const char* nodeID, const char* ip)
 }
 
 networkmanager::Instance CreateInstance(const char* itemID, const char* subjectID, uint64_t instance,
-    const char* networkID, const char* nodeID, const char* ip, UpdateItemType itemType = UpdateItemTypeEnum::eService)
+    const char* networkID, const char* nodeID, const char* ip, UpdateItemType itemType = UpdateItemTypeEnum::eService,
+    const char* version = "1.0.0")
 {
     networkmanager::Instance inst;
 
-    inst.mInstanceIdent = CreateInstanceIdent(itemID, subjectID, instance, itemType);
+    inst.mInstanceIdent = CreateInstanceIdent(itemID, version, subjectID, instance, itemType);
     inst.mNetworkID     = networkID;
     inst.mNodeID        = nodeID;
     inst.mIP            = ip;
@@ -107,11 +111,13 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
 
 networkmanager::PendingConnection CreatePendingConnection(const char* requesterItemID, const char* requesterSubjectID,
     uint64_t requesterInstance, const char* nodeID, const char* networkID, const char* requesterIP,
-    const char* requesterSubnet, const char* targetItemID, const char* port, const char* protocol)
+    const char* requesterSubnet, const char* targetItemID, const char* port, const char* protocol,
+    const char* version = "1.0.0")
 {
     networkmanager::PendingConnection conn;
 
-    conn.mRequesterIdent  = CreateInstanceIdent(requesterItemID, requesterSubjectID, requesterInstance);
+    conn.mRequesterIdent = CreateInstanceIdent(
+        requesterItemID, version, requesterSubjectID, requesterInstance, UpdateItemTypeEnum::eService);
     conn.mNodeID          = nodeID;
     conn.mNetworkID       = networkID;
     conn.mRequesterIP     = requesterIP;
@@ -127,21 +133,22 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     const char* manifestDigest, const char* nodeID, UpdateItemType itemType = UpdateItemTypeEnum::eService,
     launcher::InstanceStateEnum state = launcher::InstanceStateEnum::eCached, bool isUnitSubject = false,
     const char* version = "1.0.0", const char* ownerID = "owner1", SubjectTypeEnum subjectType = SubjectTypeEnum::eUser,
-    size_t priority = 0, std::vector<const char*> labels = {}, bool disableRebalancing = false)
+    size_t priority = 0, std::vector<const char*> labels = {}, bool disableRebalancing = false,
+    const char* prevNodeID = "prevNode", const char* runtimeID = "runc", uint32_t uid = 1000, uint32_t gid = 2000,
+    Optional<Time> timestamp = {})
 {
     launcher::InstanceInfo info;
 
-    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance, itemType);
+    info.mInstanceIdent  = CreateInstanceIdent(itemID, version, subjectID, instance, itemType);
     info.mManifestDigest = manifestDigest;
     info.mNodeID         = nodeID;
-    info.mPrevNodeID     = "prevNode";
-    info.mRuntimeID      = "runc";
-    info.mUID            = 1000;
-    info.mGID            = 2000;
-    info.mTimestamp      = Time::Now();
+    info.mPrevNodeID     = prevNodeID;
+    info.mRuntimeID      = runtimeID;
+    info.mUID            = uid;
+    info.mGID            = gid;
+    info.mTimestamp      = timestamp.HasValue() ? timestamp.GetValue() : Time::Now();
     info.mState          = state;
     info.mIsUnitSubject  = isUnitSubject;
-    info.mVersion        = version;
     info.mOwnerID        = ownerID;
     info.mSubjectType    = subjectType;
     info.mLabels.Clear();
@@ -256,6 +263,182 @@ private:
     int mVersion = 0;
 };
 
+void CreateSchemaVersionTable(Poco::Data::Session& session, int version)
+{
+    using namespace Poco::Data::Keywords;
+
+    session << "CREATE TABLE SchemaVersion (version INTEGER);", now;
+    session << "INSERT INTO SchemaVersion (version) VALUES (?);", use(version), now;
+}
+
+void CreateVersion0Schema(Poco::Data::Session& session)
+{
+    using namespace Poco::Data::Keywords;
+
+    session << "CREATE TABLE networks ("
+               "networkID TEXT,"
+               "subnet TEXT,"
+               "vlanID INTEGER,"
+               "PRIMARY KEY(networkID)"
+               ");",
+        now;
+    session << "CREATE TABLE hosts ("
+               "networkID TEXT,"
+               "nodeID TEXT,"
+               "ip TEXT,"
+               "PRIMARY KEY(networkID,nodeID)"
+               ");",
+        now;
+    session << "CREATE TABLE storagestate ("
+               "itemID TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "preinstalled INTEGER,"
+               "storageQuota INTEGER,"
+               "stateQuota INTEGER,"
+               "stateChecksum BLOB,"
+               "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled)"
+               ");",
+        now;
+    session << "CREATE TABLE networkmanager_instances ("
+               "itemID TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "preinstalled INTEGER,"
+               "networkID TEXT,"
+               "nodeID TEXT,"
+               "ip TEXT,"
+               "exposedPorts TEXT,"
+               "dnsServers TEXT,"
+               "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled)"
+               ");",
+        now;
+    session << "CREATE TABLE pending_connections ("
+               "requesterItemID TEXT,"
+               "requesterSubjectID TEXT,"
+               "requesterInstance INTEGER,"
+               "requesterType TEXT,"
+               "requesterPreinstalled INTEGER,"
+               "nodeID TEXT,"
+               "networkID TEXT,"
+               "requesterIP TEXT,"
+               "requesterSubnet TEXT,"
+               "targetItemID TEXT,"
+               "port TEXT,"
+               "protocol TEXT"
+               ");",
+        now;
+    session << "CREATE TABLE launcher_instances ("
+               "itemID TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "preinstalled INTEGER,"
+               "manifestDigest TEXT,"
+               "nodeID TEXT,"
+               "prevNodeID TEXT,"
+               "runtimeID TEXT,"
+               "uid INTEGER,"
+               "gid INTEGER,"
+               "timestamp INTEGER,"
+               "state TEXT,"
+               "isUnitSubject INTEGER,"
+               "version TEXT,"
+               "ownerID TEXT,"
+               "subjectType TEXT,"
+               "labels TEXT,"
+               "priority INTEGER,"
+               "disableRebalancing INTEGER,"
+               "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled,version)"
+               ");",
+        now;
+}
+
+void CreateVersion1Schema(Poco::Data::Session& session)
+{
+    using namespace Poco::Data::Keywords;
+
+    session << "CREATE TABLE networks ("
+               "networkID TEXT,"
+               "subnet TEXT,"
+               "vlanID INTEGER,"
+               "PRIMARY KEY(networkID)"
+               ");",
+        now;
+    session << "CREATE TABLE hosts ("
+               "networkID TEXT,"
+               "nodeID TEXT,"
+               "ip TEXT,"
+               "PRIMARY KEY(networkID,nodeID)"
+               ");",
+        now;
+    session << "CREATE TABLE storagestate ("
+               "itemID TEXT,"
+               "version TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "storageQuota INTEGER,"
+               "stateQuota INTEGER,"
+               "stateChecksum BLOB,"
+               "PRIMARY KEY(itemID,version,subjectID,instance,type)"
+               ");",
+        now;
+    session << "CREATE TABLE networkmanager_instances ("
+               "itemID TEXT,"
+               "version TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "networkID TEXT,"
+               "nodeID TEXT,"
+               "ip TEXT,"
+               "exposedPorts TEXT,"
+               "dnsServers TEXT,"
+               "PRIMARY KEY(itemID,version,subjectID,instance,type)"
+               ");",
+        now;
+    session << "CREATE TABLE pending_connections ("
+               "requesterItemID TEXT,"
+               "requesterVersion TEXT,"
+               "requesterSubjectID TEXT,"
+               "requesterInstance INTEGER,"
+               "requesterType TEXT,"
+               "nodeID TEXT,"
+               "networkID TEXT,"
+               "requesterIP TEXT,"
+               "requesterSubnet TEXT,"
+               "targetItemID TEXT,"
+               "port TEXT,"
+               "protocol TEXT"
+               ");",
+        now;
+    session << "CREATE TABLE launcher_instances ("
+               "itemID TEXT,"
+               "version TEXT,"
+               "subjectID TEXT,"
+               "instance INTEGER,"
+               "type TEXT,"
+               "manifestDigest TEXT,"
+               "nodeID TEXT,"
+               "prevNodeID TEXT,"
+               "runtimeID TEXT,"
+               "uid INTEGER,"
+               "gid INTEGER,"
+               "timestamp INTEGER,"
+               "state TEXT,"
+               "isUnitSubject INTEGER,"
+               "ownerID TEXT,"
+               "subjectType TEXT,"
+               "labels TEXT,"
+               "priority INTEGER,"
+               "disableRebalancing INTEGER,"
+               "PRIMARY KEY(itemID,version,subjectID,instance,type)"
+               ");",
+        now;
+}
 } // namespace
 
 /***********************************************************************************************************************
@@ -296,6 +479,184 @@ protected:
     Config       mDatabaseConfig;
     TestDatabase mDB;
 };
+
+/***********************************************************************************************************************
+ * Migration tests
+ **********************************************************************************************************************/
+
+TEST_F(CMDatabaseTest, MigrateVer0To1)
+{
+    const auto dbPath  = std::filesystem::path(cWorkingDir) / "cm.db";
+    auto       session = std::make_unique<Poco::Data::Session>("SQLite", dbPath.c_str());
+
+    CreateSchemaVersionTable(*session, 0);
+    CreateVersion0Schema(*session);
+
+    *session << "INSERT INTO networks (networkID, subnet, vlanID) VALUES (?, ?, ?);", bind("network1"),
+        bind("172.17.0.0/16"), bind(100), now;
+    *session << "INSERT INTO hosts (networkID, nodeID, ip) VALUES (?, ?, ?);", bind("network1"), bind("node1"),
+        bind("172.17.0.2"), now;
+
+    const auto type        = UpdateItemType(UpdateItemTypeEnum::eService).ToString();
+    const auto state       = launcher::InstanceState(launcher::InstanceStateEnum::eCached).ToString();
+    const auto subjectType = SubjectType(SubjectTypeEnum::eUser).ToString();
+
+    std::vector<uint8_t> checksumData = {0xde, 0xad, 0xbe, 0xef};
+    Poco::Data::BLOB     checksumBlob(checksumData.data(), checksumData.size());
+
+    *session << "INSERT INTO storagestate (itemID, subjectID, instance, type, preinstalled, storageQuota, stateQuota, "
+                "stateChecksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), bind(1), bind(1024), bind(512),
+        bind(checksumBlob), now;
+
+    *session << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, networkID, "
+                "nodeID, ip, exposedPorts, dnsServers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), bind(1), bind("network1"), bind("node1"),
+        bind("172.17.0.10"), bind(R"([{"protocol":"tcp","port":"8080"},{"protocol":"udp","port":"9090"}])"),
+        bind(R"(["8.8.8.8","1.1.1.1"])"), now;
+
+    *session
+        << "INSERT INTO pending_connections (requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
+           "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, port, protocol) "
+           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), bind(1), bind("node1"), bind("network1"),
+        bind("172.17.0.10"), bind("172.17.0.0/16"), bind("target"), bind("8080"), bind("tcp"), now;
+
+    const auto launcherTimestamp = Time::Now();
+
+    *session << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, preinstalled, manifestDigest, "
+                "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
+                "subjectType, labels, priority, disableRebalancing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                "?, ?, ?, ?, ?, ?);",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), bind(1), bind("sha256:manifest"), bind("node1"),
+        bind("node0"), bind("runtime1"), bind(1000), bind(1001), bind(launcherTimestamp.UnixNano()), bind(state.CStr()),
+        bind(0), bind("1.2.3"), bind("owner1"), bind(subjectType.CStr()), bind(R"(["label1"])"), bind(10), bind(0), now;
+
+    session.reset();
+
+    mDB.SetVersion(1);
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    storagestate::InstanceInfo                        storageInfo;
+    StaticArray<networkmanager::Instance, 2>          instances;
+    StaticArray<networkmanager::PendingConnection, 2> pendingConnections;
+    StaticArray<launcher::InstanceInfo, 2>            activeInstances;
+
+    ASSERT_TRUE(mDB.GetStorageStateInfo(
+                       CreateInstanceIdent("service1", "1", "subject1", 1, UpdateItemTypeEnum::eService), storageInfo)
+                    .IsNone());
+    auto expectedStorageInfo = CreateStorageStateInstanceInfo("service1", "subject1", 1, 1024, 512, "1");
+    EXPECT_EQ(storageInfo, expectedStorageInfo);
+
+    ASSERT_TRUE(mDB.GetInstances("network1", "node1", instances).IsNone());
+    ASSERT_EQ(instances.Size(), 1);
+    auto expectedInstance = CreateInstance(
+        "service1", "subject1", 1, "network1", "node1", "172.17.0.10", UpdateItemTypeEnum::eService, "1");
+    EXPECT_EQ(instances[0], expectedInstance);
+
+    ASSERT_TRUE(mDB.GetAllPendingConnections(pendingConnections).IsNone());
+    ASSERT_EQ(pendingConnections.Size(), 1);
+    auto expectedPendingConnection = CreatePendingConnection(
+        "service1", "subject1", 1, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "target", "8080", "tcp", "1");
+    EXPECT_EQ(pendingConnections[0], expectedPendingConnection);
+
+    ASSERT_TRUE(mDB.LoadActiveInstances(activeInstances).IsNone());
+    ASSERT_EQ(activeInstances.Size(), 1);
+    auto expectedActiveInstance = CreateLauncherInstanceInfo("service1", "subject1", 1, "sha256:manifest", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1.2.3", "owner1",
+        SubjectTypeEnum::eUser, 10, {"label1"}, false, "node0", "runtime1", 1000, 1001,
+        Optional<Time>(launcherTimestamp));
+    EXPECT_EQ(activeInstances[0], expectedActiveInstance);
+}
+
+TEST_F(CMDatabaseTest, MigrateVer1To0)
+{
+    const auto dbPath  = std::filesystem::path(cWorkingDir) / "cm.db";
+    auto       session = std::make_unique<Poco::Data::Session>("SQLite", dbPath.c_str());
+
+    CreateSchemaVersionTable(*session, 1);
+    CreateVersion1Schema(*session);
+    session.reset();
+
+    TestDatabase db;
+
+    db.SetVersion(1);
+    ASSERT_TRUE(db.Init(mDatabaseConfig).IsNone());
+
+    auto network = CreateNetwork("network1", "172.17.0.0/16", 100);
+    auto host    = CreateHost("node1", "172.17.0.2");
+    ASSERT_TRUE(db.AddNetwork(network).IsNone());
+    ASSERT_TRUE(db.AddHost(network.mNetworkID, host).IsNone());
+
+    auto storageInfo = CreateStorageStateInstanceInfo("service1", "subject1", 1, 1024, 512, "1");
+    ASSERT_TRUE(db.AddStorageStateInfo(storageInfo).IsNone());
+
+    auto instance = CreateInstance(
+        "service1", "subject1", 1, "network1", "node1", "172.17.0.10", UpdateItemTypeEnum::eService, "1");
+    ASSERT_TRUE(db.AddInstance(instance).IsNone());
+
+    auto pendingConnection = CreatePendingConnection(
+        "service1", "subject1", 1, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "target", "8080", "tcp", "1");
+    ASSERT_TRUE(db.AddPendingConnection(pendingConnection).IsNone());
+
+    auto launcherInstance = CreateLauncherInstanceInfo("service1", "subject1", 1, "sha256:manifest", "node1",
+        UpdateItemTypeEnum::eService, launcher::InstanceStateEnum::eCached, false, "1", "owner1",
+        SubjectTypeEnum::eUser, 10, {"label1"}, false, "node0", "runtime1", 1000, 1001);
+    ASSERT_TRUE(db.AddInstance(launcherInstance).IsNone());
+
+    mDB.SetVersion(0);
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    auto        migratedSession = std::make_unique<Poco::Data::Session>("SQLite", dbPath.c_str());
+    int         preinstalled    = -1;
+    auto        type            = UpdateItemType(UpdateItemTypeEnum::eService).ToString();
+    size_t      storageQuota    = 0;
+    size_t      stateQuota      = 0;
+    std::string networkID, nodeID, requesterSubnet, targetItemID, port, protocol;
+    std::string manifestDigest, ownerID;
+    std::string version;
+
+    *migratedSession << "SELECT preinstalled, storageQuota, stateQuota FROM storagestate WHERE itemID = ? AND "
+                        "subjectID = ? AND instance = ? AND type = ?;",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), into(preinstalled), into(storageQuota),
+        into(stateQuota), now;
+    EXPECT_EQ(preinstalled, 1);
+    EXPECT_EQ(storageQuota, 1024U);
+    EXPECT_EQ(stateQuota, 512U);
+
+    preinstalled = -1;
+    *migratedSession << "SELECT preinstalled, networkID, nodeID FROM networkmanager_instances WHERE itemID = ? AND "
+                        "subjectID = ? AND instance = ? AND type = ?;",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), into(preinstalled), into(networkID),
+        into(nodeID), now;
+    EXPECT_EQ(preinstalled, 1);
+    EXPECT_EQ(networkID, "network1");
+    EXPECT_EQ(nodeID, "node1");
+
+    preinstalled = -1;
+    *migratedSession << "SELECT requesterPreinstalled, requesterSubnet, targetItemID, port, protocol "
+                        "FROM pending_connections WHERE requesterItemID = ? AND requesterSubjectID = ? AND "
+                        "requesterInstance = ? AND requesterType = ?;",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), into(preinstalled), into(requesterSubnet),
+        into(targetItemID), into(port), into(protocol), now;
+    EXPECT_EQ(preinstalled, 1);
+    EXPECT_EQ(requesterSubnet, "172.17.0.0/16");
+    EXPECT_EQ(targetItemID, "target");
+    EXPECT_EQ(port, "8080");
+    EXPECT_EQ(protocol, "tcp");
+
+    preinstalled = -1;
+
+    *migratedSession
+        << "SELECT preinstalled, version, manifestDigest, ownerID FROM launcher_instances WHERE itemID = ? "
+           "AND subjectID = ? AND instance = ? AND type = ?;",
+        bind("service1"), bind("subject1"), bind(1), bind(type.CStr()), into(preinstalled), into(version),
+        into(manifestDigest), into(ownerID), now;
+    EXPECT_EQ(preinstalled, 1);
+    EXPECT_EQ(version, "1");
+    EXPECT_EQ(manifestDigest, "sha256:manifest");
+    EXPECT_EQ(ownerID, "owner1");
+}
 
 /***********************************************************************************************************************
  * storagestate::StorageItf tests
@@ -579,11 +940,11 @@ TEST_F(CMDatabaseTest, NetworkManagerRemoveInstance)
     ASSERT_TRUE(mDB.AddInstance(instance3).IsNone());
 
     // Remove instance
-    auto instanceIdent2 = CreateInstanceIdent("service1", "subject1", 1);
+    auto instanceIdent2 = CreateInstanceIdent("service1", "1.0.0", "subject1", 1);
     ASSERT_TRUE(mDB.RemoveNetworkInstance(instanceIdent2).IsNone());
 
     // Remove non-existent instance
-    auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
+    auto nonExistentIdent = CreateInstanceIdent("nonexistent", "1.0.0", "subject", 99);
     ASSERT_FALSE(mDB.RemoveNetworkInstance(nonExistentIdent).IsNone());
 
     // Verify remaining instances
@@ -725,11 +1086,11 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Remove instance
-    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent, instance1.mVersion).IsNone());
+    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent).IsNone());
 
     // Remove non-existent instance
-    auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
-    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent, "1.0.0").IsNone());
+    auto nonExistentIdent = CreateInstanceIdent("nonexistent", "1.0.0", "subject", 99);
+    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent).IsNone());
 
     // Verify remaining instances
     auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
@@ -1176,7 +1537,7 @@ TEST_F(CMDatabaseTest, PendingConnectionRemove)
     ASSERT_TRUE(mDB.AddPendingConnection(conn3).IsNone());
 
     // Remove all pending for serviceA — should remove conn1 and conn2
-    auto identA = CreateInstanceIdent("serviceA", "subject1", 0);
+    auto identA = CreateInstanceIdent("serviceA", "1.0.0", "subject1", 0);
     ASSERT_TRUE(mDB.RemovePendingConnections(identA).IsNone());
 
     // Only conn3 should remain
