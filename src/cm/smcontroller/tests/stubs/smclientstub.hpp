@@ -533,7 +533,6 @@ private:
             auto*       outInstanceStatus = nodeStatus->add_instances();
 
             outInstanceStatus->mutable_instance()->CopyFrom(grpcInfo.instance());
-            outInstanceStatus->set_version(grpcInfo.version());
             outInstanceStatus->set_runtime_id(grpcInfo.runtime_id());
             outInstanceStatus->set_manifest_digest(grpcInfo.manifest_digest());
             outInstanceStatus->set_state("activating");

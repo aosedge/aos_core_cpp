@@ -67,7 +67,6 @@ public:
     {
         mLastNodeID         = nodeID;
         mSyncInstancesCount = instances.Size();
-
         return mError;
     }
 
