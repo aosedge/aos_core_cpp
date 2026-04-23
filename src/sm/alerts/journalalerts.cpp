@@ -284,7 +284,6 @@ std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::Journa
 
         alert.mTimestamp                   = entry.mRealTime;
         static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
-        alert.mVersion                     = instanceInfo.mVersion;
 
         WriteAlertMsg(entry.mMessage, alert.mMessage);
 

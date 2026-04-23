@@ -19,16 +19,12 @@ namespace aos::sm::alerts {
  * Instance info.
  */
 struct InstanceInfo {
-    InstanceIdent             mInstanceIdent;
-    StaticString<cVersionLen> mVersion;
+    InstanceIdent mInstanceIdent;
 
     /**
      * Equality operator.
      */
-    bool operator==(const InstanceInfo& rhs) const
-    {
-        return mInstanceIdent == rhs.mInstanceIdent && mVersion == rhs.mVersion;
-    }
+    bool operator==(const InstanceInfo& rhs) const { return mInstanceIdent == rhs.mInstanceIdent; }
 
     /**
      * Equality operator.

@@ -60,7 +60,7 @@ class TestJournalAlerts : public JournalAlerts {
 public:
     std::shared_ptr<utils::JournalItf> CreateJournal() override
     {
-        return std::shared_ptr<utils::JournalItf>(&mJournal, [](utils::JournalItf*) {});
+        return std::shared_ptr<utils::JournalItf>(&mJournal, [](utils::JournalItf*) { });
     }
 
     utils::JournalMock mJournal;
@@ -202,12 +202,13 @@ TEST_F(JournalAlertsTest, SendServiceAlert)
     entry.mSystemdUnit = "/system.slice/system-aos@service.slice/aos-service@service0.service";
     entry.mMessage     = "Hello World";
 
-    InstanceInfo instanceInfo {InstanceIdent {"service0", "service0", 0, UpdateItemTypeEnum::eService}, "0.0.0"};
+    InstanceInfo instanceInfo {
+        InstanceIdent {"service0", "0.0.0", "service0", 0, UpdateItemTypeEnum::eService},
+    };
 
     InstanceAlert alert;
 
     static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
-    alert.mVersion                     = instanceInfo.mVersion;
     alert.mMessage                     = entry.mMessage.c_str();
 
     EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
