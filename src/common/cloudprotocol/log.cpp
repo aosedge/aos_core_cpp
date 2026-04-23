@@ -6,6 +6,7 @@
 
 #include <common/utils/exception.hpp>
 #include <common/utils/time.hpp>
+#include <common/utils/utils.hpp>
 
 #include "common.hpp"
 #include "log.hpp"
@@ -97,7 +98,7 @@ Error ToJSON(const PushLog& pushLog, Poco::JSON::Object& json)
         json.set("node", CreateAosIdentity(identity));
         json.set("part", pushLog.mPart);
         json.set("partsCount", pushLog.mPartsCount);
-        json.set("content", pushLog.mContent.CStr());
+        json.set("content", utils::Base64Encode(std::string_view(pushLog.mContent.CStr(), pushLog.mContent.Size())));
         json.set("status", pushLog.mStatus.ToString().CStr());
 
         if (!pushLog.mError.IsNone()) {

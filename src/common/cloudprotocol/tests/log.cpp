@@ -82,7 +82,7 @@ TEST_F(CloudProtocolLog, RequestLog)
 TEST_F(CloudProtocolLog, PushLog)
 {
     constexpr auto cJSON = R"({"messageType":"pushLog","correlationId":"logID","node":{"codename":"nodeID"},)"
-                           R"("part":1,"partsCount":10,"content":"log content","status":"error",)"
+                           R"("part":1,"partsCount":10,"content":"bG9nIGNvbnRlbnQ=","status":"error",)"
                            R"("errorInfo":{"aosCode":1,"exitCode":0,"message":""}})";
 
     auto pushLog = std::make_unique<PushLog>();
