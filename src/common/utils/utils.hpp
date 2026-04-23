@@ -76,7 +76,7 @@ std::string Base64Decode(const std::string& encoded);
  * @param decoded string to encode.
  * @return std::string.
  */
-std::string Base64Encode(const std::string& decoded);
+std::string Base64Encode(std::string_view decoded);
 
 } // namespace aos::common::utils
 
