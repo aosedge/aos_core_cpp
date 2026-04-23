@@ -885,7 +885,8 @@ Error ConvertFromProto(const servicemanager::v5::LogData& grpcLogData, const Str
     aosPushLog.mPartsCount = grpcLogData.part_count();
     aosPushLog.mPart       = grpcLogData.part();
 
-    if (auto err = aosPushLog.mContent.Assign(grpcLogData.data().c_str()); !err.IsNone()) {
+    if (auto err = aosPushLog.mContent.Assign(String(grpcLogData.data().c_str(), grpcLogData.data().size()));
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -1206,7 +1207,7 @@ void ConvertToProto(const PushLog& src, servicemanager::v5::LogData& dst)
     dst.set_correlation_id(src.mCorrelationID.CStr());
     dst.set_part_count(src.mPartsCount);
     dst.set_part(src.mPart);
-    dst.set_data(src.mContent.CStr());
+    dst.set_data(src.mContent.CStr(), src.mContent.Size());
     dst.set_status(src.mStatus.ToString().CStr());
     dst.mutable_error()->CopyFrom(ConvertAosErrorToProto(src.mError));
 }
