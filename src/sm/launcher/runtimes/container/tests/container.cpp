@@ -920,7 +920,6 @@ TEST_F(ContainerRuntimeTest, GetInstanceInfoByID)
     ASSERT_TRUE(err.IsNone()) << "Failed to get instance info: " << tests::utils::ErrorToStr(err);
 
     EXPECT_EQ(alertsInstanceInfo.mInstanceIdent, static_cast<const InstanceIdent&>(instance));
-    EXPECT_EQ(alertsInstanceInfo.mVersion, instance.mVersion);
 
     // Get non-existing instance info
 

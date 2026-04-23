@@ -282,10 +282,6 @@ Error ContainerRuntime::GetInstanceInfoByID(const String& instanceID, alerts::In
 
     instanceInfo.mInstanceIdent = it->first;
 
-    if (auto err = instanceInfo.mVersion.Assign(it->second->GetVersion().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     return ErrorEnum::eNone;
 }
 

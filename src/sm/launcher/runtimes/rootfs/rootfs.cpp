@@ -261,15 +261,10 @@ Error RootfsRuntime::InitInstalledData()
     const auto path = GetPath(cInstalledInstanceFileName);
 
     if (!std::filesystem::exists(path)) {
-        auto [version, err] = GetCurrentVersion();
-        if (!err.IsNone()) {
-            return err;
-        }
-
         static_cast<InstanceIdent&>(mCurrentInstance) = mDefaultInstanceIdent;
-        mCurrentInstance.mVersion                     = version;
+        mCurrentInstance.mPreinstalled                = true;
 
-        err = SaveInstanceInfo(mCurrentInstance, path);
+        auto err = SaveInstanceInfo(mCurrentInstance, path);
         if (!err.IsNone()) {
             return err;
         }
@@ -309,11 +304,16 @@ Error RootfsRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
-    mDefaultInstanceIdent.mInstance     = 0;
-    mDefaultInstanceIdent.mItemID       = mRuntimeInfo.mRuntimeType;
-    mDefaultInstanceIdent.mSubjectID    = nodeInfo->mNodeType;
-    mDefaultInstanceIdent.mPreinstalled = true;
+    auto [version, err] = GetCurrentVersion();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance  = 0;
+    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
+    mDefaultInstanceIdent.mVersion   = version;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)

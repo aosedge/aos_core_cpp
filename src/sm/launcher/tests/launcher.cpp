@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fstream>
+
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
@@ -59,9 +61,20 @@ class RuntimesTest : public Test {
 protected:
     static void SetUpTestSuite() { tests::utils::InitLog(); }
 
-    void SetUp() override { }
+    void SetUp() override
+    {
+        mRootfsWorkDir = std::filesystem::absolute("aos_sm_launcher_rootfs_runtime_test");
+        std::filesystem::create_directories(mRootfsWorkDir);
 
-    void TearDown() override { }
+        mRootfsVersionFilePath = mRootfsWorkDir / "version";
+        std::ofstream(mRootfsVersionFilePath) << "VERSION=\"1.0.0\"";
+
+        mRootfsJson = Poco::makeShared<Poco::JSON::Object>();
+        mRootfsJson->set("workingDir", mRootfsWorkDir.string());
+        mRootfsJson->set("versionFilePath", mRootfsVersionFilePath.string());
+    }
+
+    void TearDown() override { std::filesystem::remove_all(mRootfsWorkDir); }
 
     NiceMock<iamclient::CurrentNodeInfoProviderMock>    mCurrentNodeInfoProviderMock;
     NiceMock<imagemanager::ItemInfoProviderMock>        mItemInfoProviderMock;
@@ -71,6 +84,10 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     NiceMock<sm::utils::SystemdConnMock>                mSystemdConnMock;
+
+    std::filesystem::path   mRootfsWorkDir;
+    std::filesystem::path   mRootfsVersionFilePath;
+    Poco::JSON::Object::Ptr mRootfsJson;
 };
 
 /***********************************************************************************************************************
@@ -102,8 +119,7 @@ TEST_F(RuntimesTest, InitRuntimes)
         RuntimeConfig {cRuntimeContainer, "crun", false, "", Poco::makeShared<Poco::JSON::Object>()});
     config.mRuntimes.emplace_back(
         RuntimeConfig {cRuntimeBoot, "aos-vm-boot", true, "", Poco::makeShared<Poco::JSON::Object>()});
-    config.mRuntimes.emplace_back(
-        RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, "", Poco::makeShared<Poco::JSON::Object>()});
+    config.mRuntimes.emplace_back(RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, "", mRootfsJson});
     auto nodeInfo = std::make_unique<NodeInfo>();
 
     CreateNodeInfo(*nodeInfo);

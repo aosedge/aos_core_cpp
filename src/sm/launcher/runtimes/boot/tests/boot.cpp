@@ -341,7 +341,7 @@ TEST_F(BootRuntimeTest, InstalledStatusIsSentOnStart)
     EXPECT_STREQ(statuses[0].mItemID.CStr(), "item1");
     EXPECT_STREQ(statuses[0].mSubjectID.CStr(), "subject1");
     EXPECT_EQ(statuses[0].mInstance, 1u);
-    EXPECT_FALSE(statuses[0].mPreinstalled);
+    EXPECT_TRUE(statuses[0].mPreinstalled);
 
     err = mBootRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -419,7 +419,7 @@ TEST_F(BootRuntimeTest, UpdateSucceededOnStart)
     EXPECT_STREQ(statuses[1].mSubjectID.CStr(), "updateSubject1");
     EXPECT_EQ(statuses[1].mInstance, 1u);
     EXPECT_STREQ(statuses[1].mVersion.CStr(), "1.0.1");
-    EXPECT_FALSE(statuses[1].mPreinstalled);
+    EXPECT_TRUE(statuses[1].mPreinstalled);
 
     for (const auto& partition : {cPartition1, cPartition2}) {
         CheckVersionFileContent(partition, "1.0.1");
@@ -492,7 +492,7 @@ TEST_F(BootRuntimeTest, UpdateFailedOnStart)
     EXPECT_STREQ(statuses[0].mSubjectID.CStr(), "updateSubject1");
     EXPECT_EQ(statuses[0].mInstance, 0u);
     EXPECT_STREQ(statuses[0].mVersion.CStr(), "1.0.1");
-    EXPECT_FALSE(statuses[0].mPreinstalled);
+    EXPECT_TRUE(statuses[0].mPreinstalled);
 
     EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eActive);
     EXPECT_STREQ(statuses[1].mManifestDigest.CStr(), "preinstalledDigest");
