@@ -309,7 +309,7 @@ private:
     std::condition_variable                           mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
-    std::vector<aos::sm::smclient::ConnectListenerItf*>       mConnectListeners;
+    std::vector<ConnectListenerItf*>                          mConnectListeners;
 
     // Network update stream
     aos::networkmanager::PendingUpdateHandlerItf* mNetworkUpdateHandler = nullptr;

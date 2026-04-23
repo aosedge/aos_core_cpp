@@ -60,7 +60,7 @@ class TestJournalAlerts : public JournalAlerts {
 public:
     std::shared_ptr<utils::JournalItf> CreateJournal() override
     {
-        return std::shared_ptr<utils::JournalItf>(&mJournal, [](utils::JournalItf*) { });
+        return std::shared_ptr<utils::JournalItf>(&mJournal, [](utils::JournalItf*) {});
     }
 
     utils::JournalMock mJournal;

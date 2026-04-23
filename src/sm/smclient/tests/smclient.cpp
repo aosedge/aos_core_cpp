@@ -85,12 +85,12 @@ protected:
         auto           statuses = std::make_unique<InstanceStatusArray>();
         InstanceStatus status;
 
-        static_cast<InstanceIdent&>(status) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
-        status.mVersion                     = "1.0.0";
-        status.mPreinstalled                = false;
-        status.mRuntimeID                   = "runtime1";
-        status.mManifestDigest              = "sha256:1234567890";
-        status.mState                       = InstanceStateEnum::eActive;
+        static_cast<InstanceIdent&>(status)
+            = InstanceIdent {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
+        status.mPreinstalled   = false;
+        status.mRuntimeID      = "runtime1";
+        status.mManifestDigest = "sha256:1234567890";
+        status.mState          = InstanceStateEnum::eActive;
 
         statuses->PushBack(status);
 
@@ -159,7 +159,7 @@ TEST_F(SMClientTest, RegisterSMSucceeds)
     EXPECT_CALL(*server, OnNodeInstancesStatus(_)).WillOnce(Invoke([](const smproto::NodeInstancesStatus& status) {
         EXPECT_EQ(status.instances_size(), 1);
         EXPECT_EQ(status.instances(0).instance().item_id(), "service1");
-        EXPECT_EQ(status.instances(0).version(), "1.0.0");
+        EXPECT_EQ(status.instances(0).instance().version(), "1.0.0");
     }));
 
     auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
@@ -258,8 +258,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusWithMultipleInstances)
     for (int i = 0; i < 3; i++) {
         InstanceStatus status;
         static_cast<InstanceIdent&>(status) = InstanceIdent {(std::string("service") + std::to_string(i)).c_str(),
-            "subject1", static_cast<uint64_t>(i), UpdateItemTypeEnum::eService};
-        status.mVersion                     = "1.0.0";
+            "1.0.0", "subject1", static_cast<uint64_t>(i), UpdateItemTypeEnum::eService};
         status.mRuntimeID                   = "runtime1";
         status.mState                       = InstanceStateEnum::eActive;
         statuses->PushBack(status);
@@ -435,8 +434,7 @@ TEST_F(SMClientTest, SendNodeInstancesStatusesCallback)
     InstanceStatusArray callbackStatuses;
     InstanceStatus      status;
     static_cast<InstanceIdent&>(status)
-        = InstanceIdent {"callback-service", "subject1", 1, UpdateItemTypeEnum::eService};
-    status.mVersion   = "2.0.0";
+        = InstanceIdent {"callback-service", "2.0.0", "subject1", 1, UpdateItemTypeEnum::eService};
     status.mRuntimeID = "runtime1";
     status.mState     = InstanceStateEnum::eActive;
     callbackStatuses.PushBack(status);
@@ -499,10 +497,10 @@ TEST_F(SMClientTest, SendUpdateInstancesStatusesCallback)
 
     InstanceStatusArray updateStatuses;
     InstanceStatus      status;
-    static_cast<InstanceIdent&>(status) = InstanceIdent {"update-service", "subject1", 2, UpdateItemTypeEnum::eService};
-    status.mVersion                     = "3.0.0";
-    status.mRuntimeID                   = "runtime1";
-    status.mState                       = InstanceStateEnum::eActive;
+    static_cast<InstanceIdent&>(status)
+        = InstanceIdent {"update-service", "3.0.0", "subject1", 2, UpdateItemTypeEnum::eService};
+    status.mRuntimeID = "runtime1";
+    status.mState     = InstanceStateEnum::eActive;
     updateStatuses.PushBack(status);
 
     client->SendUpdateInstancesStatuses(updateStatuses);
@@ -580,13 +578,13 @@ TEST_F(SMClientTest, SendMonitoringData)
     monitoringData.mMonitoringData.mUpload    = 500;
 
     aos::monitoring::InstanceMonitoringData instance1;
-    instance1.mInstanceIdent  = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+    instance1.mInstanceIdent  = InstanceIdent {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
     instance1.mRuntimeID      = "runtime1";
     instance1.mMonitoringData = monitoringData.mMonitoringData;
     monitoringData.mInstances.PushBack(instance1);
 
     aos::monitoring::InstanceMonitoringData instance2;
-    instance2.mInstanceIdent  = InstanceIdent {"service2", "subject1", 1, UpdateItemTypeEnum::eService};
+    instance2.mInstanceIdent  = InstanceIdent {"service2", "1.0.0", "subject1", 1, UpdateItemTypeEnum::eService};
     instance2.mRuntimeID      = "runtime2";
     instance2.mMonitoringData = monitoringData.mMonitoringData;
     monitoringData.mInstances.PushBack(instance2);
@@ -681,7 +679,7 @@ TEST_F(SMClientTest, SendAlert)
             EXPECT_TRUE(alert.has_timestamp());
             EXPECT_TRUE(alert.has_instance_alert());
             EXPECT_EQ(alert.instance_alert().instance().item_id(), "service1");
-            EXPECT_EQ(alert.instance_alert().service_version(), "1.0.0");
+            EXPECT_EQ(alert.instance_alert().instance().version(), "1.0.0");
             EXPECT_EQ(alert.instance_alert().message(), "Instance alert message");
         }));
 
@@ -739,11 +737,12 @@ TEST_F(SMClientTest, SendAlert)
     // Send InstanceQuotaAlert
     {
         InstanceQuotaAlert alert;
-        alert.mTimestamp                   = Time::Now();
-        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
-        alert.mParameter                   = "cpu";
-        alert.mValue                       = 90;
-        alert.mState                       = QuotaAlertStateEnum::eRaise;
+        alert.mTimestamp = Time::Now();
+        static_cast<InstanceIdent&>(alert)
+            = InstanceIdent {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mParameter = "cpu";
+        alert.mValue     = 90;
+        alert.mState     = QuotaAlertStateEnum::eRaise;
 
         err = client->SendAlert(AlertVariant(alert));
         ASSERT_TRUE(err.IsNone()) << "SendAlert(InstanceQuotaAlert) failed";
@@ -753,11 +752,12 @@ TEST_F(SMClientTest, SendAlert)
     // Send ResourceAllocateAlert
     {
         ResourceAllocateAlert alert;
-        alert.mTimestamp                   = Time::Now();
-        alert.mNodeID                      = "test-node";
-        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
-        alert.mResource                    = "gpu";
-        alert.mMessage                     = "Resource allocation failed";
+        alert.mTimestamp = Time::Now();
+        alert.mNodeID    = "test-node";
+        static_cast<InstanceIdent&>(alert)
+            = InstanceIdent {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mResource = "gpu";
+        alert.mMessage  = "Resource allocation failed";
 
         err = client->SendAlert(AlertVariant(alert));
         ASSERT_TRUE(err.IsNone()) << "SendAlert(ResourceAllocateAlert) failed";
@@ -767,10 +767,10 @@ TEST_F(SMClientTest, SendAlert)
     // Send InstanceAlert
     {
         InstanceAlert alert;
-        alert.mTimestamp                   = Time::Now();
-        static_cast<InstanceIdent&>(alert) = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
-        alert.mVersion                     = "1.0.0";
-        alert.mMessage                     = "Instance alert message";
+        alert.mTimestamp = Time::Now();
+        static_cast<InstanceIdent&>(alert)
+            = InstanceIdent {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
+        alert.mMessage = "Instance alert message";
 
         err = client->SendAlert(AlertVariant(alert));
         ASSERT_TRUE(err.IsNone()) << "SendAlert(InstanceAlert) failed";
@@ -1249,7 +1249,7 @@ TEST_F(SMClientTest, AllocateInstanceNetwork)
     server->WaitSMInfo();
     server->WaitNodeInstancesStatus();
 
-    InstanceIdent           instance {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+    InstanceIdent           instance {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
     UpdateItemNetworkParams serviceData;
 
     InstanceNetworkAllocation result;
@@ -1325,7 +1325,7 @@ TEST_F(SMClientTest, ReleaseInstanceNetwork)
     server->WaitSMInfo();
     server->WaitNodeInstancesStatus();
 
-    InstanceIdent instance {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
+    InstanceIdent instance {"service1", "1.0.0", "subject1", 0, UpdateItemTypeEnum::eService};
 
     err = client->ReleaseInstanceNetwork(instance, "node1");
     ASSERT_TRUE(err.IsNone()) << "ReleaseInstanceNetwork failed: " << err.Message();
