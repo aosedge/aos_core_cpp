@@ -8,22 +8,22 @@ DROP TABLE IF EXISTS instances;
 -- Create new items table
 CREATE TABLE items (
     itemID TEXT,
-    type TEXT,
     version TEXT,
+    type TEXT,
     manifestDigest TEXT,
     state TEXT,
     timestamp INTEGER,
-    PRIMARY KEY(itemID, type, version)
+    PRIMARY KEY(itemID, version, type)
 );
 
 -- Create new instances table with updated schema
 CREATE TABLE instances (
     itemID TEXT NOT NULL,
+    version TEXT,
     subjectID TEXT NOT NULL,
     instance INTEGER NOT NULL,
     type TEXT NOT NULL DEFAULT 'service',
     preinstalled INTEGER NOT NULL DEFAULT 0,
-    version TEXT,
     manifestDigest TEXT,
     runtimeID TEXT,
     ownerID TEXT,

@@ -6,6 +6,7 @@
 
 #include <iostream>
 
+#include <Poco/Data/Session.h>
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
@@ -21,8 +22,41 @@ using namespace testing;
 
 namespace {
 
+using namespace Poco::Data::Keywords;
+
+void CreateSchemaVersionTable(Poco::Data::Session& session, int version)
+{
+    session << "CREATE TABLE SchemaVersion (version INTEGER);", now;
+    session << "INSERT INTO SchemaVersion (version) VALUES (?);", use(version), now;
+}
+
+void CreateInstancesSchemaV4(Poco::Data::Session& session)
+{
+    session << "CREATE TABLE instances ("
+               "itemID TEXT NOT NULL, "
+               "version TEXT, "
+               "subjectID TEXT NOT NULL, "
+               "instance INTEGER NOT NULL, "
+               "type TEXT NOT NULL DEFAULT 'service', "
+               "preinstalled INTEGER NOT NULL DEFAULT 0, "
+               "manifestDigest TEXT, "
+               "runtimeID TEXT, "
+               "ownerID TEXT, "
+               "subjectType TEXT, "
+               "uid INTEGER, "
+               "gid INTEGER, "
+               "priority INTEGER, "
+               "storagePath TEXT, "
+               "statePath TEXT, "
+               "envVars TEXT, "
+               "monitoringParams TEXT, "
+               "PRIMARY KEY(itemID, subjectID, instance, type, preinstalled)"
+               ");",
+        now;
+}
+
 aos::InstanceIdent CreateInstanceIdent(const std::string& itemID, const std::string& subjectID, uint32_t instance,
-    aos::UpdateItemType type = aos::UpdateItemTypeEnum::eService)
+    aos::UpdateItemType type = aos::UpdateItemTypeEnum::eService, const std::string& version = "1.0.0")
 {
     aos::InstanceIdent ident;
 
@@ -30,6 +64,7 @@ aos::InstanceIdent CreateInstanceIdent(const std::string& itemID, const std::str
     ident.mSubjectID = subjectID.c_str();
     ident.mInstance  = instance;
     ident.mType      = type;
+    ident.mVersion   = version.c_str();
 
     return ident;
 }
@@ -72,13 +107,23 @@ aos::sm::imagemanager::UpdateItemData CreateUpdateItemData(const aos::String& id
     return item;
 }
 
+class TestDatabase : public aos::sm::database::Database {
+public:
+    void SetVersion(int version) { mVersion = version; }
+
+private:
+    int GetVersion() const override { return mVersion; }
+
+    int mVersion = 5;
+};
+
 } // namespace
 
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
 
-class DatabaseTest : public Test {
+class SMDatabaseTest : public Test {
 protected:
     void SetUp() override
     {
@@ -106,14 +151,112 @@ protected:
 protected:
     std::filesystem::path          mWorkingDir;
     aos::common::config::Migration mMigrationConfig;
-    aos::sm::database::Database    mDB;
+    TestDatabase                   mDB;
 };
+
+TEST_F(SMDatabaseTest, MigrateVer4To5)
+{
+    auto dbPath  = std::filesystem::path(mWorkingDir) / "servicemanager.db";
+    auto session = std::make_unique<Poco::Data::Session>("SQLite", dbPath.c_str());
+    auto info    = CreateInstanceInfo("service-1", "subject-1", 1, 1000);
+
+    info.mVersion      = "1.2.3";
+    info.mPreinstalled = true;
+    info.mStoragePath  = "/storage";
+    info.mStatePath    = "/state";
+
+    auto type        = info.mType.ToString();
+    auto subjectType = info.mSubjectType.ToString();
+
+    CreateSchemaVersionTable(*session, 4);
+    CreateInstancesSchemaV4(*session);
+
+    *session << "INSERT INTO instances (itemID, version, subjectID, instance, type, preinstalled, manifestDigest, "
+                "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
+                "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        bind(info.mItemID.CStr()), bind(info.mVersion.CStr()), bind(info.mSubjectID.CStr()), bind(info.mInstance),
+        bind(type.CStr()), bind(info.mPreinstalled), bind(info.mManifestDigest.CStr()), bind(info.mRuntimeID.CStr()),
+        bind(info.mOwnerID.CStr()), bind(subjectType.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mPriority),
+        bind(info.mStoragePath.CStr()), bind(info.mStatePath.CStr()), bind("[]"), bind(""), now;
+
+    session.reset();
+
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto infos = std::make_unique<aos::InstanceInfoArray>();
+    ASSERT_TRUE(mDB.GetAllInstancesInfos(*infos).IsNone());
+    ASSERT_EQ(infos->Size(), 1U);
+    EXPECT_EQ((*infos)[0], info);
+}
+
+TEST_F(SMDatabaseTest, MigrateVer5To4)
+{
+    auto dbPath = std::filesystem::path(mWorkingDir) / "servicemanager.db";
+    auto info   = CreateInstanceInfo("service-1", "subject-1", 1, 1000);
+
+    info.mVersion      = "1.2.3";
+    info.mPreinstalled = true;
+    info.mStoragePath  = "/storage";
+    info.mStatePath    = "/state";
+
+    auto type        = info.mType.ToString();
+    auto subjectType = info.mSubjectType.ToString();
+
+    {
+        TestDatabase db;
+
+        db.SetVersion(5);
+        ASSERT_TRUE(db.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+        ASSERT_TRUE(db.UpdateInstanceInfo(info).IsNone());
+    }
+
+    mDB.SetVersion(4);
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto migratedSession = std::make_unique<Poco::Data::Session>("SQLite", dbPath.c_str());
+
+    int         version = -1;
+    uint32_t    preinstalled;
+    std::string migratedVersion;
+    std::string manifestDigest;
+    std::string runtimeID;
+    std::string ownerID;
+    std::string migratedSubjectType;
+    uint32_t    uid;
+    uint32_t    gid;
+    uint64_t    priority;
+    std::string storagePath;
+    std::string statePath;
+
+    *migratedSession << "SELECT version FROM SchemaVersion;", into(version), now;
+    EXPECT_EQ(version, 4);
+
+    *migratedSession << "SELECT preinstalled, version, manifestDigest, runtimeID, ownerID, subjectType, uid, gid, "
+                        "priority, storagePath, statePath FROM instances WHERE itemID = ? AND subjectID = ? "
+                        "AND instance = ? AND type = ? AND preinstalled = ?;",
+        bind(info.mItemID.CStr()), bind(info.mSubjectID.CStr()), bind(info.mInstance), bind(type.CStr()),
+        bind(info.mPreinstalled), into(preinstalled), into(migratedVersion), into(manifestDigest), into(runtimeID),
+        into(ownerID), into(migratedSubjectType), into(uid), into(gid), into(priority), into(storagePath),
+        into(statePath), now;
+
+    EXPECT_EQ(preinstalled, static_cast<uint32_t>(info.mPreinstalled));
+    EXPECT_EQ(migratedVersion, info.mVersion.CStr());
+    EXPECT_EQ(manifestDigest, info.mManifestDigest.CStr());
+    EXPECT_EQ(runtimeID, info.mRuntimeID.CStr());
+    EXPECT_EQ(ownerID, info.mOwnerID.CStr());
+    EXPECT_EQ(migratedSubjectType, subjectType.CStr());
+    EXPECT_EQ(uid, info.mUID);
+    EXPECT_EQ(gid, info.mGID);
+    EXPECT_EQ(priority, info.mPriority);
+    EXPECT_EQ(storagePath, info.mStoragePath.CStr());
+    EXPECT_EQ(statePath, info.mStatePath.CStr());
+}
 
 /***********************************************************************************************************************
  * Tests - imagemanager::StorageItf
  **********************************************************************************************************************/
 
-TEST_F(DatabaseTest, AddUpdateItem)
+TEST_F(SMDatabaseTest, AddUpdateItem)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -166,7 +309,7 @@ TEST_F(DatabaseTest, AddUpdateItem)
     EXPECT_EQ((*itemData)[0], item2v1);
 }
 
-TEST_F(DatabaseTest, UpdateUpdateItem)
+TEST_F(SMDatabaseTest, UpdateUpdateItem)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -219,7 +362,7 @@ TEST_F(DatabaseTest, UpdateUpdateItem)
     EXPECT_EQ((*itemData)[0], item2);
 }
 
-TEST_F(DatabaseTest, RemoveUpdateItem)
+TEST_F(SMDatabaseTest, RemoveUpdateItem)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -280,7 +423,7 @@ TEST_F(DatabaseTest, RemoveUpdateItem)
     ASSERT_EQ(itemData->Size(), 0);
 }
 
-TEST_F(DatabaseTest, GetAllUpdateItems)
+TEST_F(SMDatabaseTest, GetAllUpdateItems)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -330,7 +473,7 @@ TEST_F(DatabaseTest, GetAllUpdateItems)
  * Tests - launcher::StorageItf
  **********************************************************************************************************************/
 
-TEST_F(DatabaseTest, UpdateInstanceInfo)
+TEST_F(SMDatabaseTest, UpdateInstanceInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -343,7 +486,7 @@ TEST_F(DatabaseTest, UpdateInstanceInfo)
     ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
 }
 
-TEST_F(DatabaseTest, RemoveInstanceInfo)
+TEST_F(SMDatabaseTest, RemoveInstanceInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -360,7 +503,7 @@ TEST_F(DatabaseTest, RemoveInstanceInfo)
     ASSERT_TRUE(mDB.RemoveInstanceInfo(ident).IsNone());
 }
 
-TEST_F(DatabaseTest, GetAllInstancesInfos)
+TEST_F(SMDatabaseTest, GetAllInstancesInfos)
 {
     auto err = mDB.Init(mWorkingDir.string(), mMigrationConfig);
     ASSERT_TRUE(err.IsNone()) << aos::tests::utils::ErrorToStr(err);
@@ -396,7 +539,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfos)
     EXPECT_EQ(resultRef.mStatePath, instanceInfo.mStatePath);
 }
 
-TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
+TEST_F(SMDatabaseTest, GetAllInstancesInfosWithComplexFields)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -445,7 +588,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
     EXPECT_EQ((*result)[0], instanceInfo);
 }
 
-TEST_F(DatabaseTest, GetAllInstancesInfosExceedsLimit)
+TEST_F(SMDatabaseTest, GetAllInstancesInfosExceedsLimit)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -465,7 +608,7 @@ TEST_F(DatabaseTest, GetAllInstancesInfosExceedsLimit)
  * Tests - networkmanager::StorageItf
  **********************************************************************************************************************/
 
-TEST_F(DatabaseTest, AddNetworkInfoSucceeds)
+TEST_F(SMDatabaseTest, AddNetworkInfoSucceeds)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -477,14 +620,14 @@ TEST_F(DatabaseTest, AddNetworkInfoSucceeds)
     ASSERT_TRUE(mDB.RemoveNetworkInfo(networkParams.mNetworkID).IsNone());
 }
 
-TEST_F(DatabaseTest, RemoveNetworkInfoReturnsNotFound)
+TEST_F(SMDatabaseTest, RemoveNetworkInfoReturnsNotFound)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
     ASSERT_TRUE(mDB.RemoveNetworkInfo("unknown").Is(aos::ErrorEnum::eNotFound));
 }
 
-TEST_F(DatabaseTest, GetNetworksInfoSucceeds)
+TEST_F(SMDatabaseTest, GetNetworksInfoSucceeds)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -503,7 +646,7 @@ TEST_F(DatabaseTest, GetNetworksInfoSucceeds)
     EXPECT_EQ(networks, expectedNetworks) << "expected networks are not equal to the result";
 }
 
-TEST_F(DatabaseTest, AddInstanceNetworkInfo)
+TEST_F(SMDatabaseTest, AddInstanceNetworkInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -515,7 +658,7 @@ TEST_F(DatabaseTest, AddInstanceNetworkInfo)
     EXPECT_TRUE(mDB.AddInstanceNetworkInfo(info).Is(aos::ErrorEnum::eFailed));
 }
 
-TEST_F(DatabaseTest, RemoveInstanceNetworkInfo)
+TEST_F(SMDatabaseTest, RemoveInstanceNetworkInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -528,7 +671,7 @@ TEST_F(DatabaseTest, RemoveInstanceNetworkInfo)
     EXPECT_TRUE(mDB.RemoveInstanceNetworkInfo(info.mInstanceID).Is(aos::ErrorEnum::eNotFound));
 }
 
-TEST_F(DatabaseTest, GetInstanceNetworksInfo)
+TEST_F(SMDatabaseTest, GetInstanceNetworksInfo)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -555,7 +698,7 @@ TEST_F(DatabaseTest, GetInstanceNetworksInfo)
     EXPECT_EQ(result[1].mNetworkID, info2.mNetworkID);
 }
 
-TEST_F(DatabaseTest, GetInstanceNetworksInfoEmpty)
+TEST_F(SMDatabaseTest, GetInstanceNetworksInfoEmpty)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -565,7 +708,7 @@ TEST_F(DatabaseTest, GetInstanceNetworksInfoEmpty)
     EXPECT_TRUE(result.IsEmpty());
 }
 
-TEST_F(DatabaseTest, SetUpdateAndRemoveTrafficMonitorDataSucceeds)
+TEST_F(SMDatabaseTest, SetUpdateAndRemoveTrafficMonitorDataSucceeds)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 
@@ -596,7 +739,7 @@ TEST_F(DatabaseTest, SetUpdateAndRemoveTrafficMonitorDataSucceeds)
  * Tests - alerts::StorageItf
  **********************************************************************************************************************/
 
-TEST_F(DatabaseTest, JournalCursor)
+TEST_F(SMDatabaseTest, JournalCursor)
 {
     ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
 

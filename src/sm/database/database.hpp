@@ -219,14 +219,14 @@ public:
     Error GetJournalCursor(String& cursor) const override;
 
 private:
-    static constexpr int  sVersion    = 4;
+    static constexpr int  sVersion    = 5;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Item data columns
     enum class ItemDataColumns : int {
         eItemID = 0,
-        eType,
         eVersion,
+        eType,
         eManifestDigest,
         eState,
         eTimestamp,
@@ -237,11 +237,11 @@ private:
     // Instance info columns
     enum class InstanceInfoColumns : int {
         eItemID = 0,
+        eVersion,
         eSubjectID,
         eInstance,
         eType,
         ePreinstalled,
-        eVersion,
         eManifestDigest,
         eRuntimeID,
         eOwnerID,
@@ -256,7 +256,7 @@ private:
     };
 
     using InstanceInfoRow
-        = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string, std::string, std::string,
+        = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, uint32_t, std::string, std::string,
             std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string, std::string, std::string>;
 
     // Network info columns
@@ -280,6 +280,8 @@ private:
     };
 
     using InstanceNetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
+
+    virtual int GetVersion() const;
 
     bool TableExist(const std::string& tableName);
     void CreateConfigTable();

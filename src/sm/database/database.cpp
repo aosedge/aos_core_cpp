@@ -234,6 +234,8 @@ std::string SerializeNetworkConfig(const sm::networkmanager::InstanceNetworkConf
 
     Poco::JSON::Object ident;
     ident.set("itemID", config.mInstanceIdent.mItemID.CStr());
+    ident.set("version", config.mInstanceIdent.mVersion.CStr());
+    ident.set("type", config.mInstanceIdent.mType.ToString().CStr());
     ident.set("subjectID", config.mInstanceIdent.mSubjectID.CStr());
     ident.set("instance", config.mInstanceIdent.mInstance);
     obj.set("instanceIdent", ident);
@@ -286,6 +288,14 @@ void DeserializeNetworkConfig(const std::string& jsonStr, sm::networkmanager::In
     if (obj->has("instanceIdent")) {
         auto ident = obj->getObject("instanceIdent");
         AOS_ERROR_CHECK_AND_THROW(config.mInstanceIdent.mItemID.Assign(ident->getValue<std::string>("itemID").c_str()));
+        if (ident->has("version")) {
+            AOS_ERROR_CHECK_AND_THROW(
+                config.mInstanceIdent.mVersion.Assign(ident->getValue<std::string>("version").c_str()));
+        }
+        if (ident->has("type")) {
+            AOS_ERROR_CHECK_AND_THROW(
+                config.mInstanceIdent.mType.FromString(ident->getValue<std::string>("type").c_str()));
+        }
         AOS_ERROR_CHECK_AND_THROW(
             config.mInstanceIdent.mSubjectID.Assign(ident->getValue<std::string>("subjectID").c_str()));
         config.mInstanceIdent.mInstance = ident->getValue<uint64_t>("instance");
@@ -431,7 +441,7 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
         CreateTables();
 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
-        mMigration->MigrateToVersion(sVersion);
+        mMigration->MigrateToVersion(GetVersion());
 
         return ErrorEnum::eNone;
 
@@ -456,8 +466,8 @@ Error Database::AddUpdateItem(const imagemanager::UpdateItemData& updateItem)
 
         FromAos(updateItem, row);
 
-        *mSession
-            << "INSERT INTO items (itemID, type, version, manifestDigest, state, timestamp) VALUES (?, ?, ?, ?, ?, ?);",
+        *mSession << "INSERT INTO items (itemID, version, type, manifestDigest, state, timestamp) VALUES (?, ?, ?, ?, "
+                     "?, ?);",
             bind(row), now;
 
         return ErrorEnum::eNone;
@@ -597,16 +607,18 @@ RetWithError<size_t> Database::GetUpdateItemsCount()
  * sm::launcher::StorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos)
+Error Database::GetAllInstancesInfos(Array<InstanceInfo>& infos)
 {
     std::lock_guard lock {mMutex};
 
     LOG_DBG() << "Get all instances infos";
 
     try {
+        infos.Clear();
+
         std::vector<InstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, version, manifestDigest, "
+        *mSession << "SELECT itemID, version, subjectID, instance, type, preinstalled, manifestDigest, "
                      "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, "
                      "envVars, monitoringParams "
                      "FROM instances;",
@@ -640,7 +652,7 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
         FromAos(info, row);
 
         *mSession
-            << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, preinstalled, version, "
+            << "INSERT OR REPLACE INTO instances (itemID, version, subjectID, instance, type, preinstalled, "
                "manifestDigest, runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
                "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
@@ -661,9 +673,9 @@ Error Database::RemoveInstanceInfo(const InstanceIdent& ident)
         Poco::Data::Statement statement {*mSession};
 
         statement << "DELETE FROM instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? "
-                     "AND preinstalled = ?;",
+                     "AND version = ?;",
             bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
-            bind(ident.mType.ToString().CStr()), bind(ident.mPreinstalled);
+            bind(ident.mType.ToString().CStr()), bind(ident.mVersion.CStr());
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
@@ -991,16 +1003,30 @@ void Database::CreateTables()
         now;
 
     *mSession << "CREATE TABLE IF NOT EXISTS instances ("
-                 "instanceID TEXT NOT NULL PRIMARY KEY, "
-                 "serviceID TEXT, "
-                 "subjectID TEXT, "
-                 "instance INTEGER, "
+                 "itemID TEXT NOT NULL, "
+                 "version TEXT, "
+                 "subjectID TEXT NOT NULL, "
+                 "instance INTEGER NOT NULL, "
+                 "type TEXT NOT NULL DEFAULT 'service', "
+                 "preinstalled INTEGER NOT NULL DEFAULT 0, "
+                 "manifestDigest TEXT, "
+                 "runtimeID TEXT, "
+                 "ownerID TEXT, "
+                 "subjectType TEXT, "
                  "uid INTEGER, "
+                 "gid INTEGER, "
                  "priority INTEGER, "
                  "storagePath TEXT, "
                  "statePath TEXT, "
-                 "network BLOB)",
+                 "envVars TEXT, "
+                 "monitoringParams TEXT, "
+                 "PRIMARY KEY(itemID, version, subjectID, instance, type))",
         now;
+}
+
+int Database::GetVersion() const
+{
+    return sVersion;
 }
 
 void Database::FromAos(const imagemanager::UpdateItemData& src, ItemDataRow& dst)
@@ -1036,11 +1062,11 @@ void Database::ToAos(const ItemDataRow& src, imagemanager::UpdateItemData& dst)
 void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
 {
     dst.set<ToInt(InstanceInfoColumns::eItemID)>(src.mItemID.CStr());
+    dst.set<ToInt(InstanceInfoColumns::eVersion)>(src.mVersion.CStr());
     dst.set<ToInt(InstanceInfoColumns::eSubjectID)>(src.mSubjectID.CStr());
     dst.set<ToInt(InstanceInfoColumns::eInstance)>(src.mInstance);
     dst.set<ToInt(InstanceInfoColumns::eType)>(src.mType.ToString().CStr());
-    dst.set<ToInt(InstanceInfoColumns::ePreinstalled)>(src.mPreinstalled);
-    dst.set<ToInt(InstanceInfoColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(InstanceInfoColumns::ePreinstalled)>(static_cast<uint32_t>(src.mPreinstalled ? 1u : 0u));
     dst.set<ToInt(InstanceInfoColumns::eManifestDigest)>(src.mManifestDigest.CStr());
     dst.set<ToInt(InstanceInfoColumns::eRuntimeID)>(src.mRuntimeID.CStr());
     dst.set<ToInt(InstanceInfoColumns::eOwnerID)>(src.mOwnerID.CStr());
@@ -1057,10 +1083,10 @@ void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
 void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
 {
     dst.mItemID         = src.get<ToInt(InstanceInfoColumns::eItemID)>().c_str();
+    dst.mVersion        = src.get<ToInt(InstanceInfoColumns::eVersion)>().c_str();
     dst.mSubjectID      = src.get<ToInt(InstanceInfoColumns::eSubjectID)>().c_str();
     dst.mInstance       = src.get<ToInt(InstanceInfoColumns::eInstance)>();
-    dst.mPreinstalled   = src.get<ToInt(InstanceInfoColumns::ePreinstalled)>();
-    dst.mVersion        = src.get<ToInt(InstanceInfoColumns::eVersion)>().c_str();
+    dst.mPreinstalled   = src.get<ToInt(InstanceInfoColumns::ePreinstalled)>() != 0;
     dst.mManifestDigest = src.get<ToInt(InstanceInfoColumns::eManifestDigest)>().c_str();
     dst.mRuntimeID      = src.get<ToInt(InstanceInfoColumns::eRuntimeID)>().c_str();
     dst.mOwnerID        = src.get<ToInt(InstanceInfoColumns::eOwnerID)>().c_str();
