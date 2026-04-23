@@ -104,7 +104,7 @@ servicemanager::v5::Alert CreateInstanceAlert()
     instanceAlert->mutable_instance()->set_item_id("service3");
     instanceAlert->mutable_instance()->set_subject_id("user3");
     instanceAlert->mutable_instance()->set_instance(2);
-    instanceAlert->set_service_version("3.0.0");
+    instanceAlert->mutable_instance()->set_version("3.0.0");
     instanceAlert->set_message("instance crashed");
 
     return alert;
@@ -194,8 +194,8 @@ TEST_F(PBConvertSMTest, ConvertInstanceStatusFromProto)
     grpcStatus.mutable_instance()->set_item_id("service1");
     grpcStatus.mutable_instance()->set_subject_id("user1");
     grpcStatus.mutable_instance()->set_instance(0);
-    grpcStatus.mutable_instance()->set_preinstalled(true);
-    grpcStatus.set_version("2.0.0");
+    grpcStatus.mutable_instance()->set_version("2.0.0");
+    grpcStatus.set_preinstalled(true);
     grpcStatus.set_runtime_id("runc");
     grpcStatus.set_state("active");
     grpcStatus.set_manifest_digest("sha256:deadbeef");
@@ -552,7 +552,7 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     EXPECT_EQ(result.instances(0).instance().item_id(), "new-service");
     EXPECT_EQ(result.instances(0).instance().subject_id(), "user1");
     EXPECT_EQ(result.instances(0).instance().instance(), 0);
-    EXPECT_EQ(result.instances(0).version(), "2.0.0");
+    EXPECT_EQ(result.instances(0).instance().version(), "2.0.0");
     EXPECT_EQ(result.instances(0).runtime_id(), "runc");
     EXPECT_EQ(result.instances(0).manifest_digest(), "manifest-digest");
 

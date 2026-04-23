@@ -206,10 +206,6 @@ Error ConvertFromProto(const servicemanager::v5::InstanceAlert& protoAlert,
     alert->mTimestamp                   = Time::Unix(timestamp.seconds(), timestamp.nanos());
     static_cast<InstanceIdent&>(*alert) = ConvertToAos(protoAlert.instance());
 
-    if (auto err = alert->mVersion.Assign(protoAlert.service_version().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     if (auto err = alert->mMessage.Assign(protoAlert.message().c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -376,7 +372,6 @@ Error ConvertToProto(const aos::InstanceInfo& src, servicemanager::v5::InstanceI
     auto* instance = dst.mutable_instance();
     *instance      = pbconvert::ConvertToProto(static_cast<const InstanceIdent&>(src));
 
-    dst.set_version(src.mVersion.CStr());
     dst.set_manifest_digest(src.mManifestDigest.CStr());
     dst.set_owner_id(src.mOwnerID.CStr());
     dst.set_runtime_id(src.mRuntimeID.CStr());
@@ -500,10 +495,6 @@ Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo
 {
     static_cast<InstanceIdent&>(dst) = ConvertToAos(src.instance());
 
-    if (auto err = dst.mVersion.Assign(src.version().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
     if (auto err = dst.mManifestDigest.Assign(src.manifest_digest().c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -549,6 +540,8 @@ Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo
             return err;
         }
     }
+
+    dst.mPreinstalled = false;
 
     return ErrorEnum::eNone;
 }
@@ -870,9 +863,7 @@ Error ConvertFromProto(const servicemanager::v5::InstanceStatus& src, const Stri
 {
     static_cast<InstanceIdent&>(dst) = pbconvert::ConvertToAos(src.instance());
 
-    if (auto err = dst.mVersion.Assign(src.version().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
+    dst.mPreinstalled = src.preinstalled();
 
     if (auto err = dst.mNodeID.Assign(nodeID.CStr()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -1002,7 +993,7 @@ void ConvertToProto(const ResourceInfo& src, servicemanager::v5::ResourceInfo& d
 void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatus& dst)
 {
     dst.mutable_instance()->CopyFrom(ConvertToProto(static_cast<const InstanceIdent&>(src)));
-    dst.set_version(src.mVersion.CStr());
+    dst.set_preinstalled(src.mPreinstalled);
     dst.set_runtime_id(src.mRuntimeID.CStr());
     dst.set_manifest_digest(src.mManifestDigest.CStr());
 
@@ -1135,7 +1126,6 @@ public:
         auto* instanceAlert = mAlert.mutable_instance_alert();
 
         instanceAlert->mutable_instance()->CopyFrom(ConvertToProto(static_cast<const aos::InstanceIdent&>(val)));
-        instanceAlert->set_service_version(val.mVersion.CStr());
         instanceAlert->set_message(val.mMessage.CStr());
     }
 
