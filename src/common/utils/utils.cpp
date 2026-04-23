@@ -76,7 +76,7 @@ std::string Base64Decode(const std::string& encoded)
     return std::string(std::istreambuf_iterator<char>(decoder), std::istreambuf_iterator<char>());
 }
 
-std::string Base64Encode(const std::string& decoded)
+std::string Base64Encode(std::string_view decoded)
 {
     std::ostringstream  encodedStream;
     Poco::Base64Encoder encoder(encodedStream);
