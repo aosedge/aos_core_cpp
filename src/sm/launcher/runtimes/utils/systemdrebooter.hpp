@@ -34,7 +34,7 @@ public:
     Error Reboot() override;
 
 private:
-    static constexpr auto cRebootTarget = "reboot.target";
+    static constexpr auto cRebootTarget = "aos-reboot.service";
     static constexpr auto cReplaceMode  = "replace-irreversibly";
     static constexpr auto cTimeout      = Time::cMinutes;
 
