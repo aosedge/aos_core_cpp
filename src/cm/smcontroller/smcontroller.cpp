@@ -342,13 +342,15 @@ void SMController::OnNodeDisconnected(const String& nodeID)
 {
     LOG_INF() << "SM client disconnected" << Log::Field("nodeID", nodeID);
 
-    std::lock_guard lock {mMutex};
+    {
+        std::lock_guard lock {mMutex};
 
-    auto it = std::find_if(mSMHandlers.begin(), mSMHandlers.end(),
-        [&nodeID](const std::shared_ptr<SMHandler>& handler) { return handler->GetNodeID() == nodeID; });
+        auto it = std::find_if(mSMHandlers.begin(), mSMHandlers.end(),
+            [&nodeID](const std::shared_ptr<SMHandler>& handler) { return handler->GetNodeID() == nodeID; });
 
-    if (it != mSMHandlers.end()) {
-        mSMHandlers.erase(it);
+        if (it != mSMHandlers.end()) {
+            mSMHandlers.erase(it);
+        }
     }
 
     mSMInfoReceiver->OnSMDisconnected(nodeID, ErrorEnum::eNone);
