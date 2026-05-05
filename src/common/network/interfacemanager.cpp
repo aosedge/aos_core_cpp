@@ -12,6 +12,7 @@
 #include <string>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <linux/if.h>
 #include <linux/rtnetlink.h>
 #include <netinet/in.h>
@@ -20,7 +21,12 @@
 #include <netlink/route/addr.h>
 #include <netlink/route/link.h>
 #include <netlink/route/link/bridge.h>
+#include <netlink/route/link/veth.h>
 #include <netlink/route/link/vlan.h>
+#include <netlink/route/nexthop.h>
+#include <netlink/route/route.h>
+#include <sched.h>
+#include <unistd.h>
 
 #include <core/common/tools/logger.hpp>
 
@@ -29,6 +35,44 @@
 namespace aos::common::network {
 
 namespace {
+
+// Enters the given netns for the duration of fn(), then restores the original.
+// Uses per-thread netns path (/proc/<pid>/task/<tid>/ns/net) so only the
+// calling thread's netns is affected — safe in multi-threaded processes on
+// Linux >= 3.8.
+Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
+{
+    char savedNsPath[64];
+    snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
+
+    int savedNsFd = open(savedNsPath, O_RDONLY | O_CLOEXEC);
+    if (savedNsFd < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
+    }
+
+    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](int* fd) { close(*fd); });
+
+    int targetNsFd = open(netNSPath.c_str(), O_RDONLY | O_CLOEXEC);
+    if (targetNsFd < 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eFailed, ("failed to open netns " + netNSPath + ": " + strerror(errno)).c_str()));
+    }
+
+    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](int* fd) { close(*fd); });
+
+    if (setns(targetNsFd, CLONE_NEWNET) != 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eFailed, ("failed to enter netns " + netNSPath + ": " + strerror(errno)).c_str()));
+    }
+
+    auto restoreNs = DeferRelease(&savedNsFd, [](int* fd) {
+        if (setns(*fd, CLONE_NEWNET) != 0) {
+            LOG_ERR() << "Failed to restore original netns: " << strerror(errno);
+        }
+    });
+
+    return fn();
+}
 
 RetWithError<std::string> GenerateMACAddress(crypto::RandomItf& random)
 {
@@ -551,6 +595,190 @@ Error InterfaceManager::CreateLink(const String& name, const String& kind)
 
     if (auto errAdd = rtnl_link_add(sock.get(), link.get(), NLM_F_CREATE); errAdd < 0) {
         return NLToAosErr(errAdd, "failed to add link");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::CreateVeth(const String& hostIfName, const String& peerIfName)
+{
+    LOG_DBG() << "Create veth pair" << Log::Field("host", hostIfName) << Log::Field("peer", peerIfName);
+
+    auto host = DeferRelease(rtnl_link_veth_alloc(), rtnl_link_put);
+    if (!host) {
+        return NLToAosErr(errno, "failed to allocate veth link");
+    }
+
+    rtnl_link_set_name(host.Get(), hostIfName.CStr());
+
+    // rtnl_link_veth_get_peer is owned by the host link — no separate free.
+    auto* peer = rtnl_link_veth_get_peer(host.Get());
+    rtnl_link_set_name(peer, peerIfName.CStr());
+
+    auto [sock, err] = CreateNetlinkSocket();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    if (auto errAdd = rtnl_link_add(sock.get(), host.Get(), NLM_F_CREATE); errAdd < 0) {
+        return NLToAosErr(errAdd, "failed to create veth pair");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& netNSPath)
+{
+    LOG_DBG() << "Move link to namespace" << Log::Field("ifname", ifname) << Log::Field("netNSPath", netNSPath);
+
+    int nsFd = open(netNSPath.CStr(), O_RDONLY | O_CLOEXEC);
+    if (nsFd < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,
+            ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
+    }
+
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+
+    auto [sock, err] = CreateNetlinkSocket();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    nl_cache* cacheRaw;
+
+    if (auto errCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errCache < 0) {
+        return NLToAosErr(errCache, "failed to allocate link cache");
+    }
+
+    [[maybe_unused]] auto cleanupCache = DeferRelease(cacheRaw, [](nl_cache* cache) { nl_cache_free(cache); });
+
+    auto link = DeferRelease(rtnl_link_get_by_name(cacheRaw, ifname.CStr()), rtnl_link_put);
+    if (!link) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eFailed, ("interface not found: " + std::string(ifname.CStr())).c_str()));
+    }
+
+    auto change = DeferRelease(rtnl_link_alloc(), rtnl_link_put);
+    if (!change) {
+        return NLToAosErr(errno, "failed to allocate link change object");
+    }
+
+    rtnl_link_set_ns_fd(change.Get(), nsFd);
+
+    if (auto errChange = rtnl_link_change(sock.get(), link.Get(), change.Get(), 0); errChange < 0) {
+        return NLToAosErr(errChange, "failed to move link to namespace");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::AddAddress(const String& ifname, const String& ipWithMask, const String& netNSPath)
+{
+    LOG_DBG() << "Add address" << Log::Field("ifname", ifname) << Log::Field("ipWithMask", ipWithMask);
+
+    std::string cidr(ipWithMask.CStr());
+    auto        slashPos = cidr.find('/');
+
+    if (slashPos == std::string::npos) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "expected CIDR form ip/mask not found"));
+    }
+
+    IPAddr addr;
+    addr.mIP     = cidr.substr(0, slashPos);
+    addr.mSubnet = cidr;
+    addr.mFamily = AF_INET;
+
+    if (netNSPath.IsEmpty()) {
+        return AddAddr(ifname, addr);
+    }
+
+    return WithNetNS(std::string(netNSPath.CStr()), [this, &ifname, &addr]() { return AddAddr(ifname, addr); });
+}
+
+Error InterfaceManager::AddRoute(const String& destination, const String& gateway, const String& netNSPath)
+{
+    LOG_DBG() << "Add route" << Log::Field("dst", destination) << Log::Field("gw", gateway);
+
+    auto doAddRoute = [&]() -> Error {
+        auto [sock, err] = CreateNetlinkSocket();
+        if (!err.IsNone()) {
+            return err;
+        }
+
+        auto route = DeferRelease(rtnl_route_alloc(), rtnl_route_put);
+        if (!route) {
+            return NLToAosErr(errno, "failed to allocate route");
+        }
+
+        rtnl_route_set_scope(route.Get(), RT_SCOPE_UNIVERSE);
+        rtnl_route_set_table(route.Get(), RT_TABLE_MAIN);
+        rtnl_route_set_protocol(route.Get(), RTPROT_STATIC);
+
+        struct nl_addr* dst = nullptr;
+
+        if (nl_addr_parse(destination.CStr(), AF_INET, &dst) < 0) {
+            return AOS_ERROR_WRAP(
+                Error(ErrorEnum::eFailed, ("failed to parse destination: " + std::string(destination.CStr())).c_str()));
+        }
+
+        [[maybe_unused]] auto cleanupDst = DeferRelease(dst, [](nl_addr* a) { nl_addr_put(a); });
+
+        rtnl_route_set_dst(route.Get(), dst);
+
+        auto* nh = rtnl_route_nh_alloc();
+        if (!nh) {
+            return NLToAosErr(errno, "failed to allocate nexthop");
+        }
+
+        struct nl_addr* gw = nullptr;
+
+        if (nl_addr_parse(gateway.CStr(), AF_INET, &gw) < 0) {
+            rtnl_route_nh_free(nh);
+
+            return AOS_ERROR_WRAP(
+                Error(ErrorEnum::eFailed, ("failed to parse gateway: " + std::string(gateway.CStr())).c_str()));
+        }
+
+        [[maybe_unused]] auto cleanupGw = DeferRelease(gw, [](nl_addr* a) { nl_addr_put(a); });
+
+        rtnl_route_nh_set_gateway(nh, gw);
+        rtnl_route_add_nexthop(route.Get(), nh);
+        // rtnl_route_add_nexthop takes ownership of nh — no separate free.
+
+        if (auto errAdd = rtnl_route_add(sock.get(), route.Get(), NLM_F_CREATE); errAdd < 0) {
+            return NLToAosErr(errAdd, "failed to add route");
+        }
+
+        return ErrorEnum::eNone;
+    };
+
+    if (netNSPath.IsEmpty()) {
+        return doAddRoute();
+    }
+
+    return WithNetNS(std::string(netNSPath.CStr()), doAddRoute);
+}
+
+Error InterfaceManager::SetHairpin(const String& ifname, bool enable)
+{
+    LOG_DBG() << "Set hairpin" << Log::Field("ifname", ifname) << Log::Field("enable", enable);
+
+    // sysfs write is simpler and more portable than the libnl bridge-port API.
+    std::string sysfsPath = std::string("/sys/class/net/") + ifname.CStr() + "/brport/hairpin_mode";
+
+    int fd = open(sysfsPath.c_str(), O_WRONLY);
+    if (fd < 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eFailed, ("failed to open " + sysfsPath + ": " + strerror(errno)).c_str()));
+    }
+
+    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](int* f) { close(*f); });
+
+    const char value = enable ? '1' : '0';
+
+    if (write(fd, &value, 1) != 1) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,
+            ("failed to write hairpin_mode for " + std::string(ifname.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
     return ErrorEnum::eNone;
