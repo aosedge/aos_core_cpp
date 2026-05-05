@@ -10,7 +10,7 @@ set(TARGET_NAME networkmanager)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES bandwidth.cpp cni.cpp exec.cpp firewall.cpp trafficmonitor.cpp)
+set(SOURCES bandwidth.cpp bridgenetwork.cpp cni.cpp exec.cpp firewall.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
 # Libraries
