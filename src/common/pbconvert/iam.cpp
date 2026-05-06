@@ -150,13 +150,7 @@ Error ConvertToAos(const iamanager::v6::CertInfo& src, CertInfo& dst)
     dst.mCertURL  = src.cert_url().c_str();
     dst.mKeyURL   = src.key_url().c_str();
 
-    if (auto err = dst.mSerial.Resize(src.serial().size()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mSerial.Assign(
-            Array<uint8_t>(reinterpret_cast<const uint8_t*>(src.serial().data()), src.serial().size()));
-        !err.IsNone()) {
+    if (auto err = String(src.serial().c_str()).HexToByteArray(dst.mSerial); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
