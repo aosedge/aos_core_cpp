@@ -291,4 +291,33 @@ TEST_F(PBConvertIAMTest, ConvertPermissionsResponseToAosEmpty)
     EXPECT_EQ(servicePermissions.Size(), 0);
 }
 
+TEST_F(PBConvertIAMTest, ConvertCertInfoToAos)
+{
+    iamanager::v6::CertInfo src;
+
+    src.set_type("cert-type");
+    src.set_cert_url("cert-url");
+    src.set_key_url("key-url");
+    src.set_serial("0a1b2c3d");
+    src.set_issuer("issuer-bytes");
+
+    uint8_t                                       expectedSerialData[] = {0x0A, 0x1B, 0x2C, 0x3D};
+    StaticArray<uint8_t, crypto::cSerialNumSize>  expectedSerial;
+    StaticArray<uint8_t, crypto::cCertIssuerSize> expectedIssuer;
+
+    ASSERT_TRUE(expectedSerial.Assign(Array<uint8_t>(expectedSerialData, std::size(expectedSerialData))).IsNone());
+    ASSERT_TRUE(expectedIssuer
+                    .Assign(Array<uint8_t>(reinterpret_cast<const uint8_t*>(src.issuer().data()), src.issuer().size()))
+                    .IsNone());
+
+    CertInfo dst;
+
+    ASSERT_TRUE(ConvertToAos(src, dst).IsNone());
+    EXPECT_EQ(dst.mCertType, String("cert-type"));
+    EXPECT_EQ(dst.mCertURL, String("cert-url"));
+    EXPECT_EQ(dst.mKeyURL, String("key-url"));
+    EXPECT_EQ(dst.mSerial, expectedSerial);
+    EXPECT_EQ(dst.mIssuer, expectedIssuer);
+}
+
 } // namespace aos::common::pbconvert
