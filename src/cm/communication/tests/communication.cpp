@@ -498,6 +498,196 @@ TEST_F(CMCommunicationTest, SendOverrideEnvsStatuses)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
+TEST_F(CMCommunicationTest, HandleStartProvisioning)
+{
+    constexpr auto cMessage                           = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "createdAt": "2026-05-07T05:44:11.061622Z",
+            "txn": "txnUD"
+        },
+        "data": {
+            "correlationId": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "messageType": "startProvisioningRequest",
+            "node": {
+                "type": "node",
+                "codename": "nodeID"
+            },
+            "password": "Passw0rd!"
+        }
+    })";
+    const auto     cExpectedStartProvisioningResponse = std::regex(
+        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+            R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+            R"("data":\{"messageType":"startProvisioningResponse","correlationId":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
+            R"("node":\{"codename":"nodeID"\},"csrs":\[\{"type":"cm","csr":"cm"\},\{"type":"iam","csr":"iam"\}\]\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    std::promise<void> messageHandled;
+
+    EXPECT_CALL(mProvisioningMock, StartProvisioning)
+        .WillOnce(Invoke([&messageHandled](const auto& nodeID, const auto& password) {
+            EXPECT_STREQ(nodeID.CStr(), "nodeID");
+            EXPECT_STREQ(password.CStr(), "Passw0rd!");
+
+            messageHandled.set_value();
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(mProvisioningMock, GetCertTypes).WillOnce(Invoke([](const auto& nodeID, auto& certTypes) {
+        EXPECT_STREQ(nodeID.CStr(), "nodeID");
+
+        certTypes.EmplaceBack("cm");
+        certTypes.EmplaceBack("iam");
+        return ErrorEnum::eNone;
+    }));
+
+    for (const auto& certType : {"cm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, CreateKey(String("nodeID"), String(certType), _, String("Passw0rd!"), _))
+            .WillOnce(DoAll(SetArgReferee<4>(String {certType}), Return(ErrorEnum::eNone)));
+    }
+
+    mCloudSendMessageQueue.Push(cMessage);
+
+    EXPECT_EQ(messageHandled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    EXPECT_TRUE(mCloudReceivedMessages.Pop().has_value()) << "Ack message expected, but not received";
+
+    const auto cReceivedStartProvisioningResponse = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedStartProvisioningResponse, cExpectedStartProvisioningResponse))
+        << "Received message: " << cReceivedStartProvisioningResponse;
+
+    auto err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, HandleFinishProvisioning)
+{
+    constexpr auto cMessage                            = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "createdAt": "2026-05-07T05:44:11.061622Z",
+            "txn": "txnUD"
+        },
+        "data": {
+            "correlationId": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "messageType": "finishProvisioningRequest",
+            "node": {
+                "type": "node",
+                "codename": "nodeID"
+            },
+            "certificates": [
+                {
+                    "type": "iam",
+                    "chain": "iamChain"
+                },
+                {
+                    "type": "sm",
+                    "chain": "smChain"
+                }
+            ],
+            "password": "Passw0rd!"
+        }
+    })";
+    const auto     cExpectedFinishProvisioningResponse = std::regex(
+        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+            R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+            R"("data":\{"messageType":"finishProvisioningResponse","correlationId":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
+            R"("node":\{"codename":"nodeID"\}\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    std::promise<void> messageHandled;
+
+    EXPECT_CALL(mProvisioningMock, FinishProvisioning)
+        .WillOnce(Invoke([&messageHandled](const auto& nodeID, const auto& password) {
+            EXPECT_STREQ(nodeID.CStr(), "nodeID");
+            EXPECT_STREQ(password.CStr(), "Passw0rd!");
+
+            messageHandled.set_value();
+            return ErrorEnum::eNone;
+        }));
+
+    for (const auto& certType : {"sm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, ApplyCert(String("nodeID"), String(certType), _, _))
+            .WillOnce(Return(ErrorEnum::eNone));
+    }
+
+    mCloudSendMessageQueue.Push(cMessage);
+
+    EXPECT_EQ(messageHandled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    EXPECT_TRUE(mCloudReceivedMessages.Pop().has_value()) << "Ack message expected, but not received";
+
+    const auto cReceivedFinishProvisioningResponse = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedFinishProvisioningResponse, cExpectedFinishProvisioningResponse))
+        << "Received message: " << cReceivedFinishProvisioningResponse;
+
+    auto err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, HandleDeprovisioning)
+{
+    constexpr auto cMessage                        = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "createdAt": "2026-05-07T05:44:11.061622Z",
+            "txn": "txnUD"
+        },
+        "data": {
+            "correlationId": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "messageType": "deprovisioningRequest",
+            "node": {
+                "type": "node",
+                "codename": "nodeID"
+            },
+            "password": "Passw0rd!"
+        }
+    })";
+    const auto     cExpectedDeprovisioningResponse = std::regex(
+        R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+            R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+            R"("data":\{"messageType":"deprovisioningResponse","correlationId":"2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",)"
+            R"("node":\{"codename":"nodeID"\}\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    std::promise<void> messageHandled;
+
+    EXPECT_CALL(mProvisioningMock, Deprovision)
+        .WillOnce(Invoke([&messageHandled](const auto& nodeID, const auto& password) {
+            EXPECT_STREQ(nodeID.CStr(), "nodeID");
+            EXPECT_STREQ(password.CStr(), "Passw0rd!");
+
+            messageHandled.set_value();
+            return ErrorEnum::eNone;
+        }));
+
+    mCloudSendMessageQueue.Push(cMessage);
+
+    EXPECT_EQ(messageHandled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    EXPECT_TRUE(mCloudReceivedMessages.Pop().has_value()) << "Ack message expected, but not received";
+
+    const auto cReceivedDeprovisioningResponse = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedDeprovisioningResponse, cExpectedDeprovisioningResponse))
+        << "Received message: " << cReceivedDeprovisioningResponse;
+
+    auto err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
 TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
 {
     mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds;

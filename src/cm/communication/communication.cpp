@@ -12,6 +12,7 @@
 #include <Poco/Net/SSLManager.h>
 
 #include <core/common/tools/logger.hpp>
+#include <core/iam/provisionmanager/itf/provisionmanager.hpp>
 
 #include <common/cloudprotocol/alerts.hpp>
 #include <common/cloudprotocol/blobs.hpp>
@@ -1219,8 +1220,60 @@ void Communication::HandleMessage(const ResponseInfo& info, const StartProvision
         LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
     }
 
+    auto response = std::make_unique<StartProvisioningResponse>();
+
+    if (auto err = response->mCorrelationID.Assign(info.mCorrelationID.c_str()); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign correlation ID to response" << Log::Field(err);
+
+        return;
+    }
+
+    if (auto err = response->mNodeID.Assign(request.mNodeID); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign node ID to response" << Log::Field(err);
+
+        return;
+    }
+
+    auto sendResponse = DeferRelease(response.get(), [this, &info](StartProvisioningResponse* response) {
+        if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
+            LOG_ERR() << "Send start provisioning failed" << Log::Field(err);
+        }
+    });
+
     if (auto err = mProvisioningHandler->StartProvisioning(request.mNodeID, request.mPassword); !err.IsNone()) {
-        LOG_ERR() << "Start provisioning failed" << Log::Field(err);
+        response->mError = AOS_ERROR_WRAP(err);
+
+        return;
+    }
+
+    auto nodeCertTypes = std::make_unique<iam::provisionmanager::CertTypes>();
+
+    if (auto err = mProvisioningHandler->GetCertTypes(request.mNodeID, *nodeCertTypes); !err.IsNone()) {
+        response->mError = AOS_ERROR_WRAP(err);
+
+        return;
+    }
+
+    for (const auto& cert : *nodeCertTypes) {
+        if (auto err = response->mCSRs.EmplaceBack(); !err.IsNone()) {
+            response->mError = AOS_ERROR_WRAP(err);
+
+            return;
+        }
+
+        if (auto err = response->mCSRs.Back().mType.FromString(cert); !err.IsNone()) {
+            response->mError = AOS_ERROR_WRAP(err);
+
+            return;
+        }
+
+        if (auto err
+            = mCertHandler->CreateKey(request.mNodeID, cert, "", request.mPassword.CStr(), response->mCSRs.Back().mCSR);
+            !err.IsNone()) {
+            response->mError = AOS_ERROR_WRAP(err);
+
+            return;
+        }
     }
 }
 
@@ -1233,8 +1286,41 @@ void Communication::HandleMessage(const ResponseInfo& info, const FinishProvisio
         LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
     }
 
+    auto response = std::make_unique<FinishProvisioningResponse>();
+
+    if (auto err = response->mCorrelationID.Assign(info.mCorrelationID.c_str()); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign correlation ID to response" << Log::Field(err);
+
+        return;
+    }
+
+    if (auto err = response->mNodeID.Assign(request.mNodeID); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign node ID to response" << Log::Field(err);
+
+        return;
+    }
+
+    auto sendResponse = DeferRelease(response.get(), [this, &info](FinishProvisioningResponse* response) {
+        if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
+            LOG_ERR() << "Send finish provisioning failed" << Log::Field(err);
+        }
+    });
+
+    for (const auto& cert : request.mCertificates) {
+        auto certInfo = std::make_unique<CertInfo>();
+
+        if (auto err = mCertHandler->ApplyCert(request.mNodeID, cert.mCertType.ToString(), cert.mCertChain, *certInfo);
+            !err.IsNone()) {
+            response->mError = AOS_ERROR_WRAP(err);
+
+            return;
+        }
+    }
+
     if (auto err = mProvisioningHandler->FinishProvisioning(request.mNodeID, request.mPassword); !err.IsNone()) {
-        LOG_ERR() << "Finish provisioning failed" << Log::Field(err);
+        response->mError = AOS_ERROR_WRAP(err);
+
+        return;
     }
 }
 
@@ -1247,8 +1333,26 @@ void Communication::HandleMessage(const ResponseInfo& info, const Deprovisioning
         LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
     }
 
+    auto response = std::make_unique<DeprovisioningResponse>();
+
+    if (auto err = response->mCorrelationID.Assign(info.mCorrelationID.c_str()); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign correlation ID to response" << Log::Field(err);
+
+        return;
+    }
+
+    if (auto err = response->mNodeID.Assign(request.mNodeID); !err.IsNone()) {
+        LOG_ERR() << "Failed to assign node ID to response" << Log::Field(err);
+
+        return;
+    }
+
     if (auto err = mProvisioningHandler->Deprovision(request.mNodeID, request.mPassword); !err.IsNone()) {
-        LOG_ERR() << "Deprovisioning failed" << Log::Field(err);
+        response->mError = AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
+        LOG_ERR() << "Send deprovisioning response failed" << Log::Field(err);
     }
 }
 
@@ -1443,6 +1547,21 @@ Error Communication::SendInstallUnitCertsConfirmation(const InstallUnitCertsConf
 
     try {
         if (auto err = EnqueueMessage(CreateMessageData(confirmation), true); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Communication::SendProvisioningResponse(const std::string& correlationId, Poco::JSON::Object::Ptr response)
+{
+    LOG_DBG() << "Send provisioning response" << Log::Field("correlationId", correlationId.c_str());
+
+    try {
+        if (auto err = EnqueueMessage(response); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     } catch (const std::exception& e) {
