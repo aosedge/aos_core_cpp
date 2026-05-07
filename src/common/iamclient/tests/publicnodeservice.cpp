@@ -335,3 +335,32 @@ TEST_F(RegisterNodeTest, StopWithoutStart)
 {
     mService->Stop();
 }
+
+/***********************************************************************************************************************
+ * Credential fallback tests
+ **********************************************************************************************************************/
+
+TEST(PublicNodesServiceFallbackTest, NoCACertFallback)
+{
+    aos::tests::utils::InitLog();
+
+    IAMPublicNodesServiceStub stub;
+    TLSCredentialsMock        tlsCredentialsMock;
+
+    EXPECT_CALL(tlsCredentialsMock, GetTLSClientCredentials())
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            nullptr, aos::ErrorEnum::eNotFound}));
+
+    PublicNodesService service;
+
+    auto err = service.Init("localhost:8007", tlsCredentialsMock, true);
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+
+    stub.SetNodeIds({"node1"});
+
+    aos::StaticArray<aos::StaticString<aos::cIDLen>, 10> nodeIds;
+
+    err = service.GetAllNodeIDs(nodeIds);
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(nodeIds.Size(), 1);
+}

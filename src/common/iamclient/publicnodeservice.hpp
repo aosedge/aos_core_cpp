@@ -14,6 +14,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include <iamanager/v6/iamanager.grpc.pb.h>
@@ -121,17 +122,21 @@ protected:
 private:
     static constexpr auto cServiceTimeout    = std::chrono::seconds(10);
     static constexpr auto cReconnectInterval = std::chrono::seconds(3);
+    static constexpr auto cConnectTimeout    = std::chrono::seconds(3);
 
-    void                                                    ConnectionLoop();
-    Error                                                   RegisterNode();
-    Error                                                   HandleIncomingMessage();
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> CreateCredential();
+    void  ConnectionLoop();
+    Error RegisterNode();
+    Error HandleIncomingMessage();
+    Error CreateCredentials();
+    Error RebuildStub();
+    void  AdvanceCredential();
 
     std::string                                                 mIAMPublicServerURL;
     bool                                                        mInsecureConnection {false};
     bool                                                        mPublicServer {true};
     std::string                                                 mCertStorage;
-    std::shared_ptr<grpc::ChannelCredentials>                   mCredentials;
+    std::vector<std::shared_ptr<grpc::ChannelCredentials>>      mCredentials;
+    size_t                                                      mActiveCredentialIdx {0};
     std::unique_ptr<iamanager::v6::IAMPublicNodesService::Stub> mStub;
     TLSCredentialsItf*                                          mTLSCredentials {};
     mutable std::mutex                                          mMutex;
