@@ -62,6 +62,10 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
     aos::iamclient::CertProviderMock certProvider {};
     TLSCredentialsMock               tlsCredentials {};
 
+    EXPECT_CALL(tlsCredentials, GetTLSClientCredentials())
+        .WillRepeatedly(
+            Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {nullptr, aos::ErrorEnum::eNotFound}));
+
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider, tlsCredentials, true);
     ASSERT_EQ(err, ErrorEnum::eNone);
 
@@ -149,6 +153,10 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 {
     aos::iamclient::CertProviderMock certProvider {};
     TLSCredentialsMock               tlsCredentials {};
+
+    EXPECT_CALL(tlsCredentials, GetTLSClientCredentials())
+        .WillRepeatedly(
+            Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {nullptr, aos::ErrorEnum::eNotFound}));
 
     auto err = mClient->Init(mConfig.mIAMConfig, certProvider, tlsCredentials, true);
     ASSERT_EQ(err, ErrorEnum::eNone);
