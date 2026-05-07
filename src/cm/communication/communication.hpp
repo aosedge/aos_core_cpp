@@ -283,6 +283,7 @@ private:
     Error SendAck(const std::string& correlationId);
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);
     Error SendInstallUnitCertsConfirmation(const InstallUnitCertsConfirmation& confirmation);
+    Error SendProvisioningResponse(const std::string& correlationId, Poco::JSON::Object::Ptr response);
     void  OnResponseReceived(const ResponseInfo& info, ResponseMessageVariantPtr message);
     void  WriteToMessageLog(const std::string& direction, const std::string& message);
 
