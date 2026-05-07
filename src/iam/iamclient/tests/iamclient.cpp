@@ -514,7 +514,9 @@ TEST_F(IAMClientTest, InitFailed)
 
 TEST_F(IAMClientTest, ConnectionFailed)
 {
-    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo).WillOnce(Return(ErrorEnum::eNone));
+    // No server is started. OnConnected fires only after a successful channel handshake,
+    // so node info is never queried while the connection cannot be established.
+    EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo).Times(0);
 
     auto client = CreateClient(true);
     EXPECT_TRUE(client->Start().IsNone());

@@ -43,17 +43,13 @@ Error PublicNodesService::Init(const std::string& iamServerURL, TLSCredentialsIt
     mPublicServer       = publicServer;
     mCertStorage        = certStorage;
 
-    Error err;
-
-    Tie(mCredentials, err) = CreateCredential();
-    if (!err.IsNone()) {
+    if (auto err = CreateCredentials(); !err.IsNone()) {
         return err;
     }
 
-    mStub = iamanager::v6::IAMPublicNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
+    mActiveCredentialIdx = 0;
 
-    return ErrorEnum::eNone;
+    return RebuildStub();
 }
 
 Error PublicNodesService::Reconnect()
@@ -62,18 +58,14 @@ Error PublicNodesService::Reconnect()
 
     LOG_INF() << "Reconnect public nodes service";
 
-    Error err;
-
-    Tie(mCredentials, err) = CreateCredential();
-    if (!err.IsNone()) {
+    if (auto err = CreateCredentials(); !err.IsNone()) {
         return err;
     }
 
-    mStub = iamanager::v6::IAMPublicNodesService::NewStub(
-        grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
+    mActiveCredentialIdx = 0;
 
-    if (mSubscriptionManager) {
-        mSubscriptionManager->Reconnect(mStub.get());
+    if (auto err = RebuildStub(); !err.IsNone()) {
+        return err;
     }
 
     if (mRegisterNodeCtx) {
@@ -250,8 +242,19 @@ void PublicNodesService::ConnectionLoop()
     LOG_DBG() << "Connection loop started";
 
     while (!mStop) {
-        if (auto err = RegisterNode(); !err.IsNone()) {
+        const auto err = RegisterNode();
+        if (!err.IsNone()) {
             LOG_ERR() << "Failed to register node" << Log::Field(err);
+
+            std::lock_guard lock {mMutex};
+
+            if (mCredentials.size() > 1) {
+                AdvanceCredential();
+
+                if (auto rebuildErr = RebuildStub(); !rebuildErr.IsNone()) {
+                    LOG_ERR() << "Failed to rebuild stub" << Log::Field(rebuildErr);
+                }
+            }
         }
 
         std::unique_lock lock {mMutex};
@@ -266,13 +269,40 @@ void PublicNodesService::ConnectionLoop()
 
 Error PublicNodesService::RegisterNode()
 {
+    std::shared_ptr<grpc::Channel> channel;
+
     {
         std::lock_guard lock {mMutex};
 
-        LOG_DBG() << "Registering node";
+        LOG_DBG() << "Registering node" << Log::Field("credentialIdx", mActiveCredentialIdx);
 
         if (mStop) {
             return ErrorEnum::eNone;
+        }
+
+        if (mCredentials.empty() || mActiveCredentialIdx >= mCredentials.size()) {
+            return Error(ErrorEnum::eRuntime, "no credentials configured");
+        }
+
+        channel = grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials[mActiveCredentialIdx],
+            common::utils::CreateGRPCChannelArguments());
+    }
+
+    if (!common::utils::WaitForChannelReady(channel, cConnectTimeout, [this]() { return mStop.load(); })) {
+        return Error(ErrorEnum::eRuntime, "channel handshake failed, timed out or cancelled");
+    }
+
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mStop) {
+            return ErrorEnum::eNone;
+        }
+
+        mStub = iamanager::v6::IAMPublicNodesService::NewStub(channel);
+
+        if (mSubscriptionManager) {
+            mSubscriptionManager->Reconnect(mStub.get());
         }
 
         mRegisterNodeCtx = std::make_unique<grpc::ClientContext>();
@@ -332,17 +362,57 @@ Error PublicNodesService::HandleIncomingMessage()
     }
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> PublicNodesService::CreateCredential()
+Error PublicNodesService::CreateCredentials()
 {
+    mCredentials.clear();
+
+    // In insecure mode the main IAM may already be operational and serving a secure listener,
+    // so insecure becomes the first attempt and the matching secure credential is added as a
+    // graceful fallback. In secure-only mode the secure credential is required.
     if (mInsecureConnection) {
-        return grpc::InsecureChannelCredentials();
+        mCredentials.push_back(grpc::InsecureChannelCredentials());
     }
 
-    if (mPublicServer) {
-        return mTLSCredentials->GetTLSClientCredentials();
+    auto [secureCredentials, err] = mPublicServer ? mTLSCredentials->GetTLSClientCredentials()
+                                                  : mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
+
+    if (err.IsNone()) {
+        mCredentials.push_back(secureCredentials);
+    } else if (!mInsecureConnection) {
+        return err;
+    } else {
+        LOG_WRN() << (mPublicServer ? "TLS" : "mTLS") << " fallback unavailable, using insecure only"
+                  << Log::Field(err);
     }
 
-    return mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
+    return ErrorEnum::eNone;
+}
+
+Error PublicNodesService::RebuildStub()
+{
+    if (mCredentials.empty() || mActiveCredentialIdx >= mCredentials.size()) {
+        return Error(ErrorEnum::eRuntime, "no credentials configured");
+    }
+
+    mStub = iamanager::v6::IAMPublicNodesService::NewStub(grpc::CreateCustomChannel(
+        mIAMPublicServerURL, mCredentials[mActiveCredentialIdx], common::utils::CreateGRPCChannelArguments()));
+
+    if (mSubscriptionManager) {
+        mSubscriptionManager->Reconnect(mStub.get());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+void PublicNodesService::AdvanceCredential()
+{
+    if (mCredentials.size() <= 1) {
+        return;
+    }
+
+    mActiveCredentialIdx = (mActiveCredentialIdx + 1) % mCredentials.size();
+
+    LOG_INF() << "Advance credential" << Log::Field("credentialIdx", mActiveCredentialIdx);
 }
 
 } // namespace aos::common::iamclient
