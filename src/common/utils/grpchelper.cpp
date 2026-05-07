@@ -191,4 +191,41 @@ void SetGRPCServerOptions(grpc::ServerBuilder& builder)
     (void)builder.AddChannelArgument(GRPC_ARG_HTTP2_MAX_PING_STRIKES, 0);
 }
 
+bool WaitForChannelReady(const std::shared_ptr<grpc::Channel>& channel, std::chrono::milliseconds timeout,
+    const std::function<bool()>& shouldStop)
+{
+    if (!channel) {
+        return false;
+    }
+
+    constexpr auto cPollInterval = std::chrono::milliseconds(100);
+
+    const auto deadline = std::chrono::system_clock::now() + timeout;
+
+    while (true) {
+        if (shouldStop && shouldStop()) {
+            return false;
+        }
+
+        const auto state = channel->GetState(/*try_to_connect=*/true);
+
+        if (state == GRPC_CHANNEL_READY) {
+            return true;
+        }
+
+        if (state == GRPC_CHANNEL_SHUTDOWN) {
+            return false;
+        }
+
+        const auto now = std::chrono::system_clock::now();
+        if (now >= deadline) {
+            return false;
+        }
+
+        const auto pollDeadline = std::min(now + cPollInterval, deadline);
+
+        channel->WaitForStateChange(state, pollDeadline);
+    }
+}
+
 } // namespace aos::common::utils
