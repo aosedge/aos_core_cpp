@@ -107,7 +107,7 @@ Error ProvisioningService::StartProvisioning(const String& nodeID, const String&
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
-        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+        ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
         iamanager::v6::StartProvisioningRequest  request;
         iamanager::v6::StartProvisioningResponse response;
@@ -137,7 +137,7 @@ Error ProvisioningService::FinishProvisioning(const String& nodeID, const String
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
-        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+        ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
         iamanager::v6::FinishProvisioningRequest  request;
         iamanager::v6::FinishProvisioningResponse response;
@@ -167,7 +167,7 @@ Error ProvisioningService::Deprovision(const String& nodeID, const String& passw
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
-        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+        ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
         iamanager::v6::DeprovisionRequest  request;
         iamanager::v6::DeprovisionResponse response;
