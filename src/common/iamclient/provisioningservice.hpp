@@ -79,7 +79,8 @@ public:
     Error Reconnect();
 
 private:
-    static constexpr auto cServiceTimeout = std::chrono::seconds(10);
+    static constexpr auto cServiceTimeout      = std::chrono::seconds(10);
+    static constexpr auto cProvisioningTimeout = std::chrono::minutes(10);
 
     std::string                                                  mIAMProtectedServerURL;
     std::string                                                  mCertStorage;
