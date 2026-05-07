@@ -348,8 +348,8 @@ TEST(PublicNodesServiceFallbackTest, NoCACertFallback)
     TLSCredentialsMock        tlsCredentialsMock;
 
     EXPECT_CALL(tlsCredentialsMock, GetTLSClientCredentials())
-        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
-            nullptr, aos::ErrorEnum::eNotFound}));
+        .WillRepeatedly(
+            Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {nullptr, aos::ErrorEnum::eNotFound}));
 
     PublicNodesService service;
 
