@@ -284,8 +284,8 @@ Error PublicNodesService::RegisterNode()
             return Error(ErrorEnum::eRuntime, "no credentials configured");
         }
 
-        channel = grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials[mActiveCredentialIdx],
-            common::utils::CreateGRPCChannelArguments());
+        channel = grpc::CreateCustomChannel(
+            mIAMPublicServerURL, mCredentials[mActiveCredentialIdx], common::utils::CreateGRPCChannelArguments());
     }
 
     if (!common::utils::WaitForChannelReady(channel, cConnectTimeout, [this]() { return mStop.load(); })) {
