@@ -10,7 +10,7 @@ set(TARGET_NAME networkmanager_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES cni.cpp trafficmonitor.cpp)
+set(SOURCES cni.cpp firewall.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
 # Includes
