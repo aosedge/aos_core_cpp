@@ -14,19 +14,19 @@ set(TARGET_NAME network)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp utils.cpp)
+set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp nftables.cpp utils.cpp)
 
 # ######################################################################################################################
 # Includes
 # ######################################################################################################################
 
-set(INCLUDES ${Libnl_INCLUDE_DIRS})
+set(INCLUDES ${Libnl_INCLUDE_DIRS} ${Libnftables_INCLUDE_DIRS})
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::utils ${Libnl_LIBRARIES})
+set(LIBRARIES aos::common::utils ${Libnl_LIBRARIES} ${Libnftables_LIBRARIES})
 
 # ######################################################################################################################
 # Target
