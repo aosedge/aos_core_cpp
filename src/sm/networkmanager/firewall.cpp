@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <limits>
@@ -266,14 +267,68 @@ Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallP
     return ErrorEnum::eNone;
 }
 
-Error Firewall::AddMasquerade([[maybe_unused]] const String& subnet, [[maybe_unused]] const String& outIf)
+Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
 {
-    return ErrorEnum::eNotSupported;
+    LOG_DBG() << "Add masquerade" << Log::Field("subnet", subnet) << Log::Field("outIf", outIf);
+
+    std::pair<std::string, std::string> key {subnet.CStr(), outIf.CStr()};
+
+    if (mMasqueradeRules.count(key) != 0) {
+        return ErrorEnum::eNone;
+    }
+
+    common::network::FWRule r {};
+    r.mSrcAddr = key.first;
+    r.mOIFName = key.second;
+    r.mAction  = common::network::FWActionEnum::eMasquerade;
+
+    auto txn = mBackend->NewTxn();
+
+    txn->AddRule(mTable, cPostroutingChain, r);
+
+    if (auto err = txn->Commit(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mMasqueradeRules.insert(std::move(key));
+
+    return ErrorEnum::eNone;
 }
 
-Error Firewall::RemoveMasquerade([[maybe_unused]] const String& subnet, [[maybe_unused]] const String& outIf)
+Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
 {
-    return ErrorEnum::eNotSupported;
+    LOG_DBG() << "Remove masquerade" << Log::Field("subnet", subnet) << Log::Field("outIf", outIf);
+
+    std::pair<std::string, std::string> key {subnet.CStr(), outIf.CStr()};
+
+    std::vector<common::network::FWListedRule> postRules;
+
+    if (auto err = mBackend->ListChainRules(mTable, cPostroutingChain, postRules); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    const auto it = std::find_if(postRules.begin(), postRules.end(), [&key](const common::network::FWListedRule& r) {
+        return r.mRule.mAction == common::network::FWActionEnum::eMasquerade && r.mRule.mSrcAddr == key.first
+            && r.mRule.mOIFName == key.second;
+    });
+
+    if (it == postRules.end()) {
+        mMasqueradeRules.erase(key);
+
+        return ErrorEnum::eNone;
+    }
+
+    auto txn = mBackend->NewTxn();
+
+    txn->DeleteRuleByHandle(mTable, cPostroutingChain, it->mHandle);
+
+    if (auto err = txn->Commit(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mMasqueradeRules.erase(key);
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::networkmanager
