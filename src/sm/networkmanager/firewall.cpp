@@ -245,10 +245,25 @@ Error Firewall::RemoveInstance(const String& instanceID)
     return ErrorEnum::eNone;
 }
 
-Error Firewall::UpdateInstance(
-    [[maybe_unused]] const String& instanceID, [[maybe_unused]] const InstanceFirewallParams& params)
+Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallParams& params)
 {
-    return ErrorEnum::eNotSupported;
+    LOG_DBG() << "Update firewall instance" << Log::Field("instanceID", instanceID);
+
+    const auto chain = ChainName(instanceID);
+
+    auto txn = mBackend->NewTxn();
+
+    txn->FlushChain(mTable, chain);
+
+    if (auto err = AppendInstanceRules(*txn, mTable, chain, params); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = txn->Commit(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error Firewall::AddMasquerade([[maybe_unused]] const String& subnet, [[maybe_unused]] const String& outIf)
