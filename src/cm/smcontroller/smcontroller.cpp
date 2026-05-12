@@ -76,6 +76,10 @@ Error SMController::Stop()
 {
     LOG_DBG() << "Stop SM Controller";
 
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
+    }
+
     if (auto err = StopServer(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -310,25 +314,9 @@ void SMController::OnCertChanged(const CertInfo& info)
 {
     (void)info;
 
-    LOG_DBG() << "Certificate changed";
+    LOG_INF() << "Certificate changed, restart SM controller";
 
-    if (auto err = CreateServerCredentials(); !err.IsNone()) {
-        LOG_ERR() << "Failed to create server credentials" << Log::Field(err);
-
-        return;
-    }
-
-    if (auto err = Stop(); !err.IsNone()) {
-        LOG_ERR() << "Failed to stop server" << Log::Field(err);
-
-        return;
-    }
-
-    if (auto err = Start(); !err.IsNone()) {
-        LOG_ERR() << "Failed to start server" << Log::Field(err);
-
-        return;
-    }
+    ScheduleRestart();
 }
 
 void SMController::OnNodeConnected(const String& nodeID)
@@ -448,6 +436,58 @@ Error SMController::StopServer()
     }
 
     return ErrorEnum::eNone;
+}
+
+Error SMController::RestartServer()
+{
+    if (auto err = StopServer(); !err.IsNone()) {
+        LOG_ERR() << "Failed to stop SM server" << Log::Field(err);
+
+        return err;
+    }
+
+    if (auto err = CreateServerCredentials(); !err.IsNone()) {
+        LOG_ERR() << "Failed to create SM server credentials" << Log::Field(err);
+
+        return err;
+    }
+
+    if (auto err = StartServer(); !err.IsNone()) {
+        LOG_ERR() << "Failed to start SM server" << Log::Field(err);
+
+        return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+void SMController::ScheduleRestart()
+{
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
+    }
+
+    if (auto err = mReconnectTimer.Start(
+            cReconnectRetryTimeout, [this](void*) { OnRestartTimer(); }, false);
+        !err.IsNone()) {
+        LOG_ERR() << "Failed to start reconnect timer" << Log::Field(err);
+    }
+}
+
+void SMController::OnRestartTimer()
+{
+    auto err = RestartServer();
+    if (!err.IsNone()) {
+        LOG_ERR() << "SM controller restart failed, retrying" << Log::Field(err);
+
+        return;
+    }
+
+    LOG_INF() << "SM controller restarted successfully";
+
+    if (auto stopErr = mReconnectTimer.Stop(); !stopErr.IsNone() && !stopErr.Is(ErrorEnum::eWrongState)) {
+        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(stopErr);
+    }
 }
 
 } // namespace aos::cm::smcontroller
