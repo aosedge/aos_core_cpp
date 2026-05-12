@@ -12,6 +12,10 @@ namespace aos::cm::iamclient {
 
 IAMClient::~IAMClient()
 {
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
+    }
+
     PublicCertService::UnsubscribeListener(*this);
 }
 
@@ -66,42 +70,90 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
 
 void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
-    LOG_INF() << "Certificate changed, reconnect all services";
+    LOG_INF() << "Certificate changed, reconnect IAM client";
 
-    auto err = CertificateService::Reconnect();
+    ScheduleReconnect();
+}
+
+Error IAMClient::ReconnectAllServices()
+{
+    auto err = PublicCertService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect certificate service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public cert service" << Log::Field(err);
+
+        return err;
+    }
+
+    err = CertificateService::Reconnect();
+    if (!err.IsNone()) {
+        LOG_WRN() << "Failed to reconnect certificate service" << Log::Field(err);
+
+        return err;
     }
 
     err = NodesService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect nodes service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect nodes service" << Log::Field(err);
+
+        return err;
     }
 
     err = ProvisioningService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect provisioning service" << Log::Field(err);
-    }
+        LOG_WRN() << "Failed to reconnect provisioning service" << Log::Field(err);
 
-    err = PublicCertService::Reconnect();
-    if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public cert service" << Log::Field(err);
+        return err;
     }
 
     err = PublicNodesService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public nodes service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public nodes service" << Log::Field(err);
+
+        return err;
     }
 
     err = PublicCurrentNodeService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public current node service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public current node service" << Log::Field(err);
+
+        return err;
     }
 
     err = PublicIdentityService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public identity service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public identity service" << Log::Field(err);
+
+        return err;
     }
+
+    return ErrorEnum::eNone;
+}
+
+void IAMClient::ScheduleReconnect()
+{
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
+    }
+
+    if (auto err = mReconnectTimer.Start(
+            cReconnectRetryTimeout, [this](void*) { OnReconnectTimer(); }, true);
+        !err.IsNone()) {
+        LOG_ERR() << "Failed to start reconnect timer" << Log::Field(err);
+    }
+}
+
+void IAMClient::OnReconnectTimer()
+{
+    auto err = ReconnectAllServices();
+    if (err.IsNone()) {
+        LOG_INF() << "Successfully reconnected all IAM services";
+
+        return;
+    }
+
+    LOG_ERR() << "IAM services reconnect failed, retrying" << Log::Field(err);
+
+    ScheduleReconnect();
 }
 
 } // namespace aos::cm::iamclient
