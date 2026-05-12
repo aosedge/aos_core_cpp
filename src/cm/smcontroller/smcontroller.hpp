@@ -26,6 +26,7 @@
 #include <core/common/cloudconnection/itf/cloudconnection.hpp>
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/tools/timer.hpp>
 
 #include "config.hpp"
 #include "smhandler.hpp"
@@ -165,6 +166,8 @@ public:
     Error GetAverageMonitoring(const String& nodeID, aos::monitoring::NodeMonitoringData& monitoring) override;
 
 private:
+    static constexpr Duration cReconnectRetryTimeout = Time::cSeconds * 10;
+
     //
     // ConnectionListenerItf interface methods
     //
@@ -196,6 +199,9 @@ private:
     RetWithError<std::string> CorrectAddress(const std::string& addr) const;
     Error                     StartServer();
     Error                     StopServer();
+    Error                     RestartServer();
+    void                      ScheduleRestart();
+    void                      OnRestartTimer();
 
     Config                               mConfig {};
     cloudconnection::CloudConnectionItf* mCloudConnection {};
@@ -217,6 +223,8 @@ private:
     std::shared_ptr<grpc::ServerCredentials> mCredentials;
 
     std::vector<std::shared_ptr<SMHandler>> mSMHandlers;
+
+    aos::Timer mReconnectTimer {};
 };
 
 } // namespace aos::cm::smcontroller
