@@ -7,6 +7,8 @@
 #ifndef AOS_CM_IAMCLIENT_IAMCLIENT_HPP_
 #define AOS_CM_IAMCLIENT_IAMCLIENT_HPP_
 
+#include <mutex>
+
 #include <common/iamclient/certificateservice.hpp>
 #include <common/iamclient/nodesservice.hpp>
 #include <common/iamclient/provisioningservice.hpp>
@@ -17,6 +19,7 @@
 
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/tools/error.hpp>
+#include <core/common/tools/timer.hpp>
 
 namespace aos::cm::iamclient {
 
@@ -58,6 +61,15 @@ public:
      * @param info certificate info.
      */
     void OnCertChanged(const CertInfo& info) override;
+
+private:
+    static constexpr aos::Duration cReconnectRetryTimeout = aos::Time::cSeconds * 10;
+
+    Error ReconnectAllServices();
+    void  ScheduleReconnect();
+    void  OnReconnectTimer();
+
+    aos::Timer mReconnectTimer {};
 };
 
 } // namespace aos::cm::iamclient
