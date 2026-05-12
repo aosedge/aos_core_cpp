@@ -208,20 +208,25 @@ private:
                 TProtoMsg protoMsg;
 
                 while (reader->Read(&protoMsg)) {
-                    std::lock_guard lock {mMutex};
+                    auto                           aosType = std::make_unique<TAosType>();
+                    std::unordered_set<TListener*> tmpSubscribers;
 
-                    LOG_DBG() << "Received message on subscription" << Log::Field("context", mLogContext.c_str());
+                    {
+                        std::lock_guard lock {mMutex};
 
-                    auto aosType = std::make_unique<TAosType>();
+                        LOG_DBG() << "Received message on subscription" << Log::Field("context", mLogContext.c_str());
 
-                    if (auto err = mConvertFunc(protoMsg, *aosType); !err.IsNone()) {
-                        LOG_ERR() << "Conversion failed" << Log::Field("context", mLogContext.c_str())
-                                  << Log::Field(err);
+                        if (auto err = mConvertFunc(protoMsg, *aosType); !err.IsNone()) {
+                            LOG_ERR() << "Conversion failed" << Log::Field("context", mLogContext.c_str())
+                                      << Log::Field(err);
 
-                        continue;
+                            continue;
+                        }
+
+                        tmpSubscribers = mSubscribers;
                     }
 
-                    for (auto subscriber : mSubscribers) {
+                    for (auto subscriber : tmpSubscribers) {
                         mNotifyFunc(*subscriber, *aosType);
                     }
                 }
