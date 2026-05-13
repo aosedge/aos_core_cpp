@@ -14,7 +14,7 @@ set(TARGET_NAME network)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp nftables.cpp utils.cpp)
+set(SOURCES iptables.cpp namespacemanager.cpp interfacemanager.cpp nftables.cpp tc.cpp utils.cpp)
 
 # ######################################################################################################################
 # Includes
