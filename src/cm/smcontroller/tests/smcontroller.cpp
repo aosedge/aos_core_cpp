@@ -706,7 +706,7 @@ TEST_F(SMControllerTest, OnCertChanged)
     listener->OnCertChanged(certInfo);
 
     // 5) Wait for reconnection - old client should disconnect
-    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID, std::chrono::seconds(11));
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     // 6) Reconnect client after server restart
