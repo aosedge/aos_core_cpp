@@ -86,7 +86,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error WaitDisconnect(const String& nodeID)
+    Error WaitDisconnect(const String& nodeID, const std::chrono::seconds& timeout = cDefaultTimeout)
     {
         std::unique_lock lock {mMutex};
 
@@ -95,7 +95,7 @@ public:
                 == mConnectedNodes.end();
         };
 
-        bool disconnected = mCV.wait_for(lock, cDefaultTimeout, isDisconnected);
+        bool disconnected = mCV.wait_for(lock, timeout, isDisconnected);
 
         if (!disconnected) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "wait disconnect timeout"));
