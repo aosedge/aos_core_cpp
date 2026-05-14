@@ -192,6 +192,15 @@ public:
     Error CreateVlan(const String& name, uint64_t vlanId) override;
 
     /**
+     * Creates a parameter-less link of the given kind.
+     *
+     * @param name link name.
+     * @param kind link kind (rtnetlink link-type string, e.g. "ifb").
+     * @return Error.
+     */
+    Error CreateLink(const String& name, const String& kind) override;
+
+    /**
      * Adds link.
      *
      * @param link link.
@@ -232,7 +241,7 @@ private:
     using UniqueLink  = std::unique_ptr<rtnl_link, LinkDeleter>;
 
     RetWithError<int>        GetMasterInterfaceIndex() const;
-    RetWithError<UniqueLink> CreateLink() const;
+    RetWithError<UniqueLink> AllocLink() const;
 
     crypto::RandomItf* mRandom {};
 };
