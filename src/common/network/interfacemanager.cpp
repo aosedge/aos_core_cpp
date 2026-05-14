@@ -15,6 +15,7 @@
 #include <linux/if.h>
 #include <linux/rtnetlink.h>
 #include <netinet/in.h>
+#include <netlink/errno.h>
 #include <netlink/netlink.h>
 #include <netlink/route/addr.h>
 #include <netlink/route/link.h>
@@ -127,6 +128,10 @@ Error InterfaceManager::DeleteLink(const String& ifname)
     rtnl_link_set_name(link.get(), ifname.CStr());
 
     if (auto errLinkDel = rtnl_link_delete(sock.get(), link.get()); errLinkDel < 0) {
+        if (errLinkDel == -NLE_OBJ_NOTFOUND || errLinkDel == -NLE_NODEV) {
+            return Error(ErrorEnum::eNotFound, "link not found");
+        }
+
         return NLToAosErr(errLinkDel, "failed to delete link");
     }
 
