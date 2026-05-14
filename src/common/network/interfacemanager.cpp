@@ -119,7 +119,7 @@ Error InterfaceManager::DeleteLink(const String& ifname)
         return err;
     }
 
-    auto [link, linkErr] = CreateLink();
+    auto [link, linkErr] = AllocLink();
     if (!linkErr.IsNone()) {
         return linkErr;
     }
@@ -142,7 +142,7 @@ Error InterfaceManager::SetupLink(const String& ifname)
         return err;
     }
 
-    auto [link, linkErr] = CreateLink();
+    auto [link, linkErr] = AllocLink();
     if (!linkErr.IsNone()) {
         return linkErr;
     }
@@ -168,7 +168,7 @@ Error InterfaceManager::AddLink(const LinkItf* link)
         return err;
     }
 
-    auto [linkObj, linkErr] = CreateLink();
+    auto [linkObj, linkErr] = AllocLink();
     if (!linkErr.IsNone()) {
         return linkErr;
     }
@@ -186,7 +186,7 @@ Error InterfaceManager::AddLink(const LinkItf* link)
     }
 
     if (attrs.mParentIndex > 0) {
-        auto [parent, parentErr] = CreateLink();
+        auto [parent, parentErr] = AllocLink();
         if (!parentErr.IsNone()) {
             return parentErr;
         }
@@ -230,7 +230,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
 
     [[maybe_unused]] auto cleanupCache = DeferRelease(cacheRaw, [](nl_cache* cache) { nl_cache_free(cache); });
 
-    auto [link, linkErr] = CreateLink();
+    auto [link, linkErr] = AllocLink();
     if (!linkErr.IsNone()) {
         return linkErr;
     }
@@ -368,7 +368,7 @@ Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
         return NLToAosErr(errno, "failed to allocate address object");
     }
 
-    auto [link, linkErr] = CreateLink();
+    auto [link, linkErr] = AllocLink();
     if (!linkErr.IsNone()) {
         return linkErr;
     }
@@ -524,6 +524,33 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
     return ErrorEnum::eNone;
 }
 
+Error InterfaceManager::CreateLink(const String& name, const String& kind)
+{
+    LOG_DBG() << "Create link" << Log::Field("name", name) << Log::Field("kind", kind);
+
+    auto [sock, err] = CreateNetlinkSocket();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    auto [link, linkErr] = AllocLink();
+    if (!linkErr.IsNone()) {
+        return linkErr;
+    }
+
+    rtnl_link_set_name(link.get(), name.CStr());
+
+    if (auto errType = rtnl_link_set_type(link.get(), kind.CStr()); errType < 0) {
+        return NLToAosErr(errType, "failed to set link type");
+    }
+
+    if (auto errAdd = rtnl_link_add(sock.get(), link.get(), NLM_F_CREATE); errAdd < 0) {
+        return NLToAosErr(errAdd, "failed to add link");
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * Private InterfaceManager methods
  **********************************************************************************************************************/
@@ -548,7 +575,7 @@ RetWithError<int> InterfaceManager::GetMasterInterfaceIndex() const
     return {-1, Error(ErrorEnum::eFailed, "no master interface found")};
 }
 
-RetWithError<InterfaceManager::UniqueLink> InterfaceManager::CreateLink() const
+RetWithError<InterfaceManager::UniqueLink> InterfaceManager::AllocLink() const
 {
     auto link = UniqueLink(rtnl_link_alloc(), rtnl_link_put);
     if (!link) {
