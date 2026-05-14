@@ -12,6 +12,8 @@ namespace aos::sm::iamclient {
 
 IAMClient::~IAMClient()
 {
+    StopReconnectTimer();
+
     PublicCertService::UnsubscribeListener(*this);
 }
 
@@ -44,24 +46,30 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
     return ErrorEnum::eNone;
 }
 
-void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
+Error IAMClient::ReconnectClient()
 {
-    LOG_INF() << "Certificate changed, reconnect all services";
-
     auto err = PublicCertService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public cert service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public cert service" << Log::Field(err);
+
+        return err;
     }
 
     err = PublicCurrentNodeService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect public current node service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect public current node service" << Log::Field(err);
+
+        return err;
     }
 
     err = PermissionsService::Reconnect();
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect permissions service" << Log::Field(err);
+        LOG_WRN() << "Failed to reconnect permissions service" << Log::Field(err);
+
+        return err;
     }
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::sm::iamclient
