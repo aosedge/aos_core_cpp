@@ -11,6 +11,7 @@
 #include <common/iamclient/publiccertservice.hpp>
 #include <common/iamclient/publiccurrentnodeservice.hpp>
 #include <common/iamclient/tlscredentials.hpp>
+#include <common/utils/grpcclientcertlistener.hpp>
 
 namespace aos::sm::iamclient {
 
@@ -20,8 +21,16 @@ namespace aos::sm::iamclient {
 class IAMClient : public aos::common::iamclient::PermissionsService,
                   public aos::common::iamclient::PublicCertService,
                   public aos::common::iamclient::PublicCurrentNodeService,
-                  public aos::iamclient::CertListenerItf {
+                  public aos::common::utils::GRPCClientCertListener {
 public:
+    /**
+     * Constructor.
+     */
+    IAMClient()
+        : GRPCClientCertListener("sm.iamclient")
+    {
+    }
+
     /**
      * Destructor.
      */
@@ -43,11 +52,11 @@ public:
         const String& certType, bool insecureConnection = false);
 
     /**
-     * Reconnects all services.
+     * Reconnects all IAM services.
      *
-     * @param info certificate info.
+     * @return Error.
      */
-    void OnCertChanged(const CertInfo& info) override;
+    Error ReconnectClient() override;
 };
 
 } // namespace aos::sm::iamclient

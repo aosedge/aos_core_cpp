@@ -19,6 +19,7 @@
 
 #include <common/iamclient/publicnodeservice.hpp>
 #include <common/utils/channel.hpp>
+#include <common/utils/grpcclientcertlistener.hpp>
 #include <mp/config/config.hpp>
 
 namespace aos::mp::iamclient {
@@ -26,8 +27,16 @@ namespace aos::mp::iamclient {
 /**
  * IAM client.
  */
-class IAMClient : public common::iamclient::PublicNodesService, private aos::iamclient::CertListenerItf {
+class IAMClient : public common::iamclient::PublicNodesService, private common::utils::GRPCClientCertListener {
 public:
+    /**
+     * Constructor.
+     */
+    IAMClient()
+        : GRPCClientCertListener("mp.iamclient")
+    {
+    }
+
     /**
      * Initializes the client.
      *
@@ -67,13 +76,19 @@ public:
      */
     RetWithError<std::vector<uint8_t>> ReceiveMessages();
 
+    /**
+     * Reconnects IAM client.
+     *
+     * @return Error error code.
+     */
+    Error ReconnectClient() override;
+
 protected:
     Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
     void  OnConnected() override;
     void  OnDisconnected() override;
 
 private:
-    void OnCertChanged(const CertInfo& info) override;
     void ProcessOutgoingMessages();
 
     aos::iamclient::CertProviderItf* mCertProvider {};

@@ -17,6 +17,7 @@
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
 #include <common/iamclient/publicnodeservice.hpp>
+#include <common/utils/grpcclientcertlistener.hpp>
 
 #include <iam/config/config.hpp>
 
@@ -25,8 +26,16 @@ namespace aos::iam::iamclient {
 /**
  * GRPC IAM client.
  */
-class IAMClient : public common::iamclient::PublicNodesService, private aos::iamclient::CertListenerItf {
+class IAMClient : public common::iamclient::PublicNodesService, private common::utils::GRPCClientCertListener {
 public:
+    /**
+     * Constructor.
+     */
+    IAMClient()
+        : GRPCClientCertListener("iam.iamclient")
+    {
+    }
+
     /**
      * Initializes IAM client instance.
      *
@@ -58,14 +67,19 @@ public:
      */
     Error Stop();
 
+    /**
+     * Reconnects IAM client.
+     *
+     * @returns Error.
+     */
+    Error ReconnectClient() override;
+
 protected:
     Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
     void  OnConnected() override;
     void  OnDisconnected() override;
 
 private:
-    void OnCertChanged(const CertInfo& info) override;
-
     Error SendNodeInfo();
     Error ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
     Error ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);

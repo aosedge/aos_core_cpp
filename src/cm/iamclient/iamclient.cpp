@@ -12,9 +12,7 @@ namespace aos::cm::iamclient {
 
 IAMClient::~IAMClient()
 {
-    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
-        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
-    }
+    StopReconnectTimer();
 
     PublicCertService::UnsubscribeListener(*this);
 }
@@ -68,14 +66,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
     return ErrorEnum::eNone;
 }
 
-void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
-{
-    LOG_INF() << "Certificate changed, reconnect IAM client";
-
-    ScheduleReconnect();
-}
-
-Error IAMClient::ReconnectAllServices()
+Error IAMClient::ReconnectClient()
 {
     auto err = PublicCertService::Reconnect();
     if (!err.IsNone()) {
@@ -127,33 +118,6 @@ Error IAMClient::ReconnectAllServices()
     }
 
     return ErrorEnum::eNone;
-}
-
-void IAMClient::ScheduleReconnect()
-{
-    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
-        LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
-    }
-
-    if (auto err = mReconnectTimer.Start(
-            cReconnectRetryTimeout, [this](void*) { OnReconnectTimer(); }, true);
-        !err.IsNone()) {
-        LOG_ERR() << "Failed to start reconnect timer" << Log::Field(err);
-    }
-}
-
-void IAMClient::OnReconnectTimer()
-{
-    auto err = ReconnectAllServices();
-    if (err.IsNone()) {
-        LOG_INF() << "Successfully reconnected all IAM services";
-
-        return;
-    }
-
-    LOG_ERR() << "IAM services reconnect failed, retrying" << Log::Field(err);
-
-    ScheduleReconnect();
 }
 
 } // namespace aos::cm::iamclient
