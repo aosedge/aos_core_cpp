@@ -52,6 +52,8 @@ Error IAMClient::Stop()
 {
     LOG_DBG() << "Stop IAM client";
 
+    StopReconnectTimer();
+
     PublicNodesService::Stop();
 
     if (!mCertStorage.empty()) {
@@ -124,13 +126,9 @@ void IAMClient::OnDisconnected()
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
+Error IAMClient::ReconnectClient()
 {
-    LOG_INF() << "Certificate changed, reconnecting";
-
-    if (auto err = Reconnect(); !err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect" << Log::Field(err);
-    }
+    return PublicNodesService::Reconnect();
 }
 
 Error IAMClient::SendNodeInfo()

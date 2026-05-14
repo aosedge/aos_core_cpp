@@ -66,6 +66,8 @@ void IAMClient::Stop()
 
     mCV.notify_all();
 
+    StopReconnectTimer();
+
     PublicNodesService::Stop();
 
     if (mOutgoingMsgThread.joinable()) {
@@ -135,13 +137,9 @@ void IAMClient::OnDisconnected()
  * Private
  **********************************************************************************************************************/
 
-void IAMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
+Error IAMClient::ReconnectClient()
 {
-    LOG_INF() << "Certificate changed, reconnecting";
-
-    if (auto err = Reconnect(); !err.IsNone()) {
-        LOG_ERR() << "Failed to reconnect" << Log::Field(err);
-    }
+    return PublicNodesService::Reconnect();
 }
 
 void IAMClient::ProcessOutgoingMessages()

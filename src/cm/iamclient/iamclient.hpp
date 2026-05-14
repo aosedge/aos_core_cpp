@@ -7,8 +7,6 @@
 #ifndef AOS_CM_IAMCLIENT_IAMCLIENT_HPP_
 #define AOS_CM_IAMCLIENT_IAMCLIENT_HPP_
 
-#include <mutex>
-
 #include <common/iamclient/certificateservice.hpp>
 #include <common/iamclient/nodesservice.hpp>
 #include <common/iamclient/provisioningservice.hpp>
@@ -16,10 +14,10 @@
 #include <common/iamclient/publiccurrentnodeservice.hpp>
 #include <common/iamclient/publicidentityservice.hpp>
 #include <common/iamclient/publicnodeservice.hpp>
+#include <common/utils/grpcclientcertlistener.hpp>
 
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/tools/error.hpp>
-#include <core/common/tools/timer.hpp>
 
 namespace aos::cm::iamclient {
 
@@ -33,8 +31,16 @@ class IAMClient : public aos::common::iamclient::CertificateService,
                   public aos::common::iamclient::PublicNodesService,
                   public aos::common::iamclient::PublicCurrentNodeService,
                   public aos::common::iamclient::PublicIdentityService,
-                  public aos::iamclient::CertListenerItf {
+                  public aos::common::utils::GRPCClientCertListener {
 public:
+    /**
+     * Constructor.
+     */
+    IAMClient()
+        : GRPCClientCertListener("cm.iamclient")
+    {
+    }
+
     /**
      * Destructor.
      */
@@ -56,20 +62,11 @@ public:
         const String& certType, bool insecureConnection = false);
 
     /**
-     * Reconnects all services.
+     * Reconnects all IAM services.
      *
-     * @param info certificate info.
+     * @return Error.
      */
-    void OnCertChanged(const CertInfo& info) override;
-
-private:
-    static constexpr aos::Duration cReconnectRetryTimeout = aos::Time::cSeconds * 10;
-
-    Error ReconnectAllServices();
-    void  ScheduleReconnect();
-    void  OnReconnectTimer();
-
-    aos::Timer mReconnectTimer {};
+    Error ReconnectClient() override;
 };
 
 } // namespace aos::cm::iamclient

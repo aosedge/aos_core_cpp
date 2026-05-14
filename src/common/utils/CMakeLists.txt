@@ -22,6 +22,7 @@ set(SOURCES
     filesystem.cpp
     fsplatform.cpp
     fswatcher.cpp
+    grpcclientcertlistener.cpp
     grpchelper.cpp
     image.cpp
     json.cpp
