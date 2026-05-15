@@ -58,24 +58,14 @@ Error SMClient::Start()
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "client already started"));
     }
 
+    if (auto err = CreateCredentials(); !err.IsNone()) {
+        return err;
+    }
+
     if (mSecureConnection) {
-        auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(Error(err, "can't get MTLS client credentials"));
-        }
-
-        mCredentials = std::move(creds);
-
-        if (err = mCertProvider->SubscribeListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
+        if (auto err = mCertProvider->SubscribeListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
-    } else {
-        auto [creds, err] = mTLSCredentials->GetTLSClientCredentials();
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(Error(err, "can't get TLS client credentials"));
-        }
-
-        mCredentials = std::move(creds);
     }
 
     mStopped = false;
@@ -121,18 +111,15 @@ void SMClient::OnCertChanged(const CertInfo& info)
 
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Certificate changed";
-
-    auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
-    if (!err.IsNone()) {
-        LOG_ERR() << "Can't get client credentials: err=" << err;
-
+    if (mStopped) {
         return;
     }
 
-    mCredentials = std::move(creds);
+    LOG_INF() << "Certificate changed";
 
-    LOG_DBG() << "Credentials updated";
+    if (mCtx) {
+        mCtx->TryCancel();
+    }
 }
 
 Error SMClient::SendAlert(const AlertVariant& alert)
@@ -329,6 +316,29 @@ SMClient::StubPtr SMClient::CreateStub(
     return smproto::SMService::NewStub(channel);
 }
 
+Error SMClient::CreateCredentials()
+{
+    if (mSecureConnection) {
+        auto [creds, err] = mTLSCredentials->GetMTLSClientCredentials(mConfig.mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(Error(err, "can't get MTLS client credentials"));
+        }
+
+        mCredentials = std::move(creds);
+
+        return ErrorEnum::eNone;
+    }
+
+    auto [creds, err] = mTLSCredentials->GetTLSClientCredentials();
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(Error(err, "can't get TLS client credentials"));
+    }
+
+    mCredentials = std::move(creds);
+
+    return ErrorEnum::eNone;
+}
+
 bool SMClient::SendSMInfo()
 {
     LOG_DBG() << "Send SM info";
@@ -397,6 +407,12 @@ bool SMClient::RegisterSM(const std::string& url)
     std::lock_guard lock {mMutex};
 
     if (mStopped) {
+        return false;
+    }
+
+    if (auto err = CreateCredentials(); !err.IsNone()) {
+        LOG_ERR() << "Can't create SM client credentials" << Log::Field(err);
+
         return false;
     }
 

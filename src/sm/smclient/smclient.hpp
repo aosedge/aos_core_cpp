@@ -190,6 +190,7 @@ private:
 
     std::unique_ptr<grpc::ClientContext> CreateClientContext();
     StubPtr CreateStub(const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
+    Error   CreateCredentials();
 
     bool SendSMInfo();
     bool SendNodeInstancesStatus();
