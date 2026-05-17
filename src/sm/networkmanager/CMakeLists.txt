@@ -15,6 +15,7 @@ set(SOURCES
     bridgenetwork.cpp
     cni.cpp
     dnsserver.cpp
+    dnsname.cpp
     exec.cpp
     firewall.cpp
     trafficmonitor.cpp
