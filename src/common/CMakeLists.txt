@@ -49,6 +49,7 @@ add_subdirectory(logging)
 add_subdirectory(migration)
 add_subdirectory(network)
 add_subdirectory(ocispec)
+add_subdirectory(process)
 
 if(WITH_IAM_API OR WITH_SM_API)
     add_subdirectory(pbconvert)
