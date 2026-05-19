@@ -84,6 +84,10 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
         buf << " oifname \"" << rule.mOIFName << "\"";
     }
 
+    if (rule.mCounter) {
+        buf << " counter";
+    }
+
     switch (rule.mAction.GetValue()) {
     case FWActionEnum::eAccept:
         buf << " accept";
@@ -99,6 +103,10 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 
     case FWActionEnum::eMasquerade:
         buf << " masquerade";
+        break;
+
+    case FWActionEnum::eReturn:
+        buf << " return";
         break;
     }
 }
@@ -126,6 +134,12 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
         out.mRule.mOIFName = m[1];
     }
 
+    if (std::regex_search(line, m, std::regex(R"(counter\s+packets\s+(\d+)\s+bytes\s+(\d+))"))) {
+        out.mRule.mCounter = true;
+        out.mPackets       = std::stoull(m[1]);
+        out.mBytes         = std::stoull(m[2]);
+    }
+
     bool actionFound = false;
 
     if (std::regex_search(line, m, std::regex(R"(\bjump\s+(\S+))"))) {
@@ -140,6 +154,9 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
         actionFound       = true;
     } else if (std::regex_search(line, m, std::regex(R"(\bdrop\b)"))) {
         out.mRule.mAction = FWActionEnum::eDrop;
+        actionFound       = true;
+    } else if (std::regex_search(line, m, std::regex(R"(\breturn\b)"))) {
+        out.mRule.mAction = FWActionEnum::eReturn;
         actionFound       = true;
     }
 
