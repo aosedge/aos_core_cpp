@@ -49,11 +49,13 @@ public:
     enum class Enum {
         eForward,
         ePostrouting,
+        eInput,
+        eOutput,
     };
 
     static const Array<const char* const> GetStrings()
     {
-        static const char* const sStrings[] = {"forward", "postrouting"};
+        static const char* const sStrings[] = {"forward", "postrouting", "input", "output"};
 
         return Array<const char* const>(sStrings, ArraySize(sStrings));
     };
@@ -72,11 +74,12 @@ public:
         eDrop,
         eJump,
         eMasquerade,
+        eReturn,
     };
 
     static const Array<const char* const> GetStrings()
     {
-        static const char* const sStrings[] = {"accept", "drop", "jump", "masquerade"};
+        static const char* const sStrings[] = {"accept", "drop", "jump", "masquerade", "return"};
 
         return Array<const char* const>(sStrings, ArraySize(sStrings));
     };
@@ -106,23 +109,30 @@ struct FWChain {
 
 /**
  * A rule expression. Empty / zero match fields are not added to the rule.
+ *
+ * When mCounter is true, a `counter` expression is emitted right before the
+ * verdict (used by TrafficMonitor to read per-rule byte/packet counts).
  */
 struct FWRule {
     std::string mSrcAddr;
     std::string mDstAddr;
     std::string mProto;
-    uint16_t    mDstPort = 0;
+    uint16_t    mDstPort {};
     std::string mOIFName;
     FWAction    mAction;
     std::string mJumpTarget;
+    bool        mCounter {};
 };
 
 /**
- * A listed rule paired with its handle.
+ * A listed rule paired with its handle. Counter values are populated when the
+ * underlying rule carries a `counter` expression.
  */
 struct FWListedRule {
     FWRule       mRule;
     FWRuleHandle mHandle;
+    uint64_t     mBytes {};
+    uint64_t     mPackets {};
 };
 
 /**
