@@ -234,6 +234,8 @@ private:
                 if (auto status = reader->Finish(); !status.ok()) {
                     LOG_WRN() << "Stream finished with error" << Log::Field("context", mLogContext.c_str())
                               << Log::Field("error", status.error_message().c_str());
+                } else {
+                    LOG_DBG() << "Stream finished successfully" << Log::Field("context", mLogContext.c_str());
                 }
             } catch (const std::exception& e) {
                 LOG_ERR() << "Subscription loop failed" << Log::Field("context", mLogContext.c_str())
