@@ -64,6 +64,10 @@ private:
 
 void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 {
+    if (!rule.mCtState.empty()) {
+        buf << " ct state " << rule.mCtState;
+    }
+
     if (!rule.mSrcAddr.empty()) {
         buf << " ip saddr " << rule.mSrcAddr;
     }
@@ -114,6 +118,10 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 bool ParseRuleLine(const std::string& line, FWListedRule& out)
 {
     std::smatch m;
+
+    if (std::regex_search(line, m, std::regex(R"(ct\s+state\s+([a-z,]+))"))) {
+        out.mRule.mCtState = m[1];
+    }
 
     if (std::regex_search(line, m, std::regex(R"(ip\s+saddr\s+(\S+))"))) {
         out.mRule.mSrcAddr = m[1];
