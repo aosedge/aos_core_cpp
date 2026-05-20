@@ -287,11 +287,43 @@ Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallP
 
     const auto chain = ChainName(instanceID);
 
+    std::vector<common::network::FWListedRule> forwardRules;
+
+    if (auto err = mBackend->ListChainRules(mTable, cForwardChain, forwardRules); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     auto txn = mBackend->NewTxn();
 
     txn->FlushChain(mTable, chain);
 
     if (auto err = AppendInstanceRules(*txn, mTable, chain, params); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    // Re-point the parent jumps at the current IP: the child chain now matches
+    // params.mIP, so stale jumps for a previous IP would bypass the new policy.
+    for (const auto& r : forwardRules) {
+        if (r.mRule.mAction == common::network::FWActionEnum::eJump && r.mRule.mJumpTarget == chain) {
+            txn->DeleteRuleByHandle(mTable, cForwardChain, r.mHandle);
+        }
+    }
+
+    common::network::FWRule jumpIn {};
+    jumpIn.mDstAddr    = params.mIP.CStr();
+    jumpIn.mAction     = common::network::FWActionEnum::eJump;
+    jumpIn.mJumpTarget = chain;
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, jumpIn); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    common::network::FWRule jumpOut {};
+    jumpOut.mSrcAddr    = params.mIP.CStr();
+    jumpOut.mAction     = common::network::FWActionEnum::eJump;
+    jumpOut.mJumpTarget = chain;
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, jumpOut); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
