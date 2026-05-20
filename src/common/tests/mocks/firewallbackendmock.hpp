@@ -21,7 +21,7 @@ public:
     MOCK_METHOD(void, AddChain, (const FWChain& chain), (override));
     MOCK_METHOD(void, FlushChain, (const std::string& table, const std::string& chain), (override));
     MOCK_METHOD(void, DeleteChain, (const std::string& table, const std::string& chain), (override));
-    MOCK_METHOD(void, AddRule, (const std::string& table, const std::string& chain, const FWRule& rule), (override));
+    MOCK_METHOD(Error, AddRule, (const std::string& table, const std::string& chain, const FWRule& rule), (override));
     MOCK_METHOD(void, DeleteRuleByHandle, (const std::string& table, const std::string& chain, FWRuleHandle handle),
         (override));
     MOCK_METHOD(Error, Commit, (), (override));
