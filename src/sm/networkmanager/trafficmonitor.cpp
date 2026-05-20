@@ -153,12 +153,14 @@ Error TrafficMonitor::StartInstanceMonitoring(
 
     auto txn = mBackend->NewTxn();
 
-    if (auto err = CreateInstanceChain(*txn, chains.mInChain, true, chains.mIP, cForwardChain, downloadLimit);
+    StagedTrafficData staged;
+
+    if (auto err = CreateInstanceChain(*txn, chains.mInChain, true, chains.mIP, cForwardChain, downloadLimit, staged);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = CreateInstanceChain(*txn, chains.mOutChain, false, chains.mIP, cForwardChain, uploadLimit);
+    if (auto err = CreateInstanceChain(*txn, chains.mOutChain, false, chains.mIP, cForwardChain, uploadLimit, staged);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -166,6 +168,8 @@ Error TrafficMonitor::StartInstanceMonitoring(
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
+
+    PublishTrafficData(staged);
 
     {
         std::unique_lock lock {mMutex};
@@ -284,17 +288,21 @@ Error TrafficMonitor::CreateSystemChains()
     txn->AddBaseChain(
         {cTable, cForwardChain, common::network::FWChainTypeEnum::eFilter, common::network::FWHookEnum::eForward, 0});
 
-    if (auto err = CreateInstanceChain(*txn, cInSystemChain, true, "", cInputChain, 0); !err.IsNone()) {
+    StagedTrafficData staged;
+
+    if (auto err = CreateInstanceChain(*txn, cInSystemChain, true, "", cInputChain, 0, staged); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = CreateInstanceChain(*txn, cOutSystemChain, false, "", cOutputChain, 0); !err.IsNone()) {
+    if (auto err = CreateInstanceChain(*txn, cOutSystemChain, false, "", cOutputChain, 0, staged); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
+
+    PublishTrafficData(staged);
 
     return ErrorEnum::eNone;
 }
@@ -309,7 +317,7 @@ Error TrafficMonitor::DeleteTrafficTable()
 }
 
 Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
-    const std::string& address, const std::string& parentBaseChain, uint64_t limit)
+    const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged)
 {
     LOG_DBG() << "Create traffic chain" << Log::Field("chain", chain.c_str());
 
@@ -342,13 +350,18 @@ Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const 
         return AOS_ERROR_WRAP(err);
     }
 
-    {
-        std::unique_lock lock {mMutex};
-
-        mTrafficData[chain] = std::move(traffic);
-    }
+    staged.emplace_back(chain, std::move(traffic));
 
     return ErrorEnum::eNone;
+}
+
+void TrafficMonitor::PublishTrafficData(StagedTrafficData& staged)
+{
+    std::unique_lock lock {mMutex};
+
+    for (auto& [chain, traffic] : staged) {
+        mTrafficData[chain] = std::move(traffic);
+    }
 }
 
 Error TrafficMonitor::AppendChainCounterRules(
@@ -383,8 +396,10 @@ Error TrafficMonitor::AppendChainCounterRules(
         (isInChain ? counter.mDstAddr : counter.mSrcAddr) = address;
     }
 
+    // Count only, never decide policy: return to the caller chain after the
+    // counter so the firewall table on the same hook stays authoritative.
     counter.mCounter = true;
-    counter.mAction  = common::network::FWActionEnum::eAccept;
+    counter.mAction  = common::network::FWActionEnum::eReturn;
 
     return txn.AddRule(cTable, chain, counter);
 }
@@ -489,7 +504,7 @@ Error TrafficMonitor::UpdateTrafficData()
         }
     }
 
-    return ErrorEnum::eNone;
+    return err;
 }
 
 Error TrafficMonitor::CheckTrafficLimit(const std::string& chain, TrafficData& trafficData)
