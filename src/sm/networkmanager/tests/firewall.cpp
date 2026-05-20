@@ -358,23 +358,37 @@ TEST_F(FirewallTest, AddInstanceRejectsZeroPort)
  * UpdateInstance
  **********************************************************************************************************************/
 
-TEST_F(FirewallTest, UpdateInstanceFlushesAndRepopulates)
+TEST_F(FirewallTest, UpdateInstanceFlushesRepopulatesAndRepointsJumps)
 {
-    auto params = MakeParams("10.0.0.5", true);
+    auto params = MakeParams("10.0.0.9", true);
     ASSERT_TRUE(params.mInput.PushBack(MakeInput("9090", "tcp")).IsNone());
+
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {20}});
+    forwardRules.push_back({{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {21}});
 
     auto tx = NewMockTx();
 
     InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
     EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
     EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("tcp"), 9090, FWActionEnum::eAccept)));
+            InputRule(std::string("10.0.0.9"), std::string("tcp"), 9090, FWActionEnum::eAccept)));
     EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.9"), FWActionEnum::eDrop)));
     EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.9"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {20}));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {21}));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("forward"),
+            AllOf(Field(&FWRule::mDstAddr, "10.0.0.9"), Field(&FWRule::mJumpTarget, "instance_test"))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("forward"),
+            AllOf(Field(&FWRule::mSrcAddr, "10.0.0.9"), Field(&FWRule::mJumpTarget, "instance_test"))));
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.UpdateInstance("test", params).IsNone());
