@@ -147,6 +147,19 @@ Error Firewall::Start()
     txn->AddBaseChain({mTable, cPostroutingChain, common::network::FWChainTypeEnum::eNAT,
         common::network::FWHookEnum::ePostrouting, cNATPriority});
 
+    // Connection tracking gates the per-instance access rules: drop garbage
+    // early and let reply traffic of allowed flows back in, so the access
+    // rules only need to describe connection initiation.
+    common::network::FWRule ctInvalid {};
+    ctInvalid.mCtState = "invalid";
+    ctInvalid.mAction  = common::network::FWActionEnum::eDrop;
+    txn->AddRule(mTable, cForwardChain, ctInvalid);
+
+    common::network::FWRule ctEstablished {};
+    ctEstablished.mCtState = "established,related";
+    ctEstablished.mAction  = common::network::FWActionEnum::eAccept;
+    txn->AddRule(mTable, cForwardChain, ctEstablished);
+
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
