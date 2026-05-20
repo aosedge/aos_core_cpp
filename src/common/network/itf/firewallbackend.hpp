@@ -112,6 +112,8 @@ struct FWChain {
  *
  * When mCounter is true, a `counter` expression is emitted right before the
  * verdict (used by TrafficMonitor to read per-rule byte/packet counts).
+ * mCtState, when set (e.g. "established,related" or "invalid"), emits a
+ * `ct state` match.
  */
 struct FWRule {
     std::string mSrcAddr;
@@ -122,6 +124,7 @@ struct FWRule {
     FWAction    mAction;
     std::string mJumpTarget;
     bool        mCounter {};
+    std::string mCtState {};
 };
 
 /**
