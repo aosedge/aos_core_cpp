@@ -315,7 +315,9 @@ Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const 
 
     txn.AddChain({cTable, chain});
 
-    AppendChainCounterRules(txn, chain, isInChain, address, false);
+    if (auto err = AppendChainCounterRules(txn, chain, isInChain, address, false); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     common::network::FWRule jump {};
 
@@ -326,7 +328,9 @@ Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const 
     jump.mAction     = common::network::FWActionEnum::eJump;
     jump.mJumpTarget = chain;
 
-    txn.AddRule(cTable, parentBaseChain, jump);
+    if (auto err = txn.AddRule(cTable, parentBaseChain, jump); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     TrafficData traffic;
 
@@ -347,7 +351,7 @@ Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const 
     return ErrorEnum::eNone;
 }
 
-void TrafficMonitor::AppendChainCounterRules(
+Error TrafficMonitor::AppendChainCounterRules(
     common::network::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled)
 {
     if (disabled) {
@@ -359,9 +363,7 @@ void TrafficMonitor::AppendChainCounterRules(
 
         drop.mAction = common::network::FWActionEnum::eDrop;
 
-        txn.AddRule(cTable, chain, drop);
-
-        return;
+        return txn.AddRule(cTable, chain, drop);
     }
 
     for (const auto* cidr : cSkipNetworks) {
@@ -370,7 +372,9 @@ void TrafficMonitor::AppendChainCounterRules(
         (isInChain ? skip.mSrcAddr : skip.mDstAddr) = cidr;
         skip.mAction                                = common::network::FWActionEnum::eReturn;
 
-        txn.AddRule(cTable, chain, skip);
+        if (auto err = txn.AddRule(cTable, chain, skip); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     common::network::FWRule counter {};
@@ -382,7 +386,7 @@ void TrafficMonitor::AppendChainCounterRules(
     counter.mCounter = true;
     counter.mAction  = common::network::FWActionEnum::eAccept;
 
-    txn.AddRule(cTable, chain, counter);
+    return txn.AddRule(cTable, chain, counter);
 }
 
 Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& bytes)
@@ -414,7 +418,9 @@ Error TrafficMonitor::SetChainState(const std::string& chain, const std::string&
 
     txn->FlushChain(cTable, chain);
 
-    AppendChainCounterRules(*txn, chain, isInChain, address, !enable);
+    if (auto err = AppendChainCounterRules(*txn, chain, isInChain, address, !enable); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
