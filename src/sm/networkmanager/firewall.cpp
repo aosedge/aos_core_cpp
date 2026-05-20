@@ -34,6 +34,32 @@ RetWithError<uint16_t> ParsePort(const String& port)
     return {static_cast<uint16_t>(val), ErrorEnum::eNone};
 }
 
+Error CheckPortProto(uint16_t port, const String& proto)
+{
+    if (port == 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "access rule requires a port"));
+    }
+
+    const std::string value {proto.CStr()};
+    if (!value.empty() && value != "tcp" && value != "udp") {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "unsupported protocol"));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+std::string ProtoOrDefault(const String& proto, uint16_t port)
+{
+    // A port match needs a transport protocol; default to tcp (matching the
+    // historical CNI/networkmanager convention). Without it an empty proto with
+    // a port would widen the rule to all traffic to/from the instance.
+    if (port != 0 && proto.IsEmpty()) {
+        return "tcp";
+    }
+
+    return proto.CStr();
+}
+
 std::string ChainName(const String& instanceID)
 {
     std::string name {"instance_"};
@@ -67,10 +93,16 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
             return AOS_ERROR_WRAP(err);
         }
 
+        // An input entry requires a port and only tcp/udp are supported (an
+        // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
+        if (auto err = CheckPortProto(port, in.mProtocol); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         common::network::FWRule r {};
 
         r.mDstAddr = instanceIP;
-        r.mProto   = in.mProtocol.CStr();
+        r.mProto   = ProtoOrDefault(in.mProtocol, port);
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
@@ -88,6 +120,18 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
             return AOS_ERROR_WRAP(err);
         }
 
+        // An output entry must name a destination; an empty one collapses to a
+        // bare ip saddr <instance> accept that opens all egress and bypasses
+        // the AllowPublic terminal verdict. It is validated as strictly as an
+        // input entry: a destination IP and port, with tcp/udp (empty -> tcp).
+        if (out.mDstIP.IsEmpty()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
+        }
+
+        if (auto err = CheckPortProto(port, out.mProto); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
         if (!out.mSrcIP.IsEmpty() && std::string {out.mSrcIP.CStr()} != instanceIP) {
             LOG_WRN() << "Output rule mSrcIP overridden by instance IP" << Log::Field("srcIP", out.mSrcIP)
                       << Log::Field("instanceIP", params.mIP);
@@ -97,7 +141,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
 
         r.mSrcAddr = instanceIP;
         r.mDstAddr = out.mDstIP.CStr();
-        r.mProto   = out.mProto.CStr();
+        r.mProto   = ProtoOrDefault(out.mProto, port);
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
@@ -206,6 +250,12 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
 {
     LOG_DBG() << "Add firewall instance" << Log::Field("instanceID", instanceID);
 
+    // Without an instance IP the parent jumps lose their address match and
+    // become global FORWARD jumps, and the terminal rules match everything.
+    if (params.mIP.IsEmpty()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "instance IP required"));
+    }
+
     const auto chain = ChainName(instanceID);
 
     auto txn = mBackend->NewTxn();
@@ -284,6 +334,10 @@ Error Firewall::RemoveInstance(const String& instanceID)
 Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallParams& params)
 {
     LOG_DBG() << "Update firewall instance" << Log::Field("instanceID", instanceID);
+
+    if (params.mIP.IsEmpty()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "instance IP required"));
+    }
 
     const auto chain = ChainName(instanceID);
 
