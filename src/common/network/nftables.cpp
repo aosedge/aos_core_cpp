@@ -62,6 +62,17 @@ private:
     nft_ctx* mCtx;
 };
 
+bool HasUnsafeToken(const std::string& value)
+{
+    return value.find_first_of(" \t\n\r;\"{}\\") != std::string::npos;
+}
+
+bool RuleHasUnsafeToken(const FWRule& rule)
+{
+    return HasUnsafeToken(rule.mSrcAddr) || HasUnsafeToken(rule.mDstAddr) || HasUnsafeToken(rule.mProto)
+        || HasUnsafeToken(rule.mOIFName) || HasUnsafeToken(rule.mJumpTarget) || HasUnsafeToken(rule.mCtState);
+}
+
 void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 {
     if (!rule.mCtState.empty()) {
@@ -217,13 +228,19 @@ public:
         mBuf << "delete chain " << mFamily << " " << table << " " << chain << "\n";
     }
 
-    void AddRule(const std::string& table, const std::string& chain, const FWRule& rule) override
+    Error AddRule(const std::string& table, const std::string& chain, const FWRule& rule) override
     {
+        if (RuleHasUnsafeToken(rule)) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "unsafe token in nft rule field"));
+        }
+
         mBuf << "add rule " << mFamily << " " << table << " " << chain;
 
         AppendRuleExpr(mBuf, rule);
 
         mBuf << "\n";
+
+        return ErrorEnum::eNone;
     }
 
     void DeleteRuleByHandle(const std::string& table, const std::string& chain, FWRuleHandle handle) override

@@ -197,13 +197,15 @@ public:
     virtual void DeleteChain(const std::string& table, const std::string& chain) = 0;
 
     /**
-     * Queues addition of a rule to the given chain.
+     * Queues addition of a rule to the given chain. Returns an error when a
+     * rule field contains a token unsafe for the backend's command encoding.
      *
      * @param table table the chain belongs to.
      * @param chain chain name.
      * @param rule  rule to add.
+     * @return error.
      */
-    virtual void AddRule(const std::string& table, const std::string& chain, const FWRule& rule) = 0;
+    virtual Error AddRule(const std::string& table, const std::string& chain, const FWRule& rule) = 0;
 
     /**
      * Queues deletion of a rule identified by its handle.

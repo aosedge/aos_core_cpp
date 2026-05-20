@@ -74,7 +74,9 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
-        txn.AddRule(table, chain, r);
+        if (auto err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     for (const auto& out : params.mOutput) {
@@ -99,19 +101,27 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
-        txn.AddRule(table, chain, r);
+        if (auto err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     common::network::FWRule terminalIn {};
     terminalIn.mDstAddr = instanceIP;
     terminalIn.mAction  = common::network::FWActionEnum::eDrop;
-    txn.AddRule(table, chain, terminalIn);
+
+    if (auto err = txn.AddRule(table, chain, terminalIn); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     common::network::FWRule terminalOut {};
     terminalOut.mSrcAddr = instanceIP;
     terminalOut.mAction
         = params.mAllowPublic ? common::network::FWActionEnum::eAccept : common::network::FWActionEnum::eDrop;
-    txn.AddRule(table, chain, terminalOut);
+
+    if (auto err = txn.AddRule(table, chain, terminalOut); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     return ErrorEnum::eNone;
 }
@@ -153,12 +163,18 @@ Error Firewall::Start()
     common::network::FWRule ctInvalid {};
     ctInvalid.mCtState = "invalid";
     ctInvalid.mAction  = common::network::FWActionEnum::eDrop;
-    txn->AddRule(mTable, cForwardChain, ctInvalid);
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, ctInvalid); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     common::network::FWRule ctEstablished {};
     ctEstablished.mCtState = "established,related";
     ctEstablished.mAction  = common::network::FWActionEnum::eAccept;
-    txn->AddRule(mTable, cForwardChain, ctEstablished);
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, ctEstablished); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -204,13 +220,19 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
     jumpIn.mDstAddr    = params.mIP.CStr();
     jumpIn.mAction     = common::network::FWActionEnum::eJump;
     jumpIn.mJumpTarget = chain;
-    txn->AddRule(mTable, cForwardChain, jumpIn);
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, jumpIn); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     common::network::FWRule jumpOut {};
     jumpOut.mSrcAddr    = params.mIP.CStr();
     jumpOut.mAction     = common::network::FWActionEnum::eJump;
     jumpOut.mJumpTarget = chain;
-    txn->AddRule(mTable, cForwardChain, jumpOut);
+
+    if (auto err = txn->AddRule(mTable, cForwardChain, jumpOut); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -297,7 +319,9 @@ Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
 
     auto txn = mBackend->NewTxn();
 
-    txn->AddRule(mTable, cPostroutingChain, r);
+    if (auto err = txn->AddRule(mTable, cPostroutingChain, r); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (auto err = txn->Commit(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
