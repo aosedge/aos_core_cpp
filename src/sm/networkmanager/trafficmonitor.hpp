@@ -115,8 +115,8 @@ private:
     Error DeleteTrafficTable();
     Error CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
         const std::string& address, const std::string& parentBaseChain, uint64_t limit);
-    void  AppendChainCounterRules(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
-         const std::string& address, bool disabled);
+    Error AppendChainCounterRules(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
+        const std::string& address, bool disabled);
     Error UpdateTrafficData();
     Error GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
     bool  IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;
