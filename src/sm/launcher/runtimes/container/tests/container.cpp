@@ -17,8 +17,8 @@
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
-#include <sm/tests/mocks/systemdconnmock.hpp>
 
+#include "mocks/containerrunnermock.hpp"
 #include "mocks/filesystemmock.hpp"
 #include "mocks/monitoringmock.hpp"
 #include "mocks/runnermock.hpp"
@@ -182,14 +182,19 @@ std::vector<PartitionInfo> CreatePartitionsInfos(const InstanceInfo& instanceInf
 
 class TestRuntime : public ContainerRuntime {
 public:
-    std::shared_ptr<NiceMock<RunnerMock>>     mRunner     = std::make_shared<NiceMock<RunnerMock>>();
-    std::shared_ptr<NiceMock<FileSystemMock>> mFileSystem = std::make_shared<NiceMock<FileSystemMock>>();
-    std::shared_ptr<NiceMock<MonitoringMock>> mMonitoring = std::make_shared<NiceMock<MonitoringMock>>();
+    std::shared_ptr<NiceMock<RunnerMock>>          mRunner          = std::make_shared<NiceMock<RunnerMock>>();
+    std::shared_ptr<NiceMock<FileSystemMock>>      mFileSystem      = std::make_shared<NiceMock<FileSystemMock>>();
+    std::shared_ptr<NiceMock<MonitoringMock>>      mMonitoring      = std::make_shared<NiceMock<MonitoringMock>>();
+    std::shared_ptr<NiceMock<ContainerRunnerMock>> mContainerRunner = std::make_shared<NiceMock<ContainerRunnerMock>>();
 
 private:
-    std::shared_ptr<RunnerItf>     CreateRunner() override { return mRunner; }
-    std::shared_ptr<FileSystemItf> CreateFileSystem() override { return mFileSystem; }
-    std::shared_ptr<MonitoringItf> CreateMonitoring() override { return mMonitoring; }
+    std::shared_ptr<RunnerItf>          CreateRunner() override { return mRunner; }
+    std::shared_ptr<FileSystemItf>      CreateFileSystem() override { return mFileSystem; }
+    std::shared_ptr<MonitoringItf>      CreateMonitoring() override { return mMonitoring; }
+    std::shared_ptr<ContainerRunnerItf> CreateContainerRunner(const ContainerConfig&) override
+    {
+        return mContainerRunner;
+    }
 };
 
 /***********************************************************************************************************************
@@ -210,14 +215,14 @@ protected:
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mRunner, Init)
-            .WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver, utils::SystemdConnItf&) {
+            .WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver, ContainerRunnerItf&) {
                 mRunStatusReceiver = &runStatusReceiver;
 
                 return ErrorEnum::eNone;
             }));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -246,7 +251,6 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     RunStatusReceiverItf*                               mRunStatusReceiver {};
-    utils::SystemdConnMock                              mSystemdConnMock;
 };
 
 /***********************************************************************************************************************
