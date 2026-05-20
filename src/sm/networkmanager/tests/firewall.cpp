@@ -328,6 +328,113 @@ TEST_F(FirewallTest, AddInstanceSanitisesInstanceID)
     EXPECT_TRUE(mFirewall.AddInstance("abc-123-de", params).IsNone());
 }
 
+TEST_F(FirewallTest, AddInstanceDefaultsMissingProtocolToTcp)
+{
+    auto params = MakeParams("10.0.0.5", true);
+    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "")).IsNone());
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"),
+            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsInputAccessWithoutPort)
+{
+    auto params = MakeParams("10.0.0.5", true);
+    ASSERT_TRUE(params.mInput.PushBack(MakeInput("", "")).IsNone());
+
+    auto tx = NewMockTx();
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsUnsupportedInputProtocol)
+{
+    auto params = MakeParams("10.0.0.5", true);
+    ASSERT_TRUE(params.mInput.PushBack(MakeInput("80", "sctp")).IsNone());
+
+    auto tx = NewMockTx();
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsEmptyInstanceIP)
+{
+    auto params = MakeParams("", true);
+
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, UpdateInstanceRejectsEmptyInstanceIP)
+{
+    auto params = MakeParams("", true);
+
+    EXPECT_CALL(mBackend, ListChainRules(_, _, _)).Times(0);
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+
+    EXPECT_FALSE(mFirewall.UpdateInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsOutputAccessWithoutDstIP)
+{
+    auto params = MakeParams("10.0.0.5", false);
+    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("", "", "")).IsNone());
+
+    auto tx = NewMockTx();
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsOutputAccessWithoutDstPort)
+{
+    auto params = MakeParams("10.0.0.5", false);
+    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("8.8.8.8", "", "tcp")).IsNone());
+
+    auto tx = NewMockTx();
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceRejectsUnsupportedOutputProtocol)
+{
+    auto params = MakeParams("10.0.0.5", false);
+    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("8.8.8.8", "53", "sctp")).IsNone());
+
+    auto tx = NewMockTx();
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
+
+    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
+}
+
 TEST_F(FirewallTest, AddInstanceRejectsInvalidPort)
 {
     auto params = MakeParams("10.0.0.5", true);
