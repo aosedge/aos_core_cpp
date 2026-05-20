@@ -31,7 +31,7 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
             auto runtime = std::make_unique<ContainerRuntime>();
 
             if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider, itemInfoProvider, networkManager,
-                    permHandler, resourceInfoProvider, ociSpec, statusReceiver, systemdConn);
+                    permHandler, resourceInfoProvider, ociSpec, statusReceiver);
                 !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
