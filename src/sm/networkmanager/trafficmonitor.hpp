@@ -10,6 +10,8 @@
 #include <chrono>
 #include <shared_mutex>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <core/common/tools/error.hpp>
 #include <core/common/tools/timer.hpp>
@@ -111,10 +113,13 @@ private:
         std::string mOutChain;
     };
 
+    using StagedTrafficData = std::vector<std::pair<std::string, TrafficData>>;
+
     Error CreateSystemChains();
     Error DeleteTrafficTable();
     Error CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
-        const std::string& address, const std::string& parentBaseChain, uint64_t limit);
+        const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged);
+    void  PublishTrafficData(StagedTrafficData& staged);
     Error AppendChainCounterRules(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
         const std::string& address, bool disabled);
     Error UpdateTrafficData();
