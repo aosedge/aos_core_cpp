@@ -48,14 +48,12 @@ public:
      * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      * @param instanceStatusReceiver instance status receiver.
-     * @param systemdConn systemd connection.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
-        sm::utils::SystemdConnItf& systemdConn);
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver);
 
     /**
      * Starts runtime.
@@ -133,9 +131,10 @@ public:
     Error GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs) override;
 
 private:
-    virtual std::shared_ptr<RunnerItf>     CreateRunner();
-    virtual std::shared_ptr<FileSystemItf> CreateFileSystem();
-    virtual std::shared_ptr<MonitoringItf> CreateMonitoring();
+    virtual std::shared_ptr<RunnerItf>          CreateRunner();
+    virtual std::shared_ptr<FileSystemItf>      CreateFileSystem();
+    virtual std::shared_ptr<MonitoringItf>      CreateMonitoring();
+    virtual std::shared_ptr<ContainerRunnerItf> CreateContainerRunner(const ContainerConfig& config);
 
     Error UpdateRunStatus(const std::vector<RunStatus>& instances) override;
 
@@ -143,9 +142,10 @@ private:
     Error StopActiveInstances();
     void  SendInstanceStatus(const InstanceStatus& status);
 
-    std::shared_ptr<RunnerItf>     mRunner;
-    std::shared_ptr<FileSystemItf> mFileSystem;
-    std::shared_ptr<MonitoringItf> mMonitoring;
+    std::shared_ptr<RunnerItf>          mRunner;
+    std::shared_ptr<FileSystemItf>      mFileSystem;
+    std::shared_ptr<MonitoringItf>      mMonitoring;
+    std::shared_ptr<ContainerRunnerItf> mContainerRunner;
 
     imagemanager::ItemInfoProviderItf*        mItemInfoProvider {};
     networkmanager::NetworkManagerItf*        mNetworkManager {};
