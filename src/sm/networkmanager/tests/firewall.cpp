@@ -144,6 +144,12 @@ TEST_F(FirewallTest, StartCreatesTable)
     EXPECT_CALL(*mTxnPtr, AddTable(_));
     EXPECT_CALL(*mTxnPtr, AddBaseChain(BaseChainNamed("forward")));
     EXPECT_CALL(*mTxnPtr, AddBaseChain(BaseChainNamed("postrouting")));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("forward"),
+            AllOf(Field(&FWRule::mCtState, "invalid"), Field(&FWRule::mAction, FWActionEnum::eDrop))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("forward"),
+            AllOf(Field(&FWRule::mCtState, "established,related"), Field(&FWRule::mAction, FWActionEnum::eAccept))));
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.Start().IsNone());
@@ -160,6 +166,7 @@ TEST_F(FirewallTest, StartIgnoresStaleCleanupFailure)
 
     EXPECT_CALL(*mTxnPtr, AddTable(_));
     EXPECT_CALL(*mTxnPtr, AddBaseChain(_)).Times(2);
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.Start().IsNone());
@@ -176,6 +183,7 @@ TEST_F(FirewallTest, StartFailsWhenSetupCommitFails)
 
     EXPECT_CALL(*mTxnPtr, AddTable(_));
     EXPECT_CALL(*mTxnPtr, AddBaseChain(_)).Times(2);
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(Error(ErrorEnum::eFailed)));
 
     EXPECT_FALSE(mFirewall.Start().IsNone());
