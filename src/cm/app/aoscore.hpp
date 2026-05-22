@@ -29,7 +29,6 @@
 #include <common/jsonprovider/jsonprovider.hpp>
 #include <common/logger/logger.hpp>
 #include <common/network/interfacemanager.hpp>
-#include <common/network/iptables.hpp>
 #include <common/network/namespacemanager.hpp>
 #include <common/ocispec/ocispec.hpp>
 #include <common/utils/cleanupmanager.hpp>
