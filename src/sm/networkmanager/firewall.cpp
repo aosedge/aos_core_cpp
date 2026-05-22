@@ -95,7 +95,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
 
         // An input entry requires a port and only tcp/udp are supported (an
         // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
-        if (auto err = CheckPortProto(port, in.mProtocol); !err.IsNone()) {
+        if (err = CheckPortProto(port, in.mProtocol); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -106,7 +106,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
-        if (auto err = txn.AddRule(table, chain, r); !err.IsNone()) {
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -128,7 +128,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
             return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
         }
 
-        if (auto err = CheckPortProto(port, out.mProto); !err.IsNone()) {
+        if (err = CheckPortProto(port, out.mProto); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -145,7 +145,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
         r.mDstPort = port;
         r.mAction  = common::network::FWActionEnum::eAccept;
 
-        if (auto err = txn.AddRule(table, chain, r); !err.IsNone()) {
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }

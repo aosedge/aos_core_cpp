@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <mutex>
@@ -412,15 +413,15 @@ Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& b
         return AOS_ERROR_WRAP(err);
     }
 
-    for (const auto& r : rules) {
-        if (r.mRule.mCounter) {
-            bytes = r.mBytes;
-
-            return ErrorEnum::eNone;
-        }
+    const auto it = std::find_if(
+        rules.cbegin(), rules.cend(), [](const common::network::FWListedRule& r) { return r.mRule.mCounter; });
+    if (it == rules.cend()) {
+        return ErrorEnum::eNotFound;
     }
 
-    return ErrorEnum::eNotFound;
+    bytes = it->mBytes;
+
+    return ErrorEnum::eNone;
 }
 
 Error TrafficMonitor::SetChainState(const std::string& chain, const std::string& address, bool enable)
