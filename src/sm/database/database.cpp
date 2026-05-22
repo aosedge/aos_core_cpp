@@ -834,6 +834,28 @@ Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetwork
     return ErrorEnum::eNone;
 }
 
+Error Database::UpdateInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Update instance network info" << Log::Field("instanceID", info.mInstanceID)
+              << Log::Field("networkID", info.mNetworkID);
+
+    try {
+        InstanceNetworkInfoRow row;
+
+        FromAos(info, row);
+
+        *mSession << "INSERT OR REPLACE INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams) "
+                     "VALUES (?, ?, ?, ?);",
+            use(row), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error Database::RemoveInstanceNetworkInfo(const String& instanceID)
 {
     std::lock_guard lock {mMutex};
