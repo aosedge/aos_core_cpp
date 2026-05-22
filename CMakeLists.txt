@@ -111,7 +111,7 @@ if(NOT EXISTS ${AOS_CORE_API_DIR})
     FetchContent_Populate(
         aos_core_api
         GIT_REPOSITORY https://github.com/aosedge/aos_core_api.git
-        GIT_TAG feature_release_9.1
+        GIT_TAG feature_cni_removal
         SOURCE_DIR ${AOS_CORE_API_DIR}
     )
 endif()
