@@ -157,6 +157,14 @@ public:
     Error AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info) override;
 
     /**
+     * Updates instance network info in storage. Inserts a new record if it does not exist.
+     *
+     * @param info instance network information.
+     * @return Error.
+     */
+    Error UpdateInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info) override;
+
+    /**
      * Removes instance network info from storage.
      *
      * @param instanceID instance ID.
