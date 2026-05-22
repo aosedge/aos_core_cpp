@@ -68,11 +68,6 @@ void AosCore::Init(const std::string& configFile)
     err = mDatabase.Init(mConfig.mWorkingDir, mConfig.mMigration);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
-    // Initialize traffic monitor
-
-    err = mTrafficMonitor.Init(mDatabase, mIPTables);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize traffic monitor");
-
     // Initialize network manager
 
     err = mNetworkInterfaceManager.Init(mCryptoProvider);
@@ -81,11 +76,24 @@ void AosCore::Init(const std::string& configFile)
     err = mNamespaceManager.Init(mNetworkInterfaceManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize namespace manager");
 
-    err = mCNI.Init(mExec);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize CNI");
+    err = mFirewall.Init(mNFTables);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize firewall");
 
-    err = mNetworkManager.Init(mDatabase, mCNI, mTrafficMonitor, mNamespaceManager, mNetworkInterfaceManager,
-        mCryptoProvider, mNetworkInterfaceManager, mConfig.mWorkingDir.c_str(), mSMClient, nodeInfo->mNodeID.CStr());
+    err = mBridgeNetwork.Init(mNetworkInterfaceManager, mFirewall);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize bridge network");
+
+    err = mBandwidth.Init(mTC, mNetworkInterfaceManager, mNetworkInterfaceManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize bandwidth");
+
+    err = mDNSName.Init(mConfig.mWorkingDir + "/dns", mProcessSpawner);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize DNS name");
+
+    err = mTrafficMonitor.Init(mDatabase, mNFTables);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize traffic monitor");
+
+    err = mNetworkManager.Init(mDatabase, mBridgeNetwork, mFirewall, mBandwidth, mDNSName, mTrafficMonitor,
+        mNamespaceManager, mNetworkInterfaceManager, mCryptoProvider, mNetworkInterfaceManager, mSMClient,
+        nodeInfo->mNodeID.CStr());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
 
     // Initialize node monitoring provider
