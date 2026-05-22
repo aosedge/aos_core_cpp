@@ -824,8 +824,8 @@ Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetwork
 
         FromAos(info, row);
 
-        *mSession << "INSERT INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams) VALUES (?, "
-                     "?, ?, ?);",
+        *mSession << "INSERT INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams, hostIfName) "
+                     "VALUES (?, ?, ?, ?, ?);",
             use(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -846,8 +846,8 @@ Error Database::UpdateInstanceNetworkInfo(const sm::networkmanager::InstanceNetw
 
         FromAos(info, row);
 
-        *mSession << "INSERT OR REPLACE INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams) "
-                     "VALUES (?, ?, ?, ?);",
+        *mSession << "INSERT OR REPLACE INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams, "
+                     "hostIfName) VALUES (?, ?, ?, ?, ?);",
             use(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -886,8 +886,8 @@ Error Database::GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetwor
     try {
         std::vector<InstanceNetworkInfoRow> rows;
 
-        *mSession << "SELECT instanceID, networkID, networkConfig, allocatedParams FROM instancenetwork", into(rows),
-            now;
+        *mSession << "SELECT instanceID, networkID, networkConfig, allocatedParams, hostIfName FROM instancenetwork",
+            into(rows), now;
 
         for (const auto& row : rows) {
             if (auto err = networks.EmplaceBack(); !err.IsNone()) {
@@ -1128,6 +1128,7 @@ void Database::FromAos(const sm::networkmanager::InstanceNetworkInfo& src, Insta
     dst.set<ToInt(InstanceNetworkInfoColumns::eNetworkID)>(src.mNetworkID.CStr());
     dst.set<ToInt(InstanceNetworkInfoColumns::eNetworkConfig)>(SerializeNetworkConfig(src.mNetworkConfig));
     dst.set<ToInt(InstanceNetworkInfoColumns::eAllocatedParams)>(SerializeAllocatedParams(src.mAllocatedParams));
+    dst.set<ToInt(InstanceNetworkInfoColumns::eHostIfName)>(src.mHostIfName.CStr());
 }
 
 void Database::ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::InstanceNetworkInfo& dst)
@@ -1136,6 +1137,7 @@ void Database::ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::Inst
     dst.mNetworkID  = src.get<ToInt(InstanceNetworkInfoColumns::eNetworkID)>().c_str();
     DeserializeNetworkConfig(src.get<ToInt(InstanceNetworkInfoColumns::eNetworkConfig)>(), dst.mNetworkConfig);
     DeserializeAllocatedParams(src.get<ToInt(InstanceNetworkInfoColumns::eAllocatedParams)>(), dst.mAllocatedParams);
+    dst.mHostIfName = src.get<ToInt(InstanceNetworkInfoColumns::eHostIfName)>().c_str();
 }
 
 } // namespace aos::sm::database
