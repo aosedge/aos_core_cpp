@@ -1,0 +1,5 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE instancenetwork ADD COLUMN hostIfName TEXT;
+
+COMMIT;
