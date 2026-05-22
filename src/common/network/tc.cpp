@@ -53,6 +53,13 @@ using UniqueAct   = std::unique_ptr<rtnl_act, ActDeleter>;
 using UniqueLink  = std::unique_ptr<rtnl_link, LinkDeleter>;
 using UniqueCache = std::unique_ptr<nl_cache, CacheDeleter>;
 
+// Casts a concrete libnl route object (qdisc/cls/act) to its rtnl_tc base.
+// Equivalent to libnl's TC_CAST macro but without a C-style cast.
+inline rtnl_tc* AsTC(void* obj)
+{
+    return static_cast<rtnl_tc*>(obj);
+}
+
 RetWithError<int> LookupIfIndex(nl_sock* sock, const String& ifName)
 {
     nl_cache* cacheRaw {};
@@ -63,7 +70,7 @@ RetWithError<int> LookupIfIndex(nl_sock* sock, const String& ifName)
 
     UniqueCache cache(cacheRaw, nl_cache_free);
 
-    auto link = UniqueLink(rtnl_link_get_by_name(cacheRaw, ifName.CStr()), rtnl_link_put);
+    auto link = UniqueLink(rtnl_link_get_by_name(cache.get(), ifName.CStr()), rtnl_link_put);
     if (!link) {
         return {0, Error(ErrorEnum::eNotFound, "interface not found")};
     }
@@ -107,11 +114,11 @@ Error TC::AddRootTBFQDisc(const String& ifName, const TBFParams& params)
         return NLToAosErr(errno, "failed to allocate qdisc");
     }
 
-    rtnl_tc_set_ifindex(TC_CAST(qdisc.get()), ifIndex);
-    rtnl_tc_set_parent(TC_CAST(qdisc.get()), TC_H_ROOT);
-    rtnl_tc_set_handle(TC_CAST(qdisc.get()), cRootHandle);
+    rtnl_tc_set_ifindex(AsTC(qdisc.get()), ifIndex);
+    rtnl_tc_set_parent(AsTC(qdisc.get()), TC_H_ROOT);
+    rtnl_tc_set_handle(AsTC(qdisc.get()), cRootHandle);
 
-    if (auto err = rtnl_tc_set_kind(TC_CAST(qdisc.get()), "tbf"); err < 0) {
+    if (auto err = rtnl_tc_set_kind(AsTC(qdisc.get()), "tbf"); err < 0) {
         return NLToAosErr(err, "failed to set qdisc kind tbf");
     }
 
@@ -158,7 +165,7 @@ Error TC::DelRootTBFQDisc(const String& ifName)
 
     // Only remove the root qdisc when it is the TBF installed by Apply; the
     // default qdisc or any other shaping is left untouched.
-    const char* kind = rtnl_tc_get_kind(TC_CAST(root.get()));
+    const char* kind = rtnl_tc_get_kind(AsTC(root.get()));
     if (kind == nullptr || std::strcmp(kind, "tbf") != 0) {
         return ErrorEnum::eNone;
     }
@@ -189,11 +196,11 @@ Error TC::AddIngressQDisc(const String& ifName)
         return NLToAosErr(errno, "failed to allocate qdisc");
     }
 
-    rtnl_tc_set_ifindex(TC_CAST(qdisc.get()), ifIndex);
-    rtnl_tc_set_parent(TC_CAST(qdisc.get()), cIngressParent);
-    rtnl_tc_set_handle(TC_CAST(qdisc.get()), cIngressHandle);
+    rtnl_tc_set_ifindex(AsTC(qdisc.get()), ifIndex);
+    rtnl_tc_set_parent(AsTC(qdisc.get()), cIngressParent);
+    rtnl_tc_set_handle(AsTC(qdisc.get()), cIngressHandle);
 
-    if (auto err = rtnl_tc_set_kind(TC_CAST(qdisc.get()), "ingress"); err < 0) {
+    if (auto err = rtnl_tc_set_kind(AsTC(qdisc.get()), "ingress"); err < 0) {
         return NLToAosErr(err, "failed to set qdisc kind ingress");
     }
 
@@ -227,9 +234,9 @@ Error TC::DelIngressQDisc(const String& ifName)
         return NLToAosErr(errno, "failed to allocate qdisc");
     }
 
-    rtnl_tc_set_ifindex(TC_CAST(qdisc.get()), ifIndex);
-    rtnl_tc_set_parent(TC_CAST(qdisc.get()), cIngressParent);
-    rtnl_tc_set_handle(TC_CAST(qdisc.get()), cIngressHandle);
+    rtnl_tc_set_ifindex(AsTC(qdisc.get()), ifIndex);
+    rtnl_tc_set_parent(AsTC(qdisc.get()), cIngressParent);
+    rtnl_tc_set_handle(AsTC(qdisc.get()), cIngressHandle);
 
     if (auto err = rtnl_qdisc_delete(sock.get(), qdisc.get()); err < 0 && !IsNotFound(err)) {
         return NLToAosErr(err, "failed to delete ingress qdisc");
@@ -263,13 +270,13 @@ Error TC::AddIngressMirredFilter(const String& srcIfName, const String& dstIfNam
         return NLToAosErr(errno, "failed to allocate classifier");
     }
 
-    rtnl_tc_set_ifindex(TC_CAST(cls.get()), srcIndex);
-    rtnl_tc_set_parent(TC_CAST(cls.get()), cIngressParent);
+    rtnl_tc_set_ifindex(AsTC(cls.get()), srcIndex);
+    rtnl_tc_set_parent(AsTC(cls.get()), cIngressParent);
 
     rtnl_cls_set_prio(cls.get(), cFilterPrio);
     rtnl_cls_set_protocol(cls.get(), ETH_P_ALL);
 
-    if (auto err = rtnl_tc_set_kind(TC_CAST(cls.get()), "matchall"); err < 0) {
+    if (auto err = rtnl_tc_set_kind(AsTC(cls.get()), "matchall"); err < 0) {
         return NLToAosErr(err, "failed to set classifier kind matchall");
     }
 
@@ -278,7 +285,7 @@ Error TC::AddIngressMirredFilter(const String& srcIfName, const String& dstIfNam
         return NLToAosErr(errno, "failed to allocate action");
     }
 
-    if (auto err = rtnl_tc_set_kind(TC_CAST(act.get()), "mirred"); err < 0) {
+    if (auto err = rtnl_tc_set_kind(AsTC(act.get()), "mirred"); err < 0) {
         return NLToAosErr(err, "failed to set action kind mirred");
     }
 

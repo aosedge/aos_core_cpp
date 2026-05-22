@@ -59,7 +59,7 @@ Error Bandwidth::Apply(const String& ifName, const BandwidthParams& params)
         }
     }
 
-    auto cleanupIngress = DeferRelease(&err, [this, &ifName, ingressOn = params.mIngressRate > 0](Error* e) {
+    auto cleanupIngress = DeferRelease(&err, [this, &ifName, ingressOn = params.mIngressRate > 0](const Error* e) {
         if (e->IsNone() || !ingressOn) {
             return;
         }
@@ -79,7 +79,7 @@ Error Bandwidth::Apply(const String& ifName, const BandwidthParams& params)
         return AOS_ERROR_WRAP(err);
     }
 
-    auto cleanupIFB = DeferRelease(&err, [this, &ifbName](Error* e) {
+    auto cleanupIFB = DeferRelease(&err, [this, &ifbName](const Error* e) {
         if (e->IsNone()) {
             return;
         }
@@ -97,7 +97,7 @@ Error Bandwidth::Apply(const String& ifName, const BandwidthParams& params)
         return AOS_ERROR_WRAP(err);
     }
 
-    auto cleanupIngressQDisc = DeferRelease(&err, [this, &ifName](Error* e) {
+    auto cleanupIngressQDisc = DeferRelease(&err, [this, &ifName](const Error* e) {
         if (e->IsNone()) {
             return;
         }
