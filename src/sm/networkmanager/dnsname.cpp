@@ -119,7 +119,7 @@ RetWithError<DNSServerItf*> DNSName::CreateServer(const String& networkID, const
 
     Error err;
 
-    auto rollback = DeferRelease(&err, [this, pid, &storageDir](Error* e) {
+    auto rollback = DeferRelease(&err, [this, pid, &storageDir](const Error* e) {
         if (e->IsNone()) {
             return;
         }
