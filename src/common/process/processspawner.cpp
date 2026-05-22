@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <csignal>
 #include <cstring>
@@ -89,11 +90,7 @@ RetWithError<std::string> PocoProcessSpawner::GetCmdLine(Poco::Process::PID pid)
 
     std::string content((std::istreambuf_iterator<char>(file)), {});
 
-    for (auto& c : content) {
-        if (c == '\0') {
-            c = ' ';
-        }
-    }
+    std::replace(content.begin(), content.end(), '\0', ' ');
 
     return {std::move(content), ErrorEnum::eNone};
 }
