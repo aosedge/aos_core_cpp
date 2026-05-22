@@ -1,0 +1,5 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE instancenetwork DROP COLUMN hostIfName;
+
+COMMIT;
