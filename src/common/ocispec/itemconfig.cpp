@@ -36,6 +36,28 @@ Poco::JSON::Object RuntimeToJSON(const String& runtime)
     return object;
 }
 
+void ResourceFromJSON(const utils::CaseInsensitiveObjectWrapper& wrapper, aos::oci::ResourceInfo& resource)
+{
+    auto err = resource.mName.Assign(wrapper.GetValue<std::string>("name").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "resource name parsing error");
+
+    err = resource.mMode.Assign(wrapper.GetValue<std::string>("mode").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "resource mode parsing error");
+}
+
+Poco::JSON::Object ResourceToJSON(const aos::oci::ResourceInfo& resource)
+{
+    Poco::JSON::Object object {Poco::JSON_PRESERVE_KEY_ORDER};
+
+    object.set("name", resource.mName.CStr());
+
+    if (!resource.mMode.IsEmpty()) {
+        object.set("mode", resource.mMode.CStr());
+    }
+
+    return object;
+}
+
 void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
     if (const auto startBurst = object.GetOptionalValue<long>("startBurst")) {
@@ -504,10 +526,12 @@ Error OCISpec::LoadItemConfig(const String& path, aos::oci::ItemConfig& itemConf
             }
         }
 
-        for (const auto& resource : utils::GetArrayValue<std::string>(wrapper, "resources")) {
-            err = itemConfig.mResources.PushBack(resource.c_str());
+        utils::ForEach(wrapper, "resources", [&itemConfig](const auto& value) {
+            auto err = itemConfig.mResources.EmplaceBack();
             AOS_ERROR_CHECK_AND_THROW(err, "resources parsing error");
-        }
+
+            ResourceFromJSON(utils::CaseInsensitiveObjectWrapper(value), itemConfig.mResources.Back());
+        });
 
         if (wrapper.Has("permissions")) {
             FunctionServicePermissionsFromJSON(wrapper.Get("permissions"), itemConfig.mPermissions);
@@ -575,7 +599,7 @@ Error OCISpec::SaveItemConfig(const String& path, const aos::oci::ItemConfig& it
         }
 
         if (!itemConfig.mResources.IsEmpty()) {
-            object->set("resources", utils::ToJsonArray(itemConfig.mResources, utils::ToStdString));
+            object->set("resources", utils::ToJsonArray(itemConfig.mResources, ResourceToJSON));
         }
 
         if (!itemConfig.mPermissions.IsEmpty()) {
