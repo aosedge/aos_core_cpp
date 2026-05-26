@@ -240,20 +240,20 @@ private:
     void                      ScheduleRestart();
     void                      OnRestartTimer();
 
-    Config                               mConfig {};
-    cloudconnection::CloudConnectionItf* mCloudConnection {};
-    crypto::CertLoaderItf*               mCertLoader {};
-    crypto::x509::ProviderItf*           mCryptoProvider {};
-    aos::iamclient::CertProviderItf*     mCertProvider {};
-    imagemanager::ItemInfoProviderItf*   mItemInfoProvider {};
-    alerts::ReceiverItf*                 mAlertsReceiver {};
-    SenderItf*                           mLogSender {};
-    launcher::SenderItf*                 mEnvVarsStatusSender {};
-    monitoring::ReceiverItf*             mMonitoringReceiver {};
-    launcher::InstanceStatusReceiverItf* mInstanceStatusReceiver {};
-    nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
-    aos::networkmanager::NetworkProviderItf*  mNetworkProvider {};
-    bool                                 mInsecureConn {};
+    Config                                   mConfig {};
+    cloudconnection::CloudConnectionItf*     mCloudConnection {};
+    crypto::CertLoaderItf*                   mCertLoader {};
+    crypto::x509::ProviderItf*               mCryptoProvider {};
+    aos::iamclient::CertProviderItf*         mCertProvider {};
+    imagemanager::ItemInfoProviderItf*       mItemInfoProvider {};
+    alerts::ReceiverItf*                     mAlertsReceiver {};
+    SenderItf*                               mLogSender {};
+    launcher::SenderItf*                     mEnvVarsStatusSender {};
+    monitoring::ReceiverItf*                 mMonitoringReceiver {};
+    launcher::InstanceStatusReceiverItf*     mInstanceStatusReceiver {};
+    nodeinfoprovider::SMInfoReceiverItf*     mSMInfoReceiver {};
+    aos::networkmanager::NetworkProviderItf* mNetworkProvider {};
+    bool                                     mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
     std::mutex                               mMutex;
