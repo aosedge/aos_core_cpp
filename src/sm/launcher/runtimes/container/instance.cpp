@@ -520,12 +520,12 @@ size_t Instance::GetNumCPUCores() const
     return numCores;
 }
 
-Error Instance::AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig)
+Error Instance::AddResources(const Array<oci::ResourceInfo>& resources, oci::RuntimeConfig& runtimeConfig)
 {
     for (const auto& resource : resources) {
         auto resourceInfo = std::make_unique<sm::resourcemanager::ResourceInfo>();
 
-        if (auto err = mResourceInfoProvider.GetResourceInfo(resource, *resourceInfo); !err.IsNone()) {
+        if (auto err = mResourceInfoProvider.GetResourceInfo(resource.mName, *resourceInfo); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -550,7 +550,7 @@ Error Instance::AddResources(const Array<StaticString<cResourceNameLen>>& resour
             return err;
         }
 
-        if (auto err = AddDevices(resourceInfo->mDevices, runtimeConfig); !err.IsNone()) {
+        if (auto err = AddDevices(resourceInfo->mDevices, resource.mMode, runtimeConfig); !err.IsNone()) {
             return err;
         }
     }
@@ -558,7 +558,8 @@ Error Instance::AddResources(const Array<StaticString<cResourceNameLen>>& resour
     return ErrorEnum::eNone;
 }
 
-Error Instance::AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig)
+Error Instance::AddDevices(
+    const Array<StaticString<cDeviceNameLen>>& devices, const String& permissions, oci::RuntimeConfig& runtimeConfig)
 {
     for (const auto& device : devices) {
         LOG_DBG() << "Set device" << Log::Field("instanceID", mInstanceID.c_str()) << Log::Field("device", device);
@@ -585,12 +586,6 @@ Error Instance::AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, o
                     return AOS_ERROR_WRAP(err);
                 }
             }
-        }
-
-        StaticString<cPermissionsLen> permissions;
-
-        if (deviceParts->Size() == 3) {
-            permissions = (*deviceParts)[2];
         }
 
         for (const auto& ociDevice : ociDevices) {
@@ -749,7 +744,7 @@ Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ItemConfi
     auto hosts = mConfig.mHosts;
 
     for (const auto& resource : itemConfig.mResources) {
-        if (auto err = AddNetworkHostsFromResource(resource.CStr(), hosts); !err.IsNone()) {
+        if (auto err = AddNetworkHostsFromResource(resource.mName.CStr(), hosts); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }

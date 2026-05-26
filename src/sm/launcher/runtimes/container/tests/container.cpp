@@ -531,7 +531,7 @@ TEST_F(ContainerRuntimeTest, ItemConfig)
     resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path2", "/container/path2", "bind", "ro"});
     resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR1=res_value1");
     resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR2=res_value2");
-    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice1:/dev/containerDevice1:rw");
+    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice1:/dev/containerDevice1");
 
     resourceInfos.emplace_back();
 
@@ -541,7 +541,7 @@ TEST_F(ContainerRuntimeTest, ItemConfig)
     resourceInfos.back().mMounts.EmplaceBack(Mount {"/host/path4", "/container/path4", "bind", "ro"});
     resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR3=res_value3");
     resourceInfos.back().mEnv.EmplaceBack("RESOURCE_ENV_VAR4=res_value4");
-    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice2:/dev/containerDevice2:ro");
+    resourceInfos.back().mDevices.EmplaceBack("/dev/hostDevice2:/dev/containerDevice2");
 
     std::vector<oci::LinuxDevice> ociLinuxDevices
         = {{"/dev/containerDevice1", "c", 1, 2, 3, 4, 5}, {"/dev/containerDevice2", "b", 6, 7, 8, 9, 10}};
@@ -567,8 +567,8 @@ TEST_F(ContainerRuntimeTest, ItemConfig)
 
             itemConfig->mPermissions.EmplaceBack(FunctionServicePermissions {"kuksa", {}});
 
-            itemConfig->mResources.EmplaceBack("resource1");
-            itemConfig->mResources.EmplaceBack("resource2");
+            itemConfig->mResources.EmplaceBack(oci::ResourceInfo {"resource1", "rw"});
+            itemConfig->mResources.EmplaceBack(oci::ResourceInfo {"resource2", "ro"});
 
             config = *itemConfig;
 
@@ -852,8 +852,8 @@ TEST_F(ContainerRuntimeTest, Network)
     EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _))
         .WillOnce(Invoke([&networkParams](const String&, oci::ItemConfig& config) {
             config.mHostname.SetValue(networkParams->mHostname);
-            config.mResources.EmplaceBack("resource1");
-            config.mResources.EmplaceBack("resource2");
+            config.mResources.EmplaceBack(oci::ResourceInfo {"resource1", ""});
+            config.mResources.EmplaceBack(oci::ResourceInfo {"resource2", ""});
             config.mQuotas.mUploadSpeed.SetValue(networkParams->mEgressKbit);
             config.mQuotas.mDownloadSpeed.SetValue(networkParams->mIngressKbit);
             config.mQuotas.mUploadLimit.SetValue(networkParams->mUploadLimit);

@@ -156,8 +156,9 @@ private:
     Error  ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
     Error  ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
     size_t GetNumCPUCores() const;
-    Error  AddResources(const Array<StaticString<cResourceNameLen>>& resources, oci::RuntimeConfig& runtimeConfig);
-    Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, oci::RuntimeConfig& runtimeConfig);
+    Error  AddResources(const Array<oci::ResourceInfo>& resources, oci::RuntimeConfig& runtimeConfig);
+    Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, const String& permissions,
+         oci::RuntimeConfig& runtimeConfig);
     Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
     Error  OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
     Error  PrepareStateStorage();
