@@ -29,7 +29,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
     alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
-    nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, networkmanager::NetworkProviderItf& networkProvider,
+    nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
     bool insecureConn)
 {
     LOG_DBG() << "Init SM controller";
