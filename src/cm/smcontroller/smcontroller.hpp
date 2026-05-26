@@ -41,7 +41,7 @@ namespace aos::cm::smcontroller {
  * Service Manager Controller.
  */
 class SMController : public SMControllerItf,
-                     public networkmanager::PendingUpdateHandlerItf,
+                     public aos::networkmanager::PendingUpdateHandlerItf,
                      private cloudconnection::ConnectionListenerItf,
                      private NodeConnectionStatusListenerItf,
                      private aos::iamclient::CertListenerItf,
@@ -71,7 +71,7 @@ public:
         crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
-        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, networkmanager::NetworkProviderItf& networkProvider,
+        nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
         bool insecureConn = false);
 
     /**
@@ -252,7 +252,7 @@ private:
     monitoring::ReceiverItf*             mMonitoringReceiver {};
     launcher::InstanceStatusReceiverItf* mInstanceStatusReceiver {};
     nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
-    networkmanager::NetworkProviderItf*  mNetworkProvider {};
+    aos::networkmanager::NetworkProviderItf*  mNetworkProvider {};
     bool                                 mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
