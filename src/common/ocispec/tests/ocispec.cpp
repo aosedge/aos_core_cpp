@@ -192,9 +192,9 @@ constexpr auto cItemConfig        = R"(
         "9931560c-be75-4f60-9abf-08297d905332/1515/udp": {}
     },
     "resources": [
-        "resource1",
-        "resource2",
-        "resource3"
+        {"name": "resource1", "mode": "rw"},
+        {"name": "resource2", "mode": "ro"},
+        {"name": "resource3", "mode": ""}
     ],
     "permissions":{
         "vis": {
