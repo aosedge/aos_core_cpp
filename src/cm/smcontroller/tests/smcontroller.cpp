@@ -898,7 +898,7 @@ TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesPendingFirewall
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    PendingFirewallUpdate update;
+    aos::networkmanager::PendingFirewallUpdate update;
     update.mInstanceIdent.mItemID    = "serviceA";
     update.mInstanceIdent.mSubjectID = "subject1";
     update.mInstanceIdent.mInstance  = 1;
