@@ -16,9 +16,7 @@ set(SOURCES bandwidth.cpp bridgenetwork.cpp dnsserver.cpp dnsname.cpp firewall.c
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::network aos::common::process aos::common::utils aos::core::sm::networkmanager Poco::JSON
-              Poco::Foundation
-)
+set(LIBRARIES aos::common::process aos::common::utils aos::core::sm::networkmanager Poco::JSON Poco::Foundation)
 
 # ######################################################################################################################
 # Target
