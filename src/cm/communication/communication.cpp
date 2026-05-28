@@ -910,6 +910,8 @@ void Communication::HandleSendQueue()
             continue;
         }
     }
+
+    LOG_DBG() << "Stop send queue handler thread";
 }
 
 void Communication::HandleUnacknowledgedMessages()
@@ -981,6 +983,8 @@ void Communication::HandleReceivedMessage()
             LOG_ERR() << "Failed to handle received message" << Log::Field(err);
         }
     }
+
+    LOG_DBG() << "Stop receive queue handler thread";
 }
 
 Error Communication::HandleMessage(const std::string& message)
