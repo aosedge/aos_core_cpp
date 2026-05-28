@@ -60,25 +60,6 @@ std::string ProtoOrDefault(const String& proto, uint16_t port)
     return proto.CStr();
 }
 
-std::string ChainName(const String& instanceID)
-{
-    std::string name {"instance_"};
-
-    name.reserve(name.size() + instanceID.Size());
-
-    for (size_t i = 0; i < instanceID.Size(); ++i) {
-        const auto c = instanceID[i];
-
-        if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
-            name += c;
-        } else {
-            name += '_';
-        }
-    }
-
-    return name;
-}
-
 Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& table, const std::string& chain,
     const InstanceFirewallParams& params)
 {
@@ -183,21 +164,83 @@ Error Firewall::Init(common::network::FWBackendItf& backend)
     return ErrorEnum::eNone;
 }
 
+std::string Firewall::ChainName(const String& instanceID)
+{
+    std::string name {cInstanceChainPrefix};
+
+    name.reserve(name.size() + instanceID.Size());
+
+    for (size_t i = 0; i < instanceID.Size(); ++i) {
+        const auto c = instanceID[i];
+
+        if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
+            name += c;
+        } else {
+            name += '_';
+        }
+    }
+
+    return name;
+}
+
 Error Firewall::Start()
 {
     LOG_DBG() << "Start firewall";
 
-    auto txn = mBackend->NewTxn();
+    std::vector<common::network::FWListedRule> forwardRules;
 
-    txn->DeleteTable(mTable);
-
-    if (auto err = txn->Commit(); !err.IsNone()) {
-        LOG_DBG() << "Stale table cleanup skipped" << Log::Field(err);
+    // The table is provisioned ahead of SM and outlives it, so a listable
+    // forward chain means it already exists: adopt it and only clear our own
+    // stale artifacts. If it is absent, build a fail-closed skeleton ourselves.
+    if (mBackend->ListChainRules(mTable, cForwardChain, forwardRules).IsNone()) {
+        if (auto err = ReconcileArtifacts(forwardRules); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    } else if (auto err = CreateSkeleton(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
+    mMasqueradeRules.clear();
+
+    return ErrorEnum::eNone;
+}
+
+Error Firewall::Stop()
+{
+    LOG_DBG() << "Stop firewall";
+
+    std::vector<common::network::FWListedRule> forwardRules;
+
+    // Keep the table and base chains (they outlive SM); drop only the
+    // per-instance state we added. Nothing to do if the table is already gone.
+    if (auto err = mBackend->ListChainRules(mTable, cForwardChain, forwardRules); !err.IsNone()) {
+        mMasqueradeRules.clear();
+
+        return ErrorEnum::eNone;
+    }
+
+    if (auto err = ReconcileArtifacts(forwardRules); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mMasqueradeRules.clear();
+
+    return ErrorEnum::eNone;
+}
+
+Error Firewall::CreateSkeleton()
+{
+    auto txn = mBackend->NewTxn();
+
     txn->AddTable(mTable);
-    txn->AddBaseChain({mTable, cForwardChain, common::network::FWChainTypeEnum::eFilter,
-        common::network::FWHookEnum::eForward, cForwardPriority});
+
+    common::network::FWBaseChain forward {mTable, cForwardChain, common::network::FWChainTypeEnum::eFilter,
+        common::network::FWHookEnum::eForward, cForwardPriority};
+    forward.mPolicy = common::network::FWActionEnum::eDrop;
+
+    txn->AddBaseChain(forward);
+
+    // postrouting keeps the default accept policy: a nat chain must not drop.
     txn->AddBaseChain({mTable, cPostroutingChain, common::network::FWChainTypeEnum::eNAT,
         common::network::FWHookEnum::ePostrouting, cNATPriority});
 
@@ -220,30 +263,58 @@ Error Firewall::Start()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = txn->Commit(); !err.IsNone()) {
+    return txn->Commit();
+}
+
+Error Firewall::ReconcileArtifacts(const std::vector<common::network::FWListedRule>& forwardRules)
+{
+    // Every jump in the forward chain is ours (the base chain otherwise holds
+    // only ct rules); the targets name the instance chains to drop.
+    std::vector<common::network::FWRuleHandle> jumpHandles;
+    std::set<std::string>                      instanceChains;
+
+    for (const auto& r : forwardRules) {
+        if (r.mRule.mAction == common::network::FWActionEnum::eJump
+            && r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) == 0) {
+            jumpHandles.push_back(r.mHandle);
+            instanceChains.insert(r.mRule.mJumpTarget);
+        }
+    }
+
+    std::vector<common::network::FWListedRule> postRules;
+
+    if (auto err = mBackend->ListChainRules(mTable, cPostroutingChain, postRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    mMasqueradeRules.clear();
+    std::vector<common::network::FWRuleHandle> masqueradeHandles;
 
-    return ErrorEnum::eNone;
-}
+    for (const auto& r : postRules) {
+        if (r.mRule.mAction == common::network::FWActionEnum::eMasquerade) {
+            masqueradeHandles.push_back(r.mHandle);
+        }
+    }
 
-Error Firewall::Stop()
-{
-    LOG_DBG() << "Stop firewall";
+    if (jumpHandles.empty() && instanceChains.empty() && masqueradeHandles.empty()) {
+        return ErrorEnum::eNone;
+    }
 
     auto txn = mBackend->NewTxn();
 
-    txn->DeleteTable(mTable);
-
-    if (auto err = txn->Commit(); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    for (const auto handle : jumpHandles) {
+        txn->DeleteRuleByHandle(mTable, cForwardChain, handle);
     }
 
-    mMasqueradeRules.clear();
+    for (const auto& chain : instanceChains) {
+        txn->FlushChain(mTable, chain);
+        txn->DeleteChain(mTable, chain);
+    }
 
-    return ErrorEnum::eNone;
+    for (const auto handle : masqueradeHandles) {
+        txn->DeleteRuleByHandle(mTable, cPostroutingChain, handle);
+    }
+
+    return txn->Commit();
 }
 
 Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallParams& params)
