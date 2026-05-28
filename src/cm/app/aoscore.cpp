@@ -156,6 +156,15 @@ void AosCore::Start()
         }
     });
 
+    err = mUnitConfig.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start unit config");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mUnitConfig.Stop(); !err.IsNone()) {
+            LOG_ERR() << "can't stop unit config" << Log::Field(err);
+        }
+    });
+
     err = mNodeInfoProvider.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start node info provider");
 
