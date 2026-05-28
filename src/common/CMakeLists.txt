@@ -23,8 +23,11 @@ find_package(
     NetSSL
 )
 
-pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
-pkg_check_modules(Libnftables libnftables REQUIRED)
+if(WITH_SM OR WITH_CM)
+    pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
+    pkg_check_modules(Libnftables libnftables REQUIRED)
+endif()
+
 pkg_check_modules(Systemd libsystemd REQUIRED)
 
 # ######################################################################################################################
@@ -47,7 +50,11 @@ add_subdirectory(jsonprovider)
 add_subdirectory(logger)
 add_subdirectory(logging)
 add_subdirectory(migration)
-add_subdirectory(network)
+
+if(WITH_SM OR WITH_CM)
+    add_subdirectory(network)
+endif()
+
 add_subdirectory(ocispec)
 add_subdirectory(process)
 
