@@ -314,7 +314,11 @@ Error TrafficMonitor::DeleteTrafficTable()
 
     txn->DeleteTable(cTable);
 
-    return txn->Commit();
+    if (auto err = txn->Commit(); !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
