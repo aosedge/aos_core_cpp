@@ -191,6 +191,7 @@ private:
     static constexpr auto cMessageHandlerThreads   = 4;
     static constexpr auto cOnlineCertificate       = "online";
     static constexpr auto cMaxServiceDiscoveryURLs = 1;
+    static constexpr auto cSendTimeoutSec          = 30;
 
     using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
     using ResponseMessageVariant    = std::variant<BlobURLsInfo>;
