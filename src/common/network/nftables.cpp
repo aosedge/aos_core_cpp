@@ -62,6 +62,11 @@ private:
     nft_ctx* mCtx;
 };
 
+bool IsNotFoundError(const std::string& err)
+{
+    return err.find("No such file or directory") != std::string::npos;
+}
+
 bool HasUnsafeToken(const std::string& value)
 {
     return value.find_first_of(" \t\n\r;\"{}\\") != std::string::npos;
@@ -324,6 +329,10 @@ Error NFTables::RunBuffer(const std::string& cmd)
     if (nft_run_cmd_from_buffer(ctx.Get(), cmd.c_str()) != 0) {
         const auto errText = ctx.ErrorBuffer();
 
+        if (IsNotFoundError(errText)) {
+            return Error(ErrorEnum::eNotFound, errText.empty() ? "nftables object not found" : errText.c_str());
+        }
+
         LOG_ERR() << "nftables command failed: " << cmd.c_str() << ", err=" << errText.c_str();
 
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, errText.empty() ? "nftables command failed" : errText.c_str()));
@@ -343,6 +352,10 @@ Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
 
     if (nft_run_cmd_from_buffer(ctx.Get(), cmd.c_str()) != 0) {
         const auto errText = ctx.ErrorBuffer();
+
+        if (IsNotFoundError(errText)) {
+            return Error(ErrorEnum::eNotFound, errText.empty() ? "nftables object not found" : errText.c_str());
+        }
 
         LOG_ERR() << "nftables command failed: " << cmd.c_str() << ", err=" << errText.c_str();
 
