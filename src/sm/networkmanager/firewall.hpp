@@ -31,14 +31,14 @@ public:
     Error Init(common::network::FWBackendItf& backend);
 
     /**
-     * Starts the firewall: prepares the table and base chains.
+     * Starts the firewall: ensures the table and base chains are in place.
      *
      * @return Error.
      */
     Error Start() override;
 
     /**
-     * Stops the firewall: removes the table and all its chains.
+     * Stops the firewall: removes the rules and chains it added.
      *
      * @return Error.
      */
@@ -89,11 +89,17 @@ public:
     Error RemoveMasquerade(const String& subnet, const String& outIf) override;
 
 private:
-    static constexpr auto cTableName        = "aos";
-    static constexpr auto cForwardChain     = "forward";
-    static constexpr auto cPostroutingChain = "postrouting";
-    static constexpr auto cForwardPriority  = 0;
-    static constexpr auto cNATPriority      = 100;
+    static constexpr auto cTableName           = "aos";
+    static constexpr auto cForwardChain        = "forward";
+    static constexpr auto cPostroutingChain    = "postrouting";
+    static constexpr auto cForwardPriority     = 0;
+    static constexpr auto cNATPriority         = 100;
+    static constexpr auto cInstanceChainPrefix = "instance_";
+
+    static std::string ChainName(const String& instanceID);
+
+    Error CreateSkeleton();
+    Error ReconcileArtifacts(const std::vector<common::network::FWListedRule>& forwardRules);
 
     const std::string                             mTable {cTableName};
     common::network::FWBackendItf*                mBackend {};

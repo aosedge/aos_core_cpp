@@ -99,6 +99,11 @@ MATCHER_P2(MasqueradeRule, subnet, oifname, "")
     return arg.mAction == FWActionEnum::eMasquerade && arg.mSrcAddr == subnet && arg.mOIFName == oifname;
 }
 
+MATCHER_P(BaseChainPolicy, policy, "")
+{
+    return arg.mPolicy == policy;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -132,18 +137,61 @@ protected:
  * Start / Stop
  **********************************************************************************************************************/
 
-TEST_F(FirewallTest, StartCreatesTable)
+TEST_F(FirewallTest, StartAdoptsExistingTableWithoutRecreating)
+{
+    // Provisioned forward chain: ct rules only, no instance jumps.
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eAccept, ""}, FWRuleHandle {2}});
+
+    std::vector<FWListedRule> postRules;
+
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+
+    EXPECT_TRUE(mFirewall.Start().IsNone());
+}
+
+TEST_F(FirewallTest, StartAdoptReconcilesStaleInstanceState)
+{
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {30}});
+    forwardRules.push_back({{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {31}});
+
+    std::vector<FWListedRule> postRules;
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {30}));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {31}));
+    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_stale")));
+    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_stale")));
+    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    // No AddTable / AddBaseChain / ct AddRule: the table is adopted, not recreated.
+    EXPECT_TRUE(mFirewall.Start().IsNone());
+}
+
+TEST_F(FirewallTest, StartFallbackCreatesSkeletonWithForwardPolicyDrop)
 {
     auto tx = NewMockTx();
 
     InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
     EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteTable(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
     EXPECT_CALL(*mTxnPtr, AddTable(_));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(BaseChainNamed("forward")));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(BaseChainNamed("postrouting")));
+    EXPECT_CALL(*mTxnPtr, AddBaseChain(AllOf(BaseChainNamed("forward"), BaseChainPolicy(FWActionEnum::eDrop))));
+    EXPECT_CALL(*mTxnPtr, AddBaseChain(AllOf(BaseChainNamed("postrouting"), BaseChainPolicy(FWActionEnum::eAccept))));
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("forward"),
             AllOf(Field(&FWRule::mCtState, "invalid"), Field(&FWRule::mAction, FWActionEnum::eDrop))));
@@ -155,32 +203,13 @@ TEST_F(FirewallTest, StartCreatesTable)
     EXPECT_TRUE(mFirewall.Start().IsNone());
 }
 
-TEST_F(FirewallTest, StartIgnoresStaleCleanupFailure)
+TEST_F(FirewallTest, StartFallbackFailsWhenCommitFails)
 {
     auto tx = NewMockTx();
 
     InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
     EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteTable(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(Error(ErrorEnum::eFailed)));
-
-    EXPECT_CALL(*mTxnPtr, AddTable(_));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(_)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.Start().IsNone());
-}
-
-TEST_F(FirewallTest, StartFailsWhenSetupCommitFails)
-{
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteTable(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
     EXPECT_CALL(*mTxnPtr, AddTable(_));
     EXPECT_CALL(*mTxnPtr, AddBaseChain(_)).Times(2);
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
@@ -189,14 +218,36 @@ TEST_F(FirewallTest, StartFailsWhenSetupCommitFails)
     EXPECT_FALSE(mFirewall.Start().IsNone());
 }
 
-TEST_F(FirewallTest, StopDeletesTable)
+TEST_F(FirewallTest, StopRemovesArtifactsButKeepsTable)
 {
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {40}});
+
+    std::vector<FWListedRule> postRules;
+    postRules.push_back({{"10.0.0.0/24", "", "", 0, "br-test", FWActionEnum::eMasquerade, ""}, FWRuleHandle {50}});
+
     auto tx = NewMockTx();
 
     InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
     EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteTable(_));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {40}));
+    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
+    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_test")));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {50}));
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    // No DeleteTable: the base table and policy drop must survive SM shutdown.
+    EXPECT_TRUE(mFirewall.Stop().IsNone());
+}
+
+TEST_F(FirewallTest, StopWithNoTableIsNoOp)
+{
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
 
     EXPECT_TRUE(mFirewall.Stop().IsNone());
 }
