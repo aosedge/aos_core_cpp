@@ -210,7 +210,7 @@ public:
     {
         mBuf << "add chain " << mFamily << " " << chain.mTable << " " << chain.mName << " { type "
              << chain.mType.ToString().CStr() << " hook " << chain.mHook.ToString().CStr() << " priority "
-             << chain.mPriority << "; }\n";
+             << chain.mPriority << "; policy " << chain.mPolicy.ToString().CStr() << "; }\n";
     }
 
     void AddChain(const FWChain& chain) override
