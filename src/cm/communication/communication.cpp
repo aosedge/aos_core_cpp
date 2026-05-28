@@ -659,6 +659,7 @@ Error Communication::ConnectToCloud()
 
             mWebSocket->setKeepAlive(true);
             mWebSocket->setReceiveTimeout(0);
+            mWebSocket->setSendTimeout(Poco::Timespan(cSendTimeoutSec, 0));
         } catch (const Poco::Net::NetException& e) {
             if (e.code() == Poco::Net::WebSocket::WS_ERR_UNAUTHORIZED) {
                 LOG_WRN() << "Authorization failed, clearing discovery response";
