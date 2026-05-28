@@ -100,6 +100,20 @@ TEST_F(TrafficMonitorTest, Init)
     EXPECT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
 }
 
+TEST_F(TrafficMonitorTest, InitIgnoresMissingTrafficTable)
+{
+    auto staleTxn = std::make_unique<NiceMock<MockFWTxn>>();
+
+    ON_CALL(*staleTxn, Commit()).WillByDefault(Return(Error(ErrorEnum::eNotFound)));
+
+    EXPECT_CALL(*mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(staleTxn)))).WillOnce(Return(ByMove(MakeTxn())));
+
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(String(cInSystemChain), _, _)).WillOnce(Return(ErrorEnum::eNotFound));
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(String(cOutSystemChain), _, _)).WillOnce(Return(ErrorEnum::eNotFound));
+
+    EXPECT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+}
+
 TEST_F(TrafficMonitorTest, StartInstanceMonitoring)
 {
     ExpectInit();
