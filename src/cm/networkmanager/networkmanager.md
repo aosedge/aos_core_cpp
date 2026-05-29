@@ -1,141 +1,204 @@
 # Network manager
 
-The Network manager is responsible for creating, maintaining, and cleaning up networks for providers and service
-instances. It allocates subnets and IP addresses, manages DNS hosts, prepares firewall rules, and exposes network
-parameters to other modules.
+The CM Network manager is the **authority** for instance networks: it allocates
+subnets and IP addresses, manages DNS hosts, builds firewall rules from the
+instances' allowed connections and exposed ports, and tracks deferred
+(inter-instance) firewall rules until they can be resolved. It is the server-side
+counterpart of the Service Manager (SM) network stack — SM applies on each node
+what CM allocates here.
 
-It implements the following interfaces:
+CM exposes this module to SM over the gRPC `servicemanager.v5.NetworkService`.
+The Network manager itself implements the
+[aos::networkmanager::NetworkProviderItf][networkprovider-itf] (the SM → CM call
+surface); the gRPC plumbing — serving the service, holding the per-node update
+stream and pushing deferred updates back — lives in the
+[SM controller](../smcontroller). The shared contract types and the SM-side view
+are documented in the [common network-manager module][common-net].
 
-- [aos::cm::networkmanager::NetworkManagerItf][networkmanager-networkmanager-itf] — manager API for network operations;
+## Interfaces
 
-It requires the following interfaces:
+It implements:
 
-- [aos::cm::networkmanager::StorageItf](itf/storage.hpp) — persistent storage for network state and allocations;
-- [aos::common::crypto::RandomItf][crypto-random-itf] — randomness source (e.g., VLAN ID generation);
-- [aos::cm::networkmanager::SenderItf](itf/sender.hpp) — sends network configuration (IP, subnet, VLAN ID) to another
-  component responsible for creating the VLAN network;
-- [aos::cm::networkmanager::DNSServerItf](itf/dnsserver.hpp) — local DNS management (hosts file, restart).
+- [aos::networkmanager::NetworkProviderItf][networkprovider-itf] — node params,
+  instance allocate/release, node release and state sync.
+
+It requires:
+
+- [aos::cm::networkmanager::StorageItf](itf/storage.hpp) — persists network
+  state, allocations and **pending connections**;
+- [aos::common::crypto::RandomItf][crypto-random-itf] — randomness (e.g. VLAN ID
+  generation);
+- [aos::cm::networkmanager::DNSServerItf](itf/dnsserver.hpp) — the CM-side DNS
+  server (hosts file + reload);
+- [aos::networkmanager::PendingUpdateHandlerItf][pendingupdatehandler-itf]
+  (optional) — used to push resolved deferred firewall rules; in production this
+  is the [SM controller](../smcontroller), which forwards them to SM over the
+  `SubscribeInstanceNetworkUpdates` stream.
 
 ```mermaid
 classDiagram
     class NetworkManager["aos::cm::networkmanager::NetworkManager"] {
+        +GetNodeNetworkParams()
+        +AllocateInstanceNetwork()
+        +ReleaseInstanceNetwork()
+        +ReleaseNodeNetwork()
+        +SyncNetworkState()
     }
 
-    class NetworkManagerItf["aos::cm::networkmanager::NetworkManagerItf"] {
+    class NetworkProviderItf["aos::networkmanager::NetworkProviderItf"] {
         <<interface>>
     }
-
+    class PendingUpdateHandlerItf["aos::networkmanager::PendingUpdateHandlerItf"] {
+        <<interface>>
+    }
     class StorageItf["aos::cm::networkmanager::StorageItf"] {
         <<interface>>
     }
-
-    class SenderItf["aos::cm::networkmanager::SenderItf"] {
-        <<interface>>
-    }
-
     class DNSServerItf["aos::cm::networkmanager::DNSServerItf"] {
         <<interface>>
     }
-
+    class RandomItf["aos::common::crypto::RandomItf"] {
+        <<interface>>
+    }
     class IpSubnet["aos::cm::networkmanager::IpSubnet"] {
     }
 
-    NetworkManager <|.. NetworkManagerItf
+    NetworkManager ..|> NetworkProviderItf
     NetworkManager --> StorageItf : requires
-    NetworkManager --> SenderItf : requires
     NetworkManager --> DNSServerItf : requires
+    NetworkManager --> RandomItf : requires
+    NetworkManager ..> PendingUpdateHandlerItf : pushes deferred rules
     NetworkManager --> IpSubnet : uses
 ```
 
 ## Initialization
 
-During initialization (`Init`):
+During `Init` the manager receives `StorageItf`, `RandomItf`, `DNSServerItf` and
+an optional `PendingUpdateHandlerItf`. It initializes the subnet allocator
+`IpSubnet` (predefined private pools, scan of used subnets/addresses) and reloads
+any persisted state, including pending connections, so deferred firewall rules
+survive a CM restart.
 
-- initializes the subnet allocator `IpSubnet` (predefined private networks, scan of used subnets/addresses);
-- performs initial cleanup of stale or incomplete network states when necessary.
+## NetworkProviderItf (the SM → CM API)
 
-## Responsibilities
+Each method backs one `NetworkService` RPC; the [SM controller](../smcontroller)
+translates the gRPC request, calls the method, and serializes the result.
 
-- preparing instance network parameters (`PrepareInstanceNetworkParameters`):
-  - pick or create a subnet for a given `networkID`;
-  - allocate a free IP address for the instance;
-  - generate VLAN ID (bounded by `cMaxVlanID` with `cVlanGenerateRetries` attempts);
-  - prepare DNS hostnames for the instance identifiers;
-  - prepare firewall rules based on allowed connections and exposed ports;
-  - return aggregated `NetworkParameters`.
-- updating provider networks (`UpdateProviderNetwork`):
-  - create/remove networks for the current provider list;
-  - For newly required networks, allocates a subnet and IPs, then uses `SenderItf` to send the network
-  configuration (IP, subnet, VLAN ID) to the component responsible for creating the VLAN network.
-  - Cleans up empty networks and releases unused subnets/IPs.
-- removing instance network parameters (`RemoveInstanceNetworkParameters`):
-  - release the IP address;
-  - update DNS hosts;
-  - remove firewall rules;
-  - delete empty networks.
-- restarting the DNS server (`RestartDNSServer`).
+### GetNodeNetworkParams
 
-## Network pools (IPNet pools)
+Returns the node-level `subnet` / `ip` / `vlanID` for a `networkID` on a `nodeID`,
+allocating a subnet for the network on first use.
 
-Subnets are derived from predefined private pools. Base CIDR networks and target subnet prefix are configured
-in the pools module (`netpool.cpp`).
+### AllocateInstanceNetwork
 
-- `GetNetPools()` returns the split of base networks into subnets of the target size;
-- `IpSubnet` uses this split to provide free subnets and IPs.
+Allocates an instance's network within a `networkID` / `nodeID`:
 
-Example (simplified): base network `172.28.0.0/14` with target prefix `16` yields four `/16` subnets:
+- pick/create the network's subnet, allocate a free IP for the instance;
+- register the instance's DNS hosts;
+- build firewall rules from the instance's allowed connections and exposed ports;
+- return the `InstanceNetworkAllocation` (subnet, IP, DNS servers, firewall
+  rules).
 
-- `172.28.0.0/16`, `172.29.0.0/16`, `172.30.0.0/16`, `172.31.0.0/16`.
+If an allowed connection targets an instance that is **not yet allocated**, only
+the resolvable rules are returned and the unresolved connection is recorded as a
+**pending connection** in the DB (see [Deferred firewall rules](#deferred-firewall-rules)).
+This may also migrate an instance that moved from another node.
 
-## aos::cm::networkmanager::NetworkManagerItf
+### ReleaseInstanceNetwork
 
-### Init
+Releases an instance: frees its IP, updates DNS hosts and drops its rules and any
+pending connections.
 
-Initializes the Network manager with `StorageItf`, `RandomItf`, `SenderItf`, and `DNSServerItf`.
+### ReleaseNodeNetwork
 
-### GetInstances
+Releases node-level resources for a network (subnet/IPs) once its last instance
+is gone.
 
-Returns the list of instances with their network parameters according to the manager's state.
+### SyncNetworkState
 
-### RemoveInstanceNetworkParameters
+Called by SM on every (re)connect with the list of instances SM is actually
+running on the node. CM reconciles:
 
-Removes network parameters for a specific instance: releases IP, updates DNS, removes rules.
+1. **release stale** — instances CM tracks for the node but that are absent from
+   SM's list are released;
+2. **clean confirmed** — pending connections whose resolved rule now appears in
+   the instance's reported firewall rules are dropped from the DB
+   (`CleanConfirmedPendingConnections`);
+3. **reload + re-resolve** — remaining pending connections are reloaded and
+   re-resolution is re-triggered, so any update SM has not yet confirmed is
+   pushed again.
 
-### UpdateProviderNetwork
+This makes reconnect after a CM or SM restart idempotent.
 
-- Synchronizes the set of networks with the provider list.
-- For newly required networks, allocates a subnet and IPs, then uses `SenderItf` to send the network
-configuration (IP, subnet, VLAN ID) to the component responsible for creating the VLAN network.
-- Cleans up empty networks and releases unused subnets/IPs.
+## Deferred firewall rules
 
-### PrepareInstanceNetworkParameters
+Inter-instance rules can only be built once both endpoints are allocated. CM
+handles ordering with durable pending state:
 
-Prepares network parameters for an instance within `networkID` and `nodeID`:
+1. On `AllocateInstanceNetwork`, each unresolved allowed connection is stored via
+   `StorageItf::AddPendingConnection` (requester ident, node, network, IP,
+   subnet, target item, port, protocol) and tracked in memory.
+2. When the **target** instance is later allocated, `ResolvePendingConnections`
+   looks up the pending entries for it, builds the now-resolvable rule, and
+   raises `PendingUpdateHandlerItf::OnPendingFirewallUpdate(nodeID, update)`. The
+   SM controller forwards the update down that node's stream. The entry is
+   removed from memory but **kept in the DB** until SM confirms it.
+3. SM applies the rule and reports it on the next `SyncNetworkState`;
+   `CleanConfirmedPendingConnections` then removes the confirmed entry from the
+   DB.
 
-- finds/creates a subnet, allocates an IP;
-- generates DNS hosts and firewall rules;
-- returns `NetworkParameters` with a complete dataset.
+```mermaid
+sequenceDiagram
+    participant SM as SM (node)
+    participant Ctl as CM SMController
+    participant NM as CM NetworkManager
+    participant DB as Storage
 
-### RestartDNSServer
+    SM->>Ctl: AllocateInstanceNetwork(A, allowed→B)
+    Ctl->>NM: AllocateInstanceNetwork(...)
+    Note over NM: B not allocated yet
+    NM->>DB: AddPendingConnection(A→B)
+    NM-->>Ctl: ip, dns, partial firewall_rules
+    Ctl-->>SM: response (partial rules)
 
-Restarts the DNS server to apply hosts updates.
+    SM->>Ctl: AllocateInstanceNetwork(B, ...)
+    Ctl->>NM: AllocateInstanceNetwork(...)
+    NM->>NM: ResolvePendingConnections(B)
+    NM->>Ctl: OnPendingFirewallUpdate(nodeID, A: resolved rule)
+    Ctl-->>SM: stream: PendingFirewallUpdate(A)
+    Note over SM: applies rule to A's firewall chain
+
+    SM->>Ctl: SyncNetworkState(node, [A: rules, B: ...])
+    Ctl->>NM: SyncNetworkState(...)
+    NM->>DB: RemovePendingConnection(A→B) — confirmed
+```
 
 ## Subsystems
 
-### aos::cm::networkmanager::IpSubnet
+### IpSubnet — subnet / IP allocation
 
-- `Init()` — loads predefined subnets and prepares allocation structures;
-- `GetAvailableSubnet(networkID)` — returns/reserves a subnet for a network;
-- `GetAvailableIP(networkID)` — returns a free IP address within the network's subnet;
-- `ReleaseIPToSubnet(networkID, ip)` — returns the IP back to the pool;
-- `RemoveAllocatedSubnet(networkID, subnet, IPs)` — clears allocations for the subnet;
-- uses `GetNetPools()` to form subnet pools.
+Subnets are carved from predefined private pools; base CIDRs and the target
+prefix are configured in `netpool.cpp` (`GetNetPools()` returns the split of base
+networks into target-size subnets). Example: base `172.28.0.0/14` with target
+prefix `16` yields `172.28.0.0/16`, `172.29.0.0/16`, `172.30.0.0/16`,
+`172.31.0.0/16`.
 
-### aos::cm::networkmanager::DNSServerItf
+- `GetAvailableSubnet(networkID)` — return/reserve a subnet for a network;
+- `GetAvailableIP(networkID)` — return a free IP within the network's subnet;
+- `ReleaseIPToSubnet(networkID, ip)` — return an IP to the pool;
+- `ReleaseIPNetPool(networkID)` / `RemoveAllocatedSubnet(...)` — release a
+  network's subnet/IPs.
 
-- `UpdateHostsFile(hosts)` — updates the hosts file for provided name→IP mappings;
-- `Restart()` — restarts the DNS server process;
-- `GetIP()` — returns the current DNS IP address.
+### DNSServerItf — CM-side DNS
 
-[networkmanager-networkmanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/networkmanager/itf/networkmanager.hpp
+The cloud-side DNS server for instance hostnames (distinct from SM's per-network
+`dnsmasq`):
+
+- `UpdateHostsFile(hosts)` — write the name → IP mappings;
+- `Restart()` — reload the DNS server;
+- `GetIP()` — the DNS server's address (returned to instances as a DNS server).
+
+[networkprovider-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/networkmanager/itf/networkprovider.hpp
+[pendingupdatehandler-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/networkmanager/itf/pendingupdatehandler.hpp
+[common-net]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/networkmanager/networkmanager.md
 [crypto-random-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/crypto/itf/rand.hpp
