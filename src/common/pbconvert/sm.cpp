@@ -991,7 +991,7 @@ Error ConvertFromProto(
 
     // Set timestamp from node_monitoring data
     if (auto ts = pbconvert::ConvertToAos(src.node_monitoring().timestamp()); ts.HasValue()) {
-        dst.mTimestamp = ts.GetValue();
+        dst.mMonitoringData.mTimestamp = ts.GetValue();
     }
 
     // Convert node monitoring data
@@ -1062,7 +1062,7 @@ Error ConvertFromProto(
 
     // Set timestamp from node_monitoring data
     if (auto ts = pbconvert::ConvertToAos(src.node_monitoring().timestamp()); ts.HasValue()) {
-        dst.mTimestamp = ts.GetValue();
+        dst.mMonitoringData.mTimestamp = ts.GetValue();
     }
 
     // Convert node monitoring data
@@ -1163,9 +1163,9 @@ void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatu
     dst.mutable_error()->CopyFrom(ConvertAosErrorToProto(src.mError));
 }
 
-void ConvertToProto(const MonitoringData& src, const Time& timestamp, servicemanager::v5::MonitoringData& dst)
+void ConvertToProto(const MonitoringData& src, servicemanager::v5::MonitoringData& dst)
 {
-    dst.mutable_timestamp()->CopyFrom(TimestampToPB(timestamp));
+    dst.mutable_timestamp()->CopyFrom(TimestampToPB(src.mTimestamp));
     dst.set_ram(src.mRAM);
     dst.set_cpu(src.mCPU);
     dst.set_download(src.mDownload);
@@ -1180,25 +1180,25 @@ void ConvertToProto(const MonitoringData& src, const Time& timestamp, serviceman
 
 void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::InstantMonitoring& dst)
 {
-    ConvertToProto(src.mMonitoringData, src.mTimestamp, *dst.mutable_node_monitoring());
+    ConvertToProto(src.mMonitoringData, *dst.mutable_node_monitoring());
 
     for (const auto& instance : src.mInstances) {
         auto* instanceMonitoring = dst.add_instances_monitoring();
         instanceMonitoring->mutable_instance()->CopyFrom(ConvertToProto(instance.mInstanceIdent));
         instanceMonitoring->set_runtime_id(instance.mRuntimeID.CStr());
-        ConvertToProto(instance.mMonitoringData, src.mTimestamp, *instanceMonitoring->mutable_monitoring_data());
+        ConvertToProto(instance.mMonitoringData, *instanceMonitoring->mutable_monitoring_data());
     }
 }
 
 void ConvertToProto(const monitoring::NodeMonitoringData& src, servicemanager::v5::AverageMonitoring& dst)
 {
-    ConvertToProto(src.mMonitoringData, src.mTimestamp, *dst.mutable_node_monitoring());
+    ConvertToProto(src.mMonitoringData, *dst.mutable_node_monitoring());
 
     for (const auto& instance : src.mInstances) {
         auto* instanceMonitoring = dst.add_instances_monitoring();
         instanceMonitoring->mutable_instance()->CopyFrom(ConvertToProto(instance.mInstanceIdent));
         instanceMonitoring->set_runtime_id(instance.mRuntimeID.CStr());
-        ConvertToProto(instance.mMonitoringData, src.mTimestamp, *instanceMonitoring->mutable_monitoring_data());
+        ConvertToProto(instance.mMonitoringData, *instanceMonitoring->mutable_monitoring_data());
     }
 }
 
