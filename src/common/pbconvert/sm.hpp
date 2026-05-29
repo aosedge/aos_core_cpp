@@ -250,10 +250,9 @@ void ConvertToProto(const InstanceStatus& src, servicemanager::v5::InstanceStatu
  * Converts aos monitoring data to protobuf.
  *
  * @param src aos monitoring data.
- * @param timestamp timestamp.
  * @param[out] dst protobuf monitoring data.
  */
-void ConvertToProto(const MonitoringData& src, const Time& timestamp, servicemanager::v5::MonitoringData& dst);
+void ConvertToProto(const MonitoringData& src, servicemanager::v5::MonitoringData& dst);
 
 /**
  * Converts aos node monitoring data to protobuf instant monitoring.

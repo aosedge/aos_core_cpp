@@ -570,14 +570,13 @@ TEST_F(SMClientTest, SendMonitoringData)
     server->WaitNodeInstancesStatus();
 
     aos::monitoring::NodeMonitoringData monitoringData;
-    monitoringData.mTimestamp = Time::Now();
-    monitoringData.mNodeID    = "test-node";
+    monitoringData.mMonitoringData.mTimestamp = Time::Now();
+    monitoringData.mNodeID                    = "test-node";
 
-    monitoringData.mMonitoringData.mTimestamp = monitoringData.mTimestamp;
-    monitoringData.mMonitoringData.mRAM       = 1024 * 1024 * 512; // 512 MB
-    monitoringData.mMonitoringData.mCPU       = 50.5;
-    monitoringData.mMonitoringData.mDownload  = 1000;
-    monitoringData.mMonitoringData.mUpload    = 500;
+    monitoringData.mMonitoringData.mRAM      = 1024 * 1024 * 512; // 512 MB
+    monitoringData.mMonitoringData.mCPU      = 50.5;
+    monitoringData.mMonitoringData.mDownload = 1000;
+    monitoringData.mMonitoringData.mUpload   = 500;
 
     aos::monitoring::InstanceMonitoringData instance1;
     instance1.mInstanceIdent  = InstanceIdent {"service1", "subject1", 0, UpdateItemTypeEnum::eService};
