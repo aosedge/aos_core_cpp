@@ -16,7 +16,7 @@
 #include <core/common/tools/enum.hpp>
 #include <core/common/tools/error.hpp>
 
-namespace aos::common::network {
+namespace aos::sm::nftables {
 
 using FWRuleHandle = uint64_t;
 
@@ -90,10 +90,6 @@ using FWAction     = EnumStringer<FWActionType>;
 
 /**
  * Base chain — anchored to a netfilter hook with a priority.
- *
- * mPolicy is the chain's default verdict (only accept/drop are meaningful). It
- * defaults to accept so existing call-sites stay unchanged; set it to drop for
- * a fail-closed filter chain.
  */
 struct FWBaseChain {
     std::string mTable;
@@ -101,7 +97,7 @@ struct FWBaseChain {
     FWChainType mType;
     FWHook      mHook;
     int         mPriority;
-    FWAction    mPolicy {FWActionEnum::eAccept};
+    FWAction    mPolicy;
 };
 
 /**
@@ -259,6 +255,6 @@ public:
         = 0;
 };
 
-} // namespace aos::common::network
+} // namespace aos::sm::nftables
 
 #endif

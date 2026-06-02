@@ -18,14 +18,14 @@
 #include <core/sm/networkmanager/itf/storage.hpp>
 #include <core/sm/networkmanager/itf/trafficmonitor.hpp>
 
-#include <common/network/itf/firewallbackend.hpp>
 #include <common/utils/time.hpp>
+#include <sm/nftables/itf/firewallbackend.hpp>
 
 namespace aos::sm::networkmanager {
 
 class TrafficMonitor : public TrafficMonitorItf {
 public:
-    Error Init(StorageItf& storage, common::network::FWBackendItf& backend, Duration updatePeriod = Time::cMinutes);
+    Error Init(StorageItf& storage, nftables::FWBackendItf& backend, Duration updatePeriod = Time::cMinutes);
 
     /**
      * Starts traffic monitoring.
@@ -117,11 +117,11 @@ private:
 
     Error CreateSystemChains();
     Error DeleteTrafficTable();
-    Error CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
+    Error CreateInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, bool isInChain,
         const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged);
     void  PublishTrafficData(StagedTrafficData& staged);
-    Error AppendChainCounterRules(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
-        const std::string& address, bool disabled);
+    Error AppendChainCounterRules(
+        nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled);
     Error UpdateTrafficData();
     Error GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
     bool  IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;
@@ -132,7 +132,7 @@ private:
         const std::string& inChain, const std::string& outChain, uint64_t& inputTraffic, uint64_t& outputTraffic) const;
 
     StorageItf*                                     mStorage {};
-    common::network::FWBackendItf*                  mBackend {};
+    nftables::FWBackendItf*                         mBackend {};
     std::unordered_map<std::string, TrafficData>    mTrafficData {};
     std::unordered_map<std::string, InstanceChains> mInstanceChains {};
     mutable std::shared_mutex                       mMutex {};
