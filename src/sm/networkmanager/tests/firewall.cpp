@@ -9,11 +9,11 @@
 
 #include <core/common/tests/utils/log.hpp>
 
-#include <common/tests/mocks/firewallbackendmock.hpp>
 #include <sm/networkmanager/firewall.hpp>
+#include <sm/tests/mocks/firewallbackendmock.hpp>
 
 using namespace aos;
-using namespace aos::common::network;
+using namespace aos::sm::nftables;
 using namespace aos::sm::networkmanager;
 using namespace testing;
 

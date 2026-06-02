@@ -25,7 +25,6 @@ find_package(
 
 if(WITH_SM OR WITH_CM)
     pkg_check_modules(Libnl libnl-3.0 libnl-route-3.0 REQUIRED)
-    pkg_check_modules(Libnftables libnftables REQUIRED)
 endif()
 
 pkg_check_modules(Systemd libsystemd REQUIRED)

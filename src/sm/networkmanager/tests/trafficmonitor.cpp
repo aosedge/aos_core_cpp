@@ -15,11 +15,11 @@
 
 #include <sm/networkmanager/trafficmonitor.hpp>
 
-#include <common/tests/mocks/firewallbackendmock.hpp>
 #include <core/sm/tests/mocks/storagemock.hpp>
+#include <sm/tests/mocks/firewallbackendmock.hpp>
 
 using namespace aos;
-using namespace aos::common::network;
+using namespace aos::sm::nftables;
 using namespace aos::sm::networkmanager;
 using namespace testing;
 

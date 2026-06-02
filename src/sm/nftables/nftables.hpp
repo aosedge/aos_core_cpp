@@ -17,7 +17,7 @@
 
 #include "itf/firewallbackend.hpp"
 
-namespace aos::common::network {
+namespace aos::sm::nftables {
 
 /**
  * libnftables-backed FWBackendItf implementation.
@@ -58,6 +58,6 @@ private:
     std::mutex  mMutex;
 };
 
-} // namespace aos::common::network
+} // namespace aos::sm::nftables
 
 #endif

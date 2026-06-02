@@ -60,8 +60,8 @@ std::string ProtoOrDefault(const String& proto, uint16_t port)
     return proto.CStr();
 }
 
-Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& table, const std::string& chain,
-    const InstanceFirewallParams& params)
+Error AppendInstanceRules(
+    nftables::FWTxnItf& txn, const std::string& table, const std::string& chain, const InstanceFirewallParams& params)
 {
     const std::string instanceIP {params.mIP.CStr()};
 
@@ -80,12 +80,12 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
             return AOS_ERROR_WRAP(err);
         }
 
-        common::network::FWRule r {};
+        nftables::FWRule r {};
 
         r.mDstAddr = instanceIP;
         r.mProto   = ProtoOrDefault(in.mProtocol, port);
         r.mDstPort = port;
-        r.mAction  = common::network::FWActionEnum::eAccept;
+        r.mAction  = nftables::FWActionEnum::eAccept;
 
         if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -118,31 +118,30 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
                       << Log::Field("instanceIP", params.mIP);
         }
 
-        common::network::FWRule r {};
+        nftables::FWRule r {};
 
         r.mSrcAddr = instanceIP;
         r.mDstAddr = out.mDstIP.CStr();
         r.mProto   = ProtoOrDefault(out.mProto, port);
         r.mDstPort = port;
-        r.mAction  = common::network::FWActionEnum::eAccept;
+        r.mAction  = nftables::FWActionEnum::eAccept;
 
         if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    common::network::FWRule terminalIn {};
+    nftables::FWRule terminalIn {};
     terminalIn.mDstAddr = instanceIP;
-    terminalIn.mAction  = common::network::FWActionEnum::eDrop;
+    terminalIn.mAction  = nftables::FWActionEnum::eDrop;
 
     if (auto err = txn.AddRule(table, chain, terminalIn); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule terminalOut {};
+    nftables::FWRule terminalOut {};
     terminalOut.mSrcAddr = instanceIP;
-    terminalOut.mAction
-        = params.mAllowPublic ? common::network::FWActionEnum::eAccept : common::network::FWActionEnum::eDrop;
+    terminalOut.mAction  = params.mAllowPublic ? nftables::FWActionEnum::eAccept : nftables::FWActionEnum::eDrop;
 
     if (auto err = txn.AddRule(table, chain, terminalOut); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -157,7 +156,7 @@ Error AppendInstanceRules(common::network::FWTxnItf& txn, const std::string& tab
  * Public
  **********************************************************************************************************************/
 
-Error Firewall::Init(common::network::FWBackendItf& backend)
+Error Firewall::Init(nftables::FWBackendItf& backend)
 {
     mBackend = &backend;
 
@@ -187,7 +186,7 @@ Error Firewall::Start()
 {
     LOG_DBG() << "Start firewall";
 
-    std::vector<common::network::FWListedRule> forwardRules;
+    std::vector<nftables::FWListedRule> forwardRules;
 
     // The table is provisioned ahead of SM and outlives it, so a listable
     // forward chain means it already exists: adopt it and only clear our own
@@ -209,7 +208,7 @@ Error Firewall::Stop()
 {
     LOG_DBG() << "Stop firewall";
 
-    std::vector<common::network::FWListedRule> forwardRules;
+    std::vector<nftables::FWListedRule> forwardRules;
 
     // Keep the table and base chains (they outlive SM); drop only the
     // per-instance state we added. Nothing to do if the table is already gone.
@@ -234,30 +233,26 @@ Error Firewall::CreateSkeleton()
 
     txn->AddTable(mTable);
 
-    common::network::FWBaseChain forward {mTable, cForwardChain, common::network::FWChainTypeEnum::eFilter,
-        common::network::FWHookEnum::eForward, cForwardPriority};
-    forward.mPolicy = common::network::FWActionEnum::eDrop;
+    txn->AddBaseChain({mTable, cForwardChain, nftables::FWChainTypeEnum::eFilter, nftables::FWHookEnum::eForward,
+        cForwardPriority, nftables::FWActionEnum::eDrop});
 
-    txn->AddBaseChain(forward);
-
-    // postrouting keeps the default accept policy: a nat chain must not drop.
-    txn->AddBaseChain({mTable, cPostroutingChain, common::network::FWChainTypeEnum::eNAT,
-        common::network::FWHookEnum::ePostrouting, cNATPriority});
+    txn->AddBaseChain({mTable, cPostroutingChain, nftables::FWChainTypeEnum::eNAT, nftables::FWHookEnum::ePostrouting,
+        cNATPriority, nftables::FWActionEnum::eAccept});
 
     // Connection tracking gates the per-instance access rules: drop garbage
     // early and let reply traffic of allowed flows back in, so the access
     // rules only need to describe connection initiation.
-    common::network::FWRule ctInvalid {};
+    nftables::FWRule ctInvalid {};
     ctInvalid.mCtState = "invalid";
-    ctInvalid.mAction  = common::network::FWActionEnum::eDrop;
+    ctInvalid.mAction  = nftables::FWActionEnum::eDrop;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, ctInvalid); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule ctEstablished {};
+    nftables::FWRule ctEstablished {};
     ctEstablished.mCtState = "established,related";
-    ctEstablished.mAction  = common::network::FWActionEnum::eAccept;
+    ctEstablished.mAction  = nftables::FWActionEnum::eAccept;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, ctEstablished); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -266,31 +261,31 @@ Error Firewall::CreateSkeleton()
     return txn->Commit();
 }
 
-Error Firewall::ReconcileArtifacts(const std::vector<common::network::FWListedRule>& forwardRules)
+Error Firewall::ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules)
 {
     // Every jump in the forward chain is ours (the base chain otherwise holds
     // only ct rules); the targets name the instance chains to drop.
-    std::vector<common::network::FWRuleHandle> jumpHandles;
-    std::set<std::string>                      instanceChains;
+    std::vector<nftables::FWRuleHandle> jumpHandles;
+    std::set<std::string>               instanceChains;
 
     for (const auto& r : forwardRules) {
-        if (r.mRule.mAction == common::network::FWActionEnum::eJump
+        if (r.mRule.mAction == nftables::FWActionEnum::eJump
             && r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) == 0) {
             jumpHandles.push_back(r.mHandle);
             instanceChains.insert(r.mRule.mJumpTarget);
         }
     }
 
-    std::vector<common::network::FWListedRule> postRules;
+    std::vector<nftables::FWListedRule> postRules;
 
     if (auto err = mBackend->ListChainRules(mTable, cPostroutingChain, postRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    std::vector<common::network::FWRuleHandle> masqueradeHandles;
+    std::vector<nftables::FWRuleHandle> masqueradeHandles;
 
     for (const auto& r : postRules) {
-        if (r.mRule.mAction == common::network::FWActionEnum::eMasquerade) {
+        if (r.mRule.mAction == nftables::FWActionEnum::eMasquerade) {
             masqueradeHandles.push_back(r.mHandle);
         }
     }
@@ -337,18 +332,18 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule jumpIn {};
+    nftables::FWRule jumpIn {};
     jumpIn.mDstAddr    = params.mIP.CStr();
-    jumpIn.mAction     = common::network::FWActionEnum::eJump;
+    jumpIn.mAction     = nftables::FWActionEnum::eJump;
     jumpIn.mJumpTarget = chain;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, jumpIn); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule jumpOut {};
+    nftables::FWRule jumpOut {};
     jumpOut.mSrcAddr    = params.mIP.CStr();
-    jumpOut.mAction     = common::network::FWActionEnum::eJump;
+    jumpOut.mAction     = nftables::FWActionEnum::eJump;
     jumpOut.mJumpTarget = chain;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, jumpOut); !err.IsNone()) {
@@ -368,16 +363,16 @@ Error Firewall::RemoveInstance(const String& instanceID)
 
     const auto chain = ChainName(instanceID);
 
-    std::vector<common::network::FWListedRule> forwardRules;
+    std::vector<nftables::FWListedRule> forwardRules;
 
     if (auto err = mBackend->ListChainRules(mTable, cForwardChain, forwardRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    std::vector<common::network::FWRuleHandle> jumpHandles;
+    std::vector<nftables::FWRuleHandle> jumpHandles;
 
     for (const auto& r : forwardRules) {
-        if (r.mRule.mAction == common::network::FWActionEnum::eJump && r.mRule.mJumpTarget == chain) {
+        if (r.mRule.mAction == nftables::FWActionEnum::eJump && r.mRule.mJumpTarget == chain) {
             jumpHandles.push_back(r.mHandle);
         }
     }
@@ -412,7 +407,7 @@ Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallP
 
     const auto chain = ChainName(instanceID);
 
-    std::vector<common::network::FWListedRule> forwardRules;
+    std::vector<nftables::FWListedRule> forwardRules;
 
     if (auto err = mBackend->ListChainRules(mTable, cForwardChain, forwardRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -429,23 +424,23 @@ Error Firewall::UpdateInstance(const String& instanceID, const InstanceFirewallP
     // Re-point the parent jumps at the current IP: the child chain now matches
     // params.mIP, so stale jumps for a previous IP would bypass the new policy.
     for (const auto& r : forwardRules) {
-        if (r.mRule.mAction == common::network::FWActionEnum::eJump && r.mRule.mJumpTarget == chain) {
+        if (r.mRule.mAction == nftables::FWActionEnum::eJump && r.mRule.mJumpTarget == chain) {
             txn->DeleteRuleByHandle(mTable, cForwardChain, r.mHandle);
         }
     }
 
-    common::network::FWRule jumpIn {};
+    nftables::FWRule jumpIn {};
     jumpIn.mDstAddr    = params.mIP.CStr();
-    jumpIn.mAction     = common::network::FWActionEnum::eJump;
+    jumpIn.mAction     = nftables::FWActionEnum::eJump;
     jumpIn.mJumpTarget = chain;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, jumpIn); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule jumpOut {};
+    nftables::FWRule jumpOut {};
     jumpOut.mSrcAddr    = params.mIP.CStr();
-    jumpOut.mAction     = common::network::FWActionEnum::eJump;
+    jumpOut.mAction     = nftables::FWActionEnum::eJump;
     jumpOut.mJumpTarget = chain;
 
     if (auto err = txn->AddRule(mTable, cForwardChain, jumpOut); !err.IsNone()) {
@@ -469,10 +464,10 @@ Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
         return ErrorEnum::eNone;
     }
 
-    common::network::FWRule r {};
+    nftables::FWRule r {};
     r.mSrcAddr = key.first;
     r.mOIFName = key.second;
-    r.mAction  = common::network::FWActionEnum::eMasquerade;
+    r.mAction  = nftables::FWActionEnum::eMasquerade;
 
     auto txn = mBackend->NewTxn();
 
@@ -495,14 +490,14 @@ Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
 
     std::pair<std::string, std::string> key {subnet.CStr(), outIf.CStr()};
 
-    std::vector<common::network::FWListedRule> postRules;
+    std::vector<nftables::FWListedRule> postRules;
 
     if (auto err = mBackend->ListChainRules(mTable, cPostroutingChain, postRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto it = std::find_if(postRules.begin(), postRules.end(), [&key](const common::network::FWListedRule& r) {
-        return r.mRule.mAction == common::network::FWActionEnum::eMasquerade && r.mRule.mSrcAddr == key.first
+    const auto it = std::find_if(postRules.begin(), postRules.end(), [&key](const nftables::FWListedRule& r) {
+        return r.mRule.mAction == nftables::FWActionEnum::eMasquerade && r.mRule.mSrcAddr == key.first
             && r.mRule.mOIFName == key.second;
     });
 

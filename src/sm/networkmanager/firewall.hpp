@@ -13,7 +13,7 @@
 #include <core/common/tools/noncopyable.hpp>
 #include <core/sm/networkmanager/itf/firewall.hpp>
 
-#include <common/network/itf/firewallbackend.hpp>
+#include <sm/nftables/itf/firewallbackend.hpp>
 
 namespace aos::sm::networkmanager {
 
@@ -28,7 +28,7 @@ public:
      * @param backend firewall backend.
      * @return Error.
      */
-    Error Init(common::network::FWBackendItf& backend);
+    Error Init(nftables::FWBackendItf& backend);
 
     /**
      * Starts the firewall: ensures the table and base chains are in place.
@@ -99,10 +99,10 @@ private:
     static std::string ChainName(const String& instanceID);
 
     Error CreateSkeleton();
-    Error ReconcileArtifacts(const std::vector<common::network::FWListedRule>& forwardRules);
+    Error ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules);
 
     const std::string                             mTable {cTableName};
-    common::network::FWBackendItf*                mBackend {};
+    nftables::FWBackendItf*                       mBackend {};
     std::set<std::pair<std::string, std::string>> mMasqueradeRules;
 };
 
