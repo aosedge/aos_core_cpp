@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/sm/launcher/itf/instanceidprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 
@@ -48,12 +49,14 @@ public:
      * @param resourceInfoProvider resource info provider.
      * @param ociSpec OCI spec interface.
      * @param instanceStatusReceiver instance status receiver.
+     * @param instanceIDProvider instance ID provider.
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver);
+        oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
+        launcher::InstanceIDProviderItf& instanceIDProvider);
 
     /**
      * Starts runtime.
@@ -153,6 +156,7 @@ private:
     resourcemanager::ResourceInfoProviderItf* mResourceInfoProvider {};
     oci::OCISpecItf*                          mOCISpec {};
     InstanceStatusReceiverItf*                mInstanceStatusReceiver {};
+    launcher::InstanceIDProviderItf*          mInstanceIDProvider {};
 
     ContainerConfig                                              mConfig;
     NodeInfo                                                     mNodeInfo;
