@@ -33,6 +33,7 @@
 #include <sm/database/database.hpp>
 #include <sm/iamclient/iamclient.hpp>
 #include <sm/imagemanager/imagehandler.hpp>
+#include <sm/launcher/instanceidprovider.hpp>
 #include <sm/launcher/runtimes.hpp>
 #include <sm/logprovider/logprovider.hpp>
 #include <sm/monitoring/nodemonitoringprovider.hpp>
@@ -110,6 +111,7 @@ private:
     sm::iamclient::IAMClient               mIAMClient;
     sm::imagemanager::ImageHandler         mImageHandler;
     sm::imagemanager::ImageManager         mImageManager;
+    sm::launcher::InstanceIDProvider       mInstanceIDProvider;
     sm::launcher::Launcher                 mLauncher;
     sm::launcher::Runtimes                 mRuntimes;
     sm::logprovider::LogProvider           mLogProvider;

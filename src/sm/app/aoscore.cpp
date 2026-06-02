@@ -104,7 +104,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize runtimes
 
     err = mRuntimes.Init(mConfig.mLauncher, mIAMClient, mImageManager, mNetworkManager, mIAMClient, mResourceManager,
-        mOCISpec, mLauncher, mSystemdConn);
+        mOCISpec, mLauncher, mSystemdConn, mInstanceIDProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize runtimes");
 
     auto runtimes = std::make_unique<StaticArray<launcher::RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -139,7 +139,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize launcher
 
-    err = mLauncher.Init(*runtimes, mImageManager, mSMClient, mDatabase, mOCISpec, mImageManager, mSMClient);
+    err = mLauncher.Init(*runtimes, mImageManager, mSMClient, mDatabase, mOCISpec, mImageManager, mSMClient,
+        mNetworkManager, mInstanceIDProvider, mResourceManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize node config handler

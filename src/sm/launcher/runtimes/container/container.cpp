@@ -40,7 +40,8 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver)
+    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
+    launcher::InstanceIDProviderItf& instanceIDProvider)
 {
     try {
         LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
@@ -75,6 +76,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
         mResourceInfoProvider   = &resourceInfoProvider;
         mOCISpec                = &ociSpec;
         mInstanceStatusReceiver = &instanceStatusReceiver;
+        mInstanceIDProvider     = &instanceIDProvider;
 
         if (auto err = mRunner->Init(*this, *mContainerRunner); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -181,7 +183,8 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             std::lock_guard lock {mMutex};
 
             instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner,
-                *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
+                *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+                *mInstanceIDProvider);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
@@ -393,7 +396,8 @@ Error ContainerRuntime::StopActiveInstances()
         LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
 
         auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
-            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
+            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+            *mInstanceIDProvider);
 
         if (err = instance->Stop(); !err.IsNone()) {
             LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())
