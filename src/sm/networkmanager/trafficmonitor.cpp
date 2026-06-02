@@ -54,7 +54,7 @@ std::string SanitiseInstanceID(const String& instanceID)
  * Public
  **********************************************************************************************************************/
 
-Error TrafficMonitor::Init(StorageItf& storage, common::network::FWBackendItf& backend, Duration updatePeriod)
+Error TrafficMonitor::Init(StorageItf& storage, nftables::FWBackendItf& backend, Duration updatePeriod)
 {
     LOG_DBG() << "Init traffic monitor";
 
@@ -202,7 +202,7 @@ Error TrafficMonitor::StopInstanceMonitoring(const String& instanceID)
         chains = it->second;
     }
 
-    std::vector<common::network::FWListedRule> forwardRules;
+    std::vector<nftables::FWListedRule> forwardRules;
 
     if (auto err = mBackend->ListChainRules(cTable, cForwardChain, forwardRules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -211,7 +211,7 @@ Error TrafficMonitor::StopInstanceMonitoring(const String& instanceID)
     auto txn = mBackend->NewTxn();
 
     for (const auto& r : forwardRules) {
-        if (r.mRule.mAction == common::network::FWActionEnum::eJump
+        if (r.mRule.mAction == nftables::FWActionEnum::eJump
             && (r.mRule.mJumpTarget == chains.mInChain || r.mRule.mJumpTarget == chains.mOutChain)) {
             txn->DeleteRuleByHandle(cTable, cForwardChain, r.mHandle);
         }
@@ -282,12 +282,12 @@ Error TrafficMonitor::CreateSystemChains()
 
     txn->AddTable(cTable);
 
-    txn->AddBaseChain(
-        {cTable, cInputChain, common::network::FWChainTypeEnum::eFilter, common::network::FWHookEnum::eInput, 0});
-    txn->AddBaseChain(
-        {cTable, cOutputChain, common::network::FWChainTypeEnum::eFilter, common::network::FWHookEnum::eOutput, 0});
-    txn->AddBaseChain(
-        {cTable, cForwardChain, common::network::FWChainTypeEnum::eFilter, common::network::FWHookEnum::eForward, 0});
+    txn->AddBaseChain({cTable, cInputChain, nftables::FWChainTypeEnum::eFilter, nftables::FWHookEnum::eInput, 0,
+        nftables::FWActionEnum::eAccept});
+    txn->AddBaseChain({cTable, cOutputChain, nftables::FWChainTypeEnum::eFilter, nftables::FWHookEnum::eOutput, 0,
+        nftables::FWActionEnum::eAccept});
+    txn->AddBaseChain({cTable, cForwardChain, nftables::FWChainTypeEnum::eFilter, nftables::FWHookEnum::eForward, 0,
+        nftables::FWActionEnum::eAccept});
 
     StagedTrafficData staged;
 
@@ -321,7 +321,7 @@ Error TrafficMonitor::DeleteTrafficTable()
     return ErrorEnum::eNone;
 }
 
-Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const std::string& chain, bool isInChain,
+Error TrafficMonitor::CreateInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, bool isInChain,
     const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged)
 {
     LOG_DBG() << "Create traffic chain" << Log::Field("chain", chain.c_str());
@@ -332,13 +332,13 @@ Error TrafficMonitor::CreateInstanceChain(common::network::FWTxnItf& txn, const 
         return AOS_ERROR_WRAP(err);
     }
 
-    common::network::FWRule jump {};
+    nftables::FWRule jump {};
 
     if (!address.empty()) {
         (isInChain ? jump.mDstAddr : jump.mSrcAddr) = address;
     }
 
-    jump.mAction     = common::network::FWActionEnum::eJump;
+    jump.mAction     = nftables::FWActionEnum::eJump;
     jump.mJumpTarget = chain;
 
     if (auto err = txn.AddRule(cTable, parentBaseChain, jump); !err.IsNone()) {
@@ -370,32 +370,32 @@ void TrafficMonitor::PublishTrafficData(StagedTrafficData& staged)
 }
 
 Error TrafficMonitor::AppendChainCounterRules(
-    common::network::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled)
+    nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled)
 {
     if (disabled) {
-        common::network::FWRule drop {};
+        nftables::FWRule drop {};
 
         if (!address.empty()) {
             (isInChain ? drop.mDstAddr : drop.mSrcAddr) = address;
         }
 
-        drop.mAction = common::network::FWActionEnum::eDrop;
+        drop.mAction = nftables::FWActionEnum::eDrop;
 
         return txn.AddRule(cTable, chain, drop);
     }
 
     for (const auto* cidr : cSkipNetworks) {
-        common::network::FWRule skip {};
+        nftables::FWRule skip {};
 
         (isInChain ? skip.mSrcAddr : skip.mDstAddr) = cidr;
-        skip.mAction                                = common::network::FWActionEnum::eReturn;
+        skip.mAction                                = nftables::FWActionEnum::eReturn;
 
         if (auto err = txn.AddRule(cTable, chain, skip); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
 
-    common::network::FWRule counter {};
+    nftables::FWRule counter {};
 
     if (!address.empty()) {
         (isInChain ? counter.mDstAddr : counter.mSrcAddr) = address;
@@ -404,21 +404,21 @@ Error TrafficMonitor::AppendChainCounterRules(
     // Count only, never decide policy: return to the caller chain after the
     // counter so the firewall table on the same hook stays authoritative.
     counter.mCounter = true;
-    counter.mAction  = common::network::FWActionEnum::eReturn;
+    counter.mAction  = nftables::FWActionEnum::eReturn;
 
     return txn.AddRule(cTable, chain, counter);
 }
 
 Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& bytes)
 {
-    std::vector<common::network::FWListedRule> rules;
+    std::vector<nftables::FWListedRule> rules;
 
     if (auto err = mBackend->ListChainRules(cTable, chain, rules); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto it = std::find_if(
-        rules.cbegin(), rules.cend(), [](const common::network::FWListedRule& r) { return r.mRule.mCounter; });
+    const auto it
+        = std::find_if(rules.cbegin(), rules.cend(), [](const nftables::FWListedRule& r) { return r.mRule.mCounter; });
     if (it == rules.cend()) {
         return ErrorEnum::eNotFound;
     }
