@@ -11,6 +11,7 @@
 #include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/sm/tests/mocks/instanceidprovidermock.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
@@ -71,6 +72,7 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     NiceMock<sm::utils::SystemdConnMock>                mSystemdConnMock;
+    NiceMock<launcher::InstanceIDProviderMock>          mInstanceIDProviderMock;
 };
 
 /***********************************************************************************************************************
@@ -82,7 +84,8 @@ TEST_F(RuntimesTest, InitNoRuntimes)
     Runtimes runtimes;
 
     auto err = runtimes.Init(Config {}, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-        mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+        mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock,
+        mInstanceIDProviderMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -112,7 +115,8 @@ TEST_F(RuntimesTest, InitRuntimes)
         .WillRepeatedly(DoAll(SetArgReferee<0>(*nodeInfo), Return(ErrorEnum::eNone)));
 
     auto err = runtimes.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-        mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+        mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock,
+        mInstanceIDProviderMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
