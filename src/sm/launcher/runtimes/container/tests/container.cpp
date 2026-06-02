@@ -11,6 +11,7 @@
 #include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/sm/tests/mocks/instanceidprovidermock.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
@@ -221,14 +222,23 @@ protected:
                 return ErrorEnum::eNone;
             }));
 
+        EXPECT_CALL(mInstanceIDProviderMock, GetInstanceID(_, _))
+            .WillRepeatedly(Invoke([](const InstanceIdent& ident, String& instanceID) {
+                auto idStr = std::string(ident.mItemID.CStr()) + ":" + std::string(ident.mSubjectID.CStr()) + ":"
+                    + std::to_string(ident.mInstance);
+                instanceID = common::utils::NameUUID(idStr).c_str();
+
+                return ErrorEnum::eNone;
+            }));
+
         EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
             .WillRepeatedly(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
-        EXPECT_CALL(mNetworkManagerMock, CreateInstanceNetwork(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillRepeatedly(Return(ErrorEnum::eNone));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock,
+            mInstanceIDProviderMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -257,6 +267,7 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     RunStatusReceiverItf*                               mRunStatusReceiver {};
+    NiceMock<launcher::InstanceIDProviderMock>          mInstanceIDProviderMock;
 };
 
 /***********************************************************************************************************************
@@ -352,8 +363,6 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mPermHandlerMock, UnregisterInstance(instance)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetworkManagerMock, StopInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID))
-        .WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, ReleaseInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
@@ -887,8 +896,6 @@ TEST_F(ContainerRuntimeTest, Network)
             return ErrorEnum::eNone;
         }));
     EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, CreateInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID, _))
-        .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID, _))
         .WillOnce(Return(ErrorEnum::eNone));
 
