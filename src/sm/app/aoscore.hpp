@@ -24,7 +24,6 @@
 #include <common/logger/logger.hpp>
 #include <common/network/interfacemanager.hpp>
 #include <common/network/namespacemanager.hpp>
-#include <common/network/nftables.hpp>
 #include <common/network/tc.hpp>
 #include <common/ocispec/ocispec.hpp>
 #include <common/process/processspawner.hpp>
@@ -42,6 +41,7 @@
 #include <sm/networkmanager/dnsname.hpp>
 #include <sm/networkmanager/firewall.hpp>
 #include <sm/networkmanager/trafficmonitor.hpp>
+#include <sm/nftables/nftables.hpp>
 #include <sm/resourcemanager/resourcemanager.hpp>
 #include <sm/smclient/smclient.hpp>
 #include <sm/utils/systemdconn.hpp>
@@ -98,7 +98,7 @@ private:
     common::logger::Logger              mLogger;
     common::network::InterfaceManager   mNetworkInterfaceManager;
     common::network::NamespaceManager   mNamespaceManager;
-    common::network::NFTables           mNFTables;
+    nftables::NFTables                  mNFTables;
     common::network::TC                 mTC;
     common::oci::OCISpec                mOCISpec;
     common::process::PocoProcessSpawner mProcessSpawner;

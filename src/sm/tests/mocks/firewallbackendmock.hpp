@@ -9,9 +9,9 @@
 
 #include <gmock/gmock.h>
 
-#include <common/network/itf/firewallbackend.hpp>
+#include <sm/nftables/itf/firewallbackend.hpp>
 
-namespace aos::common::network {
+namespace aos::sm::nftables {
 
 class MockFWTxn : public FWTxnItf {
 public:
@@ -34,6 +34,6 @@ public:
         (const std::string& table, const std::string& chain, std::vector<FWListedRule>& out), (override));
 };
 
-} // namespace aos::common::network
+} // namespace aos::sm::nftables
 
 #endif

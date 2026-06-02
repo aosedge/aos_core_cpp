@@ -16,7 +16,7 @@ extern "C" {
 
 #include "nftables.hpp"
 
-namespace aos::common::network {
+namespace aos::sm::nftables {
 
 namespace {
 
@@ -367,4 +367,4 @@ Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
     return ErrorEnum::eNone;
 }
 
-} // namespace aos::common::network
+} // namespace aos::sm::nftables
