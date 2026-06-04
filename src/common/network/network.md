@@ -35,6 +35,7 @@ classDiagram
         +SetMasterLink()
         +CreateVeth()
         +MoveLinkToNamespace()
+        +RenameLink()
         +AddAddress()
         +AddRoute()
         +SetHairpin()
@@ -139,8 +140,10 @@ During initialization (`Init`):
   - `SetupLink()` — bring an interface up
   - `DeleteLink()` — remove an interface
   - `SetMasterLink()` — enslave an interface to a bridge
-  - `CreateVeth()` — create a veth pair (both ends in the current netns)
+  - `CreateVeth()` — create a veth pair (both ends in the current netns); the
+    peer is given a unique transient name and renamed after the move
   - `MoveLinkToNamespace()` — move a link into a network namespace
+  - `RenameLink()` — rename a (down) link, optionally inside a netns
   - `SetHairpin()` — toggle hairpin mode on a bridge port via sysfs
 
 - **Link creation (`InterfaceFactoryItf`)**:
