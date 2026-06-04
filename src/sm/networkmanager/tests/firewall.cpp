@@ -96,7 +96,7 @@ MATCHER_P2(JumpRule, addrField, target, "")
 
 MATCHER_P2(MasqueradeRule, subnet, oifname, "")
 {
-    return arg.mAction == FWActionEnum::eMasquerade && arg.mSrcAddr == subnet && arg.mOIFName == oifname;
+    return arg.mAction == FWActionEnum::eMasquerade && arg.mSrcAddr == subnet && arg.mOIFName == oifname && arg.mOIFNeg;
 }
 
 MATCHER_P(BaseChainPolicy, policy, "")
