@@ -79,7 +79,7 @@ void AosCore::Init(const std::string& configFile)
     err = mFirewall.Init(mNFTables);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize firewall");
 
-    err = mBridgeNetwork.Init(mNetworkInterfaceManager, mFirewall);
+    err = mBridgeNetwork.Init(mNetworkInterfaceManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize bridge network");
 
     err = mBandwidth.Init(mTC, mNetworkInterfaceManager, mNetworkInterfaceManager);

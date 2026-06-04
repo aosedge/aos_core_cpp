@@ -110,7 +110,6 @@ classDiagram
     NetworkManager --> DNSNameItf : orchestrates
     NetworkManager --> TrafficMonitorItf : orchestrates
 
-    BridgeNetwork --> FirewallItf : IPMasq
     Firewall --> FWBackendItf : nft table inet aos
     TrafficMonitor --> FWBackendItf : nft table inet aos-traffic
     TrafficMonitor --> StorageItf : persists counters
@@ -162,14 +161,13 @@ Native bridge + veth implementation of `BridgeNetworkItf` (replaces the CNI
 bridge plugin).
 
 - **Attach** — creates a veth pair, attaches the host end to the network's
-  bridge, moves the peer end into the instance netns, configures its IP, route
-  and hairpin, and delegates the IPMasq rule to `FirewallItf`. Returns the
-  host-side veth name in the attach result.
-- **Detach** — removes the veth and the instance's IPMasq rule (the `subnet`
-  passed to Attach is needed for masquerade cleanup).
+  bridge, moves the peer end into the instance netns, and configures its IP,
+  route and hairpin. Returns the host-side veth name in the attach result.
+- **Detach** — removes the veth (which auto-removes the peer).
 
-Requires `InterfaceManagerItf` (link/address/route/netns operations) and
-`FirewallItf` (masquerade).
+Requires only `InterfaceManagerItf` (link/address/route/netns operations). The
+IPMasq rule is a per-network property owned by `NetworkManager`
+(CreateNetwork / ClearNetwork), not by this per-instance attach.
 
 ### Firewall
 
@@ -181,7 +179,9 @@ the `inet aos` table.
   chain holding the instance's input/output rules; `UpdateInstance` replaces a
   chain's contents atomically.
 - **AddMasquerade / RemoveMasquerade** — add/remove an IPMasq rule in the
-  `postrouting` chain for a source subnet and output interface.
+  `postrouting` chain for a source subnet, masquerading egress via any
+  interface but the bridge (`oifname != "<bridge>"`). Installed once per
+  network by `NetworkManager` on create/clear.
 
 ### Bandwidth
 

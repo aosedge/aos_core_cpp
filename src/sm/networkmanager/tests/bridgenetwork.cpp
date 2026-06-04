@@ -8,7 +8,6 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
-#include <core/sm/networkmanager/tests/mocks/firewallmock.hpp>
 #include <core/sm/networkmanager/tests/mocks/interfacemanagermock.hpp>
 
 #include <sm/networkmanager/bridgenetwork.hpp>
@@ -23,7 +22,7 @@ using namespace testing;
 
 namespace {
 
-BridgeParams MakeParams(bool hairpin = true, bool ipMasq = true)
+BridgeParams MakeParams(bool hairpin = true)
 {
     BridgeParams p;
 
@@ -32,9 +31,7 @@ BridgeParams MakeParams(bool hairpin = true, bool ipMasq = true)
     p.mContainerIfName = "eth0";
     p.mIPWithMask      = "10.0.0.5/24";
     p.mGateway         = "10.0.0.1";
-    p.mSubnet          = "10.0.0.0/24";
     p.mHairpin         = hairpin;
-    p.mIPMasq          = ipMasq;
 
     return p;
 }
@@ -47,11 +44,10 @@ protected:
     {
         aos::tests::utils::InitLog();
 
-        ASSERT_TRUE(mBridge.Init(mNetIf, mFirewall).IsNone());
+        ASSERT_TRUE(mBridge.Init(mNetIf).IsNone());
     }
 
     StrictMock<InterfaceManagerMock> mNetIf;
-    StrictMock<FirewallMock>         mFirewall;
     BridgeNetwork                    mBridge;
 
     const String mInstanceID {"test-instance-id"};
@@ -67,18 +63,20 @@ TEST_F(BridgeNetworkTest, AttachHappyPath)
 
     InSequence seq;
 
-    EXPECT_CALL(mNetIf, CreateVeth(_, String("eth0"))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone)); // peer has a unique transient name
     EXPECT_CALL(mNetIf, SetMasterLink(_, String("br-test"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone)); // host
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"))).WillOnce(Return(ErrorEnum::eNone)); // peer pre-move
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(String("eth0"), String("/run/netns/test-instance")))
-        .WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, SetupLink(_, String(""))).WillOnce(Return(ErrorEnum::eNone)); // host, current ns
+    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, String("/run/netns/test-instance")))
+        .WillOnce(Return(ErrorEnum::eNone)); // moves the unique peer
+    EXPECT_CALL(mNetIf, RenameLink(_, String("eth0"), String("/run/netns/test-instance")))
+        .WillOnce(Return(ErrorEnum::eNone)); // rename to the container interface name inside the netns
+    EXPECT_CALL(mNetIf, SetupLink(String("eth0"), String("/run/netns/test-instance")))
+        .WillOnce(Return(ErrorEnum::eNone)); // peer, brought up inside the netns after the rename
     EXPECT_CALL(mNetIf, AddAddress(String("eth0"), String("10.0.0.5/24"), String("/run/netns/test-instance")))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, AddRoute(String("0.0.0.0/0"), String("10.0.0.1"), String("/run/netns/test-instance")))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetHairpin(_, true)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mFirewall, AddMasquerade(String("10.0.0.0/24"), String("br-test"))).WillOnce(Return(ErrorEnum::eNone));
 
     BridgeAttachResult result;
     EXPECT_TRUE(mBridge.Attach(mInstanceID, params, result).IsNone());
@@ -89,35 +87,16 @@ TEST_F(BridgeNetworkTest, AttachHappyPath)
 
 TEST_F(BridgeNetworkTest, AttachNoHairpin)
 {
-    const auto params = MakeParams(/*hairpin=*/false, /*ipMasq=*/true);
+    const auto params = MakeParams(/*hairpin=*/false);
 
     EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, SetupLink(_, _)).Times(2).WillRepeatedly(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, RenameLink(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, AddAddress(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, AddRoute(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetHairpin(_, _)).Times(0);
-    EXPECT_CALL(mFirewall, AddMasquerade(_, _)).WillOnce(Return(ErrorEnum::eNone));
-
-    BridgeAttachResult result;
-    EXPECT_TRUE(mBridge.Attach(mInstanceID, params, result).IsNone());
-}
-
-TEST_F(BridgeNetworkTest, AttachNoIPMasq)
-{
-    const auto params = MakeParams(/*hairpin=*/true, /*ipMasq=*/false);
-
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddAddress(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddRoute(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetHairpin(_, true)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mFirewall, AddMasquerade(_, _)).Times(0);
 
     BridgeAttachResult result;
     EXPECT_TRUE(mBridge.Attach(mInstanceID, params, result).IsNone());
@@ -142,28 +121,9 @@ TEST_F(BridgeNetworkTest, AttachRollbackOnMoveLinkToNamespaceFailure)
 
     EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"))).WillOnce(Return(ErrorEnum::eNone));
+    // Peer SetupLink runs after the move, so only the host link is set up before the failure.
+    EXPECT_CALL(mNetIf, SetupLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
-
-    BridgeAttachResult result;
-    EXPECT_FALSE(mBridge.Attach(mInstanceID, params, result).IsNone());
-}
-
-TEST_F(BridgeNetworkTest, AttachRollbackOnAddMasqueradeFailure)
-{
-    const auto params = MakeParams();
-
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddAddress(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddRoute(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetHairpin(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mFirewall, AddMasquerade(_, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
     EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
 
     BridgeAttachResult result;
@@ -176,25 +136,14 @@ TEST_F(BridgeNetworkTest, AttachRollbackOnAddMasqueradeFailure)
 
 TEST_F(BridgeNetworkTest, DetachHappyPath)
 {
-    EXPECT_CALL(mFirewall, RemoveMasquerade(String("10.0.0.0/24"), String("br-test")))
-        .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
 
-    EXPECT_TRUE(mBridge.Detach(mInstanceID, String("br-test"), String("10.0.0.0/24")).IsNone());
+    EXPECT_TRUE(mBridge.Detach(mInstanceID, String("br-test")).IsNone());
 }
 
-TEST_F(BridgeNetworkTest, DetachEmptySubnetSkipsMasquerade)
+TEST_F(BridgeNetworkTest, DetachFailsOnDeleteLinkError)
 {
-    EXPECT_CALL(mFirewall, RemoveMasquerade(_, _)).Times(0);
-    EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(Error(ErrorEnum::eFailed)));
 
-    EXPECT_TRUE(mBridge.Detach(mInstanceID, String("br-test"), String("")).IsNone());
-}
-
-TEST_F(BridgeNetworkTest, DetachIgnoresMasqueradeNotFound)
-{
-    EXPECT_CALL(mFirewall, RemoveMasquerade(_, _)).WillOnce(Return(Error(ErrorEnum::eNotFound)));
-    EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mBridge.Detach(mInstanceID, String("br-test"), String("10.0.0.0/24")).IsNone());
+    EXPECT_FALSE(mBridge.Detach(mInstanceID, String("br-test")).IsNone());
 }

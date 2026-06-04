@@ -8,7 +8,6 @@
 #define AOS_SM_NETWORKMANAGER_BRIDGENETWORK_HPP_
 
 #include <core/sm/networkmanager/itf/bridgenetwork.hpp>
-#include <core/sm/networkmanager/itf/firewall.hpp>
 #include <core/sm/networkmanager/itf/interfacemanager.hpp>
 
 namespace aos::sm::networkmanager {
@@ -18,8 +17,8 @@ namespace aos::sm::networkmanager {
  *
  * Replaces the CNI bridge plugin: creates a veth pair per instance,
  * attaches the host end to an existing bridge, moves the peer end into
- * the instance netns, configures IP / route / hairpin, and delegates
- * IPMasq rules to FirewallItf.
+ * the instance netns, and configures IP / route / hairpin. Masquerade is a
+ * per-network rule owned by NetworkManager, not by this per-instance attach.
  */
 class BridgeNetwork : public BridgeNetworkItf {
 public:
@@ -27,10 +26,9 @@ public:
      * Initializes the bridge network.
      *
      * @param netIf interface manager.
-     * @param firewall firewall interface (for IPMasq rules).
      * @return Error.
      */
-    Error Init(InterfaceManagerItf& netIf, FirewallItf& firewall);
+    Error Init(InterfaceManagerItf& netIf);
 
     /**
      * Attaches an instance to the bridge.
@@ -47,16 +45,14 @@ public:
      *
      * @param instanceID instance id.
      * @param bridgeIfName bridge interface name.
-     * @param subnet subnet passed to Attach (for IPMasq cleanup).
      * @return Error.
      */
-    Error Detach(const String& instanceID, const String& bridgeIfName, const String& subnet) override;
+    Error Detach(const String& instanceID, const String& bridgeIfName) override;
 
 private:
-    static StaticString<cInterfaceLen> HostVethName(const String& instanceID);
+    static StaticString<cInterfaceLen> VethName(const String& instanceID, const String& prefix);
 
     InterfaceManagerItf* mNetIf {};
-    FirewallItf*         mFirewall {};
 };
 
 } // namespace aos::sm::networkmanager
