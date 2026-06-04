@@ -86,7 +86,7 @@ TEST_F(BandwidthTest, ApplyEgressOnlyInstallsIFBChain)
 
     InSequence seq;
     EXPECT_CALL(mIfFactory, CreateLink(String(cIFBName), String("ifb"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName), _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressMirredFilter(String(cHostIfName), String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddRootTBFQDisc(String(cIFBName), TBFEq(cEgressRateBytes, cBurst, cExpectedLimit)))
@@ -107,7 +107,7 @@ TEST_F(BandwidthTest, ApplyBothDirectionsInstallsBoth)
     EXPECT_CALL(mTC, AddRootTBFQDisc(String(cHostIfName), TBFEq(cIngressRateBytes, cBurst, cExpectedLimit)))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mIfFactory, CreateLink(String(cIFBName), String("ifb"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName), _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressMirredFilter(String(cHostIfName), String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddRootTBFQDisc(String(cIFBName), TBFEq(cEgressRateBytes, cBurst, cExpectedLimit)))
@@ -140,7 +140,7 @@ TEST_F(BandwidthTest, ApplyRollsBackOnIngressQDiscFailure)
 
     InSequence seq;
     EXPECT_CALL(mIfFactory, CreateLink(String(cIFBName), String("ifb"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName), _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressQDisc(String(cHostIfName))).WillOnce(Return(Error(ErrorEnum::eFailed)));
     EXPECT_CALL(mIfMgr, DeleteLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
 
@@ -155,7 +155,7 @@ TEST_F(BandwidthTest, ApplyRollsBackOnTBFFailure)
 
     InSequence seq;
     EXPECT_CALL(mIfFactory, CreateLink(String(cIFBName), String("ifb"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIfMgr, SetupLink(String(cIFBName), _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddIngressMirredFilter(String(cHostIfName), String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mTC, AddRootTBFQDisc(String(cIFBName), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
@@ -215,7 +215,7 @@ TEST_F(BandwidthTest, ApplyAndClearShareIFBName)
                 capturedOnApply = name;
                 return ErrorEnum::eNone;
             });
-        EXPECT_CALL(mIfMgr, SetupLink(_)).WillOnce(Return(ErrorEnum::eNone));
+        EXPECT_CALL(mIfMgr, SetupLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mTC, AddIngressQDisc(_)).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mTC, AddIngressMirredFilter(_, _)).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mTC, AddRootTBFQDisc(_, _)).WillOnce(Return(ErrorEnum::eNone));
