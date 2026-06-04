@@ -101,7 +101,7 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
     }
 
     if (!rule.mOIFName.empty()) {
-        buf << " oifname \"" << rule.mOIFName << "\"";
+        buf << " oifname " << (rule.mOIFNeg ? "!= " : "") << "\"" << rule.mOIFName << "\"";
     }
 
     if (rule.mCounter) {
@@ -154,8 +154,9 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
         out.mRule.mProto = m[1];
     }
 
-    if (std::regex_search(line, m, std::regex(R"rx(oifname\s+"([^"]+)")rx"))) {
-        out.mRule.mOIFName = m[1];
+    if (std::regex_search(line, m, std::regex(R"rx(oifname\s+(!=\s+)?"([^"]+)")rx"))) {
+        out.mRule.mOIFNeg  = m[1].matched;
+        out.mRule.mOIFName = m[2];
     }
 
     if (std::regex_search(line, m, std::regex(R"(counter\s+packets\s+(\d+)\s+bytes\s+(\d+))"))) {
