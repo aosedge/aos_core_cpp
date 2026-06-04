@@ -115,6 +115,9 @@ struct FWChain {
  * verdict (used by TrafficMonitor to read per-rule byte/packet counts).
  * mCtState, when set (e.g. "established,related" or "invalid"), emits a
  * `ct state` match.
+ * When mOIFNeg is true, the mOIFName match is negated (`oifname != "X"`),
+ * e.g. masquerade traffic that leaves the host via any interface but the
+ * bridge.
  */
 struct FWRule {
     std::string mSrcAddr;
@@ -126,6 +129,7 @@ struct FWRule {
     std::string mJumpTarget;
     bool        mCounter {};
     std::string mCtState {};
+    bool        mOIFNeg {};
 };
 
 /**
