@@ -467,6 +467,7 @@ Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
     nftables::FWRule r {};
     r.mSrcAddr = key.first;
     r.mOIFName = key.second;
+    r.mOIFNeg  = true;
     r.mAction  = nftables::FWActionEnum::eMasquerade;
 
     auto txn = mBackend->NewTxn();
