@@ -28,10 +28,11 @@ public:
     /**
      * Initializes monitoring.
      *
+     * @param nodeInfo node information.
      * @param trafficProvider network traffic provider.
      * @return Error.
      */
-    virtual Error Init(networkmanager::InstanceTrafficProviderItf& trafficProvider) = 0;
+    virtual Error Init(const NodeInfo& nodeInfo, networkmanager::InstanceTrafficProviderItf& trafficProvider) = 0;
 
     /**
      * Starts instance monitoring.
