@@ -67,7 +67,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = mMonitoring->Init(*mNetworkManager); !err.IsNone()) {
+        if (auto err = mMonitoring->Init(mNodeInfo, *mNetworkManager); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
