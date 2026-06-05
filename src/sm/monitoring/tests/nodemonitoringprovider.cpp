@@ -39,6 +39,7 @@ public:
     {
         tests::utils::InitLog();
 
+        mNodeInfo.mMaxDMIPS = 10000;
         mNodeInfo.mPartitions.EmplaceBack();
         mNodeInfo.mPartitions.Back().mName = "root";
         mNodeInfo.mPartitions.Back().mPath = "/";

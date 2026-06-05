@@ -26,8 +26,9 @@ Monitoring::Monitoring()
 {
 }
 
-Error Monitoring::Init(networkmanager::InstanceTrafficProviderItf& trafficProvider)
+Error Monitoring::Init(const NodeInfo& nodeInfo, networkmanager::InstanceTrafficProviderItf& trafficProvider)
 {
+    mNodeInfo        = nodeInfo;
     mTrafficProvider = &trafficProvider;
 
     return ErrorEnum::eNone;
@@ -151,7 +152,8 @@ double Monitoring::GetInstanceCPUUsage(const std::string& instanceID)
     double     result = 0.0;
 
     if (delta > 0 && mCPUCount > 0) {
-        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * 100.0 / delta / static_cast<double>(mCPUCount);
+        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * mNodeInfo.mMaxDMIPS / delta
+            / static_cast<double>(mCPUCount);
     }
 
     cpuUsage.mTotal     = cpuUSec;

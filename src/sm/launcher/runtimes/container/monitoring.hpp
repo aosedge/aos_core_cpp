@@ -26,10 +26,11 @@ public:
     /**
      * Initializes monitoring.
      *
+     * @param nodeInfo node information.
      * @param trafficProvider network traffic provider.
      * @return Error.
      */
-    Error Init(networkmanager::InstanceTrafficProviderItf& trafficProvider) override;
+    Error Init(const NodeInfo& nodeInfo, networkmanager::InstanceTrafficProviderItf& trafficProvider) override;
 
     /**
      * Starts instance monitoring.
@@ -82,6 +83,7 @@ private:
     size_t GetInstanceRAMUsage(const std::string& instanceID);
     size_t GetInstanceDiskUsage(const std::string& path, uid_t uid);
 
+    NodeInfo                                        mNodeInfo;
     networkmanager::InstanceTrafficProviderItf*     mTrafficProvider {};
     size_t                                          mCPUCount;
     std::unordered_map<std::string, MonitoringData> mInstanceMonitoringCache;
