@@ -19,7 +19,9 @@ set(SOURCES smcontroller.cpp smhandler.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::logger aos::common::utils aos::common::pbconvert aos::api::sm aos::core::common::alerts)
+set(LIBRARIES aos::common::logger aos::common::utils aos::common::pbconvert aos::api::sm aos::core::common::alerts
+              aos::core::common::networkmanager
+)
 
 # ######################################################################################################################
 # Target

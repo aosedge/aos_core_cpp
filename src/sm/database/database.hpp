@@ -157,6 +157,14 @@ public:
     Error AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info) override;
 
     /**
+     * Updates instance network info in storage. Inserts a new record if it does not exist.
+     *
+     * @param info instance network information.
+     * @return Error.
+     */
+    Error UpdateInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info) override;
+
+    /**
      * Removes instance network info from storage.
      *
      * @param instanceID instance ID.
@@ -219,7 +227,7 @@ public:
     Error GetJournalCursor(String& cursor) const override;
 
 private:
-    static constexpr int  sVersion    = 3;
+    static constexpr int  sVersion    = 5;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Item data columns
@@ -252,13 +260,12 @@ private:
         eStoragePath,
         eStatePath,
         eEnvVars,
-        eNetworkParameters,
         eMonitoringParams
     };
 
-    using InstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string,
-        std::string, std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string,
-        std::string, std::string, std::string>;
+    using InstanceInfoRow
+        = Poco::Tuple<std::string, std::string, uint64_t, std::string, uint32_t, std::string, std::string, std::string,
+            std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, std::string, std::string, std::string>;
 
     // Network info columns
     enum class NetworkInfoColumns : int {
@@ -271,6 +278,17 @@ private:
     };
 
     using NetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, uint64_t, std::string, std::string>;
+
+    // Instance network info columns
+    enum class InstanceNetworkInfoColumns : int {
+        eInstanceID = 0,
+        eNetworkID,
+        eNetworkConfig,
+        eAllocatedParams,
+        eHostIfName,
+    };
+
+    using InstanceNetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string>;
 
     bool TableExist(const std::string& tableName);
     void CreateConfigTable();
@@ -286,6 +304,9 @@ private:
 
     static void FromAos(const sm::networkmanager::NetworkInfo& src, NetworkInfoRow& dst);
     static void ToAos(const NetworkInfoRow& src, sm::networkmanager::NetworkInfo& dst);
+
+    static void FromAos(const sm::networkmanager::InstanceNetworkInfo& src, InstanceNetworkInfoRow& dst);
+    static void ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::InstanceNetworkInfo& dst);
 
     mutable std::unique_ptr<Poco::Data::Session> mSession;
     std::optional<common::migration::Migration>  mMigration;

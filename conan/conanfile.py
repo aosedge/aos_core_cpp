@@ -23,6 +23,15 @@ class AosCoreCpp(ConanFile):
 
         self.requires("pkcs11provider/1.0@user/stable")
 
+        crunpath = os.path.join(self.recipe_folder, "crun-1.14.3.py")
+
+        self.run(
+            f"conan export {crunpath} --user user --channel stable",
+            cwd=self.recipe_folder,
+        )
+
+        self.requires("crun/1.14.3@user/stable")
+
     def build_requirements(self):
         self.tool_requires("grpc/1.54.3")
         self.tool_requires("gtest/1.14.0")

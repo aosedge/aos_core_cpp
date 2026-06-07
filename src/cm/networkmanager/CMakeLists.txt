@@ -27,8 +27,8 @@ set(INCLUDES ${Libnl_INCLUDE_DIRS})
 # ######################################################################################################################
 
 set(LIBRARIES
-    aos::core::cm::networkmanager
     aos::core::common::tools
+    aos::core::common::networkmanager
     aos::common::network
     aos::common::utils
     ${Libnl_LIBRARIES}

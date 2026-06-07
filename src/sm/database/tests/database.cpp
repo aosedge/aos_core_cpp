@@ -426,13 +426,6 @@ TEST_F(DatabaseTest, GetAllInstancesInfosWithComplexFields)
     envVar2.mValue = "value2";
     instanceInfo.mEnvVars.PushBack(envVar2);
 
-    // Add network parameters
-    instanceInfo.mNetworkParameters.EmplaceValue();
-    instanceInfo.mNetworkParameters.GetValue().mNetworkID = "network-1";
-    instanceInfo.mNetworkParameters.GetValue().mSubnet    = "192.168.1.0/24";
-    instanceInfo.mNetworkParameters.GetValue().mIP        = "192.168.1.10";
-    instanceInfo.mNetworkParameters.GetValue().mDNSServers.EmplaceBack("8.8.8.8");
-
     // Add monitoring params
     instanceInfo.mMonitoringParams.EmplaceValue();
     instanceInfo.mMonitoringParams.GetValue().mAlertRules.EmplaceValue();
@@ -542,10 +535,12 @@ TEST_F(DatabaseTest, GetInstanceNetworksInfo)
     aos::sm::networkmanager::InstanceNetworkInfo info1;
     info1.mInstanceID = "instance-1";
     info1.mNetworkID  = "network-1";
+    info1.mHostIfName = "veth-host-1";
 
     aos::sm::networkmanager::InstanceNetworkInfo info2;
     info2.mInstanceID = "instance-2";
     info2.mNetworkID  = "network-2";
+    info2.mHostIfName = "veth-host-2";
 
     ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info1).IsNone());
     ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info2).IsNone());
@@ -558,8 +553,36 @@ TEST_F(DatabaseTest, GetInstanceNetworksInfo)
 
     EXPECT_EQ(result[0].mInstanceID, info1.mInstanceID);
     EXPECT_EQ(result[0].mNetworkID, info1.mNetworkID);
+    EXPECT_EQ(result[0].mHostIfName, info1.mHostIfName);
     EXPECT_EQ(result[1].mInstanceID, info2.mInstanceID);
     EXPECT_EQ(result[1].mNetworkID, info2.mNetworkID);
+    EXPECT_EQ(result[1].mHostIfName, info2.mHostIfName);
+}
+
+TEST_F(DatabaseTest, UpdateInstanceNetworkInfoPersistsHostIfName)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info;
+    info.mInstanceID = "instance-1";
+    info.mNetworkID  = "network-1";
+    info.mHostIfName = "veth-initial";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info).IsNone());
+
+    info.mHostIfName = "veth-updated";
+
+    ASSERT_TRUE(mDB.UpdateInstanceNetworkInfo(info).IsNone());
+
+    aos::StaticArray<aos::sm::networkmanager::InstanceNetworkInfo, 1> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+
+    EXPECT_EQ(result[0].mInstanceID, info.mInstanceID);
+    EXPECT_EQ(result[0].mNetworkID, info.mNetworkID);
+    EXPECT_EQ(result[0].mHostIfName, info.mHostIfName);
 }
 
 TEST_F(DatabaseTest, GetInstanceNetworksInfoEmpty)

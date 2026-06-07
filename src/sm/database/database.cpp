@@ -89,85 +89,6 @@ void DeserializeEnvVars(const std::string& jsonStr, EnvVarArray& envVars)
     }
 }
 
-std::string SerializeNetworkParameters(const Optional<InstanceNetworkParameters>& params)
-{
-    if (!params.HasValue()) {
-        return "";
-    }
-
-    const auto& p = params.GetValue();
-
-    Poco::JSON::Object obj;
-    obj.set("networkID", p.mNetworkID.CStr());
-    obj.set("subnet", p.mSubnet.CStr());
-    obj.set("ip", p.mIP.CStr());
-
-    Poco::JSON::Array dnsArray;
-    for (const auto& dns : p.mDNSServers) {
-        dnsArray.add(dns.CStr());
-    }
-    obj.set("dnsServers", dnsArray);
-
-    Poco::JSON::Array rulesArray;
-    for (const auto& rule : p.mFirewallRules) {
-        Poco::JSON::Object ruleObj;
-        ruleObj.set("dstIP", rule.mDstIP.CStr());
-        ruleObj.set("dstPort", rule.mDstPort.CStr());
-        ruleObj.set("proto", rule.mProto.CStr());
-        ruleObj.set("srcIP", rule.mSrcIP.CStr());
-        rulesArray.add(ruleObj);
-    }
-    obj.set("firewallRules", rulesArray);
-
-    return common::utils::Stringify(obj);
-}
-
-void DeserializeNetworkParameters(const std::string& jsonStr, Optional<InstanceNetworkParameters>& params)
-{
-    if (jsonStr.empty()) {
-        params.Reset();
-        return;
-    }
-
-    Poco::JSON::Parser parser;
-    auto               obj = parser.parse(jsonStr).extract<Poco::JSON::Object::Ptr>();
-    if (obj == nullptr) {
-        params.Reset();
-        return;
-    }
-
-    params.EmplaceValue();
-    auto& p = params.GetValue();
-
-    AOS_ERROR_CHECK_AND_THROW(p.mNetworkID.Assign(obj->getValue<std::string>("networkID").c_str()));
-    AOS_ERROR_CHECK_AND_THROW(p.mSubnet.Assign(obj->getValue<std::string>("subnet").c_str()));
-    AOS_ERROR_CHECK_AND_THROW(p.mIP.Assign(obj->getValue<std::string>("ip").c_str()));
-
-    if (obj->has("dnsServers")) {
-        auto dnsArray = obj->getArray("dnsServers");
-        for (const auto& dns : *dnsArray) {
-            AOS_ERROR_CHECK_AND_THROW(p.mDNSServers.EmplaceBack(dns.convert<std::string>().c_str()), "can't add DNS");
-        }
-    }
-
-    if (obj->has("firewallRules")) {
-        auto rulesArray = obj->getArray("firewallRules");
-        for (const auto& item : *rulesArray) {
-            const auto ruleObj = item.extract<Poco::JSON::Object::Ptr>();
-            if (ruleObj == nullptr) {
-                continue;
-            }
-
-            FirewallRule rule;
-            AOS_ERROR_CHECK_AND_THROW(rule.mDstIP.Assign(ruleObj->getValue<std::string>("dstIP").c_str()));
-            AOS_ERROR_CHECK_AND_THROW(rule.mDstPort.Assign(ruleObj->getValue<std::string>("dstPort").c_str()));
-            AOS_ERROR_CHECK_AND_THROW(rule.mProto.Assign(ruleObj->getValue<std::string>("proto").c_str()));
-            AOS_ERROR_CHECK_AND_THROW(rule.mSrcIP.Assign(ruleObj->getValue<std::string>("srcIP").c_str()));
-            AOS_ERROR_CHECK_AND_THROW(p.mFirewallRules.PushBack(rule), "can't add firewall rule");
-        }
-    }
-}
-
 std::string SerializeMonitoringParams(const Optional<InstanceMonitoringParams>& params)
 {
     if (!params.HasValue()) {
@@ -303,6 +224,169 @@ void DeserializeMonitoringParams(const std::string& jsonStr, Optional<InstanceMo
                 rule.mMinTimeout   = Duration(partObj->getValue<int64_t>("minTimeout"));
                 AOS_ERROR_CHECK_AND_THROW(rules.mPartitions.PushBack(rule), "can't add partition rule");
             }
+        }
+    }
+}
+
+std::string SerializeNetworkConfig(const sm::networkmanager::InstanceNetworkConfig& config)
+{
+    Poco::JSON::Object obj;
+
+    Poco::JSON::Object ident;
+    ident.set("itemID", config.mInstanceIdent.mItemID.CStr());
+    ident.set("subjectID", config.mInstanceIdent.mSubjectID.CStr());
+    ident.set("instance", config.mInstanceIdent.mInstance);
+    obj.set("instanceIdent", ident);
+
+    obj.set("hostname", config.mHostname.CStr());
+    obj.set("ingressKbit", config.mIngressKbit);
+    obj.set("egressKbit", config.mEgressKbit);
+    obj.set("uploadLimit", config.mUploadLimit);
+    obj.set("downloadLimit", config.mDownloadLimit);
+
+    Poco::JSON::Array aliases;
+    for (const auto& alias : config.mAliases) {
+        aliases.add(alias.CStr());
+    }
+    obj.set("aliases", aliases);
+
+    Poco::JSON::Array exposedPorts;
+    for (const auto& port : config.mExposedPorts) {
+        exposedPorts.add(port.CStr());
+    }
+    obj.set("exposedPorts", exposedPorts);
+
+    Poco::JSON::Array allowedConnections;
+    for (const auto& conn : config.mAllowedConnections) {
+        allowedConnections.add(conn.CStr());
+    }
+    obj.set("allowedConnections", allowedConnections);
+
+    Poco::JSON::Array hosts;
+    for (const auto& host : config.mHosts) {
+        Poco::JSON::Object hostObj;
+        hostObj.set("ip", host.mIP.CStr());
+        hostObj.set("hostname", host.mHostname.CStr());
+        hosts.add(hostObj);
+    }
+    obj.set("hosts", hosts);
+
+    return common::utils::Stringify(obj);
+}
+
+void DeserializeNetworkConfig(const std::string& jsonStr, sm::networkmanager::InstanceNetworkConfig& config)
+{
+    if (jsonStr.empty()) {
+        return;
+    }
+
+    Poco::JSON::Parser parser;
+    auto               obj = parser.parse(jsonStr).extract<Poco::JSON::Object::Ptr>();
+
+    if (obj->has("instanceIdent")) {
+        auto ident = obj->getObject("instanceIdent");
+        AOS_ERROR_CHECK_AND_THROW(config.mInstanceIdent.mItemID.Assign(ident->getValue<std::string>("itemID").c_str()));
+        AOS_ERROR_CHECK_AND_THROW(
+            config.mInstanceIdent.mSubjectID.Assign(ident->getValue<std::string>("subjectID").c_str()));
+        config.mInstanceIdent.mInstance = ident->getValue<uint64_t>("instance");
+    }
+
+    AOS_ERROR_CHECK_AND_THROW(config.mHostname.Assign(obj->getValue<std::string>("hostname").c_str()));
+    config.mIngressKbit   = obj->getValue<uint64_t>("ingressKbit");
+    config.mEgressKbit    = obj->getValue<uint64_t>("egressKbit");
+    config.mUploadLimit   = obj->getValue<uint64_t>("uploadLimit");
+    config.mDownloadLimit = obj->getValue<uint64_t>("downloadLimit");
+
+    if (obj->has("aliases")) {
+        auto aliases = obj->getArray("aliases");
+        for (const auto& alias : *aliases) {
+            AOS_ERROR_CHECK_AND_THROW(config.mAliases.PushBack(alias.convert<std::string>().c_str()));
+        }
+    }
+
+    if (obj->has("exposedPorts")) {
+        auto ports = obj->getArray("exposedPorts");
+        for (const auto& port : *ports) {
+            AOS_ERROR_CHECK_AND_THROW(config.mExposedPorts.PushBack(port.convert<std::string>().c_str()));
+        }
+    }
+
+    if (obj->has("allowedConnections")) {
+        auto conns = obj->getArray("allowedConnections");
+        for (const auto& conn : *conns) {
+            AOS_ERROR_CHECK_AND_THROW(config.mAllowedConnections.PushBack(conn.convert<std::string>().c_str()));
+        }
+    }
+
+    if (obj->has("hosts")) {
+        auto hosts = obj->getArray("hosts");
+        for (const auto& item : *hosts) {
+            auto hostObj = item.extract<Poco::JSON::Object::Ptr>();
+            Host host {
+                hostObj->getValue<std::string>("ip").c_str(), hostObj->getValue<std::string>("hostname").c_str()};
+            AOS_ERROR_CHECK_AND_THROW(config.mHosts.PushBack(host));
+        }
+    }
+}
+
+std::string SerializeAllocatedParams(const InstanceNetworkAllocation& params)
+{
+    Poco::JSON::Object obj;
+
+    obj.set("networkID", params.mNetworkID.CStr());
+    obj.set("subnet", params.mSubnet.CStr());
+    obj.set("ip", params.mIP.CStr());
+
+    Poco::JSON::Array dnsServers;
+    for (const auto& dns : params.mDNSServers) {
+        dnsServers.add(dns.CStr());
+    }
+    obj.set("dnsServers", dnsServers);
+
+    Poco::JSON::Array firewallRules;
+    for (const auto& rule : params.mFirewallRules) {
+        Poco::JSON::Object ruleObj;
+        ruleObj.set("dstIP", rule.mDstIP.CStr());
+        ruleObj.set("dstPort", rule.mDstPort.CStr());
+        ruleObj.set("proto", rule.mProto.CStr());
+        ruleObj.set("srcIP", rule.mSrcIP.CStr());
+        firewallRules.add(ruleObj);
+    }
+    obj.set("firewallRules", firewallRules);
+
+    return common::utils::Stringify(obj);
+}
+
+void DeserializeAllocatedParams(const std::string& jsonStr, InstanceNetworkAllocation& params)
+{
+    if (jsonStr.empty()) {
+        return;
+    }
+
+    Poco::JSON::Parser parser;
+    auto               obj = parser.parse(jsonStr).extract<Poco::JSON::Object::Ptr>();
+
+    AOS_ERROR_CHECK_AND_THROW(params.mNetworkID.Assign(obj->getValue<std::string>("networkID").c_str()));
+    AOS_ERROR_CHECK_AND_THROW(params.mSubnet.Assign(obj->getValue<std::string>("subnet").c_str()));
+    AOS_ERROR_CHECK_AND_THROW(params.mIP.Assign(obj->getValue<std::string>("ip").c_str()));
+
+    if (obj->has("dnsServers")) {
+        auto dnsServers = obj->getArray("dnsServers");
+        for (const auto& dns : *dnsServers) {
+            AOS_ERROR_CHECK_AND_THROW(params.mDNSServers.PushBack(dns.convert<std::string>().c_str()));
+        }
+    }
+
+    if (obj->has("firewallRules")) {
+        auto rules = obj->getArray("firewallRules");
+        for (const auto& item : *rules) {
+            auto         ruleObj = item.extract<Poco::JSON::Object::Ptr>();
+            FirewallRule rule;
+            AOS_ERROR_CHECK_AND_THROW(rule.mDstIP.Assign(ruleObj->getValue<std::string>("dstIP").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mDstPort.Assign(ruleObj->getValue<std::string>("dstPort").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mProto.Assign(ruleObj->getValue<std::string>("proto").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(rule.mSrcIP.Assign(ruleObj->getValue<std::string>("srcIP").c_str()));
+            AOS_ERROR_CHECK_AND_THROW(params.mFirewallRules.PushBack(rule));
         }
     }
 }
@@ -523,8 +607,8 @@ Error Database::GetAllInstancesInfos([[maybe_unused]] Array<InstanceInfo>& infos
         std::vector<InstanceInfoRow> rows;
 
         *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, version, manifestDigest, "
-                     "runtimeID, ownerID, subjectType,uid, gid, priority, storagePath, statePath, "
-                     "envVars,networkParameters, monitoringParams "
+                     "runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, "
+                     "envVars, monitoringParams "
                      "FROM instances;",
             into(rows), now;
 
@@ -558,7 +642,7 @@ Error Database::UpdateInstanceInfo(const InstanceInfo& info)
         *mSession
             << "INSERT OR REPLACE INTO instances (itemID, subjectID, instance, type, preinstalled, version, "
                "manifestDigest, runtimeID, ownerID, subjectType, uid, gid, priority, storagePath, statePath, envVars, "
-               "networkParameters, monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+               "monitoringParams) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -736,8 +820,35 @@ Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetwork
               << Log::Field("networkID", info.mNetworkID);
 
     try {
-        *mSession << "INSERT INTO instancenetwork (instanceID, networkID) VALUES (?, ?);",
-            bind(info.mInstanceID.CStr()), bind(info.mNetworkID.CStr()), now;
+        InstanceNetworkInfoRow row;
+
+        FromAos(info, row);
+
+        *mSession << "INSERT INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams, hostIfName) "
+                     "VALUES (?, ?, ?, ?, ?);",
+            use(row), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::UpdateInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Update instance network info" << Log::Field("instanceID", info.mInstanceID)
+              << Log::Field("networkID", info.mNetworkID);
+
+    try {
+        InstanceNetworkInfoRow row;
+
+        FromAos(info, row);
+
+        *mSession << "INSERT OR REPLACE INTO instancenetwork (instanceID, networkID, networkConfig, allocatedParams, "
+                     "hostIfName) VALUES (?, ?, ?, ?, ?);",
+            use(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -773,16 +884,20 @@ Error Database::GetInstanceNetworksInfo(Array<sm::networkmanager::InstanceNetwor
     LOG_DBG() << "Get all instance networks";
 
     try {
-        std::vector<std::pair<std::string, std::string>> result;
+        std::vector<InstanceNetworkInfoRow> rows;
 
-        *mSession << "SELECT instanceID, networkID FROM instancenetwork", into(result), now;
+        *mSession << "SELECT instanceID, networkID, networkConfig, allocatedParams, hostIfName FROM instancenetwork",
+            into(rows), now;
 
-        for (const auto& [instanceID, networkID] : result) {
-            if (auto err = networks.EmplaceBack(instanceID.c_str(), networkID.c_str()); !err.IsNone()) {
-                LOG_WRN() << "Failed to add instance network info" << Log::Field("instanceID", instanceID.c_str())
-                          << Log::Field("networkID", networkID.c_str()) << Log::Field(err);
+        for (const auto& row : rows) {
+            if (auto err = networks.EmplaceBack(); !err.IsNone()) {
+                LOG_WRN() << "Failed to add instance network info"
+                          << Log::Field("instanceID", row.get<ToInt(InstanceNetworkInfoColumns::eInstanceID)>().c_str())
+                          << Log::Field(err);
                 return AOS_ERROR_WRAP(Error(err, "db instance networks count exceeds application limit"));
             }
+
+            ToAos(row, networks.Back());
         }
     } catch (const std::exception& e) {
         LOG_WRN() << "Failed to get instance networks info" << Log::Field(common::utils::ToAosError(e));
@@ -958,7 +1073,6 @@ void Database::FromAos(const InstanceInfo& src, InstanceInfoRow& dst)
     dst.set<ToInt(InstanceInfoColumns::eStoragePath)>(src.mStoragePath.CStr());
     dst.set<ToInt(InstanceInfoColumns::eStatePath)>(src.mStatePath.CStr());
     dst.set<ToInt(InstanceInfoColumns::eEnvVars)>(SerializeEnvVars(src.mEnvVars));
-    dst.set<ToInt(InstanceInfoColumns::eNetworkParameters)>(SerializeNetworkParameters(src.mNetworkParameters));
     dst.set<ToInt(InstanceInfoColumns::eMonitoringParams)>(SerializeMonitoringParams(src.mMonitoringParams));
 }
 
@@ -985,7 +1099,6 @@ void Database::ToAos(const InstanceInfoRow& src, InstanceInfo& dst)
         "failed to parse subject type");
 
     DeserializeEnvVars(src.get<ToInt(InstanceInfoColumns::eEnvVars)>(), dst.mEnvVars);
-    DeserializeNetworkParameters(src.get<ToInt(InstanceInfoColumns::eNetworkParameters)>(), dst.mNetworkParameters);
     DeserializeMonitoringParams(src.get<ToInt(InstanceInfoColumns::eMonitoringParams)>(), dst.mMonitoringParams);
 }
 
@@ -1007,6 +1120,24 @@ void Database::ToAos(const NetworkInfoRow& src, sm::networkmanager::NetworkInfo&
     dst.mVlanID       = src.get<ToInt(NetworkInfoColumns::eVlanID)>();
     dst.mVlanIfName   = src.get<ToInt(NetworkInfoColumns::eVlanIfName)>().c_str();
     dst.mBridgeIfName = src.get<ToInt(NetworkInfoColumns::eBridgeIfName)>().c_str();
+}
+
+void Database::FromAos(const sm::networkmanager::InstanceNetworkInfo& src, InstanceNetworkInfoRow& dst)
+{
+    dst.set<ToInt(InstanceNetworkInfoColumns::eInstanceID)>(src.mInstanceID.CStr());
+    dst.set<ToInt(InstanceNetworkInfoColumns::eNetworkID)>(src.mNetworkID.CStr());
+    dst.set<ToInt(InstanceNetworkInfoColumns::eNetworkConfig)>(SerializeNetworkConfig(src.mNetworkConfig));
+    dst.set<ToInt(InstanceNetworkInfoColumns::eAllocatedParams)>(SerializeAllocatedParams(src.mAllocatedParams));
+    dst.set<ToInt(InstanceNetworkInfoColumns::eHostIfName)>(src.mHostIfName.CStr());
+}
+
+void Database::ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::InstanceNetworkInfo& dst)
+{
+    dst.mInstanceID = src.get<ToInt(InstanceNetworkInfoColumns::eInstanceID)>().c_str();
+    dst.mNetworkID  = src.get<ToInt(InstanceNetworkInfoColumns::eNetworkID)>().c_str();
+    DeserializeNetworkConfig(src.get<ToInt(InstanceNetworkInfoColumns::eNetworkConfig)>(), dst.mNetworkConfig);
+    DeserializeAllocatedParams(src.get<ToInt(InstanceNetworkInfoColumns::eAllocatedParams)>(), dst.mAllocatedParams);
+    dst.mHostIfName = src.get<ToInt(InstanceNetworkInfoColumns::eHostIfName)>().c_str();
 }
 
 } // namespace aos::sm::database

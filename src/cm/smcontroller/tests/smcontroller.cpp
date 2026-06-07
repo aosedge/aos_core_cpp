@@ -18,6 +18,7 @@
 #include "stubs/iteminfoproviderstub.hpp"
 #include "stubs/launchersenderstub.hpp"
 #include "stubs/monitoringreceiverstub.hpp"
+#include "stubs/networkproviderstub.hpp"
 #include "stubs/smclientstub.hpp"
 #include "stubs/smcontrollersenderstub.hpp"
 #include "stubs/sminforeceiverstub.hpp"
@@ -44,7 +45,7 @@ protected:
 
         auto err = mSMController.Init(mConfig, mCloudConnection, mCertProvider, mCertLoader, mX509Provider,
             mItemInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
-            mInstanceStatusReceiver, mSMInfoReceiver, true);
+            mInstanceStatusReceiver, mSMInfoReceiver, mNetworkProvider, true);
         ASSERT_TRUE(err.IsNone()) << err.Message();
 
         err = mSMController.Start();
@@ -101,6 +102,7 @@ protected:
     monitoring::ReceiverStub             mMonitoringReceiver;
     launcher::InstanceStatusReceiverStub mInstanceStatusReceiver;
     nodeinfoprovider::SMInfoReceiverStub mSMInfoReceiver;
+    NetworkProviderStub                  mNetworkProvider;
 };
 
 /***********************************************************************************************************************
@@ -343,9 +345,14 @@ TEST_F(SMControllerTest, RequestLog)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(SMControllerTest, UpdateNetworks)
+TEST_F(SMControllerTest, GetNodeNetworkParams)
 {
-    // 1) Start client
+    NetworkParams expectedParams;
+    expectedParams.mSubnet = "192.168.1.0/24";
+    expectedParams.mIP     = "192.168.1.1";
+    expectedParams.mVlanID = 100;
+    mNetworkProvider.SetNodeNetworkParams(expectedParams);
+
     SMClientStub client;
 
     auto err = client.Init(cMainNodeID);
@@ -354,52 +361,158 @@ TEST_F(SMControllerTest, UpdateNetworks)
     err = client.Start(mConfig.mCMServerURL);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // 2) Wait for SM info
     err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    ASSERT_TRUE(mSMInfoReceiver.HasSMInfo(cMainNodeID));
+    servicemanager::v5::GetNodeNetworkParamsResponse response;
 
-    // 3) Update networks
-    StaticArray<UpdateNetworkParameters, 2> networkParams;
-    UpdateNetworkParameters                 param1;
-
-    param1.mNetworkID = "network1";
-    param1.mSubnet    = "192.168.1.0/24";
-    networkParams.PushBack(param1);
-
-    UpdateNetworkParameters param2;
-
-    param2.mNetworkID = "network2";
-    param2.mSubnet    = "10.0.0.0/8";
-    networkParams.PushBack(param2);
-
-    // update OK
-    err = mSMController.UpdateNetworks(cMainNodeID, networkParams);
-    EXPECT_TRUE(err.IsNone()) << err.Message();
-
-    // Wait for update networks
-    err = client.WaitUpdateNetworks();
+    err = client.GetNodeNetworkParams("network1", cMainNodeID, response);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // Verify network parameters
-    auto receivedNetworks = client.GetUpdateNetworks();
+    EXPECT_EQ(response.subnet(), "192.168.1.0/24");
+    EXPECT_EQ(response.ip(), "192.168.1.1");
+    EXPECT_EQ(response.vlan_id(), 100);
+    EXPECT_FALSE(response.has_error());
 
-    ASSERT_EQ(receivedNetworks.networks_size(), 2);
-    EXPECT_EQ(receivedNetworks.networks(0).network_id(), "network1");
-    EXPECT_EQ(receivedNetworks.networks(0).subnet(), "192.168.1.0/24");
-    EXPECT_EQ(receivedNetworks.networks(1).network_id(), "network2");
-    EXPECT_EQ(receivedNetworks.networks(1).subnet(), "10.0.0.0/8");
+    EXPECT_EQ(mNetworkProvider.mLastNetworkID, String("network1"));
+    EXPECT_EQ(mNetworkProvider.mLastNodeID, String(cMainNodeID));
 
-    // update Not Found
-    err = mSMController.UpdateNetworks(cSecondaryNodeID, networkParams);
-    EXPECT_FALSE(err.IsNone()) << err.Message();
+    mNetworkProvider.SetError(Error(ErrorEnum::eNotFound, "network not found"));
 
-    // 4) Stop client
+    err = client.GetNodeNetworkParams("network2", cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_TRUE(response.has_error());
+
     err = client.Stop();
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // 5) Wait for disconnect
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, AllocateInstanceNetwork)
+{
+    InstanceNetworkAllocation expectedParams;
+    expectedParams.mSubnet = "192.168.1.0/24";
+    expectedParams.mIP     = "192.168.1.10";
+    expectedParams.mDNSServers.PushBack("8.8.8.8");
+    mNetworkProvider.SetInstanceNetworkParams(expectedParams);
+
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    auto instanceIdent = CreateInstanceIdent("service1", "subject1", 0);
+
+    servicemanager::v5::AllocateInstanceNetworkResponse response;
+
+    err = client.AllocateInstanceNetwork(instanceIdent, "network1", cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(response.subnet(), "192.168.1.0/24");
+    EXPECT_EQ(response.ip(), "192.168.1.10");
+    ASSERT_EQ(response.dns_servers_size(), 1);
+    EXPECT_EQ(response.dns_servers(0), "8.8.8.8");
+    EXPECT_FALSE(response.has_error());
+
+    EXPECT_EQ(mNetworkProvider.mLastNetworkID, String("network1"));
+    EXPECT_EQ(mNetworkProvider.mLastNodeID, String(cMainNodeID));
+    EXPECT_EQ(mNetworkProvider.mLastInstance.mItemID, String("service1"));
+
+    mNetworkProvider.SetError(Error(ErrorEnum::eFailed, "allocation failed"));
+
+    err = client.AllocateInstanceNetwork(instanceIdent, "network1", cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_TRUE(response.has_error());
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, ReleaseInstanceNetwork)
+{
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    auto instanceIdent = CreateInstanceIdent("service1", "subject1", 0);
+
+    servicemanager::v5::ReleaseInstanceNetworkResponse response;
+
+    err = client.ReleaseInstanceNetwork(instanceIdent, cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_FALSE(response.has_error());
+
+    EXPECT_EQ(mNetworkProvider.mLastNodeID, String(cMainNodeID));
+    EXPECT_EQ(mNetworkProvider.mLastInstance.mItemID, String("service1"));
+
+    mNetworkProvider.SetError(Error(ErrorEnum::eFailed, "release failed"));
+
+    err = client.ReleaseInstanceNetwork(instanceIdent, cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_TRUE(response.has_error());
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, ReleaseNodeNetwork)
+{
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    servicemanager::v5::ReleaseNodeNetworkResponse response;
+
+    err = client.ReleaseNodeNetwork("network1", cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_FALSE(response.has_error());
+
+    EXPECT_EQ(mNetworkProvider.mLastNetworkID, String("network1"));
+    EXPECT_EQ(mNetworkProvider.mLastNodeID, String(cMainNodeID));
+
+    mNetworkProvider.SetError(Error(ErrorEnum::eFailed, "release failed"));
+
+    err = client.ReleaseNodeNetwork("network1", cMainNodeID, response);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_TRUE(response.has_error());
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
     err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
@@ -763,6 +876,59 @@ TEST_F(SMControllerTest, GetBlobsInfos)
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     // 6) Wait for disconnect
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesPendingFirewallUpdate)
+{
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SubscribeInstanceNetworkUpdates();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    aos::networkmanager::PendingFirewallUpdate update;
+    update.mInstanceIdent.mItemID    = "serviceA";
+    update.mInstanceIdent.mSubjectID = "subject1";
+    update.mInstanceIdent.mInstance  = 1;
+
+    FirewallRule rule;
+    rule.mDstIP   = "10.0.0.5";
+    rule.mDstPort = "8080";
+    rule.mProto   = "tcp";
+    rule.mSrcIP   = "192.168.1.2";
+    update.mFirewallRules.PushBack(rule);
+
+    mSMController.OnPendingFirewallUpdate(cMainNodeID, update);
+
+    err = client.WaitPendingFirewallUpdate();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    auto& received = client.GetReceivedUpdates();
+    ASSERT_EQ(received.size(), 1);
+    EXPECT_EQ(received[0].instance().item_id(), "serviceA");
+    EXPECT_EQ(received[0].instance().subject_id(), "subject1");
+    EXPECT_EQ(received[0].instance().instance(), 1);
+    ASSERT_EQ(received[0].firewall_rules_size(), 1);
+    EXPECT_EQ(received[0].firewall_rules(0).dst_ip(), "10.0.0.5");
+    EXPECT_EQ(received[0].firewall_rules(0).dst_port(), "8080");
+    EXPECT_EQ(received[0].firewall_rules(0).proto(), "tcp");
+    EXPECT_EQ(received[0].firewall_rules(0).src_ip(), "192.168.1.2");
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
     err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }

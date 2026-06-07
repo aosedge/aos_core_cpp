@@ -9,6 +9,7 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/pbconvert/common.hpp>
 #include <common/pbconvert/sm.hpp>
 
 #include "smclient.hpp"
@@ -23,10 +24,9 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     aos::common::iamclient::TLSCredentialsItf& tlsCredentials, aos::iamclient::CertProviderItf& certProvider,
     launcher::RuntimeInfoProviderItf&         runtimeInfoProvider,
     resourcemanager::ResourceInfoProviderItf& resourceInfoProvider, nodeconfig::NodeConfigHandlerItf& nodeConfigHandler,
-    launcher::LauncherItf& launcher, logging::LogProviderItf& logProvider,
-    networkmanager::NetworkManagerItf& networkManager, aos::monitoring::MonitoringItf& monitoring,
+    launcher::LauncherItf& launcher, logging::LogProviderItf& logProvider, aos::monitoring::MonitoringItf& monitoring,
     aos::instancestatusprovider::ProviderItf& instanceStatusProvider, aos::nodeconfig::JSONProviderItf& jsonProvider,
-    bool secureConnection)
+    aos::networkmanager::PendingUpdateHandlerItf& networkUpdateHandler, bool secureConnection)
 {
     LOG_DBG() << "Init SM client";
 
@@ -39,10 +39,10 @@ Error SMClient::Init(const Config& config, const std::string& nodeID,
     mNodeConfigHandler      = &nodeConfigHandler;
     mLauncher               = &launcher;
     mLogProvider            = &logProvider;
-    mNetworkManager         = &networkManager;
     mMonitoring             = &monitoring;
     mInstanceStatusProvider = &instanceStatusProvider;
     mJSONProvider           = &jsonProvider;
+    mNetworkUpdateHandler   = &networkUpdateHandler;
     mSecureConnection       = secureConnection;
 
     return ErrorEnum::eNone;
@@ -70,6 +70,7 @@ Error SMClient::Start()
 
     mStopped = false;
 
+    StartNetworkUpdateSubscription();
     mConnectionThread = std::thread(&SMClient::ConnectionLoop, this);
 
     return ErrorEnum::eNone;
@@ -96,10 +97,20 @@ Error SMClient::Stop()
         if (mCtx) {
             mCtx->TryCancel();
         }
+
+        if (mNetworkUpdateCtx) {
+            mNetworkUpdateCtx->TryCancel();
+        }
+
+        mNetworkUpdateCV.notify_all();
     }
 
     if (mConnectionThread.joinable()) {
         mConnectionThread.join();
+    }
+
+    if (mNetworkUpdateThread.joinable()) {
+        mNetworkUpdateThread.join();
     }
 
     return ErrorEnum::eNone;
@@ -294,6 +305,179 @@ bool SMClient::IsConnected() const
     return mConnectionStatus == servicemanager::v5::ConnectionEnum::CONNECTED;
 }
 
+Error SMClient::GetNodeNetworkParams(const String& networkID, const String& nodeID, NetworkParams& result)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "GetNodeNetworkParams" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::GetNodeNetworkParamsRequest request;
+    request.set_network_id(networkID.CStr());
+    request.set_node_id(nodeID.CStr());
+
+    grpc::ClientContext                   context;
+    smproto::GetNodeNetworkParamsResponse response;
+
+    auto status = mNetworkStub->GetNodeNetworkParams(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    result.mNetworkID = networkID;
+    result.mSubnet    = response.subnet().c_str();
+    result.mIP        = response.ip().c_str();
+    result.mVlanID    = response.vlan_id();
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::AllocateInstanceNetwork(const InstanceIdent& instance, const String& networkID, const String& nodeID,
+    const UpdateItemNetworkParams& serviceData, InstanceNetworkAllocation& result)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "AllocateInstanceNetwork" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::AllocateInstanceNetworkRequest request;
+    *request.mutable_instance() = common::pbconvert::ConvertToProto(instance);
+    request.set_network_id(networkID.CStr());
+    request.set_node_id(nodeID.CStr());
+
+    for (const auto& host : serviceData.mHosts) {
+        request.mutable_service_data()->add_hosts(host.CStr());
+    }
+
+    for (const auto& connection : serviceData.mAllowedConnections) {
+        request.mutable_service_data()->add_allowed_connections(connection.CStr());
+    }
+
+    for (const auto& port : serviceData.mExposedPorts) {
+        request.mutable_service_data()->add_exposed_ports(port.CStr());
+    }
+
+    grpc::ClientContext                      context;
+    smproto::AllocateInstanceNetworkResponse response;
+
+    auto status = mNetworkStub->AllocateInstanceNetwork(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    if (auto err = common::pbconvert::ConvertFromProto(response, result); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ReleaseInstanceNetwork(const InstanceIdent& instance, const String& nodeID)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "ReleaseInstanceNetwork" << Log::Field("nodeID", nodeID);
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::ReleaseInstanceNetworkRequest request;
+    *request.mutable_instance() = common::pbconvert::ConvertToProto(instance);
+    request.set_node_id(nodeID.CStr());
+
+    grpc::ClientContext                     context;
+    smproto::ReleaseInstanceNetworkResponse response;
+
+    auto status = mNetworkStub->ReleaseInstanceNetwork(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::ReleaseNodeNetwork(const String& networkID, const String& nodeID)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "ReleaseNodeNetwork" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::ReleaseNodeNetworkRequest request;
+    request.set_network_id(networkID.CStr());
+    request.set_node_id(nodeID.CStr());
+
+    grpc::ClientContext                 context;
+    smproto::ReleaseNodeNetworkResponse response;
+
+    auto status = mNetworkStub->ReleaseNodeNetwork(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Sync network state" << Log::Field("nodeID", nodeID) << Log::Field("instancesCount", instances.Size());
+
+    if (!mNetworkStub) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+    }
+
+    smproto::SyncNetworkStateRequest request;
+    request.set_node_id(nodeID.CStr());
+
+    for (const auto& instance : instances) {
+        if (auto err = common::pbconvert::ConvertToProto(instance, *request.add_instances()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    grpc::ClientContext               context;
+    smproto::SyncNetworkStateResponse response;
+
+    auto status = mNetworkStub->SyncNetworkState(&context, request, &response);
+    if (!status.ok()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+    }
+
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
@@ -301,19 +485,6 @@ bool SMClient::IsConnected() const
 std::unique_ptr<grpc::ClientContext> SMClient::CreateClientContext()
 {
     return std::make_unique<grpc::ClientContext>();
-}
-
-SMClient::StubPtr SMClient::CreateStub(
-    const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials)
-{
-    auto channel = grpc::CreateCustomChannel(url, credentials, common::utils::CreateGRPCChannelArguments());
-    if (!channel) {
-        LOG_ERR() << "Can't create client channel";
-
-        return nullptr;
-    }
-
-    return smproto::SMService::NewStub(channel);
 }
 
 Error SMClient::CreateCredentials()
@@ -416,12 +587,26 @@ bool SMClient::RegisterSM(const std::string& url)
         return false;
     }
 
-    mStub = CreateStub(url, mCredentials);
-    if (!mStub) {
-        LOG_ERR() << "Can't create stub";
+    auto channel = grpc::CreateCustomChannel(url, mCredentials, common::utils::CreateGRPCChannelArguments());
+    if (!channel) {
+        LOG_ERR() << "Can't create client channel";
 
         return false;
     }
+
+    if (mStub = smproto::SMService::NewStub(channel); !mStub) {
+        LOG_ERR() << "Can't create SM stub";
+
+        return false;
+    }
+
+    if (mNetworkStub = smproto::NetworkService::NewStub(channel); !mNetworkStub) {
+        LOG_ERR() << "Can't create network stub";
+
+        return false;
+    }
+
+    mNetworkUpdateCV.notify_all();
 
     mCtx = CreateClientContext();
 
@@ -462,8 +647,6 @@ void SMClient::HandleIncomingMessages()
             err = ProcessGetAverageMonitoring();
         } else if (incomingMsg.has_connection_status()) {
             err = ProcessConnectionStatus(incomingMsg.connection_status());
-        } else if (incomingMsg.has_update_networks()) {
-            err = ProcessUpdateNetworks(incomingMsg.update_networks());
         }
 
         if (!err.IsNone()) {
@@ -678,23 +861,6 @@ Error SMClient::ProcessConnectionStatus(const smproto::ConnectionStatus& status)
     return ErrorEnum::eNone;
 }
 
-Error SMClient::ProcessUpdateNetworks(const smproto::UpdateNetworks& updateNetworks)
-{
-    LOG_DBG() << "Process update networks";
-
-    auto networks = std::make_unique<StaticArray<NetworkParameters, cMaxNumOwners>>();
-
-    if (auto err = common::pbconvert::ConvertFromProto(updateNetworks, *networks); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = mNetworkManager->UpdateNetworks(*networks); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
 void SMClient::ConnectionLoop() noexcept
 {
     LOG_DBG() << "SM client connection thread started";
@@ -709,6 +875,17 @@ void SMClient::ConnectionLoop() noexcept
             } else if (!SendNodeInstancesStatus()) {
                 LOG_ERR() << "Can't send node instances status";
             } else {
+                std::vector<aos::sm::smclient::ConnectListenerItf*> listeners;
+
+                {
+                    std::lock_guard lock {mMutex};
+                    listeners = mConnectListeners;
+                }
+
+                for (auto* listener : listeners) {
+                    listener->OnConnect();
+                }
+
                 HandleIncomingMessages();
             }
 
@@ -726,6 +903,103 @@ void SMClient::ConnectionLoop() noexcept
     }
 
     LOG_DBG() << "SM client connection thread stopped";
+}
+
+Error SMClient::SubscribeListener(ConnectListenerItf& listener)
+{
+    std::lock_guard lock {mMutex};
+
+    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+    if (it != mConnectListeners.end()) {
+        return Error(ErrorEnum::eAlreadyExist, "listener already subscribed");
+    }
+
+    mConnectListeners.push_back(&listener);
+
+    return ErrorEnum::eNone;
+}
+
+Error SMClient::UnsubscribeListener(ConnectListenerItf& listener)
+{
+    std::lock_guard lock {mMutex};
+
+    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+    if (it != mConnectListeners.end()) {
+        mConnectListeners.erase(it);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+void SMClient::StartNetworkUpdateSubscription()
+{
+    mNetworkUpdateThread = std::thread([this]() {
+        LOG_DBG() << "Network update subscription thread started";
+
+        for (;;) {
+            {
+                std::unique_lock lock {mMutex};
+
+                mNetworkUpdateCV.wait(lock, [this]() { return mNetworkStub != nullptr || mStopped; });
+
+                if (mStopped) {
+                    break;
+                }
+
+                mNetworkUpdateCtx = CreateClientContext();
+
+                smproto::SubscribeInstanceNetworkUpdatesRequest request;
+                request.set_node_id(mNodeID);
+
+                mNetworkUpdateReader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
+            }
+
+            if (mNetworkUpdateReader) {
+                smproto::InstanceNetworkUpdateNotification notification;
+
+                while (mNetworkUpdateReader->Read(&notification)) {
+                    if (notification.has_pending_firewall_update()) {
+                        aos::networkmanager::PendingFirewallUpdate update;
+
+                        if (auto err
+                            = common::pbconvert::ConvertFromProto(notification.pending_firewall_update(), update);
+                            !err.IsNone()) {
+                            LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
+                            continue;
+                        }
+
+                        mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
+                    }
+                }
+
+                std::lock_guard lock {mMutex};
+
+                auto status = mNetworkUpdateReader->Finish();
+                if (!status.ok() && !mStopped) {
+                    LOG_WRN() << "Network update stream disconnected"
+                              << Log::Field("error", status.error_message().c_str());
+                }
+
+                mNetworkUpdateReader.reset();
+                mNetworkUpdateCtx.reset();
+            } else {
+                LOG_ERR() << "Failed to subscribe to instance network updates";
+            }
+
+            {
+                std::unique_lock lock {mMutex};
+
+                mNetworkUpdateCV.wait_for(lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()),
+                    [this] { return mStopped; });
+
+                if (mStopped) {
+                    break;
+                }
+            }
+        }
+
+        LOG_DBG() << "Network update subscription thread stopped";
+    });
 }
 
 } // namespace aos::sm::smclient

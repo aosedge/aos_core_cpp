@@ -340,35 +340,6 @@ TEST_F(PBConvertSMTest, ConvertLogDataFromProtoWithError)
     EXPECT_EQ(aosPushLog.mError.Value(), ErrorEnum::eFailed);
 }
 
-TEST_F(PBConvertSMTest, ConvertUpdateNetworksToProto)
-{
-    StaticArray<UpdateNetworkParameters, 2> networkParams;
-
-    UpdateNetworkParameters param1;
-    UpdateNetworkParameters param2;
-
-    param1.mNetworkID = "net1";
-    param1.mSubnet    = "10.0.1.0/24";
-    param1.mIP        = "10.0.1.5";
-    param1.mVlanID    = 10;
-    networkParams.PushBack(param1);
-
-    param2.mNetworkID = "net2";
-    param2.mSubnet    = "10.0.2.0/24";
-    param2.mIP        = "10.0.2.5";
-    param2.mVlanID    = 20;
-    networkParams.PushBack(param2);
-
-    servicemanager::v5::UpdateNetworks result;
-
-    auto err = ConvertToProto(networkParams, result);
-    ASSERT_TRUE(err.IsNone()) << err.Message();
-
-    ASSERT_EQ(result.networks_size(), 2);
-    EXPECT_EQ(result.networks(0).network_id(), "net1");
-    EXPECT_EQ(result.networks(1).network_id(), "net2");
-}
-
 TEST_F(PBConvertSMTest, ConvertRequestLogToSystemLogRequest)
 {
     RequestLog log;
@@ -564,13 +535,6 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     envVar2.mValue = "value2";
     start1.mEnvVars.PushBack(envVar2);
 
-    InstanceNetworkParameters netParams;
-
-    netParams.mNetworkID = "net1";
-    netParams.mIP        = "10.0.0.10";
-    netParams.mSubnet    = "10.0.0.0/24";
-    start1.mNetworkParameters.SetValue(netParams);
-
     InstanceMonitoringParams monitoringParams;
 
     monitoringParams.mAlertRules.EmplaceValue();
@@ -610,11 +574,6 @@ TEST_F(PBConvertSMTest, ConvertUpdateInstancesToProto)
     EXPECT_EQ(result.start_instances(0).env_vars(0).value(), "value1");
     EXPECT_EQ(result.start_instances(0).env_vars(1).name(), "ENV_VAR2");
     EXPECT_EQ(result.start_instances(0).env_vars(1).value(), "value2");
-
-    ASSERT_TRUE(result.start_instances(0).has_network_parameters());
-    EXPECT_EQ(result.start_instances(0).network_parameters().network_id(), "net1");
-    EXPECT_EQ(result.start_instances(0).network_parameters().ip(), "10.0.0.10");
-    EXPECT_EQ(result.start_instances(0).network_parameters().subnet(), "10.0.0.0/24");
 
     ASSERT_TRUE(result.start_instances(0).has_monitoring_parameters());
     ASSERT_TRUE(result.start_instances(0).monitoring_parameters().has_alert_rules());
@@ -728,6 +687,105 @@ TEST_F(PBConvertSMTest, ConvertNodeConfigToSetNodeConfigProto)
 
     EXPECT_EQ(result.version(), "3.0.0");
     EXPECT_EQ(result.node_config(), cExpectedNodeConfigJSON);
+}
+
+TEST_F(PBConvertSMTest, ConvertUpdateItemNetworkParamsFromProto)
+{
+    servicemanager::v5::UpdateItemNetworkParams grpcData;
+
+    grpcData.add_hosts("host1.local");
+    grpcData.add_hosts("host2.local");
+    grpcData.add_allowed_connections("service1:8080/tcp");
+    grpcData.add_allowed_connections("service2:9090/tcp");
+    grpcData.add_exposed_ports("80/tcp");
+    grpcData.add_exposed_ports("443/tcp");
+
+    UpdateItemNetworkParams aosData;
+
+    auto err = ConvertFromProto(grpcData, aosData);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    ASSERT_EQ(aosData.mHosts.Size(), 2);
+    EXPECT_EQ(aosData.mHosts[0], String("host1.local"));
+    EXPECT_EQ(aosData.mHosts[1], String("host2.local"));
+
+    ASSERT_EQ(aosData.mAllowedConnections.Size(), 2);
+    EXPECT_EQ(aosData.mAllowedConnections[0], String("service1:8080/tcp"));
+    EXPECT_EQ(aosData.mAllowedConnections[1], String("service2:9090/tcp"));
+
+    ASSERT_EQ(aosData.mExposedPorts.Size(), 2);
+    EXPECT_EQ(aosData.mExposedPorts[0], String("80/tcp"));
+    EXPECT_EQ(aosData.mExposedPorts[1], String("443/tcp"));
+}
+
+TEST_F(PBConvertSMTest, ConvertUpdateItemNetworkParamsFromProtoEmpty)
+{
+    servicemanager::v5::UpdateItemNetworkParams grpcData;
+
+    UpdateItemNetworkParams aosData;
+
+    auto err = ConvertFromProto(grpcData, aosData);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(aosData.mHosts.Size(), 0);
+    EXPECT_EQ(aosData.mAllowedConnections.Size(), 0);
+    EXPECT_EQ(aosData.mExposedPorts.Size(), 0);
+}
+
+TEST_F(PBConvertSMTest, ConvertNetworkParamsToGetNodeNetworkParamsResponse)
+{
+    NetworkParams params;
+
+    params.mSubnet = "10.0.1.0/24";
+    params.mIP     = "10.0.1.5";
+    params.mVlanID = 42;
+
+    servicemanager::v5::GetNodeNetworkParamsResponse result;
+
+    auto err = ConvertToProto(params, result);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(result.subnet(), "10.0.1.0/24");
+    EXPECT_EQ(result.ip(), "10.0.1.5");
+    EXPECT_EQ(result.vlan_id(), 42);
+}
+
+TEST_F(PBConvertSMTest, ConvertInstanceNetworkParamsToAllocateInstanceNetworkResponse)
+{
+    InstanceNetworkAllocation params;
+
+    params.mSubnet = "10.0.2.0/24";
+    params.mIP     = "10.0.2.10";
+    params.mDNSServers.PushBack("8.8.8.8");
+    params.mDNSServers.PushBack("8.8.4.4");
+
+    servicemanager::v5::AllocateInstanceNetworkResponse result;
+
+    auto err = ConvertToProto(params, result);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(result.subnet(), "10.0.2.0/24");
+    EXPECT_EQ(result.ip(), "10.0.2.10");
+    ASSERT_EQ(result.dns_servers_size(), 2);
+    EXPECT_EQ(result.dns_servers(0), "8.8.8.8");
+    EXPECT_EQ(result.dns_servers(1), "8.8.4.4");
+}
+
+TEST_F(PBConvertSMTest, ConvertInstanceNetworkParamsToAllocateInstanceNetworkResponseEmpty)
+{
+    InstanceNetworkAllocation params;
+
+    params.mSubnet = "10.0.3.0/24";
+    params.mIP     = "10.0.3.1";
+
+    servicemanager::v5::AllocateInstanceNetworkResponse result;
+
+    auto err = ConvertToProto(params, result);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(result.subnet(), "10.0.3.0/24");
+    EXPECT_EQ(result.ip(), "10.0.3.1");
+    EXPECT_EQ(result.dns_servers_size(), 0);
 }
 
 } // namespace aos::common::pbconvert

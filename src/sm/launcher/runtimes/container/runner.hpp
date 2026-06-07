@@ -7,17 +7,15 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_RUNNER_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_RUNNER_HPP_
 
-#include <chrono>
 #include <condition_variable>
-#include <map>
-#include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 #include <core/common/tools/time.hpp>
-
-#include <sm/utils/itf/systemdconn.hpp>
 
 #include "itf/runner.hpp"
 
@@ -32,10 +30,10 @@ public:
      * Initializes Runner instance.
      *
      * @param receiver run status receiver.
-     * @param systemdConn systemd connection.
+     * @param containerRunner container runner.
      * @return Error.
      */
-    Error Init(RunStatusReceiverItf& receiver, sm::utils::SystemdConnItf& systemdConn) override;
+    Error Init(RunStatusReceiverItf& receiver, ContainerRunnerItf& containerRunner) override;
 
     /**
      * Starts monitoring thread.
@@ -55,7 +53,7 @@ public:
      * Starts service instance.
      *
      * @param instanceID instance ID.
-     * @param runParams runtime parameters.
+     * @param params runtime parameters.
      * @return RunStatus.
      */
     RunStatus StartInstance(const std::string& instanceID, const RunParameters& params) override;
@@ -70,49 +68,33 @@ public:
 
 private:
     static constexpr auto cDefaultStartInterval   = 5 * Time::cSeconds;
-    static constexpr auto cDefaultStopTimeout     = 5 * Time::cSeconds;
-    static constexpr auto cStartTimeMultiplier    = 1.2;
     static constexpr auto cDefaultStartBurst      = 3;
     static constexpr auto cDefaultRestartInterval = 1 * Time::cSeconds;
+    static constexpr auto cStatusPollPeriod       = std::chrono::seconds(1);
 
-    static constexpr auto cStatusPollPeriod = std::chrono::seconds(1);
-
-    static constexpr auto cSystemdUnitNameTemplate = "aos-service@%s.service";
-    static constexpr auto cSystemdDropInsDir       = "/run/systemd/system";
-    static constexpr auto cParametersFileName      = "parameters.conf";
-
-    virtual std::string GetSystemdDropInsDir() const;
-
-    void                        MonitorUnits();
+    bool                        SyncStates();
+    std::vector<std::string>    GetInstancesToRestart();
+    void                        MonitorContainers();
     std::vector<RunStatus>&     GetRunningInstances() const;
-    Error                       SetRunParameters(const std::string& unitName, const RunParameters& params);
-    Error                       RemoveRunParameters(const std::string& unitName);
-    RetWithError<InstanceState> GetStartingUnitState(const std::string& unitName, Duration startInterval);
-
-    static std::string CreateSystemdUnitName(const std::string& instance);
-    static std::string CreateInstanceID(const std::string& unitname);
-
-    struct StartingUnitData {
-        std::condition_variable mCondVar;
-        sm::utils::UnitState    mRunState;
-        Optional<int32_t>       mExitCode;
-    };
+    RetWithError<InstanceState> InitContainerState(const std::string& instanceID, const RunParameters& params);
 
     struct RunningUnitData {
-        InstanceState     mRunState;
-        Optional<int32_t> mExitCode;
+        InstanceState       mRunState;
+        RunParameters       mParams;
+        Time                mFirstStartTime = {Time::Now()};
+        std::optional<Time> mNextRestartAt;
+        int                 mRestartCount      = {};
+        bool                mExceedsBurstLimit = {};
     };
 
-    RunStatusReceiverItf* mRunStatusReceiver = nullptr;
+    RunStatusReceiverItf*   mRunStatusReceiver = {};
+    ContainerRunnerItf*     mContainerRunner   = {};
+    std::thread             mMonitoringThread;
+    std::mutex              mMutex;
+    std::condition_variable mCondVar;
 
-    sm::utils::SystemdConnItf* mSystemd = {};
-    std::thread                mMonitoringThread;
-    std::mutex                 mMutex;
-    std::condition_variable    mCondVar;
-
-    std::map<std::string, StartingUnitData> mStartingUnits;
-    std::map<std::string, RunningUnitData>  mRunningUnits;
-    mutable std::vector<RunStatus>          mRunningInstances;
+    std::unordered_map<std::string, RunningUnitData> mRunningContainers;
+    mutable std::vector<RunStatus>                   mRunningInstances;
 
     bool mClosed = false;
 };

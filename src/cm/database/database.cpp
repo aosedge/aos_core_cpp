@@ -579,6 +579,121 @@ Error Database::RemoveNetworkInstance(const InstanceIdent& instanceIdent)
     return ErrorEnum::eNone;
 }
 
+Error Database::AddPendingConnection(const networkmanager::PendingConnection& connection)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        PendingConnectionRow row;
+
+        FromAos(connection, row);
+        *mSession << "INSERT INTO pending_connections (requesterItemID, requesterSubjectID, requesterInstance, "
+                     "requesterType, requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, "
+                     "targetItemID, port, protocol) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            bind(row), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::GetPendingConnectionsByTarget(
+    const String& targetItemID, Array<networkmanager::PendingConnection>& connections)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        std::vector<PendingConnectionRow> rows;
+
+        *mSession << "SELECT requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
+                     "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
+                     "port, protocol FROM pending_connections WHERE targetItemID = ?;",
+            bind(targetItemID.CStr()), into(rows), now;
+
+        auto connection = std::make_unique<networkmanager::PendingConnection>();
+
+        connections.Clear();
+
+        for (const auto& row : rows) {
+            ToAos(row, *connection);
+
+            auto err = connections.PushBack(*connection);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add pending connection");
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::GetAllPendingConnections(Array<networkmanager::PendingConnection>& connections)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        std::vector<PendingConnectionRow> rows;
+
+        *mSession << "SELECT requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
+                     "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
+                     "port, protocol FROM pending_connections;",
+            into(rows), now;
+
+        auto connection = std::make_unique<networkmanager::PendingConnection>();
+
+        connections.Clear();
+
+        for (const auto& row : rows) {
+            ToAos(row, *connection);
+
+            auto err = connections.PushBack(*connection);
+            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add pending connection");
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::RemovePendingConnection(const networkmanager::PendingConnection& connection)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        *mSession << "DELETE FROM pending_connections "
+                     "WHERE requesterItemID = ? AND requesterSubjectID = ? AND requesterInstance = ? "
+                     "AND requesterType = ? AND requesterPreinstalled = ? AND targetItemID = ? "
+                     "AND port = ? AND protocol = ?;",
+            bind(connection.mRequesterIdent.mItemID.CStr()), bind(connection.mRequesterIdent.mSubjectID.CStr()),
+            bind(connection.mRequesterIdent.mInstance), bind(connection.mRequesterIdent.mType.ToString().CStr()),
+            bind(connection.mRequesterIdent.mPreinstalled), bind(connection.mTargetItemID.CStr()),
+            bind(connection.mPort.CStr()), bind(connection.mProtocol.CStr()), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::RemovePendingConnections(const InstanceIdent& requesterIdent)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        *mSession << "DELETE FROM pending_connections "
+                     "WHERE requesterItemID = ? AND requesterSubjectID = ? AND requesterInstance = ? "
+                     "AND requesterType = ? AND requesterPreinstalled = ?;",
+            bind(requesterIdent.mItemID.CStr()), bind(requesterIdent.mSubjectID.CStr()), bind(requesterIdent.mInstance),
+            bind(requesterIdent.mType.ToString().CStr()), bind(requesterIdent.mPreinstalled), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 /***********************************************************************************************************************
  * launcher::StorageItf implementation
  **********************************************************************************************************************/
@@ -1071,6 +1186,22 @@ void Database::CreateTables()
                  ");",
         now;
 
+    *mSession << "CREATE TABLE IF NOT EXISTS pending_connections ("
+                 "requesterItemID TEXT,"
+                 "requesterSubjectID TEXT,"
+                 "requesterInstance INTEGER,"
+                 "requesterType TEXT,"
+                 "requesterPreinstalled INTEGER,"
+                 "nodeID TEXT,"
+                 "networkID TEXT,"
+                 "requesterIP TEXT,"
+                 "requesterSubnet TEXT,"
+                 "targetItemID TEXT,"
+                 "port TEXT,"
+                 "protocol TEXT"
+                 ");",
+        now;
+
     *mSession << "CREATE TABLE IF NOT EXISTS launcher_instances ("
                  "itemID TEXT,"
                  "subjectID TEXT,"
@@ -1203,6 +1334,41 @@ void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Insta
 
     DeserializeExposedPorts(src.get<ToInt(NetworkManagerInstanceColumns::eExposedPorts)>(), dst.mExposedPorts);
     DeserializeDNSServers(src.get<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(), dst.mDNSServers);
+}
+
+void Database::FromAos(const networkmanager::PendingConnection& src, PendingConnectionRow& dst)
+{
+    dst.set<ToInt(PendingConnectionColumns::eRequesterItemID)>(src.mRequesterIdent.mItemID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterSubjectID)>(src.mRequesterIdent.mSubjectID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterInstance)>(src.mRequesterIdent.mInstance);
+    dst.set<ToInt(PendingConnectionColumns::eRequesterType)>(src.mRequesterIdent.mType.ToString().CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterPreinstalled)>(src.mRequesterIdent.mPreinstalled);
+    dst.set<ToInt(PendingConnectionColumns::eNodeID)>(src.mNodeID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eNetworkID)>(src.mNetworkID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterIP)>(src.mRequesterIP.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eRequesterSubnet)>(src.mRequesterSubnet.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eTargetItemID)>(src.mTargetItemID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::ePort)>(src.mPort.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eProtocol)>(src.mProtocol.CStr());
+}
+
+void Database::ToAos(const PendingConnectionRow& src, networkmanager::PendingConnection& dst)
+{
+    dst.mRequesterIdent.mItemID    = src.get<ToInt(PendingConnectionColumns::eRequesterItemID)>().c_str();
+    dst.mRequesterIdent.mSubjectID = src.get<ToInt(PendingConnectionColumns::eRequesterSubjectID)>().c_str();
+    dst.mRequesterIdent.mInstance  = src.get<ToInt(PendingConnectionColumns::eRequesterInstance)>();
+
+    auto err = dst.mRequesterIdent.mType.FromString(src.get<ToInt(PendingConnectionColumns::eRequesterType)>().c_str());
+    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to parse instance type");
+
+    dst.mRequesterIdent.mPreinstalled = src.get<ToInt(PendingConnectionColumns::eRequesterPreinstalled)>();
+    dst.mNodeID                       = src.get<ToInt(PendingConnectionColumns::eNodeID)>().c_str();
+    dst.mNetworkID                    = src.get<ToInt(PendingConnectionColumns::eNetworkID)>().c_str();
+    dst.mRequesterIP                  = src.get<ToInt(PendingConnectionColumns::eRequesterIP)>().c_str();
+    dst.mRequesterSubnet              = src.get<ToInt(PendingConnectionColumns::eRequesterSubnet)>().c_str();
+    dst.mTargetItemID                 = src.get<ToInt(PendingConnectionColumns::eTargetItemID)>().c_str();
+    dst.mPort                         = src.get<ToInt(PendingConnectionColumns::ePort)>().c_str();
+    dst.mProtocol                     = src.get<ToInt(PendingConnectionColumns::eProtocol)>().c_str();
 }
 
 void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRow& dst)

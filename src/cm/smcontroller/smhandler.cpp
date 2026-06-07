@@ -204,24 +204,6 @@ Error SMHandler::RequestLog(const aos::RequestLog& log)
     return ErrorEnum::eNone;
 }
 
-Error SMHandler::UpdateNetworks(const Array<UpdateNetworkParameters>& networkParameters)
-{
-    LOG_DBG() << "Update networks for node" << Log::Field("nodeID", GetNodeID());
-
-    servicemanager::v5::SMIncomingMessages inMsg;
-    auto*                                  updateNetworks = inMsg.mutable_update_networks();
-
-    if (auto err = common::pbconvert::ConvertToProto(networkParameters, *updateNetworks); !err.IsNone()) {
-        return err;
-    }
-
-    if (auto err = SendMessage(inMsg); !err.IsNone()) {
-        return err;
-    }
-
-    return ErrorEnum::eNone;
-}
-
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/

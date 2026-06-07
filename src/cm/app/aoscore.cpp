@@ -71,7 +71,6 @@ void AosCore::Init(const std::string& configFile)
 
     InitDatabase();
     InitStorageState();
-    InitSMController();
 
     err = mAlerts.Init(mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
@@ -102,8 +101,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize unit config");
 
     err = mLauncher.Init(mConfig.mLauncher, mNodeInfoProvider, mSMController, mImageManager, mOCISpec, mUnitConfig,
-        mStorageState, mNetworkManager, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid,
-        mDatabase);
+        mStorageState, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     err = mUpdateManager.Init({mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig, mNodeInfoProvider,
@@ -112,8 +110,10 @@ void AosCore::Init(const std::string& configFile)
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSIP);
 
-    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mSMController, mDNSServer);
+    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer, &mSMController);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
+
+    InitSMController();
 }
 
 void AosCore::Start()
@@ -287,7 +287,7 @@ void AosCore::InitSMController()
     config.mCMServerURL = mConfig.mCMServerURL;
 
     auto err = mSMController.Init(config, mCommunication, mIAMClient, mCertLoader, mCryptoProvider, mImageManager,
-        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider);
+        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider, mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM controller");
 }
 

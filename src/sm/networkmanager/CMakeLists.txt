@@ -10,13 +10,13 @@ set(TARGET_NAME networkmanager)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES cni.cpp exec.cpp trafficmonitor.cpp)
+set(SOURCES bandwidth.cpp bridgenetwork.cpp dnsserver.cpp dnsname.cpp firewall.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::network aos::common::utils aos::core::sm::networkmanager Poco::JSON Poco::Foundation)
+set(LIBRARIES aos::common::process aos::common::utils aos::core::sm::networkmanager Poco::JSON Poco::Foundation)
 
 # ######################################################################################################################
 # Target

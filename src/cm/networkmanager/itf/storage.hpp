@@ -153,6 +153,41 @@ struct Network {
 };
 
 /**
+ * Pending connection.
+ */
+struct PendingConnection {
+    InstanceIdent                  mRequesterIdent;
+    StaticString<cIDLen>           mNodeID;
+    StaticString<cIDLen>           mNetworkID;
+    StaticString<cIPLen>           mRequesterIP;
+    StaticString<cSubnetLen>       mRequesterSubnet;
+    StaticString<cIDLen>           mTargetItemID;
+    StaticString<cPortLen>         mPort;
+    StaticString<cProtocolNameLen> mProtocol;
+
+    /**
+     * Compares pending connections.
+     *
+     * @param rhs other pending connection.
+     * @return bool.
+     */
+    bool operator==(const PendingConnection& rhs) const
+    {
+        return mRequesterIdent == rhs.mRequesterIdent && mNodeID == rhs.mNodeID && mNetworkID == rhs.mNetworkID
+            && mRequesterIP == rhs.mRequesterIP && mRequesterSubnet == rhs.mRequesterSubnet
+            && mTargetItemID == rhs.mTargetItemID && mPort == rhs.mPort && mProtocol == rhs.mProtocol;
+    }
+
+    /**
+     * Compares pending connections.
+     *
+     * @param rhs other pending connection.
+     * @return bool.
+     */
+    bool operator!=(const PendingConnection& rhs) const { return !(*this == rhs); }
+};
+
+/**
  * Network state.
  */
 struct NetworkState {
@@ -265,6 +300,47 @@ public:
      * @return Error.
      */
     virtual Error RemoveNetworkInstance(const InstanceIdent& instanceIdent) = 0;
+
+    /**
+     * Adds pending connection.
+     *
+     * @param connection Pending connection.
+     * @return Error.
+     */
+    virtual Error AddPendingConnection(const PendingConnection& connection) = 0;
+
+    /**
+     * Gets pending connections by target item ID.
+     *
+     * @param targetItemID Target item ID.
+     * @param[out] connections Pending connections.
+     * @return Error.
+     */
+    virtual Error GetPendingConnectionsByTarget(const String& targetItemID, Array<PendingConnection>& connections) = 0;
+
+    /**
+     * Gets all pending connections.
+     *
+     * @param[out] connections All pending connections.
+     * @return Error.
+     */
+    virtual Error GetAllPendingConnections(Array<PendingConnection>& connections) = 0;
+
+    /**
+     * Removes a specific pending connection.
+     *
+     * @param connection Pending connection to remove.
+     * @return Error.
+     */
+    virtual Error RemovePendingConnection(const PendingConnection& connection) = 0;
+
+    /**
+     * Removes all pending connections for a requester instance.
+     *
+     * @param requesterIdent Requester instance identifier.
+     * @return Error.
+     */
+    virtual Error RemovePendingConnections(const InstanceIdent& requesterIdent) = 0;
 };
 
 } // namespace aos::cm::networkmanager

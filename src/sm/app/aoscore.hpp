@@ -15,6 +15,7 @@
 #include <core/common/spaceallocator/spaceallocator.hpp>
 #include <core/sm/imagemanager/imagemanager.hpp>
 #include <core/sm/launcher/launcher.hpp>
+#include <core/sm/networkmanager/networkmanager.hpp>
 #include <core/sm/nodeconfig/nodeconfig.hpp>
 
 #include <common/downloader/downloader.hpp>
@@ -22,21 +23,26 @@
 #include <common/jsonprovider/jsonprovider.hpp>
 #include <common/logger/logger.hpp>
 #include <common/network/interfacemanager.hpp>
-#include <common/network/iptables.hpp>
 #include <common/network/namespacemanager.hpp>
+#include <common/network/tc.hpp>
 #include <common/ocispec/ocispec.hpp>
+#include <common/process/processspawner.hpp>
 #include <common/utils/cleanupmanager.hpp>
 #include <common/utils/fsplatform.hpp>
 #include <sm/alerts/journalalerts.hpp>
 #include <sm/database/database.hpp>
 #include <sm/iamclient/iamclient.hpp>
 #include <sm/imagemanager/imagehandler.hpp>
+#include <sm/launcher/instanceidprovider.hpp>
 #include <sm/launcher/runtimes.hpp>
 #include <sm/logprovider/logprovider.hpp>
 #include <sm/monitoring/nodemonitoringprovider.hpp>
-#include <sm/networkmanager/cni.hpp>
-#include <sm/networkmanager/exec.hpp>
+#include <sm/networkmanager/bandwidth.hpp>
+#include <sm/networkmanager/bridgenetwork.hpp>
+#include <sm/networkmanager/dnsname.hpp>
+#include <sm/networkmanager/firewall.hpp>
 #include <sm/networkmanager/trafficmonitor.hpp>
+#include <sm/nftables/nftables.hpp>
 #include <sm/resourcemanager/resourcemanager.hpp>
 #include <sm/smclient/smclient.hpp>
 #include <sm/utils/systemdconn.hpp>
@@ -87,28 +93,33 @@ private:
     aos::pkcs11::PKCS11Manager                                  mPKCS11Manager;
     aos::spaceallocator::SpaceAllocator<cMaxNumConcurrentItems> mImagesSpaceAllocator;
 
-    common::downloader::Downloader     mDownloader;
-    common::iamclient::TLSCredentials  mTLSCredentials;
-    common::jsonprovider::JSONProvider mJSONProvider;
-    common::logger::Logger             mLogger;
-    common::network::InterfaceManager  mNetworkInterfaceManager;
-    common::network::IPTables          mIPTables;
-    common::network::NamespaceManager  mNamespaceManager;
-    common::oci::OCISpec               mOCISpec;
-    common::utils::CleanupManager      mCleanupManager;
-    common::utils::FSPlatform          mPlatformFS;
+    common::downloader::Downloader      mDownloader;
+    common::iamclient::TLSCredentials   mTLSCredentials;
+    common::jsonprovider::JSONProvider  mJSONProvider;
+    common::logger::Logger              mLogger;
+    common::network::InterfaceManager   mNetworkInterfaceManager;
+    common::network::NamespaceManager   mNamespaceManager;
+    nftables::NFTables                  mNFTables;
+    common::network::TC                 mTC;
+    common::oci::OCISpec                mOCISpec;
+    common::process::PocoProcessSpawner mProcessSpawner;
+    common::utils::CleanupManager       mCleanupManager;
+    common::utils::FSPlatform           mPlatformFS;
 
     sm::alerts::JournalAlerts              mJournalAlerts;
-    sm::cni::CNI                           mCNI;
-    sm::cni::Exec                          mExec;
     sm::database::Database                 mDatabase;
     sm::iamclient::IAMClient               mIAMClient;
     sm::imagemanager::ImageHandler         mImageHandler;
     sm::imagemanager::ImageManager         mImageManager;
+    sm::launcher::InstanceIDProvider       mInstanceIDProvider;
     sm::launcher::Launcher                 mLauncher;
     sm::launcher::Runtimes                 mRuntimes;
     sm::logprovider::LogProvider           mLogProvider;
     sm::monitoring::NodeMonitoringProvider mNodeMonitoringProvider;
+    sm::networkmanager::Bandwidth          mBandwidth;
+    sm::networkmanager::BridgeNetwork      mBridgeNetwork;
+    sm::networkmanager::DNSName            mDNSName;
+    sm::networkmanager::Firewall           mFirewall;
     sm::networkmanager::NetworkManager     mNetworkManager;
     sm::networkmanager::TrafficMonitor     mTrafficMonitor;
     sm::nodeconfig::NodeConfig             mNodeConfigHandler;

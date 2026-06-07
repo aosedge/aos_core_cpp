@@ -11,6 +11,7 @@
 find_package(PkgConfig REQUIRED)
 find_package(Poco REQUIRED Foundation Util JSON DataSQLite)
 
+pkg_check_modules(Libnftables libnftables REQUIRED)
 pkg_check_modules(Systemd libsystemd REQUIRED)
 
 # ######################################################################################################################
@@ -34,6 +35,7 @@ add_subdirectory(launcher)
 add_subdirectory(logprovider)
 add_subdirectory(monitoring)
 add_subdirectory(networkmanager)
+add_subdirectory(nftables)
 add_subdirectory(resourcemanager)
 add_subdirectory(smclient)
 add_subdirectory(utils)

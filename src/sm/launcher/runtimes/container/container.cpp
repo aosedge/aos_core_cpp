@@ -13,6 +13,7 @@
 #include <sm/launcher/runtimes/utils/utils.hpp>
 
 #include "container.hpp"
+#include "crunrunner.hpp"
 #include "filesystem.hpp"
 #include "monitoring.hpp"
 #include "runner.hpp"
@@ -39,7 +40,8 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
     iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver, sm::utils::SystemdConnItf& systemdConn)
+    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
+    launcher::InstanceIDProviderItf& instanceIDProvider)
 {
     try {
         LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
@@ -52,25 +54,6 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
             return err;
         }
 
-        mRunner     = CreateRunner();
-        mFileSystem = CreateFileSystem();
-        mMonitoring = CreateMonitoring();
-
-        mItemInfoProvider       = &itemInfoProvider;
-        mNetworkManager         = &networkManager;
-        mPermHandler            = &permHandler;
-        mResourceInfoProvider   = &resourceInfoProvider;
-        mOCISpec                = &ociSpec;
-        mInstanceStatusReceiver = &instanceStatusReceiver;
-
-        if (auto err = mRunner->Init(*this, systemdConn); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = mMonitoring->Init(mNodeInfo, *mNetworkManager); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
         ParseContainerConfig(config.mConfig
                 ? common::utils::CaseInsensitiveObjectWrapper(config.mConfig)
                 : common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>()),
@@ -80,6 +63,27 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
             for (const auto& bind : cDefaultHostFSBinds) {
                 mConfig.mHostBinds.push_back(bind);
             }
+        }
+
+        mRunner          = CreateRunner();
+        mFileSystem      = CreateFileSystem();
+        mMonitoring      = CreateMonitoring();
+        mContainerRunner = CreateContainerRunner(mConfig);
+
+        mItemInfoProvider       = &itemInfoProvider;
+        mNetworkManager         = &networkManager;
+        mPermHandler            = &permHandler;
+        mResourceInfoProvider   = &resourceInfoProvider;
+        mOCISpec                = &ociSpec;
+        mInstanceStatusReceiver = &instanceStatusReceiver;
+        mInstanceIDProvider     = &instanceIDProvider;
+
+        if (auto err = mRunner->Init(*this, *mContainerRunner); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = mMonitoring->Init(mNodeInfo, *mNetworkManager); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
 
         if (auto err = mFileSystem->CreateHostFSWhiteouts(mConfig.mHostWhiteoutsDir, mConfig.mHostBinds);
@@ -179,7 +183,8 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             std::lock_guard lock {mMutex};
 
             instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner,
-                *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
+                *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+                *mInstanceIDProvider);
 
             mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
         }
@@ -323,6 +328,16 @@ std::shared_ptr<MonitoringItf> ContainerRuntime::CreateMonitoring()
     return std::make_shared<Monitoring>();
 }
 
+std::shared_ptr<ContainerRunnerItf> ContainerRuntime::CreateContainerRunner(const ContainerConfig& config)
+{
+    auto pm = std::make_shared<CRunRunner>();
+
+    auto err = pm->Init(config.mRuntimeDir);
+    AOS_ERROR_CHECK_AND_THROW(err);
+
+    return pm;
+}
+
 Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo)
 {
     if (auto err = utils::CreateRuntimeInfo(runtimeType, nodeInfo, cMaxNumInstances, mRuntimeInfo); !err.IsNone()) {
@@ -381,7 +396,8 @@ Error ContainerRuntime::StopActiveInstances()
         LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
 
         auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
-            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec);
+            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+            *mInstanceIDProvider);
 
         if (err = instance->Stop(); !err.IsNone()) {
             LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())

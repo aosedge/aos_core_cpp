@@ -11,14 +11,15 @@
 #include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
+#include <core/sm/tests/mocks/instanceidprovidermock.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
 #include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
 #include <sm/launcher/runtimes/container/container.hpp>
-#include <sm/tests/mocks/systemdconnmock.hpp>
 
+#include "mocks/containerrunnermock.hpp"
 #include "mocks/filesystemmock.hpp"
 #include "mocks/monitoringmock.hpp"
 #include "mocks/runnermock.hpp"
@@ -182,14 +183,19 @@ std::vector<PartitionInfo> CreatePartitionsInfos(const InstanceInfo& instanceInf
 
 class TestRuntime : public ContainerRuntime {
 public:
-    std::shared_ptr<NiceMock<RunnerMock>>     mRunner     = std::make_shared<NiceMock<RunnerMock>>();
-    std::shared_ptr<NiceMock<FileSystemMock>> mFileSystem = std::make_shared<NiceMock<FileSystemMock>>();
-    std::shared_ptr<NiceMock<MonitoringMock>> mMonitoring = std::make_shared<NiceMock<MonitoringMock>>();
+    std::shared_ptr<NiceMock<RunnerMock>>          mRunner          = std::make_shared<NiceMock<RunnerMock>>();
+    std::shared_ptr<NiceMock<FileSystemMock>>      mFileSystem      = std::make_shared<NiceMock<FileSystemMock>>();
+    std::shared_ptr<NiceMock<MonitoringMock>>      mMonitoring      = std::make_shared<NiceMock<MonitoringMock>>();
+    std::shared_ptr<NiceMock<ContainerRunnerMock>> mContainerRunner = std::make_shared<NiceMock<ContainerRunnerMock>>();
 
 private:
-    std::shared_ptr<RunnerItf>     CreateRunner() override { return mRunner; }
-    std::shared_ptr<FileSystemItf> CreateFileSystem() override { return mFileSystem; }
-    std::shared_ptr<MonitoringItf> CreateMonitoring() override { return mMonitoring; }
+    std::shared_ptr<RunnerItf>          CreateRunner() override { return mRunner; }
+    std::shared_ptr<FileSystemItf>      CreateFileSystem() override { return mFileSystem; }
+    std::shared_ptr<MonitoringItf>      CreateMonitoring() override { return mMonitoring; }
+    std::shared_ptr<ContainerRunnerItf> CreateContainerRunner(const ContainerConfig&) override
+    {
+        return mContainerRunner;
+    }
 };
 
 /***********************************************************************************************************************
@@ -210,14 +216,29 @@ protected:
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
         EXPECT_CALL(*mRuntime.mFileSystem, CreateHostFSWhiteouts(_, _)).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mRunner, Init)
-            .WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver, utils::SystemdConnItf&) {
+            .WillOnce(Invoke([&](RunStatusReceiverItf& runStatusReceiver, ContainerRunnerItf&) {
                 mRunStatusReceiver = &runStatusReceiver;
 
                 return ErrorEnum::eNone;
             }));
 
+        EXPECT_CALL(mInstanceIDProviderMock, GetInstanceID(_, _))
+            .WillRepeatedly(Invoke([](const InstanceIdent& ident, String& instanceID) {
+                auto idStr = std::string(ident.mItemID.CStr()) + ":" + std::string(ident.mSubjectID.CStr()) + ":"
+                    + std::to_string(ident.mInstance);
+                instanceID = common::utils::NameUUID(idStr).c_str();
+
+                return ErrorEnum::eNone;
+            }));
+
+        EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
+            .WillRepeatedly(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
+        EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
-            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock);
+            mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock,
+            mInstanceIDProviderMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
         EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
@@ -246,7 +267,7 @@ protected:
     NiceMock<oci::OCISpecMock>                          mOCISpecMock;
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     RunStatusReceiverItf*                               mRunStatusReceiver {};
-    utils::SystemdConnMock                              mSystemdConnMock;
+    NiceMock<launcher::InstanceIDProviderMock>          mInstanceIDProviderMock;
 };
 
 /***********************************************************************************************************************
@@ -313,7 +334,6 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     instance.mItemID    = "item0";
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
-    instance.mNetworkParameters.EmplaceValue();
 
     auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
     auto status     = std::make_unique<InstanceStatus>();
@@ -342,7 +362,7 @@ TEST_F(ContainerRuntimeTest, StopInstance)
 
     EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mPermHandlerMock, UnregisterInstance(instance)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, RemoveInstanceFromNetwork(String(instanceID.c_str()), instance.mOwnerID))
+    EXPECT_CALL(mNetworkManagerMock, StopInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
@@ -575,13 +595,12 @@ TEST_F(ContainerRuntimeTest, ItemConfig)
             return ErrorEnum::eNone;
         }));
     EXPECT_CALL(mResourceInfoProviderMock, GetResourceInfo(_, _))
-        .WillOnce(Invoke([&resourceInfos](const String&, resourcemanager::ResourceInfo& resourceInfo) {
-            resourceInfo = resourceInfos[0];
-
-            return ErrorEnum::eNone;
-        }))
-        .WillOnce(Invoke([&resourceInfos](const String&, resourcemanager::ResourceInfo& resourceInfo) {
-            resourceInfo = resourceInfos[1];
+        .WillRepeatedly(Invoke([&resourceInfos](const String& resource, resourcemanager::ResourceInfo& resourceInfo) {
+            if (resource == "resource1") {
+                resourceInfo = resourceInfos[0];
+            } else if (resource == "resource2") {
+                resourceInfo = resourceInfos[1];
+            }
 
             return ErrorEnum::eNone;
         }));
@@ -819,26 +838,19 @@ TEST_F(ContainerRuntimeTest, Network)
     instance.mSubjectID = "subject0";
     instance.mInstance  = 0;
     instance.mOwnerID   = "owner0";
-    instance.mNetworkParameters.EmplaceValue();
-    instance.mNetworkParameters->mNetworkID = "network0";
-    instance.mNetworkParameters->mSubnet    = "subnet0";
-    instance.mNetworkParameters->mIP        = "192.168.1.100";
 
     auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
 
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
-    auto networkParams = std::make_unique<networkmanager::InstanceNetworkParameters>();
+    auto networkParams = std::make_unique<networkmanager::InstanceNetworkConfig>();
 
-    networkParams->mInstanceIdent      = instance;
-    networkParams->mNetworkParameters  = *instance.mNetworkParameters;
-    networkParams->mHostsFilePath      = ("/run/aos/runtime/" + instanceID + "/mounts/etc/hosts").c_str();
-    networkParams->mResolvConfFilePath = ("/run/aos/runtime/" + instanceID + "/mounts/etc/resolv.conf").c_str();
-    networkParams->mHostname           = "example-host";
-    networkParams->mIngressKbit        = 1000;
-    networkParams->mEgressKbit         = 1000;
-    networkParams->mDownloadLimit      = 1024 * 1024;
-    networkParams->mUploadLimit        = 1024 * 1024;
+    networkParams->mInstanceIdent = instance;
+    networkParams->mHostname      = "example-host";
+    networkParams->mIngressKbit   = 1000;
+    networkParams->mEgressKbit    = 1000;
+    networkParams->mDownloadLimit = 1024 * 1024;
+    networkParams->mUploadLimit   = 1024 * 1024;
     networkParams->mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
     networkParams->mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
     networkParams->mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
@@ -884,8 +896,7 @@ TEST_F(ContainerRuntimeTest, Network)
             return ErrorEnum::eNone;
         }));
     EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(
-        mNetworkManagerMock, AddInstanceToNetwork(String(instanceID.c_str()), instance.mOwnerID, *networkParams))
+    EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID, _))
         .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);

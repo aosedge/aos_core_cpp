@@ -17,6 +17,24 @@ namespace {
  * Statics
  **********************************************************************************************************************/
 
+void ConvertFirewallRuleToProto(const FirewallRule& src, servicemanager::v5::FirewallRule& dst)
+{
+    dst.set_dst_ip(src.mDstIP.CStr());
+    dst.set_dst_port(src.mDstPort.CStr());
+    dst.set_proto(src.mProto.CStr());
+    dst.set_src_ip(src.mSrcIP.CStr());
+}
+
+Error ConvertFirewallRuleFromProto(const servicemanager::v5::FirewallRule& src, FirewallRule& dst)
+{
+    dst.mDstIP   = src.dst_ip().c_str();
+    dst.mDstPort = src.dst_port().c_str();
+    dst.mProto   = src.proto().c_str();
+    dst.mSrcIP   = src.src_ip().c_str();
+
+    return ErrorEnum::eNone;
+}
+
 Error ConvertFromProto(const servicemanager::v5::PartitionUsage& src, aos::PartitionUsage& dst)
 {
     if (auto err = dst.mName.Assign(src.name().c_str()); !err.IsNone()) {
@@ -201,52 +219,12 @@ Error ConvertFromProto(const servicemanager::v5::InstanceAlert& protoAlert,
     return ErrorEnum::eNone;
 }
 
-Error ConvertToProto(const UpdateNetworkParameters& networkParams, servicemanager::v5::UpdateNetworkParameters& result)
-{
-    result.set_network_id(networkParams.mNetworkID.CStr());
-    result.set_subnet(networkParams.mSubnet.CStr());
-    result.set_ip(networkParams.mIP.CStr());
-    result.set_vlan_id(networkParams.mVlanID);
-
-    return ErrorEnum::eNone;
-}
-
 Error ConvertFromProto(const servicemanager::v5::EnvVarStatus& grpcEnvStatus, EnvVarStatus& result)
 {
     if (auto err = result.mName.Assign(grpcEnvStatus.name().c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
     result.mError = pbconvert::ConvertFromProto(grpcEnvStatus.error());
-
-    return ErrorEnum::eNone;
-}
-
-Error ConvertToProto(const aos::FirewallRule& src, servicemanager::v5::FirewallRule& dst)
-{
-    dst.set_dst_ip(src.mDstIP.CStr());
-    dst.set_dst_port(src.mDstPort.CStr());
-    dst.set_proto(src.mProto.CStr());
-    dst.set_src_ip(src.mSrcIP.CStr());
-
-    return ErrorEnum::eNone;
-}
-
-Error ConvertToProto(const aos::InstanceNetworkParameters& src, servicemanager::v5::NetworkParameters& dst)
-{
-    dst.set_network_id(src.mNetworkID.CStr());
-    dst.set_subnet(src.mSubnet.CStr());
-    dst.set_ip(src.mIP.CStr());
-
-    for (const auto& dnsServer : src.mDNSServers) {
-        dst.add_dns_servers(dnsServer.CStr());
-    }
-
-    for (const auto& rule : src.mFirewallRules) {
-        auto* grpcRule = dst.add_rules();
-        if (auto err = ConvertToProto(rule, *grpcRule); !err.IsNone()) {
-            return err;
-        }
-    }
 
     return ErrorEnum::eNone;
 }
@@ -416,74 +394,9 @@ Error ConvertToProto(const aos::InstanceInfo& src, servicemanager::v5::InstanceI
         }
     }
 
-    if (src.mNetworkParameters.HasValue()) {
-        auto err = ConvertToProto(src.mNetworkParameters.GetValue(), *dst.mutable_network_parameters());
-        if (!err.IsNone()) {
-            return err;
-        }
-    }
-
     if (src.mMonitoringParams.HasValue()) {
         auto err = ConvertToProto(src.mMonitoringParams.GetValue(), *dst.mutable_monitoring_parameters());
         if (!err.IsNone()) {
-            return err;
-        }
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ConvertFromProto(const servicemanager::v5::FirewallRule& src, FirewallRule& dst)
-{
-    if (auto err = dst.mDstIP.Assign(src.dst_ip().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mDstPort.Assign(src.dst_port().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mProto.Assign(src.proto().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mSrcIP.Assign(src.src_ip().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ConvertFromProto(const servicemanager::v5::NetworkParameters& src, InstanceNetworkParameters& dst)
-{
-    if (auto err = dst.mNetworkID.Assign(src.network_id().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mSubnet.Assign(src.subnet().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = dst.mIP.Assign(src.ip().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    for (const auto& dns : src.dns_servers()) {
-        if (auto err = dst.mDNSServers.EmplaceBack(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = dst.mDNSServers.Back().Assign(dns.c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    for (const auto& rule : src.rules()) {
-        if (auto err = dst.mFirewallRules.EmplaceBack(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = ConvertFromProto(rule, dst.mFirewallRules.Back()); !err.IsNone()) {
             return err;
         }
     }
@@ -626,14 +539,6 @@ Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo
 
         if (auto err = dst.mEnvVars.Back().mValue.Assign(envVar.value().c_str()); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    if (src.has_network_parameters()) {
-        dst.mNetworkParameters.EmplaceValue();
-
-        if (auto err = ConvertFromProto(src.network_parameters(), *dst.mNetworkParameters); !err.IsNone()) {
-            return err;
         }
     }
 
@@ -903,18 +808,6 @@ Error ConvertFromProto(const servicemanager::v5::LogData& grpcLogData, const Str
     return ErrorEnum::eNone;
 }
 
-Error ConvertToProto(const Array<UpdateNetworkParameters>& networkParams, servicemanager::v5::UpdateNetworks& result)
-{
-    for (const auto& param : networkParams) {
-        auto* network = result.add_networks();
-        if (auto err = ConvertToProto(param, *network); !err.IsNone()) {
-            return err;
-        }
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error ConvertToProto(const Array<aos::InstanceInfo>& stopInstances, const Array<aos::InstanceInfo>& startInstances,
     servicemanager::v5::UpdateInstances& result)
 {
@@ -949,33 +842,6 @@ Error ConvertFromProto(const servicemanager::v5::UpdateInstances& src, Array<Ins
         if (auto err = ConvertFromProto(instance, startInstances.Back()); !err.IsNone()) {
             return err;
         }
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ConvertFromProto(const servicemanager::v5::UpdateNetworks& src, Array<NetworkParameters>& dst)
-{
-    for (const auto& network : src.networks()) {
-        if (auto err = dst.EmplaceBack(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        auto& dstNetwork = dst.Back();
-
-        if (auto err = dstNetwork.mNetworkID.Assign(network.network_id().c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = dstNetwork.mSubnet.Assign(network.subnet().c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        if (auto err = dstNetwork.mIP.Assign(network.ip().c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        dstNetwork.mVlanID = network.vlan_id();
     }
 
     return ErrorEnum::eNone;
@@ -1295,6 +1161,158 @@ void ConvertToProto(const AlertVariant& src, servicemanager::v5::Alert& dst)
     AlertVisitor visitor(dst);
 
     src.ApplyVisitor(visitor);
+}
+
+Error ConvertFromProto(const servicemanager::v5::UpdateItemNetworkParams& src, UpdateItemNetworkParams& dst)
+{
+    for (const auto& host : src.hosts()) {
+        if (auto err = dst.mHosts.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mHosts.Back().Assign(host.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& connection : src.allowed_connections()) {
+        if (auto err = dst.mAllowedConnections.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mAllowedConnections.Back().Assign(connection.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& port : src.exposed_ports()) {
+        if (auto err = dst.mExposedPorts.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mExposedPorts.Back().Assign(port.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToProto(const NetworkParams& src, servicemanager::v5::GetNodeNetworkParamsResponse& dst)
+{
+    dst.set_subnet(src.mSubnet.CStr());
+    dst.set_ip(src.mIP.CStr());
+    dst.set_vlan_id(src.mVlanID);
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToProto(const InstanceNetworkAllocation& src, servicemanager::v5::AllocateInstanceNetworkResponse& dst)
+{
+    dst.set_subnet(src.mSubnet.CStr());
+    dst.set_ip(src.mIP.CStr());
+
+    for (const auto& dnsServer : src.mDNSServers) {
+        dst.add_dns_servers(dnsServer.CStr());
+    }
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::AllocateInstanceNetworkResponse& src, InstanceNetworkAllocation& dst)
+{
+    dst.mSubnet = src.subnet().c_str();
+    dst.mIP     = src.ip().c_str();
+
+    for (const auto& dnsServer : src.dns_servers()) {
+        if (auto err = dst.mDNSServers.PushBack(dnsServer.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToProto(
+    const aos::networkmanager::PendingFirewallUpdate& src, servicemanager::v5::PendingFirewallUpdate& dst)
+{
+    *dst.mutable_instance() = ConvertToProto(src.mInstanceIdent);
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(
+    const servicemanager::v5::PendingFirewallUpdate& src, aos::networkmanager::PendingFirewallUpdate& dst)
+{
+    dst.mInstanceIdent = ConvertToAos(src.instance());
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::InstanceNetworkStateInfo& dst)
+{
+    *dst.mutable_instance() = ConvertToProto(src.mInstanceIdent);
+    dst.set_network_id(src.mNetworkID.CStr());
+    dst.set_ip(src.mIP.CStr());
+
+    for (const auto& rule : src.mFirewallRules) {
+        ConvertFirewallRuleToProto(rule, *dst.add_firewall_rules());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConvertFromProto(const servicemanager::v5::InstanceNetworkStateInfo& src, InstanceNetworkStateInfo& dst)
+{
+    dst.mInstanceIdent = ConvertToAos(src.instance());
+    dst.mNetworkID     = src.network_id().c_str();
+    dst.mIP            = src.ip().c_str();
+
+    for (const auto& rule : src.firewall_rules()) {
+        FirewallRule fwRule;
+
+        if (auto err = ConvertFirewallRuleFromProto(rule, fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (auto err = dst.mFirewallRules.PushBack(fwRule); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
 }
 
 } // namespace aos::common::pbconvert

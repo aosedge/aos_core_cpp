@@ -18,6 +18,7 @@
 
 #include <common/utils/grpchelper.hpp>
 
+#include <servicemanager/v5/network.grpc.pb.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 namespace smproto = servicemanager::v5;
@@ -25,7 +26,7 @@ namespace smproto = servicemanager::v5;
 /**
  * Test stub for SMService v5.
  */
-class SMServiceStub final : public smproto::SMService::Service {
+class SMServiceStub final : public smproto::SMService::Service, public smproto::NetworkService::Service {
 public:
     SMServiceStub(const std::string& url) { mServer = CreateServer(url, grpc::InsecureServerCredentials()); }
 
@@ -121,6 +122,86 @@ public:
         return grpc::Status::OK;
     }
 
+    grpc::Status GetNodeNetworkParams(grpc::ServerContext*, const smproto::GetNodeNetworkParamsRequest* request,
+        smproto::GetNodeNetworkParamsResponse* response) override
+    {
+        return OnGetNodeNetworkParams(request, response);
+    }
+
+    grpc::Status AllocateInstanceNetwork(grpc::ServerContext*, const smproto::AllocateInstanceNetworkRequest* request,
+        smproto::AllocateInstanceNetworkResponse* response) override
+    {
+        return OnAllocateInstanceNetwork(request, response);
+    }
+
+    grpc::Status ReleaseInstanceNetwork(grpc::ServerContext*, const smproto::ReleaseInstanceNetworkRequest* request,
+        smproto::ReleaseInstanceNetworkResponse* response) override
+    {
+        return OnReleaseInstanceNetwork(request, response);
+    }
+
+    grpc::Status ReleaseNodeNetwork(grpc::ServerContext*, const smproto::ReleaseNodeNetworkRequest* request,
+        smproto::ReleaseNodeNetworkResponse* response) override
+    {
+        return OnReleaseNodeNetwork(request, response);
+    }
+
+    grpc::Status SyncNetworkState(grpc::ServerContext*, const smproto::SyncNetworkStateRequest* request,
+        smproto::SyncNetworkStateResponse* response) override
+    {
+        return OnSyncNetworkState(request, response);
+    }
+
+    grpc::Status SubscribeInstanceNetworkUpdates(grpc::ServerContext* context,
+        const smproto::SubscribeInstanceNetworkUpdatesRequest*,
+        grpc::ServerWriter<smproto::InstanceNetworkUpdateNotification>* writer) override
+    {
+        {
+            std::lock_guard lock {mLock};
+            mNetworkUpdateWriter     = writer;
+            mNetworkUpdateContext    = context;
+            mNetworkUpdateSubscribed = true;
+            mCV.notify_all();
+        }
+
+        std::unique_lock lock {mLock};
+        while (!context->IsCancelled()) {
+            mCV.wait_for(lock, std::chrono::milliseconds(100));
+        }
+
+        mNetworkUpdateWriter = nullptr;
+
+        return grpc::Status::OK;
+    }
+
+    void SendPendingFirewallUpdate(const smproto::PendingFirewallUpdate& update)
+    {
+        std::lock_guard lock {mLock};
+
+        if (mNetworkUpdateWriter) {
+            smproto::InstanceNetworkUpdateNotification notification;
+            *notification.mutable_pending_firewall_update() = update;
+            mNetworkUpdateWriter->Write(notification);
+        }
+    }
+
+    bool WaitNetworkUpdateSubscribed(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mLock};
+        return mCV.wait_for(lock, timeout, [this]() { return mNetworkUpdateSubscribed; });
+    }
+
+    MOCK_METHOD(grpc::Status, OnGetNodeNetworkParams,
+        (const smproto::GetNodeNetworkParamsRequest*, smproto::GetNodeNetworkParamsResponse*));
+    MOCK_METHOD(grpc::Status, OnAllocateInstanceNetwork,
+        (const smproto::AllocateInstanceNetworkRequest*, smproto::AllocateInstanceNetworkResponse*));
+    MOCK_METHOD(grpc::Status, OnReleaseInstanceNetwork,
+        (const smproto::ReleaseInstanceNetworkRequest*, smproto::ReleaseInstanceNetworkResponse*));
+    MOCK_METHOD(grpc::Status, OnReleaseNodeNetwork,
+        (const smproto::ReleaseNodeNetworkRequest*, smproto::ReleaseNodeNetworkResponse*));
+    MOCK_METHOD(grpc::Status, OnSyncNetworkState,
+        (const smproto::SyncNetworkStateRequest*, smproto::SyncNetworkStateResponse*));
+
     MOCK_METHOD(void, OnSMInfo, (const smproto::SMInfo&));
     MOCK_METHOD(void, OnNodeInstancesStatus, (const smproto::NodeInstancesStatus&));
     MOCK_METHOD(void, OnUpdateInstancesStatus, (const smproto::UpdateInstancesStatus&));
@@ -213,18 +294,6 @@ public:
         mStream->Write(msg);
     }
 
-    void SendUpdateNetworks(const std::vector<smproto::UpdateNetworkParameters>& networks)
-    {
-        smproto::SMIncomingMessages msg;
-        auto*                       updateNetworks = msg.mutable_update_networks();
-
-        for (const auto& network : networks) {
-            *updateNetworks->add_networks() = network;
-        }
-
-        mStream->Write(msg);
-    }
-
     void WaitRegistered(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
         std::unique_lock lock {mLock};
@@ -307,6 +376,7 @@ private:
 
         builder.AddListeningPort(addr, credentials);
         builder.RegisterService(static_cast<smproto::SMService::Service*>(this));
+        builder.RegisterService(static_cast<smproto::NetworkService::Service*>(this));
 
         return builder.BuildAndStart();
     }
@@ -327,6 +397,10 @@ private:
     bool                          mAverageMonitoringReceived {};
     bool                          mLogDataReceived {};
     std::unique_ptr<grpc::Server> mServer;
+
+    grpc::ServerWriter<smproto::InstanceNetworkUpdateNotification>* mNetworkUpdateWriter {};
+    grpc::ServerContext*                                            mNetworkUpdateContext {};
+    bool                                                            mNetworkUpdateSubscribed {};
 };
 
 #endif

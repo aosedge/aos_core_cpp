@@ -21,6 +21,7 @@
 #include <core/common/tools/optional.hpp>
 #include <core/common/types/common.hpp>
 
+#include <servicemanager/v5/network.grpc.pb.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 namespace aos::cm::smcontroller {
@@ -52,8 +53,17 @@ public:
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "already running"));
         }
 
-        mStub = CreateStub(url);
-        if (!mStub) {
+        auto channelCreds = grpc::InsecureChannelCredentials();
+        auto channel      = grpc::CreateChannel(url, channelCreds);
+
+        if (!channel) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to create channel"));
+        }
+
+        mStub        = servicemanager::v5::SMService::NewStub(channel);
+        mNetworkStub = servicemanager::v5::NetworkService::NewStub(channel);
+
+        if (!mStub || !mNetworkStub) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to create stub"));
         }
 
@@ -85,6 +95,10 @@ public:
                 mContext->TryCancel();
             }
 
+            if (mNetworkUpdateCtx) {
+                mNetworkUpdateCtx->TryCancel();
+            }
+
             if (mStream) {
                 mStream->WritesDone();
                 mStream->Finish();
@@ -95,7 +109,57 @@ public:
             mReadThread.join();
         }
 
+        if (mNetworkUpdateThread.joinable()) {
+            mNetworkUpdateThread.join();
+        }
+
         return ErrorEnum::eNone;
+    }
+
+    Error SubscribeInstanceNetworkUpdates()
+    {
+        std::lock_guard lock {mMutex};
+
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
+
+        mNetworkUpdateCtx = std::make_unique<grpc::ClientContext>();
+
+        mNetworkUpdateThread = std::thread([this]() {
+            servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest request;
+            request.set_node_id(mNodeID);
+
+            auto reader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
+
+            servicemanager::v5::InstanceNetworkUpdateNotification notification;
+
+            while (reader->Read(&notification)) {
+                if (notification.has_pending_firewall_update()) {
+                    std::lock_guard lock {mMutex};
+                    mReceivedUpdates.push_back(notification.pending_firewall_update());
+                    mNetworkUpdateCV.notify_all();
+                }
+            }
+        });
+
+        return ErrorEnum::eNone;
+    }
+
+    Error WaitPendingFirewallUpdate(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mMutex};
+
+        if (!mNetworkUpdateCV.wait_for(lock, timeout, [this]() { return !mReceivedUpdates.empty(); })) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "timeout waiting for pending firewall update"));
+        }
+
+        return ErrorEnum::eNone;
+    }
+
+    const std::vector<servicemanager::v5::PendingFirewallUpdate>& GetReceivedUpdates() const
+    {
+        return mReceivedUpdates;
     }
 
     void SendOutgoingMessage(const servicemanager::v5::SMOutgoingMessages& msg)
@@ -107,25 +171,101 @@ public:
         }
     }
 
-    Error WaitUpdateNetworks()
+    Error GetNodeNetworkParams(const std::string& networkID, const std::string& nodeID,
+        servicemanager::v5::GetNodeNetworkParamsResponse& response)
     {
-        std::unique_lock lock {mMutex};
+        std::lock_guard lock {mMutex};
 
-        bool received = mUpdateNetworksCV.wait_for(
-            lock, std::chrono::seconds(1), [this]() { return mUpdateNetworks.networks_size() > 0; });
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
 
-        if (!received) {
-            return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "wait update networks timeout"));
+        servicemanager::v5::GetNodeNetworkParamsRequest request;
+        request.set_network_id(networkID);
+        request.set_node_id(nodeID);
+
+        grpc::ClientContext context;
+        auto                status = mNetworkStub->GetNodeNetworkParams(&context, request, &response);
+
+        if (!status.ok()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
         }
 
         return ErrorEnum::eNone;
     }
 
-    servicemanager::v5::UpdateNetworks GetUpdateNetworks() const
+    Error AllocateInstanceNetwork(const InstanceIdent& instance, const std::string& networkID,
+        const std::string& nodeID, servicemanager::v5::AllocateInstanceNetworkResponse& response)
     {
         std::lock_guard lock {mMutex};
 
-        return mUpdateNetworks;
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
+
+        servicemanager::v5::AllocateInstanceNetworkRequest request;
+        request.mutable_instance()->set_item_id(instance.mItemID.CStr());
+        request.mutable_instance()->set_subject_id(instance.mSubjectID.CStr());
+        request.mutable_instance()->set_instance(instance.mInstance);
+        request.set_network_id(networkID);
+        request.set_node_id(nodeID);
+
+        grpc::ClientContext context;
+        auto                status = mNetworkStub->AllocateInstanceNetwork(&context, request, &response);
+
+        if (!status.ok()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+        }
+
+        return ErrorEnum::eNone;
+    }
+
+    Error ReleaseInstanceNetwork(const InstanceIdent& instance, const std::string& nodeID,
+        servicemanager::v5::ReleaseInstanceNetworkResponse& response)
+    {
+        std::lock_guard lock {mMutex};
+
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
+
+        servicemanager::v5::ReleaseInstanceNetworkRequest request;
+        request.mutable_instance()->set_item_id(instance.mItemID.CStr());
+        request.mutable_instance()->set_subject_id(instance.mSubjectID.CStr());
+        request.mutable_instance()->set_instance(instance.mInstance);
+        request.set_node_id(nodeID);
+
+        grpc::ClientContext context;
+        auto                status = mNetworkStub->ReleaseInstanceNetwork(&context, request, &response);
+
+        if (!status.ok()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+        }
+
+        return ErrorEnum::eNone;
+    }
+
+    Error ReleaseNodeNetwork(const std::string& networkID, const std::string& nodeID,
+        servicemanager::v5::ReleaseNodeNetworkResponse& response)
+    {
+        std::lock_guard lock {mMutex};
+
+        if (!mNetworkStub) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "network stub not available"));
+        }
+
+        servicemanager::v5::ReleaseNodeNetworkRequest request;
+        request.set_network_id(networkID);
+        request.set_node_id(nodeID);
+
+        grpc::ClientContext context;
+        auto                status = mNetworkStub->ReleaseNodeNetwork(&context, request, &response);
+
+        if (!status.ok()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
+        }
+
+        return ErrorEnum::eNone;
     }
 
     Error SendUpdateInstancesStatus(const InstanceIdent& instanceIdent, InstanceState state)
@@ -253,18 +393,6 @@ public:
     }
 
 private:
-    std::unique_ptr<servicemanager::v5::SMService::Stub> CreateStub(const std::string& url)
-    {
-        auto channelCreds = grpc::InsecureChannelCredentials();
-
-        auto channel = grpc::CreateChannel(url, channelCreds);
-        if (!channel) {
-            return nullptr;
-        }
-
-        return servicemanager::v5::SMService::NewStub(channel);
-    }
-
     Error SendSMInfo()
     {
         std::lock_guard lock {mMutex};
@@ -434,12 +562,6 @@ private:
         mCloudConnectionCV.notify_one();
     }
 
-    void ProcessUpdateNetworks(const servicemanager::v5::UpdateNetworks& updateNetworks)
-    {
-        mUpdateNetworks.CopyFrom(updateNetworks);
-        mUpdateNetworksCV.notify_one();
-    }
-
     void ReadLoop()
     {
         SendSMInfo();
@@ -482,10 +604,6 @@ private:
                     ProcessInstanceCrashLogRequest(msg.instance_crash_log_request());
                 }
 
-                if (msg.has_update_networks()) {
-                    ProcessUpdateNetworks(msg.update_networks());
-                }
-
                 if (msg.has_update_instances()) {
                     ProcessUpdateInstances(msg.update_instances());
                 }
@@ -501,21 +619,23 @@ private:
         }
     }
 
-    std::string                                          mNodeID;
-    std::atomic<bool>                                    mRunning;
-    std::thread                                          mReadThread;
-    mutable std::mutex                                   mMutex;
-    std::unique_ptr<servicemanager::v5::SMService::Stub> mStub;
-    std::unique_ptr<grpc::ClientContext>                 mContext;
+    std::string                                               mNodeID;
+    std::atomic<bool>                                         mRunning;
+    std::thread                                               mReadThread;
+    std::thread                                               mNetworkUpdateThread;
+    mutable std::mutex                                        mMutex;
+    std::unique_ptr<servicemanager::v5::SMService::Stub>      mStub;
+    std::unique_ptr<servicemanager::v5::NetworkService::Stub> mNetworkStub;
+    std::unique_ptr<grpc::ClientContext>                      mContext;
+    std::unique_ptr<grpc::ClientContext>                      mNetworkUpdateCtx;
     std::unique_ptr<
         grpc::ClientReaderWriter<servicemanager::v5::SMOutgoingMessages, servicemanager::v5::SMIncomingMessages>>
         mStream;
 
-    servicemanager::v5::UpdateNetworks mUpdateNetworks;
-    std::condition_variable            mUpdateNetworksCV;
-
-    Optional<servicemanager::v5::ConnectionEnum> mCloudStatus;
-    std::condition_variable                      mCloudConnectionCV;
+    Optional<servicemanager::v5::ConnectionEnum>           mCloudStatus;
+    std::condition_variable                                mCloudConnectionCV;
+    std::condition_variable                                mNetworkUpdateCV;
+    std::vector<servicemanager::v5::PendingFirewallUpdate> mReceivedUpdates;
 };
 
 } // namespace aos::cm::smcontroller

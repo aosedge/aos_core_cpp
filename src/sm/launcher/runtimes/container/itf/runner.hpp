@@ -11,7 +11,7 @@
 
 #include <core/common/types/instance.hpp>
 
-#include <sm/utils/itf/systemdconn.hpp>
+#include "containerrunner.hpp"
 
 namespace aos::sm::launcher {
 
@@ -76,10 +76,10 @@ public:
      * Initializes runner.
      *
      * @param receiver run status receiver.
-     * @param systemdConn systemd connection.
+     * @param containerRunner container runner.
      * @return Error.
      */
-    virtual Error Init(RunStatusReceiverItf& receiver, sm::utils::SystemdConnItf& systemdConn) = 0;
+    virtual Error Init(RunStatusReceiverItf& receiver, ContainerRunnerItf& containerRunner) = 0;
 
     /**
      * Starts runner.

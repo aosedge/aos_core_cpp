@@ -42,6 +42,7 @@ set(LIBRARIES
     aos::sm::logprovider
     aos::sm::monitoring
     aos::sm::networkmanager
+    aos::sm::nftables
     aos::sm::resourcemanager
     aos::sm::smclient
 )

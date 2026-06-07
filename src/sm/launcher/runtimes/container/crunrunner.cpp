@@ -1,0 +1,201 @@
+/*
+ * Copyright (C) 2026 EPAM Systems, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <core/common/tools/logger.hpp>
+
+#include "crunrunner.hpp"
+#include "libcrun.hpp"
+
+namespace aos::sm::launcher {
+
+namespace {
+
+/***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
+
+libcrun_context_t MakeContext(std::string_view stateRoot, const std::string& id)
+{
+    libcrun_context_t ctx = {};
+
+    ctx.state_root        = stateRoot.data();
+    ctx.id                = id.c_str();
+    ctx.fifo_exec_wait_fd = -1;
+
+    return ctx;
+}
+
+Error ReleaseLibcrunError(libcrun_error_t& err)
+{
+    auto release = DeferRelease(&err, libcrun_error_release);
+
+    const char* msg = (err && err->msg) ? err->msg : "unknown error";
+
+    if (err) {
+        return Error(err->status, msg);
+    }
+
+    return Error(ErrorEnum::eFailed, msg);
+}
+
+} // namespace
+
+/***********************************************************************************************************************
+ * Public
+ **********************************************************************************************************************/
+
+Error CRunRunner::Init(const std::string& runtimeDir)
+{
+    LOG_DBG() << "Initialize CRun runner" << Log::Field("runtimeDir", runtimeDir.c_str());
+
+    mRuntimeDir = runtimeDir;
+
+    return ErrorEnum::eNone;
+}
+
+Error CRunRunner::StartContainer(const std::string& instanceID)
+{
+    LOG_DBG() << "Start CRun container" << Log::Field("instanceID", instanceID.c_str());
+
+    const std::string bundleDir  = mRuntimeDir + "/" + instanceID;
+    const std::string configPath = bundleDir + "/config.json";
+    const std::string pidFile    = mRuntimeDir + "/" + instanceID + "/.pid";
+
+    libcrun_error_t   err = nullptr;
+    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+
+    ctx.bundle   = bundleDir.c_str();
+    ctx.pid_file = pidFile.c_str();
+    ctx.detach   = true;
+
+    // Pre-delete any leftover container state (ignore failure).
+    libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err);
+    libcrun_error_release(&err);
+
+    auto container = DeferRelease(libcrun_container_load_from_file(configPath.c_str(), &err), libcrun_container_free);
+    if (!container) {
+        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    }
+
+    if (libcrun_container_run(&ctx, container.Get(), 0, &err) < 0) {
+        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    }
+
+    {
+        std::lock_guard lock {mMutex};
+
+        mManagedInstances.insert(instanceID);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+RetWithError<ContainerStatus> CRunRunner::GetContainerStatus(const std::string& instanceID)
+{
+    LOG_DBG() << "Get CRun container status" << Log::Field("instanceID", instanceID.c_str());
+
+    return CheckProcessAlive(instanceID);
+}
+
+RetWithError<std::vector<ContainerStatus>> CRunRunner::ListContainers()
+{
+    std::set<std::string> instances;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        instances = mManagedInstances;
+    }
+
+    std::vector<ContainerStatus> result;
+
+    for (const auto& id : instances) {
+        auto [status, err] = CheckProcessAlive(id);
+        if (!err.IsNone()) {
+            LOG_WRN() << "Failed to check process status" << Log::Field("instanceID", id.c_str()) << Log::Field(err);
+        }
+
+        result.push_back(status);
+    }
+
+    return {result, ErrorEnum::eNone};
+}
+
+Error CRunRunner::StopContainer(const std::string& instanceID)
+{
+    LOG_DBG() << "Stop CRun container" << Log::Field("instanceID", instanceID.c_str());
+
+    const std::string pidFile = mRuntimeDir + "/" + instanceID + "/.pid";
+
+    libcrun_error_t   err = nullptr;
+    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+
+    ctx.pid_file = pidFile.c_str();
+
+    if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
+        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error CRunRunner::RemoveContainer(const std::string& instanceID)
+{
+    LOG_DBG() << "Remove CRun container" << Log::Field("instanceID", instanceID.c_str());
+
+    {
+        std::lock_guard lock {mMutex};
+
+        mManagedInstances.erase(instanceID);
+    }
+
+    libcrun_error_t   err = nullptr;
+    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+
+    if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
+        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& instanceID) const
+{
+    ContainerStatus status;
+
+    status.mInstanceID = instanceID;
+
+    libcrun_error_t            err        = nullptr;
+    libcrun_container_status_t crunStatus = {};
+
+    if (libcrun_read_container_status(&crunStatus, cStateRoot, instanceID.c_str(), &err) < 0) {
+        libcrun_error_release(&err);
+        status.mState = InstanceStateEnum::eInactive;
+
+        return {status, ErrorEnum::eNone};
+    }
+
+    const int running = libcrun_is_container_running(&crunStatus, &err);
+
+    libcrun_free_container_status(&crunStatus);
+
+    if (running < 0) {
+        libcrun_error_release(&err);
+        status.mState = InstanceStateEnum::eFailed;
+
+        return {status, ErrorEnum::eNone};
+    }
+
+    status.mState = (running > 0) ? InstanceStateEnum::eActive : InstanceStateEnum::eInactive;
+
+    return {status, ErrorEnum::eNone};
+}
+
+} // namespace aos::sm::launcher

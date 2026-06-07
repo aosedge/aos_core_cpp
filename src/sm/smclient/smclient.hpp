@@ -15,20 +15,22 @@
 #include <grpcpp/channel.h>
 #include <grpcpp/security/credentials.h>
 
+#include <servicemanager/v5/network.grpc.pb.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/instancestatusprovider/itf/instancestatusprovider.hpp>
 #include <core/common/monitoring/itf/monitoring.hpp>
+#include <core/common/networkmanager/itf/networkprovider.hpp>
 #include <core/common/nodeconfig/itf/jsonprovider.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/types/instance.hpp>
 #include <core/sm/launcher/itf/launcher.hpp>
 #include <core/sm/launcher/itf/runtimeinfoprovider.hpp>
 #include <core/sm/logging/itf/logprovider.hpp>
-#include <core/sm/networkmanager/itf/networkmanager.hpp>
 #include <core/sm/nodeconfig/itf/nodeconfighandler.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
+#include <core/sm/smclient/itf/connection.hpp>
 #include <core/sm/smclient/itf/smclient.hpp>
 
 #include <common/iamclient/itf/tlscredentials.hpp>
@@ -56,10 +58,10 @@ public:
      * @param nodeConfigHandler node config handler.
      * @param launcher launcher.
      * @param logProvider log provider.
-     * @param networkManager network manager.
      * @param monitoring monitoring.
      * @param instanceStatusProvider instance status provider.
      * @param jsonProvider JSON provider.
+     * @param networkUpdateHandler handler for pending firewall update notifications.
      * @param secureConnection secure connection flag.
      * @return Error.
      */
@@ -68,9 +70,10 @@ public:
         launcher::RuntimeInfoProviderItf&         runtimeInfoProvider,
         resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         nodeconfig::NodeConfigHandlerItf& nodeConfigHandler, launcher::LauncherItf& launcher,
-        logging::LogProviderItf& logProvider, networkmanager::NetworkManagerItf& networkManager,
-        aos::monitoring::MonitoringItf& monitoring, aos::instancestatusprovider::ProviderItf& instanceStatusProvider,
-        aos::nodeconfig::JSONProviderItf& jsonProvider, bool secureConnection = true);
+        logging::LogProviderItf& logProvider, aos::monitoring::MonitoringItf& monitoring,
+        aos::instancestatusprovider::ProviderItf&     instanceStatusProvider,
+        aos::nodeconfig::JSONProviderItf&             jsonProvider,
+        aos::networkmanager::PendingUpdateHandlerItf& networkUpdateHandler, bool secureConnection = true);
 
     /**
      * Starts the client.
@@ -171,6 +174,76 @@ public:
      */
     Error UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf& listener) override;
 
+    // network::NetworkProviderItf interface
+
+    /**
+     * Gets node network parameters from CM.
+     *
+     * @param networkID network identifier.
+     * @param nodeID node identifier.
+     * @param[out] result node network parameters.
+     * @return Error.
+     */
+    Error GetNodeNetworkParams(const String& networkID, const String& nodeID, NetworkParams& result) override;
+
+    /**
+     * Allocates instance network from CM.
+     *
+     * @param instance instance identifier.
+     * @param networkID network identifier.
+     * @param nodeID node identifier.
+     * @param serviceData network service data.
+     * @param[out] result instance network parameters.
+     * @return Error.
+     */
+    Error AllocateInstanceNetwork(const InstanceIdent& instance, const String& networkID, const String& nodeID,
+        const UpdateItemNetworkParams& serviceData, InstanceNetworkAllocation& result) override;
+
+    /**
+     * Releases instance network on CM.
+     *
+     * @param instance instance identifier.
+     * @param nodeID node identifier.
+     * @return Error.
+     */
+    Error ReleaseInstanceNetwork(const InstanceIdent& instance, const String& nodeID) override;
+
+    /**
+     * Releases node network on CM.
+     *
+     * @param networkID network identifier.
+     * @param nodeID node identifier.
+     * @return Error.
+     */
+    Error ReleaseNodeNetwork(const String& networkID, const String& nodeID) override;
+
+    /**
+     * Sends current instance network state to CM for reconciliation.
+     *
+     * @param nodeID node identifier.
+     * @param instances array of instance network state info.
+     * @return Error.
+     */
+    Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override;
+
+    // ConnectionItf interface
+
+    /**
+     * Subscribes to connection events.
+     *
+     * @param listener listener reference.
+     * @return Error.
+     */
+    Error SubscribeListener(ConnectListenerItf& listener) override;
+
+    /**
+     * Unsubscribes from connection events.
+     *
+     * @param listener listener reference.
+     * @return Error.
+     */
+    Error UnsubscribeListener(ConnectListenerItf& listener) override;
+
     /**
      * Checks if the connection is established.
      *
@@ -184,13 +257,13 @@ public:
     ~SMClient() = default;
 
 private:
-    using StubPtr = std::unique_ptr<smproto::SMService::StubInterface>;
+    using StubPtr        = std::unique_ptr<smproto::SMService::StubInterface>;
+    using NetworkStubPtr = std::unique_ptr<smproto::NetworkService::Stub>;
     using StreamPtr
         = std::unique_ptr<grpc::ClientReaderWriterInterface<smproto::SMOutgoingMessages, smproto::SMIncomingMessages>>;
 
     std::unique_ptr<grpc::ClientContext> CreateClientContext();
-    StubPtr CreateStub(const std::string& url, const std::shared_ptr<grpc::ChannelCredentials>& credentials);
-    Error   CreateCredentials();
+    Error                                CreateCredentials();
 
     bool SendSMInfo();
     bool SendNodeInstancesStatus();
@@ -198,6 +271,7 @@ private:
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
     void HandleIncomingMessages();
+    void StartNetworkUpdateSubscription();
 
     Error ProcessGetNodeConfigStatus();
     Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);
@@ -208,7 +282,6 @@ private:
     Error ProcessInstanceCrashLogRequest(const smproto::InstanceCrashLogRequest& request);
     Error ProcessGetAverageMonitoring();
     Error ProcessConnectionStatus(const smproto::ConnectionStatus& status);
-    Error ProcessUpdateNetworks(const smproto::UpdateNetworks& updateNetworks);
 
     Config                                     mConfig {};
     std::string                                mNodeID;
@@ -219,7 +292,6 @@ private:
     nodeconfig::NodeConfigHandlerItf*          mNodeConfigHandler {};
     launcher::LauncherItf*                     mLauncher {};
     logging::LogProviderItf*                   mLogProvider {};
-    networkmanager::NetworkManagerItf*         mNetworkManager {};
     aos::monitoring::MonitoringItf*            mMonitoring {};
     aos::instancestatusprovider::ProviderItf*  mInstanceStatusProvider {};
     aos::nodeconfig::JSONProviderItf*          mJSONProvider {};
@@ -229,6 +301,7 @@ private:
     std::unique_ptr<grpc::ClientContext> mCtx;
     StreamPtr                            mStream;
     StubPtr                              mStub;
+    NetworkStubPtr                       mNetworkStub;
 
     std::thread                                       mConnectionThread;
     mutable std::mutex                                mMutex;
@@ -237,6 +310,14 @@ private:
     std::condition_variable                           mStoppedCV;
 
     std::vector<aos::cloudconnection::ConnectionListenerItf*> mConnectionListeners;
+    std::vector<aos::sm::smclient::ConnectListenerItf*>       mConnectListeners;
+
+    // Network update stream
+    aos::networkmanager::PendingUpdateHandlerItf* mNetworkUpdateHandler = nullptr;
+    std::thread                                   mNetworkUpdateThread;
+    std::condition_variable                       mNetworkUpdateCV;
+    std::unique_ptr<grpc::ClientContext>          mNetworkUpdateCtx;
+    std::unique_ptr<grpc::ClientReader<servicemanager::v5::InstanceNetworkUpdateNotification>> mNetworkUpdateReader;
 };
 
 } // namespace aos::sm::smclient

@@ -17,6 +17,7 @@ set(TARGET_NAME container)
 set(SOURCES
     config.cpp
     container.cpp
+    crunrunner.cpp
     filesystem.cpp
     instance.cpp
     monitoring.cpp
@@ -28,7 +29,17 @@ set(SOURCES
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::common::utils aos::sm::runtimes::utils aos::sm::utils)
+find_library(
+    CRUN_LIB
+    NAMES crun
+    PATH_SUFFIXES crun
+)
+
+if(NOT CRUN_LIB)
+    message(FATAL_ERROR "crun library not found")
+endif()
+
+set(LIBRARIES Poco::JSON aos::common::utils aos::sm::runtimes::utils aos::sm::utils ${CRUN_LIB})
 
 # ######################################################################################################################
 # Target

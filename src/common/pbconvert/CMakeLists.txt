@@ -41,7 +41,7 @@ if(WITH_IAM_API)
 endif()
 
 if(WITH_SM_API)
-    list(APPEND LIBRARIES aos::api::sm)
+    list(APPEND LIBRARIES aos::api::sm aos::core::common::networkmanager)
 endif()
 
 # ######################################################################################################################

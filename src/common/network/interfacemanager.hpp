@@ -7,10 +7,13 @@
 #ifndef AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
 #define AOS_COMMON_NETWORK_INTERFACEMANAGER_HPP_
 
+#include <functional>
 #include <optional>
 #include <string>
 
+#include <sched.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include <core/common/crypto/itf/crypto.hpp>
 #include <core/sm/networkmanager/itf/interfacefactory.hpp>
@@ -159,9 +162,10 @@ public:
      * Brings up interface.
      *
      * @param ifname interface name.
+     * @param netNSPath optional path to the netns; empty for current.
      * @return Error.
      */
-    Error SetupLink(const String& ifname) override;
+    Error SetupLink(const String& ifname, const String& netNSPath = "") override;
 
     /**
      * Sets master.
@@ -190,6 +194,15 @@ public:
      * @return Error.
      */
     Error CreateVlan(const String& name, uint64_t vlanId) override;
+
+    /**
+     * Creates a parameter-less link of the given kind.
+     *
+     * @param name link name.
+     * @param kind link kind (rtnetlink link-type string, e.g. "ifb").
+     * @return Error.
+     */
+    Error CreateLink(const String& name, const String& kind) override;
 
     /**
      * Adds link.
@@ -227,12 +240,69 @@ public:
      */
     Error GetAddrList(const String& ifname, int family, Array<IPAddr>& addr) const;
 
+    /**
+     * Creates a veth pair. Both ends are initially in the current netns.
+     *
+     * @param hostIfName host-side veth name.
+     * @param peerIfName peer-side veth name.
+     * @return Error.
+     */
+    Error CreateVeth(const String& hostIfName, const String& peerIfName) override;
+
+    /**
+     * Moves a link into a network namespace.
+     *
+     * @param ifname interface name.
+     * @param netNSPath path to the target netns (e.g. /run/netns/<id>).
+     * @return Error.
+     */
+    Error MoveLinkToNamespace(const String& ifname, const String& netNSPath) override;
+
+    /**
+     * Renames a link (must be down). Runs inside netNSPath when non-empty.
+     *
+     * @param ifname current interface name.
+     * @param newName new interface name.
+     * @param netNSPath optional path to the netns; empty for current.
+     * @return Error.
+     */
+    Error RenameLink(const String& ifname, const String& newName, const String& netNSPath) override;
+
+    /**
+     * Assigns an IP address in CIDR form to an interface, optionally inside a netns.
+     *
+     * @param ifname interface name.
+     * @param ipWithMask IP in CIDR form, e.g. "10.0.0.5/24".
+     * @param netNSPath path to the netns; empty for current.
+     * @return Error.
+     */
+    Error AddAddress(const String& ifname, const String& ipWithMask, const String& netNSPath) override;
+
+    /**
+     * Adds a route, optionally inside a netns.
+     *
+     * @param destination destination prefix in CIDR form ("0.0.0.0/0" for default).
+     * @param gateway gateway IP.
+     * @param netNSPath path to the netns; empty for current.
+     * @return Error.
+     */
+    Error AddRoute(const String& destination, const String& gateway, const String& netNSPath) override;
+
+    /**
+     * Enables/disables hairpin mode on a bridge port via sysfs.
+     *
+     * @param ifname host-side veth interface name.
+     * @param enable enable/disable.
+     * @return Error.
+     */
+    Error SetHairpin(const String& ifname, bool enable) override;
+
 private:
     using LinkDeleter = std::function<void(rtnl_link*)>;
     using UniqueLink  = std::unique_ptr<rtnl_link, LinkDeleter>;
 
     RetWithError<int>        GetMasterInterfaceIndex() const;
-    RetWithError<UniqueLink> CreateLink() const;
+    RetWithError<UniqueLink> AllocLink() const;
 
     crypto::RandomItf* mRandom {};
 };

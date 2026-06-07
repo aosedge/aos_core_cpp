@@ -11,6 +11,7 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/pbconvert/common.hpp>
 #include <common/pbconvert/sm.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>
@@ -28,7 +29,8 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
     alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
-    nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, bool insecureConn)
+    nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
+    bool insecureConn)
 {
     LOG_DBG() << "Init SM controller";
 
@@ -44,6 +46,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     mMonitoringReceiver     = &monitoringReceiver;
     mInstanceStatusReceiver = &instanceStatusReceiver;
     mSMInfoReceiver         = &smInfoReceiver;
+    mNetworkProvider        = &networkProvider;
     mInsecureConn           = insecureConn;
 
     return ErrorEnum::eNone;
@@ -170,26 +173,6 @@ Error SMController::RequestLog(const aos::RequestLog& log)
 }
 
 /***********************************************************************************************************************
- * NodeNetworkItf implementation
- **********************************************************************************************************************/
-
-Error SMController::UpdateNetworks(const String& nodeID, const Array<UpdateNetworkParameters>& networkParameters)
-{
-    LOG_DBG() << "Updating networks" << Log::Field("nodeID", nodeID.CStr());
-
-    SMHandler* handler = FindNode(nodeID);
-    if (!handler) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "node not found"));
-    }
-
-    if (auto err = handler->UpdateNetworks(networkParameters); !err.IsNone()) {
-        return err;
-    }
-
-    return ErrorEnum::eNone;
-}
-
-/***********************************************************************************************************************
  * InstanceRunnerItf implementation
  **********************************************************************************************************************/
 
@@ -310,6 +293,92 @@ grpc::Status SMController::GetBlobsInfos(grpc::ServerContext*, const servicemana
     return grpc::Status::OK;
 }
 
+grpc::Status SMController::GetNodeNetworkParams(grpc::ServerContext*,
+    const servicemanager::v5::GetNodeNetworkParamsRequest* request,
+    servicemanager::v5::GetNodeNetworkParamsResponse*      response)
+{
+    LOG_DBG() << "GetNodeNetworkParams" << Log::Field("networkID", request->network_id().c_str())
+              << Log::Field("nodeID", request->node_id().c_str());
+
+    NetworkParams result;
+
+    if (auto err
+        = mNetworkProvider->GetNodeNetworkParams(request->network_id().c_str(), request->node_id().c_str(), result);
+        !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    if (auto err = common::pbconvert::ConvertToProto(result, *response); !err.IsNone()) {
+        return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status SMController::AllocateInstanceNetwork(grpc::ServerContext*,
+    const servicemanager::v5::AllocateInstanceNetworkRequest* request,
+    servicemanager::v5::AllocateInstanceNetworkResponse*      response)
+{
+    LOG_DBG() << "AllocateInstanceNetwork" << Log::Field("networkID", request->network_id().c_str())
+              << Log::Field("nodeID", request->node_id().c_str());
+
+    auto instance = common::pbconvert::ConvertToAos(request->instance());
+
+    auto serviceData = std::make_unique<UpdateItemNetworkParams>();
+
+    if (auto err = common::pbconvert::ConvertFromProto(request->service_data(), *serviceData); !err.IsNone()) {
+        return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
+    }
+
+    auto result = std::make_unique<InstanceNetworkAllocation>();
+
+    if (auto err = mNetworkProvider->AllocateInstanceNetwork(
+            instance, request->network_id().c_str(), request->node_id().c_str(), *serviceData, *result);
+        !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    if (auto err = common::pbconvert::ConvertToProto(*result, *response); !err.IsNone()) {
+        return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status SMController::ReleaseInstanceNetwork(grpc::ServerContext*,
+    const servicemanager::v5::ReleaseInstanceNetworkRequest* request,
+    servicemanager::v5::ReleaseInstanceNetworkResponse*      response)
+{
+    LOG_DBG() << "ReleaseInstanceNetwork" << Log::Field("nodeID", request->node_id().c_str());
+
+    auto instance = common::pbconvert::ConvertToAos(request->instance());
+
+    if (auto err = mNetworkProvider->ReleaseInstanceNetwork(instance, request->node_id().c_str()); !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status SMController::ReleaseNodeNetwork(grpc::ServerContext*,
+    const servicemanager::v5::ReleaseNodeNetworkRequest* request,
+    servicemanager::v5::ReleaseNodeNetworkResponse*      response)
+{
+    LOG_DBG() << "ReleaseNodeNetwork" << Log::Field("networkID", request->network_id().c_str())
+              << Log::Field("nodeID", request->node_id().c_str());
+
+    if (auto err = mNetworkProvider->ReleaseNodeNetwork(request->network_id().c_str(), request->node_id().c_str());
+        !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+    }
+
+    return grpc::Status::OK;
+}
+
 void SMController::OnCertChanged(const CertInfo& info)
 {
     (void)info;
@@ -397,7 +466,8 @@ Error SMController::StartServer()
     common::utils::SetGRPCServerOptions(builder);
 
     builder.AddListeningPort(correctedAddress, mCredentials);
-    builder.RegisterService(this);
+    builder.RegisterService(static_cast<servicemanager::v5::SMService::Service*>(this));
+    builder.RegisterService(static_cast<servicemanager::v5::NetworkService::Service*>(this));
 
     mServer = builder.BuildAndStart();
     if (!mServer) {
@@ -419,6 +489,12 @@ Error SMController::StopServer()
                 handler->Stop();
             }
         }
+
+        for (auto& [_, stream] : mNetworkUpdateStreams) {
+            stream.mContext->TryCancel();
+        }
+
+        mStreamCV.notify_all();
     }
 
     if (mServer) {
@@ -487,6 +563,97 @@ void SMController::OnRestartTimer()
 
     if (auto stopErr = mReconnectTimer.Stop(); !stopErr.IsNone() && !stopErr.Is(ErrorEnum::eWrongState)) {
         LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(stopErr);
+    }
+}
+
+grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* context,
+    const servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest*           request,
+    grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>*  writer)
+{
+    auto nodeID = request->node_id();
+
+    LOG_DBG() << "SubscribeInstanceNetworkUpdates" << Log::Field("nodeID", nodeID.c_str());
+
+    {
+        std::lock_guard lock {mStreamMutex};
+        mNetworkUpdateStreams[nodeID] = {context, writer};
+    }
+
+    {
+        std::unique_lock lock {mStreamMutex};
+
+        while (!context->IsCancelled()) {
+            mStreamCV.wait_for(lock, cStreamPollInterval);
+        }
+    }
+
+    {
+        std::lock_guard lock {mStreamMutex};
+
+        // Only erase if this is still the active stream (not replaced by a newer subscription)
+        auto it = mNetworkUpdateStreams.find(nodeID);
+        if (it != mNetworkUpdateStreams.end() && it->second.mWriter == writer) {
+            mNetworkUpdateStreams.erase(it);
+        }
+    }
+
+    LOG_DBG() << "SubscribeInstanceNetworkUpdates disconnected" << Log::Field("nodeID", nodeID.c_str());
+
+    return grpc::Status::OK;
+}
+
+grpc::Status SMController::SyncNetworkState(grpc::ServerContext*,
+    const servicemanager::v5::SyncNetworkStateRequest* request, servicemanager::v5::SyncNetworkStateResponse* response)
+{
+    LOG_DBG() << "Sync network state" << Log::Field("nodeID", request->node_id().c_str())
+              << Log::Field("instancesCount", request->instances_size());
+
+    auto instances = std::make_unique<StaticArray<InstanceNetworkStateInfo, cMaxNumInstances>>();
+
+    for (const auto& protoInstance : request->instances()) {
+        InstanceNetworkStateInfo info;
+
+        if (auto err = common::pbconvert::ConvertFromProto(protoInstance, info); !err.IsNone()) {
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+
+        if (auto err = instances->PushBack(info); !err.IsNone()) {
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+    }
+
+    if (auto err = mNetworkProvider->SyncNetworkState(request->node_id().c_str(), *instances); !err.IsNone()) {
+        common::pbconvert::SetErrorInfo(err, *response);
+    }
+
+    return grpc::Status::OK;
+}
+
+void SMController::OnPendingFirewallUpdate(
+    const String& nodeID, const aos::networkmanager::PendingFirewallUpdate& update)
+{
+    std::lock_guard lock {mStreamMutex};
+
+    auto it = mNetworkUpdateStreams.find(nodeID.CStr());
+    if (it == mNetworkUpdateStreams.end()) {
+        LOG_WRN() << "No stream writer for node" << Log::Field("nodeID", nodeID);
+        return;
+    }
+
+    servicemanager::v5::InstanceNetworkUpdateNotification notification;
+    auto* pendingUpdate = notification.mutable_pending_firewall_update();
+
+    if (auto err = common::pbconvert::ConvertToProto(update, *pendingUpdate); !err.IsNone()) {
+        LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
+        return;
+    }
+
+    if (!it->second.mWriter->Write(notification)) {
+        LOG_ERR() << "Failed to write pending firewall update to stream" << Log::Field("nodeID", nodeID);
     }
 }
 

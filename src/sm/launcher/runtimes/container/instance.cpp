@@ -9,6 +9,7 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/exception.hpp>
 #include <common/utils/filesystem.hpp>
 #include <common/utils/utils.hpp>
 
@@ -35,7 +36,7 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
     FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec)
+    oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider)
     : mInstanceInfo(instance)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
@@ -47,8 +48,14 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
     , mPermHandler(permHandler)
     , mResourceInfoProvider(resourceInfoProvider)
     , mOCISpec(ociSpec)
+    , mInstanceIDProvider(instanceIDProvider)
 {
-    GenerateInstanceID();
+    StaticString<cIDLen> generatedID;
+
+    auto err = mInstanceIDProvider.GetInstanceID(instance, generatedID);
+    AOS_ERROR_CHECK_AND_THROW(err, "Failed to get instance ID");
+
+    mInstanceID = generatedID.CStr();
 
     LOG_DBG() << "Create instance" << Log::Field("instance", mInstanceInfo)
               << Log::Field("instanceID", mInstanceID.c_str());
@@ -58,7 +65,7 @@ Instance::Instance(const std::string& instanceID, const ContainerConfig& config,
     FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
     imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec)
+    oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider)
     : mInstanceID(instanceID)
     , mConfig(config)
     , mNodeInfo(nodeInfo)
@@ -70,6 +77,7 @@ Instance::Instance(const std::string& instanceID, const ContainerConfig& config,
     , mPermHandler(permHandler)
     , mResourceInfoProvider(resourceInfoProvider)
     , mOCISpec(ociSpec)
+    , mInstanceIDProvider(instanceIDProvider)
 {
     LOG_DBG() << "Create instance" << Log::Field("instanceID", mInstanceID.c_str());
 }
@@ -113,10 +121,8 @@ Error Instance::Start()
         return err;
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (err = SetupNetwork(runtimeDir, *itemConfig); !err.IsNone()) {
-            return err;
-        }
+    if (err = StartNetwork(runtimeDir); !err.IsNone()) {
+        return err;
     }
 
     if (mInstanceInfo.mMonitoringParams.HasValue()) {
@@ -167,11 +173,9 @@ Error Instance::Stop()
         }
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        if (auto err = mNetworkManager.RemoveInstanceFromNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
-            !err.IsNone() && stopErr.IsNone()) {
-            stopErr = err;
-        }
+    if (auto err = mNetworkManager.StopInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
+        !err.IsNone() && stopErr.IsNone()) {
+        stopErr = err;
     }
 
     auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
@@ -216,14 +220,6 @@ bool Instance::UpdateRunStatus(const RunStatus& runStatus)
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
-
-void Instance::GenerateInstanceID()
-{
-    auto idStr = std::string(mInstanceInfo.mItemID.CStr()) + ":" + std::string(mInstanceInfo.mSubjectID.CStr()) + ":"
-        + std::to_string(mInstanceInfo.mInstance);
-
-    mInstanceID = common::utils::NameUUID(idStr);
-}
 
 Error Instance::LoadConfigs(oci::ImageConfig& imageConfig, oci::ItemConfig& itemConfig)
 {
@@ -290,13 +286,14 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return err;
     }
 
-    if (mInstanceInfo.mNetworkParameters.HasValue()) {
-        auto [instanceNetns, err] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
-        if (!err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+    {
+        auto [instanceNetns, netnsErr] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
+        if (!netnsErr.IsNone()) {
+            return AOS_ERROR_WRAP(netnsErr);
         }
 
-        if (err = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
+        if (auto err
+            = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
             !err.IsNone()) {
             return err;
         }
@@ -721,83 +718,31 @@ Error Instance::PrepareRootFS(
     return ErrorEnum::eNone;
 }
 
-Error Instance::SetupNetwork(const std::string& runtimeDir, const oci::ItemConfig& itemConfig)
+Error Instance::StartNetwork(const std::string& runtimeDir)
 {
-    LOG_DBG() << "Setup network" << Log::Field("instanceID", mInstanceID.c_str());
-
-    auto networkParams = std::make_unique<networkmanager::InstanceNetworkParameters>();
-
-    networkParams->mInstanceIdent = mInstanceInfo;
-
-    auto etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
-
-    if (auto err = networkParams->mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
-        !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = networkParams->mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
-        !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    auto hosts = mConfig.mHosts;
-
-    for (const auto& resource : itemConfig.mResources) {
-        if (auto err = AddNetworkHostsFromResource(resource.mName.CStr(), hosts); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    for (const auto& host : hosts) {
-        if (auto err = networkParams->mHosts.PushBack(host); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    networkParams->mNetworkParameters = *mInstanceInfo.mNetworkParameters;
-
-    if (itemConfig.mHostname.HasValue()) {
-        networkParams->mHostname = *itemConfig.mHostname;
-    }
-
-    if (itemConfig.mQuotas.mDownloadSpeed.HasValue()) {
-        networkParams->mIngressKbit = *itemConfig.mQuotas.mDownloadSpeed;
-    }
-
-    if (itemConfig.mQuotas.mUploadSpeed.HasValue()) {
-        networkParams->mEgressKbit = *itemConfig.mQuotas.mUploadSpeed;
-    }
-
-    if (itemConfig.mQuotas.mDownloadLimit.HasValue()) {
-        networkParams->mDownloadLimit = *itemConfig.mQuotas.mDownloadLimit;
-    }
-
-    if (itemConfig.mQuotas.mUploadLimit.HasValue()) {
-        networkParams->mUploadLimit = *itemConfig.mQuotas.mUploadLimit;
-    }
+    LOG_DBG() << "Start network" << Log::Field("instanceID", mInstanceID.c_str());
 
     if (auto err = mFileSystem.PrepareNetworkDir(common::utils::JoinPath(runtimeDir, cMountPointsDir)); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mNetworkManager.AddInstanceToNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, *networkParams);
+    auto                                         etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
+    networkmanager::InstanceNetworkRuntimeParams runtimeParams;
+
+    if (auto err = runtimeParams.mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    return ErrorEnum::eNone;
-}
-
-Error Instance::AddNetworkHostsFromResource(const std::string& resource, std::vector<Host>& hosts)
-{
-    auto resourceInfo = std::make_unique<resourcemanager::ResourceInfo>();
-
-    if (auto err = mResourceInfoProvider.GetResourceInfo(resource.c_str(), *resourceInfo); !err.IsNone()) {
+    if (auto err = runtimeParams.mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    hosts.insert(hosts.end(), resourceInfo->mHosts.begin(), resourceInfo->mHosts.end());
+    if (auto err = mNetworkManager.StartInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, runtimeParams);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     return ErrorEnum::eNone;
 }

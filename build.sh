@@ -130,14 +130,13 @@ cmake_configure() {
 build_project() {
     cmake_configure
 
+    print_next_step "Run build"
+
+    cmake --build ./build/ --config "$ARG_BUILD_TYPE" --parallel "$ARG_PARALLEL_JOBS"
+
     if [ "$ARG_CI_FLAG" == "true" ]; then
-        print_next_step "Run build-wrapper and build (CI mode)"
-
-        build-wrapper-linux-x86-64 --out-dir "$BUILD_WRAPPER_OUT_DIR" cmake --build ./build/ --config "$ARG_BUILD_TYPE" --parallel "$ARG_PARALLEL_JOBS"
-    else
-        print_next_step "Run build"
-
-        cmake --build ./build/ --config "$ARG_BUILD_TYPE" --parallel "$ARG_PARALLEL_JOBS"
+        mkdir -p "$BUILD_WRAPPER_OUT_DIR"
+        cp build/compile_commands.json "$BUILD_WRAPPER_OUT_DIR"/compile_commands.json
     fi
 
     echo

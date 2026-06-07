@@ -24,7 +24,6 @@ struct ContainerConfig {
     std::string              mStorageDir;
     std::string              mStateDir;
     std::vector<std::string> mHostBinds;
-    std::vector<Host>        mHosts;
 };
 
 /**

@@ -10,7 +10,7 @@ set(TARGET_NAME networkmanager_test)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES cni.cpp trafficmonitor.cpp)
+set(SOURCES bandwidth.cpp bridgenetwork.cpp dnsserver.cpp dnsname.cpp firewall.cpp trafficmonitor.cpp)
 
 # ######################################################################################################################
 # Includes
@@ -22,7 +22,9 @@ set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::sm::networkmanager aos::common::tests::mocks aos::core::sm::tests::mocks GTest::gmock_main)
+set(LIBRARIES aos::sm::networkmanager aos::sm::tests::mocks aos::common::tests::mocks aos::core::sm::tests::mocks
+              GTest::gmock_main
+)
 
 # ######################################################################################################################
 # Target
