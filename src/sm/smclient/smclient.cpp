@@ -954,28 +954,24 @@ void SMClient::StartNetworkUpdateSubscription()
                 mNetworkUpdateReader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
             }
 
-            if (!mNetworkUpdateReader) {
-                LOG_ERR() << "Failed to subscribe to instance network updates";
-                continue;
-            }
+            if (mNetworkUpdateReader) {
+                smproto::InstanceNetworkUpdateNotification notification;
 
-            smproto::InstanceNetworkUpdateNotification notification;
+                while (mNetworkUpdateReader->Read(&notification)) {
+                    if (notification.has_pending_firewall_update()) {
+                        aos::networkmanager::PendingFirewallUpdate update;
 
-            while (mNetworkUpdateReader->Read(&notification)) {
-                if (notification.has_pending_firewall_update()) {
-                    aos::networkmanager::PendingFirewallUpdate update;
+                        if (auto err
+                            = common::pbconvert::ConvertFromProto(notification.pending_firewall_update(), update);
+                            !err.IsNone()) {
+                            LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
+                            continue;
+                        }
 
-                    if (auto err = common::pbconvert::ConvertFromProto(notification.pending_firewall_update(), update);
-                        !err.IsNone()) {
-                        LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
-                        continue;
+                        mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
                     }
-
-                    mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
                 }
-            }
 
-            {
                 std::lock_guard lock {mMutex};
 
                 auto status = mNetworkUpdateReader->Finish();
@@ -986,6 +982,19 @@ void SMClient::StartNetworkUpdateSubscription()
 
                 mNetworkUpdateReader.reset();
                 mNetworkUpdateCtx.reset();
+            } else {
+                LOG_ERR() << "Failed to subscribe to instance network updates";
+            }
+
+            {
+                std::unique_lock lock {mMutex};
+
+                mNetworkUpdateCV.wait_for(lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()),
+                    [this] { return mStopped; });
+
+                if (mStopped) {
+                    break;
+                }
             }
         }
 
