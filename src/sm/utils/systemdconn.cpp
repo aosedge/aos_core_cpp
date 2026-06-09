@@ -64,7 +64,13 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
     sd_bus_message*       reply   = nullptr;
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
-    auto rv = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
+    auto [rv, connErr] = BusCallWithRetry([&] {
+        return sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
+    });
+    if (!connErr.IsNone()) {
+        return {{}, connErr};
+    }
+
     if (rv < 0) {
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
@@ -131,7 +137,13 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
 
     sd_bus_message* reply = nullptr;
 
-    auto rv = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
+    auto [rv, connErr] = BusCallWithRetry([&] {
+        return sd_bus_call_method(mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
+    });
+    if (!connErr.IsNone()) {
+        return {{}, connErr};
+    }
+
     if (rv < 0) {
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
@@ -182,13 +194,48 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     return {status, ErrorEnum::eNone};
 }
 
+RetWithError<int> SystemdConn::BusCallWithRetry(std::function<int()> func)
+{
+    auto rv = func();
+    if (rv != -ENOTCONN) {
+        return {rv, ErrorEnum::eNone};
+    }
+
+    if (auto err = Reconnect(); !err.IsNone()) {
+        return {rv, err};
+    }
+
+    rv = func();
+    return {rv, ErrorEnum::eNone};
+}
+
+Error SystemdConn::Reconnect()
+{
+    LOG_WRN() << "D-Bus connection lost, reconnecting";
+
+    sd_bus_unref(mBus);
+    mBus = nullptr;
+
+    auto rv = sd_bus_open_system(&mBus);
+    if (rv < 0) {
+        return AOS_ERROR_WRAP(-rv);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, const Duration& timeout)
 {
     std::lock_guard lock {mMutex};
 
     sd_bus_slot* slot = nullptr;
 
-    auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
+    auto [rv, connErr] = BusCallWithRetry(
+        [&] { return sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr); });
+    if (!connErr.IsNone()) {
+        return connErr;
+    }
+
     if (rv < 0) {
         return AOS_ERROR_WRAP(-rv);
     }
@@ -219,7 +266,12 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
 
     sd_bus_slot* slot = nullptr;
 
-    auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
+    auto [rv, connErr] = BusCallWithRetry(
+        [&] { return sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr); });
+    if (!connErr.IsNone()) {
+        return connErr;
+    }
+
     if (rv < 0) {
         return AOS_ERROR_WRAP(-rv);
     }
@@ -258,8 +310,14 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
     sd_bus_message*       reply   = nullptr;
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
-    auto rv = sd_bus_call_method(
-        mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
+    auto [rv, connErr] = BusCallWithRetry([&] {
+        return sd_bus_call_method(
+            mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
+    });
+    if (!connErr.IsNone()) {
+        return connErr;
+    }
+
     if (rv < 0) {
         if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
             return ErrorEnum::eNotFound;
