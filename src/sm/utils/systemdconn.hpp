@@ -78,7 +78,10 @@ private:
     static constexpr auto cPath          = "/org/freedesktop/systemd1";
     static constexpr auto cInterface     = "org.freedesktop.systemd1.Manager";
     static constexpr auto cNoSuchUnitErr = "org.freedesktop.systemd1.NoSuchUnit";
+    static constexpr auto cMaxRetries    = 3;
+    static constexpr auto cRetryDelay    = Time::cMilliseconds * 100;
 
+    void                   Reconnect();
     Error                  WaitForJobCompletion(const char* jobPath, const Duration& timeout);
     std::pair<bool, Error> HandleJobRemove(sd_bus_message* m, const char* jobPath);
     Optional<int32_t>      GetExitCode(const char* serviceName);
