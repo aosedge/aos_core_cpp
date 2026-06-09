@@ -13,6 +13,7 @@
 #include <core/common/tools/memory.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/retry.hpp>
 
 #include "systemdconn.hpp"
 
@@ -64,14 +65,21 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
     sd_bus_message*       reply   = nullptr;
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
-    auto rv = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
-    if (rv < 0) {
-        return {{}, AOS_ERROR_WRAP(-rv)};
+    if (auto err = common::utils::Retry(
+            [&] {
+                auto rv
+                    = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
+
+                return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
+            },
+            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+        !err.IsNone()) {
+        return {{}, err};
     }
 
     [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
 
-    rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
+    auto rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
     if (rv < 0) {
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
@@ -131,16 +139,23 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
 
     sd_bus_message* reply = nullptr;
 
-    auto rv = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
-    if (rv < 0) {
-        return {{}, AOS_ERROR_WRAP(-rv)};
+    if (auto err = common::utils::Retry(
+            [&] {
+                auto rv = sd_bus_call_method(
+                    mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
+
+                return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
+            },
+            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+        !err.IsNone()) {
+        return {{}, err};
     }
 
     [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
 
     const char* unitPath = nullptr;
 
-    rv = sd_bus_message_read(reply, "o", &unitPath);
+    auto rv = sd_bus_message_read(reply, "o", &unitPath);
     if (rv < 0) {
         return {{}, AOS_ERROR_WRAP(-rv)};
     }
@@ -182,21 +197,41 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     return {status, ErrorEnum::eNone};
 }
 
+void SystemdConn::Reconnect()
+{
+    LOG_WRN() << "D-Bus connection lost, reconnecting";
+
+    sd_bus_unref(mBus);
+    mBus = nullptr;
+
+    auto rv = sd_bus_open_system(&mBus);
+    if (rv < 0) {
+        LOG_ERR() << "Failed to open system bus" << AOS_ERROR_WRAP(-rv);
+        return;
+    }
+}
+
 Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, const Duration& timeout)
 {
     std::lock_guard lock {mMutex};
 
     sd_bus_slot* slot = nullptr;
 
-    auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
-    if (rv < 0) {
-        return AOS_ERROR_WRAP(-rv);
+    if (auto err = common::utils::Retry(
+            [&] {
+                auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
+
+                return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
+            },
+            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+        !err.IsNone()) {
+        return err;
     }
 
     [[maybe_unused]] auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
     sd_bus_message*       msg      = nullptr;
 
-    rv = sd_bus_call_method(
+    auto rv = sd_bus_call_method(
         mBus, cDestination, cPath, cInterface, "StartUnit", nullptr, &msg, "ss", name.c_str(), mode.c_str());
     if (rv < 0) {
         return AOS_ERROR_WRAP(-rv);
@@ -219,9 +254,14 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
 
     sd_bus_slot* slot = nullptr;
 
-    auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
-    if (rv < 0) {
-        return AOS_ERROR_WRAP(-rv);
+    if (auto err = common::utils::Retry(
+            [&] {
+                auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
+                return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
+            },
+            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+        !err.IsNone()) {
+        return err;
     }
 
     [[maybe_unused]] auto freeSlot = DeferRelease(slot, &sd_bus_slot_unref);
@@ -230,7 +270,7 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
     sd_bus_error          error   = SD_BUS_ERROR_NULL;
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
-    rv = sd_bus_call_method(
+    auto rv = sd_bus_call_method(
         mBus, cDestination, cPath, cInterface, "StopUnit", &error, &msg, "ss", name.c_str(), mode.c_str());
     if (rv < 0) {
         if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
@@ -258,14 +298,24 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
     sd_bus_message*       reply   = nullptr;
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
-    auto rv = sd_bus_call_method(
-        mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
-    if (rv < 0) {
-        if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
-            return ErrorEnum::eNotFound;
-        }
+    if (auto err = common::utils::Retry(
+            [&]() -> Error {
+                auto rv = sd_bus_call_method(
+                    mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
 
-        return AOS_ERROR_WRAP(-rv);
+                if (rv < 0) {
+                    if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
+                        return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+                    }
+
+                    return AOS_ERROR_WRAP(Error(-rv));
+                }
+
+                return ErrorEnum::eNone;
+            },
+            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+        !err.IsNone()) {
+        return err;
     }
 
     [[maybe_unused]] auto freeMsg = DeferRelease(reply, sd_bus_message_unref);
