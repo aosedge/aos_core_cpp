@@ -22,6 +22,7 @@
 #include <sm/launcher/runtimes.hpp>
 #include <sm/launcher/runtimes/boot/boot.hpp>
 #include <sm/launcher/runtimes/container/container.hpp>
+#include <sm/launcher/runtimes/filecopy/filecopy.hpp>
 #include <sm/launcher/runtimes/rootfs/rootfs.hpp>
 #include <sm/tests/mocks/systemdconnmock.hpp>
 
@@ -107,6 +108,9 @@ TEST_F(RuntimesTest, InitRuntimes)
         RuntimeConfig {cRuntimeBoot, "aos-vm-boot", true, "", Poco::makeShared<Poco::JSON::Object>()});
     config.mRuntimes.emplace_back(
         RuntimeConfig {cRuntimeRootfs, "aos-vm-rootfs", true, "", Poco::makeShared<Poco::JSON::Object>()});
+    config.mRuntimes.emplace_back(
+        RuntimeConfig {cRuntimeFileCopy, "aos-vm-filecopy-test1", true, "", Poco::makeShared<Poco::JSON::Object>()});
+
     auto nodeInfo = std::make_unique<NodeInfo>();
 
     CreateNodeInfo(*nodeInfo);

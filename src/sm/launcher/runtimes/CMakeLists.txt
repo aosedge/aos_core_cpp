@@ -17,5 +17,6 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_runtimes)
 
 add_subdirectory(boot)
 add_subdirectory(container)
+add_subdirectory(filecopy)
 add_subdirectory(rootfs)
 add_subdirectory(utils)

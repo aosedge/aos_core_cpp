@@ -1,29 +1,27 @@
 #
-# Copyright (C) 2025 EPAM Systems, Inc.
+# Copyright (C) 2026 EPAM Systems, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET_NAME launcher)
+# ######################################################################################################################
+# Target name
+# ######################################################################################################################
+
+set(TARGET_NAME filecopy)
 
 # ######################################################################################################################
 # Sources
 # ######################################################################################################################
 
-set(SOURCES instanceidprovider.cpp runtimes.cpp)
+set(SOURCES config.cpp filecopy.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES
-    Poco::JSON
-    aos::core::common::tools
-    aos::sm::runtimes::container
-    aos::sm::runtimes::filecopy
-    aos::sm::runtimes::boot
-    aos::sm::runtimes::rootfs
-    aos::sm::utils
+set(LIBRARIES Poco::JSON aos::common::utils aos::core::common::tools aos::sm::config aos::sm::utils
+              aos::sm::runtimes::utils
 )
 
 # ######################################################################################################################
@@ -38,6 +36,8 @@ add_module(
     ${AOS_STACK_USAGE}
     SOURCES
     ${SOURCES}
+    HEADERS
+    ${HEADERS}
     LIBRARIES
     ${LIBRARIES}
 )
@@ -49,9 +49,3 @@ add_module(
 if(WITH_TEST)
     add_subdirectory(tests)
 endif()
-
-# ######################################################################################################################
-# Runtimes
-# ######################################################################################################################
-
-add_subdirectory(runtimes)

@@ -7,6 +7,7 @@
 #ifndef AOS_SM_UTILS_SYSTEMDCONN_HPP_
 #define AOS_SM_UTILS_SYSTEMDCONN_HPP_
 
+#include <functional>
 #include <mutex>
 #include <systemd/sd-bus.h>
 #include <vector>
@@ -79,6 +80,8 @@ private:
     static constexpr auto cInterface     = "org.freedesktop.systemd1.Manager";
     static constexpr auto cNoSuchUnitErr = "org.freedesktop.systemd1.NoSuchUnit";
 
+    RetWithError<int>      BusCallWithRetry(std::function<int()> func);
+    Error                  Reconnect();
     Error                  WaitForJobCompletion(const char* jobPath, const Duration& timeout);
     std::pair<bool, Error> HandleJobRemove(sd_bus_message* m, const char* jobPath);
     Optional<int32_t>      GetExitCode(const char* serviceName);

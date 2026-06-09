@@ -8,6 +8,7 @@
 
 #include "runtimes.hpp"
 #include "runtimes/boot/boot.hpp"
+#include "runtimes/filecopy/filecopy.hpp"
 #include "runtimes/rootfs/rootfs.hpp"
 
 namespace aos::sm::launcher {
@@ -51,6 +52,16 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
 
         } else if (runtimeConfig.mPlugin == cRuntimeRootfs) {
             auto runtime = std::make_unique<RootfsRuntime>();
+
+            if (auto err = runtime->Init(
+                    runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec, statusReceiver, systemdConn);
+                !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+
+            mRuntimes.emplace_back(std::move(runtime));
+        } else if (runtimeConfig.mPlugin == cRuntimeFileCopy) {
+            auto runtime = std::make_unique<FileCopyRuntime>();
 
             if (auto err = runtime->Init(
                     runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec, statusReceiver, systemdConn);
