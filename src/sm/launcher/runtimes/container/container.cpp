@@ -354,26 +354,28 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
 
 Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
 {
-    std::lock_guard lock {mMutex};
-
     std::vector<InstanceStatus> instancesStatuses;
 
-    for (const auto& runStatus : instances) {
-        auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
-            [&runStatus](const auto& pair) { return pair.second->InstanceID() == runStatus.mInstanceID; });
-        if (it == mCurrentInstances.end()) {
-            LOG_WRN() << "Received run status for unknown instance"
-                      << Log::Field("instanceID", runStatus.mInstanceID.c_str());
+    {
+        std::lock_guard lock {mMutex};
 
-            continue;
-        }
+        for (const auto& runStatus : instances) {
+            auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
+                [&runStatus](const auto& pair) { return pair.second->InstanceID() == runStatus.mInstanceID; });
+            if (it == mCurrentInstances.end()) {
+                LOG_WRN() << "Received run status for unknown instance"
+                          << Log::Field("instanceID", runStatus.mInstanceID.c_str());
 
-        LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
-                  << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
+                continue;
+            }
 
-        if (it->second->UpdateRunStatus(runStatus)) {
-            instancesStatuses.emplace_back();
-            it->second->GetStatus(instancesStatuses.back());
+            LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
+                      << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
+
+            if (it->second->UpdateRunStatus(runStatus)) {
+                instancesStatuses.emplace_back();
+                it->second->GetStatus(instancesStatuses.back());
+            }
         }
     }
 
