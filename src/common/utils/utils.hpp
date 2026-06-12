@@ -7,6 +7,7 @@
 #ifndef AOS_COMMON_UTILS_UTILS_HPP_
 #define AOS_COMMON_UTILS_UTILS_HPP_
 
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -50,9 +51,11 @@ namespace aos::common::utils {
  * Execute command and return its output.
  *
  * @param args command arguments (first argument is program name).
+ * @param expectedExitCodes expected command exit codes (default is 0).
  * @return RetWithError<std::string>.
  */
-RetWithError<std::string> ExecCommand(const std::vector<std::string>& args);
+RetWithError<std::string> ExecCommand(
+    const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes = {0});
 
 /**
  * Generates name-based UUID.
