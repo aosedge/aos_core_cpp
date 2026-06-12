@@ -24,7 +24,8 @@ namespace aos::common::utils {
  * Public
  **********************************************************************************************************************/
 
-RetWithError<std::string> ExecCommand(const std::vector<std::string>& args)
+RetWithError<std::string> ExecCommand(
+    const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes)
 {
     if (args.empty()) {
         return {"", Error(ErrorEnum::eInvalidArgument, "exec command requires at least one argument")};
@@ -44,7 +45,8 @@ RetWithError<std::string> ExecCommand(const std::vector<std::string>& args)
 
     Poco::StreamCopier::copyStream(istr, output);
 
-    if (int rc = ph.wait(); rc != 0) {
+    if (int rc = ph.wait();
+        std::find(expectedExitCodes.begin(), expectedExitCodes.end(), rc) == expectedExitCodes.end()) {
         std::ostringstream err;
 
         err << "command `" << program;
