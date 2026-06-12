@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <future>
+
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
@@ -409,6 +411,53 @@ TEST_F(ContainerRuntimeTest, UpdateInstanceStatus)
 
     mRunStatusReceiver->UpdateRunStatus(
         std::vector<RunStatus> {RunStatus {instanceID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}});
+}
+
+TEST_F(ContainerRuntimeTest, UpdateRunStatusReleasesLockBeforeCallback)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status     = std::make_unique<InstanceStatus>();
+
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Inside OnInstancesStatusesReceived, call GetInstanceMonitoringData which also acquires mMutex.
+    // If mMutex is still held during the callback (AB/BA deadlock regression), this deadlocks.
+    EXPECT_CALL(*mRuntime.mMonitoring, GetInstanceMonitoringData(instanceID, _)).WillOnce(Return(ErrorEnum::eNone));
+
+    std::promise<void> callbackCalledPromise;
+
+    EXPECT_CALL(mInstanceStatusReceiverMock, OnInstancesStatusesReceived(_))
+        .WillOnce(Invoke([&](const Array<InstanceStatus>&) -> Error {
+            monitoring::InstanceMonitoringData monitoringData;
+
+            auto callErr
+                = mRuntime.GetInstanceMonitoringData(static_cast<const InstanceIdent&>(instance), monitoringData);
+            EXPECT_TRUE(callErr.IsNone()) << tests::utils::ErrorToStr(callErr);
+
+            callbackCalledPromise.set_value();
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto asyncUpdateRunStatus = std::async(std::launch::async, [&]() {
+        mRunStatusReceiver->UpdateRunStatus(
+            std::vector<RunStatus> {RunStatus {instanceID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}});
+    });
+
+    ASSERT_EQ(callbackCalledPromise.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready)
+        << "Callback was not called within timeout, possible deadlock";
+
+    asyncUpdateRunStatus.get();
 }
 
 TEST_F(ContainerRuntimeTest, RuntimeConfig)
