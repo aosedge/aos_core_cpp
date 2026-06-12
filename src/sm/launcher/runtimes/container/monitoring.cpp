@@ -189,8 +189,8 @@ size_t Monitoring::GetInstanceDiskUsage(const std::string& path, uid_t uid)
 
     std::string quotaOutput;
 
-    Tie(quotaOutput, err)
-        = common::utils::ExecCommand({"quota", "-u", std::to_string(uid), "-w", "--filesystem", mountPoint});
+    Tie(quotaOutput, err) = common::utils::ExecCommand(
+        {"quota", "-u", std::to_string(uid), "-w", "--filesystem", mountPoint}, cExpectedQuotaCommandExitCodes);
     if (!err.IsNone()) {
         AOS_ERROR_THROW(AOS_ERROR_WRAP(err));
     }
