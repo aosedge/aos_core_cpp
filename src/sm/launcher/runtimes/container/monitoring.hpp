@@ -62,9 +62,10 @@ public:
         const std::string& instanceID, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cCgroupsPath  = "/sys/fs/cgroup/system.slice/system-aos\\x2dservice.slice";
-    static constexpr auto cCpuUsageFile = "cpu.stat";
-    static constexpr auto cMemUsageFile = "memory.current";
+    static constexpr auto cCgroupsPath                   = "/sys/fs/cgroup/system.slice/system-aos\\x2dservice.slice";
+    static constexpr auto cCpuUsageFile                  = "cpu.stat";
+    static constexpr auto cMemUsageFile                  = "memory.current";
+    static constexpr auto cExpectedQuotaCommandExitCodes = {0, 1};
 
     struct CPUUsage {
         size_t    mIdle {};
