@@ -188,6 +188,15 @@ void AosCore::Start()
         }
     });
 
+    err = mImageManager.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start image manager");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mImageManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop image manager: err=" << err;
+        }
+    });
+
     err = mLauncher.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start launcher");
 
