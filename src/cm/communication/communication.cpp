@@ -660,14 +660,17 @@ Error Communication::ConnectToCloud()
             mWebSocket->setKeepAlive(true);
             mWebSocket->setReceiveTimeout(0);
             mWebSocket->setSendTimeout(Poco::Timespan(cSendTimeoutSec, 0));
-        } catch (const Poco::Net::NetException& e) {
-            if (e.code() == Poco::Net::WebSocket::WS_ERR_UNAUTHORIZED) {
+        } catch (const Poco::Exception& e) {
+            if (const auto* netEx = dynamic_cast<const Poco::Net::NetException*>(&e);
+                netEx && netEx->code() == Poco::Net::WebSocket::WS_ERR_UNAUTHORIZED) {
                 LOG_WRN() << "Authorization failed, clearing discovery response";
 
                 mDiscoveryResponse.reset();
             }
 
-            mDiscoveryResponse->mConnectionInfo.erase(it);
+            if (mDiscoveryResponse) {
+                mDiscoveryResponse->mConnectionInfo.erase(it);
+            }
 
             mWebSocket.reset();
 

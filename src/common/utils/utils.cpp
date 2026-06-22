@@ -45,22 +45,26 @@ RetWithError<std::string> ExecCommand(
 
     Poco::StreamCopier::copyStream(istr, output);
 
+    const auto outStr = output.str();
+
     if (int rc = ph.wait();
         std::find(expectedExitCodes.begin(), expectedExitCodes.end(), rc) == expectedExitCodes.end()) {
         std::ostringstream err;
 
-        err << "command `" << program;
+        err << "exit=" << rc;
 
-        for (const auto& a : pocoArgs) {
-            err << ' ' << a;
+        if (!outStr.empty()) {
+            constexpr size_t cMaxOutputLen = 128;
+            err << ": " << outStr.substr(0, cMaxOutputLen);
+            if (outStr.size() > cMaxOutputLen) {
+                err << "...";
+            }
         }
 
-        err << "` failed (exit=" << rc << "):" << output.str();
-
-        return {"", Error(ErrorEnum::eRuntime, err.str().c_str())};
+        return {outStr, Error(ErrorEnum::eRuntime, err.str().c_str())};
     }
 
-    return {output.str(), ErrorEnum::eNone};
+    return {outStr, ErrorEnum::eNone};
 }
 
 std::string NameUUID(const std::string& name)

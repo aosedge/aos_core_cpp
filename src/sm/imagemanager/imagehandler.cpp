@@ -88,6 +88,9 @@ Error ImageHandler::UnpackLayer(const String& src, const String& dst, const Stri
         std::filesystem::create_directory(dst.CStr());
 
         if (auto err = common::utils::UnpackTarImage(src.CStr(), dst.CStr()); !err.IsNone()) {
+            LOG_ERR() << "Failed to unpack tar image" << Log::Field("src", src) << Log::Field("dst", dst)
+                      << Log::Field(err);
+
             return AOS_ERROR_WRAP(err);
         }
 
