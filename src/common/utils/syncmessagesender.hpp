@@ -42,16 +42,18 @@ template <typename Request, typename Response>
 class SyncMessageSender {
 public:
     /**
-     * Initializes the sender with a gRPC stream and timeout.
+     * Initializes the sender with a gRPC stream, shared write mutex, and timeout.
      *
      * @param stream gRPC stream pointer.
+     * @param writeMutex external mutex shared with all other writers on the same stream.
      * @param timeout response timeout.
      */
-    void Init(
-        grpc::ServerReaderWriter<Request, Response>* stream, std::chrono::seconds timeout = std::chrono::seconds(5))
+    void Init(grpc::ServerReaderWriter<Request, Response>* stream, std::mutex& writeMutex,
+        std::chrono::seconds timeout = std::chrono::seconds(5))
     {
-        mStream  = stream;
-        mTimeout = timeout;
+        mStream     = stream;
+        mWriteMutex = &writeMutex;
+        mTimeout    = timeout;
     }
 
     /**
@@ -73,17 +75,27 @@ public:
         msg.mResponse = &response;
 
         {
-            std::unique_lock lock {mMutex};
+            std::lock_guard lock {mMutex};
 
             mMessages.push_back(&msg);
+        }
 
-            // Writes/Reads to the stream can be synchronized independently. According to:
-            // https://groups.google.com/g/grpc-io/c/G7FzRNQBWhU?pli=1
+        // Use the shared write mutex so that SendSync and SendMessage never
+        // call mStream->Write() concurrently (gRPC forbids concurrent writes).
+        {
+            std::lock_guard writeLock {*mWriteMutex};
+
             if (!mStream->Write(request)) {
+                std::lock_guard lock {mMutex};
+
                 EraseMessage(&msg);
 
                 return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to send message"));
             }
+        }
+
+        {
+            std::unique_lock lock {mMutex};
 
             // Receiving the message.
             mCondVar.wait_for(lock, mTimeout, [&msg] { return msg.mResponseReceived; });
@@ -93,9 +105,9 @@ public:
             if (!msg.mResponseReceived) {
                 return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "response timeout"));
             }
-
-            return ErrorEnum::eNone;
         }
+
+        return ErrorEnum::eNone;
     }
 
     /**
@@ -167,6 +179,7 @@ private:
     }
 
     grpc::ServerReaderWriter<Request, Response>* mStream {};
+    std::mutex*                                  mWriteMutex {};
     std::chrono::seconds                         mTimeout {5};
     std::vector<SyncMessage<Response>*>          mMessages;
     std::vector<ResponseHandler>                 mResponseHandlers;
