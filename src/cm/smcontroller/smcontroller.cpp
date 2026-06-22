@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <chrono>
 #include <vector>
 
 #include <grpcpp/security/server_credentials.h>
@@ -498,7 +499,7 @@ Error SMController::StopServer()
     }
 
     if (mServer) {
-        mServer->Shutdown();
+        mServer->Shutdown(std::chrono::system_clock::now() + cServerShutdownDelay);
         mServer->Wait();
 
         mServer.reset();
