@@ -209,6 +209,7 @@ private:
     grpc::ServerContext* mCtx {};
 
     std::mutex                                         mMutex;
+    std::mutex                                         mWriteMutex;
     std::condition_variable                            mCondVar;
     std::thread                                        mReadThread;
     std::thread                                        mMessageThread;
