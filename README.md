@@ -5,12 +5,29 @@
 
 # AosCore C++ implementation
 
-## Prepare build environment
+## Get the sources
 
 ```console
-sudo apt install lcov
+git clone https://github.com/aosedge/aos_core_cpp.git
+cd aos_core_cpp
+```
+
+## Prepare build environment
+
+Install the build tools and the system libraries required to build the dependencies (Conan builds some of them from
+source) and the AosCore components:
+
+```console
+sudo apt install build-essential cmake pkg-config autoconf automake libtool \
+    libseccomp-dev libyajl-dev libcap-dev libsystemd-dev \
+    libnl-3-dev libnl-route-3-dev libnftables-dev \
+    libblkid-dev libefivar-dev libefiboot-dev \
+    softhsm2 lcov
 pip install conan
 ```
+
+`cmake` version 3.23 or greater is required. The version shipped with Ubuntu 22.04 (3.22) is too old. Install a newer
+one, for example via `pip install cmake` or the [Kitware APT repository](https://apt.kitware.com/).
 
 `lcov` version 2.0 or greater is required. If your Linux distributive doesn't contain the required version, download and
 install the required version manually. For example in Ubuntu 22.04 it can be installed as following:
@@ -18,6 +35,7 @@ install the required version manually. For example in Ubuntu 22.04 it can be ins
 ```console
 wget https://launchpad.net/ubuntu/+source/lcov/2.0-4ubuntu2/+build/27959742/+files/lcov_2.0-4ubuntu2_all.deb
 sudo dpkg -i lcov_2.0-4ubuntu2_all.deb
+sudo apt-get install -f
 ```
 
 ## Build for host
