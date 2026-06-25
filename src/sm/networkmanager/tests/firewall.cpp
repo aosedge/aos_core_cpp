@@ -89,6 +89,12 @@ MATCHER_P2(TerminalOutRule, srcAddr, action, "")
         && arg.mDstPort == 0 && arg.mOIFName.empty();
 }
 
+MATCHER_P2(SameNetRule, srcAddr, dstAddr, "")
+{
+    return arg.mAction == FWActionEnum::eAccept && arg.mSrcAddr == srcAddr && arg.mDstAddr == dstAddr
+        && arg.mProto.empty() && arg.mDstPort == 0 && arg.mOIFName.empty();
+}
+
 MATCHER_P2(JumpRule, addrField, target, "")
 {
     return arg.mAction == FWActionEnum::eJump && arg.mJumpTarget == target && addrField(arg);
@@ -357,6 +363,57 @@ TEST_F(FirewallTest, AddInstanceInstallsBothJumpsInForward)
             AllOf(Field(&FWRule::mSrcAddr, "10.0.0.5"), Field(&FWRule::mDstAddr, ""),
                 Field(&FWRule::mAction, FWActionEnum::eJump), Field(&FWRule::mJumpTarget, "instance_test"))));
 
+    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceSameNetworkAcceptsIntraSubnetBeforeAccessRules)
+{
+    auto params    = MakeParams("10.0.0.5", true);
+    params.mSubnet = "10.0.0.0/24";
+    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "tcp")).IsNone());
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_test")));
+    // Same-network accepts sit at the top of the instance chain, ahead of the
+    // per-instance access rules and the terminal drop.
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.0/24"), std::string("10.0.0.5"))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.5"), std::string("10.0.0.0/24"))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"),
+            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceNoSubnetSkipsSameNetworkAccepts)
+{
+    // Without a subnet the instance chain keeps the original shape: no
+    // same-network accepts, only the terminal verdicts.
+    auto params = MakeParams("10.0.0.5", true);
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
