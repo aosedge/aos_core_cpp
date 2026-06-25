@@ -65,6 +65,33 @@ Error AppendInstanceRules(
 {
     const std::string instanceIP {params.mIP.CStr()};
 
+    // Instances sharing a network (same subnet) communicate without
+    // restrictions: accept intra-subnet traffic before the per-instance access
+    // rules, so only cross-network traffic is filtered. The rules sit at the
+    // top of the instance chain; same-network flows match here and never reach
+    // the terminal drop, while traffic to/from other subnets falls through.
+    if (!params.mSubnet.IsEmpty()) {
+        const std::string subnet {params.mSubnet.CStr()};
+
+        nftables::FWRule sameNetIn {};
+        sameNetIn.mSrcAddr = subnet;
+        sameNetIn.mDstAddr = instanceIP;
+        sameNetIn.mAction  = nftables::FWActionEnum::eAccept;
+
+        if (auto err = txn.AddRule(table, chain, sameNetIn); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        nftables::FWRule sameNetOut {};
+        sameNetOut.mSrcAddr = instanceIP;
+        sameNetOut.mDstAddr = subnet;
+        sameNetOut.mAction  = nftables::FWActionEnum::eAccept;
+
+        if (auto err = txn.AddRule(table, chain, sameNetOut); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
     for (const auto& in : params.mInput) {
         uint16_t port = 0;
         Error    err;
