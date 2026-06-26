@@ -247,35 +247,35 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
 
         {
             AosIdentity identity;
-            identity.mCodename = instanceStatus.mNodeID.CStr();
+            identity.mCodename = instanceStatus->mNodeID.CStr();
 
             instanceJson->set("node", CreateAosIdentity(identity));
         }
 
         {
             AosIdentity identity;
-            identity.mCodename = instanceStatus.mRuntimeID.CStr();
+            identity.mCodename = instanceStatus->mRuntimeID.CStr();
 
             instanceJson->set("runtime", CreateAosIdentity(identity));
         }
 
-        instanceJson->set("instance", instanceStatus.mInstance);
+        instanceJson->set("instance", instanceStatus->mInstance);
 
-        if (!instanceStatus.mStateChecksum.IsEmpty()) {
+        if (!instanceStatus->mStateChecksum.IsEmpty()) {
             StaticString<crypto::cSHA256Size * 2> checksum;
 
-            auto err = checksum.ByteArrayToHex(instanceStatus.mStateChecksum);
+            auto err = checksum.ByteArrayToHex(instanceStatus->mStateChecksum);
             AOS_ERROR_CHECK_AND_THROW(err, "can't convert state checksum to JSON");
 
             instanceJson->set("stateChecksum", checksum.CStr());
         }
 
-        instanceJson->set("state", instanceStatus.mState.ToString().CStr());
+        instanceJson->set("state", instanceStatus->mState.ToString().CStr());
 
-        if (!instanceStatus.mError.IsNone()) {
+        if (!instanceStatus->mError.IsNone()) {
             auto errorInfo = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-            auto err = ToJSON(instanceStatus.mError, *errorInfo);
+            auto err = ToJSON(instanceStatus->mError, *errorInfo);
             AOS_ERROR_CHECK_AND_THROW(err, "can't convert errorInfo to JSON");
 
             instanceJson->set("errorInfo", errorInfo);

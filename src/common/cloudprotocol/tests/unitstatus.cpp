@@ -22,6 +22,13 @@ namespace aos::common::cloudprotocol {
 
 namespace {
 
+static StaticArray<UnitInstanceStatus, cMaxNumInstances> sInstanceStatusStorage;
+
+void ResetInstanceStatusStorage()
+{
+    sInstanceStatusStorage.Clear();
+}
+
 void SetArchInfo(const String& arch, const Optional<StaticString<cCPUVariantLen>>& variant, ArchInfo& archInfo)
 {
     archInfo.mArchitecture = arch;
@@ -54,7 +61,11 @@ void SetChecksum(const std::string& str, Array<uint8_t>& checksum)
 
 class CloudProtocolUnitStatus : public Test {
 public:
-    void SetUp() override { tests::utils::InitLog(); }
+    void SetUp() override
+    {
+        tests::utils::InitLog();
+        ResetInstanceStatusStorage();
+    }
 };
 
 /***********************************************************************************************************************
@@ -292,19 +303,29 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mSubjectID = "subjectID1";
     unitStatus->mInstances->Back().mVersion   = "version1";
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActive;
-    SetChecksum("12345678", unitStatus->mInstances->Back().mInstances.Back().mStateChecksum);
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 1;
+        inst.mNodeID    = "nodeID1";
+        inst.mRuntimeID = "runtimeID1";
+        inst.mState     = InstanceStateEnum::eActive;
+        SetChecksum("12345678", inst.mStateChecksum);
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 2;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eFailed;
-    unitStatus->mInstances->Back().mInstances.Back().mError     = ErrorEnum::eFailed;
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 2;
+        inst.mNodeID    = "nodeID1";
+        inst.mRuntimeID = "runtimeID1";
+        inst.mState     = InstanceStateEnum::eFailed;
+        inst.mError     = ErrorEnum::eFailed;
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID    = "itemID2";
@@ -312,11 +333,16 @@ TEST_F(CloudProtocolUnitStatus, Instances)
     unitStatus->mInstances->Back().mSubjectID = "subjectID2";
     unitStatus->mInstances->Back().mVersion   = "version2";
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActivating;
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 1;
+        inst.mNodeID    = "nodeID2";
+        inst.mRuntimeID = "runtimeID2";
+        inst.mState     = InstanceStateEnum::eActivating;
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
@@ -351,19 +377,29 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
     unitStatus->mInstances->Back().mSubjectID = "subjectID1";
     unitStatus->mInstances->Back().mVersion   = "version1";
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActive;
-    SetChecksum("12345678", unitStatus->mInstances->Back().mInstances.Back().mStateChecksum);
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 1;
+        inst.mNodeID    = "nodeID1";
+        inst.mRuntimeID = "runtimeID1";
+        inst.mState     = InstanceStateEnum::eActive;
+        SetChecksum("12345678", inst.mStateChecksum);
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 2;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID1";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eFailed;
-    unitStatus->mInstances->Back().mInstances.Back().mError     = ErrorEnum::eFailed;
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 2;
+        inst.mNodeID    = "nodeID1";
+        inst.mRuntimeID = "runtimeID1";
+        inst.mState     = InstanceStateEnum::eFailed;
+        inst.mError     = ErrorEnum::eFailed;
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
     unitStatus->mInstances->EmplaceBack();
     unitStatus->mInstances->Back().mItemID       = "itemID2";
@@ -372,11 +408,16 @@ TEST_F(CloudProtocolUnitStatus, PreinstalledInstances)
     unitStatus->mInstances->Back().mVersion      = "version2";
     unitStatus->mInstances->Back().mPreinstalled = true;
 
-    unitStatus->mInstances->Back().mInstances.EmplaceBack();
-    unitStatus->mInstances->Back().mInstances.Back().mInstance  = 1;
-    unitStatus->mInstances->Back().mInstances.Back().mNodeID    = "nodeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mRuntimeID = "runtimeID2";
-    unitStatus->mInstances->Back().mInstances.Back().mState     = InstanceStateEnum::eActivating;
+    {
+        ASSERT_TRUE(sInstanceStatusStorage.EmplaceBack().IsNone());
+        auto& inst      = sInstanceStatusStorage.Back();
+        inst            = {};
+        inst.mInstance  = 1;
+        inst.mNodeID    = "nodeID2";
+        inst.mRuntimeID = "runtimeID2";
+        inst.mState     = InstanceStateEnum::eActivating;
+        unitStatus->mInstances->Back().mInstances.PushBack(&inst);
+    }
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
