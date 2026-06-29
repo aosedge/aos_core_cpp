@@ -28,7 +28,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"};
+const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr", "opt"};
 
 } // namespace
 
