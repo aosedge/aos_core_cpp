@@ -33,6 +33,7 @@ namespace aos::common::network {
 struct LinkAttrs {
     std::string mName;
     int         mParentIndex {};
+    int         mMasterIndex {};
     int         mTxQLen {};
     std::string mMac;
 };
@@ -193,7 +194,7 @@ public:
      * @param vlanId vlan id.
      * @return Error.
      */
-    Error CreateVlan(const String& name, uint64_t vlanId) override;
+    Error CreateVlan(const String& name, uint64_t vlanId, const String& master) override;
 
     /**
      * Creates a parameter-less link of the given kind.
@@ -248,6 +249,31 @@ public:
      * @return Error.
      */
     Error CreateVeth(const String& hostIfName, const String& peerIfName) override;
+
+    /**
+     * Creates a veth pair with the peer placed directly into the given netns,
+     * already named peerIfName. Combines create + move + rename into one op.
+     *
+     * @param hostIfName host-side veth name (current namespace).
+     * @param peerIfName peer-side veth name inside the target namespace.
+     * @param netNSPath path to the target netns.
+     * @return Error.
+     */
+    Error CreateVethToNamespace(
+        const String& hostIfName, const String& peerIfName, const String& netNSPath, const String& master) override;
+
+    /**
+     * Brings up, addresses and default-routes an interface inside a netns in a
+     * single namespace entry.
+     *
+     * @param ifname interface name inside the namespace.
+     * @param ipWithMask IP in CIDR form, e.g. "10.0.0.5/24".
+     * @param gateway default-route gateway IP.
+     * @param netNSPath path to the netns; empty for current.
+     * @return Error.
+     */
+    Error ConfigureInstanceInterface(
+        const String& ifname, const String& ipWithMask, const String& gateway, const String& netNSPath) override;
 
     /**
      * Moves a link into a network namespace.
