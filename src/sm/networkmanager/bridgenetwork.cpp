@@ -30,14 +30,16 @@ Error BridgeNetwork::Attach(const String& instanceID, const BridgeParams& params
     LOG_DBG() << "Attach bridge" << Log::Field("instanceID", instanceID) << Log::Field("bridge", params.mBridgeIfName);
 
     const auto hostName = VethName(instanceID, "veth");
-    const auto peerName = VethName(instanceID, "vpeer");
 
     Error err;
 
-    // Create the peer with a unique transient name (not the container name): the
-    // peer lives in the host netns until the move, and concurrent attaches would
-    // otherwise collide on a shared "eth0".
-    if (err = mNetIf->CreateVeth(hostName, peerName); !err.IsNone()) {
+    // Create the veth pair with the peer placed directly into the instance netns
+    // already named as the container interface, and the host side already
+    // enslaved to the bridge and up. One netlink op replaces the former
+    // create + move + rename + setmaster + setup sequence; the per-instance
+    // netns means the container name cannot collide with another instance.
+    if (err = mNetIf->CreateVethToNamespace(hostName, params.mContainerIfName, params.mNetNSPath, params.mBridgeIfName);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -49,37 +51,11 @@ Error BridgeNetwork::Attach(const String& instanceID, const BridgeParams& params
         }
     });
 
-    if (err = mNetIf->SetMasterLink(hostName, params.mBridgeIfName); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (err = mNetIf->SetupLink(hostName); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (err = mNetIf->MoveLinkToNamespace(peerName, params.mNetNSPath); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    // Once inside the instance netns, rename the peer to the container interface
-    // name. The kernel downs a link on a namespace move, so it is down here and
-    // the rename is allowed.
-    if (err = mNetIf->RenameLink(peerName, params.mContainerIfName, params.mNetNSPath); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    // Bring the peer up inside the target namespace before adding the route (a
-    // route via the gateway needs the connected subnet route, which only exists
-    // while the interface is up).
-    if (err = mNetIf->SetupLink(params.mContainerIfName, params.mNetNSPath); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (err = mNetIf->AddAddress(params.mContainerIfName, params.mIPWithMask, params.mNetNSPath); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (err = mNetIf->AddRoute(String("0.0.0.0/0"), params.mGateway, params.mNetNSPath); !err.IsNone()) {
+    // Bring the peer up, assign its address and install the default route inside
+    // the instance netns in a single namespace entry.
+    if (err = mNetIf->ConfigureInstanceInterface(
+            params.mContainerIfName, params.mIPWithMask, params.mGateway, params.mNetNSPath);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
