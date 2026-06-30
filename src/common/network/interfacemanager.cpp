@@ -13,6 +13,8 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <net/if.h>
+
 #include <linux/if.h>
 #include <linux/rtnetlink.h>
 #include <netinet/in.h>
@@ -252,6 +254,11 @@ Error InterfaceManager::AddLink(const LinkItf* link)
         rtnl_link_set_link(linkObj.get(), attrs.mParentIndex);
     }
 
+    // Enslave to a master bridge in the same create message when requested.
+    if (attrs.mMasterIndex > 0) {
+        rtnl_link_set_master(linkObj.get(), attrs.mMasterIndex);
+    }
+
     if (!attrs.mMac.empty()) {
         struct nl_addr* macAddr = nullptr;
 
@@ -262,6 +269,10 @@ Error InterfaceManager::AddLink(const LinkItf* link)
         rtnl_link_set_addr(linkObj.get(), macAddr);
         nl_addr_put(macAddr);
     }
+
+    // Bring the link up as part of creation so callers don't need a separate
+    // SetupLink round-trip.
+    rtnl_link_set_flags(linkObj.get(), IFF_UP);
 
     if (auto errLinkAdd = rtnl_link_add(sock.get(), linkObj.get(), NLM_F_CREATE); errLinkAdd < 0) {
         return NLToAosErr(errLinkAdd, "failed to add link");
@@ -333,28 +344,19 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
         return err;
     }
 
-    nl_cache* cacheRaw;
-
-    if (auto errLinkCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errLinkCache < 0) {
-        return NLToAosErr(errLinkCache, "failed to allocate link cache");
-    }
-
-    [[maybe_unused]] auto cleanupCache = DeferRelease(cacheRaw, [](nl_cache* cache) { nl_cache_free(cache); });
-
     auto addrObj = DeferRelease(rtnl_addr_alloc(), rtnl_addr_put);
     if (!addrObj) {
         return NLToAosErr(errno, "failed to allocate address object");
     }
 
-    auto link = DeferRelease(rtnl_link_get_by_name(cacheRaw, ifname.CStr()), rtnl_link_put);
-    if (!link) {
-        return NLToAosErr(errno, "failed to get interface");
+    // Resolve the ifindex via if_nametoindex (ioctl) instead of dumping the link table.
+    unsigned int ifindexU = if_nametoindex(ifname.CStr());
+    if (ifindexU == 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eNotFound, ("failed to get interface " + std::string(ifname.CStr())).c_str()));
     }
 
-    int ifindex = rtnl_link_get_ifindex(link.Get());
-    if (ifindex <= 0) {
-        return NLToAosErr(errno, ("failed to get interface index for " + std::string(ifname.CStr())));
-    }
+    int ifindex = static_cast<int>(ifindexU);
 
     rtnl_addr_set_ifindex(addrObj.Get(), ifindex);
 
@@ -459,33 +461,36 @@ Error InterfaceManager::SetMasterLink(const String& ifname, const String& master
         return err;
     }
 
-    nl_cache* cacheRaw;
-
-    if (auto errLinkCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errLinkCache < 0) {
-        return NLToAosErr(errLinkCache, "failed to allocate link cache");
+    // Resolve both names via if_nametoindex (a cheap ioctl) instead of dumping
+    // the whole link table just to find two ifindexes — saves a netlink
+    // round-trip, which matters most under CPU contention.
+    unsigned int masterIndex = if_nametoindex(master.CStr());
+    if (masterIndex == 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eNotFound, ("master interface not found " + std::string(master.CStr())).c_str()));
     }
 
-    [[maybe_unused]] auto cleanupCache = DeferRelease(cacheRaw, [](nl_cache* cache) { nl_cache_free(cache); });
-
-    auto masterLink = DeferRelease(rtnl_link_get_by_name(cacheRaw, master.CStr()), rtnl_link_put);
-    if (!masterLink) {
-        return NLToAosErr(errno, ("master interface not found  " + std::string(master.CStr())));
+    unsigned int slaveIndex = if_nametoindex(ifname.CStr());
+    if (slaveIndex == 0) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eNotFound, ("slave interface not found " + std::string(ifname.CStr())).c_str()));
     }
 
-    auto slaveLink = DeferRelease(rtnl_link_get_by_name(cacheRaw, ifname.CStr()), rtnl_link_put);
-    if (!slaveLink) {
-        return NLToAosErr(errno, ("slave interface not found " + std::string(ifname.CStr())));
+    auto orig = DeferRelease(rtnl_link_alloc(), rtnl_link_put);
+    if (!orig) {
+        return NLToAosErr(errno, "failed to allocate link object");
     }
+
+    rtnl_link_set_ifindex(orig.Get(), static_cast<int>(slaveIndex));
 
     auto change = DeferRelease(rtnl_link_alloc(), rtnl_link_put);
     if (!change) {
         return NLToAosErr(errno, "failed to allocate link change object");
     }
 
-    int masterIndex = rtnl_link_get_ifindex(masterLink.Get());
-    rtnl_link_set_master(change.Get(), masterIndex);
+    rtnl_link_set_master(change.Get(), static_cast<int>(masterIndex));
 
-    if (auto errLinkChange = rtnl_link_change(sock.get(), slaveLink.Get(), change.Get(), 0); errLinkChange < 0) {
+    if (auto errLinkChange = rtnl_link_change(sock.get(), orig.Get(), change.Get(), 0); errLinkChange < 0) {
         return NLToAosErr(errLinkChange,
             ("failed to set master for " + std::string(ifname.CStr()) + " to bridge " + std::string(master.CStr())));
     }
@@ -503,42 +508,17 @@ Error InterfaceManager::CreateBridge(const String& name, const String& ip, const
 
     Bridge bridge(bridgeAttrs);
 
+    // AddLink brings the bridge up as part of creation.
     if (auto err = AddLink(&bridge); !err.IsNone()) {
         return err;
-    }
-
-    if (auto err = SetupLink(name); !err.IsNone()) {
-        return err;
-    }
-
-    StaticArray<IPAddr, 1> addrs;
-
-    if (auto err = GetAddrList(name, AF_INET, addrs); !err.IsNone()) {
-        return err;
-    }
-
-    if (!addrs.IsEmpty()) {
-        if (addrs.Size() > 1) {
-            return Error(
-                ErrorEnum::eFailed, ("bridge " + std::string(name.CStr()) + " has more than one address").c_str());
-        }
-
-        if (String(addrs[0].mIP.c_str()) == ip) {
-            return ErrorEnum::eNone;
-        }
-
-        IPAddr ipAddr;
-        ipAddr.mIP = addrs[0].mIP;
-
-        if (auto err = DeleteAddr(name, ipAddr); !err.IsNone()) {
-            return err;
-        }
     }
 
     IPAddr ipAddr;
     ipAddr.mIP     = ip.CStr();
     ipAddr.mSubnet = subnet.CStr();
 
+    // AddAddr is idempotent (ignores EEXIST), so no need to probe/clear the
+    // existing address first.
     if (auto err = AddAddr(name, ipAddr); !err.IsNone()) {
         return err;
     }
@@ -546,22 +526,34 @@ Error InterfaceManager::CreateBridge(const String& name, const String& ip, const
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
+Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId, const String& master)
 {
     if (mRandom == nullptr) {
         return Error(ErrorEnum::eFailed, "random generator is not initialized");
     }
 
-    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId;
+    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId << ", master=" << master;
 
-    auto [masterIndex, err] = GetMasterInterfaceIndex();
+    auto [parentIndex, err] = GetMasterInterfaceIndex();
     if (!err.IsNone()) {
         return err;
     }
 
     LinkAttrs vlanAttrs;
     vlanAttrs.mName        = name.CStr();
-    vlanAttrs.mParentIndex = masterIndex;
+    vlanAttrs.mParentIndex = parentIndex;
+
+    // Enslave to the bridge in the same create message (avoids a separate
+    // SetMasterLink round-trip).
+    if (!master.IsEmpty()) {
+        unsigned int masterIndex = if_nametoindex(master.CStr());
+        if (masterIndex == 0) {
+            return AOS_ERROR_WRAP(
+                Error(ErrorEnum::eNotFound, ("master interface not found " + std::string(master.CStr())).c_str()));
+        }
+
+        vlanAttrs.mMasterIndex = static_cast<int>(masterIndex);
+    }
 
     // cppcheck-suppress unusedScopedObject
     if (Tie(vlanAttrs.mMac, err) = GenerateMACAddress(*mRandom); !err.IsNone()) {
@@ -570,11 +562,8 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId)
 
     Vlan vlan(vlanAttrs, vlanId);
 
+    // AddLink brings the vlan up as part of creation.
     if (err = AddLink(&vlan); !err.IsNone()) {
-        return err;
-    }
-
-    if (err = SetupLink(name); !err.IsNone()) {
         return err;
     }
 
@@ -633,6 +622,103 @@ Error InterfaceManager::CreateVeth(const String& hostIfName, const String& peerI
     }
 
     return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::CreateVethToNamespace(
+    const String& hostIfName, const String& peerIfName, const String& netNSPath, const String& master)
+{
+    LOG_DBG() << "Create veth to namespace" << Log::Field("host", hostIfName) << Log::Field("peer", peerIfName)
+              << Log::Field("netNSPath", netNSPath) << Log::Field("master", master);
+
+    int nsFd = open(netNSPath.CStr(), O_RDONLY | O_CLOEXEC);
+    if (nsFd < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,
+            ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
+    }
+
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+
+    auto host = DeferRelease(rtnl_link_veth_alloc(), rtnl_link_put);
+    if (!host) {
+        return NLToAosErr(errno, "failed to allocate veth link");
+    }
+
+    rtnl_link_set_name(host.Get(), hostIfName.CStr());
+
+    // Bring the host side up as part of creation — saves a SetupLink round-trip.
+    // (The peer is brought up later inside its namespace by ConfigureInstanceInterface.)
+    rtnl_link_set_flags(host.Get(), IFF_UP);
+
+    // Enslave the host side to the bridge in the same create message (avoids a
+    // separate SetMasterLink round-trip).
+    if (!master.IsEmpty()) {
+        unsigned int masterIndex = if_nametoindex(master.CStr());
+        if (masterIndex == 0) {
+            return AOS_ERROR_WRAP(
+                Error(ErrorEnum::eNotFound, ("master interface not found " + std::string(master.CStr())).c_str()));
+        }
+
+        rtnl_link_set_master(host.Get(), static_cast<int>(masterIndex));
+    }
+
+    // rtnl_link_veth_get_peer is owned by the host link — no separate free.
+    // Setting the peer's netns fd makes the kernel create it directly in the
+    // target namespace, already carrying peerIfName — no separate move/rename.
+    auto* peer = rtnl_link_veth_get_peer(host.Get());
+
+    rtnl_link_set_name(peer, peerIfName.CStr());
+    rtnl_link_set_ns_fd(peer, nsFd);
+
+    auto [sock, err] = CreateNetlinkSocket();
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    if (auto errAdd = rtnl_link_add(sock.get(), host.Get(), NLM_F_CREATE); errAdd < 0) {
+        return NLToAosErr(errAdd, "failed to create veth pair into namespace");
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error InterfaceManager::ConfigureInstanceInterface(
+    const String& ifname, const String& ipWithMask, const String& gateway, const String& netNSPath)
+{
+    LOG_DBG() << "Configure instance interface" << Log::Field("ifname", ifname) << Log::Field("ipWithMask", ipWithMask)
+              << Log::Field("gateway", gateway);
+
+    std::string cidr {ipWithMask.CStr()};
+    auto        slashPos = cidr.find('/');
+
+    if (slashPos == std::string::npos) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "expected CIDR form ip/mask not found"));
+    }
+
+    IPAddr addr;
+    addr.mIP     = cidr.substr(0, slashPos);
+    addr.mSubnet = cidr;
+    addr.mFamily = AF_INET;
+
+    // All three steps run inside the instance netns in a single namespace entry
+    // (one setns pair) instead of one per operation. Each callee is invoked with
+    // an empty netNSPath so it operates in the already-entered namespace.
+    auto doConfigure = [&]() -> Error {
+        if (auto err = SetupLink(ifname); !err.IsNone()) {
+            return err;
+        }
+
+        if (auto err = AddAddr(ifname, addr); !err.IsNone()) {
+            return err;
+        }
+
+        if (auto err = AddRoute("0.0.0.0/0", gateway, ""); !err.IsNone()) {
+            return err;
+        }
+
+        return ErrorEnum::eNone;
+    };
+
+    return WithNetNS(std::string(netNSPath.CStr()), doConfigure);
 }
 
 Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& netNSPath)
