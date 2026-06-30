@@ -47,7 +47,14 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
 
     std::ifstream file {rootCertPath.CStr()};
-    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (!file.is_open()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
+    }
+
+    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (rootCert.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
+    }
 
     auto keyCertPair
         = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
@@ -68,14 +75,21 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
-    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>("", keyCertPairs);
+    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(keyCertPairs);
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSClientCertificates(
     const String& rootCertPath)
 {
     std::ifstream file {rootCertPath.CStr()};
-    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (!file.is_open()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
+    }
+
+    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (rootCert.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
+    }
 
     return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(
         rootCert, std::vector<grpc::experimental::IdentityKeyCertPair> {});
