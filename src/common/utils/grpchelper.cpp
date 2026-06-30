@@ -75,7 +75,7 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
-    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>("", keyCertPairs);
+    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(keyCertPairs);
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSClientCertificates(
