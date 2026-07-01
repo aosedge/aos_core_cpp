@@ -13,6 +13,8 @@
 #include <common/utils/filesystem.hpp>
 #include <common/utils/utils.hpp>
 
+#include "itf/consts.hpp"
+
 #include "monitoring.hpp"
 
 namespace aos::sm::launcher {
@@ -119,7 +121,7 @@ Error Monitoring::GetInstanceMonitoringData(
 
 size_t Monitoring::GetInstanceCPUUSec(const std::string& instanceID)
 {
-    const auto cpuUsageFile = common::utils::JoinPath(cCgroupsPath, instanceID, cCpuUsageFile);
+    const auto cpuUsageFile = common::utils::JoinPath(cCgroupFSRoot, cCgroupsPath, instanceID, cCpuUsageFile);
 
     std::ifstream file(cpuUsageFile);
     if (!file.is_open()) {
@@ -170,7 +172,7 @@ double Monitoring::GetInstanceCPUUsage(const std::string& instanceID)
 
 size_t Monitoring::GetInstanceRAMUsage(const std::string& instanceID)
 {
-    const auto memUsageFile = common::utils::JoinPath(cCgroupsPath, instanceID, cMemUsageFile);
+    const auto memUsageFile = common::utils::JoinPath(cCgroupFSRoot, cCgroupsPath, instanceID, cMemUsageFile);
 
     std::ifstream file(memUsageFile);
     if (!file.is_open()) {

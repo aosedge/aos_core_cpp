@@ -58,6 +58,18 @@ RetWithError<std::string> ExecCommand(
     const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes = {0});
 
 /**
+ * Executes a command that daemonizes into a long-running process (e.g. "crun run -d"), letting it inherit
+ * this process's stdout/stderr instead of a pipe that would have to be closed once the immediate command
+ * exits, cutting off the daemonized process's own output.
+ *
+ * @param args command arguments (first argument is program name).
+ * @param expectedExitCodes expected command exit codes (default is 0).
+ * @return Error.
+ */
+Error ExecDetachedCommand(
+    const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes = {0});
+
+/**
  * Generates name-based UUID.
  *
  * @param name name.

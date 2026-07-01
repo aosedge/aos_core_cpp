@@ -13,6 +13,8 @@
 
 #include "journalalerts.hpp"
 
+// TODO: remove instances alerts and add task to add it to container runtime
+
 namespace aos::sm::alerts {
 
 /***********************************************************************************************************************

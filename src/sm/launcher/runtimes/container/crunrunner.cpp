@@ -6,42 +6,12 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/utils.hpp>
+
 #include "crunrunner.hpp"
 #include "libcrun.hpp"
 
 namespace aos::sm::launcher {
-
-namespace {
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-libcrun_context_t MakeContext(std::string_view stateRoot, const std::string& id)
-{
-    libcrun_context_t ctx = {};
-
-    ctx.state_root        = stateRoot.data();
-    ctx.id                = id.c_str();
-    ctx.fifo_exec_wait_fd = -1;
-
-    return ctx;
-}
-
-Error ReleaseLibcrunError(libcrun_error_t& err)
-{
-    auto release = DeferRelease(&err, libcrun_error_release);
-
-    const char* msg = (err && err->msg) ? err->msg : "unknown error";
-
-    if (err) {
-        return Error(err->status == ENOENT ? ErrorEnum::eNotFound : ErrorEnum::eFailed, msg);
-    }
-
-    return Error(ErrorEnum::eFailed, msg);
-}
-
-} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -63,25 +33,34 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
     const std::string bundleDir  = mRuntimeDir + "/" + instanceID;
     const std::string configPath = bundleDir + "/config.json";
     const std::string pidFile    = mRuntimeDir + "/" + instanceID + "/.pid";
+    /*
+        libcrun_error_t   err = nullptr;
+        libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+        ctx.bundle   = bundleDir.c_str();
+        ctx.pid_file = pidFile.c_str();
+        ctx.detach   = true;
 
-    ctx.bundle   = bundleDir.c_str();
-    ctx.pid_file = pidFile.c_str();
-    ctx.detach   = true;
+        // Pre-delete any leftover container state (ignore failure).
+        libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err);
+        libcrun_error_release(&err);
 
-    // Pre-delete any leftover container state (ignore failure).
-    libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err);
-    libcrun_error_release(&err);
+        auto container = DeferRelease(libcrun_container_load_from_file(configPath.c_str(), &err),
+       libcrun_container_free); if (!container) { return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+        }
 
-    auto container = DeferRelease(libcrun_container_load_from_file(configPath.c_str(), &err), libcrun_container_free);
-    if (!container) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
-    }
+        if (libcrun_container_run(&ctx, container.Get(), 0, &err) < 0) {
+            return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+        }
+*/
 
-    if (libcrun_container_run(&ctx, container.Get(), 0, &err) < 0) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    // The container process started by "run -d" keeps running long after crun itself exits, so it must
+    // inherit real stdout/stderr (rather than ExecCommand's pipe, which gets closed once crun exits) for its
+    // own output to keep working.
+    if (auto err = common::utils::ExecDetachedCommand(
+            {cCRunExecutable, "--root", cStateRoot, "run", "-d", "-b", bundleDir, instanceID});
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     {
@@ -89,6 +68,8 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
 
         mManagedInstances.insert(instanceID);
     }
+
+    LOG_DBG() << "Started crun container" << Log::Field("instanceID", instanceID.c_str());
 
     return ErrorEnum::eNone;
 }
@@ -128,17 +109,20 @@ Error CRunRunner::StopContainer(const std::string& instanceID)
 {
     LOG_INF() << "Stop crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    const std::string pidFile = mRuntimeDir + "/" + instanceID + "/.pid";
-
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
-
-    ctx.pid_file = pidFile.c_str();
-
-    if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    auto [_, err] = common::utils::ExecCommand({cCRunExecutable, "--root", cStateRoot, "kill", instanceID, "SIGKILL"});
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
+    /*
+        libcrun_error_t   err = nullptr;
+        libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
 
+        ctx.pid_file = pidFile.c_str();
+
+        if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
+            return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+        }
+    */
     return ErrorEnum::eNone;
 }
 
@@ -152,13 +136,19 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
         mManagedInstances.erase(instanceID);
     }
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
-
-    if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    auto [_, err] = common::utils::ExecCommand({cCRunExecutable, "--root", cStateRoot, "delete", "-f", instanceID});
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
+    /*
+        libcrun_error_t   err = nullptr;
+        libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+
+        if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
+            return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+        }
+    */
     return ErrorEnum::eNone;
 }
 

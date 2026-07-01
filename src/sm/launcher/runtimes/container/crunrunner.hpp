@@ -67,7 +67,8 @@ public:
     Error RemoveContainer(const std::string& instanceID) override;
 
 private:
-    static constexpr auto cStateRoot = "/run/crun";
+    static constexpr auto cStateRoot      = "/run/crun";
+    static constexpr auto cCRunExecutable = "/usr/bin/crun";
 
     RetWithError<ContainerStatus> CheckProcessAlive(const std::string& instanceID) const;
 
