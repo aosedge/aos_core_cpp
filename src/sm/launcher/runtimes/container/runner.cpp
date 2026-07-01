@@ -222,7 +222,8 @@ std::vector<std::string> Runner::GetInstancesToRestart()
 void Runner::MonitorContainers()
 {
     while (!mClosed) {
-        std::vector<std::string> instancesToRestart;
+        std::vector<std::string>              instancesToRestart;
+        std::optional<std::vector<RunStatus>> runStatusUpdate;
 
         {
             std::unique_lock<std::mutex> lock {mMutex};
@@ -234,10 +235,14 @@ void Runner::MonitorContainers()
             const auto stateChanged = SyncStates();
 
             if (stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
-                mRunStatusReceiver->UpdateRunStatus(GetRunningInstances());
+                runStatusUpdate = GetRunningInstances();
             }
 
             instancesToRestart = GetInstancesToRestart();
+        }
+
+        if (runStatusUpdate) {
+            mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate);
         }
 
         for (const auto& instanceID : instancesToRestart) {
