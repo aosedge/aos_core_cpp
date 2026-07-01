@@ -49,7 +49,7 @@ Error ReleaseLibcrunError(libcrun_error_t& err)
 
 Error CRunRunner::Init(const std::string& runtimeDir)
 {
-    LOG_DBG() << "Initialize CRun runner" << Log::Field("runtimeDir", runtimeDir.c_str());
+    LOG_DBG() << "Initialize crun runner" << Log::Field("runtimeDir", runtimeDir.c_str());
 
     mRuntimeDir = runtimeDir;
 
@@ -58,7 +58,7 @@ Error CRunRunner::Init(const std::string& runtimeDir)
 
 Error CRunRunner::StartContainer(const std::string& instanceID)
 {
-    LOG_DBG() << "Start CRun container" << Log::Field("instanceID", instanceID.c_str());
+    LOG_DBG() << "Start crun container" << Log::Field("instanceID", instanceID.c_str());
 
     const std::string bundleDir  = mRuntimeDir + "/" + instanceID;
     const std::string configPath = bundleDir + "/config.json";
@@ -95,7 +95,7 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
 
 RetWithError<ContainerStatus> CRunRunner::GetContainerStatus(const std::string& instanceID)
 {
-    LOG_DBG() << "Get CRun container status" << Log::Field("instanceID", instanceID.c_str());
+    LOG_DBG() << "Get crun container status" << Log::Field("instanceID", instanceID.c_str());
 
     return CheckProcessAlive(instanceID);
 }
@@ -126,7 +126,7 @@ RetWithError<std::vector<ContainerStatus>> CRunRunner::ListContainers()
 
 Error CRunRunner::StopContainer(const std::string& instanceID)
 {
-    LOG_DBG() << "Stop CRun container" << Log::Field("instanceID", instanceID.c_str());
+    LOG_INF() << "Stop crun container" << Log::Field("instanceID", instanceID.c_str());
 
     const std::string pidFile = mRuntimeDir + "/" + instanceID + "/.pid";
 
@@ -144,7 +144,7 @@ Error CRunRunner::StopContainer(const std::string& instanceID)
 
 Error CRunRunner::RemoveContainer(const std::string& instanceID)
 {
-    LOG_DBG() << "Remove CRun container" << Log::Field("instanceID", instanceID.c_str());
+    LOG_INF() << "Remove crun container" << Log::Field("instanceID", instanceID.c_str());
 
     {
         std::lock_guard lock {mMutex};

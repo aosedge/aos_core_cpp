@@ -37,6 +37,8 @@ Error Monitoring::Init(const NodeInfo& nodeInfo, networkmanager::InstanceTraffic
 Error Monitoring::StartInstanceMonitoring(
     const std::string& instanceID, uid_t uid, const std::vector<PartitionInfo>& partInfos)
 {
+    std::lock_guard lock {mMutex};
+
     try {
         LOG_DBG() << "Start instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
@@ -50,6 +52,8 @@ Error Monitoring::StartInstanceMonitoring(
 
 Error Monitoring::StopInstanceMonitoring(const std::string& instanceID)
 {
+    std::lock_guard lock {mMutex};
+
     try {
         LOG_DBG() << "Stop instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
@@ -64,6 +68,8 @@ Error Monitoring::StopInstanceMonitoring(const std::string& instanceID)
 Error Monitoring::GetInstanceMonitoringData(
     const std::string& instanceID, monitoring::InstanceMonitoringData& monitoringData)
 {
+    std::lock_guard lock {mMutex};
+
     try {
         monitoringData.mMonitoringData.mTimestamp = Time::Now();
         monitoringData.mMonitoringData.mCPU       = GetInstanceCPUUsage(instanceID);

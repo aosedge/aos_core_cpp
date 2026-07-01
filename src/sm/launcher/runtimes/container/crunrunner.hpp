@@ -16,12 +16,12 @@
 namespace aos::sm::launcher {
 
 /**
- * CRun container runner.
+ * crun container runner.
  */
 class CRunRunner : public ContainerRunnerItf {
 public:
     /**
-     * Initializes the CRun runner.
+     * Initializes the crun runner.
      *
      * @param runtimeDir base directory for per-instance runtime files.
      * @return Error.
