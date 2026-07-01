@@ -22,6 +22,7 @@ using namespace aos;
 namespace {
 
 constexpr auto cGrpcClientKeepAliveTime = 10 * Time::cSeconds;
+constexpr auto cDnsAresQueryTimeout     = 1 * Time::cSeconds;
 
 } // namespace
 
@@ -175,6 +176,9 @@ grpc::ChannelArguments CreateGRPCChannelArguments()
     args.SetInt(GRPC_ARG_MIN_RECONNECT_BACKOFF_MS, static_cast<int>(cMinReconnectBackoff.Milliseconds()));
     // Default: 120 seconds.
     args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, static_cast<int>(cMaxReconnectBackoff.Milliseconds()));
+    // Default c-ares query timeout is 120s. Cap it so a slow/missing AAAA lookup does not block
+    // name resolution while an A record is already available.
+    args.SetInt(GRPC_ARG_DNS_ARES_QUERY_TIMEOUT_MS, static_cast<int>(cDnsAresQueryTimeout.Milliseconds()));
 
     return args;
 }
