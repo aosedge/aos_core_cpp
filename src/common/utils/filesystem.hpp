@@ -59,11 +59,14 @@ void ChangeOwner(const std::string& path, uid_t uid, gid_t gid);
 template <typename... Args>
 std::string JoinPath(const std::string& base, const std::string& entry, Args&&... entries)
 {
-    auto path = std::filesystem::path(base) / entry;
+    auto append = [](std::filesystem::path& path, const std::string& component) {
+        path /= (!component.empty() && component.front() == '/') ? component.substr(1) : component;
+    };
 
-    if constexpr (sizeof...(entries) > 0) {
-        ((path /= std::forward<Args>(entries)), ...);
-    }
+    std::filesystem::path path(base);
+
+    append(path, entry);
+    (append(path, std::string(entries)), ...);
 
     return path.string();
 }
