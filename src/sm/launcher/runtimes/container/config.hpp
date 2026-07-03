@@ -24,6 +24,8 @@ struct ContainerConfig {
     std::string              mStorageDir;
     std::string              mStateDir;
     std::vector<std::string> mHostBinds;
+    std::string              mCRunStateRoot;
+    std::string              mCRunExecutable;
 };
 
 /**

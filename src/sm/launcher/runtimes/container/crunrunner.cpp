@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/exec.hpp>
+
 #include "crunrunner.hpp"
 #include "libcrun.hpp"
 
@@ -47,11 +49,14 @@ Error ReleaseLibcrunError(libcrun_error_t& err)
  * Public
  **********************************************************************************************************************/
 
-Error CRunRunner::Init(const std::string& runtimeDir)
+Error CRunRunner::Init(const std::string& runtimeDir, const std::string& stateRoot, const std::string& crunExecutable)
 {
-    LOG_DBG() << "Initialize crun runner" << Log::Field("runtimeDir", runtimeDir.c_str());
+    LOG_DBG() << "Initialize crun runner" << Log::Field("runtimeDir", runtimeDir.c_str())
+              << Log::Field("stateRoot", stateRoot.c_str()) << Log::Field("crunExecutable", crunExecutable.c_str());
 
-    mRuntimeDir = runtimeDir;
+    mRuntimeDir     = runtimeDir;
+    mStateRoot      = stateRoot;
+    mCRunExecutable = crunExecutable;
 
     return ErrorEnum::eNone;
 }
@@ -60,28 +65,15 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Start crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    const std::string bundleDir  = mRuntimeDir + "/" + instanceID;
-    const std::string configPath = bundleDir + "/config.json";
-    const std::string pidFile    = mRuntimeDir + "/" + instanceID + "/.pid";
+    const std::string bundleDir = mRuntimeDir + "/" + instanceID;
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
-
-    ctx.bundle   = bundleDir.c_str();
-    ctx.pid_file = pidFile.c_str();
-    ctx.detach   = true;
-
-    // Pre-delete any leftover container state (ignore failure).
-    libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err);
-    libcrun_error_release(&err);
-
-    auto container = DeferRelease(libcrun_container_load_from_file(configPath.c_str(), &err), libcrun_container_free);
-    if (!container) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
-    }
-
-    if (libcrun_container_run(&ctx, container.Get(), 0, &err) < 0) {
-        return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
+    // The container process started by "run -d" keeps running long after crun itself exits, so it must
+    // inherit real stdout/stderr (rather than ExecCommand's pipe, which gets closed once crun exits) for its
+    // own output to keep working.
+    if (auto err = common::utils::ExecDetachedCommand(
+            {mCRunExecutable, "--root", mStateRoot, "run", "-d", "-b", bundleDir, instanceID});
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     {
@@ -128,12 +120,8 @@ Error CRunRunner::StopContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Stop crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    const std::string pidFile = mRuntimeDir + "/" + instanceID + "/.pid";
-
     libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
-
-    ctx.pid_file = pidFile.c_str();
+    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
 
     if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
@@ -153,7 +141,7 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
     }
 
     libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(cStateRoot, instanceID);
+    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
 
     if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
@@ -175,7 +163,7 @@ RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& i
     libcrun_error_t            err        = nullptr;
     libcrun_container_status_t crunStatus = {};
 
-    if (libcrun_read_container_status(&crunStatus, cStateRoot, instanceID.c_str(), &err) < 0) {
+    if (libcrun_read_container_status(&crunStatus, mStateRoot.c_str(), instanceID.c_str(), &err) < 0) {
         libcrun_error_release(&err);
         status.mState = InstanceStateEnum::eInactive;
 
