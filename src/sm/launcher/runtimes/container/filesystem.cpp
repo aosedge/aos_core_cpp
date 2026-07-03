@@ -139,11 +139,7 @@ void UmountDir(const fs::path& mountPoint)
 {
     LOG_DBG() << "Umount dir" << Log::Field("mountPoint", mountPoint.c_str());
 
-    auto err = common::utils::Retry(
-        [&]() {
-            sync();
-            return umount(mountPoint.c_str());
-        },
+    auto err = common::utils::Retry([&]() { return umount(mountPoint.c_str()); },
         [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
             LOG_WRN() << "Umount error, retry" << Log::Field(err);
 
