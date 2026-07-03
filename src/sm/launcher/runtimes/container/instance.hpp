@@ -17,6 +17,7 @@
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 #include <sm/launcher/instanceidprovider.hpp>
 
+#include "itf/consts.hpp"
 #include "itf/filesystem.hpp"
 #include "itf/monitoring.hpp"
 #include "itf/runner.hpp"
@@ -133,7 +134,6 @@ private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";
     static constexpr auto cMountPointsDir    = "mounts";
-    static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
     static constexpr auto cEnvAosItemID        = "AOS_ITEM_ID";
     static constexpr auto cEnvAosSubjectID     = "AOS_SUBJECT_ID";

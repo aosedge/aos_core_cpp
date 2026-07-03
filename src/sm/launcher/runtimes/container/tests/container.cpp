@@ -492,8 +492,8 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     // Check cgroups path
 
     ASSERT_TRUE(runtimeConfig->mLinux.HasValue());
-    EXPECT_EQ(
-        runtimeConfig->mLinux->mCgroupsPath, ("/system.slice/system-aos\\x2dservice.slice/" + instanceID).c_str());
+    EXPECT_EQ(runtimeConfig->mLinux->mCgroupsPath,
+        ("/system.slice/system-aos.slice/system-aos-service.slice/" + instanceID).c_str());
 
     // Check root
 
