@@ -23,8 +23,8 @@
 
 #include <common/tests/utils/partition.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/exec.hpp>
 #include <common/utils/time.hpp>
-#include <common/utils/utils.hpp>
 
 #include <sm/launcher/runtimes/rootfs/rootfs.hpp>
 #include <sm/tests/mocks/systemdconnmock.hpp>
