@@ -30,13 +30,13 @@ public:
     /**
      * Initializes LogProvider object instance.
      *
-     * @param instanceProvider instance provider.
+     * @param instanceProvider instance provider or nullptr if not available.
      * @param logReceiver log receiver.
      * @param config log provider config.
      * @param logSender log sender.
      * @return Error.
      */
-    Error Init(const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider,
+    Error Init(const aos::logging::Config& config, InstanceIDProviderItf* instanceProvider,
         aos::logging::SenderItf& logSender);
 
     /**

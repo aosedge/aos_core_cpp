@@ -24,12 +24,12 @@ namespace aos::sm::logprovider {
  **********************************************************************************************************************/
 
 Error LogProvider::Init(
-    const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider, aos::logging::SenderItf& logSender)
+    const aos::logging::Config& config, InstanceIDProviderItf* instanceProvider, aos::logging::SenderItf& logSender)
 {
     LOG_DBG() << "Init log provider";
 
     mConfig           = config;
-    mInstanceProvider = &instanceProvider;
+    mInstanceProvider = instanceProvider;
     mLogSender        = &logSender;
 
     return ErrorEnum::eNone;
@@ -76,8 +76,13 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance log: correlationId=" << request.mCorrelationID;
 
+    if (!mInstanceProvider) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "instance id provider is not set"));
+    }
+
     std::vector<std::string> instanceIDs;
-    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
+
+    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
@@ -101,8 +106,13 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance crash log: correlationId=" << request.mCorrelationID;
 
+    if (!mInstanceProvider) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "instance id provider is not set"));
+    }
+
     std::vector<std::string> instanceIDs;
-    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
+
+    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
