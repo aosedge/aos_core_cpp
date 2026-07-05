@@ -154,14 +154,9 @@ void AosCore::Init(const std::string& configFile)
         mConfig.mMonitoring, mNodeConfigHandler, mIAMClient, mSMClient, mSMClient, mNodeMonitoringProvider, &mLauncher);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize monitoring");
 
-    auto containerRuntime = mRuntimes.GetContainerRuntime();
-    if (!containerRuntime) {
-        AOS_ERROR_THROW(ErrorEnum::eNotFound, "container runtime not available");
-    }
-
     // Initialize logprovider
 
-    err = mLogProvider.Init(mConfig.mLogging, *containerRuntime, mSMClient);
+    err = mLogProvider.Init(mConfig.mLogging, mRuntimes.GetContainerRuntime(), mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logprovider");
 
     // Initialize SM client

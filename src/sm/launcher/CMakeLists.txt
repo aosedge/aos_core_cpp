@@ -16,9 +16,19 @@ set(SOURCES instanceidprovider.cpp runtimes.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES Poco::JSON aos::core::common::tools aos::sm::runtimes::container aos::sm::runtimes::boot
-              aos::sm::runtimes::rootfs aos::sm::utils
-)
+set(LIBRARIES Poco::JSON aos::core::common::tools aos::sm::utils)
+
+if(WITH_RUNTIME_CONTAINER)
+    list(APPEND LIBRARIES aos::sm::runtimes::container)
+endif()
+
+if(WITH_RUNTIME_BOOT)
+    list(APPEND LIBRARIES aos::sm::runtimes::boot)
+endif()
+
+if(WITH_RUNTIME_ROOTFS)
+    list(APPEND LIBRARIES aos::sm::runtimes::rootfs)
+endif()
 
 # ######################################################################################################################
 # Target

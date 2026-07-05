@@ -7,8 +7,14 @@
 #include <core/common/tools/logger.hpp>
 
 #include "runtimes.hpp"
+
+#ifdef WITH_RUNTIME_BOOT
 #include "runtimes/boot/boot.hpp"
+#endif
+
+#ifdef WITH_RUNTIME_ROOTFS
 #include "runtimes/rootfs/rootfs.hpp"
+#endif
 
 namespace aos::sm::launcher {
 
@@ -16,11 +22,16 @@ namespace aos::sm::launcher {
  * Public
  **********************************************************************************************************************/
 
-Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
-    iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
-    oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn,
-    launcher::InstanceIDProviderItf& instanceIDProvider)
+// Which parameters are used depends on which WITH_RUNTIME_* runtimes are compiled in below.
+Error Runtimes::Init(const Config&                             config,
+    [[maybe_unused]] iamclient::CurrentNodeInfoProviderItf&    currentNodeInfoProvider,
+    [[maybe_unused]] imagemanager::ItemInfoProviderItf&        itemInfoProvider,
+    [[maybe_unused]] networkmanager::NetworkManagerItf&        networkManager,
+    [[maybe_unused]] iamclient::PermHandlerItf&                permHandler,
+    [[maybe_unused]] resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+    [[maybe_unused]] oci::OCISpecItf& ociSpec, [[maybe_unused]] InstanceStatusReceiverItf& statusReceiver,
+    [[maybe_unused]] sm::utils::SystemdConnItf&       systemdConn,
+    [[maybe_unused]] launcher::InstanceIDProviderItf& instanceIDProvider)
 {
     LOG_DBG() << "Init runtimes" << Log::Field("numRuntimes", config.mRuntimes.size());
 
@@ -28,6 +39,7 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
         LOG_DBG() << "Init runtime" << Log::Field("plugin", runtimeConfig.mPlugin.c_str())
                   << Log::Field("type", runtimeConfig.mType.c_str());
 
+#ifdef WITH_RUNTIME_CONTAINER
         if (runtimeConfig.mPlugin == cRuntimeContainer) {
             auto runtime = std::make_unique<ContainerRuntime>();
 
@@ -38,7 +50,10 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
             }
 
             mRuntimes.emplace_back(std::move(runtime));
-        } else if (runtimeConfig.mPlugin == cRuntimeBoot) {
+        } else
+#endif
+#ifdef WITH_RUNTIME_BOOT
+            if (runtimeConfig.mPlugin == cRuntimeBoot) {
             auto runtime = std::make_unique<BootRuntime>();
 
             if (auto err = runtime->Init(
@@ -48,8 +63,10 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
             }
 
             mRuntimes.emplace_back(std::move(runtime));
-
-        } else if (runtimeConfig.mPlugin == cRuntimeRootfs) {
+        } else
+#endif
+#ifdef WITH_RUNTIME_ROOTFS
+            if (runtimeConfig.mPlugin == cRuntimeRootfs) {
             auto runtime = std::make_unique<RootfsRuntime>();
 
             if (auto err = runtime->Init(
@@ -59,7 +76,9 @@ Error Runtimes::Init(const Config& config, iamclient::CurrentNodeInfoProviderItf
             }
 
             mRuntimes.emplace_back(std::move(runtime));
-        } else {
+        } else
+#endif
+        {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "runtime is not supported"));
         }
     }
@@ -80,11 +99,13 @@ Error Runtimes::GetRuntimes(Array<RuntimeItf*>& runtimes) const
 
 ContainerRuntime* Runtimes::GetContainerRuntime() const
 {
+#ifdef WITH_RUNTIME_CONTAINER
     for (const auto& runtime : mRuntimes) {
         if (auto containerRuntime = dynamic_cast<ContainerRuntime*>(runtime.get()); containerRuntime != nullptr) {
             return containerRuntime;
         }
     }
+#endif
 
     return nullptr;
 }
