@@ -33,6 +33,7 @@ print_usage() {
     echo "  --parallel <N>             specifies number of parallel jobs for build (default: all available cores)"
     echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
     echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
+    echo "  --no-test                  builds without tests (tests are built by default)"
     echo
 }
 
@@ -113,7 +114,7 @@ cmake_configure() {
         ${ARG_INSTALL_PREFIX+-DCMAKE_INSTALL_PREFIX="$ARG_INSTALL_PREFIX"} \
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
-        -DWITH_TEST=ON \
+        -DWITH_TEST="$ARG_WITH_TEST" \
         -DWITH_CM="$with_cm" \
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
@@ -188,6 +189,11 @@ parse_arguments() {
         --install-prefix)
             ARG_INSTALL_PREFIX="$2"
             shift 2
+            ;;
+
+        --no-test)
+            ARG_WITH_TEST=OFF
+            shift
             ;;
 
         *)
@@ -271,6 +277,7 @@ ARG_AOS_SERVICES=""
 ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
+ARG_WITH_TEST=ON
 
 case "$command" in
 build)
