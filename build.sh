@@ -34,6 +34,7 @@ print_usage() {
     echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
     echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
     echo "  --no-test                  builds without tests (tests are built by default)"
+    echo "  --no-headers               don't install development headers (headers are installed by default)"
     echo
 }
 
@@ -115,6 +116,7 @@ cmake_configure() {
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
         -DWITH_TEST="$ARG_WITH_TEST" \
+        -DWITH_HEADERS="$ARG_WITH_HEADERS" \
         -DWITH_CM="$with_cm" \
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
@@ -193,6 +195,11 @@ parse_arguments() {
 
         --no-test)
             ARG_WITH_TEST=OFF
+            shift
+            ;;
+
+        --no-headers)
+            ARG_WITH_HEADERS=OFF
             shift
             ;;
 
@@ -278,6 +285,7 @@ ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
 ARG_WITH_TEST=ON
+ARG_WITH_HEADERS=ON
 
 case "$command" in
 build)

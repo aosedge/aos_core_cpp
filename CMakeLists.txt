@@ -23,6 +23,8 @@ option(WITH_IAM "build with iam" ON)
 option(WITH_MP "build with message proxy" ON)
 option(WITH_SM "build with service manager" ON)
 
+option(WITH_HEADERS "install development headers (include/)" ON)
+
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
 option(WITH_DOC "build with documentation" OFF)
@@ -38,6 +40,8 @@ message(STATUS "WITH_CM                       = ${WITH_CM}")
 message(STATUS "WITH_IAM                      = ${WITH_IAM}")
 message(STATUS "WITH_MP                       = ${WITH_MP}")
 message(STATUS "WITH_SM                       = ${WITH_SM}")
+message(STATUS)
+message(STATUS "WITH_HEADERS                  = ${WITH_HEADERS}")
 message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
@@ -194,3 +198,11 @@ install(
 )
 
 install(FILES ${pkcs11provider_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/pkcs11.so DESTINATION lib/ossl-modules)
+
+# ######################################################################################################################
+# Install development headers
+# ######################################################################################################################
+
+if(NOT WITH_HEADERS)
+    install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/include\")")
+endif()
