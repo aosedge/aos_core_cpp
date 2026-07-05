@@ -16,19 +16,23 @@ print_usage() {
     echo "Usage: ./build.sh <command> [options]"
     echo
     echo "Commands:"
-    echo "  build                      builds target"
+    echo "  build                      builds target (options below apply here)"
+    echo "  install                    installs built apps and their conan runtime deps into the prefix chosen"
+    echo "                             at build time (takes no options; use DESTDIR=<path> to stage elsewhere"
+    echo "                             without changing the prefix baked into the built apps' rpath)"
     echo "  test                       runs tests only"
     echo "  coverage                   runs tests with coverage"
     echo "  lint                       runs static analysis (cppcheck)"
     echo "  doc                        generates documentation"
     echo
-    echo "Options:"
+    echo "Options (for 'build'):"
     echo "  --clean                    cleans build artifacts before building"
     echo "  --aos-service <services>   specifies services (e.g., sm,mp,iam)"
     echo "  --ci                       uses build-wrapper for CI analysis (SonarQube)"
     echo "  --core-dir <path>          specifies path to core libs directory"
     echo "  --parallel <N>             specifies number of parallel jobs for build (default: all available cores)"
     echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
+    echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
     echo
 }
 
@@ -106,6 +110,7 @@ cmake_configure() {
     cmake -S . -B build \
         -DCMAKE_BUILD_TYPE="$ARG_BUILD_TYPE" \
         ${ARG_CORE_DIR+-DAOS_CORE_DIR="$ARG_CORE_DIR"} \
+        ${ARG_INSTALL_PREFIX+-DCMAKE_INSTALL_PREFIX="$ARG_INSTALL_PREFIX"} \
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE=ON \
         -DWITH_TEST=ON \
@@ -180,6 +185,11 @@ parse_arguments() {
             shift 2
             ;;
 
+        --install-prefix)
+            ARG_INSTALL_PREFIX="$2"
+            shift 2
+            ;;
+
         *)
             error_with_usage "Unknown option: $1"
             ;;
@@ -193,6 +203,16 @@ build_target() {
     fi
 
     build_project
+}
+
+run_install() {
+    print_next_step "Install"
+
+    # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
+    cmake --install ./build
+
+    echo
+    echo "Install completed!"
 }
 
 run_tests() {
@@ -256,6 +276,10 @@ case "$command" in
 build)
     parse_arguments "$@"
     build_target
+    ;;
+
+install)
+    run_install
     ;;
 
 test)

@@ -81,12 +81,21 @@ set(AOS_STACK_USAGE 8192)
 get_filename_component(AOS_CORE_LIB_DIR ${AOS_CORE_DIR}/aos_core_lib_cpp REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 get_filename_component(AOS_CORE_API_DIR ${AOS_CORE_DIR}/aos_core_api REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 
+# Used to pick the right conan-generated <pkg>_PACKAGE_FOLDER_<CONFIG> variable when installing conan runtime deps.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" AOS_CONAN_CONFIG)
+
 # ######################################################################################################################
 # Compiler flags
 # ######################################################################################################################
 
 add_compile_options(-fPIC -Wall -Werror -Wextra -Wpedantic -Wno-format-truncation)
 set(CMAKE_CXX_STANDARD 17)
+
+# Installed apps must resolve their conan-provided shared library dependencies against the copies deployed to lib/
+# next to bin/, not whatever the system (or the conan cache used at build time) happens to provide. The relative
+# entry keeps the install relocatable; the absolute one is a fallback for dependencies that re-exec the process
+# under a different path, which breaks plain $ORIGIN-relative resolution.
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib" "${CMAKE_INSTALL_PREFIX}/lib")
 
 # ######################################################################################################################
 # External projects
@@ -166,3 +175,22 @@ endif()
 # ######################################################################################################################
 
 add_subdirectory(src)
+
+# ######################################################################################################################
+# Install conan runtime dependencies
+# ######################################################################################################################
+
+# Apps link against these at runtime, but conan only tracks them in ~/.conan2, so `make install` must copy the shared
+# artifacts out of the conan cache itself (there is no build target that owns them). crun is installed from
+# src/sm/CMakeLists.txt instead, since it's only relevant when the container runtime is built.
+
+find_package(OpenSSL REQUIRED)
+find_package(pkcs11provider REQUIRED)
+
+install(
+    DIRECTORY ${openssl_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
+    DESTINATION lib
+    PATTERN "cmake" EXCLUDE
+)
+
+install(FILES ${pkcs11provider_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/pkcs11.so DESTINATION lib/ossl-modules)

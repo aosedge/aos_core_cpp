@@ -73,3 +73,20 @@ add_subdirectory(utils)
 if(WITH_TEST)
     add_subdirectory(tests)
 endif()
+
+# ######################################################################################################################
+# Install conan runtime dependencies
+# ######################################################################################################################
+
+if(WITH_RUNTIME_CONTAINER)
+    find_package(crun REQUIRED)
+
+    install(
+        DIRECTORY ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
+        DESTINATION lib
+        FILES_MATCHING
+        PATTERN "*.so*"
+    )
+
+    install(PROGRAMS ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/bin/crun DESTINATION bin)
+endif()
