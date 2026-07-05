@@ -17,7 +17,6 @@
 #include <core/sm/launcher/itf/runtime.hpp>
 
 #include <common/utils/utils.hpp>
-#include <sm/alerts/itf/instanceinfoprovider.hpp>
 #include <sm/launcher/runtimes/config.hpp>
 #include <sm/logprovider/itf/instanceidprovider.hpp>
 
@@ -33,10 +32,7 @@ constexpr auto cRuntimeContainer = "container";
 /**
  * Container runtime implementation.
  */
-class ContainerRuntime : public RuntimeItf,
-                         public RunStatusReceiverItf,
-                         public alerts::InstanceInfoProviderItf,
-                         public logprovider::InstanceIDProviderItf {
+class ContainerRuntime : public RuntimeItf, public RunStatusReceiverItf, public logprovider::InstanceIDProviderItf {
 public:
     /**
      * Initializes container runtime.
@@ -114,15 +110,6 @@ public:
      */
     Error GetInstanceMonitoringData(
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
-
-    /**
-     * Returns service instance info.
-     *
-     * @param instanceID instance id.
-     * @param[out] instanceInfo instance info.
-     * @return Error.
-     */
-    Error GetInstanceInfoByID(const String& instanceID, alerts::InstanceInfo& instanceInfo) override;
 
     /**
      * Returns service instance IDs.

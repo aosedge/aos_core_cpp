@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <Poco/Format.h>
 #include <Poco/RegularExpression.h>
 
 #include <core/common/tools/logger.hpp>
@@ -29,15 +28,14 @@ const std::unordered_map<std::string, CoreComponentType::Enum> JournalAlerts::cC
  * Public
  **********************************************************************************************************************/
 
-Error JournalAlerts::Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf& instanceInfoProvider,
-    StorageItf& storage, aos::alerts::SenderItf& sender)
+Error JournalAlerts::Init(
+    const common::config::JournalAlerts& config, StorageItf& storage, aos::alerts::SenderItf& sender)
 {
     LOG_DBG() << "Init journal alerts";
 
-    mConfig               = config;
-    mInstanceInfoProvider = &instanceInfoProvider;
-    mStorage              = &storage;
-    mSender               = &sender;
+    mConfig  = config;
+    mStorage = &storage;
+    mSender  = &sender;
 
     for (const auto& filter : config.mFilter) {
         if (filter.empty()) {
@@ -233,10 +231,7 @@ void JournalAlerts::ProcessJournal()
 
         AlertVariant item;
 
-        if (auto instanceAlert = GetInstanceAlert(entry, unit); instanceAlert.has_value()) {
-            item.SetValue<InstanceAlert>(*instanceAlert);
-            mSender->SendAlert(item);
-        } else if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
+        if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
             item.SetValue<CoreAlert>(*compAlert);
             mSender->SendAlert(item);
         } else if (auto systemAlert = GetSystemAlert(entry); systemAlert.has_value()) {
@@ -269,34 +264,6 @@ bool JournalAlerts::ShouldFilterOutAlert(const std::string& msg) const
     });
 }
 
-std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::JournalEntry& entry, const std::string& unit)
-{
-    if (mInstanceInfoProvider == nullptr) {
-        return std::nullopt;
-    }
-
-    if (unit.find(cAosServicePrefix) != std::string::npos) {
-        const auto instanceID = ParseInstanceID(unit);
-
-        InstanceInfo instanceInfo;
-
-        auto err = mInstanceInfoProvider->GetInstanceInfoByID(instanceID.c_str(), instanceInfo);
-        AOS_ERROR_CHECK_AND_THROW(err, "can't get instance info for unit: " + unit);
-
-        InstanceAlert alert;
-
-        alert.mTimestamp                   = entry.mRealTime;
-        static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
-        alert.mVersion                     = instanceInfo.mVersion;
-
-        WriteAlertMsg(entry.mMessage, alert.mMessage);
-
-        return alert;
-    }
-
-    return std::nullopt;
-}
-
 std::optional<CoreAlert> JournalAlerts::GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit)
 {
     auto it = std::find_if(cCoreComponentServices.begin(), cCoreComponentServices.end(),
@@ -324,23 +291,6 @@ std::optional<SystemAlert> JournalAlerts::GetSystemAlert(const utils::JournalEnt
     WriteAlertMsg(entry.mMessage, alert.mMessage);
 
     return alert;
-}
-
-std::string JournalAlerts::ParseInstanceID(const std::string& unit)
-{
-    Poco::RegularExpression           regex = Poco::format("%s(.*)\\.service", std::string(cAosServicePrefix));
-    Poco::RegularExpression::MatchVec matches;
-
-    if (regex.match(unit, 0, matches) > 1) {
-        const auto& group = matches[1];
-        std::string id    = unit.substr(group.offset, group.length);
-
-        return id;
-    }
-
-    AOS_ERROR_THROW(ErrorEnum::eFailed, "bad instanceID");
-
-    return "";
 }
 
 void JournalAlerts::WriteAlertMsg(const std::string& src, String& dst)

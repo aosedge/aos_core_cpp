@@ -273,27 +273,6 @@ Error ContainerRuntime::GetInstanceMonitoringData(
     return ErrorEnum::eNone;
 }
 
-Error ContainerRuntime::GetInstanceInfoByID(const String& instanceID, alerts::InstanceInfo& instanceInfo)
-{
-    std::lock_guard lock {mMutex};
-
-    LOG_DBG() << "Get instance info by ID" << Log::Field("instanceID", instanceID.CStr());
-
-    auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
-        [&instanceID](const auto& pair) { return pair.second->InstanceID() == instanceID.CStr(); });
-    if (it == mCurrentInstances.end()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "instance not found"));
-    }
-
-    instanceInfo.mInstanceIdent = it->first;
-
-    if (auto err = instanceInfo.mVersion.Assign(it->second->GetVersion().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error ContainerRuntime::GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs)
 {
     std::lock_guard lock {mMutex};

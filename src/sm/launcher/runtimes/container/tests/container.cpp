@@ -936,37 +936,6 @@ TEST_F(ContainerRuntimeTest, Network)
                     .IsNone());
 }
 
-TEST_F(ContainerRuntimeTest, GetInstanceInfoByID)
-{
-    InstanceInfo instance;
-
-    instance.mItemID    = "item0";
-    instance.mSubjectID = "subject0";
-    instance.mInstance  = 0;
-    instance.mVersion   = "1.0.5";
-
-    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
-    auto status     = std::make_unique<InstanceStatus>();
-
-    auto err = mRuntime.StartInstance(instance, *status);
-    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
-
-    // Get instance info
-
-    alerts::InstanceInfo alertsInstanceInfo;
-
-    err = mRuntime.GetInstanceInfoByID(instanceID.c_str(), alertsInstanceInfo);
-    ASSERT_TRUE(err.IsNone()) << "Failed to get instance info: " << tests::utils::ErrorToStr(err);
-
-    EXPECT_EQ(alertsInstanceInfo.mInstanceIdent, static_cast<const InstanceIdent&>(instance));
-    EXPECT_EQ(alertsInstanceInfo.mVersion, instance.mVersion);
-
-    // Get non-existing instance info
-
-    err = mRuntime.GetInstanceInfoByID("non-existing-instance", alertsInstanceInfo);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
-}
-
 TEST_F(ContainerRuntimeTest, GetInstanceIDs)
 {
     InstanceInfo instance1;

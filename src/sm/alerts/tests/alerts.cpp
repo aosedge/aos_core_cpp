@@ -81,11 +81,6 @@ public:
     MOCK_METHOD(Error, GetJournalCursor, (String&), (const, override));
 };
 
-class InstanceInfoProviderMock : public InstanceInfoProviderItf {
-public:
-    MOCK_METHOD(Error, GetInstanceInfoByID, (const String&, InstanceInfo&), (override));
-};
-
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -112,7 +107,6 @@ public:
     bool                    mAlertSent = false;
 
     common::config::JournalAlerts mConfig;
-    InstanceInfoProviderMock      mInstanceInfoProvider;
     SenderMock                    mSender;
     StorageMock                   mStorage;
     std::string                   mCursor = "cursor";
@@ -122,7 +116,7 @@ public:
 
 void JournalAlertsTest::Init()
 {
-    ASSERT_TRUE(mJournalAlerts.Init(mConfig, mInstanceInfoProvider, mStorage, mSender).IsNone());
+    ASSERT_TRUE(mJournalAlerts.Init(mConfig, mStorage, mSender).IsNone());
 }
 
 void JournalAlertsTest::Start()
@@ -195,45 +189,6 @@ TEST_F(JournalAlertsTest, FailSaveCursor)
     EXPECT_CALL(mStorage, SetJournalCursor(String("cursor"))).WillOnce(Return(Error(ErrorEnum::eFailed)));
 
     EXPECT_FALSE(mJournalAlerts.Stop().IsNone());
-}
-
-TEST_F(JournalAlertsTest, SendServiceAlert)
-{
-    Init();
-
-    EXPECT_CALL(mJournalAlerts.mJournal, Wait(_)).WillRepeatedly(Return(std::chrono::microseconds::zero()));
-    EXPECT_CALL(mJournalAlerts.mJournal, Next())
-        .WillOnce(Return(false))
-        .WillOnce(Return(true))
-        .WillRepeatedly(Return(false));
-
-    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
-
-    utils::JournalEntry entry = {};
-
-    entry.mSystemdUnit = "/system.slice/system-aos@service.slice/aos-service@service0.service";
-    entry.mMessage     = "Hello World";
-
-    InstanceInfo instanceInfo {InstanceIdent {"service0", "service0", 0, UpdateItemTypeEnum::eService}, "0.0.0"};
-
-    InstanceAlert alert;
-
-    static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
-    alert.mVersion                     = instanceInfo.mVersion;
-    alert.mMessage                     = entry.mMessage.c_str();
-
-    EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
-    EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("service0"), _))
-        .WillOnce(DoAll(SetArgReferee<1>(instanceInfo), Return(Error())));
-
-    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
-        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
-
-    Start();
-
-    WaitForAlert();
-
-    Stop();
 }
 
 TEST_F(JournalAlertsTest, SendCoreAlert)

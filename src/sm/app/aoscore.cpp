@@ -171,9 +171,9 @@ void AosCore::Init(const std::string& configFile)
         mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
-    // // Initialize journalalerts
+    // Initialize journalalerts
 
-    err = mJournalAlerts.Init(mConfig.mJournalAlerts, *containerRuntime, mDatabase, mSMClient);
+    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
 }
 
