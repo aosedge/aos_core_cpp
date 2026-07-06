@@ -1,0 +1,22 @@
+[provider_sect]
+base = base_sect
+#default = default_sect
+legacy = legacy_sect
+pkcs11 = pkcs11_sect
+
+[base_sect]
+activate = 1
+
+[default_sect]
+activate = 1
+
+[legacy_sect]
+activate = 1
+module = @CMAKE_INSTALL_PREFIX@/lib/ossl-modules/legacy.so
+
+[pkcs11_sect]
+module = @CMAKE_INSTALL_PREFIX@/lib/ossl-modules/pkcs11.so
+pkcs11-module-path = /usr/lib/softhsm/libsofthsm2.so
+pkcs11-module-cache-keys = false
+activate = 1
+pkcs11-module-token-pin = file:/var/aos/iam/.usrpin
