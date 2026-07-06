@@ -17,9 +17,8 @@ print_usage() {
     echo
     echo "Commands:"
     echo "  build                      builds target (options below apply here)"
-    echo "  install                    installs built apps and their conan runtime deps into the prefix chosen"
-    echo "                             at build time (takes no options; use DESTDIR=<path> to stage elsewhere"
-    echo "                             without changing the prefix baked into the built apps' rpath)"
+    echo "  install                    installs built apps, their runtime deps into the prefix chosen"
+    echo "                             at build time, then enables and configures AosCore"
     echo "  test                       runs tests only"
     echo "  coverage                   runs tests with coverage"
     echo "  lint                       runs static analysis (cppcheck)"
@@ -272,11 +271,40 @@ build_target() {
     build_project
 }
 
+enable_units() {
+    print_next_step "Enable systemd units"
+
+    local install_prefix
+
+    install_prefix=$(grep '^CMAKE_INSTALL_PREFIX:PATH=' ./build/CMakeCache.txt | cut -d= -f2)
+    install_prefix="${install_prefix:-/usr/local}"
+
+    local unit_dir="$install_prefix/lib/systemd/system"
+
+    shopt -s nullglob
+    local units=("$unit_dir"/aos-*.service "$unit_dir"/aos.target)
+    shopt -u nullglob
+
+    if [ ${#units[@]} -eq 0 ]; then
+        echo "Skipping: no aos units found in $unit_dir"
+
+        return
+    fi
+
+    for unit in "${units[@]}"; do
+        systemctl enable --now "$unit"
+    done
+
+    echo "Enabled and started: ${units[*]##*/}"
+}
+
 run_install() {
     print_next_step "Install"
 
     # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
     cmake --install ./build
+
+    enable_units
 
     echo
     echo "Install completed!"
