@@ -28,6 +28,7 @@ print_usage() {
     echo "Options (for 'build'):"
     echo "  --clean                    cleans build artifacts before building"
     echo "  --aos-service <services>   specifies services (e.g., sm,mp,iam)"
+    echo "  --sm-runtime <runtimes>    specifies sm runtimes (e.g., boot,rootfs,container)"
     echo "  --ci                       uses build-wrapper for CI analysis (SonarQube)"
     echo "  --core-dir <path>          specifies path to core libs directory"
     echo "  --parallel <N>             specifies number of parallel jobs for build (default: all available cores)"
@@ -108,6 +109,41 @@ cmake_configure() {
         done
     fi
 
+    local with_runtime_boot="ON"
+    local with_runtime_rootfs="ON"
+    local with_runtime_container="ON"
+
+    if [[ -n "$ARG_SM_RUNTIMES" ]]; then
+        with_runtime_boot="OFF"
+        with_runtime_rootfs="OFF"
+        with_runtime_container="OFF"
+
+        local runtimes_lower
+        runtimes_lower=$(echo "$ARG_SM_RUNTIMES" | tr '[:upper:]' '[:lower:]')
+
+        IFS=',' read -ra runtime_array <<<"$runtimes_lower"
+        for runtime in "${runtime_array[@]}"; do
+            runtime=$(echo "$runtime" | xargs) # trim whitespace
+            case "$runtime" in
+            "boot")
+                with_runtime_boot="ON"
+                ;;
+
+            "rootfs")
+                with_runtime_rootfs="ON"
+                ;;
+
+            "container")
+                with_runtime_container="ON"
+                ;;
+
+            *)
+                error_with_usage "Unknown sm runtime: $runtime"
+                ;;
+            esac
+        done
+    fi
+
     print_next_step "Run cmake configure"
 
     cmake -S . -B build \
@@ -122,6 +158,9 @@ cmake_configure() {
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
         -DWITH_SM="$with_sm" \
+        -DWITH_RUNTIME_BOOT="$with_runtime_boot" \
+        -DWITH_RUNTIME_ROOTFS="$with_runtime_rootfs" \
+        -DWITH_RUNTIME_CONTAINER="$with_runtime_container" \
         -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -G "Unix Makefiles"
@@ -165,6 +204,15 @@ parse_arguments() {
                 ARG_AOS_SERVICES="$ARG_AOS_SERVICES,$2"
             else
                 ARG_AOS_SERVICES="$2"
+            fi
+            shift 2
+            ;;
+
+        --sm-runtime)
+            if [[ -n "$ARG_SM_RUNTIMES" ]]; then
+                ARG_SM_RUNTIMES="$ARG_SM_RUNTIMES,$2"
+            else
+                ARG_SM_RUNTIMES="$2"
             fi
             shift 2
             ;;
@@ -287,6 +335,7 @@ shift
 
 ARG_CLEAN_FLAG=false
 ARG_AOS_SERVICES=""
+ARG_SM_RUNTIMES=""
 ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
