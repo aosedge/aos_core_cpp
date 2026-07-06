@@ -1,0 +1,23 @@
+{
+    "caCert": "@CMAKE_INSTALL_PREFIX@/share/ca-certificates/aos/AosRootCA.crt",
+    "certStorage": "cm",
+    "serviceDiscoveryUrl": "https://aoscloud.io:9000/sd/v7/",
+    "iamProtectedServerUrl": "localhost:8089",
+    "iamPublicServerUrl": "localhost:8090",
+    "cmServerUrl": ":8093",
+    "workingDir": "/var/aos/workdirs/cm",
+    "storageDir": "/var/aos/storages",
+    "stateDir": "/var/aos/states",
+    "dnsIp": "10.0.0.100",
+    "fileServerUrl": "localhost:8094",
+    "imageManager": {
+        "installPath": "/var/aos/workdirs/cm/imagemanager/install",
+        "downloadPath": "/var/aos/workdirs/cm/imagemanager/downloads",
+        "updateItemTTL": "30d",
+        "removeOutdatedPeriod": "24h"
+    },
+    "migration": {
+        "migrationPath": "@CMAKE_INSTALL_PREFIX@/share/aos/cm/migration",
+        "mergedMigrationPath": "/var/aos/workdirs/cm/migration"
+    }
+}

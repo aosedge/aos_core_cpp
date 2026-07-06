@@ -68,3 +68,4 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-mp.service ${CMAKE_CURRENT_BINARY_
         DESTINATION lib/systemd/system
 )
 
+install(FILES ${PROJECT_SOURCE_DIR}/config/mp.cfg DESTINATION etc/aos)

@@ -73,3 +73,6 @@ install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
 
 configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-sm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service DESTINATION lib/systemd/system)
+
+configure_file(${PROJECT_SOURCE_DIR}/config/sm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg DESTINATION etc/aos)

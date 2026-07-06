@@ -1,0 +1,25 @@
+{
+    "caCert": "@CMAKE_INSTALL_PREFIX@/share/ca-certificates/aos/AosRootCA.crt",
+    "certStorage": "sm",
+    "iamProtectedServerUrl": "localhost:8089",
+    "iamPublicServerUrl": "localhost:8090",
+    "cmServerUrl": "localhost:8093",
+    "workingDir": "/var/aos/workdirs/sm",
+    "stateDir": "/var/aos/states",
+    "storageDir": "/var/aos/storages",
+    "runtimes": [
+        {
+            "plugin": "container",
+            "type": "crun",
+            "config": {
+                "stateDir": "/var/aos/states",
+                "storageDir": "/var/aos/storages",
+                "crunExecutable": "@CMAKE_INSTALL_PREFIX@/bin/crun"
+            }
+        }
+    ],
+    "migration": {
+        "migrationPath": "@CMAKE_INSTALL_PREFIX@/share/aos/sm/migration",
+        "mergedMigrationPath": "/var/aos/workdirs/sm/migration"
+    }
+}

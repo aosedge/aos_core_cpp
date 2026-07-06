@@ -65,6 +65,9 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service ${CMAKE_CURRENT_BINARY
         DESTINATION lib/systemd/system
 )
 
+configure_file(${PROJECT_SOURCE_DIR}/config/iam.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg DESTINATION etc/aos)
+
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/deprovision.sh ${PROJECT_SOURCE_DIR}/scripts/provfinish.sh
         DESTINATION libexec/aos
 )
