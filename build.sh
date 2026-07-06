@@ -35,6 +35,7 @@ print_usage() {
     echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
     echo "  --no-test                  builds without tests (tests are built by default)"
     echo "  --no-headers               don't install development headers (headers are installed by default)"
+    echo "  --no-coverage              builds without coverage instrumentation (coverage is built by default)"
     echo
 }
 
@@ -114,7 +115,7 @@ cmake_configure() {
         ${ARG_CORE_DIR+-DAOS_CORE_DIR="$ARG_CORE_DIR"} \
         ${ARG_INSTALL_PREFIX+-DCMAKE_INSTALL_PREFIX="$ARG_INSTALL_PREFIX"} \
         -DWITH_VCHAN=OFF \
-        -DWITH_COVERAGE=ON \
+        -DWITH_COVERAGE="$ARG_WITH_COVERAGE" \
         -DWITH_TEST="$ARG_WITH_TEST" \
         -DWITH_HEADERS="$ARG_WITH_HEADERS" \
         -DWITH_CM="$with_cm" \
@@ -203,6 +204,11 @@ parse_arguments() {
             shift
             ;;
 
+        --no-coverage)
+            ARG_WITH_COVERAGE=OFF
+            shift
+            ;;
+
         *)
             error_with_usage "Unknown option: $1"
             ;;
@@ -286,6 +292,7 @@ ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
 ARG_WITH_TEST=ON
 ARG_WITH_HEADERS=ON
+ARG_WITH_COVERAGE=ON
 
 case "$command" in
 build)
