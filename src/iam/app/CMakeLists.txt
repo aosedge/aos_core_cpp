@@ -56,3 +56,12 @@ add_exec(
 # ######################################################################################################################
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
+
+configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-iam.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service @ONLY)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/systemd/aos-iam-prov.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service
+        DESTINATION lib/systemd/system
+)
+

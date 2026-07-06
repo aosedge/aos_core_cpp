@@ -1,0 +1,7 @@
+[Unit]
+Description=Aos services
+After=aos-cm.service aos-sm.service aos-iam.service
+Wants=aos-cm.service aos-sm.service aos-iam.service
+
+[Install]
+WantedBy=multi-user.target

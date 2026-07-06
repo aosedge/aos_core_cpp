@@ -1,0 +1,15 @@
+[Unit]
+Description=AOS Communication Manager
+Wants=network-online.target aos-iam.service
+After=network-online.target aos-iam.service
+ConditionPathExists=/var/aos/.provisionstate
+PartOf=aos.target
+
+[Service]
+Type=notify
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/aos_cm_app -c @CMAKE_INSTALL_PREFIX@/etc/aos/cm.cfg -v debug -j
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

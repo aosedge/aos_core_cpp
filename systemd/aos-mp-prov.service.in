@@ -1,0 +1,15 @@
+[Unit]
+Description=AOS Message Proxy
+Wants=network-online.target aos-iam.service
+After=network-online.target aos-iam.service
+ConditionPathExists=!/var/aos/.provisionstate
+PartOf=aos.target
+
+[Service]
+Type=notify
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/aos_mp_app -c @CMAKE_INSTALL_PREFIX@/etc/aos/mp.cfg -provisioning -v debug -j
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

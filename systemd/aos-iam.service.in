@@ -1,0 +1,16 @@
+[Unit]
+Description=AOS Identity and Access Manager
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/var/aos/.provisionstate
+PartOf=aos.target
+
+[Service]
+Type=notify
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/aos_iam_app -c @CMAKE_INSTALL_PREFIX@/etc/aos/iam.cfg -v debug -j
+Restart=always
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

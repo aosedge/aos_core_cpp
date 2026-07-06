@@ -59,3 +59,12 @@ add_exec(
 # ######################################################################################################################
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
+
+configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-mp.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-mp.service @ONLY)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/systemd/aos-mp-prov.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-mp-prov.service @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-mp.service ${CMAKE_CURRENT_BINARY_DIR}/aos-mp-prov.service
+        DESTINATION lib/systemd/system
+)
+
