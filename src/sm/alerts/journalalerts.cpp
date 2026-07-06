@@ -176,12 +176,15 @@ void JournalAlerts::MonitorJournal()
     while (true) {
         std::unique_lock lock {mMutex};
 
-        auto stopped = mCondVar.wait_for(lock, journalWaitTimeout, [this] { return mStopped; });
-        if (stopped) {
-            return;
-        }
-
         try {
+            const auto waitTimeout = std::chrono::duration_cast<std::chrono::microseconds>(journalWaitTimeout);
+            const auto remaining   = mJournal->Wait(waitTimeout);
+
+            auto stopped = mCondVar.wait_for(lock, remaining, [this] { return mStopped; });
+            if (stopped) {
+                return;
+            }
+
             ProcessJournal();
             journalWaitTimeout = cWaitJournalTimeout;
         } catch (const std::exception& e) {

@@ -210,4 +210,19 @@ std::string Journal::GetCursor()
     return cursor;
 }
 
+std::chrono::microseconds Journal::Wait(std::chrono::microseconds timeout)
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+
+    if (const auto ret = sd_journal_wait(mJournal, 0); ret < 0) {
+        AOS_ERROR_THROW(ret, "can't wait journal");
+    }
+
+    const auto now       = std::chrono::steady_clock::now();
+    const auto remaining = deadline > now ? std::chrono::duration_cast<std::chrono::microseconds>(deadline - now)
+                                          : std::chrono::microseconds::zero();
+
+    return remaining;
+}
+
 } // namespace aos::sm::utils

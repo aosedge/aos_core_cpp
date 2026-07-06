@@ -9,6 +9,7 @@
 
 #include <core/common/tools/time.hpp>
 
+#include <chrono>
 #include <optional>
 #include <string>
 
@@ -127,6 +128,14 @@ public:
      * @return std::string.
      */
     virtual std::string GetCursor() = 0;
+
+    /**
+     * Waits for journal changes and processes them.
+     *
+     * @param timeout wait timeout.
+     * @return remaining time to wait.
+     */
+    virtual std::chrono::microseconds Wait(std::chrono::microseconds timeout) = 0;
 };
 
 } // namespace aos::sm::utils
