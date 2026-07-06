@@ -71,3 +71,5 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg DESTINATION etc/aos)
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/deprovision.sh ${PROJECT_SOURCE_DIR}/scripts/provfinish.sh
         DESTINATION libexec/aos
 )
+
+install(FILES ${PROJECT_SOURCE_DIR}/config/AosRootCA.crt DESTINATION share/ca-certificates/aos)
