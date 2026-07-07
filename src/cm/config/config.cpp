@@ -147,6 +147,8 @@ Error ParseConfig(const std::string& filename, Config& config)
 
         config.mDNSStoragePath = object.GetValue<std::string>("dnsStoragePath", cDefaultDNSStoragePath);
         config.mDNSIP          = object.GetValue<std::string>("dnsIp");
+        config.mDNSPidFile
+            = object.GetValue<std::string>("dnsPidFile", std::filesystem::path(config.mDNSStoragePath) / "pidfile");
 
         config.mCertStorage = object.GetValue<std::string>("certStorage", cDefaultCertStorage);
 

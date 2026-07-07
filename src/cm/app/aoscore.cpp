@@ -108,7 +108,7 @@ void AosCore::Init(const std::string& configFile)
         mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize update manager");
 
-    mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSIP);
+    mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSPidFile, mConfig.mDNSIP);
 
     err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer, &mSMController);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");

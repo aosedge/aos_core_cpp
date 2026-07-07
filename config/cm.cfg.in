@@ -9,6 +9,7 @@
     "storageDir": "/var/aos/storages",
     "stateDir": "/var/aos/states",
     "dnsIp": "10.0.0.100",
+    "dnsPidFile": "/run/dnsmasq/dnsmasq.pid",
     "fileServerUrl": "localhost:8094",
     "imageManager": {
         "installPath": "/var/aos/workdirs/cm/imagemanager/install",
