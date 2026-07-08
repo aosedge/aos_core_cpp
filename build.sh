@@ -274,11 +274,7 @@ build_target() {
 enable_units() {
     print_next_step "Enable systemd units"
 
-    local install_prefix
-
-    install_prefix=$(grep '^CMAKE_INSTALL_PREFIX:PATH=' ./build/CMakeCache.txt | cut -d= -f2)
-    install_prefix="${install_prefix:-/usr/local}"
-
+    local install_prefix="$1"
     local unit_dir="$install_prefix/lib/systemd/system"
 
     shopt -s nullglob
@@ -298,11 +294,26 @@ enable_units() {
     echo "Enabled and started: ${units[*]##*/}"
 }
 
+add_openssl_include() {
+    local install_prefix="$1"
+    local openssl_cnf="/etc/ssl/openssl.cnf"
+    local include_line=".include ${install_prefix}/etc/aos/aos-openssl.cnf"
+
+    if ! grep -qF "$include_line" "$openssl_cnf"; then
+        echo "$include_line" >> "$openssl_cnf"
+    fi
+}
+
 run_install() {
     print_next_step "Install"
 
     # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
     cmake --install ./build
+
+    local install_prefix
+    
+    install_prefix=$(grep '^CMAKE_INSTALL_PREFIX:PATH=' ./build/CMakeCache.txt | cut -d= -f2)
+    install_prefix="${install_prefix:-/usr/local}"
 
     # update shared library cache
     ldconfig
@@ -310,8 +321,11 @@ run_install() {
     # update CA certificates
     update-ca-certificates
 
+    # add aos openssl config include
+    add_openssl_include "$install_prefix"
+
     # enable systemd units if any were installed
-    enable_units
+    enable_units "$install_prefix"
 
     echo
     echo "Install completed!"
