@@ -304,6 +304,9 @@ run_install() {
     # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
     cmake --install ./build
 
+    # update shared library cache
+    ldconfig
+
     enable_units
 
     echo
