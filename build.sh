@@ -304,6 +304,45 @@ add_openssl_include() {
     fi
 }
 
+setup_dnsmasq() {
+    print_next_step "Set up dnsmasq"
+
+    local install_prefix="$1"
+
+    mkdir -p /etc/dnsmasq.d
+    ln -sf "$install_prefix/etc/aos/aos-dnsmasq.conf" /etc/dnsmasq.d/aos-dnsmasq.conf
+
+    mkdir -p /var/aos/dns
+    touch /var/aos/dns/addnhosts
+
+    cat >/etc/systemd/network/10-dummy0.netdev <<EOF
+[NetDev]
+Name=dummy0
+Kind=dummy
+EOF
+
+    cat >/etc/systemd/network/10-dummy0.network <<EOF
+[Match]
+Name=dummy0
+
+[Network]
+Address=10.0.0.100/24
+EOF
+
+    local dnsmasq_default="/etc/default/dnsmasq"
+
+    if grep -q '^IGNORE_RESOLVCONF=yes' "$dnsmasq_default"; then
+        :
+    elif grep -q '^#\?IGNORE_RESOLVCONF=' "$dnsmasq_default"; then
+        sed -i 's/^#\?IGNORE_RESOLVCONF=.*/IGNORE_RESOLVCONF=yes/' "$dnsmasq_default"
+    else
+        echo 'IGNORE_RESOLVCONF=yes' >>"$dnsmasq_default"
+    fi
+
+    systemctl restart systemd-networkd
+    systemctl restart dnsmasq
+}
+
 run_install() {
     print_next_step "Install"
 
@@ -323,6 +362,9 @@ run_install() {
 
     # add aos openssl config include
     add_openssl_include "$install_prefix"
+
+    # set up dnsmasq (dummy interface, IGNORE_RESOLVCONF, aos-dnsmasq.conf)
+    setup_dnsmasq "$install_prefix"
 
     # enable systemd units if any were installed
     enable_units "$install_prefix"
