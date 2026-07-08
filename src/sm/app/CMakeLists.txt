@@ -76,3 +76,9 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service DESTINATION lib/systemd
 
 configure_file(${PROJECT_SOURCE_DIR}/config/sm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg DESTINATION etc/aos)
+
+install(FILES ${PROJECT_SOURCE_DIR}/config/aos-nftables.conf DESTINATION etc/aos)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/systemd/aos-nftables.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service DESTINATION lib/systemd/system)

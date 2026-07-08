@@ -1,0 +1,16 @@
+[Unit]
+Description=Aos base nftables ruleset (fail-closed forward default-drop)
+Wants=network-pre.target
+Before=network-pre.target aos-sm.service
+After=sysinit.target
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f @CMAKE_INSTALL_PREFIX@/etc/aos/aos-nftables.conf
+
+[Install]
+WantedBy=multi-user.target
