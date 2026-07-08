@@ -5,6 +5,9 @@
 
 # AosCore C++ implementation
 
+> To build and install AosCore onto a Linux host as systemd-managed services, see
+> [doc/install.md](doc/install.md).
+
 ## Prepare build environment
 
 ```console
