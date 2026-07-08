@@ -272,8 +272,6 @@ build_target() {
 }
 
 enable_units() {
-    print_next_step "Enable systemd units"
-
     local install_prefix="$1"
     local unit_dir="$install_prefix/lib/systemd/system"
 
@@ -305,8 +303,6 @@ add_openssl_include() {
 }
 
 setup_dnsmasq() {
-    print_next_step "Set up dnsmasq"
-
     local install_prefix="$1"
 
     mkdir -p /etc/dnsmasq.d
@@ -344,10 +340,12 @@ EOF
 }
 
 run_install() {
-    print_next_step "Install"
+    print_next_step "Install AosCore"
 
     # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
     cmake --install ./build
+
+    print_next_step "Enable AosCore"
 
     local install_prefix
     
