@@ -307,6 +307,10 @@ run_install() {
     # update shared library cache
     ldconfig
 
+    # update CA certificates
+    update-ca-certificates
+
+    # enable systemd units if any were installed
     enable_units
 
     echo
