@@ -80,6 +80,15 @@ public:
     Error PrepareNetworkDir(const std::string& path) override;
 
     /**
+     * Writes content to a file, creating or truncating it as needed.
+     *
+     * @param path file path.
+     * @param content content to write.
+     * @return Error.
+     */
+    Error WriteFile(const std::string& path, const std::string& content) override;
+
+    /**
      * Returns absolute path of FS item.
      *
      * @param path path to convert.

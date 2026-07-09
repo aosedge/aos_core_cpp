@@ -346,6 +346,24 @@ Error FileSystem::PrepareNetworkDir(const std::string& path)
     }
 }
 
+Error FileSystem::WriteFile(const std::string& path, const std::string& content)
+{
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return AOS_ERROR_WRAP(Error(errno, "can't open file"));
+    }
+
+    file << content;
+
+    if (!file.good()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "can't write file"));
+    }
+
+    fs::permissions(path, cFilePermissions);
+
+    return ErrorEnum::eNone;
+}
+
 RetWithError<std::string> FileSystem::GetAbsPath(const std::string& path)
 {
     try {

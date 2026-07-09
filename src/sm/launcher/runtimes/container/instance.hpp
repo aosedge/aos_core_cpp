@@ -166,7 +166,9 @@ private:
     Error  PrepareStateStorage();
     Error  PrepareRootFS(
          const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
-    Error StartNetwork(const std::string& runtimeDir);
+    Error PrepareNetwork(const std::string& runtimeDir);
+    Error WriteResolvConf(const std::string& path, const Array<StaticString<cIPLen>>& dnsServers) const;
+    Error WriteHosts(const std::string& path, const Array<Host>& hosts) const;
     Error StartMonitoring();
 
     InstanceInfo mInstanceInfo;

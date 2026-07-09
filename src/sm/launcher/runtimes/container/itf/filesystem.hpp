@@ -88,6 +88,15 @@ public:
     virtual Error PrepareNetworkDir(const std::string& path) = 0;
 
     /**
+     * Writes content to a file, creating or truncating it as needed.
+     *
+     * @param path file path.
+     * @param content content to write.
+     * @return Error.
+     */
+    virtual Error WriteFile(const std::string& path, const std::string& content) = 0;
+
+    /**
      * Returns absolute path of FS item.
      *
      * @param path path to convert.

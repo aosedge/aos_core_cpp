@@ -25,6 +25,7 @@ public:
     MOCK_METHOD(Error, PrepareServiceStorage, (const std::string&, uid_t, gid_t), (override));
     MOCK_METHOD(Error, PrepareServiceState, (const std::string&, uid_t, gid_t), (override));
     MOCK_METHOD(Error, PrepareNetworkDir, (const std::string&), (override));
+    MOCK_METHOD(Error, WriteFile, (const std::string&, const std::string&), (override));
     MOCK_METHOD(RetWithError<std::string>, GetAbsPath, (const std::string&), (override));
     MOCK_METHOD(RetWithError<gid_t>, GetGIDByName, (const std::string&), (override));
     MOCK_METHOD(Error, PopulateHostDevices, (const std::string&, std::vector<oci::LinuxDevice>&), (override));

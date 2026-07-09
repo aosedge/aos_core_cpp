@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <numeric>
+#include <sstream>
 
 #include <core/common/tools/logger.hpp>
 
@@ -121,7 +122,7 @@ Error Instance::Start()
         return err;
     }
 
-    if (err = StartNetwork(runtimeDir); !err.IsNone()) {
+    if (err = PrepareNetwork(runtimeDir); !err.IsNone()) {
         return err;
     }
 
@@ -171,11 +172,6 @@ Error Instance::Stop()
         if (auto err = mMonitoring.StopInstanceMonitoring(mInstanceID); !err.IsNone() && stopErr.IsNone()) {
             stopErr = AOS_ERROR_WRAP(err);
         }
-    }
-
-    if (auto err = mNetworkManager.StopInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
-        !err.IsNone() && stopErr.IsNone()) {
-        stopErr = err;
     }
 
     auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
@@ -715,29 +711,65 @@ Error Instance::PrepareRootFS(
     return ErrorEnum::eNone;
 }
 
-Error Instance::StartNetwork(const std::string& runtimeDir)
+Error Instance::PrepareNetwork(const std::string& runtimeDir)
 {
-    LOG_DBG() << "Start network" << Log::Field("instanceID", mInstanceID.c_str());
+    LOG_DBG() << "Prepare network" << Log::Field("instanceID", mInstanceID.c_str());
 
     if (auto err = mFileSystem.PrepareNetworkDir(common::utils::JoinPath(runtimeDir, cMountPointsDir)); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    auto                                         etcDir = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
-    networkmanager::InstanceNetworkRuntimeParams runtimeParams;
+    auto etcDir             = common::utils::JoinPath(runtimeDir, cMountPointsDir, "etc");
+    auto hostsFilePath      = common::utils::JoinPath(etcDir, "hosts");
+    auto resolvConfFilePath = common::utils::JoinPath(etcDir, "resolv.conf");
 
-    if (auto err = runtimeParams.mHostsFilePath.Assign(common::utils::JoinPath(etcDir, "hosts").c_str());
-        !err.IsNone()) {
+    auto dnsServers = std::make_unique<StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>>();
+
+    if (auto err = mNetworkManager.GetResolvServers(mInstanceID.c_str(), *dnsServers); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = runtimeParams.mResolvConfFilePath.Assign(common::utils::JoinPath(etcDir, "resolv.conf").c_str());
-        !err.IsNone()) {
+    if (auto err = WriteResolvConf(resolvConfFilePath, *dnsServers); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mNetworkManager.StartInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID, runtimeParams);
-        !err.IsNone()) {
+    auto hosts = std::make_unique<StaticArray<Host, cMaxNumHosts>>();
+
+    if (auto err = mNetworkManager.GetHosts(mInstanceID.c_str(), *hosts); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = WriteHosts(hostsFilePath, *hosts); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::WriteResolvConf(const std::string& path, const Array<StaticString<cIPLen>>& dnsServers) const
+{
+    std::ostringstream content;
+
+    for (const auto& server : dnsServers) {
+        content << "nameserver " << server.CStr() << "\n";
+    }
+
+    if (auto err = mFileSystem.WriteFile(path, content.str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::WriteHosts(const std::string& path, const Array<Host>& hosts) const
+{
+    std::ostringstream content;
+
+    for (const auto& host : hosts) {
+        content << host.mIP.CStr() << "\t" << host.mHostname.CStr() << "\n";
+    }
+
+    if (auto err = mFileSystem.WriteFile(path, content.str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

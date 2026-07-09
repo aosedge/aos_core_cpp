@@ -235,8 +235,8 @@ protected:
 
         EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
             .WillRepeatedly(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
-        EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mFileSystem, WriteFile(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
             mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock,
@@ -364,8 +364,6 @@ TEST_F(ContainerRuntimeTest, StopInstance)
 
     EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mPermHandlerMock, UnregisterInstance(instance)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, StopInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID))
-        .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(
@@ -892,36 +890,21 @@ TEST_F(ContainerRuntimeTest, Network)
 
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
-    auto networkParams = std::make_unique<networkmanager::InstanceNetworkConfig>();
 
-    networkParams->mInstanceIdent = instance;
-    networkParams->mHostname      = "example-host";
-    networkParams->mIngressKbit   = 1000;
-    networkParams->mEgressKbit    = 1000;
-    networkParams->mDownloadLimit = 1024 * 1024;
-    networkParams->mUploadLimit   = 1024 * 1024;
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
+    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers> dnsServers;
+    dnsServers.PushBack("8.8.8.8");
+    dnsServers.PushBack("1.1.1.1");
+
+    StaticArray<Host, cMaxNumHosts> hosts;
+    hosts.PushBack(Host {"192.168.1.1", "host1"});
+    hosts.PushBack(Host {"192.168.1.2", "host2"});
 
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
         manifest.mItemConfig.EmplaceValue();
 
         return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _))
-        .WillOnce(Invoke([&networkParams](const String&, oci::ItemConfig& config) {
-            config.mHostname.SetValue(networkParams->mHostname);
-            config.mResources.EmplaceBack(oci::ResourceInfo {"resource1", ""});
-            config.mResources.EmplaceBack(oci::ResourceInfo {"resource2", ""});
-            config.mQuotas.mUploadSpeed.SetValue(networkParams->mEgressKbit);
-            config.mQuotas.mDownloadSpeed.SetValue(networkParams->mIngressKbit);
-            config.mQuotas.mUploadLimit.SetValue(networkParams->mUploadLimit);
-            config.mQuotas.mDownloadLimit.SetValue(networkParams->mDownloadLimit);
-
-            return ErrorEnum::eNone;
-        }));
+    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
         .WillOnce(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
     EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
@@ -930,22 +913,18 @@ TEST_F(ContainerRuntimeTest, Network)
 
             return ErrorEnum::eNone;
         }));
-    EXPECT_CALL(mResourceInfoProviderMock, GetResourceInfo(_, _))
-        .WillRepeatedly(Invoke([](const String& resource, resourcemanager::ResourceInfo& resourceInfo) {
-            if (resource == "resource1") {
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
-            } else if (resource == "resource2") {
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
-            } else {
-                return ErrorEnum::eNotFound;
-            }
+    EXPECT_CALL(mNetworkManagerMock, GetResolvServers(String(instanceID.c_str()), _))
+        .WillOnce(DoAll(SetArgReferee<1>(dnsServers), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mNetworkManagerMock, GetHosts(String(instanceID.c_str()), _))
+        .WillOnce(DoAll(SetArgReferee<1>(hosts), Return(ErrorEnum::eNone)));
 
-            return ErrorEnum::eNone;
-        }));
-    EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID, _))
+    auto etcDir = "/run/aos/runtime/" + instanceID + "/mounts/etc";
+
+    EXPECT_CALL(*mRuntime.mFileSystem,
+        WriteFile(etcDir + "/resolv.conf", std::string("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")))
+        .WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(
+        *mRuntime.mFileSystem, WriteFile(etcDir + "/hosts", std::string("192.168.1.1\thost1\n192.168.1.2\thost2\n")))
         .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);
