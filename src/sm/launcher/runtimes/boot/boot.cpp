@@ -12,8 +12,8 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
-#include <common/utils/exec.hpp>
 #include <common/utils/filesystem.hpp>
+#include <common/utils/utils.hpp>
 
 #include <sm/launcher/runtimes/utils/utils.hpp>
 

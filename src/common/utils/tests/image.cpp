@@ -12,8 +12,8 @@
 
 #include <core/common/tests/utils/utils.hpp>
 
-#include <common/utils/exec.hpp>
 #include <common/utils/image.hpp>
+#include <common/utils/utils.hpp>
 
 using namespace testing;
 

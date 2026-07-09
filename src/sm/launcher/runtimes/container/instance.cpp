@@ -16,8 +16,6 @@
 #include "instance.hpp"
 #include "runtimeconfig.hpp"
 
-#define WITH_NETWORK 0
-
 namespace aos::sm::launcher {
 
 namespace {
@@ -123,11 +121,9 @@ Error Instance::Start()
         return err;
     }
 
-#if WITH_NETWORK
     if (err = StartNetwork(runtimeDir); !err.IsNone()) {
         return err;
     }
-#endif
 
     if (mInstanceInfo.mMonitoringParams.HasValue()) {
         if (err = StartMonitoring(); !err.IsNone()) {
@@ -177,12 +173,10 @@ Error Instance::Stop()
         }
     }
 
-#if WITH_NETWORK
     if (auto err = mNetworkManager.StopInstanceNetwork(mInstanceID.c_str(), mInstanceInfo.mOwnerID);
         !err.IsNone() && stopErr.IsNone()) {
         stopErr = err;
     }
-#endif
 
     auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
 
@@ -292,17 +286,18 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return err;
     }
 
-#if WITH_NETWORK
-    auto [instanceNetns, netnsErr] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
-    if (!netnsErr.IsNone()) {
-        return AOS_ERROR_WRAP(netnsErr);
-    }
+    {
+        auto [instanceNetns, netnsErr] = mNetworkManager.GetNetnsPath(mInstanceID.c_str());
+        if (!netnsErr.IsNone()) {
+            return AOS_ERROR_WRAP(netnsErr);
+        }
 
-    if (auto err = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
-        !err.IsNone()) {
-        return err;
+        if (auto err
+            = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
+            !err.IsNone()) {
+            return err;
+        }
     }
-#endif
 
     if (auto err = CreateAosEnvVars(runtimeConfig); !err.IsNone()) {
         return err;

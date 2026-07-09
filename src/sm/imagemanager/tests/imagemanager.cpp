@@ -17,9 +17,9 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 
-#include <common/utils/exec.hpp>
 #include <common/utils/filesystem.hpp>
 #include <common/utils/image.hpp>
+#include <common/utils/utils.hpp>
 #include <sm/imagemanager/imagehandler.hpp>
 
 using namespace testing;
