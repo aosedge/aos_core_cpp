@@ -10,8 +10,8 @@
 #include <gtest/gtest.h>
 
 #include <common/tests/utils/partition.hpp>
-#include <common/utils/exec.hpp>
 #include <common/utils/fsplatform.hpp>
+#include <common/utils/utils.hpp>
 
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>

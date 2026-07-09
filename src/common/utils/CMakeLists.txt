@@ -19,7 +19,6 @@ set(SOURCES
     cleanupmanager.cpp
     cryptohelper.cpp
     exception.cpp
-    exec.cpp
     filesystem.cpp
     fsplatform.cpp
     fswatcher.cpp
