@@ -332,7 +332,7 @@ std::shared_ptr<ContainerRunnerItf> ContainerRuntime::CreateContainerRunner(cons
 {
     auto pm = std::make_shared<CRunRunner>();
 
-    auto err = pm->Init(config.mRuntimeDir, config.mCRunStateRoot, config.mCRunExecutable);
+    auto err = pm->Init(config.mRuntimeDir);
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return pm;

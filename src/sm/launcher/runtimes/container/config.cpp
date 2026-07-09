@@ -21,11 +21,9 @@ void ParseContainerConfig(
     config.mRuntimeDir = object.GetValue<std::string>("runtimeDir", "/run/aos/runtime");
     config.mHostWhiteoutsDir
         = object.GetValue<std::string>("hostWhiteoutsDir", common::utils::JoinPath(workingDir, "whiteouts"));
-    config.mStorageDir    = object.GetValue<std::string>("storageDir", common::utils::JoinPath(workingDir, "storages"));
-    config.mStateDir      = object.GetValue<std::string>("stateDir", common::utils::JoinPath(workingDir, "states"));
-    config.mHostBinds     = common::utils::GetArrayValue<std::string>(object, "hostBinds");
-    config.mCRunStateRoot = object.GetValue<std::string>("crunStateRoot", "/run/crun");
-    config.mCRunExecutable = object.GetValue<std::string>("crunExecutable", "/usr/bin/crun");
+    config.mStorageDir = object.GetValue<std::string>("storageDir", common::utils::JoinPath(workingDir, "storages"));
+    config.mStateDir   = object.GetValue<std::string>("stateDir", common::utils::JoinPath(workingDir, "states"));
+    config.mHostBinds  = common::utils::GetArrayValue<std::string>(object, "hostBinds");
 }
 
 } // namespace aos::sm::launcher

@@ -24,11 +24,9 @@ public:
      * Initializes the crun runner.
      *
      * @param runtimeDir base directory for per-instance runtime files.
-     * @param stateRoot crun state root directory (--root).
-     * @param crunExecutable path to the crun executable.
      * @return Error.
      */
-    Error Init(const std::string& runtimeDir, const std::string& stateRoot, const std::string& crunExecutable);
+    Error Init(const std::string& runtimeDir);
     /**
      * Starts a container for the given instance.
      *
@@ -69,11 +67,11 @@ public:
     Error RemoveContainer(const std::string& instanceID) override;
 
 private:
+    static constexpr auto cStateRoot = "/run/crun";
+
     RetWithError<ContainerStatus> CheckProcessAlive(const std::string& instanceID) const;
 
     std::string           mRuntimeDir;
-    std::string           mStateRoot;
-    std::string           mCRunExecutable;
     std::mutex            mMutex;
     std::set<std::string> mManagedInstances;
 };
