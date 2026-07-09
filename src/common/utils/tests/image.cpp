@@ -38,6 +38,27 @@ static void CreateTestTarFile(
     fs::remove(contentFilePath);
 }
 
+// Creates fileCount sparse files of fileSize bytes each and archives them. A large file count is what makes
+// "tar tzvf" print enough listing output to overflow the pipe buffer used to capture a child process's
+// output, while sparse files keep the archive itself fast to create and compress.
+static void CreateLargeTestTarFile(
+    const std::string& tarPath, const std::string& contentDir, size_t fileCount, size_t fileSize)
+{
+    fs::create_directory(contentDir);
+
+    for (size_t i = 0; i < fileCount; ++i) {
+        std::string filePath = contentDir + "/file_" + std::to_string(i) + ".bin";
+
+        std::ofstream(filePath).close();
+        fs::resize_file(filePath, fileSize);
+    }
+
+    auto [_, err] = ExecCommand({"tar", "czf", tarPath, contentDir});
+    EXPECT_TRUE(err.IsNone()) << "Failed to create test tar file: " << tests::utils::ErrorToStr(err);
+
+    fs::remove_all(contentDir);
+}
+
 /***********************************************************************************************************************
  * Tests
  **********************************************************************************************************************/
@@ -65,6 +86,25 @@ TEST(UnpackTarImageTest, UnpackTarImageSuccess)
 
     fs::remove(archivePath);
     fs::remove_all(destination);
+}
+
+TEST(UnpackTarImageTest, UnpackLargeTarGz)
+{
+    constexpr size_t   cFileCount = 3000;
+    constexpr size_t   cFileSize  = 100000;
+    constexpr uint64_t cTotalSize = static_cast<uint64_t>(cFileCount) * cFileSize;
+
+    std::string archivePath = "test_large_archive.tar.gz";
+    std::string contentDir  = "test_large_content";
+
+    CreateLargeTestTarFile(archivePath, contentDir, cFileCount, cFileSize);
+
+    auto [upackedSize, err] = GetUnpackedArchiveSize(archivePath, true);
+
+    EXPECT_TRUE(err.IsNone()) << err.StrValue();
+    EXPECT_EQ(upackedSize, cTotalSize);
+
+    fs::remove(archivePath);
 }
 
 TEST(UnpackTarImageTest, UnpackTarImageFailure)

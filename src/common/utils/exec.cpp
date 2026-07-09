@@ -147,29 +147,39 @@ RetWithError<std::string> ExecCommand(
         return {"", err};
     }
 
-    // Wait for the launched command to exit before reading its output. A detached grandchild process can
-    // inherit the pipe's write end and keep it open indefinitely, so reading until EOF could block forever
-    // even though the launched command itself has already finished. Once it's exited, drain only what's
-    // already buffered.
-    const int rc = WaitForExitCode(pid);
+    // Drain the pipe while the launched command is still running rather than waiting for it to exit first:
+    // once the pipe buffer fills up, the command would block in write() while this process blocked in
+    // waitpid(), deadlocking both sides. A detached grandchild process can inherit the pipe's write end and
+    // keep it open indefinitely, so once the launched command itself has exited, only what's already
+    // buffered is drained instead of reading until EOF.
+    constexpr int cPollTimeoutMs = 20;
 
     std::string outStr;
     char        buffer[1024];
+    int         status = 0;
+    bool        exited = false;
 
     for (;;) {
         pollfd pfd {pipeFDs[0], POLLIN, 0};
 
-        if (poll(&pfd, 1, 0) <= 0 || !(pfd.revents & POLLIN)) {
+        if (poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
+            const int n = read(pipeFDs[0], buffer, sizeof(buffer));
+            if (n > 0) {
+                outStr.append(buffer, n);
+                continue;
+            }
+        }
+
+        if (exited) {
             break;
         }
 
-        const int n = read(pipeFDs[0], buffer, sizeof(buffer));
-        if (n <= 0) {
-            break;
+        if (waitpid(pid, &status, WNOHANG) == pid) {
+            exited = true;
         }
-
-        outStr.append(buffer, n);
     }
+
+    const int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 
     return {outStr, CheckExitCode(rc, outStr, expectedExitCodes)};
 }
