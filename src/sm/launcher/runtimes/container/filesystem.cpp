@@ -469,4 +469,16 @@ RetWithError<std::vector<std::string>> FileSystem::ListDir(const std::string& pa
     }
 }
 
+bool FileSystem::PathExists(const std::string& path)
+{
+    try {
+        return fs::exists(fs::path(path));
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Check file exists error" << Log::Field("path", path.c_str())
+                  << Log::Field("error", common::utils::ToAosError(e, ErrorEnum::eRuntime));
+
+        return false;
+    }
+}
+
 } // namespace aos::sm::launcher

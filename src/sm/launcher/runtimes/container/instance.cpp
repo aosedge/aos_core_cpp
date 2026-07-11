@@ -287,6 +287,10 @@ Error Instance::CreateRuntimeConfig(const std::string& runtimeDir, const oci::Im
         return AOS_ERROR_WRAP(netnsErr);
     }
 
+    if (!mFileSystem.PathExists(instanceNetns.CStr())) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "network namespace not found"));
+    }
+
     if (auto err = AddNamespace(oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, instanceNetns}, runtimeConfig);
         !err.IsNone()) {
         return err;
