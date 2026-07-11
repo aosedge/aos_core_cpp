@@ -34,8 +34,8 @@ print_usage() {
     echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
     echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
     echo "  --no-test                  builds without tests (tests are built by default)"
-    echo "  --no-headers               don't install development headers (headers are installed by default)"
     echo "  --no-coverage              builds without coverage instrumentation (coverage is built by default)"
+    echo "  --aos-install              installs AosCore configs, systemd services and dependencies (disabled by default)"
     echo
 }
 
@@ -152,7 +152,7 @@ cmake_configure() {
         -DWITH_VCHAN=OFF \
         -DWITH_COVERAGE="$ARG_WITH_COVERAGE" \
         -DWITH_TEST="$ARG_WITH_TEST" \
-        -DWITH_HEADERS="$ARG_WITH_HEADERS" \
+        -DWITH_AOS_INSTALL="$ARG_WITH_AOS_INSTALL" \
         -DWITH_CM="$with_cm" \
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
@@ -246,13 +246,13 @@ parse_arguments() {
             shift
             ;;
 
-        --no-headers)
-            ARG_WITH_HEADERS=OFF
+        --no-coverage)
+            ARG_WITH_COVERAGE=OFF
             shift
             ;;
 
-        --no-coverage)
-            ARG_WITH_COVERAGE=OFF
+        --aos-install)
+            ARG_WITH_AOS_INSTALL=ON
             shift
             ;;
 
@@ -429,8 +429,8 @@ ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
 ARG_WITH_TEST=ON
-ARG_WITH_HEADERS=ON
 ARG_WITH_COVERAGE=ON
+ARG_WITH_AOS_INSTALL=OFF
 
 case "$command" in
 build)
