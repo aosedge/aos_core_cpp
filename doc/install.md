@@ -123,7 +123,7 @@ cd aos_core_cpp
 Run build script to build AosCore:
 
 ```console
-./build.sh build --build-type Release --no-test --no-headers --no-coverage --sm-runtime container
+./build.sh build --build-type Release --no-test --no-coverage --sm-runtime container --aos-install
 ```
 
 Run `./build.sh` with no arguments to see all available build options.

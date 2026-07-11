@@ -57,24 +57,26 @@ add_exec(
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
 
-configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-iam.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service @ONLY)
-configure_file(
-    ${PROJECT_SOURCE_DIR}/systemd/aos-iam-prov.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service @ONLY
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service
-        DESTINATION lib/systemd/system
-)
+if(WITH_AOS_INSTALL)
+    configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-iam.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service @ONLY)
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/systemd/aos-iam-prov.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service @ONLY
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-iam.service ${CMAKE_CURRENT_BINARY_DIR}/aos-iam-prov.service
+            DESTINATION lib/systemd/system
+    )
 
-configure_file(${PROJECT_SOURCE_DIR}/config/iam.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg DESTINATION etc/aos)
+    configure_file(${PROJECT_SOURCE_DIR}/config/iam.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/iam.cfg DESTINATION etc/aos)
 
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/config/unit_model DESTINATION etc/aos)
+    install(PROGRAMS ${PROJECT_SOURCE_DIR}/config/unit_model DESTINATION etc/aos)
 
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/deprovision.sh ${PROJECT_SOURCE_DIR}/scripts/provfinish.sh
-        DESTINATION libexec/aos
-)
+    install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/deprovision.sh ${PROJECT_SOURCE_DIR}/scripts/provfinish.sh
+            DESTINATION libexec/aos
+    )
 
-install(FILES ${PROJECT_SOURCE_DIR}/config/AosRootCA.crt DESTINATION share/ca-certificates/aos)
+    install(FILES ${PROJECT_SOURCE_DIR}/config/AosRootCA.crt DESTINATION share/ca-certificates/aos)
 
-configure_file(${PROJECT_SOURCE_DIR}/config/aos-openssl.cnf.in ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf DESTINATION etc/aos)
+    configure_file(${PROJECT_SOURCE_DIR}/config/aos-openssl.cnf.in ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf DESTINATION etc/aos)
+endif()

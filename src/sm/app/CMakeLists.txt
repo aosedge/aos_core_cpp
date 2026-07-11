@@ -71,14 +71,41 @@ add_exec(
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
 
-configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-sm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service DESTINATION lib/systemd/system)
+if(WITH_AOS_INSTALL)
+    if(WITH_RUNTIME_CONTAINER)
+        find_package(crun REQUIRED)
 
-configure_file(${PROJECT_SOURCE_DIR}/config/sm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg DESTINATION etc/aos)
+        install(
+            DIRECTORY ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
+            DESTINATION lib
+            FILES_MATCHING
+            PATTERN "*.so*"
+        )
 
-install(FILES ${PROJECT_SOURCE_DIR}/config/aos-nftables.conf DESTINATION etc/aos)
-configure_file(
-    ${PROJECT_SOURCE_DIR}/systemd/aos-nftables.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service @ONLY
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service DESTINATION lib/systemd/system)
+        install(PROGRAMS ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/bin/crun DESTINATION bin)
+
+        # crun isn't a CMake target, so install(TARGETS)'s automatic rpath handling doesn't apply to it, and its
+        # upstream build doesn't reserve enough rpath room for CMake's own file(RPATH_SET) to grow it in place.
+        # patchelf can resize the binary to fit. The absolute entry (not just $ORIGIN) is required because crun
+        # re-execs itself from a memfd copy of itself on load, which breaks $ORIGIN-relative resolution.
+        set(AOS_CRUN_RPATH "$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib")
+
+        find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
+
+        install(CODE "execute_process(COMMAND \${PATCHELF_EXECUTABLE} --set-rpath \"${AOS_CRUN_RPATH}\"
+             \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/crun\")"
+        )
+    endif()
+
+    configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-sm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service DESTINATION lib/systemd/system)
+
+    configure_file(${PROJECT_SOURCE_DIR}/config/sm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sm.cfg DESTINATION etc/aos)
+
+    install(FILES ${PROJECT_SOURCE_DIR}/config/aos-nftables.conf DESTINATION etc/aos)
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/systemd/aos-nftables.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service @ONLY
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-nftables.service DESTINATION lib/systemd/system)
+endif()

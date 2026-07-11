@@ -23,7 +23,7 @@ option(WITH_IAM "build with iam" ON)
 option(WITH_MP "build with message proxy" ON)
 option(WITH_SM "build with service manager" ON)
 
-option(WITH_HEADERS "install development headers (include/)" ON)
+option(WITH_AOS_INSTALL "install AosCore configs, systemd services and dependencies" OFF)
 
 option(WITH_TEST "build with test" OFF)
 option(WITH_COVERAGE "build with coverage" OFF)
@@ -41,7 +41,7 @@ message(STATUS "WITH_IAM                      = ${WITH_IAM}")
 message(STATUS "WITH_MP                       = ${WITH_MP}")
 message(STATUS "WITH_SM                       = ${WITH_SM}")
 message(STATUS)
-message(STATUS "WITH_HEADERS                  = ${WITH_HEADERS}")
+message(STATUS "WITH_AOS_INSTALL              = ${WITH_AOS_INSTALL}")
 message(STATUS)
 message(STATUS "WITH_TEST                     = ${WITH_TEST}")
 message(STATUS "WITH_COVERAGE                 = ${WITH_COVERAGE}")
@@ -85,8 +85,10 @@ set(AOS_STACK_USAGE 8192)
 get_filename_component(AOS_CORE_LIB_DIR ${AOS_CORE_DIR}/aos_core_lib_cpp REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 get_filename_component(AOS_CORE_API_DIR ${AOS_CORE_DIR}/aos_core_api REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 
-# Used to pick the right conan-generated <pkg>_PACKAGE_FOLDER_<CONFIG> variable when installing conan runtime deps.
-string(TOUPPER "${CMAKE_BUILD_TYPE}" AOS_CONAN_CONFIG)
+if(WITH_AOS_INSTALL)
+    # Used to pick the right conan-generated <pkg>_PACKAGE_FOLDER_<CONFIG> variable when installing conan runtime deps.
+    string(TOUPPER "${CMAKE_BUILD_TYPE}" AOS_CONAN_CONFIG)
+endif()
 
 # ######################################################################################################################
 # Compiler flags
@@ -181,28 +183,28 @@ endif()
 add_subdirectory(src)
 
 # ######################################################################################################################
-# Install conan runtime dependencies
+# Install
 # ######################################################################################################################
 
-# Apps link against these at runtime, but conan only tracks them in ~/.conan2, so `make install` must copy the shared
-# artifacts out of the conan cache itself (there is no build target that owns them). crun is installed from
-# src/sm/CMakeLists.txt instead, since it's only relevant when the container runtime is built.
+if(WITH_AOS_INSTALL)
+    # Apps link against these at runtime, but conan only tracks them in ~/.conan2, so `make install` must copy the shared
+    # artifacts out of the conan cache itself (there is no build target that owns them). crun is installed from
+    # src/sm/CMakeLists.txt instead, since it's only relevant when the container runtime is built.
 
-find_package(OpenSSL REQUIRED)
-find_package(pkcs11provider REQUIRED)
+    find_package(OpenSSL REQUIRED)
+    find_package(pkcs11provider REQUIRED)
 
-install(
-    DIRECTORY ${openssl_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
-    DESTINATION lib
-    PATTERN "cmake" EXCLUDE
-)
+    install(
+        DIRECTORY ${openssl_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
+        DESTINATION lib
+        PATTERN "cmake" EXCLUDE
+    )
 
-install(FILES ${pkcs11provider_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/pkcs11.so DESTINATION lib/ossl-modules)
+    install(FILES ${pkcs11provider_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/pkcs11.so DESTINATION lib/ossl-modules)
 
-# ######################################################################################################################
-# Install development headers
-# ######################################################################################################################
-
-if(NOT WITH_HEADERS)
+    # Remove the include/ directory, which is only used for building AosCore itself and is not needed at runtime.
     install(CODE "file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/include\")")
+
+    # Install systemd AosCore target
+    install(FILES ${PROJECT_SOURCE_DIR}/systemd/aos.target DESTINATION lib/systemd/system)
 endif()

@@ -73,31 +73,3 @@ add_subdirectory(utils)
 if(WITH_TEST)
     add_subdirectory(tests)
 endif()
-
-# ######################################################################################################################
-# Install conan runtime dependencies
-# ######################################################################################################################
-
-if(WITH_RUNTIME_CONTAINER)
-    find_package(crun REQUIRED)
-
-    install(
-        DIRECTORY ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/lib/
-        DESTINATION lib
-        FILES_MATCHING
-        PATTERN "*.so*"
-    )
-
-    install(PROGRAMS ${crun_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/bin/crun DESTINATION bin)
-
-    # crun isn't a CMake target, so install(TARGETS)'s automatic rpath handling doesn't apply to it, and its
-    # upstream build doesn't reserve enough rpath room for CMake's own file(RPATH_SET) to grow it in place.
-    # patchelf can resize the binary to fit. The absolute entry (not just $ORIGIN) is required because crun
-    # re-execs itself from a memfd copy of itself on load, which breaks $ORIGIN-relative resolution.
-    set(AOS_CRUN_RPATH "$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib")
-
-    install(CODE "find_program(PATCHELF_EXECUTABLE patchelf REQUIRED)
-         execute_process(COMMAND \${PATCHELF_EXECUTABLE} --set-rpath \"${AOS_CRUN_RPATH}\"
-             \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/crun\")"
-    )
-endif()

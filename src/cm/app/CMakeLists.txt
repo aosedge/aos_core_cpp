@@ -74,10 +74,12 @@ add_exec(
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION bin)
 
-configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-cm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-cm.service @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-cm.service DESTINATION lib/systemd/system)
+if(WITH_AOS_INSTALL)
+    configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-cm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-cm.service @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-cm.service DESTINATION lib/systemd/system)
 
-configure_file(${PROJECT_SOURCE_DIR}/config/cm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/cm.cfg @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cm.cfg DESTINATION etc/aos)
+    configure_file(${PROJECT_SOURCE_DIR}/config/cm.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/cm.cfg @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cm.cfg DESTINATION etc/aos)
 
-install(FILES ${PROJECT_SOURCE_DIR}/config/aos-dnsmasq.conf DESTINATION etc/aos)
+    install(FILES ${PROJECT_SOURCE_DIR}/config/aos-dnsmasq.conf DESTINATION etc/aos)
+endif()
