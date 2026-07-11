@@ -237,6 +237,7 @@ protected:
             .WillRepeatedly(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
         EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mFileSystem, WriteFile(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mFileSystem, PathExists(_)).WillRepeatedly(Return(true));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
             mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock,

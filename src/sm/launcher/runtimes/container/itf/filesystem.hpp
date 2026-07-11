@@ -151,6 +151,14 @@ public:
      * @return RetWithError<std::vector<std::string>>.
      */
     virtual RetWithError<std::vector<std::string>> ListDir(const std::string& path) = 0;
+
+    /**
+     * Checks if path exists.
+     *
+     * @param path file path.
+     * @return true if file exists, false otherwise.
+     */
+    virtual bool PathExists(const std::string& path) = 0;
 };
 
 } // namespace aos::sm::launcher

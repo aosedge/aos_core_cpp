@@ -33,6 +33,7 @@ public:
     MOCK_METHOD(Error, ClearDir, (const std::string&), (override));
     MOCK_METHOD(Error, RemoveAll, (const std::string&), (override));
     MOCK_METHOD(RetWithError<std::vector<std::string>>, ListDir, (const std::string&), (override));
+    MOCK_METHOD(bool, PathExists, (const std::string&), (override));
 };
 
 } // namespace aos::sm::launcher
