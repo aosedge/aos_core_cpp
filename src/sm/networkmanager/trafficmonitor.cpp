@@ -100,7 +100,7 @@ Error TrafficMonitor::Stop()
         mStop = true;
     }
 
-    if (auto err = mTimer.Stop(); !err.IsNone()) {
+    if (auto err = mTimer.Stop(Timer::StopMode::WaitForCallbacks); !err.IsNone()) {
         LOG_ERR() << "Can't stop timer" << Log::Field(err);
     }
 
