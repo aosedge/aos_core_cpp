@@ -1,163 +1,76 @@
 <!-- markdownlint-disable-next-line MD041 -->
-[![ci](https://github.com/aosedge/aos_core_cpp/actions/workflows/build_test.yaml/badge.svg)](https://github.com/aosedge/aos_core_cpp/actions/workflows/build_test.yaml)
-[![codecov](https://codecov.io/gh/aosedge/aos_core_cpp/graph/badge.svg?token=MknkthRkpf)](https://codecov.io/gh/aosedge/aos_core_cpp)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp)
+| Branch | CI | Coverage | Quality Gate |
+|--------|----|----------|--------------|
+| main | [![ci][ci-main]][ci-main-link] | [![coverage][cov-main]][cov-main-link] | [![Quality Gate][qg-main]][qg-main-link] |
+| develop | [![ci][ci-dev]][ci-dev-link] | [![coverage][cov-dev]][cov-dev-link] | [![Quality Gate][qg-dev]][qg-dev-link] |
+
+[ci-main]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml/badge.svg?branch=main
+[ci-main-link]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml?query=branch%3Amain
+[cov-main]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=coverage&branch=main
+[cov-main-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=main
+[qg-main]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status&branch=main
+[qg-main-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=main
+[ci-dev]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml/badge.svg?branch=develop
+[ci-dev-link]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml?query=branch%3Adevelop
+[cov-dev]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=coverage&branch=develop
+[cov-dev-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=develop
+[qg-dev]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status&branch=develop
+[qg-dev-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=develop
 
 # AosCore C++ implementation
 
-This repository contains the AosCore services: communication manager (CM), identity and access manager (IAM), message
-proxy (MP) and service manager (SM).
-
-This document is a from-scratch build guide. Start with [Get the sources](#get-the-sources) and
-[Prepare build environment](#prepare-build-environment).
-
-For a quick build with the default options use `./build.sh build`. For a custom configuration (a subset of
-services, a `Release` build, etc.) use the
-[manual build with individual CMake options](#custom-build-with-individual-cmake-options).
-
-## Get the sources
-
-```console
-git clone https://github.com/aosedge/aos_core_cpp.git
-cd aos_core_cpp
-```
-
-The build depends on two more Aos repositories — `aos_core_lib_cpp` and `aos_core_api`. They are fetched automatically
-at configure time (via CMake `FetchContent`) into the directory pointed to by `AOS_CORE_DIR` (`build/core` by default),
-so `git` and network access must be available on the host. To build against local checkouts instead, see
-`AOS_CORE_DIR` / `--core-dir` below.
+> To build and install AosCore onto a Linux host as systemd-managed services, see
+> [doc/install.md](doc/install.md).
 
 ## Prepare build environment
 
-The instructions below target Ubuntu. Other distributions provide the same packages under similar names.
-
-* Install the build tools and libraries:
-
 ```console
-sudo apt install build-essential git pkg-config autoconf automake libtool \
-    libseccomp-dev libyajl-dev libcap-dev libsystemd-dev \
-    libnl-3-dev libnl-route-3-dev libnftables-dev \
-    libblkid-dev libefivar-dev libefiboot-dev \
-    softhsm2 lcov
-```
-
-| Package group | Why it is needed |
-| --- | --- |
-| `build-essential`, `git` | C/C++ compiler, `make`, and fetching the external Aos repositories |
-| `pkg-config`, `autoconf`, `automake`, `libtool` | build the `crun` Conan dependency from source |
-| `libseccomp-dev`, `libyajl-dev`, `libcap-dev`, `libsystemd-dev` | `crun` build dependencies |
-| `libnl-3-dev`, `libnl-route-3-dev`, `libnftables-dev` | required by the SM / CM network code |
-| `libblkid-dev`, `libefivar-dev`, `libefiboot-dev` | required by the SM boot runtime |
-| `softhsm2` | provides `libsofthsm2`, required by the crypto unit tests (`WITH_TEST=ON`) |
-
-* Install `conan` (package manager for the external dependencies, e.g. gRPC, OpenSSL, Poco, libcurl, crun):
-
-```console
+sudo apt install lcov
 pip install conan
 ```
 
-* Install `cmake` (version 3.23 or greater is required):
-
-```console
-pip install cmake
-```
-
-The `cmake` shipped with Ubuntu 22.04 (3.22) is too old. On Ubuntu 24.04 the distribution `cmake` (3.28) is new enough,
-so you may use `sudo apt install cmake` instead. The [Kitware APT repository](https://apt.kitware.com/) is another
-option for an up-to-date `cmake`.
-
-* Install `lcov`:
-
-```console
-sudo apt install lcov
-```
-
-`lcov` is required to generate the code coverage report. It is also required to **configure** the project with
-`./build.sh build`, because that script always enables the coverage target. Without `lcov` the configuration step
-fails with `lcov not found`. Version 2.0 or greater is required. The version shipped with Ubuntu 22.04 (1.x) is
-too old; in that case download and install it manually:
+`lcov` version 2.0 or greater is required. If your Linux distributive doesn't contain the required version, download and
+install the required version manually. For example in Ubuntu 22.04 it can be installed as following:
 
 ```console
 wget https://launchpad.net/ubuntu/+source/lcov/2.0-4ubuntu2/+build/27959742/+files/lcov_2.0-4ubuntu2_all.deb
 sudo dpkg -i lcov_2.0-4ubuntu2_all.deb
-sudo apt-get install -f
 ```
 
-The last `apt-get install -f` step pulls in the Perl dependencies that the `.deb` requires.
+## Build for host
 
-## Build with build.sh
-
-`build.sh` is the recommended entry point. To make a build for host, run:
+To make a build for host please run:
 
 ```console
 ./build.sh build
 ```
 
-It fetches the external Aos repositories, installs all external dependencies via Conan (some of them, like `crun`, are
-built from source), creates the `./build` directory and builds the AosCore components with the unit test and coverage
-targets. The configuration used by `build.sh build` is fixed: all services are enabled, `WITH_TEST=ON`,
-`WITH_COVERAGE=ON` and `WITH_VCHAN=OFF`.
+It installs all external dependencies to conan, creates `./build` directory, builds the AoCore components with unit
+tests and coverage calculation target.
 
-`build.sh` accepts the following commands:
-
-| Command | Description |
-| --- | --- |
-| `build` | configures and builds the project |
-| `test` | runs the unit tests (see [Run unit tests](#run-unit-tests)) |
-| `coverage` | runs the tests and collects coverage (see [Check coverage](#check-coverage)) |
-| `lint` | runs static analysis with `cppcheck` |
-| `doc` | generates the documentation (see [Generate documentation](#generate-documentation)) |
-
-And the following options:
-
-| Option | Description |
-| --- | --- |
-| `--clean` | removes the `./build` directory before building |
-| `--aos-service <services>` | builds only the listed services, e.g. `--aos-service sm,mp,iam` (default: all) |
-| `--core-dir <path>` | path to local `aos_core_lib_cpp` / `aos_core_api` checkouts (sets `AOS_CORE_DIR`) |
-| `--ci` | builds through `build-wrapper` for CI / SonarQube analysis |
-| `--parallel <N>` | number of parallel build jobs (default: all available cores) |
-| `--build-type <type>` | `Debug` (default), `Release`, `RelWithDebInfo` or `MinSizeRel` |
-
-Example — a clean `Release` build of the service manager and IAM only:
+It is also possible to customize the build using different cmake options:
 
 ```console
-./build.sh build --clean --aos-service sm,iam --build-type Release
-```
-
-## Custom build with individual CMake options
-
-If you need options that `build.sh` does not expose, run Conan and CMake manually. From the repository root:
-
-```console
-mkdir -p build
-cd build
+cd build/
 conan install ../conan/ --output-folder . --settings=build_type=Debug --build=missing
 cmake .. -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake -DWITH_TEST=ON -DCMAKE_BUILD_TYPE=Debug
-cmake --build . --parallel
 ```
 
-`conan install` generates `conan_toolchain.cmake` and provides the external dependencies; the `cmake` configure step
-must therefore be run with that toolchain file.
-
-CMake options:
+Cmake options:
 
 | Option | Value | Default | Description |
 | --- | --- | --- | --- |
-| `AOS_CORE_DIR` | `path/to/core` | `core` | directory for the fetched `aos_core_lib_cpp` and `aos_core_api` |
+| `AOS_EXTERNAL_DIR` | `path/to/core to` | `build/core` | Aos core lib and API directory path |
 | `WITH_CM` | `ON`, `OFF` | `ON` | build AosCore communication manager (CM) |
 | `WITH_IAM` | `ON`, `OFF` | `ON` | build AosCore identity and access manager (IAM) |
 | `WITH_MP` | `ON`, `OFF` | `ON` | build AosCore message proxy (MP) |
 | `WITH_SM` | `ON`, `OFF` | `ON` | build AosCore service manager (SM) |
-| `WITH_VCHAN` | `ON`, `OFF` | `ON` | use Xen vchan as communication transport for MP (needs Xen libs) |
-| `WITH_TEST` | `ON`, `OFF` | `OFF` | creates unit tests target (requires `softhsm2`) |
-| `WITH_COVERAGE` | `ON`, `OFF` | `OFF` | creates coverage calculation target (requires `lcov`) |
-| `WITH_DOC` | `ON`, `OFF` | `OFF` | creates documentation target (requires `doxygen`) |
+| `WITH_VCHAN` | `ON`, `OFF` | `ON` | use Xen vchan as communication transport for MP |
+| `WITH_TEST` | `ON`, `OFF` | `OFF` | creates unit tests target |
+| `WITH_COVERAGE` | `ON`, `OFF` | `OFF` | creates coverage calculation target |
+| `WITH_DOC` | `ON`, `OFF` | `OFF` | creates documentation target |
 
-`AOS_CORE_DIR` is relative to the build directory unless an absolute path is given. `WITH_VCHAN=ON` requires the Xen
-vchan development libraries; `build.sh` disables it (`WITH_VCHAN=OFF`) for a host build.
-
-CMake variables:
+Cmake variables:
 
 | Variable | Description |
 | --- | --- |
@@ -174,8 +87,7 @@ Build and run:
 
 ## Check coverage
 
-`lcov` utility shall be installed on your host to run this target. See
-[Prepare build environment](#prepare-build-environment).
+`lcov` utility shall be installed on your host to run this target. See [this chapter](#prepare-build-environment).
 
 Build and run:
 
