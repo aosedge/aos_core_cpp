@@ -1,7 +1,21 @@
 <!-- markdownlint-disable-next-line MD041 -->
-[![ci](https://github.com/aosedge/aos_core_cpp/actions/workflows/build_test.yaml/badge.svg)](https://github.com/aosedge/aos_core_cpp/actions/workflows/build_test.yaml)
-[![codecov](https://codecov.io/gh/aosedge/aos_core_cpp/graph/badge.svg?token=MknkthRkpf)](https://codecov.io/gh/aosedge/aos_core_cpp)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp)
+| Branch | CI | Coverage | Quality Gate |
+|--------|----|----------|--------------|
+| main | [![ci][ci-main]][ci-main-link] | [![coverage][cov-main]][cov-main-link] | [![Quality Gate][qg-main]][qg-main-link] |
+| develop | [![ci][ci-dev]][ci-dev-link] | [![coverage][cov-dev]][cov-dev-link] | [![Quality Gate][qg-dev]][qg-dev-link] |
+
+[ci-main]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml/badge.svg?branch=main
+[ci-main-link]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml?query=branch%3Amain
+[cov-main]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=coverage&branch=main
+[cov-main-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=main
+[qg-main]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status&branch=main
+[qg-main-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=main
+[ci-dev]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml/badge.svg?branch=develop
+[ci-dev-link]: https://github.com/aosedge/aos_core_cpp/actions/workflows/build-test.yaml?query=branch%3Adevelop
+[cov-dev]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=coverage&branch=develop
+[cov-dev-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=develop
+[qg-dev]: https://sonarcloud.io/api/project_badges/measure?project=aosedge_aos_core_cpp&metric=alert_status&branch=develop
+[qg-dev-link]: https://sonarcloud.io/summary/new_code?id=aosedge_aos_core_cpp&branch=develop
 
 # AosCore C++ implementation
 
