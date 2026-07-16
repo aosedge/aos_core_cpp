@@ -180,6 +180,78 @@ TEST_F(ContainerRunnerTest, RestartOnContainerFailure)
     mRunner.Stop();
 }
 
+TEST_F(ContainerRunnerTest, StopInstanceWaitsForInFlightRestart)
+{
+    // Regression test: StopInstance must block while a restart for the same instance is in flight
+    // (so the container isn't resurrected right after being stopped), but must NOT deadlock once
+    // the restart settles.
+    RunParameters params = {{500 * Time::cMilliseconds}, {0}, {0}};
+
+    Error           err          = ErrorEnum::eNone;
+    ContainerStatus activeStatus = {"service0", InstanceStateEnum::eActive, {}};
+    ContainerStatus failedStatus = {"service0", InstanceStateEnum::eFailed, {}};
+
+    // Exactly 2 StartContainer calls are expected: the initial start and the one restart.
+    // If StopInstance let a second restart race in after being asked to stop, this would be
+    // called a 3rd time and the strict mock would fail the test.
+    EXPECT_CALL(mContainerRunnerMock, StartContainer("service0")).Times(2).WillRepeatedly(Return(err));
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(activeStatus, err)));
+
+    std::vector<ContainerStatus> activeStatuses = {activeStatus};
+    std::vector<ContainerStatus> failedStatuses = {failedStatus};
+    EXPECT_CALL(mContainerRunnerMock, ListContainers())
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(activeStatuses, err)))
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(failedStatuses, err)))
+        .WillRepeatedly(Return(RetWithError<std::vector<ContainerStatus>>(activeStatuses, err)));
+
+    std::promise<void>       removeStartedPromise;
+    std::promise<void>       proceedPromise;
+    std::shared_future<void> proceedFuture = proceedPromise.get_future().share();
+
+    // RemoveContainer: 1st call is the monitor's restart (held open to force the race window),
+    // 2nd call is StopInstance's own cleanup.
+    EXPECT_CALL(mContainerRunnerMock, RemoveContainer("service0"))
+        .WillOnce(InvokeWithoutArgs([&removeStartedPromise, proceedFuture, err]() -> Error {
+            removeStartedPromise.set_value();
+            proceedFuture.wait();
+
+            return err;
+        }))
+        .WillOnce(Return(err));
+
+    EXPECT_CALL(mContainerRunnerMock, StopContainer("service0")).WillOnce(Return(err));
+
+    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(_)).WillRepeatedly(Return(Error()));
+
+    mRunner.Start();
+
+    EXPECT_EQ(mRunner.StartInstance("service0", params).mState, InstanceStateEnum::eActive);
+
+    // Wait until the monitor thread is blocked inside the in-flight restart.
+    ASSERT_EQ(removeStartedPromise.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    std::promise<Error> stopResultPromise;
+    std::thread         stopThread([&]() { stopResultPromise.set_value(mRunner.StopInstance("service0")); });
+
+    auto stopFuture = stopResultPromise.get_future();
+
+    // StopInstance must not complete while the restart is still in flight.
+    EXPECT_EQ(stopFuture.wait_for(std::chrono::milliseconds(300)), std::future_status::timeout);
+
+    // Let the in-flight restart finish.
+    proceedPromise.set_value();
+
+    // StopInstance must complete promptly afterwards, not deadlock.
+    ASSERT_EQ(stopFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    EXPECT_TRUE(stopFuture.get().IsNone());
+
+    stopThread.join();
+
+    mRunner.Stop();
+}
+
 TEST_F(ContainerRunnerTest, RestartBurstLimitExceeded)
 {
     RunParameters params = {{10 * Time::cSeconds}, {1 * Time::cSeconds}, {1}};

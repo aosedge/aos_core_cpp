@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -73,10 +74,11 @@ private:
     static constexpr auto cStatusPollPeriod       = std::chrono::seconds(1);
 
     bool                        SyncStates();
-    std::vector<std::string>    GetInstancesToRestart();
+    void                        SetInstancesToRestart();
     void                        MonitorContainers();
     std::vector<RunStatus>&     GetRunningInstances() const;
     RetWithError<InstanceState> InitContainerState(const std::string& instanceID, const RunParameters& params);
+    void                        RestartInstances();
 
     struct RunningUnitData {
         InstanceState       mRunState;
@@ -94,6 +96,7 @@ private:
     std::condition_variable mCondVar;
 
     std::unordered_map<std::string, RunningUnitData> mRunningContainers;
+    std::set<std::string>                            mInstancesToRestart;
     mutable std::vector<RunStatus>                   mRunningInstances;
 
     bool mClosed = false;
