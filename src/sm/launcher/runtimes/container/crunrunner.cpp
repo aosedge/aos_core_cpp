@@ -37,7 +37,7 @@ Error ReleaseLibcrunError(libcrun_error_t& err)
     const char* msg = (err && err->msg) ? err->msg : "unknown error";
 
     if (err) {
-        return Error(err->status == ENOENT ? ErrorEnum::eNotFound : ErrorEnum::eFailed, msg);
+        return Error((err->status == ENOENT || err->status == ESRCH) ? ErrorEnum::eNotFound : ErrorEnum::eFailed, msg);
     }
 
     return Error(ErrorEnum::eFailed, msg);
