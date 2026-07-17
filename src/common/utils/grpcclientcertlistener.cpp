@@ -24,7 +24,7 @@ void GRPCClientCertListener::OnCertChanged([[maybe_unused]] const CertInfo& info
 
 void GRPCClientCertListener::StopReconnectTimer()
 {
-    if (auto err = mReconnectTimer.Stop(Timer::StopMode::NoWait); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
         LOG_ERR() << "Failed to stop reconnect timer" << Log::Field("client", mClientName.c_str()) << Log::Field(err);
     }
 }

@@ -541,7 +541,7 @@ Error SMController::RestartServer()
 
 void SMController::ScheduleRestart()
 {
-    if (auto err = mReconnectTimer.Stop(Timer::StopMode::NoWait); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
         LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
     }
 
@@ -563,8 +563,7 @@ void SMController::OnRestartTimer()
 
     LOG_INF() << "SM controller restarted successfully";
 
-    if (auto stopErr = mReconnectTimer.Stop(Timer::StopMode::NoWait);
-        !stopErr.IsNone() && !stopErr.Is(ErrorEnum::eWrongState)) {
+    if (auto stopErr = mReconnectTimer.Stop(); !stopErr.IsNone() && !stopErr.Is(ErrorEnum::eWrongState)) {
         LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(stopErr);
     }
 }
