@@ -163,10 +163,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
                 instance->GetStatus(status);
 
                 if (status.mState == InstanceStateEnum::eActive) {
-                    LOG_DBG() << "Instance is already running"
-                              << Log::Field("instance", static_cast<const InstanceIdent&>(instanceInfo));
-
-                    return ErrorEnum::eNone;
+                    return ErrorEnum::eAlreadyExist;
                 }
             }
         }
@@ -220,9 +217,7 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
 
             auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceIdent));
             if (it == mCurrentInstances.end()) {
-                LOG_DBG() << "Instance is not running" << Log::Field("instance", instanceIdent);
-
-                return ErrorEnum::eNone;
+                return ErrorEnum::eNotFound;
             }
 
             instance = it->second;
