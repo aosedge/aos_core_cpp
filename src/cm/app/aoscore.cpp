@@ -101,7 +101,8 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize unit config");
 
     err = mLauncher.Init(mConfig.mLauncher, mNodeInfoProvider, mSMController, mImageManager, mOCISpec, mUnitConfig,
-        mStorageState, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid, mDatabase);
+        mStorageState, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid, mDatabase,
+        mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     err = mUpdateManager.Init({mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig, mNodeInfoProvider,
