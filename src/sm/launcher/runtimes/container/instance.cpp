@@ -198,6 +198,7 @@ void Instance::GetStatus(InstanceStatus& status) const
     status.mManifestDigest              = mInstanceInfo.mManifestDigest;
     status.mState                       = mRunStatus.mState;
     status.mError                       = mRunStatus.mError;
+    status.mEnvVarsStatuses             = mEnvVarsStatuses;
 }
 
 bool Instance::UpdateRunStatus(const RunStatus& runStatus)
@@ -630,14 +631,26 @@ Error Instance::OverrideEnvVars(oci::RuntimeConfig& runtimeConfig)
     auto                     envVars = std::make_unique<StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>>();
     StaticString<cEnvVarLen> envVar;
 
+    mEnvVarsStatuses.Clear();
+
     for (const auto& overrideEnvVar : mInstanceInfo.mEnvVars) {
-        if (auto err = envVar.Format("%s=%s", overrideEnvVar.mName.CStr(), overrideEnvVar.mValue.CStr());
-            !err.IsNone()) {
+        Error varErr = envVar.Format("%s=%s", overrideEnvVar.mName.CStr(), overrideEnvVar.mValue.CStr());
+
+        if (varErr.IsNone()) {
+            varErr = envVars->PushBack(envVar);
+        }
+
+        if (auto err = mEnvVarsStatuses.EmplaceBack(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = envVars->PushBack(envVar); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
+        auto& envVarStatus = mEnvVarsStatuses.Back();
+
+        envVarStatus.mName  = overrideEnvVar.mName;
+        envVarStatus.mError = varErr;
+
+        if (!varErr.IsNone()) {
+            return AOS_ERROR_WRAP(varErr);
         }
     }
 

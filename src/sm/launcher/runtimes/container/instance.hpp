@@ -171,9 +171,10 @@ private:
     Error WriteHosts(const std::string& path, const Array<Host>& hosts) const;
     Error StartMonitoring();
 
-    InstanceInfo mInstanceInfo;
-    std::string  mInstanceID;
-    RunStatus    mRunStatus;
+    InstanceInfo      mInstanceInfo;
+    std::string       mInstanceID;
+    RunStatus         mRunStatus;
+    EnvVarStatusArray mEnvVarsStatuses;
 
     const ContainerConfig&                    mConfig;
     const NodeInfo&                           mNodeInfo;
