@@ -38,11 +38,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
           fetch-depth: 0
+          allow-unsafe-pr-checkout: true
 
       - name: Install SonarQube build wrapper
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v7
