@@ -38,6 +38,14 @@ public:
     Error StartContainer(const std::string& instanceID) override;
 
     /**
+     * Starts managing an already running container without starting it.
+     *
+     * @param instanceID instance ID.
+     * @return Error.
+     */
+    Error AddContainer(const std::string& instanceID) override;
+
+    /**
      * Returns the status of a container.
      *
      * @param instanceID instance ID.

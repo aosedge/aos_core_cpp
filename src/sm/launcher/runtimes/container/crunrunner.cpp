@@ -85,6 +85,17 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
     return ErrorEnum::eNone;
 }
 
+Error CRunRunner::AddContainer(const std::string& instanceID)
+{
+    LOG_DBG() << "Add crun container" << Log::Field("instanceID", instanceID.c_str());
+
+    std::lock_guard lock {mMutex};
+
+    mManagedInstances.insert(instanceID);
+
+    return ErrorEnum::eNone;
+}
+
 RetWithError<ContainerStatus> CRunRunner::GetContainerStatus(const std::string& instanceID)
 {
     LOG_DBG() << "Get crun container status" << Log::Field("instanceID", instanceID.c_str());

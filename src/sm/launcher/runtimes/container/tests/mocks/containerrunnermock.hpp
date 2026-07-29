@@ -16,6 +16,7 @@ namespace aos::sm::launcher {
 class ContainerRunnerMock : public ContainerRunnerItf {
 public:
     MOCK_METHOD(Error, StartContainer, (const std::string&), (override));
+    MOCK_METHOD(Error, AddContainer, (const std::string&), (override));
     MOCK_METHOD(RetWithError<ContainerStatus>, GetContainerStatus, (const std::string&), (override));
     MOCK_METHOD((RetWithError<std::vector<ContainerStatus>>), ListContainers, (), (override));
     MOCK_METHOD(Error, StopContainer, (const std::string&), (override));
