@@ -110,10 +110,6 @@ Error ContainerRuntime::Start()
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = StopActiveInstances(); !err.IsNone()) {
-            LOG_ERR() << "Failed to stop active instances" << Log::Field(err);
-        }
-
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -142,6 +138,83 @@ Error ContainerRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     LOG_DBG() << "Get runtime info";
 
     runtimeInfo = mRuntimeInfo;
+
+    return ErrorEnum::eNone;
+}
+
+Error ContainerRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
+{
+    LOG_DBG() << "Init instances" << Log::Field("numInstances", instancesInfo.Size());
+
+    auto [instanceIDs, err] = mFileSystem->ListDir(mConfig.mRuntimeDir);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& instanceID : instanceIDs) {
+        const InstanceInfo* instanceInfo = nullptr;
+
+        for (const auto& info : instancesInfo) {
+            StaticString<cIDLen> initInstanceID;
+
+            if (err = mInstanceIDProvider->GetInstanceID(info, initInstanceID); !err.IsNone()) {
+                LOG_ERR() << "Failed to get instance ID" << Log::Field(err);
+
+                continue;
+            }
+
+            if (initInstanceID.CStr() == instanceID) {
+                instanceInfo = &info;
+
+                break;
+            }
+        }
+
+        if (instanceInfo) {
+            if (auto runStatus = mRunner->GetInstanceStatus(instanceID);
+                runStatus.mState == InstanceStateEnum::eActive) {
+                if (err = InitInstance(instanceID, *instanceInfo); !err.IsNone()) {
+                    LOG_ERR() << "Failed to init instance" << Log::Field("instanceID", instanceID.c_str())
+                              << Log::Field(err);
+                } else {
+                    continue;
+                }
+            }
+        }
+
+        if (!instanceInfo) {
+            LOG_WRN() << "Stop not managed instance" << Log::Field("instanceID", instanceID.c_str());
+        } else {
+            LOG_WRN() << "Stop not active instance" << Log::Field("instanceID", instanceID.c_str());
+        }
+
+        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
+            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+            *mInstanceIDProvider);
+
+        if (auto stopErr = instance->Stop(); !stopErr.IsNone()) {
+            LOG_ERR() << "Failed to stop instance" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field(stopErr);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ContainerRuntime::InitInstance(const std::string& instanceID, const InstanceInfo& instanceInfo)
+{
+    LOG_DBG() << "Init instance" << Log::Field("instanceID", instanceID.c_str());
+
+    auto instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
+        *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec, *mInstanceIDProvider);
+
+    if (auto err = instance->Activate(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    std::lock_guard lock {mMutex};
+
+    mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
 
     return ErrorEnum::eNone;
 }
@@ -356,31 +429,6 @@ Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
     if (!instancesStatuses.empty()) {
         mInstanceStatusReceiver->OnInstancesStatusesReceived(
             Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ContainerRuntime::StopActiveInstances()
-{
-    auto [activeInstances, err] = mFileSystem->ListDir(mConfig.mRuntimeDir);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    for (const auto& instanceID : activeInstances) {
-        LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
-
-        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
-            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
-            *mInstanceIDProvider);
-
-        if (err = instance->Stop(); !err.IsNone()) {
-            LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())
-                      << Log::Field(err);
-        }
-
-        LOG_DBG() << "Active instance stopped" << Log::Field("instanceID", instanceID.c_str());
     }
 
     return ErrorEnum::eNone;

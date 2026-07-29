@@ -77,6 +77,18 @@ public:
     Error GetRuntimeInfo(RuntimeInfo& runtimeInfo) const override;
 
     /**
+     * Initializes instances.
+     *
+     * Launcher provides list of known instances to runtime at startup. Runtime should stop all instances that are not
+     * in the list and properly initialize already running instances. Runtime should not start any instance at this
+     * stage, it should only prepare them for future start.
+     *
+     * @param instancesInfo instances info.
+     * @return Error.
+     */
+    Error InitInstances(const Array<InstanceInfo>& instancesInfo) override;
+
+    /**
      * Start instance.
      *
      * @param instanceInfo instance to start.
@@ -129,7 +141,7 @@ private:
     Error UpdateRunStatus(const std::vector<RunStatus>& instances) override;
 
     Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
-    Error StopActiveInstances();
+    Error InitInstance(const std::string& instanceID, const InstanceInfo& instanceInfo);
     void  SendInstanceStatus(const InstanceStatus& status);
 
     std::shared_ptr<RunnerItf>          mRunner;
