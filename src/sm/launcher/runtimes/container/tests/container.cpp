@@ -244,12 +244,6 @@ protected:
             mInstanceIDProviderMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
 
-        EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
-            std::vector<std::string> instances;
-
-            return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
-        }));
-
         err = mRuntime.Start();
         ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
     }
@@ -277,20 +271,111 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ContainerRuntimeTest, StopActiveInstances)
+TEST_F(ContainerRuntimeTest, InitInstances)
 {
-    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
-        std::vector<std::string> instances = {"instance1", "instance2", "instance3"};
+    InstanceInfo activeInstance;
+
+    activeInstance.mItemID    = "item0";
+    activeInstance.mSubjectID = "subject0";
+    activeInstance.mInstance  = 0;
+
+    InstanceInfo inactiveInstance;
+
+    inactiveInstance.mItemID    = "item1";
+    inactiveInstance.mSubjectID = "subject1";
+    inactiveInstance.mInstance  = 1;
+
+    auto activeID   = CreateInstanceID(static_cast<const InstanceIdent&>(activeInstance));
+    auto inactiveID = CreateInstanceID(static_cast<const InstanceIdent&>(inactiveInstance));
+    auto unknownID  = std::string("unknown-instance");
+
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([&](const std::string&) {
+        std::vector<std::string> instances = {activeID, inactiveID, unknownID};
 
         return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
     }));
 
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance1")).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance2")).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance3")).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(activeID))
+        .WillOnce(Return(RunStatus {activeID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
+    EXPECT_CALL(*mRuntime.mRunner, WatchInstance(activeID, _))
+        .WillOnce(Return(RunStatus {activeID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
 
-    auto err = mRuntime.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
+    // activeInstance is in the init list and active, so it must be kept running, not stopped.
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(activeID)).Times(0);
+
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(inactiveID))
+        .WillOnce(Return(RunStatus {inactiveID, InstanceStateEnum::eInactive, ErrorEnum::eNone}));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(inactiveID)).WillOnce(Return(ErrorEnum::eNone));
+
+    // unknownID is not present in the init list, so it must be stopped without querying its state.
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(unknownID)).Times(0);
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(unknownID)).WillOnce(Return(ErrorEnum::eNone));
+
+    InstanceInfo instancesInfoArray[] = {activeInstance, inactiveInstance};
+
+    Array<InstanceInfo> instancesInfo(instancesInfoArray, 2);
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    ASSERT_TRUE(err.IsNone()) << "Failed to init instances: " << tests::utils::ErrorToStr(err);
+
+    // activeInstance must be registered as a current instance after init.
+
+    std::vector<std::string> instanceIDs;
+
+    err = mRuntime.GetInstanceIDs(LogFilter(), instanceIDs);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance IDs: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_THAT(instanceIDs, ElementsAre(activeID));
+}
+
+TEST_F(ContainerRuntimeTest, InitInstancesListDirError)
+{
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_))
+        .WillOnce(Return(RetWithError<std::vector<std::string>> {{}, ErrorEnum::eFailed}));
+
+    Array<InstanceInfo> instancesInfo;
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Unexpected error: " << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(ContainerRuntimeTest, InitInstancesActivateFailure)
+{
+    InstanceInfo failingInstance;
+
+    failingInstance.mItemID    = "item0";
+    failingInstance.mSubjectID = "subject0";
+    failingInstance.mInstance  = 0;
+
+    auto failingID = CreateInstanceID(static_cast<const InstanceIdent&>(failingInstance));
+
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([&](const std::string&) {
+        std::vector<std::string> instances = {failingID};
+
+        return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
+    }));
+
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(failingID))
+        .WillOnce(Return(RunStatus {failingID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
+
+    // Activation fails, so the instance must be stopped instead of kept and registered.
+    EXPECT_CALL(*mRuntime.mRunner, WatchInstance(failingID, _))
+        .WillOnce(Return(RunStatus {failingID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(failingID)).WillOnce(Return(ErrorEnum::eNone));
+
+    InstanceInfo instancesInfoArray[] = {failingInstance};
+
+    Array<InstanceInfo> instancesInfo(instancesInfoArray, 1);
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    ASSERT_TRUE(err.IsNone()) << "Failed to init instances: " << tests::utils::ErrorToStr(err);
+
+    std::vector<std::string> instanceIDs;
+
+    err = mRuntime.GetInstanceIDs(LogFilter(), instanceIDs);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance IDs: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_THAT(instanceIDs, IsEmpty());
 }
 
 TEST_F(ContainerRuntimeTest, StartInstance)
@@ -994,6 +1079,8 @@ TEST_F(ContainerRuntimeTest, GetInstanceMonitoringData)
     EXPECT_CALL(*mRuntime.mFileSystem, GetAbsPath(_)).WillRepeatedly(Invoke([](const std::string& path) {
         return RetWithError<std::string> {path};
     }));
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
     EXPECT_CALL(
         *mRuntime.mMonitoring, StartInstanceMonitoring(instanceID, instance.mUID, CreatePartitionsInfos(instance)))
         .WillOnce(Return(ErrorEnum::eNone));
