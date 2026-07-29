@@ -83,6 +83,13 @@ public:
     Error Start();
 
     /**
+     * Starts monitoring an already running instance.
+     *
+     * @return Error
+     */
+    Error Activate();
+
+    /**
      * Stops instance.
      *
      * @return Error
@@ -170,6 +177,7 @@ private:
     Error WriteResolvConf(const std::string& path, const Array<StaticString<cIPLen>>& dnsServers) const;
     Error WriteHosts(const std::string& path, const Array<Host>& hosts) const;
     Error StartMonitoring();
+    Error PrepareRuntimeDir(const oci::ImageConfig& imageConfig, const oci::ItemConfig& itemConfig);
 
     InstanceInfo      mInstanceInfo;
     std::string       mInstanceID;

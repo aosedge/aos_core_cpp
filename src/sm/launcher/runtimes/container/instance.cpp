@@ -96,34 +96,22 @@ Error Instance::Start()
         }
     });
 
-    auto runtimeDir = common::utils::JoinPath(mConfig.mRuntimeDir, mInstanceID);
-
-    if (err = mFileSystem.ClearDir(runtimeDir); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    auto imageConfig   = std::make_unique<oci::ImageConfig>();
-    auto itemConfig    = std::make_unique<oci::ItemConfig>();
-    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+    auto imageConfig = std::make_unique<oci::ImageConfig>();
+    auto itemConfig  = std::make_unique<oci::ItemConfig>();
 
     if (err = LoadConfigs(*imageConfig, *itemConfig); !err.IsNone()) {
         return err;
     }
 
-    if (err = CreateRuntimeConfig(runtimeDir, *imageConfig, *itemConfig, *runtimeConfig); !err.IsNone()) {
+    if (err = PrepareRuntimeDir(*imageConfig, *itemConfig); !err.IsNone()) {
         return err;
     }
 
-    if (err = PrepareStateStorage(); !err.IsNone()) {
-        return err;
-    }
+    mRunStatus = mRunner.StartInstance(mInstanceID, itemConfig->mRunParameters);
+    err        = mRunStatus.mError;
 
-    if (err = PrepareRootFS(runtimeDir, *imageConfig, *runtimeConfig); !err.IsNone()) {
-        return err;
-    }
-
-    if (err = PrepareNetwork(runtimeDir); !err.IsNone()) {
-        return err;
+    if (mRunStatus.mState != InstanceStateEnum::eActive) {
+        return AOS_ERROR_WRAP(err);
     }
 
     if (mInstanceInfo.mMonitoringParams.HasValue()) {
@@ -132,11 +120,40 @@ Error Instance::Start()
         }
     }
 
-    mRunStatus = mRunner.StartInstance(mInstanceID, itemConfig->mRunParameters);
+    return ErrorEnum::eNone;
+}
+
+Error Instance::Activate()
+{
+    std::lock_guard lock {mMutex};
+
+    Error err;
+
+    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
+        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+            mRunStatus.mState = InstanceStateEnum::eFailed;
+            mRunStatus.mError = *err;
+        }
+    });
+
+    auto imageConfig = std::make_unique<oci::ImageConfig>();
+    auto itemConfig  = std::make_unique<oci::ItemConfig>();
+
+    if (err = LoadConfigs(*imageConfig, *itemConfig); !err.IsNone()) {
+        return err;
+    }
+
+    mRunStatus = mRunner.WatchInstance(mInstanceID, itemConfig->mRunParameters);
     err        = mRunStatus.mError;
 
     if (mRunStatus.mState != InstanceStateEnum::eActive) {
         return AOS_ERROR_WRAP(err);
+    }
+
+    if (mInstanceInfo.mMonitoringParams.HasValue()) {
+        if (err = StartMonitoring(); !err.IsNone()) {
+            return err;
+        }
     }
 
     return ErrorEnum::eNone;
@@ -154,6 +171,12 @@ Error Instance::Stop()
         mRunStatus.mError      = *err;
     });
 
+    if (mInstanceInfo.mMonitoringParams.HasValue()) {
+        if (auto err = mMonitoring.StopInstanceMonitoring(mInstanceID); !err.IsNone() && stopErr.IsNone()) {
+            stopErr = AOS_ERROR_WRAP(err);
+        }
+    }
+
     auto runtimeDir = common::utils::JoinPath(mConfig.mRuntimeDir, mInstanceID);
 
     if (auto err = mRunner.StopInstance(mInstanceID); !err.IsNone() && stopErr.IsNone()) {
@@ -166,12 +189,6 @@ Error Instance::Stop()
         }
 
         mPermissionsRegistered = false;
-    }
-
-    if (mInstanceInfo.mMonitoringParams.HasValue()) {
-        if (auto err = mMonitoring.StopInstanceMonitoring(mInstanceID); !err.IsNone() && stopErr.IsNone()) {
-            stopErr = AOS_ERROR_WRAP(err);
-        }
     }
 
     auto rootfsPath = common::utils::JoinPath(runtimeDir, cRootFSDir);
@@ -788,6 +805,35 @@ Error Instance::WriteHosts(const std::string& path, const Array<Host>& hosts) co
 
     if (auto err = mFileSystem.WriteFile(path, content.str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::PrepareRuntimeDir(const oci::ImageConfig& imageConfig, const oci::ItemConfig& itemConfig)
+{
+    auto runtimeDir = common::utils::JoinPath(mConfig.mRuntimeDir, mInstanceID);
+
+    if (auto err = mFileSystem.ClearDir(runtimeDir); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
+
+    if (auto err = CreateRuntimeConfig(runtimeDir, imageConfig, itemConfig, *runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = PrepareStateStorage(); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = PrepareRootFS(runtimeDir, imageConfig, *runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = PrepareNetwork(runtimeDir); !err.IsNone()) {
+        return err;
     }
 
     return ErrorEnum::eNone;
