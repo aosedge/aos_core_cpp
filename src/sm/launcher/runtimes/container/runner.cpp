@@ -206,7 +206,7 @@ void Runner::SetInstancesToRestart()
 
             if (const auto burst = runningState.mParams.mStartBurst.GetValue();
                 burst > 0 && runningState.mRestartCount >= burst) {
-                LOG_WRN() << "Restart burst limit exceeded, stopping restart attempts"
+                LOG_ERR() << "Restart burst limit exceeded, stopping restart attempts"
                           << Log::Field("instanceID", instanceID.c_str());
 
                 runningState.mExceedsBurstLimit = true;
