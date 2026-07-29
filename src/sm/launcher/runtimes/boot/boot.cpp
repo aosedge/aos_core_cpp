@@ -130,6 +130,13 @@ Error BootRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     return ErrorEnum::eNone;
 }
 
+Error BootRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
+{
+    (void)instancesInfo;
+
+    return ErrorEnum::eNone;
+}
+
 Error BootRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& status)
 {
     std::lock_guard lock {mMutex};

@@ -114,6 +114,13 @@ Error RootfsRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     return ErrorEnum::eNone;
 }
 
+Error RootfsRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
+{
+    (void)instancesInfo;
+
+    return ErrorEnum::eNone;
+}
+
 Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& status)
 {
     std::lock_guard lock {mMutex};
