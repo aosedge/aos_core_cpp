@@ -37,6 +37,14 @@ public:
     Error Init(RunStatusReceiverItf& receiver, ContainerRunnerItf& containerRunner) override;
 
     /**
+     * Returns instance status.
+     *
+     * @param instanceID instance ID.
+     * @return RunStatus.
+     */
+    RunStatus GetInstanceStatus(const std::string& instanceID) override;
+
+    /**
      * Starts monitoring thread.
      *
      * @return Error.
@@ -60,6 +68,15 @@ public:
     RunStatus StartInstance(const std::string& instanceID, const RunParameters& params) override;
 
     /**
+     * Starts watching an already running instance.
+     *
+     * @param instanceID instance ID.
+     * @param params runtime parameters.
+     * @return RunStatus.
+     */
+    RunStatus WatchInstance(const std::string& instanceID, const RunParameters& params) override;
+
+    /**
      * Stops service instance.
      *
      * @param instanceID instance ID.
@@ -79,6 +96,7 @@ private:
     std::vector<RunStatus>&     GetRunningInstances() const;
     RetWithError<InstanceState> InitContainerState(const std::string& instanceID, const RunParameters& params);
     void                        RestartInstances();
+    RunParameters               GetFixedParams(const RunParameters& params) const;
 
     struct RunningUnitData {
         InstanceState       mRunState;

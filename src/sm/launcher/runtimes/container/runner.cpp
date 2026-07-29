@@ -61,6 +61,18 @@ Error Runner::Stop()
     return ErrorEnum::eNone;
 }
 
+RunStatus Runner::GetInstanceStatus(const std::string& instanceID)
+{
+    LOG_DBG() << "Get instance status" << Log::Field("instanceID", instanceID.c_str());
+
+    auto [status, err] = mContainerRunner->GetContainerStatus(instanceID);
+    if (!err.IsNone()) {
+        return {instanceID, InstanceStateEnum::eFailed, err};
+    }
+
+    return {instanceID, status.mState, ErrorEnum::eNone};
+}
+
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
 {
     RunStatus status = {};
@@ -68,19 +80,7 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
     status.mInstanceID = instanceID;
     status.mState      = InstanceStateEnum::eFailed;
 
-    RunParameters fixedParams = params;
-
-    if (!params.mStartInterval.HasValue()) {
-        fixedParams.mStartInterval = cDefaultStartInterval;
-    }
-
-    if (!params.mStartBurst.HasValue()) {
-        fixedParams.mStartBurst = cDefaultStartBurst;
-    }
-
-    if (!params.mRestartInterval.HasValue()) {
-        fixedParams.mRestartInterval = cDefaultRestartInterval;
-    }
+    auto fixedParams = GetFixedParams(params);
 
     LOG_DBG() << "Start service instance" << Log::Field("instanceID", instanceID.c_str())
               << Log::Field("startInterval", fixedParams.mStartInterval)
@@ -94,7 +94,33 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
     // Get unit status.
     Tie(status.mState, status.mError) = InitContainerState(instanceID, fixedParams);
 
-    LOG_DBG() << "Start instance" << Log::Field("instanceID", instanceID.c_str()) << Log::Field("state", status.mState)
+    LOG_DBG() << "Start service instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("state", status.mState) << Log::Field("error", status.mError);
+
+    return status;
+}
+
+RunStatus Runner::WatchInstance(const std::string& instanceID, const RunParameters& params)
+{
+    RunStatus status = {};
+
+    status.mInstanceID = instanceID;
+    status.mState      = InstanceStateEnum::eFailed;
+
+    auto fixedParams = GetFixedParams(params);
+
+    LOG_DBG() << "Watch service instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("startInterval", fixedParams.mStartInterval)
+              << Log::Field("startBurst", fixedParams.mStartBurst)
+              << Log::Field("restartInterval", fixedParams.mRestartInterval);
+
+    if (status.mError = mContainerRunner->AddContainer(instanceID); !status.mError.IsNone()) {
+        return status;
+    }
+
+    Tie(status.mState, status.mError) = InitContainerState(instanceID, fixedParams);
+
+    LOG_DBG() << "Watch instance" << Log::Field("instanceID", instanceID.c_str()) << Log::Field("state", status.mState)
               << Log::Field("error", status.mError);
 
     return status;
@@ -260,6 +286,25 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
         });
 
     return mRunningInstances;
+}
+
+RunParameters Runner::GetFixedParams(const RunParameters& params) const
+{
+    RunParameters fixedParams = params;
+
+    if (!params.mStartInterval.HasValue()) {
+        fixedParams.mStartInterval = cDefaultStartInterval;
+    }
+
+    if (!params.mStartBurst.HasValue()) {
+        fixedParams.mStartBurst = cDefaultStartBurst;
+    }
+
+    if (!params.mRestartInterval.HasValue()) {
+        fixedParams.mRestartInterval = cDefaultRestartInterval;
+    }
+
+    return fixedParams;
 }
 
 RetWithError<InstanceState> Runner::InitContainerState(const std::string& instanceID, const RunParameters& params)
