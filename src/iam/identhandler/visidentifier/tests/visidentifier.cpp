@@ -10,6 +10,7 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/heapallocator.hpp>
 
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
@@ -54,6 +55,8 @@ protected:
     const std::string                       cTestSubscriptionId {"1234-4321"};
     const config::VISIdentifierModuleParams cVISConfig {"vis-service", "ca-path", 1};
 
+    HeapAllocator mAllocator;
+
     WSClientEvent                                  mWSClientEvent;
     iamclient::SubjectsListenerMock                mVISSubjectsListenerMock;
     std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
@@ -78,7 +81,7 @@ protected:
         mVisIdentifier.SubscribeListener(mVISSubjectsListenerMock);
 
         mCryptoProvider = std::make_unique<crypto::DefaultCryptoProvider>();
-        ASSERT_TRUE(mCryptoProvider->Init().IsNone()) << "Failed to initialize crypto provider";
+        ASSERT_TRUE(mCryptoProvider->Init(mAllocator).IsNone()) << "Failed to initialize crypto provider";
     }
 
     void ExpectStopSucceeded()

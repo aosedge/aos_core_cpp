@@ -13,6 +13,7 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/spaceallocator/spaceallocator.hpp>
+#include <core/common/tools/heapallocator.hpp>
 #include <core/sm/imagemanager/imagemanager.hpp>
 #include <core/sm/launcher/launcher.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
@@ -84,6 +85,8 @@ public:
     void SetLogLevel(aos::LogLevel level);
 
 private:
+    aos::HeapAllocator mAllocator;
+
     config::Config mConfig = {};
 
     aos::crypto::CertLoader                                     mCertLoader;

@@ -12,6 +12,7 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/heapallocator.hpp>
 
 #include <iam/identhandler/visidentifier/pocowsclient.hpp>
 #include <iam/identhandler/visidentifier/visidentifier.hpp>
@@ -61,7 +62,7 @@ protected:
     void SetUp() override
     {
         mCryptoProvider = std::make_unique<crypto::DefaultCryptoProvider>();
-        ASSERT_TRUE(mCryptoProvider->Init().IsNone()) << "Failed to initialize crypto provider";
+        ASSERT_TRUE(mCryptoProvider->Init(mAllocator).IsNone()) << "Failed to initialize crypto provider";
 
         ASSERT_NO_THROW(mWsClientPtr
             = std::make_shared<PocoWSClient>(cConfig, *mCryptoProvider, WSClientItf::MessageHandlerFunc()));
@@ -85,6 +86,8 @@ protected:
 
         Poco::Net::uninitializeSSL();
     }
+
+    HeapAllocator mAllocator;
 
     std::unique_ptr<crypto::DefaultCryptoProvider> mCryptoProvider;
     std::shared_ptr<PocoWSClient>                  mWsClientPtr;

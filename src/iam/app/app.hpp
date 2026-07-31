@@ -10,21 +10,7 @@
 
 #include <Poco/Util/ServerApplication.h>
 
-#include <core/common/crypto/certloader.hpp>
-#include <core/common/crypto/cryptoprovider.hpp>
-#include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
-#include <core/iam/identhandler/itf/identmodule.hpp>
-#include <core/iam/nodemanager/nodemanager.hpp>
-#include <core/iam/permhandler/permhandler.hpp>
-#include <core/iam/provisionmanager/provisionmanager.hpp>
-
-#include <common/iamclient/tlscredentials.hpp>
-#include <common/logger/logger.hpp>
-#include <common/utils/cleanupmanager.hpp>
-#include <iam/currentnode/currentnodehandler.hpp>
-#include <iam/database/database.hpp>
-#include <iam/iamclient/iamclient.hpp>
-#include <iam/iamserver/iamserver.hpp>
+#include "aoscore.hpp"
 
 namespace aos::iam::app {
 
@@ -32,17 +18,21 @@ namespace aos::iam::app {
  * Aos IAM application.
  */
 class App : public Poco::Util::ServerApplication {
+public:
+    /**
+     * Constructor.
+     */
+    App() = default;
+
 protected:
-    void initialize(Application& self);
-    void uninitialize();
-    void reinitialize(Application& self);
-    int  main(const ArgVec& args);
-    void defineOptions(Poco::Util::OptionSet& options);
+    void initialize(Application& self) override;
+    void uninitialize() override;
+    void reinitialize(Application& self) override;
+    int  main(const ArgVec& args) override;
+    void defineOptions(Poco::Util::OptionSet& options) override;
 
 private:
-    static constexpr auto cSDNotifyReady     = "READY=1";
-    static constexpr auto cDefaultConfigFile = "aos_iamanager.cfg";
-    static constexpr auto cPKCS11CertModule  = "pkcs11module";
+    static constexpr auto cSDNotifyReady = "READY=1";
 
     void HandleHelp(const std::string& name, const std::string& value);
     void HandleVersion(const std::string& name, const std::string& value);
@@ -51,32 +41,12 @@ private:
     void HandleLogLevel(const std::string& name, const std::string& value);
     void HandleConfigFile(const std::string& name, const std::string& value);
 
-    void  Init();
-    void  Start();
-    void  Stop();
-    Error InitCertModules(const config::Config& config);
-    Error InitIdentifierModule(const config::IdentifierConfig& config);
-
-    crypto::DefaultCryptoProvider mCryptoProvider;
-    crypto::CertLoader            mCertLoader;
-    certhandler::CertHandler      mCertHandler;
-    pkcs11::PKCS11Manager         mPKCS11Manager;
-    std::vector<std::pair<std::unique_ptr<certhandler::HSMItf>, std::unique_ptr<certhandler::CertModule>>> mCertModules;
-    database::Database                                                                                     mDatabase;
-    currentnode::CurrentNodeHandler               mCurrentNodeHandler;
-    nodemanager::NodeManager                      mNodeManager;
-    provisionmanager::ProvisionManager            mProvisionManager;
-    iamserver::IAMServer                          mIAMServer;
-    common::iamclient::TLSCredentials             mTLSCredentials;
-    common::logger::Logger                        mLogger;
-    std::unique_ptr<permhandler::PermHandler>     mPermHandler;
-    std::unique_ptr<iamclient::IAMClient>         mIAMClient;
-    std::unique_ptr<identhandler::IdentModuleItf> mIdentifier;
-    aos::common::utils::CleanupManager            mCleanupManager;
-
-    bool        mStopProcessing = false;
-    bool        mProvisioning   = false;
-    std::string mConfigFile;
+    std::unique_ptr<AosCore> mAosCore;
+    common::logger::Logger   mLogger;
+    bool                     mStopProcessing = false;
+    bool                     mInitialized    = false;
+    bool                     mProvisioning   = false;
+    std::string              mConfigFile;
 };
 
 } // namespace aos::iam::app

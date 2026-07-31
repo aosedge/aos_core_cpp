@@ -33,23 +33,28 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize crypto provider
 
-    err = mCryptoProvider.Init();
+    err = mCryptoProvider.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
+
+    // Initialize PKCS11 manager
+
+    err = mPKCS11Manager.Init(mAllocator);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
 
     // Initialize cert loader
 
-    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     // Initialize crypto helper
 
-    err = mCryptoHelper.Init(
-        mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
+    err = mCryptoHelper.Init(mAllocator, mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
+        mConfig.mCACert.c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
 
     // Initialize file info provider
 
-    err = mFileInfoProvider.Init(mCryptoProvider);
+    err = mFileInfoProvider.Init(mAllocator, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file info provider");
 
     // Initialize TLS credentials
@@ -72,13 +77,13 @@ void AosCore::Init(const std::string& configFile)
     InitDatabase();
     InitStorageState();
 
-    err = mAlerts.Init(mConfig.mAlerts, mCommunication, mCommunication);
+    err = mAlerts.Init(mAllocator, mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
 
-    err = mDownloadSpaceAllocator.Init(mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
+    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download space allocator");
 
-    err = mInstallSpaceAllocator.Init(mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
+    err = mInstallSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize install space allocator");
 
     err = mDownloader.Init(&mAlerts);
@@ -87,26 +92,27 @@ void AosCore::Init(const std::string& configFile)
     err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mInstallPath.CStr());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
-    err = mImageManager.Init(mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,
+    err = mImageManager.Init(mAllocator, mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,
         mInstallSpaceAllocator, mDownloader, mFileServer, mCryptoHelper, mFileInfoProvider, mOCISpec);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
-    err = mNodeInfoProvider.Init(mConfig.mNodeInfoProvider, mIAMClient);
+    err = mNodeInfoProvider.Init(mAllocator, mConfig.mNodeInfoProvider, mIAMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node info provider");
 
     err = mMonitoring.Init(mConfig.mMonitoring, mCommunication, mCommunication, mLauncher, mNodeInfoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize monitoring");
 
-    err = mUnitConfig.Init({mConfig.mUnitConfigFile.c_str()}, mNodeInfoProvider, mSMController, mJSONProvider);
+    err = mUnitConfig.Init(
+        mAllocator, {mConfig.mUnitConfigFile.c_str()}, mNodeInfoProvider, mSMController, mJSONProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize unit config");
 
-    err = mLauncher.Init(mConfig.mLauncher, mNodeInfoProvider, mSMController, mImageManager, mOCISpec, mUnitConfig,
-        mStorageState, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid, mDatabase,
+    err = mLauncher.Init(mAllocator, mConfig.mLauncher, mNodeInfoProvider, mSMController, mImageManager, mOCISpec,
+        mUnitConfig, mStorageState, mSMController, mAlerts, mIAMClient, utils::IsUIDValid, utils::IsGIDValid, mDatabase,
         mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
-    err = mUpdateManager.Init({mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig, mNodeInfoProvider,
-        mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
+    err = mUpdateManager.Init(mAllocator, {mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig,
+        mNodeInfoProvider, mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize update manager");
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSPidFile, mConfig.mDNSIP);
@@ -275,7 +281,7 @@ void AosCore::InitStorageState()
     err = config.mStorageDir.Assign(mConfig.mStorageDir.c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't assign storage dir to storage state config");
 
-    err = mStorageState.Init(config, mDatabase, mCommunication, mPlatformFS, mFSWatcher, mCryptoProvider);
+    err = mStorageState.Init(mAllocator, config, mDatabase, mCommunication, mPlatformFS, mFSWatcher, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize storage state");
 }
 

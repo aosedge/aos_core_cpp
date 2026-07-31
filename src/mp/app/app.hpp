@@ -15,6 +15,7 @@
 
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/tools/heapallocator.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 
 #include <common/downloader/downloader.hpp>
@@ -66,6 +67,8 @@ private:
 
     void Init();
     void Start();
+
+    aos::HeapAllocator mAllocator;
 
     common::logger::Logger mLogger;
     bool                   mStopProcessing = false;

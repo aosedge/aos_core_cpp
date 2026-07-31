@@ -21,6 +21,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/heapallocator.hpp>
 #include <core/common/types/state.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 
@@ -132,6 +133,11 @@ std::string CreateDiscoveryResponse(const std::vector<std::string>& connectionIn
 
 class CMCommunicationTest : public Test {
 public:
+    CMCommunicationTest()
+        : mCertHandler(mAllocator)
+    {
+    }
+
     static void SetUpTestSuite() { Poco::Net::initializeSSL(); }
 
     static void TearDownTestSuite() { Poco::Net::uninitializeSSL(); }
@@ -149,15 +155,15 @@ public:
             return ErrorEnum::eNone;
         }));
 
-        auto err = mCryptoProvider.Init();
+        auto err = mCryptoProvider.Init(mAllocator);
 
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto provider: " << tests::utils::ErrorToStr(err);
 
-        err = mSOFTHSMEnv.Init("", "certhandler-integration-tests", SOFTHSM_BASE_CM_DIR "/softhsm2.conf",
+        err = mSOFTHSMEnv.Init(mAllocator, "", "certhandler-integration-tests", SOFTHSM_BASE_CM_DIR "/softhsm2.conf",
             SOFTHSM_BASE_CM_DIR "/tokens", SOFTHSM2_LIB);
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize SOFTHSM environment: " << tests::utils::ErrorToStr(err);
 
-        err = mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager());
+        err = mCertLoader.Init(mAllocator, mCryptoProvider, mSOFTHSMEnv.GetManager());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize certificate loader: " << tests::utils::ErrorToStr(err);
 
         RegisterPKCS11Module(cCertificate);
@@ -178,8 +184,8 @@ public:
         auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
 
-        err = mCryptoHelper.Init(mCertProviderStub, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
-            mConfig.mCACert.c_str());
+        err = mCryptoHelper.Init(mAllocator, mCertProviderStub, mCryptoProvider, mCertLoader,
+            mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
 
         StartHTTPServer();
@@ -273,9 +279,11 @@ public:
         auto& pkcs11Module = mPKCS11Modules.Back();
         auto& certModule   = mCertModules.Back();
         ASSERT_TRUE(
-            pkcs11Module.Init(name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider).IsNone());
+            pkcs11Module.Init(mAllocator, name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider)
+                .IsNone());
         ASSERT_TRUE(
-            certModule.Init(name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage).IsNone());
+            certModule.Init(mAllocator, name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage)
+                .IsNone());
         ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
     }
 
@@ -319,6 +327,8 @@ protected:
     static constexpr auto cServerKey       = CERTIFICATES_CM_DIR "/server_int.key";
     static constexpr auto cServerCert      = CERTIFICATES_CM_DIR "/server_int.cer";
     static constexpr auto cCA              = CERTIFICATES_CM_DIR "/ca.cer";
+
+    HeapAllocator mAllocator;
 
     MessageQueue mDiscoveryReceivedMessages;
     MessageQueue mDiscoverySendMessages;
