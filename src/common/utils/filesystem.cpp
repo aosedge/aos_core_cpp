@@ -69,8 +69,8 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path)
     }
 
     if (fs::is_directory(path)) {
-        return std::accumulate(fs::recursive_directory_iterator(path), fs::recursive_directory_iterator(), 0,
-            [](uintmax_t total, const auto& entry) {
+        return std::accumulate(fs::recursive_directory_iterator(path), fs::recursive_directory_iterator(),
+            uintmax_t {0}, [](uintmax_t total, const auto& entry) {
                 return (fs::is_regular_file(entry)) ? (total + fs::file_size(entry)) : total;
             });
     }
