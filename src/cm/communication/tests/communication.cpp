@@ -441,7 +441,6 @@ TEST_F(CMCommunicationTest, MessageIsRecentIfAckNotReceived)
 
     mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
 
-    // cppcheck-suppress templateRecursion
     auto alerts            = std::make_unique<Alerts>();
     alerts->mCorrelationID = "id";
 
@@ -473,7 +472,6 @@ TEST_F(CMCommunicationTest, SendAlerts)
 
     mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
 
-    // cppcheck-suppress templateRecursion
     auto alerts            = std::make_unique<Alerts>();
     alerts->mCorrelationID = "id";
 
