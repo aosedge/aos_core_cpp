@@ -1,5 +1,5 @@
 [Unit]
-Description=AOS Identity and Access Manager
+Description=AosCore Identity and Access Manager
 Wants=network-online.target
 After=network-online.target
 ConditionPathExists=!/var/aos/.provisionstate

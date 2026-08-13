@@ -1,5 +1,5 @@
 [Unit]
-Description=Aos base nftables ruleset (fail-closed forward default-drop)
+Description=AosCore base nftables ruleset (fail-closed forward default-drop)
 Wants=network-pre.target
 Before=network-pre.target aos-sm.service
 After=sysinit.target

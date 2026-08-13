@@ -1,5 +1,5 @@
 [Unit]
-Description=Aos services
+Description=AosCore services
 After=aos-cm.service aos-sm.service aos-iam.service
 Wants=aos-cm.service aos-sm.service aos-iam.service
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=AOS Communication Manager
+Description=AosCore Communication Manager
 Wants=network-online.target aos-iam.service
 After=network-online.target aos-iam.service
 ConditionPathExists=/var/aos/.provisionstate

@@ -1,5 +1,5 @@
 [Unit]
-Description=AOS Service Manager
+Description=AosCore Service Manager
 Wants=network-online.target dbus.service aos-iam.service
 After=network-online.target dbus.service aos-iam.service
 ConditionPathExists=/var/aos/.provisionstate
