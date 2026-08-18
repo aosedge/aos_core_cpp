@@ -715,8 +715,6 @@ Error Communication::CloseConnection()
 
 Error Communication::Disconnect()
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Disconnect from web socket server";
 
     auto err = CloseConnection();
@@ -771,6 +769,8 @@ void Communication::HandleConnection()
         if (auto err = ReceiveFrames(); !err.IsNone()) {
             LOG_ERR() << "Failed to receive frames" << Log::Field(err);
         }
+
+        std::lock_guard lock {mMutex};
 
         if (auto err = Disconnect(); !err.IsNone()) {
             LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
@@ -907,6 +907,12 @@ void Communication::HandleSendQueue()
             }
 
             mSendQueue.erase(it);
+        } catch (const Poco::Net::NetException& e) {
+            LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
+
+            if (auto err = Disconnect(); !err.IsNone()) {
+                LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
+            }
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
 
