@@ -5,6 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
@@ -96,4 +101,34 @@ TEST_F(ParserTest, ParseResultIsNotTrimmedIfTrimDisabled)
 
     EXPECT_EQ(result->mKey, key);
     EXPECT_EQ(result->mValue, value);
+}
+
+TEST_F(ParserTest, ParsePortRangeAcceptsSinglePort)
+{
+    for (const auto& [value, expected] :
+        std::vector<std::pair<std::string, uint16_t>> {{"1", 1}, {"80", 80}, {"1515", 1515}, {"65535", 65535}}) {
+        const auto result = aos::common::utils::ParsePortRange(value);
+
+        ASSERT_TRUE(result.has_value()) << value;
+        EXPECT_EQ(*result, (aos::common::utils::PortRange {expected, expected})) << value;
+    }
+}
+
+TEST_F(ParserTest, ParsePortRangeAcceptsRange)
+{
+    for (const auto& [value, first, last] : std::vector<std::tuple<std::string, uint16_t, uint16_t>> {
+             {"8089:8090", 8089, 8090}, {"7400:7650", 7400, 7650}, {"1:65535", 1, 65535}, {"80:80", 80, 80}}) {
+        const auto result = aos::common::utils::ParsePortRange(value);
+
+        ASSERT_TRUE(result.has_value()) << value;
+        EXPECT_EQ(*result, (aos::common::utils::PortRange {first, last})) << value;
+    }
+}
+
+TEST_F(ParserTest, ParsePortRangeRejectsInvalidValues)
+{
+    for (const auto& value : std::vector<std::string> {"", "0", "0:10", "10:5", "1:70000", "70000", "abc",
+             "7400:", ":7650", ":", "7400::7650", "7400:7500:7600", " 80", "80 ", "+80", "80/tcp", "8o", "8080-8081"}) {
+        EXPECT_FALSE(aos::common::utils::ParsePortRange(value).has_value()) << value;
+    }
 }

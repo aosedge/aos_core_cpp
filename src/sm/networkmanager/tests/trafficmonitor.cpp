@@ -239,8 +239,8 @@ TEST_F(TrafficMonitorTest, BatchStagesStopInstanceDeletes)
     ASSERT_EQ(mMonitor->StartInstanceMonitoring("test-instance", "192.168.1.100", 0, 0), ErrorEnum::eNone);
 
     std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {10}});
-    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {11}});
+    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {10}});
+    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {11}});
 
     EXPECT_CALL(*mBackend, ListChainRules(std::string(cTable), std::string(cForwardChain), _))
         .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
@@ -285,8 +285,8 @@ TEST_F(TrafficMonitorTest, RevertDeletesFlushedHandlesAndClearsInstanceState)
     EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>()))
         .WillOnce([inChain, outChain](std::vector<FWListedRule>& added) {
             added = {
-                {{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}},
-                {{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}},
+                {{"", "", "", 0, 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}},
+                {{"", "", "", 0, 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}},
             };
 
             return Error(ErrorEnum::eNone);
@@ -297,9 +297,9 @@ TEST_F(TrafficMonitorTest, RevertDeletesFlushedHandlesAndClearsInstanceState)
     ASSERT_EQ(mMonitor->FlushBatch(), ErrorEnum::eNone);
 
     std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}});
-    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}});
-    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, "in_other"}, FWRuleHandle {9}});
+    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}});
+    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}});
+    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eJump, "in_other"}, FWRuleHandle {9}});
 
     EXPECT_CALL(*mBackend, ListChainRules(std::string(cTable), std::string(cForwardChain), _))
         .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));

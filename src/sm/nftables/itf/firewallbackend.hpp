@@ -118,12 +118,16 @@ struct FWChain {
  * When mOIFNeg is true, the mOIFName match is negated (`oifname != "X"`),
  * e.g. masquerade traffic that leaves the host via any interface but the
  * bridge.
+ * mDstPort holds a single port; mDstPortEnd, when greater than mDstPort, turns
+ * the match into the inclusive range `dport <mDstPort>-<mDstPortEnd>`. Zero
+ * means a single port.
  */
 struct FWRule {
     std::string mSrcAddr;
     std::string mDstAddr;
     std::string mProto;
     uint16_t    mDstPort {};
+    uint16_t    mDstPortEnd {};
     std::string mOIFName;
     FWAction    mAction;
     std::string mJumpTarget;

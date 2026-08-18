@@ -98,6 +98,11 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
     port2.mPort     = "9090";
     AOS_ERROR_CHECK_AND_THROW(inst.mExposedPorts.PushBack(port2), "can't add exposed port");
 
+    networkmanager::ExposedPort port3;
+    port3.mProtocol = "udp";
+    port3.mPort     = "7400";
+    AOS_ERROR_CHECK_AND_THROW(inst.mExposedPorts.PushBack(port3), "can't add exposed port");
+
     // Add sample DNS servers
     AOS_ERROR_CHECK_AND_THROW(inst.mDNSServers.EmplaceBack("8.8.8.8"), "can't add DNS server");
     AOS_ERROR_CHECK_AND_THROW(inst.mDNSServers.EmplaceBack("1.1.1.1"), "can't add DNS server");
@@ -1116,7 +1121,7 @@ TEST_F(CMDatabaseTest, PendingConnectionAddAndGet)
     auto conn2 = CreatePendingConnection(
         "serviceC", "subject1", 0, "node2", "network2", "172.18.0.10", "172.18.0.0/16", "serviceB", "443", "tcp");
     auto conn3 = CreatePendingConnection(
-        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceD", "9090", "udp");
+        "serviceA", "subject1", 0, "node1", "network1", "172.17.0.10", "172.17.0.0/16", "serviceD", "7400:7650", "udp");
 
     ASSERT_TRUE(mDB.AddPendingConnection(conn1).IsNone());
     ASSERT_TRUE(mDB.AddPendingConnection(conn2).IsNone());

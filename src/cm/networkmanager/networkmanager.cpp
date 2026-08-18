@@ -11,6 +11,7 @@
 
 #include <common/network/utils.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/parser.hpp>
 
 #include "networkmanager.hpp"
 
@@ -543,6 +544,12 @@ Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen
             return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "unsupported ExposedPorts format"));
         }
 
+        const auto exposedPortRange = common::utils::ParsePortRange(portConfig[0].CStr());
+
+        if (!exposedPortRange.has_value() || exposedPortRange->mFirst != exposedPortRange->mLast) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "invalid exposed port"));
+        }
+
         ExposedPort exposedPortInfo;
         exposedPortInfo.mPort     = portConfig[0];
         exposedPortInfo.mProtocol = "tcp";
@@ -576,13 +583,38 @@ void NetworkManager::ParseAllowConnection(
     if (connConf.Size() == cAllowedConnectionsExpectedLen) {
         protocol = connConf[2].CStr();
     }
+
+    if (!common::utils::ParsePortRange(port).has_value()) {
+        throw std::runtime_error("invalid allowed connection port");
+    }
 }
 
 bool NetworkManager::RuleExists(const Instance& instance, const std::string& port, const std::string& protocol)
 {
-    return std::any_of(instance.mExposedPorts.begin(), instance.mExposedPorts.end(), [&](const auto& exposedPort) {
-        return exposedPort.mPort == String(port.c_str()) && exposedPort.mProtocol == String(protocol.c_str());
-    });
+    const auto requested = common::utils::ParsePortRange(port);
+
+    if (!requested.has_value()) {
+        return false;
+    }
+
+    for (uint32_t checkedPort = requested->mFirst; checkedPort <= requested->mLast; ++checkedPort) {
+        const auto exposedFound
+            = std::any_of(instance.mExposedPorts.begin(), instance.mExposedPorts.end(), [&](const auto& exposedPort) {
+                  if (exposedPort.mProtocol != String(protocol.c_str())) {
+                      return false;
+                  }
+
+                  const auto exposed = common::utils::ParsePortRange(exposedPort.mPort.CStr());
+
+                  return exposed.has_value() && exposed->mFirst <= checkedPort && checkedPort <= exposed->mLast;
+              });
+
+        if (!exposedFound) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& itemID, const std::string& port,

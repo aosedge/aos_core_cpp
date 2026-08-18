@@ -97,6 +97,10 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 
         if (rule.mDstPort != 0) {
             buf << " dport " << rule.mDstPort;
+
+            if (rule.mDstPortEnd > rule.mDstPort) {
+                buf << "-" << rule.mDstPortEnd;
+            }
         }
     }
 
@@ -136,7 +140,7 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
     static const std::regex ctStateRe(R"(ct\s+state\s+([a-z,]+))");
     static const std::regex saddrRe(R"(ip\s+saddr\s+(\S+))");
     static const std::regex daddrRe(R"(ip\s+daddr\s+(\S+))");
-    static const std::regex dportRe(R"((tcp|udp)\s+dport\s+(\d+))");
+    static const std::regex dportRe(R"((tcp|udp)\s+dport\s+(\d+)(?:-(\d+))?)");
     static const std::regex protoRe(R"(\b(tcp|udp)\b)");
     static const std::regex oifnameRe(R"rx(oifname\s+(!=\s+)?"([^"]+)")rx");
     static const std::regex counterRe(R"(counter\s+packets\s+(\d+)\s+bytes\s+(\d+))");
@@ -163,7 +167,11 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
 
     if (std::regex_search(line, m, dportRe)) {
         out.mRule.mProto   = m[1];
-        out.mRule.mDstPort = static_cast<uint16_t>(std::stoi(m[2]));
+        out.mRule.mDstPort = static_cast<uint16_t>(std::stoul(m[2]));
+
+        if (m[3].matched) {
+            out.mRule.mDstPortEnd = static_cast<uint16_t>(std::stoul(m[3]));
+        }
     } else if (std::regex_search(line, m, protoRe)) {
         out.mRule.mProto = m[1];
     }

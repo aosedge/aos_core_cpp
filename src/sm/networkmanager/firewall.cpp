@@ -6,11 +6,11 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdlib>
-#include <limits>
 #include <string>
 
 #include <core/common/tools/logger.hpp>
+
+#include <common/utils/parser.hpp>
 
 #include "firewall.hpp"
 
@@ -18,25 +18,33 @@ namespace aos::sm::networkmanager {
 
 namespace {
 
-RetWithError<uint16_t> ParsePort(const String& port)
+RetWithError<common::utils::PortRange> ParsePortRange(const String& port)
 {
     if (port.IsEmpty()) {
-        return {uint16_t {0}, ErrorEnum::eNone};
+        return {common::utils::PortRange {}, ErrorEnum::eNone};
     }
 
-    char*      end = nullptr;
-    const auto val = std::strtoul(port.CStr(), &end, 10);
+    const auto range = common::utils::ParsePortRange(port.CStr());
 
-    if (end == port.CStr() || *end != '\0' || val == 0 || val > std::numeric_limits<uint16_t>::max()) {
-        return {uint16_t {0}, AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "invalid port"))};
+    if (!range.has_value()) {
+        return {common::utils::PortRange {}, AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "invalid port"))};
     }
 
-    return {static_cast<uint16_t>(val), ErrorEnum::eNone};
+    return {*range, ErrorEnum::eNone};
 }
 
-Error CheckPortProto(uint16_t port, const String& proto)
+void SetDstPort(nftables::FWRule& rule, const common::utils::PortRange& range)
 {
-    if (port == 0) {
+    rule.mDstPort = range.mFirst;
+
+    if (range.mLast > range.mFirst) {
+        rule.mDstPortEnd = range.mLast;
+    }
+}
+
+Error CheckPortProto(const common::utils::PortRange& range, const String& proto)
+{
+    if (range.mFirst == 0) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "access rule requires a port"));
     }
 
@@ -48,12 +56,12 @@ Error CheckPortProto(uint16_t port, const String& proto)
     return ErrorEnum::eNone;
 }
 
-std::string ProtoOrDefault(const String& proto, uint16_t port)
+std::string ProtoOrDefault(const String& proto, const common::utils::PortRange& range)
 {
     // A port match needs a transport protocol; default to tcp (matching the
     // historical CNI/networkmanager convention). Without it an empty proto with
     // a port would widen the rule to all traffic to/from the instance.
-    if (port != 0 && proto.IsEmpty()) {
+    if (range.mFirst != 0 && proto.IsEmpty()) {
         return "tcp";
     }
 
@@ -93,26 +101,27 @@ Error AppendInstanceRules(
     }
 
     for (const auto& in : params.mInput) {
-        uint16_t port = 0;
-        Error    err;
+        common::utils::PortRange range {};
+        Error                    err;
 
-        Tie(port, err) = ParsePort(in.mPort);
+        Tie(range, err) = ParsePortRange(in.mPort);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
         // An input entry requires a port and only tcp/udp are supported (an
         // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
-        if (err = CheckPortProto(port, in.mProtocol); !err.IsNone()) {
+        if (err = CheckPortProto(range, in.mProtocol); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
         nftables::FWRule r {};
 
         r.mDstAddr = instanceIP;
-        r.mProto   = ProtoOrDefault(in.mProtocol, port);
-        r.mDstPort = port;
+        r.mProto   = ProtoOrDefault(in.mProtocol, range);
         r.mAction  = nftables::FWActionEnum::eAccept;
+
+        SetDstPort(r, range);
 
         if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
@@ -120,10 +129,10 @@ Error AppendInstanceRules(
     }
 
     for (const auto& out : params.mOutput) {
-        uint16_t port = 0;
-        Error    err;
+        common::utils::PortRange range {};
+        Error                    err;
 
-        Tie(port, err) = ParsePort(out.mDstPort);
+        Tie(range, err) = ParsePortRange(out.mDstPort);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -136,7 +145,7 @@ Error AppendInstanceRules(
             return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
         }
 
-        if (err = CheckPortProto(port, out.mProto); !err.IsNone()) {
+        if (err = CheckPortProto(range, out.mProto); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -149,9 +158,10 @@ Error AppendInstanceRules(
 
         r.mSrcAddr = instanceIP;
         r.mDstAddr = out.mDstIP.CStr();
-        r.mProto   = ProtoOrDefault(out.mProto, port);
-        r.mDstPort = port;
+        r.mProto   = ProtoOrDefault(out.mProto, range);
         r.mAction  = nftables::FWActionEnum::eAccept;
+
+        SetDstPort(r, range);
 
         if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
