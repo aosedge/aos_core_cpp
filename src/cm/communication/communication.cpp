@@ -488,8 +488,6 @@ Error Communication::UnsubscribeListener(cloudconnection::ConnectionListenerItf&
 
 bool Communication::IsConnected() const
 {
-    std::lock_guard lock {mMutex};
-
     return mIsConnected;
 }
 
@@ -715,8 +713,6 @@ Error Communication::CloseConnection()
 
 Error Communication::Disconnect()
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Disconnect from web socket server";
 
     auto err = CloseConnection();
@@ -743,6 +739,13 @@ void Communication::NotifyConnectionEstablished()
 void Communication::NotifyConnectionLost()
 {
     std::lock_guard lock {mSubscribersMutex};
+
+    // CloseConnection() can be invoked more than once for the same disconnect (e.g. once from HandleSendQueue on
+    // a send failure, and again from HandleConnection's Disconnect() once ReceiveFrames() unblocks). Only notify
+    // on the connected -> disconnected transition so subscribers do not get duplicate OnDisconnect() calls.
+    if (!mIsConnected) {
+        return;
+    }
 
     mIsConnected = false;
 
@@ -771,6 +774,8 @@ void Communication::HandleConnection()
         if (auto err = ReceiveFrames(); !err.IsNone()) {
             LOG_ERR() << "Failed to receive frames" << Log::Field(err);
         }
+
+        std::lock_guard lock {mMutex};
 
         if (auto err = Disconnect(); !err.IsNone()) {
             LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
@@ -907,6 +912,16 @@ void Communication::HandleSendQueue()
             }
 
             mSendQueue.erase(it);
+        } catch (const Poco::Net::NetException& e) {
+            LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
+
+            // Only shut down the socket here to unblock the connection handler thread's ReceiveFrames() call,
+            // which accesses mWebSocket without holding mMutex. Resetting mWebSocket/mClientSession themselves
+            // is left to that thread once ReceiveFrames() returns, to avoid destroying the socket while it may
+            // still be in use there.
+            if (auto err = CloseConnection(); !err.IsNone()) {
+                LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
+            }
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
 
