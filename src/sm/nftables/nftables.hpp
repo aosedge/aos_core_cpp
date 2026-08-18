@@ -53,6 +53,8 @@ private:
 
     Error RunBuffer(const std::string& cmd);
     Error RunBufferWithOutput(const std::string& cmd, std::string& output);
+    Error RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>& handles);
+    Error RunBufferEchoRules(const std::string& cmd, std::vector<FWListedRule>& rules);
 
     std::string mFamily;
     std::mutex  mMutex;

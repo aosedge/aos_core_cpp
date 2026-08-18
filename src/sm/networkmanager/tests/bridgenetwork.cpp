@@ -63,18 +63,14 @@ TEST_F(BridgeNetworkTest, AttachHappyPath)
 
     InSequence seq;
 
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone)); // peer has a unique transient name
-    EXPECT_CALL(mNetIf, SetMasterLink(_, String("br-test"))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_, String(""))).WillOnce(Return(ErrorEnum::eNone)); // host, current ns
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, String("/run/netns/test-instance")))
-        .WillOnce(Return(ErrorEnum::eNone)); // moves the unique peer
-    EXPECT_CALL(mNetIf, RenameLink(_, String("eth0"), String("/run/netns/test-instance")))
-        .WillOnce(Return(ErrorEnum::eNone)); // rename to the container interface name inside the netns
-    EXPECT_CALL(mNetIf, SetupLink(String("eth0"), String("/run/netns/test-instance")))
-        .WillOnce(Return(ErrorEnum::eNone)); // peer, brought up inside the netns after the rename
-    EXPECT_CALL(mNetIf, AddAddress(String("eth0"), String("10.0.0.5/24"), String("/run/netns/test-instance")))
+    // veth pair created with the peer placed in the instance netns (named eth0),
+    // host side up and enslaved to the bridge, in a single call.
+    EXPECT_CALL(mNetIf, CreateVethToNamespace(_, String("eth0"), String("/run/netns/test-instance"), String("br-test")))
         .WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddRoute(String("0.0.0.0/0"), String("10.0.0.1"), String("/run/netns/test-instance")))
+    // peer brought up, addressed and default-routed inside the netns, in a single call.
+    EXPECT_CALL(mNetIf,
+        ConfigureInstanceInterface(
+            String("eth0"), String("10.0.0.5/24"), String("10.0.0.1"), String("/run/netns/test-instance")))
         .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetHairpin(_, true)).WillOnce(Return(ErrorEnum::eNone));
 
@@ -89,42 +85,34 @@ TEST_F(BridgeNetworkTest, AttachNoHairpin)
 {
     const auto params = MakeParams(/*hairpin=*/false);
 
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetupLink(_, _)).Times(2).WillRepeatedly(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, RenameLink(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddAddress(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, AddRoute(_, _, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, CreateVethToNamespace(_, _, _, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, ConfigureInstanceInterface(_, _, _, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetIf, SetHairpin(_, _)).Times(0);
 
     BridgeAttachResult result;
     EXPECT_TRUE(mBridge.Attach(mInstanceID, params, result).IsNone());
 }
 
-// Verifies that a veth is deleted on rollback when any step after CreateVeth fails.
-TEST_F(BridgeNetworkTest, AttachRollbackOnSetMasterLinkFailure)
+// The veth is deleted on rollback when a step after CreateVethToNamespace fails.
+TEST_F(BridgeNetworkTest, AttachRollbackOnConfigureInstanceInterfaceFailure)
 {
     const auto params = MakeParams();
 
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
+    EXPECT_CALL(mNetIf, CreateVethToNamespace(_, _, _, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, ConfigureInstanceInterface(_, _, _, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
     EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
 
     BridgeAttachResult result;
     EXPECT_FALSE(mBridge.Attach(mInstanceID, params, result).IsNone());
 }
 
-TEST_F(BridgeNetworkTest, AttachRollbackOnMoveLinkToNamespaceFailure)
+// No cleanup is attempted when the veth pair itself fails to be created.
+TEST_F(BridgeNetworkTest, AttachNoCleanupOnCreateVethFailure)
 {
     const auto params = MakeParams();
 
-    EXPECT_CALL(mNetIf, CreateVeth(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, SetMasterLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    // Peer SetupLink runs after the move, so only the host link is set up before the failure.
-    EXPECT_CALL(mNetIf, SetupLink(_, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetIf, MoveLinkToNamespace(_, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mNetIf, DeleteLink(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mNetIf, CreateVethToNamespace(_, _, _, _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
+    EXPECT_CALL(mNetIf, DeleteLink(_)).Times(0);
 
     BridgeAttachResult result;
     EXPECT_FALSE(mBridge.Attach(mInstanceID, params, result).IsNone());

@@ -1,0 +1,131 @@
+{
+    "caCert": "@CMAKE_INSTALL_PREFIX@/share/ca-certificates/aos/AosRootCA.crt",
+    "certStorage": "iam",
+    "iamProtectedServerUrl": ":8089",
+    "iamPublicServerUrl": ":8090",
+    "workingDir": "/var/aos/iam",
+    "nodeInfo": {
+        "nodeIdPath": "/etc/machine-id",
+        "nodeName": "main",
+        "maxDmips": 10000,
+        "attrs": {
+            "MainNode": "",
+            "AosComponents": "cm,iam,sm"
+        },
+        "partitions": [
+            {
+                "name": "aos",
+                "types": [
+                    "storages",
+                    "states",
+                    "services"
+                ],
+                "path": "/var/aos"
+            }
+        ],
+        "nodeType": "aos-core-main",
+        "architecture": "amd64",
+        "os": "linux"
+    },
+    "deprovisionCmdArgs": [
+        "@CMAKE_INSTALL_PREFIX@/libexec/aos/deprovision.sh", "async"
+    ],
+    "finishProvisioningCmdArgs": [
+        "@CMAKE_INSTALL_PREFIX@/libexec/aos/provfinish.sh"
+    ],
+    "identifier": {
+        "plugin": "fileidentifier",
+        "params": {
+            "systemIDPath": "/etc/machine-id",
+            "unitModelPath": "@CMAKE_INSTALL_PREFIX@/etc/aos/unit_model",
+            "subjectsPath": "@CMAKE_INSTALL_PREFIX@/etc/aos/subjects"
+        }
+    },
+    "certModules": [
+        {
+            "id": "online",
+            "plugin": "pkcs11module",
+            "algorithm": "ecc",
+            "maxItems": 2,
+            "params": {
+                "library": "/usr/lib/softhsm/libsofthsm2.so",
+                "tokenLabel": "aoscloud",
+                "userPinPath": "/var/aos/iam/.usrpin",
+                "modulePathInUrl": true
+            }
+        },
+        {
+            "id": "offline",
+            "plugin": "pkcs11module",
+            "algorithm": "rsa",
+            "maxItems": 5,
+            "params": {
+                "library": "/usr/lib/softhsm/libsofthsm2.so",
+                "tokenLabel": "aoscloud",
+                "userPinPath": "/var/aos/iam/.usrpin",
+                "modulePathInUrl": true
+            }
+        },
+        {
+            "id": "iam",
+            "plugin": "pkcs11module",
+            "algorithm": "ecc",
+            "maxItems": 2,
+            "extendedKeyUsage": [
+                "serverAuth",
+                "clientAuth"
+            ],
+            "params": {
+                "library": "/usr/lib/softhsm/libsofthsm2.so",
+                "tokenLabel": "aoscore",
+                "userPinPath": "/var/aos/iam/.usrpin",
+                "modulePathInUrl": true
+            },
+            "alternativeNames": [
+                "localhost"
+            ]
+        },
+        {
+            "id": "sm",
+            "plugin": "pkcs11module",
+            "algorithm": "ecc",
+            "maxItems": 2,
+            "extendedKeyUsage": [
+                "serverAuth",
+                "clientAuth"
+            ],
+            "params": {
+                "library": "/usr/lib/softhsm/libsofthsm2.so",
+                "tokenLabel": "aoscore",
+                "userPinPath": "/var/aos/iam/.usrpin",
+                "modulePathInUrl": true
+            },
+            "alternativeNames": [
+                "localhost"
+            ]
+        },
+        {
+            "id": "cm",
+            "plugin": "pkcs11module",
+            "algorithm": "ecc",
+            "maxItems": 2,
+            "extendedKeyUsage": [
+                "serverAuth",
+                "clientAuth"
+            ],
+            "params": {
+                "library": "/usr/lib/softhsm/libsofthsm2.so",
+                "tokenLabel": "aoscore",
+                "userPinPath": "/var/aos/iam/.usrpin",
+                "modulePathInUrl": true
+            },
+            "alternativeNames": [
+                "localhost"
+            ]
+        }
+    ],
+    "migration": {
+        "migrationPath": "@CMAKE_INSTALL_PREFIX@/share/aos/iam/migration",
+        "mergedMigrationPath": "/var/aos/iam/migration"
+    }
+}

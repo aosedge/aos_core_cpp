@@ -15,7 +15,16 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_runtimes)
 # Cert modules
 # ######################################################################################################################
 
-add_subdirectory(boot)
-add_subdirectory(container)
-add_subdirectory(rootfs)
+if(WITH_RUNTIME_BOOT)
+    add_subdirectory(boot)
+endif()
+
+if(WITH_RUNTIME_CONTAINER)
+    add_subdirectory(container)
+endif()
+
+if(WITH_RUNTIME_ROOTFS)
+    add_subdirectory(rootfs)
+endif()
+
 add_subdirectory(utils)

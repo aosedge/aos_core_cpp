@@ -12,8 +12,8 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <common/utils/exec.hpp>
 #include <common/utils/filesystem.hpp>
-#include <common/utils/utils.hpp>
 
 #include <sm/launcher/runtimes/utils/utils.hpp>
 
@@ -126,6 +126,13 @@ Error BootRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     LOG_DBG() << "Get runtime info";
 
     runtimeInfo = mRuntimeInfo;
+
+    return ErrorEnum::eNone;
+}
+
+Error BootRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
+{
+    (void)instancesInfo;
 
     return ErrorEnum::eNone;
 }

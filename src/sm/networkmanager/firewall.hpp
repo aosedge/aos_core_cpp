@@ -7,8 +7,13 @@
 #ifndef AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 #define AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 
+#include <memory>
+#include <mutex>
 #include <set>
+#include <string>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <core/common/tools/noncopyable.hpp>
 #include <core/sm/networkmanager/itf/firewall.hpp>
@@ -43,6 +48,16 @@ public:
      * @return Error.
      */
     Error Stop() override;
+
+    /**
+     * Removes the instance chains and masquerade rules that are not known.
+     *
+     * @param knownInstanceIDs instance ids whose chains must be kept.
+     * @param knownMasquerades masquerade rules that must be kept.
+     * @return Error.
+     */
+    Error RemoveOrphans(
+        const Array<StaticString<cIDLen>>& knownInstanceIDs, const Array<MasqueradeParams>& knownMasquerades) override;
 
     /**
      * Adds a per-instance chain with input/output rules.
@@ -88,6 +103,37 @@ public:
      */
     Error RemoveMasquerade(const String& subnet, const String& outIf) override;
 
+    /**
+     * Begins batch mode: AddInstance/RemoveInstance stage their nft operations
+     * into a single shared transaction instead of committing per instance.
+     *
+     * @return Error.
+     */
+    Error BeginBatch() override;
+
+    /**
+     * Commits the staged batch in one nft transaction, records the handles it
+     * added and leaves batch mode.
+     *
+     * @return Error.
+     */
+    Error FlushBatch() override;
+
+    /**
+     * Discards the staged batch and leaves batch mode without applying anything.
+     *
+     * @return Error.
+     */
+    Error AbortBatch() override;
+
+    /**
+     * Deletes by handle everything the last flushed batch added, together with
+     * the instance chains it created.
+     *
+     * @return Error.
+     */
+    Error Revert() override;
+
 private:
     static constexpr auto cTableName           = "aos";
     static constexpr auto cForwardChain        = "forward";
@@ -100,10 +146,21 @@ private:
 
     Error CreateSkeleton();
     Error ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules);
+    Error AppendInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params);
+    void  DeleteInstanceChain(
+         nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& jumpHandles);
 
     const std::string                             mTable {cTableName};
     nftables::FWBackendItf*                       mBackend {};
     std::set<std::pair<std::string, std::string>> mMasqueradeRules;
+
+    std::mutex                          mBatchMutex;
+    bool                                mBatchMode {false};
+    std::unique_ptr<nftables::FWTxnItf> mBatchTxn;
+    std::set<std::string>               mBatchChains;
+    std::set<nftables::FWRuleHandle>    mAppliedHandles;
+
+    std::unordered_map<std::string, std::pair<nftables::FWRuleHandle, nftables::FWRuleHandle>> mInstanceJumps;
 };
 
 } // namespace aos::sm::networkmanager

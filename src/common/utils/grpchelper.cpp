@@ -22,6 +22,7 @@ using namespace aos;
 namespace {
 
 constexpr auto cGrpcClientKeepAliveTime = 10 * Time::cSeconds;
+constexpr auto cDnsAresQueryTimeout     = 1 * Time::cSeconds;
 
 } // namespace
 
@@ -47,7 +48,14 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLS
     AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
 
     std::ifstream file {rootCertPath.CStr()};
-    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (!file.is_open()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
+    }
+
+    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (rootCert.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
+    }
 
     auto keyCertPair
         = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
@@ -68,14 +76,21 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
-    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>("", keyCertPairs);
+    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(keyCertPairs);
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSClientCertificates(
     const String& rootCertPath)
 {
     std::ifstream file {rootCertPath.CStr()};
-    std::string   rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (!file.is_open()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
+    }
+
+    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (rootCert.empty()) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
+    }
 
     return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(
         rootCert, std::vector<grpc::experimental::IdentityKeyCertPair> {});
@@ -175,6 +190,9 @@ grpc::ChannelArguments CreateGRPCChannelArguments()
     args.SetInt(GRPC_ARG_MIN_RECONNECT_BACKOFF_MS, static_cast<int>(cMinReconnectBackoff.Milliseconds()));
     // Default: 120 seconds.
     args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, static_cast<int>(cMaxReconnectBackoff.Milliseconds()));
+    // Default c-ares query timeout is 120s. Cap it so a slow/missing AAAA lookup does not block
+    // name resolution while an A record is already available.
+    args.SetInt(GRPC_ARG_DNS_ARES_QUERY_TIMEOUT_MS, static_cast<int>(cDnsAresQueryTimeout.Milliseconds()));
 
     return args;
 }

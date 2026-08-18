@@ -49,14 +49,9 @@ protected:
 
     void TearDown() override { std::filesystem::remove_all(mTempDir); }
 
-    void InitInstance()
-    {
-        EXPECT_CALL(mSpawner, Signal(cFakePID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
+    void InitInstance() { ASSERT_TRUE(mInstance.Init(cNetworkID, mTempDir.string(), mSpawner, cFakePID).IsNone()); }
 
-        ASSERT_TRUE(mInstance.Init(cNetworkID, mTempDir.string(), mSpawner, cFakePID).IsNone());
-
-        ::testing::Mock::VerifyAndClearExpectations(&mSpawner);
-    }
+    void WriteHosts(const std::string& content) const { std::ofstream(mTempDir / "addnhosts") << content; }
 
     std::string ReadHosts() const
     {
@@ -82,13 +77,41 @@ protected:
     DNSServer                      mInstance;
 };
 
-TEST_F(DNSServerTest, InitClearsExistingAddnhosts)
+TEST_F(DNSServerTest, InitKeepsExistingAddnhosts)
 {
-    std::ofstream(mTempDir / "addnhosts") << "10.0.0.99\tstale\tstale.net1\n";
+    const std::string existing = "10.0.0.99\tapp\tapp.net1 # inst1\n";
+
+    WriteHosts(existing);
 
     InitInstance();
 
-    EXPECT_TRUE(ReadHosts().empty());
+    EXPECT_EQ(ReadHosts(), existing);
+}
+
+TEST_F(DNSServerTest, InitAdoptsRecordsSoRemoveHostWorks)
+{
+    WriteHosts("10.0.0.5\tapp1\tapp1.net1 # inst1\n10.0.0.6\tapp2\tapp2.net1 # inst2\n");
+
+    InitInstance();
+
+    EXPECT_CALL(mSpawner, Signal(cFakePID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mInstance.RemoveHost("inst1").IsNone());
+
+    EXPECT_EQ(ReadHosts(), "10.0.0.6\tapp2\tapp2.net1 # inst2\n");
+}
+
+TEST_F(DNSServerTest, InitDropsUnattributedLines)
+{
+    WriteHosts("10.0.0.99\tstale\tstale.net1\n10.0.0.5\tapp1\tapp1.net1 # inst1\n");
+
+    InitInstance();
+
+    EXPECT_CALL(mSpawner, Signal(cFakePID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mInstance.AddHost("inst2", MakeParams("10.0.0.6", {"app2"})).IsNone());
+
+    EXPECT_EQ(ReadHosts(), "10.0.0.5\tapp1\tapp1.net1 # inst1\n10.0.0.6\tapp2\tapp2.net1 # inst2\n");
 }
 
 TEST_F(DNSServerTest, AddHostWritesFileAndSignalsReload)
@@ -99,7 +122,7 @@ TEST_F(DNSServerTest, AddHostWritesFileAndSignalsReload)
 
     ASSERT_TRUE(mInstance.AddHost("inst1", MakeParams("10.0.0.5", {"myapp"})).IsNone());
 
-    EXPECT_EQ(ReadHosts(), "10.0.0.5\tmyapp\tmyapp.net1\n");
+    EXPECT_EQ(ReadHosts(), "10.0.0.5\tmyapp\tmyapp.net1 # inst1\n");
 }
 
 TEST_F(DNSServerTest, TwoHostsAppearOnSeparateLines)
@@ -112,7 +135,7 @@ TEST_F(DNSServerTest, TwoHostsAppearOnSeparateLines)
     ASSERT_TRUE(mInstance.AddHost("inst2", MakeParams("10.0.0.6", {"app2"})).IsNone());
 
     // std::map sorts keys, so inst1's line precedes inst2's.
-    EXPECT_EQ(ReadHosts(), "10.0.0.5\tapp1\tapp1.net1\n10.0.0.6\tapp2\tapp2.net1\n");
+    EXPECT_EQ(ReadHosts(), "10.0.0.5\tapp1\tapp1.net1 # inst1\n10.0.0.6\tapp2\tapp2.net1 # inst2\n");
 }
 
 TEST_F(DNSServerTest, RemoveHostUpdatesFileAndSignalsReload)
@@ -126,7 +149,7 @@ TEST_F(DNSServerTest, RemoveHostUpdatesFileAndSignalsReload)
 
     ASSERT_TRUE(mInstance.RemoveHost("inst1").IsNone());
 
-    EXPECT_EQ(ReadHosts(), "10.0.0.6\tapp2\tapp2.net1\n");
+    EXPECT_EQ(ReadHosts(), "10.0.0.6\tapp2\tapp2.net1 # inst2\n");
 }
 
 TEST_F(DNSServerTest, RemoveAbsentHostIsNoOp)
@@ -147,7 +170,7 @@ TEST_F(DNSServerTest, ReAddSameInstanceReplacesEntry)
     ASSERT_TRUE(mInstance.AddHost("inst1", MakeParams("10.0.0.5", {"old"})).IsNone());
     ASSERT_TRUE(mInstance.AddHost("inst1", MakeParams("10.0.0.5", {"renamed"})).IsNone());
 
-    EXPECT_EQ(ReadHosts(), "10.0.0.5\trenamed\trenamed.net1\n");
+    EXPECT_EQ(ReadHosts(), "10.0.0.5\trenamed\trenamed.net1 # inst1\n");
 }
 
 TEST_F(DNSServerTest, EachAliasResolvesBareAndFullyQualified)
@@ -158,5 +181,5 @@ TEST_F(DNSServerTest, EachAliasResolvesBareAndFullyQualified)
 
     ASSERT_TRUE(mInstance.AddHost("inst1", MakeParams("10.0.0.5", {"a1", "a2"})).IsNone());
 
-    EXPECT_EQ(ReadHosts(), "10.0.0.5\ta1\ta1.net1\ta2\ta2.net1\n");
+    EXPECT_EQ(ReadHosts(), "10.0.0.5\ta1\ta1.net1\ta2\ta2.net1 # inst1\n");
 }

@@ -95,10 +95,13 @@ void App::Init()
 
     mCleanupManager.AddCleanup([this]() { curl_global_cleanup(); });
 
-    err = mCryptoProvider.Init();
+    err = mCryptoProvider.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
-    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    err = mPKCS11Manager.Init(mAllocator);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
+
+    err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     auto retConfig = config::ParseConfig(mConfigFile);

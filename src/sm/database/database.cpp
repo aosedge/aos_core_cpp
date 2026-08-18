@@ -812,6 +812,57 @@ Error Database::RemoveTrafficMonitorData(const String& chain)
     return ErrorEnum::eNone;
 }
 
+Error Database::BeginTransaction()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Begin transaction";
+
+    try {
+        if (!mSession->isTransaction()) {
+            mSession->begin();
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::CommitTransaction()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Commit transaction";
+
+    try {
+        if (mSession->isTransaction()) {
+            mSession->commit();
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::RollbackTransaction()
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Rollback transaction";
+
+    try {
+        if (mSession->isTransaction()) {
+            mSession->rollback();
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error Database::AddInstanceNetworkInfo(const sm::networkmanager::InstanceNetworkInfo& info)
 {
     std::lock_guard lock {mMutex};

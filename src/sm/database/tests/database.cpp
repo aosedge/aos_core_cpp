@@ -622,6 +622,102 @@ TEST_F(DatabaseTest, SetUpdateAndRemoveTrafficMonitorDataSucceeds)
     ASSERT_TRUE(mDB.GetTrafficMonitorData(chain, resTime, resValue).Is(aos::ErrorEnum::eNotFound));
 }
 
+TEST_F(DatabaseTest, TransactionCommitPersistsWrites)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info1;
+    info1.mInstanceID = "instance-1";
+    info1.mNetworkID  = "network-1";
+    info1.mHostIfName = "veth-initial";
+
+    aos::sm::networkmanager::InstanceNetworkInfo info2;
+    info2.mInstanceID = "instance-2";
+    info2.mNetworkID  = "network-2";
+
+    ASSERT_TRUE(mDB.BeginTransaction().IsNone());
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info1).IsNone());
+
+    info1.mHostIfName = "veth-updated";
+
+    ASSERT_TRUE(mDB.UpdateInstanceNetworkInfo(info1).IsNone());
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info2).IsNone());
+
+    ASSERT_TRUE(mDB.CommitTransaction().IsNone());
+
+    aos::StaticArray<aos::sm::networkmanager::InstanceNetworkInfo, 2> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+
+    ASSERT_EQ(result.Size(), 2);
+
+    EXPECT_EQ(result[0].mInstanceID, info1.mInstanceID);
+    EXPECT_EQ(result[0].mHostIfName, info1.mHostIfName);
+    EXPECT_EQ(result[1].mInstanceID, info2.mInstanceID);
+}
+
+TEST_F(DatabaseTest, TransactionRollbackDiscardsWrites)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo committed;
+    committed.mInstanceID = "instance-0";
+    committed.mNetworkID  = "network-0";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(committed).IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo staged;
+    staged.mInstanceID = "instance-1";
+    staged.mNetworkID  = "network-1";
+
+    ASSERT_TRUE(mDB.BeginTransaction().IsNone());
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(staged).IsNone());
+    ASSERT_TRUE(mDB.SetTrafficMonitorData("chain", aos::Time::Now(), 100).IsNone());
+
+    ASSERT_TRUE(mDB.RollbackTransaction().IsNone());
+
+    aos::StaticArray<aos::sm::networkmanager::InstanceNetworkInfo, 2> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0].mInstanceID, committed.mInstanceID);
+
+    aos::Time resTime;
+    uint64_t  resValue = 0;
+
+    EXPECT_TRUE(mDB.GetTrafficMonitorData("chain", resTime, resValue).Is(aos::ErrorEnum::eNotFound));
+}
+
+TEST_F(DatabaseTest, TransactionCommitAndRollbackWithoutBeginAreNoOp)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    EXPECT_TRUE(mDB.CommitTransaction().IsNone());
+    EXPECT_TRUE(mDB.RollbackTransaction().IsNone());
+
+    aos::sm::networkmanager::InstanceNetworkInfo info;
+    info.mInstanceID = "instance-1";
+    info.mNetworkID  = "network-1";
+
+    ASSERT_TRUE(mDB.AddInstanceNetworkInfo(info).IsNone());
+
+    ASSERT_TRUE(mDB.BeginTransaction().IsNone());
+    ASSERT_TRUE(mDB.CommitTransaction().IsNone());
+
+    EXPECT_TRUE(mDB.CommitTransaction().IsNone());
+    EXPECT_TRUE(mDB.RollbackTransaction().IsNone());
+
+    aos::StaticArray<aos::sm::networkmanager::InstanceNetworkInfo, 1> result;
+
+    ASSERT_TRUE(mDB.GetInstanceNetworksInfo(result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0].mInstanceID, info.mInstanceID);
+}
+
 /***********************************************************************************************************************
  * Tests - alerts::StorageItf
  **********************************************************************************************************************/

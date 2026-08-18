@@ -110,10 +110,6 @@ Error ContainerRuntime::Start()
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = StopActiveInstances(); !err.IsNone()) {
-            LOG_ERR() << "Failed to stop active instances" << Log::Field(err);
-        }
-
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -146,6 +142,83 @@ Error ContainerRuntime::GetRuntimeInfo(RuntimeInfo& runtimeInfo) const
     return ErrorEnum::eNone;
 }
 
+Error ContainerRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
+{
+    LOG_DBG() << "Init instances" << Log::Field("numInstances", instancesInfo.Size());
+
+    auto [instanceIDs, err] = mFileSystem->ListDir(mConfig.mRuntimeDir);
+    if (!err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& instanceID : instanceIDs) {
+        const InstanceInfo* instanceInfo = nullptr;
+
+        for (const auto& info : instancesInfo) {
+            StaticString<cIDLen> initInstanceID;
+
+            if (err = mInstanceIDProvider->GetInstanceID(info, initInstanceID); !err.IsNone()) {
+                LOG_ERR() << "Failed to get instance ID" << Log::Field(err);
+
+                continue;
+            }
+
+            if (initInstanceID.CStr() == instanceID) {
+                instanceInfo = &info;
+
+                break;
+            }
+        }
+
+        if (instanceInfo) {
+            if (auto runStatus = mRunner->GetInstanceStatus(instanceID);
+                runStatus.mState == InstanceStateEnum::eActive) {
+                if (err = InitInstance(instanceID, *instanceInfo); !err.IsNone()) {
+                    LOG_ERR() << "Failed to init instance" << Log::Field("instanceID", instanceID.c_str())
+                              << Log::Field(err);
+                } else {
+                    continue;
+                }
+            }
+        }
+
+        if (!instanceInfo) {
+            LOG_WRN() << "Stop not managed instance" << Log::Field("instanceID", instanceID.c_str());
+        } else {
+            LOG_WRN() << "Stop not active instance" << Log::Field("instanceID", instanceID.c_str());
+        }
+
+        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
+            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
+            *mInstanceIDProvider);
+
+        if (auto stopErr = instance->Stop(); !stopErr.IsNone()) {
+            LOG_ERR() << "Failed to stop instance" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field(stopErr);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ContainerRuntime::InitInstance(const std::string& instanceID, const InstanceInfo& instanceInfo)
+{
+    LOG_DBG() << "Init instance" << Log::Field("instanceID", instanceID.c_str());
+
+    auto instance = std::make_shared<Instance>(instanceInfo, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
+        *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec, *mInstanceIDProvider);
+
+    if (auto err = instance->Activate(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    std::lock_guard lock {mMutex};
+
+    mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
+
+    return ErrorEnum::eNone;
+}
+
 Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, InstanceStatus& status)
 {
     try {
@@ -163,10 +236,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
                 instance->GetStatus(status);
 
                 if (status.mState == InstanceStateEnum::eActive) {
-                    LOG_DBG() << "Instance is already running"
-                              << Log::Field("instance", static_cast<const InstanceIdent&>(instanceInfo));
-
-                    return ErrorEnum::eNone;
+                    return ErrorEnum::eAlreadyExist;
                 }
             }
         }
@@ -220,9 +290,7 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
 
             auto it = mCurrentInstances.find(static_cast<const InstanceIdent&>(instanceIdent));
             if (it == mCurrentInstances.end()) {
-                LOG_DBG() << "Instance is not running" << Log::Field("instance", instanceIdent);
-
-                return ErrorEnum::eNone;
+                return ErrorEnum::eNotFound;
             }
 
             instance = it->second;
@@ -273,27 +341,6 @@ Error ContainerRuntime::GetInstanceMonitoringData(
     return ErrorEnum::eNone;
 }
 
-Error ContainerRuntime::GetInstanceInfoByID(const String& instanceID, alerts::InstanceInfo& instanceInfo)
-{
-    std::lock_guard lock {mMutex};
-
-    LOG_DBG() << "Get instance info by ID" << Log::Field("instanceID", instanceID.CStr());
-
-    auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
-        [&instanceID](const auto& pair) { return pair.second->InstanceID() == instanceID.CStr(); });
-    if (it == mCurrentInstances.end()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "instance not found"));
-    }
-
-    instanceInfo.mInstanceIdent = it->first;
-
-    if (auto err = instanceInfo.mVersion.Assign(it->second->GetVersion().c_str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
 Error ContainerRuntime::GetInstanceIDs(const LogFilter& filter, std::vector<std::string>& instanceIDs)
 {
     std::lock_guard lock {mMutex};
@@ -332,7 +379,7 @@ std::shared_ptr<ContainerRunnerItf> ContainerRuntime::CreateContainerRunner(cons
 {
     auto pm = std::make_shared<CRunRunner>();
 
-    auto err = pm->Init(config.mRuntimeDir);
+    auto err = pm->Init(config.mRuntimeDir, config.mCRunStateRoot, config.mCRunExecutable);
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return pm;
@@ -354,57 +401,34 @@ Error ContainerRuntime::CreateRuntimeInfo(const std::string& runtimeType, const 
 
 Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
 {
-    std::lock_guard lock {mMutex};
-
     std::vector<InstanceStatus> instancesStatuses;
 
-    for (const auto& runStatus : instances) {
-        auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
-            [&runStatus](const auto& pair) { return pair.second->InstanceID() == runStatus.mInstanceID; });
-        if (it == mCurrentInstances.end()) {
-            LOG_WRN() << "Received run status for unknown instance"
-                      << Log::Field("instanceID", runStatus.mInstanceID.c_str());
+    {
+        std::lock_guard lock {mMutex};
 
-            continue;
-        }
+        for (const auto& runStatus : instances) {
+            auto it = std::find_if(mCurrentInstances.begin(), mCurrentInstances.end(),
+                [&runStatus](const auto& pair) { return pair.second->InstanceID() == runStatus.mInstanceID; });
+            if (it == mCurrentInstances.end()) {
+                LOG_WRN() << "Received run status for unknown instance"
+                          << Log::Field("instanceID", runStatus.mInstanceID.c_str());
 
-        LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
-                  << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
+                continue;
+            }
 
-        if (it->second->UpdateRunStatus(runStatus)) {
-            instancesStatuses.emplace_back();
-            it->second->GetStatus(instancesStatuses.back());
+            LOG_DBG() << "Update run status" << Log::Field("instanceID", runStatus.mInstanceID.c_str())
+                      << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
+
+            if (it->second->UpdateRunStatus(runStatus)) {
+                instancesStatuses.emplace_back();
+                it->second->GetStatus(instancesStatuses.back());
+            }
         }
     }
 
     if (!instancesStatuses.empty()) {
         mInstanceStatusReceiver->OnInstancesStatusesReceived(
             Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error ContainerRuntime::StopActiveInstances()
-{
-    auto [activeInstances, err] = mFileSystem->ListDir(mConfig.mRuntimeDir);
-    if (!err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    for (const auto& instanceID : activeInstances) {
-        LOG_WRN() << "Try to stop active instance" << Log::Field("instanceID", instanceID.c_str());
-
-        auto instance = std::make_unique<Instance>(instanceID, mConfig, mNodeInfo, *mFileSystem, *mRunner, *mMonitoring,
-            *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
-            *mInstanceIDProvider);
-
-        if (err = instance->Stop(); !err.IsNone()) {
-            LOG_ERR() << "Failed to stop active instance" << Log::Field("instanceID", instanceID.c_str())
-                      << Log::Field(err);
-        }
-
-        LOG_DBG() << "Active instance stopped" << Log::Field("instanceID", instanceID.c_str());
     }
 
     return ErrorEnum::eNone;

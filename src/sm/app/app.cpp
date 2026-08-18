@@ -27,8 +27,6 @@ namespace aos::sm::app {
 
 namespace {
 
-static const pid_t gOriginalPid = getpid();
-
 void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
@@ -91,13 +89,6 @@ void App::initialize(Application& self)
     }
 
     RegisterErrorSignals();
-
-    atexit([] {
-        if (getpid() != gOriginalPid) {
-            _exit(0); // forked child: bail out before destructors run
-        }
-        // original process: fall through, destructors run normally
-    });
 
     Application::initialize(self);
 

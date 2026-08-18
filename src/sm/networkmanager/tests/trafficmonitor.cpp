@@ -190,6 +190,191 @@ TEST_F(TrafficMonitorTest, StopInstanceMonitoring)
     EXPECT_EQ(mMonitor->StopInstanceMonitoring("test-instance"), ErrorEnum::eNone);
 }
 
+TEST_F(TrafficMonitorTest, BatchStagesInstancesIntoSingleCommit)
+{
+    ExpectInit();
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+
+    auto txn = MakeTxn();
+    EXPECT_CALL(*txn, AddChain(_)).Times(4);
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string("in_inst1"), _)).Times(AtLeast(1));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string("out_inst1"), _)).Times(AtLeast(1));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string("in_inst2"), _)).Times(AtLeast(1));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string("out_inst2"), _)).Times(AtLeast(1));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(std::string("in_inst1"))));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(std::string("out_inst1"))));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(std::string("in_inst2"))));
+    EXPECT_CALL(*txn, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(std::string("out_inst2"))));
+    EXPECT_CALL(*txn, Commit()).Times(0);
+    EXPECT_CALL(*txn, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(txn))));
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNotFound));
+
+    ASSERT_EQ(mMonitor->BeginBatch(), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->StartInstanceMonitoring("inst1", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->StartInstanceMonitoring("inst2", "192.168.1.101", 0, 0), ErrorEnum::eNone);
+
+    EXPECT_EQ(mMonitor->FlushBatch(), ErrorEnum::eNone);
+}
+
+TEST_F(TrafficMonitorTest, BatchStagesStopInstanceDeletes)
+{
+    ExpectInit();
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+
+    const std::string inChain  = "in_test_instance";
+    const std::string outChain = "out_test_instance";
+
+    auto startTxn = MakeTxn();
+    auto batchTxn = MakeTxn();
+
+    auto* batchPtr = batchTxn.get();
+
+    EXPECT_CALL(*mBackend, NewTxn())
+        .WillOnce(Return(ByMove(std::move(startTxn))))
+        .WillOnce(Return(ByMove(std::move(batchTxn))));
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNotFound));
+
+    ASSERT_EQ(mMonitor->StartInstanceMonitoring("test-instance", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {10}});
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {11}});
+
+    EXPECT_CALL(*mBackend, ListChainRules(std::string(cTable), std::string(cForwardChain), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*batchPtr, DeleteRuleByHandle(std::string(cTable), std::string(cForwardChain), FWRuleHandle {10}));
+    EXPECT_CALL(*batchPtr, DeleteRuleByHandle(std::string(cTable), std::string(cForwardChain), FWRuleHandle {11}));
+    EXPECT_CALL(*batchPtr, FlushChain(std::string(cTable), inChain));
+    EXPECT_CALL(*batchPtr, DeleteChain(std::string(cTable), inChain));
+    EXPECT_CALL(*batchPtr, FlushChain(std::string(cTable), outChain));
+    EXPECT_CALL(*batchPtr, DeleteChain(std::string(cTable), outChain));
+    EXPECT_CALL(*batchPtr, Commit()).Times(0);
+    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_EQ(mMonitor->BeginBatch(), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->StopInstanceMonitoring("test-instance"), ErrorEnum::eNone);
+
+    EXPECT_EQ(mMonitor->FlushBatch(), ErrorEnum::eNone);
+}
+
+TEST_F(TrafficMonitorTest, RevertDeletesFlushedHandlesAndClearsInstanceState)
+{
+    ExpectInit();
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+
+    const std::string inChain  = "in_inst1";
+    const std::string outChain = "out_inst1";
+
+    auto batchTxn  = MakeTxn();
+    auto revertTxn = MakeTxn();
+    auto retryTxn  = MakeTxn();
+
+    auto* batchPtr  = batchTxn.get();
+    auto* revertPtr = revertTxn.get();
+    auto* retryPtr  = retryTxn.get();
+
+    EXPECT_CALL(*mBackend, NewTxn())
+        .WillOnce(Return(ByMove(std::move(batchTxn))))
+        .WillOnce(Return(ByMove(std::move(revertTxn))))
+        .WillOnce(Return(ByMove(std::move(retryTxn))));
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNotFound));
+    EXPECT_CALL(*mStorage, SetTrafficMonitorData(_, _, _)).Times(0);
+
+    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>()))
+        .WillOnce([inChain, outChain](std::vector<FWListedRule>& added) {
+            added = {
+                {{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}},
+                {{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}},
+            };
+
+            return Error(ErrorEnum::eNone);
+        });
+
+    ASSERT_EQ(mMonitor->BeginBatch(), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->StartInstanceMonitoring("inst1", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->FlushBatch(), ErrorEnum::eNone);
+
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, inChain}, FWRuleHandle {20}});
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, outChain}, FWRuleHandle {21}});
+    forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eJump, "in_other"}, FWRuleHandle {9}});
+
+    EXPECT_CALL(*mBackend, ListChainRules(std::string(cTable), std::string(cForwardChain), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(std::string(cTable), std::string(cForwardChain), FWRuleHandle {20}));
+    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(std::string(cTable), std::string(cForwardChain), FWRuleHandle {21}));
+    EXPECT_CALL(*revertPtr, FlushChain(std::string(cTable), inChain));
+    EXPECT_CALL(*revertPtr, DeleteChain(std::string(cTable), inChain));
+    EXPECT_CALL(*revertPtr, FlushChain(std::string(cTable), outChain));
+    EXPECT_CALL(*revertPtr, DeleteChain(std::string(cTable), outChain));
+
+    ASSERT_EQ(mMonitor->Revert(), ErrorEnum::eNone);
+
+    uint64_t inputTraffic = 0, outputTraffic = 0;
+
+    EXPECT_EQ(mMonitor->GetInstanceTraffic("inst1", inputTraffic, outputTraffic), ErrorEnum::eNotFound);
+
+    // The instance is unknown again, so the per-instance retry really re-applies.
+    EXPECT_CALL(*retryPtr, AddChain(_)).Times(2);
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), inChain, _)).Times(AtLeast(1));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), outChain, _)).Times(AtLeast(1));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(inChain)));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(outChain)));
+
+    EXPECT_EQ(mMonitor->StartInstanceMonitoring("inst1", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+}
+
+TEST_F(TrafficMonitorTest, FailedFlushClearsStagedInstanceState)
+{
+    ExpectInit();
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+
+    const std::string inChain  = "in_inst1";
+    const std::string outChain = "out_inst1";
+
+    auto batchTxn = MakeTxn();
+    auto retryTxn = MakeTxn();
+
+    auto* batchPtr = batchTxn.get();
+    auto* retryPtr = retryTxn.get();
+
+    EXPECT_CALL(*mBackend, NewTxn())
+        .WillOnce(Return(ByMove(std::move(batchTxn))))
+        .WillOnce(Return(ByMove(std::move(retryTxn))));
+    EXPECT_CALL(*mStorage, GetTrafficMonitorData(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNotFound));
+
+    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(Error(ErrorEnum::eFailed)));
+
+    ASSERT_EQ(mMonitor->BeginBatch(), ErrorEnum::eNone);
+    ASSERT_EQ(mMonitor->StartInstanceMonitoring("inst1", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+
+    EXPECT_FALSE(mMonitor->FlushBatch().IsNone());
+
+    // Nothing was applied, so the per-instance retry must build and commit its
+    // own transaction instead of returning early for a known instance.
+    EXPECT_CALL(*retryPtr, AddChain(_)).Times(2);
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), inChain, _)).Times(AtLeast(1));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), outChain, _)).Times(AtLeast(1));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(inChain)));
+    EXPECT_CALL(*retryPtr, AddRule(std::string(cTable), std::string(cForwardChain), JumpTo(outChain)));
+    EXPECT_CALL(*retryPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_EQ(mMonitor->StartInstanceMonitoring("inst1", "192.168.1.100", 0, 0), ErrorEnum::eNone);
+}
+
+TEST_F(TrafficMonitorTest, FlushBatchAndRevertWithoutBeginAreNoOp)
+{
+    ExpectInit();
+    ASSERT_EQ(mMonitor->Init(*mStorage, *mBackend), ErrorEnum::eNone);
+
+    EXPECT_CALL(*mBackend, ListChainRules(_, _, _)).Times(0);
+
+    EXPECT_EQ(mMonitor->FlushBatch(), ErrorEnum::eNone);
+    EXPECT_EQ(mMonitor->Revert(), ErrorEnum::eNone);
+}
+
 TEST_F(TrafficMonitorTest, GetSystemData)
 {
     ExpectInit();

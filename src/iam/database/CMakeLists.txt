@@ -41,3 +41,9 @@ add_module(
 if(WITH_TEST)
     add_subdirectory(tests)
 endif()
+
+# ######################################################################################################################
+# Install
+# ######################################################################################################################
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/migration/ DESTINATION share/aos/iam/migration)

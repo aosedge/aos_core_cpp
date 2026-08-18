@@ -16,17 +16,19 @@
 namespace aos::sm::launcher {
 
 /**
- * CRun container runner.
+ * crun container runner.
  */
 class CRunRunner : public ContainerRunnerItf {
 public:
     /**
-     * Initializes the CRun runner.
+     * Initializes the crun runner.
      *
      * @param runtimeDir base directory for per-instance runtime files.
+     * @param stateRoot crun state root directory (--root).
+     * @param crunExecutable path to the crun executable.
      * @return Error.
      */
-    Error Init(const std::string& runtimeDir);
+    Error Init(const std::string& runtimeDir, const std::string& stateRoot, const std::string& crunExecutable);
     /**
      * Starts a container for the given instance.
      *
@@ -34,6 +36,14 @@ public:
      * @return Error.
      */
     Error StartContainer(const std::string& instanceID) override;
+
+    /**
+     * Starts managing an already running container without starting it.
+     *
+     * @param instanceID instance ID.
+     * @return Error.
+     */
+    Error AddContainer(const std::string& instanceID) override;
 
     /**
      * Returns the status of a container.
@@ -67,11 +77,11 @@ public:
     Error RemoveContainer(const std::string& instanceID) override;
 
 private:
-    static constexpr auto cStateRoot = "/run/crun";
-
     RetWithError<ContainerStatus> CheckProcessAlive(const std::string& instanceID) const;
 
     std::string           mRuntimeDir;
+    std::string           mStateRoot;
+    std::string           mCRunExecutable;
     std::mutex            mMutex;
     std::set<std::string> mManagedInstances;
 };

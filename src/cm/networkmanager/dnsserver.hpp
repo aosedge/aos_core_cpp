@@ -32,9 +32,10 @@ public:
      * Initializes DNS server.
      *
      * @param dnsStoragePath DNS storage path.
+     * @param dnsPidFile DNS PID file.
      * @param IP IP.
      */
-    void Init(const std::string& dnsStoragePath, const std::string& IP);
+    void Init(const std::string& dnsStoragePath, const std::string& dnsPidFile, const std::string& dnsIP);
 
     /**
      * Updates hosts file.
@@ -65,8 +66,9 @@ private:
     Poco::Process::PID FindServerProcess();
     void               RestartProcess(Poco::Process::PID pid);
 
-    std::string mDnsStoragePath;
+    std::string mDNSStoragePath;
     std::string mIP;
+    std::string mDNSPidFile;
 };
 
 } // namespace aos::cm::networkmanager

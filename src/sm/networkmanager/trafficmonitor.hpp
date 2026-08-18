@@ -8,7 +8,11 @@
 #define AOS_SM_NETWORKMANAGER_TRAFFICMONITOR_HPP_
 
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <set>
 #include <shared_mutex>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -87,6 +91,39 @@ public:
      */
     Error GetInstanceTraffic(const String& instanceID, uint64_t& inputTraffic, uint64_t& outputTraffic) const override;
 
+    /**
+     * Begins batch mode: StartInstanceMonitoring/StopInstanceMonitoring stage
+     * their nft operations into a single shared transaction instead of
+     * committing per instance.
+     *
+     * @return Error.
+     */
+    Error BeginBatch() override;
+
+    /**
+     * Commits the staged batch in one nft transaction, records the handles it
+     * added and leaves batch mode.
+     *
+     * @return Error.
+     */
+    Error FlushBatch() override;
+
+    /**
+     * Discards the staged batch and leaves batch mode without applying anything,
+     * dropping the monitoring state the batch staged.
+     *
+     * @return Error.
+     */
+    Error AbortBatch() override;
+
+    /**
+     * Deletes by handle everything the last flushed batch added, together with
+     * the counter chains it created, and drops their monitoring state.
+     *
+     * @return Error.
+     */
+    Error Revert() override;
+
 private:
     static constexpr auto cTable          = "aos-traffic";
     static constexpr auto cInputChain     = "input";
@@ -108,9 +145,11 @@ private:
     };
 
     struct InstanceChains {
-        std::string mIP;
-        std::string mInChain;
-        std::string mOutChain;
+        std::string            mIP;
+        std::string            mInChain;
+        std::string            mOutChain;
+        nftables::FWRuleHandle mInHandle {};
+        nftables::FWRuleHandle mOutHandle {};
     };
 
     using StagedTrafficData = std::vector<std::pair<std::string, TrafficData>>;
@@ -119,6 +158,11 @@ private:
     Error DeleteTrafficTable();
     Error CreateInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, bool isInChain,
         const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged);
+    Error BuildInstanceMonitoring(nftables::FWTxnItf& txn, const InstanceChains& chains, StagedTrafficData& staged,
+        uint64_t downloadLimit, uint64_t uploadLimit);
+    void  DeleteInstanceMonitoring(
+         nftables::FWTxnItf& txn, const InstanceChains& chains, const std::vector<nftables::FWRuleHandle>& jumpHandles);
+    void  DropBatchInstanceState(const std::vector<std::string>& instanceIDs);
     void  PublishTrafficData(StagedTrafficData& staged);
     Error AppendChainCounterRules(
         nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled);
@@ -136,10 +180,17 @@ private:
     std::unordered_map<std::string, TrafficData>    mTrafficData {};
     std::unordered_map<std::string, InstanceChains> mInstanceChains {};
     mutable std::shared_mutex                       mMutex {};
-    aos::Timer                                      mTimer {};
-    TrafficPeriod                                   mTrafficPeriod {};
-    Duration                                        mUpdatePeriod {};
-    bool                                            mStop {};
+
+    std::mutex                          mBatchMutex;
+    bool                                mBatchMode {false};
+    std::unique_ptr<nftables::FWTxnItf> mBatchTxn;
+    std::vector<std::string>            mBatchInstances;
+    std::set<nftables::FWRuleHandle>    mAppliedHandles;
+
+    aos::Timer    mTimer {};
+    TrafficPeriod mTrafficPeriod {};
+    Duration      mUpdatePeriod {};
+    bool          mStop {};
 };
 
 } // namespace aos::sm::networkmanager

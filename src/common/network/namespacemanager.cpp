@@ -107,6 +107,20 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
     return ErrorEnum::eNone;
 }
 
+RetWithError<bool> NamespaceManager::IsNetworkNamespaceExist(const String& ns) const
+{
+    auto path = std::filesystem::path(cPathToNetNs) / ns.CStr();
+
+    std::error_code ec;
+
+    const auto exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return {false, Error(ErrorEnum::eFailed, ec.message().c_str())};
+    }
+
+    return {exists, ErrorEnum::eNone};
+}
+
 RetWithError<StaticString<cFilePathLen>> NamespaceManager::GetNetworkNamespacePath(const String& ns) const
 {
     LOG_DBG() << "Get network namespace path: ns=" << ns;

@@ -228,7 +228,8 @@ private:
     void OnNodeConnected(const String& nodeID) override;
     void OnNodeDisconnected(const String& nodeID) override;
 
-    static constexpr auto cStreamPollInterval = std::chrono::seconds(1);
+    static constexpr auto cStreamPollInterval  = std::chrono::seconds(1);
+    static constexpr auto cServerShutdownDelay = std::chrono::seconds(5);
 
     SMHandler* FindNode(const String& nodeID);
 

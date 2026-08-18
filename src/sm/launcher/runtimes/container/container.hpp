@@ -17,7 +17,6 @@
 #include <core/sm/launcher/itf/runtime.hpp>
 
 #include <common/utils/utils.hpp>
-#include <sm/alerts/itf/instanceinfoprovider.hpp>
 #include <sm/launcher/runtimes/config.hpp>
 #include <sm/logprovider/itf/instanceidprovider.hpp>
 
@@ -33,10 +32,7 @@ constexpr auto cRuntimeContainer = "container";
 /**
  * Container runtime implementation.
  */
-class ContainerRuntime : public RuntimeItf,
-                         public RunStatusReceiverItf,
-                         public alerts::InstanceInfoProviderItf,
-                         public logprovider::InstanceIDProviderItf {
+class ContainerRuntime : public RuntimeItf, public RunStatusReceiverItf, public logprovider::InstanceIDProviderItf {
 public:
     /**
      * Initializes container runtime.
@@ -81,6 +77,18 @@ public:
     Error GetRuntimeInfo(RuntimeInfo& runtimeInfo) const override;
 
     /**
+     * Initializes instances.
+     *
+     * Launcher provides list of known instances to runtime at startup. Runtime should stop all instances that are not
+     * in the list and properly initialize already running instances. Runtime should not start any instance at this
+     * stage, it should only prepare them for future start.
+     *
+     * @param instancesInfo instances info.
+     * @return Error.
+     */
+    Error InitInstances(const Array<InstanceInfo>& instancesInfo) override;
+
+    /**
      * Start instance.
      *
      * @param instanceInfo instance to start.
@@ -116,15 +124,6 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
     /**
-     * Returns service instance info.
-     *
-     * @param instanceID instance id.
-     * @param[out] instanceInfo instance info.
-     * @return Error.
-     */
-    Error GetInstanceInfoByID(const String& instanceID, alerts::InstanceInfo& instanceInfo) override;
-
-    /**
      * Returns service instance IDs.
      *
      * @param filter log filter.
@@ -142,7 +141,7 @@ private:
     Error UpdateRunStatus(const std::vector<RunStatus>& instances) override;
 
     Error CreateRuntimeInfo(const std::string& runtimeType, const NodeInfo& nodeInfo);
-    Error StopActiveInstances();
+    Error InitInstance(const std::string& instanceID, const InstanceInfo& instanceInfo);
     void  SendInstanceStatus(const InstanceStatus& status);
 
     std::shared_ptr<RunnerItf>          mRunner;

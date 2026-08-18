@@ -133,33 +133,47 @@ void AppendRuleExpr(std::ostringstream& buf, const FWRule& rule)
 
 bool ParseRuleLine(const std::string& line, FWListedRule& out)
 {
+    static const std::regex ctStateRe(R"(ct\s+state\s+([a-z,]+))");
+    static const std::regex saddrRe(R"(ip\s+saddr\s+(\S+))");
+    static const std::regex daddrRe(R"(ip\s+daddr\s+(\S+))");
+    static const std::regex dportRe(R"((tcp|udp)\s+dport\s+(\d+))");
+    static const std::regex protoRe(R"(\b(tcp|udp)\b)");
+    static const std::regex oifnameRe(R"rx(oifname\s+(!=\s+)?"([^"]+)")rx");
+    static const std::regex counterRe(R"(counter\s+packets\s+(\d+)\s+bytes\s+(\d+))");
+    static const std::regex jumpRe(R"(\bjump\s+(\S+))");
+    static const std::regex masqueradeRe(R"(\bmasquerade\b)");
+    static const std::regex acceptRe(R"(\baccept\b)");
+    static const std::regex dropRe(R"(\bdrop\b)");
+    static const std::regex returnRe(R"(\breturn\b)");
+    static const std::regex handleRe(R"(#\s+handle\s+(\d+))");
+
     std::smatch m;
 
-    if (std::regex_search(line, m, std::regex(R"(ct\s+state\s+([a-z,]+))"))) {
+    if (std::regex_search(line, m, ctStateRe)) {
         out.mRule.mCtState = m[1];
     }
 
-    if (std::regex_search(line, m, std::regex(R"(ip\s+saddr\s+(\S+))"))) {
+    if (std::regex_search(line, m, saddrRe)) {
         out.mRule.mSrcAddr = m[1];
     }
 
-    if (std::regex_search(line, m, std::regex(R"(ip\s+daddr\s+(\S+))"))) {
+    if (std::regex_search(line, m, daddrRe)) {
         out.mRule.mDstAddr = m[1];
     }
 
-    if (std::regex_search(line, m, std::regex(R"((tcp|udp)\s+dport\s+(\d+))"))) {
+    if (std::regex_search(line, m, dportRe)) {
         out.mRule.mProto   = m[1];
         out.mRule.mDstPort = static_cast<uint16_t>(std::stoi(m[2]));
-    } else if (std::regex_search(line, m, std::regex(R"(\b(tcp|udp)\b)"))) {
+    } else if (std::regex_search(line, m, protoRe)) {
         out.mRule.mProto = m[1];
     }
 
-    if (std::regex_search(line, m, std::regex(R"rx(oifname\s+(!=\s+)?"([^"]+)")rx"))) {
+    if (std::regex_search(line, m, oifnameRe)) {
         out.mRule.mOIFNeg  = m[1].matched;
         out.mRule.mOIFName = m[2];
     }
 
-    if (std::regex_search(line, m, std::regex(R"(counter\s+packets\s+(\d+)\s+bytes\s+(\d+))"))) {
+    if (std::regex_search(line, m, counterRe)) {
         out.mRule.mCounter = true;
         out.mPackets       = std::stoull(m[1]);
         out.mBytes         = std::stoull(m[2]);
@@ -167,25 +181,25 @@ bool ParseRuleLine(const std::string& line, FWListedRule& out)
 
     bool actionFound = false;
 
-    if (std::regex_search(line, m, std::regex(R"(\bjump\s+(\S+))"))) {
+    if (std::regex_search(line, m, jumpRe)) {
         out.mRule.mAction     = FWActionEnum::eJump;
         out.mRule.mJumpTarget = m[1];
         actionFound           = true;
-    } else if (std::regex_search(line, m, std::regex(R"(\bmasquerade\b)"))) {
+    } else if (std::regex_search(line, m, masqueradeRe)) {
         out.mRule.mAction = FWActionEnum::eMasquerade;
         actionFound       = true;
-    } else if (std::regex_search(line, m, std::regex(R"(\baccept\b)"))) {
+    } else if (std::regex_search(line, m, acceptRe)) {
         out.mRule.mAction = FWActionEnum::eAccept;
         actionFound       = true;
-    } else if (std::regex_search(line, m, std::regex(R"(\bdrop\b)"))) {
+    } else if (std::regex_search(line, m, dropRe)) {
         out.mRule.mAction = FWActionEnum::eDrop;
         actionFound       = true;
-    } else if (std::regex_search(line, m, std::regex(R"(\breturn\b)"))) {
+    } else if (std::regex_search(line, m, returnRe)) {
         out.mRule.mAction = FWActionEnum::eReturn;
         actionFound       = true;
     }
 
-    if (!std::regex_search(line, m, std::regex(R"(#\s+handle\s+(\d+))"))) {
+    if (!std::regex_search(line, m, handleRe)) {
         return false;
     }
 
@@ -266,6 +280,34 @@ public:
         }
 
         return mParent.RunBuffer(cmd);
+    }
+
+    Error Commit(std::vector<FWRuleHandle>& addedHandles) override
+    {
+        const auto cmd = mBuf.str();
+
+        mBuf.str(std::string {});
+        mBuf.clear();
+
+        if (cmd.empty()) {
+            return ErrorEnum::eNone;
+        }
+
+        return mParent.RunBufferEcho(cmd, addedHandles);
+    }
+
+    Error Commit(std::vector<FWListedRule>& addedRules) override
+    {
+        const auto cmd = mBuf.str();
+
+        mBuf.str(std::string {});
+        mBuf.clear();
+
+        if (cmd.empty()) {
+            return ErrorEnum::eNone;
+        }
+
+        return mParent.RunBufferEchoRules(cmd, addedRules);
     }
 
 private:
@@ -364,6 +406,96 @@ Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
     }
 
     output = ctx.OutputBuffer();
+
+    return ErrorEnum::eNone;
+}
+
+Error NFTables::RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>& handles)
+{
+    std::lock_guard<std::mutex> lock {mMutex};
+
+    NFTCtxGuard ctx;
+    if (ctx.Get() == nullptr) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "nft_ctx_new failed"));
+    }
+
+    nft_ctx_output_set_flags(ctx.Get(), nft_ctx_output_get_flags(ctx.Get()) | NFT_CTX_OUTPUT_ECHO);
+
+    if (nft_run_cmd_from_buffer(ctx.Get(), cmd.c_str()) != 0) {
+        const auto errText = ctx.ErrorBuffer();
+
+        if (IsNotFoundError(errText)) {
+            return Error(ErrorEnum::eNotFound, errText.empty() ? "nftables object not found" : errText.c_str());
+        }
+
+        LOG_ERR() << "nftables command failed" << Log::Field("cmd", cmd.c_str()) << Log::Field("err", errText.c_str());
+
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, errText.empty() ? "nftables command failed" : errText.c_str()));
+    }
+
+    const auto         output = ctx.OutputBuffer();
+    std::istringstream iss(output);
+    std::string        line;
+    const std::regex   re(R"(#\s+handle\s+(\d+))");
+
+    while (std::getline(iss, line)) {
+        std::smatch m;
+
+        if (std::regex_search(line, m, re)) {
+            handles.push_back(static_cast<FWRuleHandle>(std::stoull(m[1])));
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error NFTables::RunBufferEchoRules(const std::string& cmd, std::vector<FWListedRule>& rules)
+{
+    std::lock_guard<std::mutex> lock {mMutex};
+
+    NFTCtxGuard ctx;
+    if (ctx.Get() == nullptr) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "nft_ctx_new failed"));
+    }
+
+    nft_ctx_output_set_flags(ctx.Get(), nft_ctx_output_get_flags(ctx.Get()) | NFT_CTX_OUTPUT_ECHO);
+
+    if (nft_run_cmd_from_buffer(ctx.Get(), cmd.c_str()) != 0) {
+        const auto errText = ctx.ErrorBuffer();
+
+        if (IsNotFoundError(errText)) {
+            return Error(ErrorEnum::eNotFound, errText.empty() ? "nftables object not found" : errText.c_str());
+        }
+
+        LOG_ERR() << "nftables command failed" << Log::Field("cmd", cmd.c_str()) << Log::Field("err", errText.c_str());
+
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, errText.empty() ? "nftables command failed" : errText.c_str()));
+    }
+
+    const auto         output = ctx.OutputBuffer();
+    std::istringstream iss(output);
+    std::string        line;
+    const std::regex   jumpRe(R"(\bjump\s+(\S+))");
+    const std::regex   handleRe(R"(#\s+handle\s+(\d+))");
+
+    while (std::getline(iss, line)) {
+        std::smatch jm;
+        if (!std::regex_search(line, jm, jumpRe)) {
+            continue;
+        }
+
+        std::smatch hm;
+        if (!std::regex_search(line, hm, handleRe)) {
+            continue;
+        }
+
+        FWListedRule listed {};
+        listed.mRule.mAction     = FWActionEnum::eJump;
+        listed.mRule.mJumpTarget = jm[1];
+        listed.mHandle           = static_cast<FWRuleHandle>(std::stoull(hm[1]));
+
+        rules.push_back(std::move(listed));
+    }
 
     return ErrorEnum::eNone;
 }

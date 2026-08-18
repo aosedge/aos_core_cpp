@@ -221,7 +221,7 @@ Error FSWatcher::StopImpl()
         mInotifyFd = -1;
     }
 
-    if (auto err = mTimer.Stop(); !err.IsNone()) {
+    if (auto err = mTimer.Stop(Timer::StopMode::WaitForCallbacks); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

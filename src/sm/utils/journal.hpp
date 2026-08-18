@@ -90,6 +90,14 @@ public:
      */
     std::string GetCursor() override;
 
+    /**
+     * Waits for journal changes and processes them.
+     *
+     * @param timeout wait timeout.
+     * @return remaining time to wait.
+     */
+    std::chrono::microseconds Wait(std::chrono::microseconds timeout) override;
+
 private:
     class sd_journal* mJournal {};
 };

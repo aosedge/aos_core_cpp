@@ -45,6 +45,7 @@ struct Config {
     nodeinfoprovider::Config  mNodeInfoProvider;
     std::string               mDNSStoragePath;
     std::string               mDNSIP;
+    std::string               mDNSPidFile;
     std::string               mCertStorage;
     std::string               mServiceDiscoveryURL;
     std::string               mOverrideServiceDiscoveryURL;

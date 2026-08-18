@@ -26,6 +26,7 @@ public:
     MOCK_METHOD(JournalEntry, GetEntry, (), (override));
     MOCK_METHOD(void, SeekCursor, (const std::string& cursor), (override));
     MOCK_METHOD(std::string, GetCursor, (), (override));
+    MOCK_METHOD(std::chrono::microseconds, Wait, (std::chrono::microseconds timeout), (override));
 };
 
 } // namespace aos::sm::utils

@@ -99,7 +99,6 @@ TEST_F(DNSNameTest, CreateServerFreshSpawnsDnsmasq)
 
     EXPECT_CALL(mSpawner, Spawn(std::string(cDnsmasqBinary), ExpectedArgs(storageDir)))
         .WillOnce(Return(RetWithError<Poco::Process::PID> {cSpawnedPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cSpawnedPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [handle, err] = mName.CreateServer("net1", MakeParams());
 
@@ -112,7 +111,6 @@ TEST_F(DNSNameTest, CreateServerSamePointerOnRepeat)
 {
     EXPECT_CALL(mSpawner, Spawn(_, _))
         .WillOnce(Return(RetWithError<Poco::Process::PID> {cSpawnedPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cSpawnedPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [first, errFirst] = mName.CreateServer("net1", MakeParams());
 
@@ -135,7 +133,6 @@ TEST_F(DNSNameTest, CreateServerAdoptsAlivePidFile)
     EXPECT_CALL(mSpawner, IsAlive(cAdoptPID)).WillOnce(Return(true));
     EXPECT_CALL(mSpawner, GetCmdLine(cAdoptPID))
         .WillOnce(Return(RetWithError<std::string> {cmdline, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cAdoptPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [handle, err] = mName.CreateServer("net1", MakeParams());
 
@@ -154,7 +151,6 @@ TEST_F(DNSNameTest, CreateServerRespawnsStalePidFile)
     EXPECT_CALL(mSpawner, IsAlive(cStalePID)).WillOnce(Return(false));
     EXPECT_CALL(mSpawner, Spawn(_, _))
         .WillOnce(Return(RetWithError<Poco::Process::PID> {cRespawnPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cRespawnPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [handle, err] = mName.CreateServer("net1", MakeParams());
 
@@ -175,30 +171,11 @@ TEST_F(DNSNameTest, CreateServerRespawnsWhenPidIsNotDnsmasq)
         .WillOnce(Return(RetWithError<std::string> {"/bin/bash", ErrorEnum::eNone}));
     EXPECT_CALL(mSpawner, Spawn(_, _))
         .WillOnce(Return(RetWithError<Poco::Process::PID> {cRespawnPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cRespawnPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [handle, err] = mName.CreateServer("net1", MakeParams());
 
     ASSERT_TRUE(err.IsNone());
     EXPECT_NE(handle, nullptr);
-}
-
-TEST_F(DNSNameTest, CreateServerRollsBackWhenInitFails)
-{
-    const auto storageDir = mRoot / "net1";
-
-    InSequence seq;
-
-    EXPECT_CALL(mSpawner, Spawn(_, _))
-        .WillOnce(Return(RetWithError<Poco::Process::PID> {cSpawnedPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cSpawnedPID, SIGHUP)).WillOnce(Return(Error(ErrorEnum::eNotFound, "dnsmasq died")));
-    EXPECT_CALL(mSpawner, Kill(cSpawnedPID)).WillOnce(Return(ErrorEnum::eNone));
-
-    auto [handle, err] = mName.CreateServer("net1", MakeParams());
-
-    EXPECT_FALSE(err.IsNone());
-    EXPECT_EQ(handle, nullptr);
-    EXPECT_FALSE(std::filesystem::exists(storageDir));
 }
 
 TEST_F(DNSNameTest, RemoveServerKillsAndWipesDir)
@@ -207,7 +184,6 @@ TEST_F(DNSNameTest, RemoveServerKillsAndWipesDir)
 
     EXPECT_CALL(mSpawner, Spawn(_, _))
         .WillOnce(Return(RetWithError<Poco::Process::PID> {cSpawnedPID, ErrorEnum::eNone}));
-    EXPECT_CALL(mSpawner, Signal(cSpawnedPID, SIGHUP)).WillOnce(Return(ErrorEnum::eNone));
 
     auto [handle, err] = mName.CreateServer("net1", MakeParams());
 

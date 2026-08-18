@@ -5,7 +5,9 @@
  */
 
 #include <csignal>
+#include <cstring>
 #include <fstream>
+#include <sstream>
 
 #include <core/common/tools/logger.hpp>
 
@@ -16,6 +18,7 @@ namespace aos::sm::networkmanager {
 namespace {
 
 constexpr auto cHostsFileName = "addnhosts";
+constexpr auto cInstanceMark  = " # ";
 
 } // namespace
 
@@ -31,11 +34,7 @@ Error DNSServer::Init(const std::string& networkID, const std::string& storageDi
     mSpawner    = &spawner;
     mPID        = pid;
 
-    if (auto err = WriteHostsFile(); !err.IsNone()) {
-        return err;
-    }
-
-    return Reload();
+    return LoadHostsFile();
 }
 
 Error DNSServer::AddHost(const String& instanceID, const DNSAliasesParams& params)
@@ -83,6 +82,54 @@ Error DNSServer::RemoveHost(const String& instanceID)
  * Private
  **********************************************************************************************************************/
 
+Error DNSServer::LoadHostsFile()
+{
+    mHosts.clear();
+
+    const auto path = mStorageDir + "/" + cHostsFileName;
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return WriteHostsFile();
+    }
+
+    std::string line;
+
+    while (std::getline(file, line)) {
+        const auto mark = line.rfind(cInstanceMark);
+        if (mark == std::string::npos) {
+            continue;
+        }
+
+        auto instanceID = line.substr(mark + std::strlen(cInstanceMark));
+        if (instanceID.empty()) {
+            continue;
+        }
+
+        std::istringstream tokens(line.substr(0, mark));
+
+        HostRecord record;
+
+        if (!(tokens >> record.mIP)) {
+            continue;
+        }
+
+        std::string name;
+
+        while (tokens >> name) {
+            record.mNames.push_back(name);
+        }
+
+        if (record.mNames.empty()) {
+            continue;
+        }
+
+        mHosts[std::move(instanceID)] = std::move(record);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error DNSServer::WriteHostsFile() const
 {
     const auto path = mStorageDir + "/" + cHostsFileName;
@@ -92,7 +139,7 @@ Error DNSServer::WriteHostsFile() const
         return Error(ErrorEnum::eRuntime, "failed to open addnhosts");
     }
 
-    for (const auto& [_, record] : mHosts) {
+    for (const auto& [instanceID, record] : mHosts) {
         if (record.mNames.empty()) {
             continue;
         }
@@ -103,7 +150,7 @@ Error DNSServer::WriteHostsFile() const
             line += "\t" + name;
         }
 
-        line += "\n";
+        line += cInstanceMark + instanceID + "\n";
 
         file << line;
         if (file.fail()) {

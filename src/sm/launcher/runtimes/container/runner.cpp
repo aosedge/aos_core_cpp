@@ -61,6 +61,18 @@ Error Runner::Stop()
     return ErrorEnum::eNone;
 }
 
+RunStatus Runner::GetInstanceStatus(const std::string& instanceID)
+{
+    LOG_DBG() << "Get instance status" << Log::Field("instanceID", instanceID.c_str());
+
+    auto [status, err] = mContainerRunner->GetContainerStatus(instanceID);
+    if (!err.IsNone()) {
+        return {instanceID, InstanceStateEnum::eFailed, err};
+    }
+
+    return {instanceID, status.mState, ErrorEnum::eNone};
+}
+
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
 {
     RunStatus status = {};
@@ -68,19 +80,7 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
     status.mInstanceID = instanceID;
     status.mState      = InstanceStateEnum::eFailed;
 
-    RunParameters fixedParams = params;
-
-    if (!params.mStartInterval.HasValue()) {
-        fixedParams.mStartInterval = cDefaultStartInterval;
-    }
-
-    if (!params.mStartBurst.HasValue()) {
-        fixedParams.mStartBurst = cDefaultStartBurst;
-    }
-
-    if (!params.mRestartInterval.HasValue()) {
-        fixedParams.mRestartInterval = cDefaultRestartInterval;
-    }
+    auto fixedParams = GetFixedParams(params);
 
     LOG_DBG() << "Start service instance" << Log::Field("instanceID", instanceID.c_str())
               << Log::Field("startInterval", fixedParams.mStartInterval)
@@ -94,7 +94,33 @@ RunStatus Runner::StartInstance(const std::string& instanceID, const RunParamete
     // Get unit status.
     Tie(status.mState, status.mError) = InitContainerState(instanceID, fixedParams);
 
-    LOG_DBG() << "Start instance" << Log::Field("instanceID", instanceID.c_str()) << Log::Field("state", status.mState)
+    LOG_DBG() << "Start service instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("state", status.mState) << Log::Field("error", status.mError);
+
+    return status;
+}
+
+RunStatus Runner::WatchInstance(const std::string& instanceID, const RunParameters& params)
+{
+    RunStatus status = {};
+
+    status.mInstanceID = instanceID;
+    status.mState      = InstanceStateEnum::eFailed;
+
+    auto fixedParams = GetFixedParams(params);
+
+    LOG_DBG() << "Watch service instance" << Log::Field("instanceID", instanceID.c_str())
+              << Log::Field("startInterval", fixedParams.mStartInterval)
+              << Log::Field("startBurst", fixedParams.mStartBurst)
+              << Log::Field("restartInterval", fixedParams.mRestartInterval);
+
+    if (status.mError = mContainerRunner->AddContainer(instanceID); !status.mError.IsNone()) {
+        return status;
+    }
+
+    Tie(status.mState, status.mError) = InitContainerState(instanceID, fixedParams);
+
+    LOG_DBG() << "Watch instance" << Log::Field("instanceID", instanceID.c_str()) << Log::Field("state", status.mState)
               << Log::Field("error", status.mError);
 
     return status;
@@ -105,7 +131,11 @@ Error Runner::StopInstance(const std::string& instanceID)
     LOG_DBG() << "Stop instance" << Log::Field("instanceID", instanceID.c_str());
 
     {
-        std::lock_guard lock {mMutex};
+        std::unique_lock lock {mMutex};
+
+        mCondVar.wait(lock, [this, &instanceID]() {
+            return mClosed || mInstancesToRestart.find(instanceID) == mInstancesToRestart.end();
+        });
 
         mRunningContainers.erase(instanceID);
     }
@@ -183,11 +213,11 @@ bool Runner::SyncStates()
     return stateChanged;
 }
 
-std::vector<std::string> Runner::GetInstancesToRestart()
+void Runner::SetInstancesToRestart()
 {
     const auto now = Time::Now();
 
-    std::vector<std::string> instances;
+    mInstancesToRestart.clear();
 
     for (auto& [instanceID, runningState] : mRunningContainers) {
         if (!runningState.mNextRestartAt.has_value() || now < *runningState.mNextRestartAt) {
@@ -202,7 +232,7 @@ std::vector<std::string> Runner::GetInstancesToRestart()
 
             if (const auto burst = runningState.mParams.mStartBurst.GetValue();
                 burst > 0 && runningState.mRestartCount >= burst) {
-                LOG_WRN() << "Restart burst limit exceeded, stopping restart attempts"
+                LOG_ERR() << "Restart burst limit exceeded, stopping restart attempts"
                           << Log::Field("instanceID", instanceID.c_str());
 
                 runningState.mExceedsBurstLimit = true;
@@ -213,16 +243,14 @@ std::vector<std::string> Runner::GetInstancesToRestart()
             ++runningState.mRestartCount;
         }
 
-        instances.push_back(instanceID);
+        mInstancesToRestart.insert(instanceID);
     }
-
-    return instances;
 }
 
 void Runner::MonitorContainers()
 {
     while (!mClosed) {
-        std::vector<std::string> instancesToRestart;
+        std::optional<std::vector<RunStatus>> runStatusUpdate;
 
         {
             std::unique_lock<std::mutex> lock {mMutex};
@@ -234,25 +262,17 @@ void Runner::MonitorContainers()
             const auto stateChanged = SyncStates();
 
             if (stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
-                mRunStatusReceiver->UpdateRunStatus(GetRunningInstances());
+                runStatusUpdate = GetRunningInstances();
             }
 
-            instancesToRestart = GetInstancesToRestart();
+            SetInstancesToRestart();
         }
 
-        for (const auto& instanceID : instancesToRestart) {
-            LOG_DBG() << "Restarting container" << Log::Field("instanceID", instanceID.c_str());
-
-            if (auto err = mContainerRunner->RemoveContainer(instanceID); !err.IsNone()) {
-                LOG_WRN() << "Failed to remove container" << Log::Field("instanceID", instanceID.c_str())
-                          << Log::Field(err);
-            }
-
-            if (auto err = mContainerRunner->StartContainer(instanceID); !err.IsNone()) {
-                LOG_ERR() << "Failed to restart container" << Log::Field("instanceID", instanceID.c_str())
-                          << Log::Field(err);
-            }
+        if (runStatusUpdate) {
+            mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate);
         }
+
+        RestartInstances();
     }
 }
 
@@ -266,6 +286,25 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
         });
 
     return mRunningInstances;
+}
+
+RunParameters Runner::GetFixedParams(const RunParameters& params) const
+{
+    RunParameters fixedParams = params;
+
+    if (!params.mStartInterval.HasValue()) {
+        fixedParams.mStartInterval = cDefaultStartInterval;
+    }
+
+    if (!params.mStartBurst.HasValue()) {
+        fixedParams.mStartBurst = cDefaultStartBurst;
+    }
+
+    if (!params.mRestartInterval.HasValue()) {
+        fixedParams.mRestartInterval = cDefaultRestartInterval;
+    }
+
+    return fixedParams;
 }
 
 RetWithError<InstanceState> Runner::InitContainerState(const std::string& instanceID, const RunParameters& params)
@@ -284,6 +323,35 @@ RetWithError<InstanceState> Runner::InitContainerState(const std::string& instan
     }
 
     return status.mState;
+}
+
+void Runner::RestartInstances()
+{
+    if (mInstancesToRestart.empty()) {
+        return;
+    }
+
+    for (const auto& instanceID : mInstancesToRestart) {
+        LOG_DBG() << "Restarting container" << Log::Field("instanceID", instanceID.c_str());
+
+        if (auto err = mContainerRunner->RemoveContainer(instanceID); !err.IsNone()) {
+            LOG_WRN() << "Failed to remove container" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field(err);
+        }
+
+        if (auto err = mContainerRunner->StartContainer(instanceID); !err.IsNone()) {
+            LOG_ERR() << "Failed to restart container" << Log::Field("instanceID", instanceID.c_str())
+                      << Log::Field(err);
+        }
+    }
+
+    {
+        std::lock_guard lock {mMutex};
+
+        mInstancesToRestart.clear();
+    }
+
+    mCondVar.notify_all();
 }
 
 } // namespace aos::sm::launcher

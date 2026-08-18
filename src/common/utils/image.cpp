@@ -17,7 +17,7 @@
 #include <Poco/StreamCopier.h>
 #include <Poco/StringTokenizer.h>
 
-#include <common/utils/utils.hpp>
+#include <common/utils/exec.hpp>
 
 #include "exception.hpp"
 #include "image.hpp"

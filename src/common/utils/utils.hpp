@@ -8,9 +8,7 @@
 #define AOS_COMMON_UTILS_UTILS_HPP_
 
 #include <string>
-#include <vector>
 
-#include <core/common/tools/error.hpp>
 #include <core/common/types/common.hpp>
 
 /***********************************************************************************************************************
@@ -45,14 +43,6 @@ struct hash<aos::InstanceIdent> {
 } // namespace std
 
 namespace aos::common::utils {
-
-/**
- * Execute command and return its output.
- *
- * @param args command arguments (first argument is program name).
- * @return RetWithError<std::string>.
- */
-RetWithError<std::string> ExecCommand(const std::vector<std::string>& args);
 
 /**
  * Generates name-based UUID.

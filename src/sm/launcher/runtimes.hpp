@@ -21,8 +21,9 @@
 
 #include <sm/utils/itf/systemdconn.hpp>
 
-#include "config.hpp"
 #include "runtimes/container/container.hpp"
+
+#include "config.hpp"
 
 namespace aos::sm::launcher {
 
@@ -63,7 +64,7 @@ public:
     /**
      * Returns container runtime.
      *
-     * @return Container runtime or nullptr if not found.
+     * @return Container runtime, or nullptr if not found or if container runtime support is not compiled in.
      */
     ContainerRuntime* GetContainerRuntime() const;
 

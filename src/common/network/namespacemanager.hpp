@@ -35,6 +35,14 @@ public:
     Error CreateNetworkNamespace(const String& ns) override;
 
     /**
+     * Checks whether network namespace exists on the system.
+     *
+     * @param ns namespace name.
+     * @return RetWithError<bool>.
+     */
+    RetWithError<bool> IsNetworkNamespaceExist(const String& ns) const override;
+
+    /**
      * Returns network namespace path.
      *
      * @param ns namespace name.

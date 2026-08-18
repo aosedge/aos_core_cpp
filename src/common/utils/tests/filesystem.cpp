@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <limits>
 
 #include <gtest/gtest.h>
 
@@ -150,6 +151,35 @@ TEST_F(FSTest, CalculateSize)
 
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(size, 4 * buffer.size());
+}
+
+TEST_F(FSTest, CalculateSizeOverflow)
+{
+    // Each file is below INT_MAX, but their sum is above it. This catches accumulators that start
+    // from an `int` zero and overflow before the result is converted to uintmax_t.
+
+    constexpr uintmax_t cFileSize = 1500000000ULL;
+
+    const auto root = std::filesystem::path(cTestDir) / "size-overflow-test";
+    const auto f1   = root / "f1";
+    const auto f2   = root / "f2";
+
+    std::filesystem::create_directories(f1);
+    std::filesystem::create_directories(f2);
+
+    for (const auto& file : {f1 / "f1.bin", f2 / "f2.bin"}) {
+        std::ofstream stream(file, std::ios::binary);
+        ASSERT_TRUE(stream.good());
+
+        stream.seekp(static_cast<std::streamoff>(cFileSize) - 1);
+        stream.put('\0');
+    }
+
+    auto [size, err] = CalculateSize(root.string());
+
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(size, 2 * cFileSize);
+    EXPECT_GT(size, static_cast<uintmax_t>(std::numeric_limits<int>::max()));
 }
 
 } // namespace aos::common::utils

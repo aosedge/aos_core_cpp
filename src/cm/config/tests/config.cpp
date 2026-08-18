@@ -61,7 +61,8 @@ constexpr auto cFullTestConfigJSON = R"({
         "mergedMigrationPath": "/var/aos/communicationmanager/migration"
     },
     "dnsStoragePath": "/var/aos/dnsstorage",
-    "dnsIp": "0.0.0.0:5353"
+    "dnsIp": "0.0.0.0:5353",
+    "dnsPidFile": "/var/aos/dnsstorage/pidfile"
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
@@ -147,6 +148,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     EXPECT_EQ(config.mDNSStoragePath, "/var/aos/dnsstorage");
     EXPECT_EQ(config.mDNSIP, "0.0.0.0:5353");
+    EXPECT_EQ(config.mDNSPidFile, "/var/aos/dnsstorage/pidfile");
 }
 
 TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)

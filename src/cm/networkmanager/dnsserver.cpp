@@ -26,15 +26,16 @@ namespace aos::cm::networkmanager {
  * Public
  **********************************************************************************************************************/
 
-void DNSServer::Init(const std::string& dnsStoragePath, const std::string& IP)
+void DNSServer::Init(const std::string& dnsStoragePath, const std::string& dnsPidFile, const std::string& dnsIP)
 {
-    mDnsStoragePath = dnsStoragePath;
-    mIP             = IP;
+    mDNSStoragePath = dnsStoragePath;
+    mDNSPidFile     = dnsPidFile;
+    mIP             = dnsIP;
 }
 
 Error DNSServer::UpdateHostsFile(const HostsMap& hosts)
 {
-    auto hostsFilePath = mDnsStoragePath + "/" + cHostFileName;
+    auto hostsFilePath = mDNSStoragePath + "/" + cHostFileName;
 
     std::ofstream file(hostsFilePath, std::ios::out | std::ios::trunc);
     if (!file.is_open()) {
@@ -81,9 +82,7 @@ Error DNSServer::Restart()
 
 Poco::Process::PID DNSServer::FindServerProcess()
 {
-    auto pidFilePath = mDnsStoragePath + "/" + cPidFileName;
-
-    std::ifstream file(pidFilePath);
+    std::ifstream file(mDNSPidFile);
     if (!file.is_open()) {
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "failed to open PID file");
     }

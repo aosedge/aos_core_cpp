@@ -89,6 +89,12 @@ MATCHER_P2(TerminalOutRule, srcAddr, action, "")
         && arg.mDstPort == 0 && arg.mOIFName.empty();
 }
 
+MATCHER_P2(SameNetRule, srcAddr, dstAddr, "")
+{
+    return arg.mAction == FWActionEnum::eAccept && arg.mSrcAddr == srcAddr && arg.mDstAddr == dstAddr
+        && arg.mProto.empty() && arg.mDstPort == 0 && arg.mOIFName.empty();
+}
+
 MATCHER_P2(JumpRule, addrField, target, "")
 {
     return arg.mAction == FWActionEnum::eJump && arg.mJumpTarget == target && addrField(arg);
@@ -144,23 +150,36 @@ TEST_F(FirewallTest, StartAdoptsExistingTableWithoutRecreating)
     forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
     forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eAccept, ""}, FWRuleHandle {2}});
 
-    std::vector<FWListedRule> postRules;
-
     EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
         .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
     EXPECT_CALL(mBackend, NewTxn()).Times(0);
 
     EXPECT_TRUE(mFirewall.Start().IsNone());
 }
 
-TEST_F(FirewallTest, StartAdoptReconcilesStaleInstanceState)
+TEST_F(FirewallTest, StartKeepsRulesLeftByPreviousLifetime)
+{
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_alive"}, FWRuleHandle {30}});
+
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+
+    EXPECT_TRUE(mFirewall.Start().IsNone());
+}
+
+/***********************************************************************************************************************
+ * RemoveOrphans
+ **********************************************************************************************************************/
+
+TEST_F(FirewallTest, RemoveOrphansDropsUnknownInstanceChainsAndKeepsKnownOnes)
 {
     std::vector<FWListedRule> forwardRules;
     forwardRules.push_back({{"", "", "", 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {30}});
-    forwardRules.push_back({{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {31}});
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_alive"}, FWRuleHandle {20}});
+    forwardRules.push_back({{"10.0.0.6", "", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {30}});
+    forwardRules.push_back({{"", "10.0.0.6", "", 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {31}});
 
     std::vector<FWListedRule> postRules;
 
@@ -178,8 +197,65 @@ TEST_F(FirewallTest, StartAdoptReconcilesStaleInstanceState)
     EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_stale")));
     EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
 
-    // No AddTable / AddBaseChain / ct AddRule: the table is adopted, not recreated.
-    EXPECT_TRUE(mFirewall.Start().IsNone());
+    StaticArray<StaticString<cIDLen>, 2> knownInstances;
+    knownInstances.PushBack("alive");
+
+    StaticArray<MasqueradeParams, 2> knownMasquerades;
+
+    EXPECT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
+}
+
+TEST_F(FirewallTest, RemoveOrphansDropsUnknownMasqueradeOnly)
+{
+    std::vector<FWListedRule> forwardRules;
+
+    std::vector<FWListedRule> postRules;
+    postRules.push_back(
+        {{"10.0.0.0/24", "", "", 0, "br-known", FWActionEnum::eMasquerade, "", false, "", true}, FWRuleHandle {40}});
+    postRules.push_back(
+        {{"10.0.1.0/24", "", "", 0, "br-gone", FWActionEnum::eMasquerade, "", false, "", true}, FWRuleHandle {41}});
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {41}));
+    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    StaticArray<StaticString<cIDLen>, 2> knownInstances;
+
+    StaticArray<MasqueradeParams, 2> knownMasquerades;
+    knownMasquerades.PushBack({"10.0.0.0/24", "br-known"});
+
+    EXPECT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
+}
+
+TEST_F(FirewallTest, AdoptedMasqueradeIsNotAddedAgain)
+{
+    std::vector<FWListedRule> forwardRules;
+
+    std::vector<FWListedRule> postRules;
+    postRules.push_back(
+        {{"10.0.0.0/24", "", "", 0, "br-known", FWActionEnum::eMasquerade, "", false, "", true}, FWRuleHandle {40}});
+
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+
+    StaticArray<StaticString<cIDLen>, 2> knownInstances;
+
+    StaticArray<MasqueradeParams, 2> knownMasquerades;
+    knownMasquerades.PushBack({"10.0.0.0/24", "br-known"});
+
+    ASSERT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
+
+    EXPECT_TRUE(mFirewall.AddMasquerade("10.0.0.0/24", "br-known").IsNone());
 }
 
 TEST_F(FirewallTest, StartFallbackCreatesSkeletonWithForwardPolicyDrop)
@@ -279,7 +355,7 @@ TEST_F(FirewallTest, AddInstanceInputRulesTranslated)
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
 }
@@ -309,7 +385,7 @@ TEST_F(FirewallTest, AddInstanceOutputRulesTranslated)
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
 }
@@ -328,7 +404,7 @@ TEST_F(FirewallTest, AddInstanceDenyPublicProducesDrop)
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
 }
@@ -357,7 +433,58 @@ TEST_F(FirewallTest, AddInstanceInstallsBothJumpsInForward)
             AllOf(Field(&FWRule::mSrcAddr, "10.0.0.5"), Field(&FWRule::mDstAddr, ""),
                 Field(&FWRule::mAction, FWActionEnum::eJump), Field(&FWRule::mJumpTarget, "instance_test"))));
 
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceSameNetworkAcceptsIntraSubnetBeforeAccessRules)
+{
+    auto params    = MakeParams("10.0.0.5", true);
+    params.mSubnet = "10.0.0.0/24";
+    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "tcp")).IsNone());
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_test")));
+    // Same-network accepts sit at the top of the instance chain, ahead of the
+    // per-instance access rules and the terminal drop.
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.0/24"), std::string("10.0.0.5"))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.5"), std::string("10.0.0.0/24"))));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"),
+            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceNoSubnetSkipsSameNetworkAccepts)
+{
+    // Without a subnet the instance chain keeps the original shape: no
+    // same-network accepts, only the terminal verdicts.
+    auto params = MakeParams("10.0.0.5", true);
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
+    EXPECT_CALL(*mTxnPtr,
+        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
 }
@@ -374,7 +501,7 @@ TEST_F(FirewallTest, AddInstanceSanitisesInstanceID)
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_abc_123_de"), _)).Times(2);
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_abc_123_de")))
         .Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("abc-123-de", params).IsNone());
 }
@@ -397,7 +524,7 @@ TEST_F(FirewallTest, AddInstanceDefaultsMissingProtocolToTcp)
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
     EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
 }
@@ -547,7 +674,7 @@ TEST_F(FirewallTest, UpdateInstanceFlushesRepopulatesAndRepointsJumps)
     EXPECT_CALL(*mTxnPtr,
         AddRule(_, std::string("forward"),
             AllOf(Field(&FWRule::mSrcAddr, "10.0.0.9"), Field(&FWRule::mJumpTarget, "instance_test"))));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mFirewall.UpdateInstance("test", params).IsNone());
 }
@@ -589,6 +716,156 @@ TEST_F(FirewallTest, RemoveInstanceNoMatchIsNoOp)
     EXPECT_CALL(mBackend, NewTxn()).Times(0);
 
     EXPECT_TRUE(mFirewall.RemoveInstance("test").IsNone());
+}
+
+/***********************************************************************************************************************
+ * Batch
+ **********************************************************************************************************************/
+
+TEST_F(FirewallTest, BatchStagesInstancesIntoSingleCommit)
+{
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_inst1")));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_inst1"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_inst1"))).Times(2);
+    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_inst2")));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_inst2"), _)).Times(2);
+    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_inst2"))).Times(2);
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("inst2", MakeParams("10.0.0.6", true)).IsNone());
+
+    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
+}
+
+TEST_F(FirewallTest, BatchStagesRemoveInstanceDeletes)
+{
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {11}});
+    forwardRules.push_back({{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {12}});
+
+    auto tx = NewMockTx();
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {11}));
+    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {12}));
+    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
+    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_test")));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("test").IsNone());
+
+    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
+}
+
+TEST_F(FirewallTest, AddInstanceCommitsImmediatelyAfterFlushBatch)
+{
+    auto  batchTx  = NewMockTx();
+    auto* batchPtr = mTxnPtr;
+
+    auto  directTx  = NewMockTx();
+    auto* directPtr = mTxnPtr;
+
+    EXPECT_CALL(mBackend, NewTxn())
+        .WillOnce(Return(ByMove(std::move(batchTx))))
+        .WillOnce(Return(ByMove(std::move(directTx))));
+
+    EXPECT_CALL(*batchPtr, AddChain(_));
+    EXPECT_CALL(*batchPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+    ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
+
+    // Batch is over: the next instance gets its own transaction and commits now.
+    EXPECT_CALL(*directPtr, AddChain(ChainNamed("instance_inst2")));
+    EXPECT_CALL(*directPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*directPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.AddInstance("inst2", MakeParams("10.0.0.6", true)).IsNone());
+}
+
+TEST_F(FirewallTest, RevertDeletesFlushedHandlesAndBatchChains)
+{
+    auto  batchTx  = NewMockTx();
+    auto* batchPtr = mTxnPtr;
+
+    auto  revertTx  = NewMockTx();
+    auto* revertPtr = mTxnPtr;
+
+    EXPECT_CALL(mBackend, NewTxn())
+        .WillOnce(Return(ByMove(std::move(batchTx))))
+        .WillOnce(Return(ByMove(std::move(revertTx))));
+
+    EXPECT_CALL(*batchPtr, AddChain(_));
+    EXPECT_CALL(*batchPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce([](std::vector<FWListedRule>& added) {
+        added = {
+            {{}, FWRuleHandle {100}},
+            {{}, FWRuleHandle {101}},
+            {{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {102}},
+            {{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {103}},
+        };
+
+        return Error(ErrorEnum::eNone);
+    });
+
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+    ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
+
+    std::vector<FWListedRule> forwardRules;
+    forwardRules.push_back({{"10.0.0.5", "", "", 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {102}});
+    forwardRules.push_back({{"", "10.0.0.5", "", 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {103}});
+    forwardRules.push_back({{"", "10.0.0.9", "", 0, "", FWActionEnum::eJump, "instance_other"}, FWRuleHandle {7}});
+
+    InSequence seq;
+    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
+        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {102}));
+    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {103}));
+    EXPECT_CALL(*revertPtr, FlushChain(_, std::string("instance_inst1")));
+    EXPECT_CALL(*revertPtr, DeleteChain(_, std::string("instance_inst1")));
+    EXPECT_CALL(*revertPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_TRUE(mFirewall.Revert().IsNone());
+}
+
+TEST_F(FirewallTest, RevertAfterFailedFlushIsNoOp)
+{
+    auto tx = NewMockTx();
+
+    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
+    EXPECT_CALL(*mTxnPtr, AddChain(_));
+    EXPECT_CALL(*mTxnPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(Error(ErrorEnum::eFailed)));
+
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+
+    EXPECT_FALSE(mFirewall.FlushBatch().IsNone());
+
+    // The batch was atomic: nothing was applied, so there is nothing to undo.
+    EXPECT_TRUE(mFirewall.Revert().IsNone());
+}
+
+TEST_F(FirewallTest, FlushBatchAndRevertWithoutBeginAreNoOp)
+{
+    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+    EXPECT_CALL(mBackend, ListChainRules(_, _, _)).Times(0);
+
+    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
+    EXPECT_TRUE(mFirewall.Revert().IsNone());
 }
 
 /***********************************************************************************************************************

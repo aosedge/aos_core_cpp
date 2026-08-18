@@ -22,6 +22,7 @@
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/spaceallocator/spaceallocator.hpp>
+#include <core/common/tools/heapallocator.hpp>
 
 #include <common/downloader/downloader.hpp>
 #include <common/fileserver/fileserver.hpp>
@@ -85,7 +86,10 @@ private:
     void InitStorageState();
     void InitSMController();
 
-    config::Config                                              mConfig = {};
+    aos::HeapAllocator mAllocator;
+
+    config::Config mConfig = {};
+
     aos::crypto::CertLoader                                     mCertLoader;
     aos::crypto::DefaultCryptoProvider                          mCryptoProvider;
     aos::crypto::CryptoHelper                                   mCryptoHelper;

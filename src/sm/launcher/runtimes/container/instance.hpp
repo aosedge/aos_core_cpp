@@ -17,6 +17,7 @@
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 #include <sm/launcher/instanceidprovider.hpp>
 
+#include "itf/consts.hpp"
 #include "itf/filesystem.hpp"
 #include "itf/monitoring.hpp"
 #include "itf/runner.hpp"
@@ -82,6 +83,13 @@ public:
     Error Start();
 
     /**
+     * Starts monitoring an already running instance.
+     *
+     * @return Error
+     */
+    Error Activate();
+
+    /**
      * Stops instance.
      *
      * @return Error
@@ -133,7 +141,6 @@ private:
     static constexpr auto cRuntimeConfigFile = "config.json";
     static constexpr auto cRootFSDir         = "rootfs";
     static constexpr auto cMountPointsDir    = "mounts";
-    static constexpr auto cCgroupsPath       = "/system.slice/system-aos\\x2dservice.slice";
 
     static constexpr auto cEnvAosItemID        = "AOS_ITEM_ID";
     static constexpr auto cEnvAosSubjectID     = "AOS_SUBJECT_ID";
@@ -166,12 +173,16 @@ private:
     Error  PrepareStateStorage();
     Error  PrepareRootFS(
          const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
-    Error StartNetwork(const std::string& runtimeDir);
+    Error PrepareNetwork(const std::string& runtimeDir);
+    Error WriteResolvConf(const std::string& path, const Array<StaticString<cIPLen>>& dnsServers) const;
+    Error WriteHosts(const std::string& path, const Array<Host>& hosts) const;
     Error StartMonitoring();
+    Error PrepareRuntimeDir(const oci::ImageConfig& imageConfig, const oci::ItemConfig& itemConfig);
 
-    InstanceInfo mInstanceInfo;
-    std::string  mInstanceID;
-    RunStatus    mRunStatus;
+    InstanceInfo      mInstanceInfo;
+    std::string       mInstanceID;
+    RunStatus         mRunStatus;
+    EnvVarStatusArray mEnvVarsStatuses;
 
     const ContainerConfig&                    mConfig;
     const NodeInfo&                           mNodeInfo;

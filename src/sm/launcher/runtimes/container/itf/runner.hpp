@@ -96,6 +96,14 @@ public:
     virtual Error Stop() = 0;
 
     /**
+     * Returns instance status.
+     *
+     * @param instanceID instance ID.
+     * @return RunStatus.
+     */
+    virtual RunStatus GetInstanceStatus(const std::string& instanceID) = 0;
+
+    /**
      * Starts instance.
      *
      * @param instanceID instance ID.
@@ -103,6 +111,15 @@ public:
      * @return RunStatus.
      */
     virtual RunStatus StartInstance(const std::string& instanceID, const RunParameters& runParams) = 0;
+
+    /**
+     * Starts watching an already running instance.
+     *
+     * @param instanceID instance ID.
+     * @param runParams runtime parameters.
+     * @return RunStatus.
+     */
+    virtual RunStatus WatchInstance(const std::string& instanceID, const RunParameters& runParams) = 0;
 
     /**
      * Stops instance.

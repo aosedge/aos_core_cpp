@@ -169,10 +169,8 @@ TEST_F(BandwidthTest, ApplyRollsBackOnTBFFailure)
  * Clear
  **********************************************************************************************************************/
 
-TEST_F(BandwidthTest, ClearRemovesEverything)
+TEST_F(BandwidthTest, ClearRemovesIFB)
 {
-    EXPECT_CALL(mTC, DelRootTBFQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mTC, DelIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mIfMgr, DeleteLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
 
     EXPECT_TRUE(mBandwidth.Clear(cHostIfName).IsNone());
@@ -180,18 +178,14 @@ TEST_F(BandwidthTest, ClearRemovesEverything)
 
 TEST_F(BandwidthTest, ClearTreatsMissingIFBAsSuccess)
 {
-    EXPECT_CALL(mTC, DelRootTBFQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mTC, DelIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mIfMgr, DeleteLink(String(cIFBName))).WillOnce(Return(Error(ErrorEnum::eNotFound)));
 
     EXPECT_TRUE(mBandwidth.Clear(cHostIfName).IsNone());
 }
 
-TEST_F(BandwidthTest, ClearRunsEveryStepOnFailure)
+TEST_F(BandwidthTest, ClearFailsWhenIFBDeleteFails)
 {
-    EXPECT_CALL(mTC, DelRootTBFQDisc(String(cHostIfName))).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mTC, DelIngressQDisc(String(cHostIfName))).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIfMgr, DeleteLink(String(cIFBName))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mIfMgr, DeleteLink(String(cIFBName))).WillOnce(Return(Error(ErrorEnum::eFailed)));
 
     EXPECT_FALSE(mBandwidth.Clear(cHostIfName).IsNone());
 }
@@ -225,8 +219,6 @@ TEST_F(BandwidthTest, ApplyAndClearShareIFBName)
 
     StaticString<cInterfaceLen> capturedOnClear;
 
-    EXPECT_CALL(mTC, DelRootTBFQDisc(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mTC, DelIngressQDisc(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mIfMgr, DeleteLink(_)).WillOnce([&capturedOnClear](const String& name) {
         capturedOnClear = name;
         return ErrorEnum::eNone;

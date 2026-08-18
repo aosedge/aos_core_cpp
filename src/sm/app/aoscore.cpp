@@ -33,12 +33,17 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize crypto provider
 
-    err = mCryptoProvider.Init();
+    err = mCryptoProvider.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
+
+    // Initialize PKCS11 manager
+
+    err = mPKCS11Manager.Init(mAllocator);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
 
     // Initialize cert loader
 
-    err = mCertLoader.Init(mCryptoProvider, mPKCS11Manager);
+    err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
     // Initialize TLS credentials
@@ -91,7 +96,7 @@ void AosCore::Init(const std::string& configFile)
     err = mTrafficMonitor.Init(mDatabase, mNFTables);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize traffic monitor");
 
-    err = mNetworkManager.Init(mDatabase, mBridgeNetwork, mFirewall, mBandwidth, mDNSName, mTrafficMonitor,
+    err = mNetworkManager.Init(mAllocator, mDatabase, mBridgeNetwork, mFirewall, mBandwidth, mDNSName, mTrafficMonitor,
         mNamespaceManager, mNetworkInterfaceManager, mCryptoProvider, mNetworkInterfaceManager, mSMClient,
         nodeInfo->mNodeID.CStr());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
@@ -114,7 +119,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize images space allocator
 
-    err = mImagesSpaceAllocator.Init(mConfig.mImageManager.mImagePath, mPlatformFS, 0, &mImageManager);
+    err = mImagesSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, 0, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize images space allocator");
 
     // Initialize downloader
@@ -124,7 +129,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize file info provider
 
-    err = mFileInfoProvider.Init(mCryptoProvider);
+    err = mFileInfoProvider.Init(mAllocator, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file info provider");
 
     // Initialize image handler
@@ -133,35 +138,30 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize image manager
 
-    err = mImageManager.Init(mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader, mFileInfoProvider,
-        mOCISpec, mImageHandler, mDatabase);
+    err = mImageManager.Init(mAllocator, mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader,
+        mFileInfoProvider, mOCISpec, mImageHandler, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
     // Initialize launcher
 
-    err = mLauncher.Init(*runtimes, mImageManager, mSMClient, mDatabase, mOCISpec, mImageManager, mSMClient,
+    err = mLauncher.Init(mAllocator, *runtimes, mImageManager, mSMClient, mDatabase, mOCISpec, mImageManager, mSMClient,
         mNetworkManager, mInstanceIDProvider, mResourceManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize node config handler
 
-    err = mNodeConfigHandler.Init({mConfig.mNodeConfigFile.c_str()}, mJSONProvider);
+    err = mNodeConfigHandler.Init(mAllocator, {mConfig.mNodeConfigFile.c_str()}, mJSONProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node config handler");
 
     // Initialize monitoring
 
-    err = mMonitoring.Init(
-        mConfig.mMonitoring, mNodeConfigHandler, mIAMClient, mSMClient, mSMClient, mNodeMonitoringProvider, &mLauncher);
+    err = mMonitoring.Init(mAllocator, mConfig.mMonitoring, mNodeConfigHandler, mIAMClient, mSMClient, mSMClient,
+        mNodeMonitoringProvider, &mLauncher);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize monitoring");
-
-    auto containerRuntime = mRuntimes.GetContainerRuntime();
-    if (!containerRuntime) {
-        AOS_ERROR_THROW(ErrorEnum::eNotFound, "container runtime not available");
-    }
 
     // Initialize logprovider
 
-    err = mLogProvider.Init(mConfig.mLogging, *containerRuntime, mSMClient);
+    err = mLogProvider.Init(mConfig.mLogging, mRuntimes.GetContainerRuntime(), mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize logprovider");
 
     // Initialize SM client
@@ -171,9 +171,9 @@ void AosCore::Init(const std::string& configFile)
         mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM client");
 
-    // // Initialize journalalerts
+    // Initialize journalalerts
 
-    err = mJournalAlerts.Init(mConfig.mJournalAlerts, *containerRuntime, mDatabase, mSMClient);
+    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
 }
 
@@ -185,6 +185,15 @@ void AosCore::Start()
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mNetworkManager.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop network manager: err=" << err;
+        }
+    });
+
+    err = mImageManager.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start image manager");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mImageManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop image manager: err=" << err;
         }
     });
 

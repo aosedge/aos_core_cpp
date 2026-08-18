@@ -7,6 +7,7 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_MONITORING_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_MONITORING_HPP_
 
+#include <mutex>
 #include <unordered_map>
 
 #include "itf/monitoring.hpp"
@@ -62,9 +63,10 @@ public:
         const std::string& instanceID, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cCgroupsPath  = "/sys/fs/cgroup/system.slice/system-aos\\x2dservice.slice";
-    static constexpr auto cCpuUsageFile = "cpu.stat";
-    static constexpr auto cMemUsageFile = "memory.current";
+    static constexpr auto cCgroupFSRoot                  = "/sys/fs/cgroup";
+    static constexpr auto cCpuUsageFile                  = "cpu.stat";
+    static constexpr auto cMemUsageFile                  = "memory.current";
+    static constexpr auto cExpectedQuotaCommandExitCodes = {0, 1};
 
     struct CPUUsage {
         size_t    mIdle {};
@@ -86,6 +88,7 @@ private:
     NodeInfo                                        mNodeInfo;
     networkmanager::InstanceTrafficProviderItf*     mTrafficProvider {};
     size_t                                          mCPUCount;
+    mutable std::mutex                              mMutex;
     std::unordered_map<std::string, MonitoringData> mInstanceMonitoringCache;
 };
 

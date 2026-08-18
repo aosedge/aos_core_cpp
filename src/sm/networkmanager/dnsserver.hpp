@@ -36,9 +36,10 @@ namespace aos::sm::networkmanager {
 class DNSServer : public DNSServerItf, private NonCopyable {
 public:
     /**
-     * Initializes the handle. Truncates the addnhosts file and signals dnsmasq
-     * so any stale entries (e.g. inherited from a previous SM lifetime) are
-     * dropped before any AddHost/RemoveHost runs.
+     * Initializes the handle. Loads the records already in the addnhosts file
+     * instead of dropping them, so a dnsmasq adopted after an SM crash keeps
+     * serving the instances that are still running. The file is left untouched
+     * and dnsmasq is not signalled, so there is no window with missing records.
      *
      * @param networkID network id (acts as the DNS domain).
      * @param storageDir per-network directory containing addnhosts and pidfile.
@@ -73,6 +74,7 @@ private:
         std::vector<std::string> mNames;
     };
 
+    Error LoadHostsFile();
     Error WriteHostsFile() const;
     Error Reload() const;
 

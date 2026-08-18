@@ -208,6 +208,28 @@ public:
      */
     Error RemoveTrafficMonitorData(const String& chain) override;
 
+    /**
+     * Begins a SQLite transaction so subsequent writes commit together (one
+     * fsync) on CommitTransaction.
+     *
+     * @return Error.
+     */
+    Error BeginTransaction() override;
+
+    /**
+     * Commits the current SQLite transaction.
+     *
+     * @return Error.
+     */
+    Error CommitTransaction() override;
+
+    /**
+     * Rolls back the current SQLite transaction, discarding its writes.
+     *
+     * @return Error.
+     */
+    Error RollbackTransaction() override;
+
     // sm::alerts::StorageItf interface
 
     /**

@@ -5,6 +5,32 @@
 #
 
 # ######################################################################################################################
+# Options
+# ######################################################################################################################
+
+option(WITH_RUNTIME_BOOT "build with boot runtime" ON)
+option(WITH_RUNTIME_ROOTFS "build with rootfs runtime" ON)
+option(WITH_RUNTIME_CONTAINER "build with container runtime" ON)
+
+message(STATUS)
+message(STATUS "WITH_RUNTIME_BOOT             = ${WITH_RUNTIME_BOOT}")
+message(STATUS "WITH_RUNTIME_ROOTFS           = ${WITH_RUNTIME_ROOTFS}")
+message(STATUS "WITH_RUNTIME_CONTAINER        = ${WITH_RUNTIME_CONTAINER}")
+message(STATUS)
+
+if(WITH_RUNTIME_BOOT)
+    add_definitions(-DWITH_RUNTIME_BOOT)
+endif()
+
+if(WITH_RUNTIME_ROOTFS)
+    add_definitions(-DWITH_RUNTIME_ROOTFS)
+endif()
+
+if(WITH_RUNTIME_CONTAINER)
+    add_definitions(-DWITH_RUNTIME_CONTAINER)
+endif()
+
+# ######################################################################################################################
 # Dependencies
 # ######################################################################################################################
 

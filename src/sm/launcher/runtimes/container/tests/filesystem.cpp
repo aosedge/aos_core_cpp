@@ -128,6 +128,29 @@ TEST_F(ContainerFileSystemTest, PrepareNetworkDir)
     EXPECT_TRUE(fs::exists(networkDir / "etc")) << "Network etc dir not created";
 }
 
+TEST_F(ContainerFileSystemTest, WriteFile)
+{
+    auto filePath = fs::path(cTestDirRoot) / "file";
+
+    fs::create_directories(filePath.parent_path());
+
+    auto err = mFileSystem.WriteFile(filePath.string(), "line1\nline2\n");
+    EXPECT_EQ(err, ErrorEnum::eNone) << "WriteFile failed: " << tests::utils::ErrorToStr(err);
+
+    std::ifstream file(filePath);
+    std::string   content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, "line1\nline2\n");
+}
+
+TEST_F(ContainerFileSystemTest, WriteFileFailsOnMissingDir)
+{
+    auto filePath = fs::path(cTestDirRoot) / "no-such-dir" / "file";
+
+    auto err = mFileSystem.WriteFile(filePath.string(), "content");
+    EXPECT_FALSE(err.IsNone()) << "WriteFile should fail for a missing directory";
+}
+
 TEST_F(ContainerFileSystemTest, GetAbsPath)
 {
     auto relativePath = fs::path("some") / "relative" / "path";

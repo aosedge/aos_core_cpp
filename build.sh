@@ -16,19 +16,26 @@ print_usage() {
     echo "Usage: ./build.sh <command> [options]"
     echo
     echo "Commands:"
-    echo "  build                      builds target"
+    echo "  build                      builds target (options below apply here)"
+    echo "  install                    installs built apps, their runtime deps into the prefix chosen"
+    echo "                             at build time, then enables and configures AosCore"
     echo "  test                       runs tests only"
     echo "  coverage                   runs tests with coverage"
     echo "  lint                       runs static analysis (cppcheck)"
     echo "  doc                        generates documentation"
     echo
-    echo "Options:"
+    echo "Options (for 'build'):"
     echo "  --clean                    cleans build artifacts before building"
     echo "  --aos-service <services>   specifies services (e.g., sm,mp,iam)"
+    echo "  --sm-runtime <runtimes>    specifies sm runtimes (e.g., boot,rootfs,container)"
     echo "  --ci                       uses build-wrapper for CI analysis (SonarQube)"
     echo "  --core-dir <path>          specifies path to core libs directory"
     echo "  --parallel <N>             specifies number of parallel jobs for build (default: all available cores)"
     echo "  --build-type <type>        specifies build type (default: Debug, other options: Release, RelWithDebInfo, MinSizeRel)"
+    echo "  --install-prefix <path>    specifies install prefix (default: /usr/local)"
+    echo "  --no-test                  builds without tests (tests are built by default)"
+    echo "  --no-coverage              builds without coverage instrumentation (coverage is built by default)"
+    echo "  --aos-install              installs AosCore configs, systemd services and dependencies (disabled by default)"
     echo
 }
 
@@ -101,18 +108,58 @@ cmake_configure() {
         done
     fi
 
+    local with_runtime_boot="ON"
+    local with_runtime_rootfs="ON"
+    local with_runtime_container="ON"
+
+    if [[ -n "$ARG_SM_RUNTIMES" ]]; then
+        with_runtime_boot="OFF"
+        with_runtime_rootfs="OFF"
+        with_runtime_container="OFF"
+
+        local runtimes_lower
+        runtimes_lower=$(echo "$ARG_SM_RUNTIMES" | tr '[:upper:]' '[:lower:]')
+
+        IFS=',' read -ra runtime_array <<<"$runtimes_lower"
+        for runtime in "${runtime_array[@]}"; do
+            runtime=$(echo "$runtime" | xargs) # trim whitespace
+            case "$runtime" in
+            "boot")
+                with_runtime_boot="ON"
+                ;;
+
+            "rootfs")
+                with_runtime_rootfs="ON"
+                ;;
+
+            "container")
+                with_runtime_container="ON"
+                ;;
+
+            *)
+                error_with_usage "Unknown sm runtime: $runtime"
+                ;;
+            esac
+        done
+    fi
+
     print_next_step "Run cmake configure"
 
     cmake -S . -B build \
         -DCMAKE_BUILD_TYPE="$ARG_BUILD_TYPE" \
         ${ARG_CORE_DIR+-DAOS_CORE_DIR="$ARG_CORE_DIR"} \
+        ${ARG_INSTALL_PREFIX+-DCMAKE_INSTALL_PREFIX="$ARG_INSTALL_PREFIX"} \
         -DWITH_VCHAN=OFF \
-        -DWITH_COVERAGE=ON \
-        -DWITH_TEST=ON \
+        -DWITH_COVERAGE="$ARG_WITH_COVERAGE" \
+        -DWITH_TEST="$ARG_WITH_TEST" \
+        -DWITH_AOS_INSTALL="$ARG_WITH_AOS_INSTALL" \
         -DWITH_CM="$with_cm" \
         -DWITH_IAM="$with_iam" \
         -DWITH_MP="$with_mp" \
         -DWITH_SM="$with_sm" \
+        -DWITH_RUNTIME_BOOT="$with_runtime_boot" \
+        -DWITH_RUNTIME_ROOTFS="$with_runtime_rootfs" \
+        -DWITH_RUNTIME_CONTAINER="$with_runtime_container" \
         -DCMAKE_TOOLCHAIN_FILE=./conan_toolchain.cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -G "Unix Makefiles"
@@ -160,6 +207,15 @@ parse_arguments() {
             shift 2
             ;;
 
+        --sm-runtime)
+            if [[ -n "$ARG_SM_RUNTIMES" ]]; then
+                ARG_SM_RUNTIMES="$ARG_SM_RUNTIMES,$2"
+            else
+                ARG_SM_RUNTIMES="$2"
+            fi
+            shift 2
+            ;;
+
         --ci)
             ARG_CI_FLAG=true
             shift
@@ -180,6 +236,26 @@ parse_arguments() {
             shift 2
             ;;
 
+        --install-prefix)
+            ARG_INSTALL_PREFIX="$2"
+            shift 2
+            ;;
+
+        --no-test)
+            ARG_WITH_TEST=OFF
+            shift
+            ;;
+
+        --no-coverage)
+            ARG_WITH_COVERAGE=OFF
+            shift
+            ;;
+
+        --aos-install)
+            ARG_WITH_AOS_INSTALL=ON
+            shift
+            ;;
+
         *)
             error_with_usage "Unknown option: $1"
             ;;
@@ -193,6 +269,106 @@ build_target() {
     fi
 
     build_project
+}
+
+enable_units() {
+    local install_prefix="$1"
+    local unit_dir="$install_prefix/lib/systemd/system"
+
+    shopt -s nullglob
+    local units=("$unit_dir"/aos-*.service "$unit_dir"/aos.target)
+    shopt -u nullglob
+
+    if [ ${#units[@]} -eq 0 ]; then
+        echo "Skipping: no aos units found in $unit_dir"
+
+        return
+    fi
+
+    for unit in "${units[@]}"; do
+        systemctl enable --now "$unit"
+    done
+
+    echo "Enabled and started: ${units[*]##*/}"
+}
+
+add_openssl_include() {
+    local install_prefix="$1"
+    local openssl_cnf="/etc/ssl/openssl.cnf"
+    local include_line=".include ${install_prefix}/etc/aos/aos-openssl.cnf"
+
+    if ! grep -qF "$include_line" "$openssl_cnf"; then
+        echo "$include_line" >> "$openssl_cnf"
+    fi
+}
+
+setup_dnsmasq() {
+    local install_prefix="$1"
+
+    mkdir -p /etc/dnsmasq.d
+    ln -sf "$install_prefix/etc/aos/aos-dnsmasq.conf" /etc/dnsmasq.d/aos-dnsmasq.conf
+
+    mkdir -p /var/aos/dns
+    touch /var/aos/dns/addnhosts
+
+    cat >/etc/systemd/network/10-dummy0.netdev <<EOF
+[NetDev]
+Name=dummy0
+Kind=dummy
+EOF
+
+    cat >/etc/systemd/network/10-dummy0.network <<EOF
+[Match]
+Name=dummy0
+
+[Network]
+Address=10.0.0.100/24
+EOF
+
+    local dnsmasq_default="/etc/default/dnsmasq"
+
+    if grep -q '^IGNORE_RESOLVCONF=yes' "$dnsmasq_default"; then
+        :
+    elif grep -q '^#\?IGNORE_RESOLVCONF=' "$dnsmasq_default"; then
+        sed -i 's/^#\?IGNORE_RESOLVCONF=.*/IGNORE_RESOLVCONF=yes/' "$dnsmasq_default"
+    else
+        echo 'IGNORE_RESOLVCONF=yes' >>"$dnsmasq_default"
+    fi
+
+    systemctl restart systemd-networkd
+    systemctl restart dnsmasq
+}
+
+run_install() {
+    print_next_step "Install AosCore"
+
+    # build type and install prefix are already baked into the build/ cache from the preceding `build` call.
+    cmake --install ./build
+
+    print_next_step "Enable AosCore"
+
+    local install_prefix
+    
+    install_prefix=$(grep '^CMAKE_INSTALL_PREFIX:PATH=' ./build/CMakeCache.txt | cut -d= -f2)
+    install_prefix="${install_prefix:-/usr/local}"
+
+    # update shared library cache
+    ldconfig
+
+    # update CA certificates
+    update-ca-certificates
+
+    # add aos openssl config include
+    add_openssl_include "$install_prefix"
+
+    # set up dnsmasq (dummy interface, IGNORE_RESOLVCONF, aos-dnsmasq.conf)
+    setup_dnsmasq "$install_prefix"
+
+    # enable systemd units if any were installed
+    enable_units "$install_prefix"
+
+    echo
+    echo "Install completed!"
 }
 
 run_tests() {
@@ -248,14 +424,22 @@ shift
 
 ARG_CLEAN_FLAG=false
 ARG_AOS_SERVICES=""
+ARG_SM_RUNTIMES=""
 ARG_CI_FLAG=false
 ARG_PARALLEL_JOBS=$(nproc)
 ARG_BUILD_TYPE="Debug"
+ARG_WITH_TEST=ON
+ARG_WITH_COVERAGE=ON
+ARG_WITH_AOS_INSTALL=OFF
 
 case "$command" in
 build)
     parse_arguments "$@"
     build_target
+    ;;
+
+install)
+    run_install
     ;;
 
 test)

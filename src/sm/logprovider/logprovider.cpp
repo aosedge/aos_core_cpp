@@ -13,6 +13,7 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <sm/launcher/runtimes/container/itf/consts.hpp>
 
 #include "logprovider.hpp"
 
@@ -23,12 +24,12 @@ namespace aos::sm::logprovider {
  **********************************************************************************************************************/
 
 Error LogProvider::Init(
-    const aos::logging::Config& config, InstanceIDProviderItf& instanceProvider, aos::logging::SenderItf& logSender)
+    const aos::logging::Config& config, InstanceIDProviderItf* instanceProvider, aos::logging::SenderItf& logSender)
 {
     LOG_DBG() << "Init log provider";
 
     mConfig           = config;
-    mInstanceProvider = &instanceProvider;
+    mInstanceProvider = instanceProvider;
     mLogSender        = &logSender;
 
     return ErrorEnum::eNone;
@@ -75,8 +76,13 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance log: correlationId=" << request.mCorrelationID;
 
+    if (!mInstanceProvider) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "instance id provider is not set"));
+    }
+
     std::vector<std::string> instanceIDs;
-    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
+
+    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
@@ -100,8 +106,13 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 {
     LOG_DBG() << "Get instance crash log: correlationId=" << request.mCorrelationID;
 
+    if (!mInstanceProvider) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "instance id provider is not set"));
+    }
+
     std::vector<std::string> instanceIDs;
-    auto                     err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
+
+    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
     if (!err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
@@ -297,17 +308,8 @@ void LogProvider::SendEmptyResponse(const String& correlationId, const std::stri
 void LogProvider::AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs)
 {
     for (const auto& instanceID : instanceIDs) {
-        // for supporting cgroup v1
-        // format: /system.slice/system-aos@service.slice/aos-service@AOS_INSTANCE_ID.service
-        std::string cgroupV1Filter
-            = std::string("_SYSTEMD_CGROUP=/system.slice/system-aos\\x2dservice.slice/aos-service@") + instanceID
-            + ".service";
-        journal.AddMatch(cgroupV1Filter);
-
-        // for supporting cgroup v2
-        // format: /system.slice/system-aos@service.slice/AOS_INSTANCE_ID
         std::string cgroupV2Filter
-            = std::string("_SYSTEMD_CGROUP=/system.slice/system-aos\\x2dservice.slice/") + instanceID;
+            = std::string("_SYSTEMD_CGROUP=") + aos::sm::launcher::cCgroupsPath + "/" + instanceID;
         journal.AddMatch(cgroupV2Filter);
     }
 }

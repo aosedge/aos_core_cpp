@@ -122,31 +122,13 @@ Error Bandwidth::Clear(const String& ifName)
 {
     LOG_DBG() << "Clear bandwidth" << Log::Field("ifName", ifName);
 
-    Error err;
+    if (auto err = mIfMgr->DeleteLink(IFBName(ifName)); !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
+        LOG_ERR() << "Failed to delete IFB" << Log::Field(err);
 
-    if (auto rootErr = mTC->DelRootTBFQDisc(ifName); !rootErr.IsNone()) {
-        LOG_ERR() << "Failed to delete root TBF qdisc" << Log::Field(rootErr);
-
-        err = AOS_ERROR_WRAP(rootErr);
+        return AOS_ERROR_WRAP(err);
     }
 
-    if (auto ingErr = mTC->DelIngressQDisc(ifName); !ingErr.IsNone()) {
-        LOG_ERR() << "Failed to delete ingress qdisc" << Log::Field(ingErr);
-
-        if (err.IsNone()) {
-            err = AOS_ERROR_WRAP(ingErr);
-        }
-    }
-
-    if (auto ifbErr = mIfMgr->DeleteLink(IFBName(ifName)); !ifbErr.IsNone() && !ifbErr.Is(ErrorEnum::eNotFound)) {
-        LOG_ERR() << "Failed to delete IFB" << Log::Field(ifbErr);
-
-        if (err.IsNone()) {
-            err = AOS_ERROR_WRAP(ifbErr);
-        }
-    }
-
-    return err;
+    return ErrorEnum::eNone;
 }
 
 /***********************************************************************************************************************

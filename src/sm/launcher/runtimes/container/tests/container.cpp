@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <future>
+
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
@@ -233,19 +235,14 @@ protected:
 
         EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
             .WillRepeatedly(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
-        EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(_, _, _)).WillRepeatedly(Return(ErrorEnum::eNone));
         EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mFileSystem, WriteFile(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mRuntime.mFileSystem, PathExists(_)).WillRepeatedly(Return(true));
 
         auto err = mRuntime.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
             mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock,
             mInstanceIDProviderMock);
         ASSERT_TRUE(err.IsNone()) << "Failed to init runtime: " << tests::utils::ErrorToStr(err);
-
-        EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
-            std::vector<std::string> instances;
-
-            return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
-        }));
 
         err = mRuntime.Start();
         ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
@@ -274,20 +271,111 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ContainerRuntimeTest, StopActiveInstances)
+TEST_F(ContainerRuntimeTest, InitInstances)
 {
-    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([](const std::string&) {
-        std::vector<std::string> instances = {"instance1", "instance2", "instance3"};
+    InstanceInfo activeInstance;
+
+    activeInstance.mItemID    = "item0";
+    activeInstance.mSubjectID = "subject0";
+    activeInstance.mInstance  = 0;
+
+    InstanceInfo inactiveInstance;
+
+    inactiveInstance.mItemID    = "item1";
+    inactiveInstance.mSubjectID = "subject1";
+    inactiveInstance.mInstance  = 1;
+
+    auto activeID   = CreateInstanceID(static_cast<const InstanceIdent&>(activeInstance));
+    auto inactiveID = CreateInstanceID(static_cast<const InstanceIdent&>(inactiveInstance));
+    auto unknownID  = std::string("unknown-instance");
+
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([&](const std::string&) {
+        std::vector<std::string> instances = {activeID, inactiveID, unknownID};
 
         return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
     }));
 
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance1")).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance2")).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mRuntime.mRunner, StopInstance("instance3")).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(activeID))
+        .WillOnce(Return(RunStatus {activeID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
+    EXPECT_CALL(*mRuntime.mRunner, WatchInstance(activeID, _))
+        .WillOnce(Return(RunStatus {activeID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
 
-    auto err = mRuntime.Start();
-    ASSERT_TRUE(err.IsNone()) << "Failed to start runtime: " << tests::utils::ErrorToStr(err);
+    // activeInstance is in the init list and active, so it must be kept running, not stopped.
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(activeID)).Times(0);
+
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(inactiveID))
+        .WillOnce(Return(RunStatus {inactiveID, InstanceStateEnum::eInactive, ErrorEnum::eNone}));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(inactiveID)).WillOnce(Return(ErrorEnum::eNone));
+
+    // unknownID is not present in the init list, so it must be stopped without querying its state.
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(unknownID)).Times(0);
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(unknownID)).WillOnce(Return(ErrorEnum::eNone));
+
+    InstanceInfo instancesInfoArray[] = {activeInstance, inactiveInstance};
+
+    Array<InstanceInfo> instancesInfo(instancesInfoArray, 2);
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    ASSERT_TRUE(err.IsNone()) << "Failed to init instances: " << tests::utils::ErrorToStr(err);
+
+    // activeInstance must be registered as a current instance after init.
+
+    std::vector<std::string> instanceIDs;
+
+    err = mRuntime.GetInstanceIDs(LogFilter(), instanceIDs);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance IDs: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_THAT(instanceIDs, ElementsAre(activeID));
+}
+
+TEST_F(ContainerRuntimeTest, InitInstancesListDirError)
+{
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_))
+        .WillOnce(Return(RetWithError<std::vector<std::string>> {{}, ErrorEnum::eFailed}));
+
+    Array<InstanceInfo> instancesInfo;
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Unexpected error: " << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(ContainerRuntimeTest, InitInstancesActivateFailure)
+{
+    InstanceInfo failingInstance;
+
+    failingInstance.mItemID    = "item0";
+    failingInstance.mSubjectID = "subject0";
+    failingInstance.mInstance  = 0;
+
+    auto failingID = CreateInstanceID(static_cast<const InstanceIdent&>(failingInstance));
+
+    EXPECT_CALL(*mRuntime.mFileSystem, ListDir(_)).WillOnce(Invoke([&](const std::string&) {
+        std::vector<std::string> instances = {failingID};
+
+        return RetWithError<std::vector<std::string>> {instances, ErrorEnum::eNone};
+    }));
+
+    EXPECT_CALL(*mRuntime.mRunner, GetInstanceStatus(failingID))
+        .WillOnce(Return(RunStatus {failingID, InstanceStateEnum::eActive, ErrorEnum::eNone}));
+
+    // Activation fails, so the instance must be stopped instead of kept and registered.
+    EXPECT_CALL(*mRuntime.mRunner, WatchInstance(failingID, _))
+        .WillOnce(Return(RunStatus {failingID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}));
+    EXPECT_CALL(*mRuntime.mRunner, StopInstance(failingID)).WillOnce(Return(ErrorEnum::eNone));
+
+    InstanceInfo instancesInfoArray[] = {failingInstance};
+
+    Array<InstanceInfo> instancesInfo(instancesInfoArray, 1);
+
+    auto err = mRuntime.InitInstances(instancesInfo);
+    ASSERT_TRUE(err.IsNone()) << "Failed to init instances: " << tests::utils::ErrorToStr(err);
+
+    std::vector<std::string> instanceIDs;
+
+    err = mRuntime.GetInstanceIDs(LogFilter(), instanceIDs);
+    ASSERT_TRUE(err.IsNone()) << "Failed to get instance IDs: " << tests::utils::ErrorToStr(err);
+
+    EXPECT_THAT(instanceIDs, IsEmpty());
 }
 
 TEST_F(ContainerRuntimeTest, StartInstance)
@@ -324,7 +412,7 @@ TEST_F(ContainerRuntimeTest, StartInstance)
     // Start the same instance again
 
     err = mRuntime.StartInstance(instance, *status);
-    EXPECT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+    EXPECT_TRUE(err.Is(ErrorEnum::eAlreadyExist)) << "Unexpected error: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(ContainerRuntimeTest, StopInstance)
@@ -362,8 +450,6 @@ TEST_F(ContainerRuntimeTest, StopInstance)
 
     EXPECT_CALL(*mRuntime.mRunner, StopInstance(instanceID)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mPermHandlerMock, UnregisterInstance(instance)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, StopInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID))
-        .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, UmountServiceRootFS(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*mRuntime.mFileSystem, RemoveAll(_)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(
@@ -378,7 +464,7 @@ TEST_F(ContainerRuntimeTest, StopInstance)
     // Stop the same instance again
 
     err = mRuntime.StopInstance(static_cast<const InstanceIdent&>(instance), *status);
-    EXPECT_TRUE(err.IsNone()) << "Failed to stop instance: " << tests::utils::ErrorToStr(err);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Unexpected error: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(ContainerRuntimeTest, UpdateInstanceStatus)
@@ -409,6 +495,53 @@ TEST_F(ContainerRuntimeTest, UpdateInstanceStatus)
 
     mRunStatusReceiver->UpdateRunStatus(
         std::vector<RunStatus> {RunStatus {instanceID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}});
+}
+
+TEST_F(ContainerRuntimeTest, UpdateRunStatusReleasesLockBeforeCallback)
+{
+    InstanceInfo instance;
+
+    instance.mItemID    = "item0";
+    instance.mSubjectID = "subject0";
+    instance.mInstance  = 0;
+
+    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
+    auto status     = std::make_unique<InstanceStatus>();
+
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
+
+    auto err = mRuntime.StartInstance(instance, *status);
+    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
+
+    // Inside OnInstancesStatusesReceived, call GetInstanceMonitoringData which also acquires mMutex.
+    // If mMutex is still held during the callback (AB/BA deadlock regression), this deadlocks.
+    EXPECT_CALL(*mRuntime.mMonitoring, GetInstanceMonitoringData(instanceID, _)).WillOnce(Return(ErrorEnum::eNone));
+
+    std::promise<void> callbackCalledPromise;
+
+    EXPECT_CALL(mInstanceStatusReceiverMock, OnInstancesStatusesReceived(_))
+        .WillOnce(Invoke([&](const Array<InstanceStatus>&) -> Error {
+            monitoring::InstanceMonitoringData monitoringData;
+
+            auto callErr
+                = mRuntime.GetInstanceMonitoringData(static_cast<const InstanceIdent&>(instance), monitoringData);
+            EXPECT_TRUE(callErr.IsNone()) << tests::utils::ErrorToStr(callErr);
+
+            callbackCalledPromise.set_value();
+
+            return ErrorEnum::eNone;
+        }));
+
+    auto asyncUpdateRunStatus = std::async(std::launch::async, [&]() {
+        mRunStatusReceiver->UpdateRunStatus(
+            std::vector<RunStatus> {RunStatus {instanceID, InstanceStateEnum::eFailed, ErrorEnum::eFailed}});
+    });
+
+    ASSERT_EQ(callbackCalledPromise.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready)
+        << "Callback was not called within timeout, possible deadlock";
+
+    asyncUpdateRunStatus.get();
 }
 
 TEST_F(ContainerRuntimeTest, RuntimeConfig)
@@ -443,8 +576,8 @@ TEST_F(ContainerRuntimeTest, RuntimeConfig)
     // Check cgroups path
 
     ASSERT_TRUE(runtimeConfig->mLinux.HasValue());
-    EXPECT_EQ(
-        runtimeConfig->mLinux->mCgroupsPath, ("/system.slice/system-aos\\x2dservice.slice/" + instanceID).c_str());
+    EXPECT_EQ(runtimeConfig->mLinux->mCgroupsPath,
+        ("/system.slice/system-aos.slice/system-aos-service.slice/" + instanceID).c_str());
 
     // Check root
 
@@ -843,36 +976,21 @@ TEST_F(ContainerRuntimeTest, Network)
 
     auto status        = std::make_unique<InstanceStatus>();
     auto runtimeConfig = std::make_unique<oci::RuntimeConfig>();
-    auto networkParams = std::make_unique<networkmanager::InstanceNetworkConfig>();
 
-    networkParams->mInstanceIdent = instance;
-    networkParams->mHostname      = "example-host";
-    networkParams->mIngressKbit   = 1000;
-    networkParams->mEgressKbit    = 1000;
-    networkParams->mDownloadLimit = 1024 * 1024;
-    networkParams->mUploadLimit   = 1024 * 1024;
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
-    networkParams->mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
+    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers> dnsServers;
+    dnsServers.PushBack("8.8.8.8");
+    dnsServers.PushBack("1.1.1.1");
+
+    StaticArray<Host, cMaxNumHosts> hosts;
+    hosts.PushBack(Host {"192.168.1.1", "host1"});
+    hosts.PushBack(Host {"192.168.1.2", "host2"});
 
     EXPECT_CALL(mOCISpecMock, LoadImageManifest(_, _)).WillOnce(Invoke([](const String&, oci::ImageManifest& manifest) {
         manifest.mItemConfig.EmplaceValue();
 
         return ErrorEnum::eNone;
     }));
-    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _))
-        .WillOnce(Invoke([&networkParams](const String&, oci::ItemConfig& config) {
-            config.mHostname.SetValue(networkParams->mHostname);
-            config.mResources.EmplaceBack(oci::ResourceInfo {"resource1", ""});
-            config.mResources.EmplaceBack(oci::ResourceInfo {"resource2", ""});
-            config.mQuotas.mUploadSpeed.SetValue(networkParams->mEgressKbit);
-            config.mQuotas.mDownloadSpeed.SetValue(networkParams->mIngressKbit);
-            config.mQuotas.mUploadLimit.SetValue(networkParams->mUploadLimit);
-            config.mQuotas.mDownloadLimit.SetValue(networkParams->mDownloadLimit);
-
-            return ErrorEnum::eNone;
-        }));
+    EXPECT_CALL(mOCISpecMock, LoadItemConfig(_, _)).WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(mNetworkManagerMock, GetNetnsPath(_))
         .WillOnce(Return(RetWithError<StaticString<cFilePathLen>> {"/netns/path"}));
     EXPECT_CALL(mOCISpecMock, SaveRuntimeConfig(_, _))
@@ -881,22 +999,18 @@ TEST_F(ContainerRuntimeTest, Network)
 
             return ErrorEnum::eNone;
         }));
-    EXPECT_CALL(mResourceInfoProviderMock, GetResourceInfo(_, _))
-        .WillRepeatedly(Invoke([](const String& resource, resourcemanager::ResourceInfo& resourceInfo) {
-            if (resource == "resource1") {
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.1", "host1"});
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.2", "host2"});
-            } else if (resource == "resource2") {
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.3", "host3"});
-                resourceInfo.mHosts.EmplaceBack(Host {"192.168.1.4", "host4"});
-            } else {
-                return ErrorEnum::eNotFound;
-            }
+    EXPECT_CALL(mNetworkManagerMock, GetResolvServers(String(instanceID.c_str()), _))
+        .WillOnce(DoAll(SetArgReferee<1>(dnsServers), Return(ErrorEnum::eNone)));
+    EXPECT_CALL(mNetworkManagerMock, GetHosts(String(instanceID.c_str()), _))
+        .WillOnce(DoAll(SetArgReferee<1>(hosts), Return(ErrorEnum::eNone)));
 
-            return ErrorEnum::eNone;
-        }));
-    EXPECT_CALL(*mRuntime.mFileSystem, PrepareNetworkDir(_)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mNetworkManagerMock, StartInstanceNetwork(String(instanceID.c_str()), instance.mOwnerID, _))
+    auto etcDir = "/run/aos/runtime/" + instanceID + "/mounts/etc";
+
+    EXPECT_CALL(*mRuntime.mFileSystem,
+        WriteFile(etcDir + "/resolv.conf", std::string("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")))
+        .WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(
+        *mRuntime.mFileSystem, WriteFile(etcDir + "/hosts", std::string("192.168.1.1\thost1\n192.168.1.2\thost2\n")))
         .WillOnce(Return(ErrorEnum::eNone));
 
     auto err = mRuntime.StartInstance(instance, *status);
@@ -906,37 +1020,6 @@ TEST_F(ContainerRuntimeTest, Network)
 
     EXPECT_TRUE(CheckNameSpace(*runtimeConfig, oci::LinuxNamespace {oci::LinuxNamespaceEnum::eNetwork, "/netns/path"})
                     .IsNone());
-}
-
-TEST_F(ContainerRuntimeTest, GetInstanceInfoByID)
-{
-    InstanceInfo instance;
-
-    instance.mItemID    = "item0";
-    instance.mSubjectID = "subject0";
-    instance.mInstance  = 0;
-    instance.mVersion   = "1.0.5";
-
-    auto instanceID = CreateInstanceID(static_cast<const InstanceIdent&>(instance));
-    auto status     = std::make_unique<InstanceStatus>();
-
-    auto err = mRuntime.StartInstance(instance, *status);
-    ASSERT_TRUE(err.IsNone()) << "Failed to start instance: " << tests::utils::ErrorToStr(err);
-
-    // Get instance info
-
-    alerts::InstanceInfo alertsInstanceInfo;
-
-    err = mRuntime.GetInstanceInfoByID(instanceID.c_str(), alertsInstanceInfo);
-    ASSERT_TRUE(err.IsNone()) << "Failed to get instance info: " << tests::utils::ErrorToStr(err);
-
-    EXPECT_EQ(alertsInstanceInfo.mInstanceIdent, static_cast<const InstanceIdent&>(instance));
-    EXPECT_EQ(alertsInstanceInfo.mVersion, instance.mVersion);
-
-    // Get non-existing instance info
-
-    err = mRuntime.GetInstanceInfoByID("non-existing-instance", alertsInstanceInfo);
-    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Wrong error: " << tests::utils::ErrorToStr(err);
 }
 
 TEST_F(ContainerRuntimeTest, GetInstanceIDs)
@@ -996,6 +1079,8 @@ TEST_F(ContainerRuntimeTest, GetInstanceMonitoringData)
     EXPECT_CALL(*mRuntime.mFileSystem, GetAbsPath(_)).WillRepeatedly(Invoke([](const std::string& path) {
         return RetWithError<std::string> {path};
     }));
+    EXPECT_CALL(*mRuntime.mRunner, StartInstance(instanceID, _))
+        .WillOnce(Return(RunStatus {"", InstanceStateEnum::eActive, ErrorEnum::eNone}));
     EXPECT_CALL(
         *mRuntime.mMonitoring, StartInstanceMonitoring(instanceID, instance.mUID, CreatePartitionsInfos(instance)))
         .WillOnce(Return(ErrorEnum::eNone));

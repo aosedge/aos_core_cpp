@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <chrono>
 #include <vector>
 
 #include <grpcpp/security/server_credentials.h>
@@ -79,7 +80,8 @@ Error SMController::Stop()
 {
     LOG_DBG() << "Stop SM Controller";
 
-    if (auto err = mReconnectTimer.Stop(); !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
+    if (auto err = mReconnectTimer.Stop(Timer::StopMode::WaitForCallbacks);
+        !err.IsNone() && !err.Is(ErrorEnum::eWrongState)) {
         LOG_ERR() << "Failed to stop reconnect timer" << Log::Field(err);
     }
 
@@ -498,7 +500,7 @@ Error SMController::StopServer()
     }
 
     if (mServer) {
-        mServer->Shutdown();
+        mServer->Shutdown(std::chrono::system_clock::now() + cServerShutdownDelay);
         mServer->Wait();
 
         mServer.reset();

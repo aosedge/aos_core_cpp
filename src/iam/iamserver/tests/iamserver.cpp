@@ -20,6 +20,7 @@
 #include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tools/fs.hpp>
+#include <core/common/tools/heapallocator.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/tests/mocks/currentnodemock.hpp>
@@ -51,6 +52,11 @@ protected:
     static constexpr auto cProvisioningModeOn  = true;
     static constexpr auto cProvisioningModeOff = false;
 
+    IAMServerTest()
+        : mCertHandler(mAllocator)
+    {
+    }
+
     void RegisterPKCS11Module(const String& name, crypto::KeyType keyType = crypto::KeyTypeEnum::eRSA);
     void SetUpCertificates();
 
@@ -70,6 +76,8 @@ protected:
 
         return T::NewStub(channel);
     }
+
+    HeapAllocator mAllocator;
 
     IAMServer               mServer;
     CertInfo                mClientInfo;
@@ -115,12 +123,12 @@ void IAMServerTest::SetUp()
 {
     tests::utils::InitLog();
 
-    ASSERT_TRUE(mCryptoProvider.Init().IsNone());
+    ASSERT_TRUE(mCryptoProvider.Init(mAllocator).IsNone());
     ASSERT_TRUE(mSOFTHSMEnv
-                    .Init("", "certhandler-integration-tests", SOFTHSM_BASE_IAM_DIR "/softhsm2.conf",
+                    .Init(mAllocator, "", "certhandler-integration-tests", SOFTHSM_BASE_IAM_DIR "/softhsm2.conf",
                         SOFTHSM_BASE_IAM_DIR "/tokens", SOFTHSM2_LIB)
                     .IsNone());
-    ASSERT_TRUE(mCertLoader.Init(mCryptoProvider, mSOFTHSMEnv.GetManager()).IsNone());
+    ASSERT_TRUE(mCertLoader.Init(mAllocator, mCryptoProvider, mSOFTHSMEnv.GetManager()).IsNone());
 
     RegisterPKCS11Module("client");
     ASSERT_TRUE(mCertHandler.SetOwner("client", cPIN).IsNone());
@@ -163,8 +171,10 @@ void IAMServerTest::RegisterPKCS11Module(const String& name, crypto::KeyType key
     ASSERT_TRUE(mCertModules.EmplaceBack().IsNone());
     auto& pkcs11Module = mPKCS11Modules.Back();
     auto& certModule   = mCertModules.Back();
-    ASSERT_TRUE(pkcs11Module.Init(name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider).IsNone());
-    ASSERT_TRUE(certModule.Init(name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage).IsNone());
+    ASSERT_TRUE(pkcs11Module.Init(mAllocator, name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider)
+                    .IsNone());
+    ASSERT_TRUE(certModule.Init(mAllocator, name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage)
+                    .IsNone());
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
 }
 

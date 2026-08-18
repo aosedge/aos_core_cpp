@@ -43,6 +43,14 @@ public:
     virtual Error StartContainer(const std::string& instanceID) = 0;
 
     /**
+     * Starts managing an already running container without starting it.
+     *
+     * @param instanceID instance ID.
+     * @return Error.
+     */
+    virtual Error AddContainer(const std::string& instanceID) = 0;
+
+    /**
      * Returns the status of a container.
      *
      * @param instanceID instance ID.

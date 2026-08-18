@@ -42,7 +42,7 @@ RetWithError<size_t> FSPlatform::GetTotalSize(const String& dir) const
 
 RetWithError<size_t> FSPlatform::GetDirSize(const String& dir) const
 {
-    return fs::CalculateSize(dir);
+    return common::utils::CalculateSize(dir.CStr());
 }
 
 RetWithError<size_t> FSPlatform::GetAvailableSize(const String& dir) const

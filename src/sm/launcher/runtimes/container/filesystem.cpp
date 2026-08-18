@@ -139,11 +139,7 @@ void UmountDir(const fs::path& mountPoint)
 {
     LOG_DBG() << "Umount dir" << Log::Field("mountPoint", mountPoint.c_str());
 
-    auto err = common::utils::Retry(
-        [&]() {
-            sync();
-            return umount(mountPoint.c_str());
-        },
+    auto err = common::utils::Retry([&]() { return umount(mountPoint.c_str()); },
         [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
             LOG_WRN() << "Umount error, retry" << Log::Field(err);
 
@@ -350,6 +346,24 @@ Error FileSystem::PrepareNetworkDir(const std::string& path)
     }
 }
 
+Error FileSystem::WriteFile(const std::string& path, const std::string& content)
+{
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        return AOS_ERROR_WRAP(Error(errno, "can't open file"));
+    }
+
+    file << content;
+
+    if (!file.good()) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "can't write file"));
+    }
+
+    fs::permissions(path, cFilePermissions);
+
+    return ErrorEnum::eNone;
+}
+
 RetWithError<std::string> FileSystem::GetAbsPath(const std::string& path)
 {
     try {
@@ -452,6 +466,18 @@ RetWithError<std::vector<std::string>> FileSystem::ListDir(const std::string& pa
         return entries;
     } catch (const std::exception& e) {
         return {std::vector<std::string>(), AOS_ERROR_WRAP(common::utils::ToAosError(e, ErrorEnum::eRuntime))};
+    }
+}
+
+bool FileSystem::PathExists(const std::string& path)
+{
+    try {
+        return fs::exists(fs::path(path));
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Check file exists error" << Log::Field("path", path.c_str())
+                  << Log::Field("error", common::utils::ToAosError(e, ErrorEnum::eRuntime));
+
+        return false;
     }
 }
 

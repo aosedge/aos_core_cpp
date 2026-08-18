@@ -228,6 +228,26 @@ public:
      * @return error.
      */
     virtual Error Commit() = 0;
+
+    /**
+     * Submits the queued batch and returns the handles of the rules it added,
+     * in the order they were added. Lets the caller record handles for O(1)
+     * deletion later without re-listing the chain.
+     *
+     * @param[out] addedHandles handles of the rules added by this batch.
+     * @return error.
+     */
+    virtual Error Commit(std::vector<FWRuleHandle>& addedHandles) = 0;
+
+    /**
+     * Submits the queued batch and returns the jump rules it added with their
+     * handles, so the caller can attribute added jumps to their target chains
+     * when many instances are committed together.
+     *
+     * @param[out] addedRules jump rules added by this batch.
+     * @return error.
+     */
+    virtual Error Commit(std::vector<FWListedRule>& addedRules) = 0;
 };
 
 /**

@@ -80,6 +80,15 @@ public:
     Error PrepareNetworkDir(const std::string& path) override;
 
     /**
+     * Writes content to a file, creating or truncating it as needed.
+     *
+     * @param path file path.
+     * @param content content to write.
+     * @return Error.
+     */
+    Error WriteFile(const std::string& path, const std::string& content) override;
+
+    /**
      * Returns absolute path of FS item.
      *
      * @param path path to convert.
@@ -135,6 +144,14 @@ public:
      * @return RetWithError<std::vector<std::string>>.
      */
     RetWithError<std::vector<std::string>> ListDir(const std::string& path) override;
+
+    /**
+     * Checks if path exists.
+     *
+     * @param path file path.
+     * @return true if file exists, false otherwise.
+     */
+    bool PathExists(const std::string& path) override;
 };
 
 } // namespace aos::sm::launcher

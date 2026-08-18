@@ -44,7 +44,7 @@ void SMHandler::Start()
 
     mStopProcessing = false;
 
-    mSyncMessageSender.Init(mStream, cResponseTime);
+    mSyncMessageSender.Init(mStream, mWriteMutex, cResponseTime);
     mSyncMessageSender.RegisterResponseHandler(
         [](const servicemanager::v5::SMOutgoingMessages& msg) { return msg.has_node_config_status(); },
         [](const servicemanager::v5::SMOutgoingMessages& src, servicemanager::v5::SMOutgoingMessages& dst) {
@@ -287,7 +287,7 @@ void SMHandler::ProcessMessages()
 
 Error SMHandler::SendMessage(const servicemanager::v5::SMIncomingMessages& message)
 {
-    std::lock_guard lock {mMutex};
+    std::lock_guard lock {mWriteMutex};
 
     if (!mStream->Write(message)) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to send message"));

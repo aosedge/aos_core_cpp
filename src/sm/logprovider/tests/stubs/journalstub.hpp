@@ -98,6 +98,13 @@ public:
 
     std::string GetCursor() override { return ""; }
 
+    std::chrono::microseconds Wait(std::chrono::microseconds timeout) override
+    {
+        (void)timeout;
+
+        return std::chrono::microseconds::zero();
+    }
+
 private:
     std::vector<JournalEntry>           mJournal;
     std::vector<JournalEntry>::iterator mCurrentEntry  = mJournal.end();
