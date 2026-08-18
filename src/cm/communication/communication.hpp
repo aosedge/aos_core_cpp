@@ -312,7 +312,7 @@ private:
     StaticString<cIDLen>                                           mMainNodeID;
     Duration                                                       mReconnectTimeout {cReconnectTimeout};
     Poco::URI                                                      mConfigServiceDiscoveryURI;
-    bool                                                           mIsConnected {};
+    std::atomic_bool                                               mIsConnected {};
 
     SessionPtr                          mClientSession;
     std::optional<Poco::Net::WebSocket> mWebSocket;
