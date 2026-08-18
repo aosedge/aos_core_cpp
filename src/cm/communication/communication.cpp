@@ -694,23 +694,26 @@ Error Communication::CloseConnection()
         return ErrorEnum::eNone;
     }
 
-    try {
-        if (mWebSocket.has_value()) {
-            LOG_DBG() << "Send close frame";
+    Error err = ErrorEnum::eNone;
 
-            mWebSocket->shutdown();
-        }
+    try {
+        LOG_DBG() << "Send close frame";
+
+        mWebSocket->shutdown();
 
         if (mClientSession) {
             mClientSession->reset();
         }
-
-        NotifyConnectionLost();
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        err = common::utils::ToAosError(e);
     }
 
-    return ErrorEnum::eNone;
+    // Notify subscribers regardless of whether the graceful shutdown above succeeded: the connection is being
+    // torn down either way (e.g. shutdown() throws if the peer already reset the socket), and subscribers must
+    // not silently miss an OnDisconnect() callback.
+    NotifyConnectionLost();
+
+    return err;
 }
 
 Error Communication::Disconnect()
