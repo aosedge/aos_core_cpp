@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <atomic>
 #include <future>
 #include <regex>
+#include <thread>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -405,6 +407,59 @@ TEST_F(CMCommunicationTest, Reconnect)
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     err = mCommunication.UnsubscribeListener(mConnectionSubscriberStub);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, ReconnectOnSendFailure)
+{
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    // Keep the send queue busy across the disconnect/reconnect cycle below, so that HandleSendQueue and
+    // HandleConnection contend for mMutex concurrently. This guards against a regression where Disconnect() is
+    // called while the caller already holds mMutex (self-deadlock on the non-recursive mutex).
+
+    std::atomic_bool   sending {true};
+    std::promise<void> firstMessageSent;
+
+    std::thread sender([this, &sending, &firstMessageSent] {
+        Alerts alerts;
+        bool   firstSent = false;
+
+        while (sending) {
+            mCommunication.SendAlerts(alerts);
+
+            if (!firstSent) {
+                firstSent = true;
+                firstMessageSent.set_value();
+            }
+
+            // Paced by waiting on the actual round trip rather than an arbitrary delay; once disconnected this
+            // simply times out and retries, still driving the loop.
+            mCloudReceivedMessages.Pop(std::chrono::milliseconds(20));
+        }
+    });
+
+    ASSERT_EQ(firstMessageSent.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    StopHTTPServer();
+
+    auto err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    sending = false;
+    sender.join();
+
+    StartHTTPServer();
+
+    err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent);
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 

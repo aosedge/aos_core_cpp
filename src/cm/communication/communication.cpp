@@ -694,29 +694,30 @@ Error Communication::CloseConnection()
         return ErrorEnum::eNone;
     }
 
-    try {
-        if (mWebSocket.has_value()) {
-            LOG_DBG() << "Send close frame";
+    Error err = ErrorEnum::eNone;
 
-            mWebSocket->shutdown();
-        }
+    try {
+        LOG_DBG() << "Send close frame";
+
+        mWebSocket->shutdown();
 
         if (mClientSession) {
             mClientSession->reset();
         }
-
-        NotifyConnectionLost();
     } catch (const std::exception& e) {
-        return common::utils::ToAosError(e);
+        err = common::utils::ToAosError(e);
     }
 
-    return ErrorEnum::eNone;
+    // Notify subscribers regardless of whether the graceful shutdown above succeeded: the connection is being
+    // torn down either way (e.g. shutdown() throws if the peer already reset the socket), and subscribers must
+    // not silently miss an OnDisconnect() callback.
+    NotifyConnectionLost();
+
+    return err;
 }
 
 Error Communication::Disconnect()
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Disconnect from web socket server";
 
     auto err = CloseConnection();
@@ -771,6 +772,8 @@ void Communication::HandleConnection()
         if (auto err = ReceiveFrames(); !err.IsNone()) {
             LOG_ERR() << "Failed to receive frames" << Log::Field(err);
         }
+
+        std::lock_guard lock {mMutex};
 
         if (auto err = Disconnect(); !err.IsNone()) {
             LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
@@ -907,6 +910,12 @@ void Communication::HandleSendQueue()
             }
 
             mSendQueue.erase(it);
+        } catch (const Poco::Net::NetException& e) {
+            LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
+
+            if (auto err = Disconnect(); !err.IsNone()) {
+                LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
+            }
         } catch (const std::exception& e) {
             LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
 
