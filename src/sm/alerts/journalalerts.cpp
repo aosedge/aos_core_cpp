@@ -145,7 +145,7 @@ void JournalAlerts::OnTimer(Poco::Timer& timer)
 
         StoreCurrentCursor();
     } catch (const std::exception& e) {
-        LOG_ERR() << "Store cursor failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
+        LOG_WRN() << "Store cursor failed: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 }
 
@@ -186,7 +186,7 @@ void JournalAlerts::MonitorJournal()
             ProcessJournal();
             journalWaitTimeout = cWaitJournalTimeout;
         } catch (const std::exception& e) {
-            LOG_ERR() << "Journal process error: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
+            LOG_WRN() << "Journal process error: err=" << AOS_ERROR_WRAP(common::utils::ToAosError(e));
 
             RecoverJournalError();
             journalWaitTimeout = std::min(journalWaitTimeout * 2, cMaxWaitJournalTimeout);
