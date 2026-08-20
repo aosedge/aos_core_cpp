@@ -13,9 +13,22 @@
 
 namespace aos::sm::launcher {
 
+namespace {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
+
+Error MakeExitError(const Optional<int32_t>& exitCode)
+{
+    if (!exitCode.HasValue()) {
+        return ErrorEnum::eNone;
+    }
+
+    return Error(exitCode.GetValue(), "container exited");
+}
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -70,7 +83,7 @@ RunStatus Runner::GetInstanceStatus(const std::string& instanceID)
         return {instanceID, InstanceStateEnum::eFailed, err};
     }
 
-    return {instanceID, status.mState, ErrorEnum::eNone};
+    return {instanceID, status.mState, MakeExitError(status.mExitCode)};
 }
 
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
@@ -192,6 +205,7 @@ bool Runner::SyncStates()
         }
 
         storedData.mRunState = currentState.mState;
+        storedData.mExitCode = currentState.mExitCode;
 
         if (currentState.mState == InstanceStateEnum::eActive || storedData.mExceedsBurstLimit) {
             storedData.mNextRestartAt.reset();
@@ -282,7 +296,7 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
 
     std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
         [](const auto& unit) {
-            return RunStatus {unit.first, unit.second.mRunState, {}};
+            return RunStatus {unit.first, unit.second.mRunState, MakeExitError(unit.second.mExitCode)};
         });
 
     return mRunningInstances;
