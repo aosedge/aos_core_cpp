@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <sys/wait.h>
+
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exec.hpp>
@@ -67,12 +69,12 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
 
     const std::string bundleDir = mRuntimeDir + "/" + instanceID;
 
-    // The container process started by "run -d" keeps running long after crun itself exits, so it must
-    // inherit real stdout/stderr (rather than ExecCommand's pipe, which gets closed once crun exits) for its
-    // own output to keep working.
-    if (auto err = common::utils::ExecDetachedCommand(
-            {mCRunExecutable, "--root", mStateRoot, "run", "-d", "-b", bundleDir, instanceID});
-        !err.IsNone()) {
+    // Not run with "-d": crun stays alive in the foreground as the container's subreaper and exits with the
+    // container's own exit code once it terminates, which is how ReapExitedContainers() captures it below.
+    // It still inherits this process's real stdout/stderr (no pipe), same as the previous detached mode.
+    auto [pid, err]
+        = common::utils::ExecAsyncCommand({mCRunExecutable, "--root", mStateRoot, "run", "-b", bundleDir, instanceID});
+    if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -80,6 +82,8 @@ Error CRunRunner::StartContainer(const std::string& instanceID)
         std::lock_guard lock {mMutex};
 
         mManagedInstances.insert(instanceID);
+        mPids[instanceID] = pid;
+        mExitCodes.erase(instanceID);
     }
 
     return ErrorEnum::eNone;
@@ -100,11 +104,15 @@ RetWithError<ContainerStatus> CRunRunner::GetContainerStatus(const std::string& 
 {
     LOG_DBG() << "Get crun container status" << Log::Field("instanceID", instanceID.c_str());
 
+    ReapExitedContainers();
+
     return CheckProcessAlive(instanceID);
 }
 
 RetWithError<std::vector<ContainerStatus>> CRunRunner::ListContainers()
 {
+    ReapExitedContainers();
+
     std::set<std::string> instances;
 
     {
@@ -149,6 +157,8 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
         std::lock_guard lock {mMutex};
 
         mManagedInstances.erase(instanceID);
+        mPids.erase(instanceID);
+        mExitCodes.erase(instanceID);
     }
 
     libcrun_error_t   err = nullptr;
@@ -165,13 +175,44 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
  * Private
  **********************************************************************************************************************/
 
+void CRunRunner::ReapExitedContainers()
+{
+    std::lock_guard lock {mMutex};
+
+    for (auto it = mPids.begin(); it != mPids.end();) {
+        int status = 0;
+
+        if (waitpid(it->second, &status, WNOHANG) <= 0) {
+            ++it;
+            continue;
+        }
+
+        mExitCodes[it->first] = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        it                    = mPids.erase(it);
+    }
+}
+
 RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& instanceID) const
 {
     ContainerStatus status;
 
     status.mInstanceID = instanceID;
-    status.mState      = InstanceStateEnum::eActive;
 
+    {
+        std::lock_guard lock {mMutex};
+
+        if (auto it = mExitCodes.find(instanceID); it != mExitCodes.end()) {
+            status.mState    = InstanceStateEnum::eFailed;
+            status.mExitCode = it->second;
+
+            return {status, ErrorEnum::eNone};
+        }
+    }
+
+    status.mState = InstanceStateEnum::eActive;
+
+    // Fallback for containers we didn't start ourselves (AddContainer): no tracked pid to reap, so only
+    // liveness is known here, not an exit code.
     libcrun_error_t            err        = nullptr;
     libcrun_container_status_t crunStatus = {};
 
