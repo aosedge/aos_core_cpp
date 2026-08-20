@@ -561,13 +561,7 @@ Error ConvertFromProto(const servicemanager::v5::InstanceInfo& src, InstanceInfo
 
 Error ConvertFromProto(const ::common::v2::ErrorInfo& grpcError)
 {
-    if (grpcError.aos_code() == 0) {
-        return Error(grpcError.exit_code(), grpcError.message().c_str());
-    }
-
-    ErrorEnum err = static_cast<ErrorEnum>(grpcError.aos_code());
-
-    return Error(err, grpcError.message().c_str());
+    return Error(static_cast<ErrorEnum>(grpcError.aos_code()), grpcError.exit_code(), grpcError.message().c_str());
 }
 
 Error ConvertFromProto(const servicemanager::v5::NodeConfigStatus& grpcStatus, NodeConfigStatus& aosStatus)
