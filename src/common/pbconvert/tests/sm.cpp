@@ -144,8 +144,25 @@ TEST_F(PBConvertSMTest, ConvertErrorInfoFromProtoWithoutAosCode)
     grpcError.set_message("exit code error");
 
     auto result = ConvertFromProto(grpcError);
+
+    EXPECT_EQ(result.Value(), ErrorEnum::eNone);
     EXPECT_EQ(result.Errno(), 42);
     EXPECT_EQ(String(result.Message()), String("exit code error"));
+}
+
+TEST_F(PBConvertSMTest, ConvertErrorInfoFromProtoWithAosCodeAndExitCode)
+{
+    ::common::v2::ErrorInfo grpcError;
+
+    grpcError.set_aos_code(static_cast<int32_t>(ErrorEnum::eFailed));
+    grpcError.set_exit_code(7);
+    grpcError.set_message("container exited");
+
+    auto result = ConvertFromProto(grpcError);
+
+    EXPECT_EQ(result.Value(), ErrorEnum::eFailed);
+    EXPECT_EQ(result.Errno(), 7);
+    EXPECT_EQ(String(result.Message()), String("container exited"));
 }
 
 TEST_F(PBConvertSMTest, ConvertNodeConfigStatusFromProto)
