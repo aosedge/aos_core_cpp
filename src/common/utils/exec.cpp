@@ -199,4 +199,15 @@ Error ExecDetachedCommand(const std::vector<std::string>& args, const std::initi
     return CheckExitCode(WaitForExitCode(pid), "", expectedExitCodes);
 }
 
+RetWithError<pid_t> ExecAsyncCommand(const std::vector<std::string>& args)
+{
+    pid_t pid = -1;
+
+    if (auto err = SpawnProcess(args, nullptr, pid); !err.IsNone()) {
+        return {-1, err};
+    }
+
+    return {pid, ErrorEnum::eNone};
+}
+
 } // namespace aos::common::utils
