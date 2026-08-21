@@ -14,6 +14,7 @@
 #include <Poco/Process.h>
 
 #include <core/common/tools/noncopyable.hpp>
+#include <core/common/tools/thread.hpp>
 #include <core/sm/networkmanager/itf/dnsname.hpp>
 
 #include <common/process/itf/processspawner.hpp>
@@ -32,6 +33,10 @@ namespace aos::sm::networkmanager {
  * dnsmasq lifecycle (spawn/kill, pidfile reading) is owned by the DNSName
  * factory; this handle only edits the hosts file and signals the running
  * process.
+ *
+ * AddHost/RemoveHost are called concurrently from NetworkManager's launch
+ * pool worker threads for instances sharing this network, so mHosts is
+ * guarded by mMutex.
  */
 class DNSServer : public DNSServerItf, private NonCopyable {
 public:
@@ -83,6 +88,7 @@ private:
     aos::common::process::ProcessSpawnerItf* mSpawner {};
     Poco::Process::PID                       mPID {};
     std::map<std::string, HostRecord>        mHosts;
+    mutable Mutex                            mMutex;
 };
 
 } // namespace aos::sm::networkmanager
