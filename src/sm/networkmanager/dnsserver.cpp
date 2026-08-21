@@ -53,10 +53,14 @@ Error DNSServer::AddHost(const String& instanceID, const DNSAliasesParams& param
         record.mNames.push_back(bare + "." + mNetworkID);
     }
 
-    mHosts[instanceID.CStr()] = std::move(record);
+    {
+        LockGuard lock {mMutex};
 
-    if (auto err = WriteHostsFile(); !err.IsNone()) {
-        return err;
+        mHosts[instanceID.CStr()] = std::move(record);
+
+        if (auto err = WriteHostsFile(); !err.IsNone()) {
+            return err;
+        }
     }
 
     return Reload();
@@ -67,12 +71,16 @@ Error DNSServer::RemoveHost(const String& instanceID)
     LOG_DBG() << "Remove DNS host" << Log::Field("instanceID", instanceID)
               << Log::Field("networkID", mNetworkID.c_str());
 
-    if (mHosts.erase(instanceID.CStr()) == 0) {
-        return ErrorEnum::eNone;
-    }
+    {
+        LockGuard lock {mMutex};
 
-    if (auto err = WriteHostsFile(); !err.IsNone()) {
-        return err;
+        if (mHosts.erase(instanceID.CStr()) == 0) {
+            return ErrorEnum::eNone;
+        }
+
+        if (auto err = WriteHostsFile(); !err.IsNone()) {
+            return err;
+        }
     }
 
     return Reload();
@@ -84,6 +92,8 @@ Error DNSServer::RemoveHost(const String& instanceID)
 
 Error DNSServer::LoadHostsFile()
 {
+    LockGuard lock {mMutex};
+
     mHosts.clear();
 
     const auto path = mStorageDir + "/" + cHostsFileName;
