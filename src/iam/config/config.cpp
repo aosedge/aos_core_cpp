@@ -85,9 +85,9 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
 
     nodeInfoConfig.mProvisioningStatePath
         = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
-    nodeInfoConfig.mCPUInfoPath         = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
-    nodeInfoConfig.mMemInfoPath         = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
-    nodeInfoConfig.mHardwareIDPath      = object.GetValue<std::string>(
+    nodeInfoConfig.mCPUInfoPath    = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
+    nodeInfoConfig.mMemInfoPath    = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
+    nodeInfoConfig.mHardwareIDPath = object.GetValue<std::string>(
         "hardwareIDPath", object.GetValue<std::string>("nodeIDPath", cDefaultHardwareIDPath));
     nodeInfoConfig.mNodeName            = object.GetValue<std::string>("nodeName");
     nodeInfoConfig.mNodeType            = object.GetValue<std::string>("nodeType");
