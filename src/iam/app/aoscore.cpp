@@ -123,9 +123,6 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo, mCryptoProvider, mHwInfoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize current node handler");
 
-    err = InitIdentifierModule(config.mValue.mIdentifier);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
-
     err = mPKCS11Manager.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
 
@@ -137,6 +134,9 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
 
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
+
+    err = InitIdentifierModule(config.mValue.mIdentifier);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
 
     if (config.mValue.mEnablePermissionsHandler) {
         mPermHandler = std::make_unique<permhandler::PermHandler>();
@@ -284,7 +284,8 @@ Error AosCore::InitCertModules(const config::Config& config)
 
 Error AosCore::InitIdentifierModule(const config::IdentifierConfig& config)
 {
-    mIdentifier = identhandler::InitializeIdentModule(config, mCryptoProvider);
+    mIdentifier = identhandler::InitializeIdentModule(
+        config, mCryptoProvider, mCertHandler, mCertLoader, mAllocator, mProvisioning);
 
     if (mIdentifier) {
         mIdentifier->SubscribeListener(mIAMServer);

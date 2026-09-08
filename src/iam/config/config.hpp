@@ -16,6 +16,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <core/common/tools/error.hpp>
+#include <core/iam/identhandler/identmodules/certidentifier/config.hpp>
 #include <core/iam/identhandler/identmodules/fileidentifier/config.hpp>
 
 #include <common/utils/time.hpp>
@@ -189,6 +190,15 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
  * @return Error.
  */
 Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config);
+
+/*
+ * Parses cert identifier plugin parameters.
+ *
+ * @param var Poco::Dynamic::Var instance.
+ * @param[out] config parsed config.
+ * @return Error.
+ */
+Error ParseCertIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::CertIdentifierConfig& config);
 
 } // namespace aos::iam::config
 
