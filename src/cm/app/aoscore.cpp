@@ -80,7 +80,7 @@ void AosCore::Init(const std::string& configFile)
     err = mAlerts.Init(mAllocator, mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
 
-    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
+    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mDownloadPath, mPlatformFS, 0, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download space allocator");
 
     err = mInstallSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
