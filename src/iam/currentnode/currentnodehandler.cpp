@@ -17,48 +17,19 @@
 
 namespace aos::iam::currentnode {
 
-namespace {
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-Error GetNodeID(const std::string& path, String& nodeID)
-{
-    std::ifstream file;
-
-    if (file.open(path); !file.is_open()) {
-        return ErrorEnum::eNotFound;
-    }
-
-    std::string line;
-
-    if (!std::getline(file, line)) {
-        return ErrorEnum::eFailed;
-    }
-
-    nodeID = line.c_str();
-
-    return ErrorEnum::eNone;
-}
-
-} // namespace
-
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config, NodeIDProviderItf& nodeIDProvider)
 {
-    Error err;
-
     LOG_DBG() << "Init current node handler";
 
-    if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mNodeID); !err.IsNone()) {
+    if (auto err = nodeIDProvider.GetNodeID(mNodeInfo.mNodeID); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = InitOSInfo(config); !err.IsNone()) {
+    if (auto err = InitOSInfo(config); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -66,6 +37,8 @@ Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
     mNodeInfo.mNodeType     = config.mNodeType.c_str();
     mNodeInfo.mTitle        = config.mNodeName.c_str();
     mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
+
+    Error err;
 
     // cppcheck-suppress unusedScopedObject
     Tie(mNodeInfo.mTotalRAM, err) = utils::GetMemTotal(config.mMemInfoPath);
