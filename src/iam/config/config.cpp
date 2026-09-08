@@ -33,7 +33,8 @@ namespace {
 constexpr auto cDefaultCPUInfoPath            = "/proc/cpuinfo";
 constexpr auto cDefaultMemInfoPath            = "/proc/meminfo";
 constexpr auto cDefaultProvisioningStatusPath = "/var/aos/.provisionstate";
-constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
+constexpr auto cDefaultHWIDPlugin             = "filehwinfoprovider";
+constexpr auto cDefaultHWIDPath               = "/etc/machine-id";
 
 /***********************************************************************************************************************
  * Static
@@ -42,6 +43,11 @@ constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
 IdentifierConfig ParseIdentifier(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
 {
     return IdentifierConfig {object.GetValue<std::string>("plugin"), object.Get("params")};
+}
+
+HWIDConfig ParseHWID(const aos::common::utils::CaseInsensitiveObjectWrapper& object)
+{
+    return HWIDConfig {object.GetValue<std::string>("plugin"), object.Get("params")};
 }
 
 ModuleConfig ParseModuleConfig(const common::utils::CaseInsensitiveObjectWrapper& object)
@@ -87,7 +93,6 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
         = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
     nodeInfoConfig.mCPUInfoPath         = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
     nodeInfoConfig.mMemInfoPath         = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
-    nodeInfoConfig.mNodeIDPath          = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
     nodeInfoConfig.mNodeName            = object.GetValue<std::string>("nodeName");
     nodeInfoConfig.mNodeType            = object.GetValue<std::string>("nodeType");
     nodeInfoConfig.mMaxDMIPS            = object.GetValue<uint64_t>("maxDMIPS");
@@ -225,6 +230,8 @@ RetWithError<Config> ParseConfig(const std::string& filename)
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
         }
 
+        config.mHWID = object.Has("hwID") ? ParseHWID(object.GetObject("hwID")) : HWIDConfig {cDefaultHWIDPlugin, {}};
+
     } catch (const std::exception& e) {
         return {{}, common::utils::ToAosError(e, ErrorEnum::eInvalidArgument)};
     }
@@ -291,6 +298,26 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
 
         err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "failed to parse subjectsPath");
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ParseFileHWInfoProviderParams(Poco::Dynamic::Var params, iam::currentnode::FileHWInfoProviderConfig& config)
+{
+    try {
+        auto hwIDPath = std::string(cDefaultHWIDPath);
+
+        if (!params.isEmpty()) {
+            common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+            hwIDPath = object.GetValue<std::string>("hwIDPath", cDefaultHWIDPath);
+        }
+
+        auto err = config.mHWIDPath.Assign(hwIDPath.c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse hwIDPath");
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

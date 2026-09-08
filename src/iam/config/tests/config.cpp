@@ -29,7 +29,6 @@ public:
             "NodeInfo": {
                 "CPUInfoPath": "/proc/cpuinfo",
                 "MemInfoPath": "/proc/meminfo",
-                "NodeIDPath": "NodeIDPath",
                 "NodeType": "NodeType",
                 "NodeName": "NodeName",
                 "Architecture": "NodeArchitecture",
@@ -124,6 +123,12 @@ public:
                     "Param1": "Value1",
                     "Param2": "Value2"
                 }
+            },
+            "HWID": {
+                "Plugin": "testHWIDProvider",
+                "Params": {
+                    "HWIDPath": "test-hw-id-path"
+                }
             }
         })";
     }
@@ -143,7 +148,6 @@ TEST_F(ConfigTest, ParseConfig)
     auto [config, error] = ParseConfig(mFileName);
     ASSERT_EQ(error, ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
     EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
     EXPECT_EQ(config.mNodeInfo.mArchitecture, "NodeArchitecture");
@@ -232,6 +236,12 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(params->get("Param1").convert<std::string>(), "Value1");
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "Value2");
+
+    EXPECT_EQ(config.mHWID.mPlugin, "testHWIDProvider");
+
+    params = config.mHWID.mParams.extract<Poco::JSON::Object::Ptr>();
+
+    EXPECT_EQ(params->get("HWIDPath").convert<std::string>(), "test-hw-id-path");
 }
 
 TEST_F(ConfigTest, ParseConfigWithoutEnablePermissionsHandler)
@@ -251,6 +261,8 @@ TEST_F(ConfigTest, ParseConfigWithoutEnablePermissionsHandler)
 
     ASSERT_EQ(err, ErrorEnum::eNone);
     EXPECT_TRUE(config.mEnablePermissionsHandler);
+    EXPECT_EQ(config.mHWID.mPlugin, "filehwinfoprovider");
+    EXPECT_TRUE(config.mHWID.mParams.isEmpty());
 }
 
 TEST_F(ConfigTest, ParseConfigWithPermissionsHandlerDisabled)
@@ -327,6 +339,29 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     EXPECT_EQ(fileIdentifierParams->mSystemIDPath, "test-system-id-path");
     EXPECT_EQ(fileIdentifierParams->mUnitModelPath, "test-unit-model-path");
     EXPECT_EQ(fileIdentifierParams->mSubjectsPath, "test-subjects-path");
+}
+
+TEST_F(ConfigTest, ParseFileHWInfoProviderParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("hwIDPath", "test-hw-id-path");
+
+    auto hwInfoProviderConfig = std::make_unique<iam::currentnode::FileHWInfoProviderConfig>();
+
+    auto err = ParseFileHWInfoProviderParams(params, *hwInfoProviderConfig);
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
+    EXPECT_EQ(hwInfoProviderConfig->mHWIDPath, "test-hw-id-path");
+}
+
+TEST_F(ConfigTest, ParseFileHWInfoProviderParamsDefault)
+{
+    auto hwInfoProviderConfig = std::make_unique<iam::currentnode::FileHWInfoProviderConfig>();
+
+    auto err = ParseFileHWInfoProviderParams({}, *hwInfoProviderConfig);
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
+    EXPECT_EQ(hwInfoProviderConfig->mHWIDPath, "/etc/machine-id");
 }
 
 } // namespace aos::iam::config

@@ -5,7 +5,6 @@
     "iamPublicServerUrl": ":8090",
     "workingDir": "/var/aos/iam",
     "nodeInfo": {
-        "nodeIdPath": "/etc/machine-id",
         "nodeName": "main",
         "maxDmips": 10000,
         "attrs": {
@@ -33,6 +32,12 @@
     "finishProvisioningCmdArgs": [
         "@CMAKE_INSTALL_PREFIX@/libexec/aos/provfinish.sh"
     ],
+    "hwID": {
+        "plugin": "filehwinfoprovider",
+        "params": {
+            "hwIDPath": "/etc/machine-id"
+        }
+    },
     "identifier": {
         "plugin": "fileidentifier",
         "params": {
