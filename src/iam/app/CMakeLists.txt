@@ -25,6 +25,8 @@ set(LIBRARIES
     aos::iam::identhandler
     aos::common::version
     aos::core::common::version
+    aos::core::iam::filehwinfoprovider
+    aos::core::iam::nodeidprovider
 )
 
 # ######################################################################################################################

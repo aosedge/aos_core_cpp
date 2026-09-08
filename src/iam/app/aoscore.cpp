@@ -114,14 +114,20 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mDatabase.Init(config.mValue.mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
-    err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo);
+    err = mCryptoProvider.Init(mAllocator);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
+
+    err = InitHWInfoProvider(config.mValue.mHWID);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize hardware info provider");
+
+    err = mNodeIDProvider.Init(*mHWInfoProvider, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node ID provider");
+
+    err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo, mNodeIDProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize current node handler");
 
     err = InitIdentifierModule(config.mValue.mIdentifier);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
-
-    err = mCryptoProvider.Init(mAllocator);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto provider");
 
     err = mPKCS11Manager.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
@@ -275,6 +281,29 @@ Error AosCore::InitCertModules(const config::Config& config)
 
         mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
     }
+
+    return ErrorEnum::eNone;
+}
+
+Error AosCore::InitHWInfoProvider(const config::HWIDConfig& config)
+{
+    if (config.mPlugin != cFileHWInfoProviderPlugin) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "unknown HW ID provider plugin"));
+    }
+
+    auto hwInfoProviderConfig = std::make_unique<currentnode::FileHWInfoProviderConfig>();
+
+    if (auto err = config::ParseFileHWInfoProviderParams(config.mParams, *hwInfoProviderConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto hwInfoProvider = std::make_unique<currentnode::FileHWInfoProvider>();
+
+    if (auto err = hwInfoProvider->Init(*hwInfoProviderConfig); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mHWInfoProvider = std::move(hwInfoProvider);
 
     return ErrorEnum::eNone;
 }
