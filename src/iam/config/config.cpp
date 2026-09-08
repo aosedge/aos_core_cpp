@@ -299,4 +299,21 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
     return ErrorEnum::eNone;
 }
 
+Error ParseCertIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::CertIdentifierConfig& config)
+{
+    try {
+        common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+        auto err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse unitModelPath");
+
+        err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse subjectsPath");
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::iam::config

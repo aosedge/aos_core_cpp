@@ -290,4 +290,19 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     EXPECT_EQ(fileIdentifierParams->mSubjectsPath, "test-subjects-path");
 }
 
+TEST_F(ConfigTest, ParseCertIdentifierModuleParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("unitModelPath", "test-unit-model-path");
+    params->set("subjectsPath", "test-subjects-path");
+
+    auto certIdentifierParams = std::make_unique<iam::identhandler::CertIdentifierConfig>();
+
+    auto err = ParseCertIdentifierModuleParams(params, *certIdentifierParams);
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
+    EXPECT_EQ(certIdentifierParams->mUnitModelPath, "test-unit-model-path");
+    EXPECT_EQ(certIdentifierParams->mSubjectsPath, "test-subjects-path");
+}
+
 } // namespace aos::iam::config
