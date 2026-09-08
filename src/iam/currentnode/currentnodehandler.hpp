@@ -13,6 +13,7 @@
 #include <unordered_set>
 
 #include <core/iam/currentnode/itf/currentnodehandler.hpp>
+#include <core/iam/currentnode/itf/nodeidprovider.hpp>
 
 #include <iam/config/config.hpp>
 
@@ -27,9 +28,10 @@ public:
      * Initializes the node info provider.
      *
      * @param config node configuration
+     * @param nodeIDProvider node ID provider.
      * @return Error
      */
-    Error Init(const iam::config::NodeInfoConfig& config);
+    Error Init(const iam::config::NodeInfoConfig& config, NodeIDProviderItf& nodeIDProvider);
 
     /**
      * Returns current node info    .
