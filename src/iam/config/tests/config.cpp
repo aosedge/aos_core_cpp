@@ -29,7 +29,7 @@ public:
             "NodeInfo": {
                 "CPUInfoPath": "/proc/cpuinfo",
                 "MemInfoPath": "/proc/meminfo",
-                "NodeIDPath": "NodeIDPath",
+                "HardwareIDPath": "HardwareIDPath",
                 "NodeType": "NodeType",
                 "NodeName": "NodeName",
                 "Architecture": "NodeArchitecture",
@@ -143,7 +143,7 @@ TEST_F(ConfigTest, ParseConfig)
     auto [config, error] = ParseConfig(mFileName);
     ASSERT_EQ(error, ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
+    EXPECT_EQ(config.mNodeInfo.mHardwareIDPath, "HardwareIDPath");
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
     EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
     EXPECT_EQ(config.mNodeInfo.mArchitecture, "NodeArchitecture");
