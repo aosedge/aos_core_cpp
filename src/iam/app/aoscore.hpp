@@ -18,6 +18,7 @@
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
 #include <core/iam/currentnode/hwinfomodules/filehwinfoprovider/filehwinfoprovider.hpp>
 #include <core/iam/currentnode/nodeidprovider/nodeidprovider.hpp>
+#include <core/iam/identhandler/identhandler.hpp>
 #include <core/iam/identhandler/itf/identmodule.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
@@ -78,7 +79,7 @@ public:
 private:
     Error InitCertModules(const config::Config& config);
     Error InitHWInfoProvider(const config::HWIDConfig& config);
-    Error InitIdentifierModule(const config::IdentifierConfig& config);
+    Error InitIdentHandler(const config::IdentifierConfig& config);
 
     static constexpr auto cDefaultConfigFile        = "aos_iamanager.cfg";
     static constexpr auto cPKCS11CertModule         = "pkcs11module";
@@ -102,7 +103,8 @@ private:
     common::logger::Logger                          mLogger;
     std::unique_ptr<permhandler::PermHandler>       mPermHandler;
     std::unique_ptr<iamclient::IAMClient>           mIAMClient;
-    std::unique_ptr<identhandler::IdentModuleItf>   mIdentifier;
+    std::unique_ptr<identhandler::IdentModuleItf>   mIdentModule;
+    std::unique_ptr<identhandler::IdentHandler>     mIdentHandler;
     aos::common::utils::CleanupManager              mCleanupManager;
 
     bool mProvisioning = false;

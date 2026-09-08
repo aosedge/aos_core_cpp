@@ -126,9 +126,6 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo, mNodeIDProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize current node handler");
 
-    err = InitIdentifierModule(config.mValue.mIdentifier);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize identifier module");
-
     err = mPKCS11Manager.Init(mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize PKCS11 manager");
 
@@ -140,6 +137,9 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
 
     err = InitCertModules(config.mValue);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert modules");
+
+    err = InitIdentHandler(config.mValue.mIdentifier);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize ident handler");
 
     if (config.mValue.mEnablePermissionsHandler) {
         mPermHandler = std::make_unique<permhandler::PermHandler>();
@@ -154,7 +154,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mProvisionManager.Init(mIAMServer, mCertHandler);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
-    err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
+    err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentHandler, *mPermHandler, mCertLoader,
         mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
@@ -162,7 +162,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     if (!clientConfig.mMainIAMPublicServerURL.empty() && !clientConfig.mMainIAMProtectedServerURL.empty()) {
         mIAMClient = std::make_unique<iamclient::IAMClient>();
 
-        err = mIAMClient->Init(clientConfig, mIdentifier.get(), mCertHandler, mProvisionManager, mTLSCredentials,
+        err = mIAMClient->Init(clientConfig, mIdentHandler.get(), mCertHandler, mProvisionManager, mTLSCredentials,
             mCurrentNodeHandler, mProvisioning);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }
@@ -172,13 +172,24 @@ void AosCore::Start()
 {
     LOG_INF() << "Start IAM" << Log::Field("provisioning", mProvisioning);
 
-    if (mIdentifier) {
-        auto err = mIdentifier->Start();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't start identifier module");
+    if (mIdentModule) {
+        auto err = mIdentModule->Start();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't start ident module");
 
         mCleanupManager.AddCleanup([this]() {
-            if (auto err = mIdentifier->Stop(); !err.IsNone()) {
-                LOG_ERR() << "Can't stop identifier module: err=" << err;
+            if (auto err = mIdentModule->Stop(); !err.IsNone()) {
+                LOG_ERR() << "Can't stop ident module" << Log::Field(err);
+            }
+        });
+    }
+
+    if (mIdentHandler) {
+        auto err = mIdentHandler->Start();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't start ident handler");
+
+        mCleanupManager.AddCleanup([this]() {
+            if (auto err = mIdentHandler->Stop(); !err.IsNone()) {
+                LOG_ERR() << "Can't stop ident handler" << Log::Field(err);
             }
         });
     }
@@ -308,12 +319,22 @@ Error AosCore::InitHWInfoProvider(const config::HWIDConfig& config)
     return ErrorEnum::eNone;
 }
 
-Error AosCore::InitIdentifierModule(const config::IdentifierConfig& config)
+Error AosCore::InitIdentHandler(const config::IdentifierConfig& config)
 {
-    mIdentifier = identhandler::InitializeIdentModule(config, mCryptoProvider);
+    mIdentModule = identhandler::InitializeIdentModule(config, mCryptoProvider);
+    if (!mIdentModule) {
+        return ErrorEnum::eNone;
+    }
 
-    if (mIdentifier) {
-        mIdentifier->SubscribeListener(mIAMServer);
+    mIdentHandler = std::make_unique<identhandler::IdentHandler>();
+
+    if (auto err = mIdentHandler->Init(*mIdentModule, mCertHandler, mCertLoader, mAllocator, mProvisioning);
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = mIdentHandler->SubscribeListener(mIAMServer); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
