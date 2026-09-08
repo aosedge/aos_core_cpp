@@ -33,7 +33,7 @@ namespace {
 constexpr auto cDefaultCPUInfoPath            = "/proc/cpuinfo";
 constexpr auto cDefaultMemInfoPath            = "/proc/meminfo";
 constexpr auto cDefaultProvisioningStatusPath = "/var/aos/.provisionstate";
-constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
+constexpr auto cDefaultHardwareIDPath         = "/etc/machine-id";
 
 /***********************************************************************************************************************
  * Static
@@ -87,7 +87,8 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
         = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
     nodeInfoConfig.mCPUInfoPath         = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
     nodeInfoConfig.mMemInfoPath         = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
-    nodeInfoConfig.mNodeIDPath          = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
+    nodeInfoConfig.mHardwareIDPath      = object.GetValue<std::string>(
+        "hardwareIDPath", object.GetValue<std::string>("nodeIDPath", cDefaultHardwareIDPath));
     nodeInfoConfig.mNodeName            = object.GetValue<std::string>("nodeName");
     nodeInfoConfig.mNodeType            = object.GetValue<std::string>("nodeType");
     nodeInfoConfig.mMaxDMIPS            = object.GetValue<uint64_t>("maxDMIPS");
