@@ -16,6 +16,7 @@
 #include <Poco/Dynamic/Var.h>
 
 #include <core/common/tools/error.hpp>
+#include <core/iam/currentnode/hwinfomodules/filehwinfoprovider/config.hpp>
 #include <core/iam/identhandler/identmodules/fileidentifier/config.hpp>
 
 #include <common/utils/time.hpp>
@@ -30,6 +31,14 @@ namespace aos::iam::config {
  * Identifier plugin parameters.
  */
 struct IdentifierConfig {
+    std::string        mPlugin;
+    Poco::Dynamic::Var mParams;
+};
+
+/*
+ * HW ID provider plugin parameters.
+ */
+struct HWIDConfig {
     std::string        mPlugin;
     Poco::Dynamic::Var mParams;
 };
@@ -89,7 +98,6 @@ struct NodeInfoConfig {
     std::string                                  mCPUInfoPath;
     std::string                                  mMemInfoPath;
     std::string                                  mProvisioningStatePath;
-    std::string                                  mNodeIDPath;
     std::string                                  mNodeName;
     std::string                                  mNodeType;
     uint64_t                                     mMaxDMIPS;
@@ -149,6 +157,7 @@ struct Config {
     IAMServerConfig           mIAMServer;
     DatabaseConfig            mDatabase;
     IdentifierConfig          mIdentifier;
+    HWIDConfig                mHWID;
     std::vector<ModuleConfig> mCertModules;
     bool                      mEnablePermissionsHandler;
 };
@@ -189,6 +198,15 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
  * @return Error.
  */
 Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config);
+
+/*
+ * Parses file HW info provider plugin parameters.
+ *
+ * @param var Poco::Dynamic::Var instance.
+ * @param[out] config parsed config.
+ * @return Error.
+ */
+Error ParseFileHWInfoProviderParams(Poco::Dynamic::Var params, iam::currentnode::FileHWInfoProviderConfig& config);
 
 } // namespace aos::iam::config
 
