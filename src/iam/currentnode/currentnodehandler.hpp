@@ -12,7 +12,9 @@
 #include <string>
 #include <unordered_set>
 
+#include <core/common/crypto/itf/uuid.hpp>
 #include <core/iam/currentnode/itf/currentnodehandler.hpp>
+#include <core/iam/currentnode/itf/hwinfoprovider.hpp>
 
 #include <iam/config/config.hpp>
 
@@ -27,9 +29,12 @@ public:
      * Initializes the node info provider.
      *
      * @param config node configuration
+     * @param uuidProvider UUID provider used to derive Node ID from Hardware ID.
+     * @param hwInfoProvider hardware information provider.
      * @return Error
      */
-    Error Init(const iam::config::NodeInfoConfig& config);
+    Error Init(
+        const iam::config::NodeInfoConfig& config, crypto::UUIDItf& uuidProvider, HwInfoProviderItf& hwInfoProvider);
 
     /**
      * Returns current node info    .
@@ -72,6 +77,7 @@ public:
     Error SetConnected(bool isConnected) override;
 
 private:
+    Error InitNodeID(HwInfoProviderItf& hwInfoProvider, crypto::UUIDItf& uuidProvider);
     Error InitCPUInfo(const iam::config::NodeInfoConfig& config);
     Error InitOSInfo(const iam::config::NodeInfoConfig& config);
     Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
