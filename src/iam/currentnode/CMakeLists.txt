@@ -16,7 +16,7 @@ set(SOURCES currentnodehandler.cpp systeminfo.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::pbconvert aos::common::utils Poco::Util)
+set(LIBRARIES aos::core::iam::currentnode aos::common::pbconvert aos::common::utils Poco::Util)
 
 # ######################################################################################################################
 # Target
