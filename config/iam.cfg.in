@@ -5,7 +5,7 @@
     "iamPublicServerUrl": ":8090",
     "workingDir": "/var/aos/iam",
     "nodeInfo": {
-        "nodeIdPath": "/etc/machine-id",
+        "hardwareIdPath": "/etc/machine-id",
         "nodeName": "main",
         "maxDmips": 10000,
         "attrs": {

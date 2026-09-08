@@ -89,7 +89,7 @@ struct NodeInfoConfig {
     std::string                                  mCPUInfoPath;
     std::string                                  mMemInfoPath;
     std::string                                  mProvisioningStatePath;
-    std::string                                  mNodeIDPath;
+    std::string                                  mHardwareIDPath;
     std::string                                  mNodeName;
     std::string                                  mNodeType;
     uint64_t                                     mMaxDMIPS;
