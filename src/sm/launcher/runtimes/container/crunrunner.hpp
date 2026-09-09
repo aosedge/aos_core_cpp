@@ -7,8 +7,6 @@
 #ifndef AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_CRUNRUNNER_HPP_
 #define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_CRUNRUNNER_HPP_
 
-#include <mutex>
-#include <set>
 #include <string>
 
 #include "itf/containerrunner.hpp"
@@ -38,14 +36,6 @@ public:
     Error StartContainer(const std::string& instanceID) override;
 
     /**
-     * Starts managing an already running container without starting it.
-     *
-     * @param instanceID instance ID.
-     * @return Error.
-     */
-    Error AddContainer(const std::string& instanceID) override;
-
-    /**
      * Returns the status of a container.
      *
      * @param instanceID instance ID.
@@ -54,7 +44,12 @@ public:
     RetWithError<ContainerStatus> GetContainerStatus(const std::string& instanceID) override;
 
     /**
-     * Returns the status of all managed containers.
+     * Returns the status of every container found under the crun state root (--root) given to Init().
+     *
+     * That directory must be exclusively ours (see ListContainers() in crunrunner.cpp), so this is
+     * equivalent to "all containers this runner manages", including ones started by a previous
+     * process instance before a restart - not just ones started via StartContainer() in this
+     * object's lifetime.
      *
      * @return RetWithError<std::vector<ContainerStatus>>.
      */
@@ -79,11 +74,9 @@ public:
 private:
     RetWithError<ContainerStatus> CheckProcessAlive(const std::string& instanceID) const;
 
-    std::string           mRuntimeDir;
-    std::string           mStateRoot;
-    std::string           mCRunExecutable;
-    std::mutex            mMutex;
-    std::set<std::string> mManagedInstances;
+    std::string mRuntimeDir;
+    std::string mStateRoot;
+    std::string mCRunExecutable;
 };
 
 } // namespace aos::sm::launcher
