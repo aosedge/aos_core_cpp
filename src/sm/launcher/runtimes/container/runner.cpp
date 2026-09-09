@@ -114,10 +114,6 @@ RunStatus Runner::WatchInstance(const std::string& instanceID, const RunParamete
               << Log::Field("startBurst", fixedParams.mStartBurst)
               << Log::Field("restartInterval", fixedParams.mRestartInterval);
 
-    if (status.mError = mContainerRunner->AddContainer(instanceID); !status.mError.IsNone()) {
-        return status;
-    }
-
     Tie(status.mState, status.mError) = InitContainerState(instanceID, fixedParams);
 
     LOG_DBG() << "Watch instance" << Log::Field("instanceID", instanceID.c_str()) << Log::Field("state", status.mState)
@@ -178,22 +174,23 @@ bool Runner::SyncStates()
         auto currentIt = std::find_if(currentStates.begin(), currentStates.end(),
             [&stored](const ContainerStatus& status) { return status.mInstanceID == stored.first; });
 
-        if (currentIt == currentStates.end()) {
-            LOG_WRN() << "Unknown container" << Log::Field("id", stored.first.c_str());
+        auto& storedData = stored.second;
 
-            continue;
+        InstanceState newState = InstanceStateEnum::eFailed;
+
+        if (currentIt != currentStates.end()) {
+            newState = currentIt->mState;
+        } else {
+            LOG_WRN() << "Unknown container" << Log::Field("id", stored.first.c_str());
         }
 
-        auto&       storedData   = stored.second;
-        const auto& currentState = *currentIt;
-
-        if (currentState.mState != storedData.mRunState) {
+        if (newState != storedData.mRunState) {
             stateChanged = true;
         }
 
-        storedData.mRunState = currentState.mState;
+        storedData.mRunState = newState;
 
-        if (currentState.mState == InstanceStateEnum::eActive || storedData.mExceedsBurstLimit) {
+        if (newState == InstanceStateEnum::eActive || storedData.mExceedsBurstLimit) {
             storedData.mNextRestartAt.reset();
 
             continue;
@@ -204,8 +201,7 @@ bool Runner::SyncStates()
 
             storedData.mNextRestartAt = now.Add(restartMs);
 
-            LOG_DBG() << "Container is not active, scheduling restart"
-                      << Log::Field("instanceID", currentState.mInstanceID.c_str())
+            LOG_DBG() << "Container is not active, scheduling restart" << Log::Field("instanceID", stored.first.c_str())
                       << Log::Field("restartInterval", restartMs);
         }
     }
