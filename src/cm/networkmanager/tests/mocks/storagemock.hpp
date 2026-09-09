@@ -18,6 +18,8 @@ public:
     MOCK_METHOD(Error, AddNetwork, (const Network& network), (override));
     MOCK_METHOD(Error, AddHost, (const String& networkID, const Host& host), (override));
     MOCK_METHOD(Error, AddInstance, (const Instance& instance), (override));
+    MOCK_METHOD(Error, UpdateInstanceHosts,
+        (const InstanceIdent& instanceIdent, const Array<StaticString<cHostNameLen>>& hosts), (override));
     MOCK_METHOD(Error, GetNetworks, (Array<Network> & networks), (override));
     MOCK_METHOD(Error, GetHosts, (const String& networkID, Array<Host>& hosts), (override));
     MOCK_METHOD(

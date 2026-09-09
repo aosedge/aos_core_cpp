@@ -45,12 +45,13 @@ struct ExposedPort {
  * Instance.
  */
 struct Instance {
-    StaticString<cIDLen>                                 mNetworkID;
-    StaticString<cIDLen>                                 mNodeID;
-    aos::InstanceIdent                                   mInstanceIdent;
-    StaticString<cIPLen>                                 mIP;
-    StaticArray<ExposedPort, cMaxNumExposedPorts>        mExposedPorts;
-    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers> mDNSServers;
+    StaticString<cIDLen>                                  mNetworkID;
+    StaticString<cIDLen>                                  mNodeID;
+    aos::InstanceIdent                                    mInstanceIdent;
+    StaticString<cIPLen>                                  mIP;
+    StaticArray<ExposedPort, cMaxNumExposedPorts>         mExposedPorts;
+    StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>  mDNSServers;
+    StaticArray<StaticString<cHostNameLen>, cMaxNumHosts> mHosts;
 
     /**
      * Compares instances.
@@ -61,7 +62,8 @@ struct Instance {
     bool operator==(const Instance& rhs) const
     {
         return mNetworkID == rhs.mNetworkID && mNodeID == rhs.mNodeID && mInstanceIdent == rhs.mInstanceIdent
-            && mIP == rhs.mIP && mExposedPorts == rhs.mExposedPorts && mDNSServers == rhs.mDNSServers;
+            && mIP == rhs.mIP && mExposedPorts == rhs.mExposedPorts && mDNSServers == rhs.mDNSServers
+            && mHosts == rhs.mHosts;
     }
 
     /**
@@ -156,14 +158,14 @@ struct Network {
  * Pending connection.
  */
 struct PendingConnection {
-    InstanceIdent                  mRequesterIdent;
-    StaticString<cIDLen>           mNodeID;
-    StaticString<cIDLen>           mNetworkID;
-    StaticString<cIPLen>           mRequesterIP;
-    StaticString<cSubnetLen>       mRequesterSubnet;
-    StaticString<cIDLen>           mTargetItemID;
-    StaticString<cPortLen>         mPort;
-    StaticString<cProtocolNameLen> mProtocol;
+    InstanceIdent                      mRequesterIdent;
+    StaticString<cIDLen>               mNodeID;
+    StaticString<cIDLen>               mNetworkID;
+    StaticString<cIPLen>               mRequesterIP;
+    StaticString<cSubnetLen>           mRequesterSubnet;
+    StaticString<cConnectionTargetLen> mTarget;
+    StaticString<cPortLen>             mPort;
+    StaticString<cProtocolNameLen>     mProtocol;
 
     /**
      * Compares pending connections.
@@ -174,8 +176,8 @@ struct PendingConnection {
     bool operator==(const PendingConnection& rhs) const
     {
         return mRequesterIdent == rhs.mRequesterIdent && mNodeID == rhs.mNodeID && mNetworkID == rhs.mNetworkID
-            && mRequesterIP == rhs.mRequesterIP && mRequesterSubnet == rhs.mRequesterSubnet
-            && mTargetItemID == rhs.mTargetItemID && mPort == rhs.mPort && mProtocol == rhs.mProtocol;
+            && mRequesterIP == rhs.mRequesterIP && mRequesterSubnet == rhs.mRequesterSubnet && mTarget == rhs.mTarget
+            && mPort == rhs.mPort && mProtocol == rhs.mProtocol;
     }
 
     /**
@@ -250,6 +252,17 @@ public:
     virtual Error AddInstance(const Instance& instance) = 0;
 
     /**
+     * Updates registered hostnames of an existing instance.
+     *
+     * @param instanceIdent Instance identifier.
+     * @param hosts Registered hostnames. An empty array removes all hostnames.
+     * @return Error.
+     */
+    virtual Error UpdateInstanceHosts(
+        const InstanceIdent& instanceIdent, const Array<StaticString<cHostNameLen>>& hosts)
+        = 0;
+
+    /**
      * Gets networks.
      *
      * @param[out] networks Networks.
@@ -310,9 +323,9 @@ public:
     virtual Error AddPendingConnection(const PendingConnection& connection) = 0;
 
     /**
-     * Gets pending connections by target item ID.
+     * Gets pending connections by target item ID or hostname.
      *
-     * @param targetItemID Target item ID.
+     * @param targetItemID Target item ID or hostname.
      * @param[out] connections Pending connections.
      * @return Error.
      */

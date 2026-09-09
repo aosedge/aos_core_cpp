@@ -122,6 +122,16 @@ public:
     Error AddInstance(const networkmanager::Instance& instance) override;
 
     /**
+     * Updates registered hostnames of an existing instance.
+     *
+     * @param instanceIdent Instance identifier.
+     * @param hosts Registered hostnames. An empty array removes all hostnames.
+     * @return Error.
+     */
+    Error UpdateInstanceHosts(
+        const InstanceIdent& instanceIdent, const Array<StaticString<cHostNameLen>>& hosts) override;
+
+    /**
      * Gets networks.
      *
      * @param[out] networks Networks.
@@ -183,9 +193,9 @@ public:
     Error AddPendingConnection(const networkmanager::PendingConnection& connection) override;
 
     /**
-     * Gets pending connections by target item ID.
+     * Gets pending connections by target item ID or hostname.
      *
-     * @param targetItemID Target item ID.
+     * @param targetItemID Target item ID or hostname.
      * @param[out] connections Pending connections.
      * @return Error.
      */
@@ -370,7 +380,7 @@ public:
     RetWithError<updatemanager::UpdateState> GetUpdateState() override;
 
 private:
-    static constexpr int  cVersion    = 0;
+    static constexpr int  cVersion    = 1;
     static constexpr auto cDBFileName = "cm.db";
 
     enum class StorageStateInstanceInfoColumns : int {
@@ -402,10 +412,11 @@ private:
         eNodeID,
         eIP,
         eExposedPorts,
-        eDNSServers
+        eDNSServers,
+        eHosts
     };
     using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
-        std::string, std::string, std::string, std::string>;
+        std::string, std::string, std::string, std::string, std::string>;
 
     enum class PendingConnectionColumns : int {
         eRequesterItemID = 0,
