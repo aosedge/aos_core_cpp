@@ -180,6 +180,51 @@ TEST_F(ContainerRunnerTest, RestartOnContainerFailure)
     mRunner.Stop();
 }
 
+TEST_F(ContainerRunnerTest, RestartOnMissingContainer)
+{
+    // Regression test: if a tracked container disappears from ListContainers() (e.g. removed via
+    // `crun delete --force`, or its status file vanishes), it must be treated as failed and restarted,
+    // not silently kept in whatever state it last reported.
+    RunParameters params = {{500 * Time::cMilliseconds}, {0}, {3}};
+
+    Error           err          = ErrorEnum::eNone;
+    ContainerStatus activeStatus = {"service0", InstanceStateEnum::eActive, {}};
+
+    std::promise<void> restartedPromise;
+    EXPECT_CALL(mContainerRunnerMock, StartContainer("service0"))
+        .WillOnce(Return(err))
+        .WillOnce(InvokeWithoutArgs([&restartedPromise, err]() -> Error {
+            restartedPromise.set_value();
+            return err;
+        }));
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(activeStatus, err)));
+
+    std::vector<ContainerStatus> activeStatuses  = {activeStatus};
+    std::vector<ContainerStatus> missingStatuses = {};
+    EXPECT_CALL(mContainerRunnerMock, ListContainers())
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(activeStatuses, err)))
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(missingStatuses, err)))
+        .WillRepeatedly(Return(RetWithError<std::vector<ContainerStatus>>(activeStatuses, err)));
+
+    // RemoveContainer: once from restart logic, once from StopInstance
+    EXPECT_CALL(mContainerRunnerMock, RemoveContainer("service0")).Times(2).WillRepeatedly(Return(err));
+    EXPECT_CALL(mContainerRunnerMock, StopContainer("service0")).WillOnce(Return(err));
+
+    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(_)).WillRepeatedly(Return(Error()));
+
+    mRunner.Start();
+
+    EXPECT_EQ(mRunner.StartInstance("service0", params).mState, InstanceStateEnum::eActive);
+
+    EXPECT_TRUE(restartedPromise.get_future().wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+
+    EXPECT_TRUE(mRunner.StopInstance("service0").IsNone());
+
+    mRunner.Stop();
+}
+
 TEST_F(ContainerRunnerTest, StopInstanceWaitsForInFlightRestart)
 {
     // Regression test: StopInstance must block while a restart for the same instance is in flight
