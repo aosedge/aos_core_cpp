@@ -83,31 +83,38 @@ void DeserializeExposedPorts(const std::string& jsonStr, Array<networkmanager::E
     }
 }
 
-std::string SerializeDNSServers(const Array<StaticString<cIPLen>>& dnsServers)
+template <size_t N>
+std::string SerializeStrings(const Array<StaticString<N>>& values)
 {
-    Poco::JSON::Array dnsJSON;
+    Poco::JSON::Array valueJSON;
 
-    for (const auto& server : dnsServers) {
-        dnsJSON.add(server.CStr());
+    for (const auto& value : values) {
+        valueJSON.add(value.CStr());
     }
 
-    return common::utils::Stringify(dnsJSON);
+    return common::utils::Stringify(valueJSON);
 }
 
-void DeserializeDNSServers(const std::string& jsonStr, Array<StaticString<cIPLen>>& dnsServers)
+template <size_t N>
+void DeserializeStrings(const std::string& jsonStr, Array<StaticString<N>>& values)
 {
     Poco::JSON::Parser parser;
 
-    auto dnsServersJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
-    if (dnsServersJSON == nullptr) {
-        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse DNS servers array");
+    auto valuesJSON = parser.parse(jsonStr).extract<Poco::JSON::Array::Ptr>();
+
+    if (valuesJSON == nullptr) {
+        AOS_ERROR_THROW(AOS_ERROR_WRAP(ErrorEnum::eFailed), "failed to parse string array");
     }
 
-    dnsServers.Clear();
+    values.Clear();
 
-    for (const auto& dnsJSON : *dnsServersJSON) {
-        auto err = dnsServers.EmplaceBack(dnsJSON.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add DNS server");
+    for (const auto& valueJSON : *valuesJSON) {
+        auto err = values.EmplaceBack();
+
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add string");
+
+        err = values.Back().Assign(valueJSON.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't assign string");
     }
 }
 
@@ -430,9 +437,29 @@ Error Database::AddInstance(const networkmanager::Instance& instance)
         NetworkManagerInstanceRow row;
 
         FromAos(instance, row);
-        *mSession << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, "
-                     "networkID, nodeID, ip, exposedPorts, dnsServers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        *mSession
+            << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, "
+               "networkID, nodeID, ip, exposedPorts, dnsServers, hostnames) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::UpdateInstanceHosts(const InstanceIdent& instanceIdent, const Array<StaticString<cHostNameLen>>& hosts)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        const auto serialized = SerializeStrings(hosts);
+
+        *mSession << "UPDATE networkmanager_instances SET hostnames = ? WHERE itemID = ? AND subjectID = ? "
+                     "AND instance = ? AND type = ? AND preinstalled = ?;",
+            bind(serialized), bind(instanceIdent.mItemID.CStr()), bind(instanceIdent.mSubjectID.CStr()),
+            bind(instanceIdent.mInstance), bind(instanceIdent.mType.ToString().CStr()),
+            bind(instanceIdent.mPreinstalled), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -499,7 +526,7 @@ Error Database::GetInstances(const String& networkID, const String& nodeID, Arra
         std::vector<NetworkManagerInstanceRow> rows;
 
         *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, networkID, nodeID, ip, exposedPorts, "
-                     "dnsServers FROM networkmanager_instances WHERE networkID = ? AND nodeID = ?;",
+                     "dnsServers, hostnames FROM networkmanager_instances WHERE networkID = ? AND nodeID = ?;",
             bind(networkID.CStr()), bind(nodeID.CStr()), into(rows), now;
 
         auto instance = std::make_unique<networkmanager::Instance>();
@@ -668,7 +695,7 @@ Error Database::RemovePendingConnection(const networkmanager::PendingConnection&
                      "AND port = ? AND protocol = ?;",
             bind(connection.mRequesterIdent.mItemID.CStr()), bind(connection.mRequesterIdent.mSubjectID.CStr()),
             bind(connection.mRequesterIdent.mInstance), bind(connection.mRequesterIdent.mType.ToString().CStr()),
-            bind(connection.mRequesterIdent.mPreinstalled), bind(connection.mTargetItemID.CStr()),
+            bind(connection.mRequesterIdent.mPreinstalled), bind(connection.mTarget.CStr()),
             bind(connection.mPort.CStr()), bind(connection.mProtocol.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -1315,7 +1342,8 @@ void Database::FromAos(const networkmanager::Instance& src, NetworkManagerInstan
     dst.set<ToInt(NetworkManagerInstanceColumns::eNodeID)>(src.mNodeID.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eIP)>(src.mIP.CStr());
     dst.set<ToInt(NetworkManagerInstanceColumns::eExposedPorts)>(SerializeExposedPorts(src.mExposedPorts));
-    dst.set<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(SerializeDNSServers(src.mDNSServers));
+    dst.set<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(SerializeStrings<cIPLen>(src.mDNSServers));
+    dst.set<ToInt(NetworkManagerInstanceColumns::eHosts)>(SerializeStrings<cHostNameLen>(src.mHosts));
 }
 
 void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Instance& dst)
@@ -1333,7 +1361,8 @@ void Database::ToAos(const NetworkManagerInstanceRow& src, networkmanager::Insta
     dst.mIP                          = src.get<ToInt(NetworkManagerInstanceColumns::eIP)>().c_str();
 
     DeserializeExposedPorts(src.get<ToInt(NetworkManagerInstanceColumns::eExposedPorts)>(), dst.mExposedPorts);
-    DeserializeDNSServers(src.get<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(), dst.mDNSServers);
+    DeserializeStrings<cIPLen>(src.get<ToInt(NetworkManagerInstanceColumns::eDNSServers)>(), dst.mDNSServers);
+    DeserializeStrings<cHostNameLen>(src.get<ToInt(NetworkManagerInstanceColumns::eHosts)>(), dst.mHosts);
 }
 
 void Database::FromAos(const networkmanager::PendingConnection& src, PendingConnectionRow& dst)
@@ -1347,7 +1376,7 @@ void Database::FromAos(const networkmanager::PendingConnection& src, PendingConn
     dst.set<ToInt(PendingConnectionColumns::eNetworkID)>(src.mNetworkID.CStr());
     dst.set<ToInt(PendingConnectionColumns::eRequesterIP)>(src.mRequesterIP.CStr());
     dst.set<ToInt(PendingConnectionColumns::eRequesterSubnet)>(src.mRequesterSubnet.CStr());
-    dst.set<ToInt(PendingConnectionColumns::eTargetItemID)>(src.mTargetItemID.CStr());
+    dst.set<ToInt(PendingConnectionColumns::eTargetItemID)>(src.mTarget.CStr());
     dst.set<ToInt(PendingConnectionColumns::ePort)>(src.mPort.CStr());
     dst.set<ToInt(PendingConnectionColumns::eProtocol)>(src.mProtocol.CStr());
 }
@@ -1366,7 +1395,7 @@ void Database::ToAos(const PendingConnectionRow& src, networkmanager::PendingCon
     dst.mNetworkID                    = src.get<ToInt(PendingConnectionColumns::eNetworkID)>().c_str();
     dst.mRequesterIP                  = src.get<ToInt(PendingConnectionColumns::eRequesterIP)>().c_str();
     dst.mRequesterSubnet              = src.get<ToInt(PendingConnectionColumns::eRequesterSubnet)>().c_str();
-    dst.mTargetItemID                 = src.get<ToInt(PendingConnectionColumns::eTargetItemID)>().c_str();
+    dst.mTarget                       = src.get<ToInt(PendingConnectionColumns::eTargetItemID)>().c_str();
     dst.mPort                         = src.get<ToInt(PendingConnectionColumns::ePort)>().c_str();
     dst.mProtocol                     = src.get<ToInt(PendingConnectionColumns::eProtocol)>().c_str();
 }
