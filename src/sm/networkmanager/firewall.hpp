@@ -60,7 +60,7 @@ public:
         const Array<StaticString<cIDLen>>& knownInstanceIDs, const Array<MasqueradeParams>& knownMasquerades) override;
 
     /**
-     * Adds a per-instance chain with input/output rules.
+     * Adds per-instance ingress and egress chains.
      *
      * @param instanceID instance id.
      * @param params per-instance firewall parameters.
@@ -69,7 +69,7 @@ public:
     Error AddInstance(const String& instanceID, const InstanceFirewallParams& params) override;
 
     /**
-     * Removes the per-instance chain.
+     * Removes the per-instance chains and dispatch rules.
      *
      * @param instanceID instance id.
      * @return Error.
@@ -77,7 +77,7 @@ public:
     Error RemoveInstance(const String& instanceID) override;
 
     /**
-     * Atomically replaces the per-instance chain content.
+     * Atomically replaces the per-instance ingress and egress rules.
      *
      * @param instanceID instance id.
      * @param params new per-instance firewall parameters.
@@ -142,9 +142,20 @@ private:
     static constexpr auto cNATPriority         = 100;
     static constexpr auto cInstanceChainPrefix = "instance_";
 
+    static constexpr auto cEgressChain   = "egress";
+    static constexpr auto cIngressChain  = "ingress";
+    static constexpr auto cAcceptedChain = "accepted";
+
+    static constexpr size_t cIngressHandleIndex   = 0;
+    static constexpr size_t cEgressHandleIndex    = 1;
+    static constexpr size_t cAcceptInHandleIndex  = 2;
+    static constexpr size_t cAcceptOutHandleIndex = 3;
+    static constexpr size_t cNumInstanceHandles   = 4;
+
     static std::string ChainName(const String& instanceID);
 
     Error CreateSkeleton();
+    Error FindInstanceRules(const std::string& chain, std::vector<nftables::FWRuleHandle>& handles);
     Error ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules);
     Error AppendInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params);
     void  DeleteInstanceChain(
@@ -160,7 +171,7 @@ private:
     std::set<std::string>               mBatchChains;
     std::set<nftables::FWRuleHandle>    mAppliedHandles;
 
-    std::unordered_map<std::string, std::pair<nftables::FWRuleHandle, nftables::FWRuleHandle>> mInstanceJumps;
+    std::unordered_map<std::string, std::vector<nftables::FWRuleHandle>> mInstanceJumps;
 };
 
 } // namespace aos::sm::networkmanager
