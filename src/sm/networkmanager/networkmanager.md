@@ -174,14 +174,32 @@ IPMasq rule is a per-network property owned by `NetworkManager`
 Native `FirewallItf` backed by the nftables `FWBackendItf`. All rules live in
 the `inet aos` table.
 
-- **Start / Stop** — create the base table and chains / tear them down.
-- **AddInstance / UpdateInstance / RemoveInstance** — manage a per-instance
-  chain holding the instance's input/output rules; `UpdateInstance` replaces a
-  chain's contents atomically.
+- **Start / Stop** — adopt existing rules or create missing base chains / remove
+  instance and masquerade rules while retaining the default-drop base chains.
+- **AddInstance / UpdateInstance / RemoveInstance** — manage separate ingress
+  and egress chains per instance; updates replace both atomically.
 - **AddMasquerade / RemoveMasquerade** — add/remove an IPMasq rule in the
   `postrouting` chain for a source subnet, masquerading egress via any
   interface but the bridge (`oifname != "<bridge>"`). Installed once per
   network by `NetworkManager` on create/clear.
+
+New forwarded connections pass through local source egress checks, then local
+destination ingress checks, and only then reach the final accept. Successful
+intermediate checks use `return`. Established/related traffic remains accepted.
+Communication within the same subnet stays unrestricted. Between AoS subnets,
+the source needs `allowConnection` and the destination needs an exposed port.
+For instances on different nodes, the source SM checks outgoing permission and
+the destination SM checks exposed ports.
+
+`allowPublic` applies only outside the reserved AoS address pools shared with CM
+allocation in `common/network/netpools.hpp`. It cannot bypass `allowConnection`
+for other AoS subnets, including those on remote nodes.
+
+The optional `FirewallKernelTest` exercises real UDP forwarding and nft rules.
+Run the network manager test executable with `AOS_TEST_NFT_KERNEL=1` only in a
+disposable Docker container with `iproute2`, `NET_ADMIN`, `SYS_ADMIN`, permission
+to create network namespaces, and writable `/proc/sys` in that container. The
+test creates its own router and endpoint network namespaces.
 
 ### Bandwidth
 
