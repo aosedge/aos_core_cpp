@@ -252,6 +252,85 @@ TEST_F(ContainerRunnerTest, StopInstanceWaitsForInFlightRestart)
     mRunner.Stop();
 }
 
+TEST_F(ContainerRunnerTest, GetInstanceStatusReportsExitCode)
+{
+    ContainerStatus status = {"service0", InstanceStateEnum::eFailed, {7}};
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(status, ErrorEnum::eNone)));
+
+    const auto result = mRunner.GetInstanceStatus("service0");
+
+    EXPECT_EQ(result.mInstanceID, "service0");
+    EXPECT_EQ(result.mState, InstanceStateEnum::eFailed);
+    EXPECT_EQ(result.mError.Value(), ErrorEnum::eFailed);
+    EXPECT_EQ(result.mError.Errno(), 7);
+}
+
+TEST_F(ContainerRunnerTest, GetInstanceStatusNoExitCode)
+{
+    ContainerStatus status = {"service0", InstanceStateEnum::eActive, {}};
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(status, ErrorEnum::eNone)));
+
+    const auto result = mRunner.GetInstanceStatus("service0");
+
+    EXPECT_EQ(result.mState, InstanceStateEnum::eActive);
+    EXPECT_TRUE(result.mError.IsNone());
+}
+
+TEST_F(ContainerRunnerTest, RunStatusUpdateCarriesExitCodeOnFailure)
+{
+    // burst=1: same shape as RestartBurstLimitExceeded above, so the failure is only reported once
+    // (state change) and the retry loop settles instead of restarting forever.
+    RunParameters params = {{10 * Time::cSeconds}, {1 * Time::cSeconds}, {1}};
+
+    Error           err          = ErrorEnum::eNone;
+    ContainerStatus activeStatus = {"service0", InstanceStateEnum::eActive, {}};
+    ContainerStatus failedStatus = {"service0", InstanceStateEnum::eFailed, {9}};
+
+    EXPECT_CALL(mContainerRunnerMock, StartContainer("service0")).WillRepeatedly(Return(err));
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(activeStatus, err)));
+
+    std::vector<ContainerStatus> failedStatuses = {failedStatus};
+    EXPECT_CALL(mContainerRunnerMock, ListContainers())
+        .WillRepeatedly(Return(RetWithError<std::vector<ContainerStatus>>(failedStatuses, err)));
+
+    EXPECT_CALL(mContainerRunnerMock, RemoveContainer("service0")).WillRepeatedly(Return(err));
+    EXPECT_CALL(mContainerRunnerMock, StopContainer("service0")).WillOnce(Return(err));
+
+    std::promise<void>     updateRunStatusCalled;
+    std::vector<RunStatus> capturedStatuses;
+
+    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(_))
+        .WillOnce(DoAll(SaveArg<0>(&capturedStatuses), InvokeWithoutArgs([&updateRunStatusCalled]() {
+            updateRunStatusCalled.set_value();
+            return true;
+        })))
+        .WillRepeatedly(Return(Error()));
+
+    mRunner.Start();
+
+    EXPECT_EQ(mRunner.StartInstance("service0", params).mState, InstanceStateEnum::eActive);
+
+    ASSERT_TRUE(updateRunStatusCalled.get_future().wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+
+    ASSERT_EQ(capturedStatuses.size(), 1U);
+    EXPECT_EQ(capturedStatuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_EQ(capturedStatuses[0].mError.Value(), ErrorEnum::eFailed);
+    EXPECT_EQ(capturedStatuses[0].mError.Errno(), 9);
+
+    // Allow the burst-limited restart to settle before tearing down.
+    sleep(3);
+
+    EXPECT_TRUE(mRunner.StopInstance("service0").IsNone());
+
+    mRunner.Stop();
+}
+
 TEST_F(ContainerRunnerTest, RestartBurstLimitExceeded)
 {
     RunParameters params = {{10 * Time::cSeconds}, {1 * Time::cSeconds}, {1}};
