@@ -29,7 +29,7 @@ protected:
 
         mStub = std::make_unique<IAMPublicNodesServiceStub>();
 
-        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials(_))
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 
@@ -232,7 +232,7 @@ protected:
 
         mStub = std::make_unique<IAMPublicNodesServiceStub>();
 
-        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials(_))
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 
@@ -347,7 +347,7 @@ TEST(PublicNodesServiceFallbackTest, NoCACertFallback)
     IAMPublicNodesServiceStub stub;
     TLSCredentialsMock        tlsCredentialsMock;
 
-    EXPECT_CALL(tlsCredentialsMock, GetTLSClientCredentials())
+    EXPECT_CALL(tlsCredentialsMock, GetTLSClientCredentials(_))
         .WillRepeatedly(
             Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {nullptr, aos::ErrorEnum::eNotFound}));
 

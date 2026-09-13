@@ -42,8 +42,8 @@ public:
      * @param insecureConnection whether to use insecure connection.
      * @return Error.
      */
-    Error Init(
-        const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection = false);
+    Error Init(const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials,
+        bool insecureConnection = false, const std::string& certStorage = "");
 
     /**
      * Returns System info.
@@ -89,6 +89,7 @@ private:
     static constexpr auto cServiceTimeout = std::chrono::seconds(10);
 
     std::string                                                    mIAMPublicServerURL;
+    std::string                                                    mCertStorage;
     bool                                                           mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                      mCredentials;
     std::unique_ptr<iamanager::v6::IAMPublicIdentityService::Stub> mStub;

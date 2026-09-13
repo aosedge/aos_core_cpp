@@ -6,11 +6,8 @@
  */
 
 #include <chrono>
-#include <fstream>
 #include <grpc/grpc.h>
-#include <numeric>
 #include <regex>
-#include <streambuf>
 
 #include "cryptohelper.hpp"
 #include "exception.hpp"
@@ -41,38 +38,28 @@ static std::string CreateGRPCPKCS11PrivKeyURL(const String& keyURL)
     return pem;
 }
 
-static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(const CertInfo& certInfo,
-    const String& rootCertPath, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetMTLSCertificates(
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
+    auto [certs, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
 
-    std::ifstream file {rootCertPath.CStr()};
-    if (!file.is_open()) {
-        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
-    }
-
-    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    if (rootCert.empty()) {
-        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
-    }
-
     auto keyCertPair
-        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
+        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certs.mCertChain};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
-    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(rootCert, keyCertPairs);
+    return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(certs.mRootCert, keyCertPairs);
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSServerCertificates(
     const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto [certificates, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
+    auto [certs, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "Load certificate by URL failed");
 
     auto keyCertPair
-        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certificates};
+        = grpc::experimental::IdentityKeyCertPair {CreateGRPCPKCS11PrivKeyURL(certInfo.mKeyURL), certs.mCertChain};
 
     std::vector<grpc::experimental::IdentityKeyCertPair> keyCertPairs = {keyCertPair};
 
@@ -80,20 +67,13 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSS
 }
 
 static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSClientCertificates(
-    const String& rootCertPath)
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    std::ifstream file {rootCertPath.CStr()};
-    if (!file.is_open()) {
-        AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open root certificate file");
-    }
-
-    std::string rootCert((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    if (rootCert.empty()) {
-        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "root certificate file is empty");
-    }
+    auto [certs, err] = aos::common::utils::LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "load certificate by URL failed");
 
     return std::make_shared<grpc::experimental::StaticDataCertificateProvider>(
-        rootCert, std::vector<grpc::experimental::IdentityKeyCertPair> {});
+        certs.mRootCert, std::vector<grpc::experimental::IdentityKeyCertPair> {});
 }
 
 /***********************************************************************************************************************
@@ -102,10 +82,10 @@ static std::shared_ptr<grpc::experimental::CertificateProviderInterface> GetTLSC
 
 namespace aos::common::utils {
 
-std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const CertInfo& certInfo, const String& rootCertPath,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
+    auto certificates = GetMTLSCertificates(certInfo, certLoader, cryptoProvider);
 
     grpc::experimental::TlsServerCredentialsOptions options {certificates};
 
@@ -134,10 +114,10 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(
     return grpc::experimental::TlsServerCredentials(options);
 }
 
-std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const CertInfo& certInfo, const String& rootCertPath,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetMTLSCertificates(certInfo, rootCertPath, certLoader, cryptoProvider);
+    auto certificates = GetMTLSCertificates(certInfo, certLoader, cryptoProvider);
 
     grpc::experimental::TlsChannelCredentialsOptions options;
     options.set_certificate_provider(certificates);
@@ -152,9 +132,10 @@ std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const CertInf
     return grpc::experimental::TlsCredentials(options);
 }
 
-std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::String& rootCertPath)
+std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(
+    const CertInfo& certInfo, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
-    auto certificates = GetTLSClientCertificates(rootCertPath);
+    auto certificates = GetTLSClientCertificates(certInfo, certLoader, cryptoProvider);
 
     grpc::experimental::TlsChannelCredentialsOptions options;
     options.set_certificate_provider(certificates);

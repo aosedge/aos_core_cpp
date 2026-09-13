@@ -19,7 +19,8 @@ class TLSCredentialsMock : public aos::common::iamclient::TLSCredentialsItf {
 public:
     MOCK_METHOD(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetMTLSClientCredentials,
         (const aos::String&), (override));
-    MOCK_METHOD(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetTLSClientCredentials, (), (override));
+    MOCK_METHOD(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetTLSClientCredentials,
+        (const aos::String&), (override));
     MOCK_METHOD(aos::Error, GetCert,
         (const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, aos::CertInfo&),
         (const, override));

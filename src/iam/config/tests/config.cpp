@@ -173,12 +173,10 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(config.mIAMServer.mIAMPublicServerURL, "localhost:8090");
     EXPECT_EQ(config.mIAMServer.mIAMProtectedServerURL, "localhost:8089");
-    EXPECT_EQ(config.mIAMServer.mCACert, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(config.mIAMServer.mCertStorage, "/var/aos/crypt/iam/");
     EXPECT_EQ(config.mIAMServer.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
     EXPECT_EQ(config.mIAMServer.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));
 
-    EXPECT_EQ(config.mIAMClient.mCACert, "/etc/ssl/certs/rootCA.crt");
     EXPECT_EQ(config.mIAMClient.mCertStorage, "/var/aos/crypt/iam/");
     EXPECT_EQ(config.mIAMClient.mFinishProvisioningCmdArgs, std::vector<std::string> {"/var/aos/finish.sh"});
     EXPECT_EQ(config.mIAMClient.mDiskEncryptionCmdArgs, std::vector<std::string>({"/bin/sh", "/var/aos/encrypt.sh"}));

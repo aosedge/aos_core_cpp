@@ -257,7 +257,8 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
         return err;
     }
 
-    auto [certificate, errLoad] = common::utils::LoadPEMCertificates(certInfo.mCertURL, *mCertLoader, *mCryptoProvider);
+    auto [certificates, errLoad]
+        = common::utils::LoadPEMCertificates(certInfo.mCertURL, *mCertLoader, *mCryptoProvider);
     if (!errLoad.IsNone()) {
         return errLoad;
     }
@@ -272,7 +273,7 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    BIO* bio = BIO_new_mem_buf(certificate.c_str(), -1);
+    BIO* bio = BIO_new_mem_buf(certificates.mCertChain.c_str(), -1);
     if (!bio) {
         return Error(ErrorEnum::eRuntime, "failed to create BIO");
     }
@@ -302,8 +303,8 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    if (SSL_CTX_load_verify_locations(ctx, mCfg->mCACert.c_str(), nullptr) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    if (auto err = common::utils::LoadRootCertToSSLContext(certificates.mRootCert, ctx); !err.IsNone()) {
+        return err;
     }
 
     LOG_DBG() << "SSL context configured";

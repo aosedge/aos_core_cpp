@@ -36,7 +36,6 @@ struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::
  * Config structure.
  */
 struct Config {
-    std::string               mCACert;
     Monitoring                mMonitoring;
     common::config::Migration mMigration;
     alerts::Config            mAlerts;

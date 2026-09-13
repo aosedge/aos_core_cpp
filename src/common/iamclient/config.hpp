@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 EPAM Systems, Inc.
+ * Copyright (C) 2026 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,7 +16,6 @@ namespace aos::common::iamclient {
  */
 struct Config {
     std::string mIAMPublicServerURL;
-    std::string mCACert;
 };
 
 } // namespace aos::common::iamclient

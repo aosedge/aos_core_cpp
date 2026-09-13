@@ -63,8 +63,9 @@ protected:
     template <typename T>
     std::unique_ptr<typename T::Stub> CreateCustomStub(const std::string& url, const bool insecure = false)
     {
-        auto tlsChannelCreds = insecure ? grpc::InsecureChannelCredentials()
-                                        : common::utils::GetTLSClientCredentials(GetClientConfig().mCACert.c_str());
+        auto tlsChannelCreds = insecure
+            ? grpc::InsecureChannelCredentials()
+            : common::utils::GetTLSClientCredentials(mClientInfo, mCertLoader, mCryptoProvider);
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }
@@ -183,7 +184,6 @@ config::IAMServerConfig IAMServerTest::GetServerConfig()
     config::IAMServerConfig config;
 
     config.mCertStorage               = "server";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
@@ -196,7 +196,6 @@ config::IAMClientConfig IAMServerTest::GetClientConfig()
     config::IAMClientConfig config;
 
     config.mCertStorage               = "client";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mMainIAMPublicServerURL    = "localhost:8088";
     config.mMainIAMProtectedServerURL = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};

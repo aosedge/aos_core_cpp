@@ -373,7 +373,7 @@ Error PublicNodesService::CreateCredentials()
         mCredentials.push_back(grpc::InsecureChannelCredentials());
     }
 
-    auto [secureCredentials, err] = mPublicServer ? mTLSCredentials->GetTLSClientCredentials()
+    auto [secureCredentials, err] = mPublicServer ? mTLSCredentials->GetTLSClientCredentials(mCertStorage.c_str())
                                                   : mTLSCredentials->GetMTLSClientCredentials(mCertStorage.c_str());
 
     if (err.IsNone()) {

@@ -434,8 +434,7 @@ Error SMController::CreateServerCredentials()
             return AOS_ERROR_WRAP(err);
         }
 
-        mCredentials = aos::common::utils::GetMTLSServerCredentials(
-            *certInfo, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+        mCredentials = aos::common::utils::GetMTLSServerCredentials(*certInfo, *mCertLoader, *mCryptoProvider);
     } else {
         mCredentials = grpc::InsecureServerCredentials();
     }

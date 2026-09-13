@@ -23,7 +23,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
 {
     LOG_DBG() << "Init IAM client";
 
-    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, true, certStorage);
     if (!err.IsNone()) {
         return err;
     }
@@ -43,7 +43,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    err = PublicNodesService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicNodesService::Init(iamPublicServerURL, tlsCredentials, true, true, certStorage);
     if (!err.IsNone()) {
         return err;
     }
@@ -53,12 +53,12 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, true, certStorage);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicIdentityService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicIdentityService::Init(iamPublicServerURL, tlsCredentials, true, certStorage);
     if (!err.IsNone()) {
         return err;
     }

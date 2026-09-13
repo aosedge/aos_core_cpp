@@ -75,8 +75,6 @@ if(WITH_AOS_INSTALL)
             DESTINATION libexec/aos
     )
 
-    install(FILES ${PROJECT_SOURCE_DIR}/config/AosRootCA.crt DESTINATION share/ca-certificates/aos)
-
     configure_file(${PROJECT_SOURCE_DIR}/config/aos-openssl.cnf.in ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf @ONLY)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aos-openssl.cnf DESTINATION etc/aos)
 endif()
