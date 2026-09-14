@@ -43,14 +43,6 @@ public:
     virtual Error StartContainer(const std::string& instanceID) = 0;
 
     /**
-     * Starts managing an already running container without starting it.
-     *
-     * @param instanceID instance ID.
-     * @return Error.
-     */
-    virtual Error AddContainer(const std::string& instanceID) = 0;
-
-    /**
      * Returns the status of a container.
      *
      * @param instanceID instance ID.
@@ -59,7 +51,12 @@ public:
     virtual RetWithError<ContainerStatus> GetContainerStatus(const std::string& instanceID) = 0;
 
     /**
-     * Returns the status of all managed containers.
+     * Returns the status of all containers found in the runner's exclusive state storage.
+     *
+     * Implementations are expected to use storage that no other component writes to, so every
+     * entry returned here is, by construction, a container this runner manages - including ones
+     * started by a previous process instance before a restart, not just ones started in the
+     * current process's lifetime.
      *
      * @return RetWithError<std::vector<ContainerStatus>>.
      */
