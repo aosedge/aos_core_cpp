@@ -1,313 +1,158 @@
-# Network utilities (Platform-specific implementation)
+# Network (platform-specific implementation)
 
-The common network module provides platform-specific implementations of the
-low-level building blocks the Service Manager network stack is built on. They
-work directly with Linux networking primitives: netlink links and addresses,
-network namespaces, nftables, and the tc traffic-control subsystem. Process
-spawning (used to run dnsmasq) lives next door in `src/common/process`.
+The common network module provides the low-level Linux building blocks the AosCore network stack is built on: netlink
+link, address and route management, network namespaces, tc traffic control and netlink route utilities. It is used
+by the SM network manager implementations (see [SM network manager](../../sm/networkmanager/networkmanager.md)) and
+by the CM network manager subnet allocator (see [CM network manager](../../cm/networkmanager/networkmanager.md)).
 
-This is a platform-specific implementation that provides:
-
-- Network interface and link management via netlink (`libnl3`)
-- Network namespace lifecycle
-- An nftables firewall backend via `libnftables`
-- A tc traffic-control backend via `libnl` (TBF / ingress / mirred)
-- Network utility functions
+The nftables backend lives in [sm/nftables](../../sm/nftables/nftables.hpp) and the process spawner used for dnsmasq
+in [common/process](../process/processspawner.hpp); they are not part of this module.
 
 It implements the following interfaces:
 
-- [aos::sm::networkmanager::InterfaceManagerItf][interfacemanager-itf] — link / address / route / netns-move operations;
-- [aos::sm::networkmanager::InterfaceFactoryItf][interfacefactory-itf] — link creation (bridge / vlan / generic link);
-- [aos::sm::networkmanager::NamespaceManagerItf][namespacemanager-itf] — network namespace management;
-- [aos::common::network::FWBackendItf][fwbackend-itf] — transactional nftables firewall backend;
-- [aos::common::network::TCBackendItf][tcbackend-itf] — tc qdisc / filter backend;
-- [aos::common::process::ProcessSpawnerItf][processspawner-itf] — process spawn / signal / reap.
+- [aos::sm::networkmanager::InterfaceManagerItf][interfacemanager-itf] and
+  [aos::sm::networkmanager::InterfaceFactoryItf][interfacefactory-itf] - [InterfaceManager](interfacemanager.hpp):
+  link, address, route and namespace-move operations plus bridge / VLAN / generic link creation;
+- [aos::sm::networkmanager::NamespaceManagerItf][namespacemanager-itf] - [NamespaceManager](namespacemanager.hpp):
+  network namespace lifecycle;
+- [aos::common::network::TCBackendItf](itf/tcbackend.hpp) - [TC](tc.hpp): tc qdisc and filter backend.
 
 It requires the following interfaces:
 
-- [aos::common::crypto::RandomItf][random-itf] — randomness source for MAC address generation;
+- [aos::common::crypto::RandomItf][random-itf] - randomness source for VLAN MAC address generation;
+- [aos::sm::networkmanager::InterfaceManagerItf][interfacemanager-itf] - used by `NamespaceManager` to bring up the
+  loopback interface inside a new namespace.
+
+[interfacemanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/networkmanager/itf/interfacemanager.hpp
+[interfacefactory-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/networkmanager/itf/interfacefactory.hpp
+[namespacemanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/networkmanager/itf/namespacemanager.hpp
+[random-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/common/crypto/itf/rand.hpp
 
 ```mermaid
 classDiagram
-    class InterfaceManager["aos::common::network::InterfaceManager"] {
-        +SetupLink()
-        +DeleteLink()
-        +SetMasterLink()
-        +CreateVeth()
-        +MoveLinkToNamespace()
-        +RenameLink()
-        +AddAddress()
-        +AddRoute()
-        +SetHairpin()
-        +CreateBridge()
-        +CreateVlan()
-        +CreateLink()
-    }
+    direction TB
 
-    class InterfaceManagerItf["aos::sm::networkmanager::InterfaceManagerItf"] {
+    class InterfaceManagerItf ["aos::sm::networkmanager::InterfaceManagerItf"] {
+        <<interface>>
+    }
+    class InterfaceFactoryItf ["aos::sm::networkmanager::InterfaceFactoryItf"] {
+        <<interface>>
+    }
+    class NamespaceManagerItf ["aos::sm::networkmanager::NamespaceManagerItf"] {
+        <<interface>>
+    }
+    class TCBackendItf ["aos::common::network::TCBackendItf"] {
         <<interface>>
     }
 
-    class InterfaceFactoryItf["aos::sm::networkmanager::InterfaceFactoryItf"] {
+    class InterfaceManager ["aos::common::network::InterfaceManager"] {
+    }
+    class NamespaceManager ["aos::common::network::NamespaceManager"] {
+    }
+    class TC ["aos::common::network::TC"] {
+    }
+
+    class RandomItf ["aos::common::crypto::RandomItf"] {
         <<interface>>
     }
 
-    class NamespaceManager["aos::common::network::NamespaceManager"] {
-        +CreateNetworkNamespace()
-        +GetNetworkNamespacePath()
-        +DeleteNetworkNamespace()
-    }
+    InterfaceManagerItf <|.. InterfaceManager
+    InterfaceFactoryItf <|.. InterfaceManager
+    NamespaceManagerItf <|.. NamespaceManager
+    TCBackendItf <|.. TC
 
-    class NamespaceManagerItf["aos::sm::networkmanager::NamespaceManagerItf"] {
-        <<interface>>
-    }
-
-    class NFTables["aos::common::network::NFTables"] {
-        +NewTxn()
-        +ListChainRules()
-    }
-
-    class FWBackendItf["aos::common::network::FWBackendItf"] {
-        <<interface>>
-    }
-
-    class FWTxnItf["aos::common::network::FWTxnItf"] {
-        <<interface>>
-        +AddTable()
-        +AddBaseChain()
-        +AddChain()
-        +AddRule()
-        +DeleteRuleByHandle()
-        +Commit()
-    }
-
-    class TC["aos::common::network::TC"] {
-        +AddRootTBFQDisc()
-        +DelRootTBFQDisc()
-        +AddIngressQDisc()
-        +DelIngressQDisc()
-        +AddIngressMirredFilter()
-    }
-
-    class TCBackendItf["aos::common::network::TCBackendItf"] {
-        <<interface>>
-    }
-
-    class PocoProcessSpawner["aos::common::process::PocoProcessSpawner"] {
-        +Spawn()
-        +Kill()
-        +Signal()
-        +IsAlive()
-        +GetCmdLine()
-    }
-
-    class ProcessSpawnerItf["aos::common::process::ProcessSpawnerItf"] {
-        <<interface>>
-    }
-
-    InterfaceManager ..|> InterfaceManagerItf
-    InterfaceManager ..|> InterfaceFactoryItf
-    NamespaceManager ..|> NamespaceManagerItf
-    NamespaceManager --> InterfaceManagerItf : requires
-    NFTables ..|> FWBackendItf
-    NFTables ..> FWTxnItf : creates
-    TC ..|> TCBackendItf
-    PocoProcessSpawner ..|> ProcessSpawnerItf
+    InterfaceManager ..> RandomItf
+    NamespaceManager ..> InterfaceManagerItf
 ```
 
-> **History:** earlier revisions of this module shipped an `IPTables` command
-> wrapper (with a `RuleBuilder`) as the firewall / traffic-accounting backend.
-> It has been removed — `NFTables` (firewall + traffic counters) and `TC`
-> (bandwidth) replace it.
+## InterfaceManager
 
-## Platform-specific components
+`InterfaceManager` talks to the kernel over rtnetlink using `libnl3` (`libnl-route-3`). Each call opens a short-lived
+netlink socket; there is no long-lived state besides the random generator. Operations that take a `netNSPath` enter
+the given network namespace with `setns` for the duration of the call and return to the original one afterwards.
 
-### InterfaceManager
+Link creation (`InterfaceFactoryItf`):
 
-The InterfaceManager provides link, address, route and namespace operations
-over the Linux netlink API, and doubles as the interface factory.
+- **CreateBridge** - creates a bridge, brings it up and assigns the given IP/subnet. Address assignment is idempotent;
+- **CreateVlan** - creates an 802.1Q VLAN interface on top of the uplink interface (the one the default route points
+  to) with a random locally administered MAC, optionally enslaved to a master bridge in the same netlink message, and
+  brings it up;
+- **CreateLink** - creates a parameter-less link of the given kind (e.g. `ifb`, `dummy`).
 
-#### InterfaceManager initialization
+Link management (`InterfaceManagerItf`):
 
-During initialization (`Init`):
+- **GetLink** - returns link attributes as seen on the system: kind (bridge, vlan, veth or unknown), master, VLAN ID
+  and up state. Returns `eNotFound` if the link does not exist. Used by the library to adopt links left by a previous
+  SM lifetime;
+- **GetUplinkInterface** - returns the name of the interface the default route points to. Used for masquerade and as
+  the VLAN parent;
+- **DeleteLink** - deletes a link. Returns `eNotFound` if it does not exist;
+- **SetupLink** - brings a link up, optionally inside a namespace. Required after a namespace move, since the kernel
+  administratively downs a moved link;
+- **SetMasterLink** - enslaves a link to a bridge;
+- **CreateVeth** - creates a veth pair with both ends in the current namespace;
+- **CreateVethToNamespace** - creates a veth pair with the peer created directly in the target namespace under its
+  final name, and the host end already up and enslaved to the master bridge. Creation, move, rename, enslave and
+  bring-up are one netlink operation;
+- **ConfigureInstanceInterface** - inside the given namespace brings the link up, assigns the CIDR address and installs
+  the default route via the gateway, entering the namespace once for all three steps;
+- **MoveLinkToNamespace** - moves a link into a namespace given by its `/run/netns` path;
+- **RenameLink** - renames a (down) link, optionally inside a namespace;
+- **AddAddress** / **AddRoute** - assign a CIDR address / add a route, optionally inside a namespace;
+- **SetHairpin** - toggles hairpin mode on a bridge port through sysfs (`/sys/class/net/<if>/brport/hairpin_mode`).
 
-- receives `RandomItf` for MAC address generation
-- opens an `rtnetlink` socket for communication with the kernel
+Lower-level helpers used by the above and available to other modules: `AddLink`, `AddAddr`, `DeleteAddr`,
+`GetAddrList`.
 
-#### InterfaceManager responsibilities
+Only the IPv4 address family is supported. Most operations require `CAP_NET_ADMIN`.
 
-- **Link lifecycle (`InterfaceManagerItf`)**:
-  - `SetupLink()` — bring an interface up
-  - `DeleteLink()` — remove an interface
-  - `SetMasterLink()` — enslave an interface to a bridge
-  - `CreateVeth()` — create a veth pair (both ends in the current netns); the
-    peer is given a unique transient name and renamed after the move
-  - `MoveLinkToNamespace()` — move a link into a network namespace
-  - `RenameLink()` — rename a (down) link, optionally inside a netns
-  - `SetHairpin()` — toggle hairpin mode on a bridge port via sysfs
+## NamespaceManager
 
-- **Link creation (`InterfaceFactoryItf`)**:
-  - `CreateBridge()` — create and address a bridge
-  - `CreateVlan()` — create an 802.1Q VLAN interface
-  - `CreateLink()` — create a parameter-less link of a given kind (e.g. `ifb`)
+`NamespaceManager` manages named network namespaces under `/run/netns`, compatible with `ip netns`.
 
-- **Address / route operations**:
-  - `AddAddress()` / `AddRoute()` — assign a CIDR address / add a route,
-    optionally inside a netns
-  - `AddAddr()` / `DeleteAddr()` / `GetAddrList()` — lower-level address helpers
+- **Init** - stores the interface manager and ensures `/run/netns` exists;
+- **CreateNetworkNamespace** - no-op if the namespace file already exists. Otherwise creates a new network namespace
+  with `unshare(CLONE_NEWNET)` on the calling thread, bind-mounts the thread namespace to `/run/netns/<name>` so it
+  persists, brings up `lo` inside it and switches the thread back to the original namespace;
+- **IsNetworkNamespaceExist** - checks whether the namespace file exists;
+- **GetNetworkNamespacePath** - returns `/run/netns/<name>`;
+- **DeleteNetworkNamespace** - lazily unmounts (`MNT_DETACH`) and removes the namespace file. The kernel tears the
+  namespace down together with the interfaces inside it once nothing references it. No-op if the file does not exist.
 
-#### InterfaceManager platform-specific implementation
+Requires `CAP_SYS_ADMIN`.
 
-InterfaceManager relies on Linux netlink:
+## TC
 
-- Uses `libnl3` for netlink communication
-- Operates on `rtnl_link` objects for link manipulation
-- Supports the AF_INET (IPv4) address family
-- Requires CAP_NET_ADMIN for most operations
+`TC` is the `TCBackendItf` implementation over the Linux traffic-control subsystem using `libnl-route-3`. It is
+stateless: each call opens a short-lived rtnetlink socket. IFB device lifecycle is not handled here; it belongs to
+`InterfaceFactoryItf` / `InterfaceManagerItf`.
 
-Link types created: **bridge**, **veth** pairs, **VLAN** interfaces, and
-generic links such as **ifb** (used by the bandwidth shaper).
+- **AddRootTBFQDisc** - installs (or replaces) a Token Bucket Filter qdisc as the root qdisc of an interface with the
+  given rate, burst and limit;
+- **DelRootTBFQDisc** - deletes the root qdisc only if it is a TBF qdisc. Any other root qdisc is left untouched;
+- **AddIngressQDisc** / **DelIngressQDisc** - add / delete the ingress qdisc of an interface;
+- **AddIngressMirredFilter** - installs a `matchall` classifier on the ingress qdisc of the source interface with a
+  `mirred` egress redirect action to the destination interface. Used to shape traffic leaving a container through an
+  IFB device.
 
-### NamespaceManager
+Delete operations are idempotent and return `eNone` when there is nothing to remove. Requires `CAP_NET_ADMIN`.
 
-The NamespaceManager provides network namespace management using the Linux
-namespace API.
+## Utilities
 
-#### NamespaceManager initialization
+[utils.hpp](utils.hpp) provides netlink helpers shared by the module and by the CM subnet allocator:
 
-During initialization (`Init`):
+- **CreateNetlinkSocket** - opens and connects an rtnetlink socket;
+- **GetRouteList** - lists IPv4 routes (destination, gateway, link index). A route without destination is the
+  default route;
+- **CheckRouteOverlaps** - checks whether a CIDR network overlaps with any listed route. CM uses it to skip subnet
+  pools already routed on the host;
+- **NetworkContainsIP** - checks whether an IP belongs to a CIDR network;
+- **ParseAddress** - parses a CIDR string into a netlink address;
+- **NLToAosErr** / **NLToAosException** - convert a libnl error code into an AosCore error / exception.
 
-- receives `InterfaceManagerItf` for interface operations within namespaces
-- ensures the `/run/netns` directory exists for namespace persistence
+## Platform requirements
 
-#### NamespaceManager responsibilities
-
-- **CreateNetworkNamespace** — creates a new network namespace:
-  - creates the mount point in `/run/netns/<name>`
-  - bind-mounts the process network namespace to it
-  - ensures the namespace persists beyond the creating process
-
-- **GetNetworkNamespacePath** — returns the path to the namespace file
-
-- **DeleteNetworkNamespace** — unmounts and removes the namespace file
-
-#### NamespaceManager platform-specific implementation
-
-Network namespaces rely on Linux kernel features:
-
-- Uses `/proc/<pid>/task/<tid>/ns/net` for namespace access
-- Requires the `/run/netns` directory for namespace persistence
-- Uses `mount --bind` for namespace mounting
-- Requires CAP_SYS_ADMIN for namespace operations
-
-### NFTables
-
-NFTables is the `FWBackendItf` implementation backed by `libnftables`. It is
-the single firewall/packet-accounting backend, shared by the Service Manager
-`Firewall` (table `inet aos`) and `TrafficMonitor` (table `inet aos-traffic`);
-an internal mutex serializes concurrent use.
-
-#### NFTables construction
-
-During construction:
-
-- receives the nftables address family (default: `inet`)
-- initializes a mutex for thread-safe access
-
-#### NFTables responsibilities
-
-- **NewTxn** — opens a `FWTxnItf` atomic transaction. Operations are queued in
-  the transaction object and submitted as a single batch on `Commit()`;
-  dropping the transaction without committing discards every queued operation.
-  A transaction can:
-  - `AddTable()` / `DeleteTable()`
-  - `AddBaseChain()` (anchored to a netfilter hook with a priority) /
-    `AddChain()` (regular jump-only chain)
-  - `FlushChain()` / `DeleteChain()`
-  - `AddRule()` — append a rule (src/dst/proto/port/oif match, verdict,
-    optional `counter` and `ct state` expressions)
-  - `DeleteRuleByHandle()` — delete a rule by the handle returned from a listing
-
-- **ListChainRules** — lists a chain's rules with their handles and, when the
-  rule carries a `counter` expression, byte/packet counts (used by
-  TrafficMonitor to read per-instance traffic).
-
-A typical transaction (e.g. a `Firewall` adding an instance chain) batches its
-operations and commits them atomically; counters are read separately:
-
-```mermaid
-sequenceDiagram
-    participant C as Caller (Firewall / TrafficMonitor)
-    participant NFT as NFTables
-    participant Txn as FWTxnItf
-
-    C->>NFT: NewTxn()
-    NFT-->>C: txn
-    C->>Txn: AddTable() / AddBaseChain() / AddChain()
-    C->>Txn: AddRule() ...
-    C->>Txn: Commit()
-    Note over Txn: queued ops submitted as one atomic nftables batch
-    C->>NFT: ListChainRules(table, chain)
-    NFT-->>C: rules + handles + byte/packet counts
-```
-
-#### NFTables platform-specific implementation
-
-- Drives `libnftables` via its buffer command interface
-- Builds rules from the `FWRule` / `FWBaseChain` / `FWChain` structs
-- Atomic per-transaction commit; thread-safe with mutex protection
-- Requires CAP_NET_ADMIN for table/chain/rule modifications
-
-### TC
-
-TC is the `TCBackendItf` implementation over the Linux tc subsystem (`libnl`
-traffic-control). It is a narrow, stateless surface: each call opens a
-short-lived rtnetlink socket, with no background threads or long-lived kernel
-handles. IFB device lifecycle lives in InterfaceFactoryItf / InterfaceManagerItf.
-
-#### TC responsibilities
-
-- `AddRootTBFQDisc()` / `DelRootTBFQDisc()` — install / remove a Token-Bucket-
-  Filter root qdisc (delete only removes a TBF qdisc, leaving anything else
-  untouched)
-- `AddIngressQDisc()` / `DelIngressQDisc()` — add / remove the ingress qdisc
-- `AddIngressMirredFilter()` — install a matchall classifier whose mirred
-  action redirects every ingress packet to another interface's egress (used to
-  shape the container's egress via an IFB device)
-
-#### TC platform-specific implementation
-
-- Uses `libnl` (`libnl-route-3`) rtnetlink for qdisc / filter manipulation
-- Delete operations are best-effort and idempotent (eNone when nothing to remove)
-- Requires CAP_NET_ADMIN
-
-### PocoProcessSpawner
-
-PocoProcessSpawner (in `src/common/process`) is the `ProcessSpawnerItf`
-implementation used to manage the per-network `dnsmasq` processes. `Spawn` uses
-`Poco::Process::launch`; `Signal` / `Kill` use `::kill` plus `::waitpid` for the
-reap. `Kill` tolerates `ESRCH` (already gone) and `ECHILD` (adopted from a
-previous lifetime), so teardown is idempotent across SM restarts.
-
-- `Spawn()` — launch a binary, returning its PID
-- `Kill()` — terminate and reap a process
-- `Signal()` — send a signal (e.g. SIGHUP to reload dnsmasq hosts)
-- `IsAlive()` — check whether a PID is still running
-- `GetCmdLine()` — read `/proc/<pid>/cmdline` (used to confirm an adopted PID
-  is really a dnsmasq for the expected network)
-
-### Network utilities
-
-Additional utility functions in `utils.hpp`:
-
-- **RandomMACAddress()** — generates a random MAC address with local/unicast bits set
-- **MaskToCIDR()** — converts a netmask to a CIDR prefix length
-- **CIDRToMask()** — converts a CIDR prefix to a netmask string
-
-[interfacemanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/tree/main/src/core/sm/networkmanager/itf/interfacemanager.hpp
-[interfacefactory-itf]: https://github.com/aosedge/aos_core_lib_cpp/tree/main/src/core/sm/networkmanager/itf/interfacefactory.hpp
-[namespacemanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/tree/main/src/core/sm/networkmanager/itf/namespacemanager.hpp
-[fwbackend-itf]: https://github.com/aosedge/aos_core_cpp/tree/main/src/common/network/itf/firewallbackend.hpp
-[tcbackend-itf]: https://github.com/aosedge/aos_core_cpp/tree/main/src/common/network/itf/tcbackend.hpp
-[processspawner-itf]: https://github.com/aosedge/aos_core_cpp/tree/main/src/common/process/itf/processspawner.hpp
-[random-itf]: https://github.com/aosedge/aos_core_lib_cpp/tree/main/src/core/common/crypto/itf/rand.hpp
+- Linux with network namespaces and tc support;
+- `libnl-3` and `libnl-route-3` at runtime;
+- `/run/netns` writable for namespace persistence;
+- `CAP_NET_ADMIN` for link, address, route and tc operations, `CAP_SYS_ADMIN` for namespaces.
