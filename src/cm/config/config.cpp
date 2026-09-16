@@ -42,10 +42,8 @@ constexpr auto cDefaultDNSStoragePath                     = "/var/aos/dns";
 
 namespace {
 
-void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, Monitoring& config)
+void ParseMonitoringConfig(const common::utils::CaseInsensitiveObjectWrapper& object, monitoring::Config& config)
 {
-    common::config::ParseMonitoringConfig(object, config);
-
     Error err;
 
     Tie(config.mSendPeriod, err)

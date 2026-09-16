@@ -151,6 +151,28 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mDNSPidFile, "/var/aos/dnsstorage/pidfile");
 }
 
+TEST_F(CMConfigTest, IgnoreUnusedMonitoringConfig)
+{
+    std::string configJSON = cFullTestConfigJSON;
+    const auto  pos        = configJSON.find("\"sendPeriod\": \"5m\"");
+
+    ASSERT_NE(pos, std::string::npos);
+    configJSON.insert(pos, "\"pollPeriod\": \"invalid\", \"averageWindow\": \"invalid\", ");
+
+    {
+        std::ofstream file(cConfigFileName);
+        ASSERT_TRUE(file.good());
+        file << configJSON;
+    }
+
+    aos::cm::config::Config config;
+
+    auto err = aos::cm::config::ParseConfig(cConfigFileName, config);
+
+    ASSERT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
+}
+
 TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 {
     aos::cm::config::Config config;
