@@ -7,6 +7,8 @@
 #ifndef AOS_COMMON_UTILS_EXEC_HPP_
 #define AOS_COMMON_UTILS_EXEC_HPP_
 
+#include <sys/types.h>
+
 #include <initializer_list>
 #include <string>
 #include <vector>
@@ -37,6 +39,15 @@ RetWithError<std::string> ExecCommand(
  */
 Error ExecDetachedCommand(
     const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes = {0});
+
+/**
+ * Spawns a command without waiting for it to exit, returning its pid so the caller can reap it later. Like
+ * ExecDetachedCommand, the child inherits this process's stdout/stderr instead of a pipe.
+ *
+ * @param args command arguments (first argument is program name).
+ * @return RetWithError<pid_t>.
+ */
+RetWithError<pid_t> ExecAsyncCommand(const std::vector<std::string>& args);
 
 } // namespace aos::common::utils
 
