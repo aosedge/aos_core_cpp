@@ -16,7 +16,7 @@ set(SOURCES currentnode.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::iam::currentnode GTest::gmock_main)
+set(LIBRARIES aos::iam::currentnode aos::core::common::crypto GTest::gmock_main)
 
 # ######################################################################################################################
 # Target
