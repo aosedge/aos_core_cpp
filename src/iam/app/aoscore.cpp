@@ -111,7 +111,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     auto config = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile);
     AOS_ERROR_CHECK_AND_THROW(config.mError, "can't parse config");
 
-    err = mDatabase.Init(config.mValue.mDatabase);
+    err = mDatabase.Init(config.mValue.mDatabase, provisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
     err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo);
@@ -149,7 +149,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
     err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
-        mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
+        mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mDatabase, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
     const auto& clientConfig = config.mValue.mIAMClient;
