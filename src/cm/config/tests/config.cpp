@@ -46,7 +46,8 @@ constexpr auto cFullTestConfigJSON = R"({
         "sendPeriod": "13m"
     },
     "imageManager": {
-        "installPath": "/path/to/install",
+        "imagePath": "/path/to/images",
+        "imagesPartLimit": 50,
         "downloadPath": "/path/to/download",
         "updateItemTtl": "30d",
         "removeOutdatedPeriod": "1h"
@@ -134,7 +135,8 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 10);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cMinutes * 13);
 
-    EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), "/path/to/install");
+    EXPECT_STREQ(config.mImageManager.mImagePath.CStr(), "/path/to/images");
+    EXPECT_EQ(config.mImageManager.mPartLimit, 50);
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
     EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
     EXPECT_EQ(config.mImageManager.mRemoveOutdatedPeriod, aos::Time::cHours * 1);
@@ -201,8 +203,9 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mAlerts.mSendPeriod, aos::Time::cSeconds * 10);
 
-    EXPECT_STREQ(config.mImageManager.mInstallPath.CStr(), (std::filesystem::path("workingDir") / "install").c_str());
+    EXPECT_STREQ(config.mImageManager.mImagePath.CStr(), (std::filesystem::path("workingDir") / "images").c_str());
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), (std::filesystem::path("workingDir") / "download").c_str());
+    EXPECT_EQ(config.mImageManager.mPartLimit, 0);
     EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
