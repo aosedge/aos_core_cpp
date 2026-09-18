@@ -70,6 +70,10 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
 
             for (const auto& instance : *instances) {
                 hostInstances.mInstances.emplace(instance.mInstanceIdent, instance);
+
+                for (const auto& host : instance.mHosts) {
+                    mHosts[instance.mIP.CStr()].push_back(host.CStr());
+                }
             }
 
             networkState.mHostInstances.emplace(host.mNodeID.CStr(), std::move(hostInstances));
@@ -88,7 +92,7 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
     }
 
     for (const auto& pending : *pendingConnections) {
-        mPendingConnections.emplace(pending.mTargetItemID.CStr(), pending);
+        mPendingConnections.emplace(pending.mTarget.CStr(), pending);
     }
 
     return ErrorEnum::eNone;
@@ -251,9 +255,30 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
                 mHosts[itInstance->second.mIP.CStr()].push_back(host);
             }
 
-            err = RestartDNS();
+            if (err = RestartDNS(); !err.IsNone()) {
+                return err;
+            }
 
-            return err;
+            if (itInstance->second.mHosts != serviceData.mHosts) {
+                if (err = mStorage->UpdateInstanceHosts(instanceIdent, serviceData.mHosts); !err.IsNone()) {
+                    mHosts[itInstance->second.mIP.CStr()] = savedHosts;
+
+                    if (auto dnsErr = RestartDNS(); !dnsErr.IsNone()) {
+                        LOG_ERR() << "Failed to restore DNS after hostname update" << Log::Field(dnsErr);
+                    }
+
+                    return AOS_ERROR_WRAP(err);
+                }
+
+                itInstance->second.mHosts = serviceData.mHosts;
+            }
+
+            // Finish the rollback guard before releasing the mutex.
+            rollbackHosts.Release();
+            lock.unlock();
+            ResolvePendingConnections(instanceIdent);
+
+            return ErrorEnum::eNone;
         }
 
         std::string IP;
@@ -268,6 +293,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
         instance->mNetworkID     = networkID;
         instance->mNodeID        = nodeID;
         instance->mInstanceIdent = instanceIdent;
+        instance->mHosts         = serviceData.mHosts;
 
         if (MigrateInstanceFromOtherNode(instanceIdent, it->second, nodeID.CStr(), migratedIP, migratedDNS)) {
             IP                    = migratedIP.CStr();
@@ -568,7 +594,7 @@ Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen
 }
 
 void NetworkManager::ParseAllowConnection(
-    const String& connection, std::string& itemID, std::string& port, std::string& protocol)
+    const String& connection, std::string& target, std::string& port, std::string& protocol)
 {
     StaticArray<StaticString<cConnectionNameLen>, cAllowedConnectionsExpectedLen> connConf;
 
@@ -579,9 +605,13 @@ void NetworkManager::ParseAllowConnection(
         throw std::runtime_error("unsupported allowed connections format");
     }
 
-    itemID   = connConf[0].CStr();
+    target   = connConf[0].CStr();
     port     = connConf[1].CStr();
     protocol = "tcp";
+
+    if (target.empty() || target.size() > cConnectionTargetLen) {
+        throw std::runtime_error("invalid allowed connection target");
+    }
 
     if (connConf.Size() == cAllowedConnectionsExpectedLen) {
         protocol = connConf[2].CStr();
@@ -620,35 +650,47 @@ bool NetworkManager::RuleExists(const Instance& instance, const std::string& por
     return true;
 }
 
-std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& itemID, const std::string& port,
+std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& target, const std::string& port,
     const std::string& protocol, const std::string& subnet, const String& ip, bool& instanceFound)
 {
     instanceFound = false;
 
-    for (auto& [_, networkState] : mNetworkStates) {
-        for (auto& [nodeID, hostInstances] : networkState.mHostInstances) {
-            for (auto& [instanceID, instance] : hostInstances.mInstances) {
-                if (instance.mInstanceIdent.mItemID != itemID.c_str()) {
-                    continue;
-                }
+    // A matching item ID takes precedence even when it does not expose the requested port.
+    for (const bool byItemID : {true, false}) {
+        for (auto& [_, networkState] : mNetworkStates) {
+            for (auto& [nodeID, hostInstances] : networkState.mHostInstances) {
+                for (auto& [instanceID, instance] : hostInstances.mInstances) {
+                    const bool matches = byItemID ? instance.mInstanceIdent.mItemID == target.c_str()
+                                                  : std::any_of(instance.mHosts.begin(), instance.mHosts.end(),
+                                                        [&](const auto& host) { return host == target.c_str(); });
 
-                instanceFound = true;
+                    if (!matches) {
+                        continue;
+                    }
 
-                // instance is in the same subnet could be connected without firewall rules
-                if (common::network::NetworkContainsIP(subnet, instance.mIP.CStr())) {
-                    return std::nullopt;
-                }
+                    instanceFound = true;
 
-                if (RuleExists(instance, port, protocol)) {
-                    FirewallRule rule;
-                    rule.mDstIP   = instance.mIP;
-                    rule.mSrcIP   = ip;
-                    rule.mProto   = protocol.c_str();
-                    rule.mDstPort = port.c_str();
+                    // instance is in the same subnet could be connected without firewall rules
+                    if (common::network::NetworkContainsIP(subnet, instance.mIP.CStr())) {
+                        return std::nullopt;
+                    }
 
-                    return rule;
+                    if (RuleExists(instance, port, protocol)) {
+                        FirewallRule rule;
+
+                        rule.mDstIP   = instance.mIP;
+                        rule.mSrcIP   = ip;
+                        rule.mProto   = protocol.c_str();
+                        rule.mDstPort = port.c_str();
+
+                        return rule;
+                    }
                 }
             }
+        }
+
+        if (instanceFound) {
+            break;
         }
     }
 
@@ -665,16 +707,17 @@ Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const Stri
 
     try {
         for (const auto& connection : allowedConnections) {
-            std::string itemID, port, protocol;
-            ParseAllowConnection(connection, itemID, port, protocol);
+            std::string target, port, protocol;
+
+            ParseAllowConnection(connection, target, port, protocol);
 
             bool instanceFound = false;
-            auto rule          = GetInstanceRule(itemID, port, protocol, subnet, ip, instanceFound);
+            auto rule          = GetInstanceRule(target, port, protocol, subnet, ip, instanceFound);
 
             if (rule) {
                 result.mFirewallRules.PushBack(*rule);
             } else if (!instanceFound) {
-                unresolvedConnections.emplace_back(itemID, port, protocol);
+                unresolvedConnections.emplace_back(target, port, protocol);
             }
         }
     } catch (const std::exception& e) {
@@ -804,18 +847,18 @@ void NetworkManager::StorePendingConnections(const InstanceIdent& requesterIdent
         pending->mNetworkID       = networkID;
         pending->mRequesterIP     = ip;
         pending->mRequesterSubnet = subnet.c_str();
-        pending->mTargetItemID    = unresolved.mItemID.c_str();
+        pending->mTarget          = unresolved.mTarget.c_str();
         pending->mPort            = unresolved.mPort.c_str();
         pending->mProtocol        = unresolved.mProtocol.c_str();
 
-        mPendingConnections.emplace(unresolved.mItemID, *pending);
+        mPendingConnections.emplace(unresolved.mTarget, *pending);
 
         if (auto err = mStorage->AddPendingConnection(*pending); !err.IsNone()) {
             LOG_ERR() << "Failed to store pending connection" << Log::Field("instanceIdent", requesterIdent)
                       << Log::Field(err);
         } else {
             LOG_DBG() << "Stored pending connection" << Log::Field("requester", requesterIdent)
-                      << Log::Field("targetItemID", unresolved.mItemID.c_str());
+                      << Log::Field("target", unresolved.mTarget.c_str());
         }
     }
 }
@@ -835,7 +878,7 @@ void NetworkManager::ReloadPendingConnections(const String& nodeID)
             continue;
         }
 
-        auto key   = pending.mTargetItemID.CStr();
+        auto key   = pending.mTarget.CStr();
         bool found = false;
         auto range = mPendingConnections.equal_range(key);
 
@@ -875,8 +918,8 @@ void NetworkManager::CleanConfirmedPendingConnections(
             }
 
             bool instanceFound = false;
-            auto rule = GetInstanceRule(pending.mTargetItemID.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
-                pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
+            auto rule          = GetInstanceRule(pending.mTarget.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
+                         pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
 
             if (!rule) {
                 break;
@@ -891,7 +934,7 @@ void NetworkManager::CleanConfirmedPendingConnections(
                               << Log::Field("instanceIdent", pending.mRequesterIdent) << Log::Field(err);
                 }
 
-                auto key   = pending.mTargetItemID.CStr();
+                auto key   = pending.mTarget.CStr();
                 auto range = mPendingConnections.equal_range(key);
 
                 for (auto it = range.first; it != range.second; ++it) {
@@ -915,19 +958,29 @@ void NetworkManager::ResolvePendingConnections(const InstanceIdent& newInstanceI
     {
         std::lock_guard lock {mMutex};
 
-        auto itemID = newInstanceIdent.mItemID.CStr();
+        std::vector<std::string> targets {newInstanceIdent.mItemID.CStr()};
 
-        auto range = mPendingConnections.equal_range(itemID);
-        if (range.first == range.second) {
-            return;
+        for (const auto& [_, network] : mNetworkStates) {
+            for (const auto& [nodeID, host] : network.mHostInstances) {
+                if (const auto instance = host.mInstances.find(newInstanceIdent); instance != host.mInstances.end()) {
+                    for (const auto& hostname : instance->second.mHosts) {
+                        targets.emplace_back(hostname.CStr());
+                    }
+                }
+            }
         }
 
-        for (auto it = range.first; it != range.second;) {
+        for (auto it = mPendingConnections.begin(); it != mPendingConnections.end();) {
             const auto& pending = it->second;
 
+            if (std::find(targets.begin(), targets.end(), pending.mTarget.CStr()) == targets.end()) {
+                ++it;
+                continue;
+            }
+
             bool instanceFound = false;
-            auto rule = GetInstanceRule(pending.mTargetItemID.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
-                pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
+            auto rule          = GetInstanceRule(pending.mTarget.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
+                         pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
 
             if (rule) {
                 auto& [nodeID, update] = updates[pending.mRequesterIdent];

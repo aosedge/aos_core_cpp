@@ -103,22 +103,22 @@ private:
     bool     IsHostExist(const std::string& hostName) const;
 
     struct UnresolvedConnection {
-        std::string mItemID;
+        std::string mTarget;
         std::string mPort;
         std::string mProtocol;
 
-        UnresolvedConnection(std::string itemID, std::string port, std::string protocol)
-            : mItemID(std::move(itemID))
+        UnresolvedConnection(std::string target, std::string port, std::string protocol)
+            : mTarget(std::move(target))
             , mPort(std::move(port))
             , mProtocol(std::move(protocol))
         {
         }
     };
 
-    std::optional<FirewallRule> GetInstanceRule(const std::string& itemID, const std::string& port,
+    std::optional<FirewallRule> GetInstanceRule(const std::string& target, const std::string& port,
         const std::string& protocol, const std::string& subnet, const String& ip, bool& instanceFound);
     bool  RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
-    void  ParseAllowConnection(const String& connection, std::string& itemID, std::string& port, std::string& protocol);
+    void  ParseAllowConnection(const String& connection, std::string& target, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
         std::vector<UnresolvedConnection>& unresolvedConnections);
