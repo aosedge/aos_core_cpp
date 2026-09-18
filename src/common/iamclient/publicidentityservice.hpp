@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
@@ -22,8 +22,8 @@
 namespace aos::common::iamclient {
 
 // Type alias for Subjects subscription manager
-using SubjectsSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicIdentityService::Stub,
-    aos::iamclient::SubjectsListenerItf, iamanager::v6::Subjects, SubjectArray, google::protobuf::Empty>;
+using SubjectsSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicIdentityService::Stub,
+    aos::iamclient::SubjectsListenerItf, iamanager::v7::Subjects, SubjectArray, google::protobuf::Empty>;
 
 /**
  * Public identity service.
@@ -91,7 +91,7 @@ private:
     std::string                                                    mIAMPublicServerURL;
     bool                                                           mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                      mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicIdentityService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMPublicIdentityService::Stub> mStub;
     TLSCredentialsItf*                                             mTLSCredentials {};
     std::mutex                                                     mMutex;
     std::unique_ptr<SubjectsSubscriptionManager>                   mSubscriptionManager;

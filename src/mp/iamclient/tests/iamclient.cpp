@@ -74,7 +74,7 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
 
     // send StartProvisioningResponse
     outgoingMsg.mutable_start_provisioning_response();
@@ -166,7 +166,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v6::IAMIncomingMessages incomingMsg;
+    iamanager::v7::IAMIncomingMessages incomingMsg;
 
     // receive StartProvisioningRequest
     incomingMsg.mutable_start_provisioning_request();

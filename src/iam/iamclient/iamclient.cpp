@@ -67,7 +67,7 @@ Error IAMClient::Stop()
  * Protected
  **********************************************************************************************************************/
 
-Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
+Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 {
     if (msg.has_start_provisioning_request()) {
         return ProcessStartProvisioning(msg.start_provisioning_request());
@@ -140,7 +140,7 @@ Error IAMClient::SendNodeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     *outgoingMsg.mutable_node_info() = common::pbconvert::ConvertToProto(*nodeInfo);
 
     LOG_DBG() << "Send node info: state=" << nodeInfo->mState;
@@ -148,11 +148,11 @@ Error IAMClient::SendNodeInfo()
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request)
+Error IAMClient::ProcessStartProvisioning(const iamanager::v7::StartProvisioningRequest& request)
 {
     LOG_DBG() << "Process start provisioning request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
@@ -170,11 +170,11 @@ Error IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioning
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request)
+Error IAMClient::ProcessFinishProvisioning(const iamanager::v7::FinishProvisioningRequest& request)
 {
     LOG_DBG() << "Process finish provisioning request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
@@ -205,11 +205,11 @@ Error IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioni
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request)
+Error IAMClient::ProcessDeprovision(const iamanager::v7::DeprovisionRequest& request)
 {
     LOG_DBG() << "Process deprovision request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned, NodeStateEnum::ePaused}});
@@ -240,13 +240,13 @@ Error IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& req
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
+Error IAMClient::ProcessPauseNode(const iamanager::v7::PauseNodeRequest& request)
 {
     LOG_DBG() << "Process pause node request";
 
     (void)request;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned}});
@@ -275,13 +275,13 @@ Error IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request)
+Error IAMClient::ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& request)
 {
     LOG_DBG() << "Process resume node request";
 
     (void)request;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::ePaused}});
@@ -310,7 +310,7 @@ Error IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& reque
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
+Error IAMClient::ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request)
 {
     const String         nodeID   = request.node_id().c_str();
     const String         certType = request.type().c_str();
@@ -347,7 +347,7 @@ Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request
     return SendCreateKeyResponse(nodeID, certType, *csr, err);
 }
 
-Error IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
+Error IAMClient::ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request)
 {
     const String nodeID   = request.node_id().c_str();
     const String certType = request.type().c_str();
@@ -361,7 +361,7 @@ Error IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request
     return SendApplyCertResponse(nodeID, certType, certInfo->mCertURL, certInfo->mSerial, err);
 }
 
-Error IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)
+Error IAMClient::ProcessGetCertTypes(const iamanager::v7::GetCertTypesRequest& request)
 {
     const String nodeID = request.node_id().c_str();
 
@@ -396,7 +396,7 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
 
 Error IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
 {
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
 
     response.set_node_id(nodeID.CStr());
@@ -411,7 +411,7 @@ Error IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type,
 Error IAMClient::SendApplyCertResponse(
     const String& nodeID, const String& type, const String& certURL, const Array<uint8_t>& serial, const Error& error)
 {
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_apply_cert_response();
 
     std::string protoSerial;
@@ -440,7 +440,7 @@ Error IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& typ
 {
     (void)error;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_cert_types_response();
 
     for (const auto& type : types) {

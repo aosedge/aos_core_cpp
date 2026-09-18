@@ -9,7 +9,7 @@
 
 #include <mutex>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/iamclient/itf/certhandler.hpp>
 
@@ -73,7 +73,7 @@ private:
     bool                                                        mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                   mCredentials;
     TLSCredentialsItf*                                          mTLSCredentials {};
-    std::unique_ptr<iamanager::v6::IAMCertificateService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMCertificateService::Stub> mStub;
     std::mutex                                                  mMutex;
 };
 

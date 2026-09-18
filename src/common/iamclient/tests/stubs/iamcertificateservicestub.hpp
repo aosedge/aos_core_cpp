@@ -12,15 +12,15 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMCertificateService v6.
  */
-class IAMCertificateServiceStub final : public iamanager::v6::IAMCertificateService::Service {
+class IAMCertificateServiceStub final : public iamanager::v7::IAMCertificateService::Service {
 public:
     IAMCertificateServiceStub()
     {
@@ -107,7 +107,7 @@ public:
     }
 
     grpc::Status CreateKey([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::CreateKeyRequest* request, iamanager::v6::CreateKeyResponse* response) override
+        const iamanager::v7::CreateKeyRequest* request, iamanager::v7::CreateKeyResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -127,7 +127,7 @@ public:
     }
 
     grpc::Status ApplyCert([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::ApplyCertRequest* request, iamanager::v6::ApplyCertResponse* response) override
+        const iamanager::v7::ApplyCertRequest* request, iamanager::v7::ApplyCertResponse* response) override
     {
         std::lock_guard lock {mMutex};
 

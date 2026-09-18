@@ -13,7 +13,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -24,8 +24,8 @@
 namespace aos::common::iamclient {
 
 // Type alias for CertInfo subscription manager
-using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
+using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertService::Stub,
+    aos::iamclient::CertListenerItf, iamanager::v7::CertInfo, CertInfo, iamanager::v7::SubscribeCertChangedRequest>;
 
 /**
  * Public cert service.
@@ -89,7 +89,7 @@ private:
     std::string                                                mIAMPublicServerURL;
     bool                                                       mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                  mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicCertService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMPublicCertService::Stub> mStub;
     TLSCredentialsItf*                                         mTLSCredentials {};
     mutable std::mutex                                         mMutex;
 

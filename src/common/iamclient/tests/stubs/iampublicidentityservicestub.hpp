@@ -16,15 +16,15 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPublicIdentityService v6.
  */
-class IAMPublicIdentityServiceStub final : public iamanager::v6::IAMPublicIdentityService::Service {
+class IAMPublicIdentityServiceStub final : public iamanager::v7::IAMPublicIdentityService::Service {
 public:
     IAMPublicIdentityServiceStub()
     {
@@ -64,7 +64,7 @@ public:
             return false;
         }
 
-        iamanager::v6::Subjects subjectsMsg;
+        iamanager::v7::Subjects subjectsMsg;
         for (const auto& subject : subjects) {
             subjectsMsg.add_subjects(subject);
         }
@@ -79,7 +79,7 @@ public:
     }
 
     grpc::Status GetSystemInfo([[maybe_unused]] grpc::ServerContext* context,
-        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v6::SystemInfo* response) override
+        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v7::SystemInfo* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -90,7 +90,7 @@ public:
     }
 
     grpc::Status GetSubjects([[maybe_unused]] grpc::ServerContext* context,
-        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v6::Subjects* response) override
+        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v7::Subjects* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -103,7 +103,7 @@ public:
 
     grpc::Status SubscribeSubjectsChanged(grpc::ServerContext* context,
         [[maybe_unused]] const google::protobuf::Empty*        request,
-        grpc::ServerWriter<iamanager::v6::Subjects>*           writer) override
+        grpc::ServerWriter<iamanager::v7::Subjects>*           writer) override
     {
         {
             std::lock_guard lock {mMutex};
@@ -129,7 +129,7 @@ private:
     std::unique_ptr<grpc::Server>                mServer;
     mutable std::mutex                           mMutex;
     std::condition_variable                      mCV;
-    grpc::ServerWriter<iamanager::v6::Subjects>* mWriter {nullptr};
+    grpc::ServerWriter<iamanager::v7::Subjects>* mWriter {nullptr};
     std::string                                  mSystemID;
     std::string                                  mUnitModel;
     std::vector<std::string>                     mSubjects;

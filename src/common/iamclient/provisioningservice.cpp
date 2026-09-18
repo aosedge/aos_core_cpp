@@ -43,7 +43,7 @@ Error ProvisioningService::Init(const std::string& iamProtectedServerURL, const 
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMProvisioningService::NewStub(
+    mStub = iamanager::v7::IAMProvisioningService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -62,7 +62,7 @@ Error ProvisioningService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMProvisioningService::NewStub(
+    mStub = iamanager::v7::IAMProvisioningService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -78,8 +78,8 @@ Error ProvisioningService::GetCertTypes(const String& nodeID, Array<StaticString
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::GetCertTypesRequest request;
-        iamanager::v6::CertTypes           response;
+        iamanager::v7::GetCertTypesRequest request;
+        iamanager::v7::CertTypes           response;
 
         request.set_node_id(nodeID.CStr());
 
@@ -109,8 +109,8 @@ Error ProvisioningService::StartProvisioning(const String& nodeID, const String&
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
-        iamanager::v6::StartProvisioningRequest  request;
-        iamanager::v6::StartProvisioningResponse response;
+        iamanager::v7::StartProvisioningRequest  request;
+        iamanager::v7::StartProvisioningResponse response;
 
         request.set_node_id(nodeID.CStr());
         request.set_password(password.CStr());
@@ -139,8 +139,8 @@ Error ProvisioningService::FinishProvisioning(const String& nodeID, const String
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
-        iamanager::v6::FinishProvisioningRequest  request;
-        iamanager::v6::FinishProvisioningResponse response;
+        iamanager::v7::FinishProvisioningRequest  request;
+        iamanager::v7::FinishProvisioningResponse response;
 
         request.set_node_id(nodeID.CStr());
         request.set_password(password.CStr());
@@ -169,8 +169,8 @@ Error ProvisioningService::Deprovision(const String& nodeID, const String& passw
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cProvisioningTimeout);
 
-        iamanager::v6::DeprovisionRequest  request;
-        iamanager::v6::DeprovisionResponse response;
+        iamanager::v7::DeprovisionRequest  request;
+        iamanager::v7::DeprovisionResponse response;
 
         request.set_node_id(nodeID.CStr());
         request.set_password(password.CStr());

@@ -279,7 +279,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
 
     grpc::ClientContext                   context;
     iamproto::SubscribeCertChangedRequest request;
-    iamanager::v6::CertInfo               response;
+    iamanager::v7::CertInfo               response;
 
     request.set_type("test-type");
 
@@ -317,7 +317,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
 
     grpc::ClientContext                   context;
     iamproto::SubscribeCertChangedRequest request;
-    iamanager::v6::CertInfo               response;
+    iamanager::v7::CertInfo               response;
 
     request.set_type("test-type");
 

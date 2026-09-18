@@ -17,14 +17,14 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPublicCertService v6.
  */
-class IAMPublicCertServiceStub final : public iamanager::v6::IAMPublicCertService::Service {
+class IAMPublicCertServiceStub final : public iamanager::v7::IAMPublicCertService::Service {
 public:
     IAMPublicCertServiceStub() { mServer = CreateServer(); }
 
@@ -47,7 +47,7 @@ public:
             return false;
         }
 
-        iamanager::v6::CertInfo certInfo;
+        iamanager::v7::CertInfo certInfo;
         certInfo.set_type(certType);
         certInfo.set_cert_url(certURL);
         certInfo.set_key_url(keyURL);
@@ -94,7 +94,7 @@ private:
     }
 
     grpc::Status GetCert(
-        grpc::ServerContext*, const iamanager::v6::GetCertRequest* request, iamanager::v6::CertInfo* response) override
+        grpc::ServerContext*, const iamanager::v7::GetCertRequest* request, iamanager::v7::CertInfo* response) override
     {
         mRequestedCertType = request->type();
 
@@ -106,8 +106,8 @@ private:
     }
 
     grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
-        const iamanager::v6::SubscribeCertChangedRequest*  request,
-        grpc::ServerWriter<iamanager::v6::CertInfo>*       writer) override
+        const iamanager::v7::SubscribeCertChangedRequest*  request,
+        grpc::ServerWriter<iamanager::v7::CertInfo>*       writer) override
     {
         std::string certType = request->type();
 
@@ -139,7 +139,7 @@ private:
     std::string                                                         mCertURL;
     std::string                                                         mKeyURL;
     std::string                                                         mRequestedCertType;
-    std::map<std::string, grpc::ServerWriter<iamanager::v6::CertInfo>*> mWriters;
+    std::map<std::string, grpc::ServerWriter<iamanager::v7::CertInfo>*> mWriters;
     std::mutex                                                          mMutex;
     std::condition_variable                                             mCV;
     bool                                                                mClose {false};

@@ -75,20 +75,20 @@ public:
     Error ReconnectClient() override;
 
 protected:
-    Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
+    Error ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg) override;
     void  OnConnected() override;
     void  OnDisconnected() override;
 
 private:
     Error SendNodeInfo();
-    Error ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
-    Error ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);
-    Error ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request);
-    Error ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request);
-    Error ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request);
-    Error ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request);
-    Error ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
-    Error ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
+    Error ProcessStartProvisioning(const iamanager::v7::StartProvisioningRequest& request);
+    Error ProcessFinishProvisioning(const iamanager::v7::FinishProvisioningRequest& request);
+    Error ProcessDeprovision(const iamanager::v7::DeprovisionRequest& request);
+    Error ProcessPauseNode(const iamanager::v7::PauseNodeRequest& request);
+    Error ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& request);
+    Error ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request);
+    Error ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request);
+    Error ProcessGetCertTypes(const iamanager::v7::GetCertTypesRequest& request);
 
     Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
