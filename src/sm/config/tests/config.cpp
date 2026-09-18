@@ -215,6 +215,9 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
     EXPECT_EQ(config->mMonitoring.mPollPeriod, 30 * aos::Time::cSeconds);
     EXPECT_EQ(config->mMonitoring.mAverageWindow, 90 * aos::Time::cSeconds);
 
+    EXPECT_EQ(config->mImageManager.mImagePath, "test/images");
+    EXPECT_EQ(config->mImageManager.mPartLimit, 0);
+
     EXPECT_EQ(config->mCertStorage, "/var/aos/crypt/sm/");
 
     ASSERT_EQ(config->mWorkingDir, "test");

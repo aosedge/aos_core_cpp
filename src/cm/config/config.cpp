@@ -73,9 +73,11 @@ void ParseAlertsConfig(const common::utils::CaseInsensitiveObjectWrapper& object
 void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
     imagemanager::Config& config)
 {
-    auto err = config.mInstallPath.Assign(
-        object.GetValue<std::string>("installPath", std::filesystem::path(workingDir) / "install").c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing installPath tag");
+    auto err = config.mImagePath.Assign(
+        object.GetValue<std::string>("imagePath", std::filesystem::path(workingDir) / "images").c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing imagePath tag");
+
+    config.mPartLimit = object.GetValue<size_t>("imagesPartLimit", 0);
 
     err = config.mDownloadPath.Assign(
         object.GetValue<std::string>("downloadPath", std::filesystem::path(workingDir) / "download").c_str());

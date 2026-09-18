@@ -12,7 +12,6 @@
     "dnsPidFile": "/run/dnsmasq/dnsmasq.pid",
     "fileServerUrl": "localhost:8094",
     "imageManager": {
-        "installPath": "/var/aos/workdirs/cm/imagemanager/install",
         "downloadPath": "/var/aos/workdirs/cm/imagemanager/downloads",
         "updateItemTTL": "30d",
         "removeOutdatedPeriod": "24h"
