@@ -37,9 +37,11 @@ public:
     /**
      * Gets TLS credentials.
      *
+     * @param certStorage Certificate storage.
      * @return TLS credentials.
      */
-    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() = 0;
+    virtual RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials(const String& certStorage)
+        = 0;
 };
 
 } // namespace aos::common::iamclient

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 EPAM Systems, Inc.
+ * Copyright (C) 2026 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,13 +14,12 @@ namespace aos::common::iamclient {
  * Public
  **********************************************************************************************************************/
 
-Error TLSCredentials::Init(const std::string& caCert, aos::iamclient::CertProviderItf& certProvider,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+Error TLSCredentials::Init(aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    crypto::x509::ProviderItf& cryptoProvider)
 {
     LOG_DBG() << "Init TLS credentials";
 
     mCertProvider   = &certProvider;
-    mCACert         = caCert;
     mCertLoader     = &certLoader;
     mCryptoProvider = &cryptoProvider;
 
@@ -38,19 +37,21 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSC
         return {nullptr, err};
     }
 
-    return {common::utils::GetMTLSClientCredentials(*certInfo, mCACert.c_str(), *mCertLoader, *mCryptoProvider),
-        ErrorEnum::eNone};
+    return {common::utils::GetMTLSClientCredentials(*certInfo, *mCertLoader, *mCryptoProvider), ErrorEnum::eNone};
 }
 
-RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetTLSClientCredentials()
+RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetTLSClientCredentials(
+    const String& certStorage)
 {
-    LOG_DBG() << "Get TLS config";
+    LOG_DBG() << "Get TLS config" << Log::Field("certStorage", certStorage);
 
-    if (!mCACert.empty()) {
-        return {common::utils::GetTLSClientCredentials(mCACert.c_str()), ErrorEnum::eNone};
+    auto certInfo = std::make_unique<CertInfo>();
+
+    if (auto err = mCertProvider->GetCert(certStorage, {}, {}, *certInfo); !err.IsNone()) {
+        return {nullptr, err};
     }
 
-    return {nullptr, ErrorEnum::eNotFound};
+    return {common::utils::GetTLSClientCredentials(*certInfo, *mCertLoader, *mCryptoProvider), ErrorEnum::eNone};
 }
 
 } // namespace aos::common::iamclient

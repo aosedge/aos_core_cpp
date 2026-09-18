@@ -26,8 +26,8 @@ PublicIdentityService::~PublicIdentityService()
     }
 }
 
-Error PublicIdentityService::Init(
-    const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection)
+Error PublicIdentityService::Init(const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials,
+    bool insecureConnection, const std::string& certStorage)
 {
     LOG_DBG() << "Init public identity service" << Log::Field("iamPublicServerURL", iamPublicServerURL.c_str())
               << Log::Field("insecureConnection", insecureConnection);
@@ -37,11 +37,12 @@ Error PublicIdentityService::Init(
     mTLSCredentials     = &tlsCredentials;
     mIAMPublicServerURL = iamPublicServerURL;
     mInsecureConnection = insecureConnection;
+    mCertStorage        = certStorage;
 
     if (mInsecureConnection) {
         mCredentials = grpc::InsecureChannelCredentials();
     } else {
-        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mCertStorage.c_str());
         if (!err.IsNone()) {
             return err;
         }
@@ -61,12 +62,16 @@ Error PublicIdentityService::Reconnect()
 
     LOG_INF() << "Reconnect public identity service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials(mCertStorage.c_str());
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));

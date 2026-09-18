@@ -56,7 +56,8 @@ public:
         return {nullptr, ErrorEnum::eNone};
     }
 
-    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials() override
+    RetWithError<std::shared_ptr<grpc::ChannelCredentials>> GetTLSClientCredentials(
+        [[maybe_unused]] const String& certStorage) override
     {
         return {nullptr, ErrorEnum::eNone};
     }
@@ -124,8 +125,6 @@ protected:
         mConfig.mLogConfig.mMaxPartSize  = 1024;
         mConfig.mLogConfig.mMaxPartCount = 10;
 
-        mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
-
         ASSERT_TRUE(mCryptoProvider.Init().IsNone());
         ASSERT_TRUE(mSOFTHSMEnv
                         .Init("", "certhandler-integration-tests", SOFTHSM_BASE_MP_DIR "/softhsm2.conf",
@@ -155,10 +154,10 @@ protected:
 
         mKeyURI = keyURI;
 
-        auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
+        auto [certs, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
 
-        mCertPEM = certPEM;
+        mCertPEM = certs.mCertChain;
 
         mCommManagerClient.emplace(mClient.value());
 

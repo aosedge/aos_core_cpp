@@ -109,9 +109,8 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
                 return AOS_ERROR_WRAP(err);
             }
 
-            mPublicCred    = common::utils::GetTLSServerCredentials(*certInfo, certLoader, cryptoProvider);
-            mProtectedCred = common::utils::GetMTLSServerCredentials(
-                *certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
+            mPublicCred    = grpc::InsecureServerCredentials();
+            mProtectedCred = common::utils::GetMTLSServerCredentials(*certInfo, certLoader, cryptoProvider);
         } else {
             mPublicCred    = grpc::InsecureServerCredentials();
             mProtectedCred = grpc::InsecureServerCredentials();
@@ -276,9 +275,8 @@ void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
 
 void IAMServer::OnCertChanged(const CertInfo& info)
 {
-    mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
-    mProtectedCred
-        = common::utils::GetMTLSServerCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+    mPublicCred    = grpc::InsecureServerCredentials();
+    mProtectedCred = common::utils::GetMTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
 
     // postpone restart so it didn't block ApplyCert
     mCertChangedResult = std::async(std::launch::async, [this]() {

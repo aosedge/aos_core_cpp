@@ -47,7 +47,6 @@ void ParseLoggingConfig(const common::utils::CaseInsensitiveObjectWrapper& objec
 void ParseIAMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, common::iamclient::Config& config)
 {
     config.mIAMPublicServerURL = object.GetValue<std::string>("iamPublicServerURL");
-    config.mCACert             = object.GetValue<std::string>("caCert");
 }
 
 void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& object, smclient::Config& config)

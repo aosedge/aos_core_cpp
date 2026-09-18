@@ -112,8 +112,8 @@ include(FetchContent)
 if(NOT EXISTS ${AOS_CORE_LIB_DIR})
     FetchContent_Populate(
         aos_core_lib_cpp
-        GIT_REPOSITORY https://github.com/aosedge/aos_core_lib_cpp.git
-        GIT_TAG develop
+        GIT_REPOSITORY https://github.com/mykola-kobets-epam/aos_core_lib_cpp.git
+        GIT_TAG pkcs11-root-cert
         SOURCE_DIR ${AOS_CORE_LIB_DIR}
     )
 endif()

@@ -131,10 +131,16 @@ class FSWatcherTest : public ::testing::Test {
         std::filesystem::create_directory(cTestDir);
     }
 
-    void TearDown() override { std::filesystem::remove_all(cTestDir); }
+    void TearDown() override
+    {
+        mFSWatcher.Stop();
+        mBufferedWatcher.Stop();
+        std::filesystem::remove_all(cTestDir);
+    }
 
 protected:
-    FSWatcher mFSWatcher;
+    FSWatcher         mFSWatcher;
+    FSBufferedWatcher mBufferedWatcher;
 };
 
 /***********************************************************************************************************************
@@ -232,18 +238,16 @@ TEST_F(FSWatcherTest, BufferedNotification)
 {
     const std::vector<fs::FSEvent> cWatchedEvents = {fs::FSEventEnum::eModify, fs::FSEventEnum::eClose};
 
-    FSBufferedWatcher watcher;
+    ASSERT_TRUE(mBufferedWatcher.Init(Time::cMilliseconds * 100, Time::cSeconds, cWatchedEvents).IsNone());
 
-    ASSERT_TRUE(watcher.Init(Time::cMilliseconds * 100, Time::cSeconds, cWatchedEvents).IsNone());
-
-    ASSERT_TRUE(watcher.Start().IsNone());
+    ASSERT_TRUE(mBufferedWatcher.Start().IsNone());
 
     auto param = TestParams((cTestDir / "file1.txt").string(), 3);
 
     param.CreateFile();
 
     for (auto& subscriber : param.mSubscribers) {
-        auto err = watcher.Subscribe(param.mFileName, subscriber);
+        auto err = mBufferedWatcher.Subscribe(param.mFileName, subscriber);
         ASSERT_TRUE(err.IsNone()) << "subscribe failed: " << tests::utils::ErrorToStr(err);
     }
 
@@ -260,10 +264,10 @@ TEST_F(FSWatcherTest, BufferedNotification)
     EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eClose), events.end());
 
     for (auto& subscriber : param.mSubscribers) {
-        EXPECT_TRUE(watcher.Unsubscribe(param.mFileName, subscriber).IsNone());
+        EXPECT_TRUE(mBufferedWatcher.Unsubscribe(param.mFileName, subscriber).IsNone());
     }
 
-    ASSERT_TRUE(watcher.Stop().IsNone());
+    ASSERT_TRUE(mBufferedWatcher.Stop().IsNone());
 }
 
 TEST_F(FSWatcherTest, BufferedNotificationNotSentBeforeTimeout)
@@ -271,18 +275,16 @@ TEST_F(FSWatcherTest, BufferedNotificationNotSentBeforeTimeout)
     constexpr auto                 cNotifyTimeout = Time::cSeconds * 2;
     const std::vector<fs::FSEvent> cWatchedEvents = {fs::FSEventEnum::eModify, fs::FSEventEnum::eClose};
 
-    FSBufferedWatcher watcher;
+    ASSERT_TRUE(mBufferedWatcher.Init(Time::cMilliseconds * 100, cNotifyTimeout, cWatchedEvents).IsNone());
 
-    ASSERT_TRUE(watcher.Init(Time::cMilliseconds * 100, cNotifyTimeout, cWatchedEvents).IsNone());
-
-    ASSERT_TRUE(watcher.Start().IsNone());
+    ASSERT_TRUE(mBufferedWatcher.Start().IsNone());
 
     auto param = TestParams((cTestDir / "file1.txt").string(), 1);
 
     param.CreateFile();
 
     for (auto& subscriber : param.mSubscribers) {
-        auto err = watcher.Subscribe(param.mFileName, subscriber);
+        auto err = mBufferedWatcher.Subscribe(param.mFileName, subscriber);
         ASSERT_TRUE(err.IsNone()) << "subscribe failed: " << tests::utils::ErrorToStr(err);
     }
 
@@ -308,10 +310,10 @@ TEST_F(FSWatcherTest, BufferedNotificationNotSentBeforeTimeout)
     EXPECT_NE(std::find(events.begin(), events.end(), fs::FSEventEnum::eClose), events.end());
 
     for (auto& subscriber : param.mSubscribers) {
-        EXPECT_TRUE(watcher.Unsubscribe(param.mFileName, subscriber).IsNone());
+        EXPECT_TRUE(mBufferedWatcher.Unsubscribe(param.mFileName, subscriber).IsNone());
     }
 
-    ASSERT_TRUE(watcher.Stop().IsNone());
+    ASSERT_TRUE(mBufferedWatcher.Stop().IsNone());
 }
 
 } // namespace aos::common::utils::test

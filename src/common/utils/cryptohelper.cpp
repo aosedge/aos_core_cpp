@@ -9,6 +9,7 @@
 #include <numeric>
 #include <sstream>
 
+#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
@@ -48,6 +49,21 @@ std::string ConvertCertificatesToPEM(
         });
 }
 
+PEMCertificates ConvertCertificates(
+    const crypto::x509::CertificateChain& chain, crypto::x509::ProviderItf& cryptoProvider)
+{
+    PEMCertificates result;
+
+    result.mRootCert = ConvertCertificateToPEM(chain.Back(), cryptoProvider);
+
+    if (chain.Size() > 1) {
+        result.mCertChain = ConvertCertificatesToPEM(
+            Array<crypto::x509::Certificate>(chain.begin(), chain.Size() - 1), cryptoProvider);
+    }
+
+    return result;
+}
+
 RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
 {
     auto [pkcs11URL, createErr] = common::utils::CreatePKCS11URL(keyURL.c_str());
@@ -79,20 +95,18 @@ RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
  * Public functions
  **********************************************************************************************************************/
 
-RetWithError<std::string> LoadPEMCertificates(
+RetWithError<PEMCertificates> LoadPEMCertificates(
     const String& certURL, crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
 {
     try {
         auto [certificates, err] = certLoader.LoadCertsChainByURL(certURL);
         if (!err.IsNone()) {
-            return {"", Error(err, "Load certificate by URL failed")};
+            return {{}, Error(err, "Load certificate by URL failed")};
         }
 
-        auto chain = Array<crypto::x509::Certificate>(certificates->begin(), certificates->Size());
-
-        return {ConvertCertificatesToPEM(chain, cryptoProvider), ErrorEnum::eNone};
+        return {ConvertCertificates(*certificates, cryptoProvider), ErrorEnum::eNone};
     } catch (const std::exception& e) {
-        return {"", AOS_ERROR_WRAP(utils::ToAosError(e))};
+        return {{}, AOS_ERROR_WRAP(utils::ToAosError(e))};
     }
 }
 
@@ -111,9 +125,36 @@ std::string GetOpensslErrorString()
     return oss.str();
 }
 
-Error ConfigureSSLContext(const String& certType, const String& caCertPath,
-    const iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx)
+Error LoadRootCertToSSLContext(const std::string& rootCertPem, SSL_CTX* ctx)
+{
+    BIO* bio = BIO_new_mem_buf(rootCertPem.c_str(), -1);
+    if (!bio) {
+        return Error(ErrorEnum::eRuntime, "failed to create BIO");
+    }
+
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
+
+    X509* ca = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+    if (!ca) {
+        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    }
+
+    std::unique_ptr<X509, decltype(&X509_free)> caPtr(ca, X509_free);
+
+    X509_STORE* store = SSL_CTX_get_cert_store(ctx);
+    if (!store) {
+        return Error(ErrorEnum::eRuntime, "failed to get cert store");
+    }
+
+    if (X509_STORE_add_cert(store, ca) != 1) {
+        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConfigureSSLContext(const String& certType, const iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx)
 {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
 
@@ -123,7 +164,7 @@ Error ConfigureSSLContext(const String& certType, const String& caCertPath,
         return err;
     }
 
-    auto [certificate, errLoad] = common::utils::LoadPEMCertificates(certInfo->mCertURL, certLoader, cryptoProvider);
+    auto [certificates, errLoad] = common::utils::LoadPEMCertificates(certInfo->mCertURL, certLoader, cryptoProvider);
     if (!errLoad.IsNone()) {
         return errLoad;
     }
@@ -138,7 +179,7 @@ Error ConfigureSSLContext(const String& certType, const String& caCertPath,
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    BIO* bio = BIO_new_mem_buf(certificate.c_str(), -1);
+    BIO* bio = BIO_new_mem_buf(certificates.mCertChain.c_str(), -1);
     if (!bio) {
         return Error(ErrorEnum::eRuntime, "failed to create BIO");
     }
@@ -168,11 +209,7 @@ Error ConfigureSSLContext(const String& certType, const String& caCertPath,
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    if (SSL_CTX_load_verify_locations(ctx, caCertPath.CStr(), nullptr) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    return ErrorEnum::eNone;
+    return LoadRootCertToSSLContext(certificates.mRootCert, ctx);
 }
 
 } // namespace aos::common::utils

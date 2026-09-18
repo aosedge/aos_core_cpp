@@ -500,7 +500,7 @@ Error SMClient::CreateCredentials()
         return ErrorEnum::eNone;
     }
 
-    auto [creds, err] = mTLSCredentials->GetTLSClientCredentials();
+    auto [creds, err] = mTLSCredentials->GetTLSClientCredentials(mConfig.mCertStorage.c_str());
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(Error(err, "can't get TLS client credentials"));
     }

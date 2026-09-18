@@ -129,7 +129,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
-    err = mTLSCredentials.Init(config.mValue.mIAMClient.mCACert, mCertHandler, mCertLoader, mCryptoProvider);
+    err = mTLSCredentials.Init(mCertHandler, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize TLS credentials");
 
     err = InitCertModules(config.mValue);

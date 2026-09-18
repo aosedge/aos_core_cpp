@@ -43,8 +43,8 @@ public:
      * @param iamPublicServerURL IAM public server URL.
      * @return Error.
      */
-    Error Init(
-        const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials, bool insecureConnection = false);
+    Error Init(const std::string& iamPublicServerURL, TLSCredentialsItf& tlsCredentials,
+        bool insecureConnection = false, const std::string& certStorage = "");
 
     /**
      * Returns certificate info.
@@ -87,6 +87,7 @@ private:
     static constexpr auto cServiceTimeout = std::chrono::seconds(10);
 
     std::string                                                mIAMPublicServerURL;
+    std::string                                                mCertStorage;
     bool                                                       mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                  mCredentials;
     std::unique_ptr<iamanager::v6::IAMPublicCertService::Stub> mStub;

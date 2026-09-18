@@ -138,7 +138,6 @@ TEST_F(ConfigTest, ParseConfig)
     auto err = aos::sm::config::ParseConfig(cConfigFileName, *config);
     ASSERT_TRUE(err.IsNone()) << "parsing config failed: " << aos::tests::utils::ErrorToStr(err);
 
-    EXPECT_EQ(config->mIAMClientConfig.mCACert, "CACert");
     EXPECT_EQ(config->mIAMClientConfig.mIAMPublicServerURL, "localhost:8090");
 
     EXPECT_EQ(config->mCertStorage, "sm");

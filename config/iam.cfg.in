@@ -1,5 +1,4 @@
 {
-    "caCert": "@CMAKE_INSTALL_PREFIX@/share/ca-certificates/aos/AosRootCA.crt",
     "certStorage": "iam",
     "iamProtectedServerUrl": ":8089",
     "iamPublicServerUrl": ":8090",

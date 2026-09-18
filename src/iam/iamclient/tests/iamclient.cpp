@@ -426,7 +426,6 @@ protected:
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
         config.mCertStorage               = "iam";
-        config.mCACert                    = "";
 
         config.mStartProvisioningCmdArgs  = {"/bin/sh", "-c", "echo 'Hello World'"};
         config.mDiskEncryptionCmdArgs     = {"/bin/sh", "-c", "echo 'Hello World'"};
@@ -441,7 +440,7 @@ protected:
     std::unique_ptr<IAMClient> CreateClient(
         [[maybe_unused]] bool provisionMode, [[maybe_unused]] const config::IAMClientConfig& config = GetConfig())
     {
-        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials())
+        EXPECT_CALL(mTLSCredentialsMock, GetTLSClientCredentials(_))
             .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
                 grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
 
