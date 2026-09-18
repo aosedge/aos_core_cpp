@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/nodeinfoprovider.hpp>
@@ -28,8 +28,8 @@
 namespace aos::common::iamclient {
 
 // Type alias for NodeInfo subscription manager
-using NodeInfoSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicNodesService::Stub,
-    aos::iamclient::NodeInfoListenerItf, iamanager::v6::NodeInfo, NodeInfo, google::protobuf::Empty>;
+using NodeInfoSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicNodesService::Stub,
+    aos::iamclient::NodeInfoListenerItf, iamanager::v7::NodeInfo, NodeInfo, google::protobuf::Empty>;
 
 /**
  * Public nodes service.
@@ -112,10 +112,10 @@ public:
      * @param message Message.
      * @return Error.
      */
-    Error SendMessage(const iamanager::v6::IAMOutgoingMessages& message);
+    Error SendMessage(const iamanager::v7::IAMOutgoingMessages& message);
 
 protected:
-    virtual Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg);
+    virtual Error ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg);
     virtual void  OnConnected();
     virtual void  OnDisconnected();
 
@@ -137,14 +137,14 @@ private:
     std::string                                                 mCertStorage;
     std::vector<std::shared_ptr<grpc::ChannelCredentials>>      mCredentials;
     size_t                                                      mActiveCredentialIdx {0};
-    std::unique_ptr<iamanager::v6::IAMPublicNodesService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMPublicNodesService::Stub> mStub;
     TLSCredentialsItf*                                          mTLSCredentials {};
     mutable std::mutex                                          mMutex;
     std::unique_ptr<NodeInfoSubscriptionManager>                mSubscriptionManager;
 
     std::unique_ptr<grpc::ClientContext> mRegisterNodeCtx;
     std::unique_ptr<
-        grpc::ClientReaderWriterInterface<iamanager::v6::IAMOutgoingMessages, iamanager::v6::IAMIncomingMessages>>
+        grpc::ClientReaderWriterInterface<iamanager::v7::IAMOutgoingMessages, iamanager::v7::IAMIncomingMessages>>
                 mStream;
     std::thread mConnectionThread;
 

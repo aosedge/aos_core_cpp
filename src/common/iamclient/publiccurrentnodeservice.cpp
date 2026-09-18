@@ -50,7 +50,7 @@ Error PublicCurrentNodeService::Init(
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPublicCurrentNodeService::NewStub(
+    mStub = iamanager::v7::IAMPublicCurrentNodeService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -69,7 +69,7 @@ Error PublicCurrentNodeService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMPublicCurrentNodeService::NewStub(
+    mStub = iamanager::v7::IAMPublicCurrentNodeService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     if (mSubscriptionManager) {
@@ -89,7 +89,7 @@ Error PublicCurrentNodeService::GetCurrentNodeInfo(NodeInfo& nodeInfo) const
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
     google::protobuf::Empty request;
-    iamanager::v6::NodeInfo response;
+    iamanager::v7::NodeInfo response;
 
     if (auto status = mStub->GetCurrentNodeInfo(ctx.get(), request, &response); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
@@ -115,7 +115,7 @@ Error PublicCurrentNodeService::SubscribeListener(aos::iamclient::CurrentNodeInf
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v6::NodeInfo& proto, NodeInfo& aos) -> Error {
+        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
             return pbconvert::ConvertToAos(proto, aos);
         };
 
@@ -124,7 +124,7 @@ Error PublicCurrentNodeService::SubscribeListener(aos::iamclient::CurrentNodeInf
         };
 
         mSubscriptionManager = std::make_unique<CurrentNodeInfoSubscriptionManager>(mStub.get(), request,
-            &iamanager::v6::IAMPublicCurrentNodeService::Stub::SubscribeCurrentNodeChanged, convertFunc, notifyFunc,
+            &iamanager::v7::IAMPublicCurrentNodeService::Stub::SubscribeCurrentNodeChanged, convertFunc, notifyFunc,
             "CurrentNodeSubscription");
     }
 

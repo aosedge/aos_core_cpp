@@ -13,15 +13,15 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPublicPermissionsService v6.
  */
-class IAMPublicPermissionsServiceStub final : public iamanager::v6::IAMPublicPermissionsService::Service {
+class IAMPublicPermissionsServiceStub final : public iamanager::v7::IAMPublicPermissionsService::Service {
 public:
     IAMPublicPermissionsServiceStub()
     {
@@ -72,7 +72,7 @@ public:
     }
 
     grpc::Status GetPermissions([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::PermissionsRequest* request, iamanager::v6::PermissionsResponse* response) override
+        const iamanager::v7::PermissionsRequest* request, iamanager::v7::PermissionsResponse* response) override
     {
         std::lock_guard lock {mMutex};
 

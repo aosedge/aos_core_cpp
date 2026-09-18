@@ -17,11 +17,11 @@
 
 #include <core/iam/nodemanager/itf/nodemanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 namespace aos::iam::iamserver {
 
-namespace iamproto = iamanager::v6;
+namespace iamproto = iamanager::v7;
 
 using NodeServerReaderWriter = grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>;
 

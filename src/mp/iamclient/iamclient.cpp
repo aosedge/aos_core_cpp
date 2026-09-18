@@ -97,7 +97,7 @@ RetWithError<std::vector<uint8_t>> IAMClient::ReceiveMessages()
  * Protected
  **********************************************************************************************************************/
 
-Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
+Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 {
     std::vector<uint8_t> message(msg.ByteSizeLong());
 
@@ -165,7 +165,7 @@ void IAMClient::ProcessOutgoingMessages()
                 return;
             }
 
-            iamanager::v6::IAMOutgoingMessages outgoingMsg;
+            iamanager::v7::IAMOutgoingMessages outgoingMsg;
             if (!outgoingMsg.ParseFromArray(msg.data(), static_cast<int>(msg.size()))) {
                 LOG_ERR() << "Failed to parse outgoing message";
 

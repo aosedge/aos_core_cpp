@@ -164,7 +164,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
  **********************************************************************************************************************/
 
 ::grpc::Status PublicMessageHandler::GetCurrentNodeInfo([[maybe_unused]] ::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v6::NodeInfo* response)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v7::NodeInfo* response)
 {
     LOG_DBG() << "Process get current node info";
 
@@ -174,7 +174,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
 }
 
 ::grpc::Status PublicMessageHandler::SubscribeCurrentNodeChanged(::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v7::NodeInfo>* writer)
 {
     LOG_DBG() << "Process subscribe current node changed";
 
@@ -221,7 +221,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 }
 
 grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
-    const iamanager::v6::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v6::CertInfo>* writer)
+    const iamanager::v7::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v7::CertInfo>* writer)
 {
     LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
 

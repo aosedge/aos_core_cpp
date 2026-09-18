@@ -52,10 +52,10 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error)
     return result;
 }
 
-iamanager::v6::RegisterInstanceRequest ConvertToProto(
+iamanager::v7::RegisterInstanceRequest ConvertToProto(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions)
 {
-    iamanager::v6::RegisterInstanceRequest result;
+    iamanager::v7::RegisterInstanceRequest result;
 
     result.mutable_instance()->CopyFrom(ConvertToProto(instanceIdent));
 
@@ -175,7 +175,7 @@ Error ConvertToAos(const ::common::v2::ArchInfo& src, ArchInfo& dst)
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUInfo>& src, CPUInfoArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v7::CPUInfo>& src, CPUInfoArray& dst)
 {
     for (const auto& srcCPU : src) {
         CPUInfo dstCPU;
@@ -200,7 +200,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUIn
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::PartitionInfo>& src, PartitionInfoArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v7::PartitionInfo>& src, PartitionInfoArray& dst)
 {
     for (const auto& srcPartition : src) {
         PartitionInfo dstPartition;
@@ -223,7 +223,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::Parti
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::NodeAttribute>& src, NodeAttributeArray& dst)
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v7::NodeAttribute>& src, NodeAttributeArray& dst)
 {
     for (const auto& srcAttribute : src) {
         NodeAttribute dstAttribute;
@@ -239,7 +239,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::NodeA
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const iamanager::v6::NodeInfo& src, NodeInfo& dst)
+Error ConvertToAos(const iamanager::v7::NodeInfo& src, NodeInfo& dst)
 {
     dst.mNodeID   = src.node_id().c_str();
     dst.mNodeType = src.node_type().c_str();

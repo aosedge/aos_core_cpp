@@ -52,7 +52,7 @@ Error PublicCertService::Init(
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPublicCertService::NewStub(
+    mStub = iamanager::v7::IAMPublicCertService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -71,7 +71,7 @@ Error PublicCertService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMPublicCertService::NewStub(
+    mStub = iamanager::v7::IAMPublicCertService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     for (auto& [certType, manager] : mSubscriptions) {
@@ -91,10 +91,10 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
 
     auto& manager = mSubscriptions[certType.CStr()];
     if (!manager) {
-        iamanager::v6::SubscribeCertChangedRequest request;
+        iamanager::v7::SubscribeCertChangedRequest request;
         request.set_type(certType.CStr());
 
-        auto convertFunc = [](const iamanager::v6::CertInfo& proto, CertInfo& aos) -> Error {
+        auto convertFunc = [](const iamanager::v7::CertInfo& proto, CertInfo& aos) -> Error {
             return pbconvert::ConvertToAos(proto, aos);
         };
 
@@ -103,7 +103,7 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
         };
 
         manager = std::make_unique<CertSubscriptionManager>(mStub.get(), request,
-            &iamanager::v6::IAMPublicCertService::Stub::SubscribeCertChanged, convertFunc, notifyFunc,
+            &iamanager::v7::IAMPublicCertService::Stub::SubscribeCertChanged, convertFunc, notifyFunc,
             std::string("CertSubscription:") + certType.CStr());
     }
 
@@ -141,8 +141,8 @@ Error PublicCertService::GetCert(
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-    iamanager::v6::GetCertRequest request;
-    iamanager::v6::CertInfo       certInfoResponse;
+    iamanager::v7::GetCertRequest request;
+    iamanager::v7::CertInfo       certInfoResponse;
 
     request.set_type(certType.CStr());
 

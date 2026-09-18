@@ -15,7 +15,7 @@
 #include <core/common/tests/utils/log.hpp>
 #include <core/iam/tests/mocks/nodemanagermock.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
