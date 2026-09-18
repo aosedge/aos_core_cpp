@@ -212,8 +212,8 @@ TEST_F(ConfigTest, DefaultValuesAreUsed)
 
     EXPECT_EQ(config->mSMClientConfig.mCMReconnectTimeout, 10 * aos::Time::cSeconds);
 
-    EXPECT_EQ(config->mMonitoring.mPollPeriod, 35 * aos::Time::cSeconds);
-    EXPECT_EQ(config->mMonitoring.mAverageWindow, 35 * aos::Time::cSeconds);
+    EXPECT_EQ(config->mMonitoring.mPollPeriod, 30 * aos::Time::cSeconds);
+    EXPECT_EQ(config->mMonitoring.mAverageWindow, 90 * aos::Time::cSeconds);
 
     EXPECT_EQ(config->mCertStorage, "/var/aos/crypt/sm/");
 
