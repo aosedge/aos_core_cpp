@@ -15,7 +15,6 @@
 #include <core/cm/launcher/config.hpp>
 #include <core/cm/monitoring/config.hpp>
 #include <core/cm/nodeinfoprovider/config.hpp>
-#include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
 
 #include <common/config/config.hpp>
@@ -28,16 +27,11 @@ namespace aos::cm::config {
  **********************************************************************************************************************/
 
 /*
- * Monitoring configuration.
- */
-struct Monitoring : public aos::monitoring::Config, public aos::cm::monitoring::Config { };
-
-/*
  * Config structure.
  */
 struct Config {
     std::string               mCACert;
-    Monitoring                mMonitoring;
+    monitoring::Config        mMonitoring;
     common::config::Migration mMigration;
     alerts::Config            mAlerts;
     imagemanager::Config      mImageManager;

@@ -17,8 +17,8 @@ namespace aos::common::config {
  * Constants
  **********************************************************************************************************************/
 
-constexpr auto cDefaultMonitoringPollPeriod    = "35s";
-constexpr auto cDefaultMonitoringAverageWindow = "35s";
+constexpr auto cDefaultMonitoringPollPeriod    = "30s";
+constexpr auto cDefaultMonitoringAverageWindow = "30s";
 constexpr auto cDefaultServiceAlertPriority    = 4;
 constexpr auto cDefaultSystemAlertPriority     = 3;
 constexpr auto cMaxAlertPriorityLevel          = 7;

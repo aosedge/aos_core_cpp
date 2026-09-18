@@ -80,16 +80,17 @@ void AosCore::Init(const std::string& configFile)
     err = mAlerts.Init(mAllocator, mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
 
-    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
+    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mDownloadPath, mPlatformFS, 0, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download space allocator");
 
-    err = mInstallSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mInstallPath, mPlatformFS, 0, &mImageManager);
+    err = mInstallSpaceAllocator.Init(
+        mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, mConfig.mImageManager.mPartLimit, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize install space allocator");
 
     err = mDownloader.Init(&mAlerts);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
 
-    err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mInstallPath.CStr());
+    err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mImagePath.CStr());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
     err = mImageManager.Init(mAllocator, mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,

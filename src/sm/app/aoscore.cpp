@@ -119,7 +119,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize images space allocator
 
-    err = mImagesSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, 0, &mImageManager);
+    err = mImagesSpaceAllocator.Init(
+        mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, mConfig.mImageManager.mPartLimit, &mImageManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize images space allocator");
 
     // Initialize downloader
