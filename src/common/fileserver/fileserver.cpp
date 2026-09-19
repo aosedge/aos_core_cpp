@@ -16,6 +16,7 @@
 #include <Poco/StreamCopier.h>
 
 #include <core/common/tools/logger.hpp>
+#include <core/common/tools/memory.hpp>
 
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
@@ -57,6 +58,19 @@ std::string GetMimeType(const std::string& ext)
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
+
+Fileserver::Fileserver(SSLContextConfigurator configureContext, std::chrono::milliseconds retryInterval)
+    : mConfigureContext(std::move(configureContext))
+    , mRetryInterval(retryInterval)
+{
+}
+
+Fileserver::~Fileserver()
+{
+    if (auto err = Stop(); !err.IsNone()) {
+        LOG_ERR() << "Failed to stop file server" << Log::Field(err);
+    }
+}
 
 Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir, std::string_view certStorage,
     std::string_view caCert, aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
@@ -183,33 +197,178 @@ Poco::Net::HTTPRequestHandler* Fileserver::FileRequestHandlerFactory::createRequ
     return new FileRequestHandler(mRootDir);
 }
 
-/***********************************************************************************************************************
- * Private
- **********************************************************************************************************************/
-
 Error Fileserver::Start()
 {
-    if (mServer) {
-        return Error(ErrorEnum::eWrongState, "server is already running");
-    }
-
     if (!mCertProvider || !mCertLoader || !mCryptoProvider) {
         return Error(ErrorEnum::eWrongState, "server is not initialized");
     }
 
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mServer || mCertUpdateThread.joinable()) {
+            return Error(ErrorEnum::eWrongState, "server is already running");
+        }
+
+        mShutdown    = false;
+        mCertChanged = false;
+    }
+
+    auto cleanup = DeferRelease(this, [](Fileserver* server) {
+        if (auto err = server->Stop(); !err.IsNone()) {
+            LOG_ERR() << "Failed to clean up file server" << Log::Field(err);
+        }
+    });
+
+    Poco::Net::Context::Ptr context;
+    if (auto err = CreateSSLContext(context); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = StartServer(context); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = mCertProvider->SubscribeListener(mCertStorage.c_str(), *this); !err.IsNone()) {
+        return err;
+    }
+
     try {
-        auto context = Poco::makeAuto<Poco::Net::Context>(
+        mCertUpdateThread = std::thread(&Fileserver::ProcessCertificateChanges, this);
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    static_cast<void>(cleanup.Release());
+
+    return ErrorEnum::eNone;
+}
+
+Error Fileserver::Stop()
+{
+    {
+        std::lock_guard lock {mMutex};
+
+        mShutdown = true;
+    }
+
+    mCondVar.notify_all();
+
+    if (mCertUpdateThread.joinable()) {
+        mCertUpdateThread.join();
+    }
+
+    auto err = StopServer();
+
+    if (mCertProvider) {
+        if (auto unsubscribeErr = mCertProvider->UnsubscribeListener(*this); !unsubscribeErr.IsNone()) {
+            LOG_ERR() << "Failed to unsubscribe file server from certificate changes" << Log::Field(unsubscribeErr);
+        }
+    }
+
+    return err;
+}
+
+void Fileserver::OnCertChanged([[maybe_unused]] const CertInfo& info)
+{
+    {
+        std::lock_guard lock {mMutex};
+
+        if (mShutdown) {
+            return;
+        }
+
+        mCertChanged = true;
+    }
+
+    mCondVar.notify_one();
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+void Fileserver::ProcessCertificateChanges()
+{
+    std::unique_lock lock {mMutex};
+
+    while (true) {
+        mCondVar.wait(lock, [this]() { return mShutdown || mCertChanged; });
+
+        if (mShutdown) {
+            return;
+        }
+
+        mCertChanged = false;
+        lock.unlock();
+
+        auto err = ReloadCertificate();
+
+        lock.lock();
+
+        if (!err.IsNone()) {
+            LOG_ERR() << "Failed to reload file server certificate, retrying" << Log::Field(err);
+
+            static_cast<void>(mCondVar.wait_for(lock, mRetryInterval, [this]() { return mShutdown || mCertChanged; }));
+            mCertChanged = true;
+        }
+    }
+}
+
+Error Fileserver::ReloadCertificate()
+{
+    Poco::Net::Context::Ptr context;
+    auto                    err = CreateSSLContext(context);
+
+    {
+        std::lock_guard lock {mMutex};
+
+        // Discard credentials or a loading error superseded by a newer notification.
+        if (mShutdown || mCertChanged) {
+            return ErrorEnum::eWrongState;
+        }
+    }
+
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    if (auto stopErr = StopServer(); !stopErr.IsNone()) {
+        return stopErr;
+    }
+
+    return StartServer(context);
+}
+
+Error Fileserver::CreateSSLContext(Poco::Net::Context::Ptr& context)
+{
+    try {
+        context = Poco::makeAuto<Poco::Net::Context>(
             Poco::Net::Context::TLS_SERVER_USE, "", Poco::Net::Context::VERIFY_STRICT);
 
         // Authenticate clients by their certificate chain, not by the connection source IP.
         context->enableExtendedCertificateVerification(false);
 
-        if (auto err = common::utils::ConfigureSSLContext(mCertStorage.c_str(), mCACert.c_str(), *mCertProvider,
-                *mCertLoader, *mCryptoProvider, context->sslContext());
-            !err.IsNone()) {
-            return err;
+        if (mConfigureContext) {
+            return mConfigureContext(context->sslContext());
         }
 
+        return common::utils::ConfigureSSLContext(mCertStorage.c_str(), mCACert.c_str(), *mCertProvider, *mCertLoader,
+            *mCryptoProvider, context->sslContext());
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+}
+
+Error Fileserver::StartServer(const Poco::Net::Context::Ptr& context)
+{
+    std::lock_guard lock {mMutex};
+
+    if (mShutdown || mCertChanged) {
+        return ErrorEnum::eWrongState;
+    }
+
+    try {
         Poco::Net::SecureServerSocket             socket(mURI.getPort(), 64, context);
         Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FileRequestHandlerFactory(mRootDir);
         auto                                      params  = Poco::makeAuto<Poco::Net::HTTPServerParams>();
@@ -226,12 +385,19 @@ Error Fileserver::Start()
     return ErrorEnum::eNone;
 }
 
-Error Fileserver::Stop()
+Error Fileserver::StopServer()
 {
+    std::unique_ptr<Poco::Net::HTTPServer> server;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        server = std::move(mServer);
+    }
+
     try {
-        if (mServer) {
-            mServer->stopAll(true);
-            mServer.reset();
+        if (server) {
+            server->stopAll(true);
         }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
