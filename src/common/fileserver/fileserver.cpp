@@ -3,7 +3,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <chrono>
 #include <filesystem>
 #include <map>
 
@@ -11,12 +10,14 @@
 #include <Poco/DateTimeFormatter.h>
 #include <Poco/File.h>
 #include <Poco/FileStream.h>
-#include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/Context.h>
+#include <Poco/Net/SecureServerSocket.h>
 #include <Poco/Path.h>
 #include <Poco/StreamCopier.h>
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 
 #include "fileserver.hpp"
@@ -57,7 +58,9 @@ std::string GetMimeType(const std::string& ext)
  * Public
  **********************************************************************************************************************/
 
-Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
+Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir, std::string_view certStorage,
+    std::string_view caCert, aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    crypto::x509::ProviderItf& cryptoProvider)
 {
     try {
         LOG_DBG() << "Init fileserver";
@@ -65,11 +68,16 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
         std::string uri = serverURL;
 
         if (auto pos = serverURL.find("://"); pos == std::string::npos) {
-            uri = "http://" + serverURL;
+            uri = "https://" + serverURL;
+        }
+
+        Poco::URI parsedURI(uri);
+        if (parsedURI.getScheme() != "https") {
+            return Error(ErrorEnum::eInvalidArgument, "file server requires HTTPS");
         }
 
         mRootDir = rootDir;
-        mURI     = uri;
+        mURI     = parsedURI;
 
         if (mURI.getHost().empty()) {
             mURI.setHost("localhost");
@@ -79,7 +87,13 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir)
             mURI.setPort(cDefaultPort);
         }
 
-        LOG_INF() << "Fileserver started on" << Log::Field("serverURL", mURI.toString().c_str())
+        mCertStorage    = certStorage;
+        mCACert         = caCert;
+        mCertProvider   = &certProvider;
+        mCertLoader     = &certLoader;
+        mCryptoProvider = &cryptoProvider;
+
+        LOG_DBG() << "Fileserver initialized on" << Log::Field("serverURL", mURI.toString().c_str())
                   << Log::Field("rootDir", rootDir.c_str());
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -175,32 +189,52 @@ Poco::Net::HTTPRequestHandler* Fileserver::FileRequestHandlerFactory::createRequ
 
 Error Fileserver::Start()
 {
-    if (mThread.joinable()) {
-        return Error(ErrorEnum::eFailed, "Server is already running");
+    if (mServer) {
+        return Error(ErrorEnum::eWrongState, "server is already running");
     }
 
-    mThread = std::thread([this]() {
-        try {
-            mServer = std::make_unique<Poco::Net::HTTPServer>(new FileRequestHandlerFactory(mRootDir),
-                Poco::Net::ServerSocket(mURI.getPort()), new Poco::Net::HTTPServerParams);
+    if (!mCertProvider || !mCertLoader || !mCryptoProvider) {
+        return Error(ErrorEnum::eWrongState, "server is not initialized");
+    }
 
-            mServer->start();
-        } catch (const std::exception& e) {
-            LOG_ERR() << "Failed to start server" << common::utils::ToAosError(e);
+    try {
+        auto context = Poco::makeAuto<Poco::Net::Context>(
+            Poco::Net::Context::TLS_SERVER_USE, "", Poco::Net::Context::VERIFY_STRICT);
+
+        // Authenticate clients by their certificate chain, not by the connection source IP.
+        context->enableExtendedCertificateVerification(false);
+
+        if (auto err = common::utils::ConfigureSSLContext(mCertStorage.c_str(), mCACert.c_str(), *mCertProvider,
+                *mCertLoader, *mCryptoProvider, context->sslContext());
+            !err.IsNone()) {
+            return err;
         }
-    });
+
+        Poco::Net::SecureServerSocket             socket(mURI.getPort(), 64, context);
+        Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FileRequestHandlerFactory(mRootDir);
+        auto                                      params  = Poco::makeAuto<Poco::Net::HTTPServerParams>();
+        auto server = std::make_unique<Poco::Net::HTTPServer>(factory, socket, params);
+
+        server->start();
+        mServer = std::move(server);
+
+        LOG_INF() << "Fileserver started on" << Log::Field("serverURL", mURI.toString().c_str());
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
 
     return ErrorEnum::eNone;
 }
 
 Error Fileserver::Stop()
 {
-    if (mServer) {
-        mServer->stop();
-    }
-
-    if (mThread.joinable()) {
-        mThread.join();
+    try {
+        if (mServer) {
+            mServer->stopAll(true);
+            mServer.reset();
+        }
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
     }
 
     return ErrorEnum::eNone;

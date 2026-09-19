@@ -9,7 +9,7 @@
 
 #include <memory>
 #include <string>
-#include <thread>
+#include <string_view>
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
@@ -20,6 +20,10 @@
 
 #include <core/cm/fileserver/itf/fileserver.hpp>
 #include <core/common/tools/error.hpp>
+
+#include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
 
 namespace aos::common::fileserver {
 
@@ -38,9 +42,16 @@ public:
      *
      * @param serverURL server URL.
      * @param rootDir root directory.
+     * @param certStorage IAM certificate storage.
+     * @param caCert CA certificate path.
+     * @param certProvider certificate provider.
+     * @param certLoader certificate loader.
+     * @param cryptoProvider crypto provider.
      * @return Error.
      */
-    Error Init(const std::string& serverURL, const std::string& rootDir);
+    Error Init(const std::string& serverURL, const std::string& rootDir, std::string_view certStorage,
+        std::string_view caCert, aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+        crypto::x509::ProviderItf& cryptoProvider);
 
     /**
      * Translates file path URL.
@@ -119,7 +130,11 @@ private:
     std::string                            mRootDir;
     std::unique_ptr<Poco::Net::HTTPServer> mServer;
     Poco::URI                              mURI;
-    std::thread                            mThread;
+    std::string                            mCertStorage;
+    std::string                            mCACert;
+    aos::iamclient::CertProviderItf*       mCertProvider {};
+    crypto::CertLoaderItf*                 mCertLoader {};
+    crypto::x509::ProviderItf*             mCryptoProvider {};
 };
 
 } // namespace aos::common::fileserver
