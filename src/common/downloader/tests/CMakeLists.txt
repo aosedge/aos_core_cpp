@@ -35,3 +35,5 @@ add_test(
     LIBRARIES
     ${LIBRARIES}
 )
+
+gentlscertificates(${TARGET_PREFIX}_${TARGET_NAME} "${CMAKE_CURRENT_BINARY_DIR}/certificates")
