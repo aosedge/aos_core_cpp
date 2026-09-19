@@ -40,6 +40,10 @@ set(TARGET_PREFIX ${TARGET_PREFIX}_common)
 # Modules
 # ######################################################################################################################
 
+if(WITH_TEST)
+    include(tests/cmake/gencertificates.cmake)
+endif()
+
 add_subdirectory(cloudprotocol)
 add_subdirectory(config)
 add_subdirectory(downloader)
