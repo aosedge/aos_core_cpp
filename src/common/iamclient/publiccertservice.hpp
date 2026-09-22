@@ -24,8 +24,9 @@
 namespace aos::common::iamclient {
 
 // Type alias for CertInfo subscription manager
-using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v7::CertInfo, CertInfo, iamanager::v7::SubscribeCertChangedRequest>;
+using CertSubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::CertInfoList, iamanager::v7::CertInfoList, iamanager::v7::SubscribeCertsChangedRequest>;
 
 /**
  * Public cert service.
@@ -57,6 +58,15 @@ public:
      */
     Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override;
+
+    /**
+     * Returns all certificates for the given type.
+     *
+     * @param certType certificate type.
+     * @param[out] resCerts result certificates.
+     * @returns Error.
+     */
+    Error GetAllCerts(const String& certType, Array<CertInfo>& resCerts) const override;
 
     /**
      * Subscribes certificates receiver.

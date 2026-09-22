@@ -139,7 +139,7 @@ TEST_F(PublicMessageHandlerTest, GetAPIVersionSucceeds)
     ASSERT_TRUE(status.ok()) << "GetAPIVersion failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.version(), 6);
+    ASSERT_EQ(response.version(), 7);
 }
 
 /***********************************************************************************************************************
@@ -272,14 +272,73 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
     ASSERT_FALSE(status.ok());
 }
 
-TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
+TEST_F(PublicMessageHandlerTest, GetAllCertsSucceeds)
 {
     auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext                   context;
-    iamproto::SubscribeCertChangedRequest request;
-    iamanager::v7::CertInfo               response;
+    grpc::ClientContext      context;
+    iamproto::GetCertRequest request;
+    iamproto::CertInfoList   response;
+
+    request.set_type("test-type");
+
+    CertInfo certInfo1;
+    certInfo1.mKeyURL  = "test-key-url1";
+    certInfo1.mCertURL = "test-cert-url1";
+
+    CertInfo certInfo2;
+    certInfo2.mKeyURL  = "test-key-url2";
+    certInfo2.mCertURL = "test-cert-url2";
+
+    EXPECT_CALL(mCertProvider, GetAllCerts).WillOnce(Invoke([&](const String&, Array<CertInfo>& out) {
+        out.PushBack(certInfo1);
+        out.PushBack(certInfo2);
+
+        return ErrorEnum::eNone;
+    }));
+
+    auto status = clientStub->GetAllCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "GetAllCertsSucceeds failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    ASSERT_EQ(response.certs_size(), 2);
+    EXPECT_EQ(response.certs(0).type(), "test-type");
+    EXPECT_EQ(response.certs(0).key_url(), "test-key-url1");
+    EXPECT_EQ(response.certs(0).cert_url(), "test-cert-url1");
+    EXPECT_EQ(response.certs(1).key_url(), "test-key-url2");
+    EXPECT_EQ(response.certs(1).cert_url(), "test-cert-url2");
+}
+
+TEST_F(PublicMessageHandlerTest, GetAllCertsFails)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext      context;
+    iamproto::GetCertRequest request;
+    iamproto::CertInfoList   response;
+
+    request.set_type("test-type");
+
+    EXPECT_CALL(mCertProvider, GetAllCerts).WillOnce(Invoke([](const String&, Array<CertInfo>&) {
+        return ErrorEnum::eFailed;
+    }));
+
+    auto status = clientStub->GetAllCerts(&context, request, &response);
+
+    ASSERT_FALSE(status.ok());
+}
+
+TEST_F(PublicMessageHandlerTest, SubscribeCertsChangedSucceeds)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext                    context;
+    iamproto::SubscribeCertsChangedRequest request;
+    iamanager::v7::CertInfoList            response;
 
     request.set_type("test-type");
 
@@ -294,12 +353,13 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
             return ErrorEnum::eNone;
         }));
 
-    auto reader = clientStub->SubscribeCertChanged(&context, request);
+    auto reader = clientStub->SubscribeCertsChanged(&context, request);
 
     ASSERT_TRUE(reader->Read(&response));
-    EXPECT_EQ(response.type(), request.type());
-    EXPECT_EQ(response.key_url(), certInfo.mKeyURL.CStr());
-    EXPECT_EQ(response.cert_url(), certInfo.mCertURL.CStr());
+    ASSERT_EQ(response.certs_size(), 1);
+    EXPECT_EQ(response.certs(0).type(), request.type());
+    EXPECT_EQ(response.certs(0).key_url(), certInfo.mKeyURL.CStr());
+    EXPECT_EQ(response.certs(0).cert_url(), certInfo.mCertURL.CStr());
 
     context.TryCancel();
 
@@ -310,14 +370,14 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
         << ", message = " << status.error_message();
 }
 
-TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
+TEST_F(PublicMessageHandlerTest, SubscribeCertsChangedFailed)
 {
     auto clientStub = CreateClientStub<iamproto::IAMPublicCertService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext                   context;
-    iamproto::SubscribeCertChangedRequest request;
-    iamanager::v7::CertInfo               response;
+    grpc::ClientContext                    context;
+    iamproto::SubscribeCertsChangedRequest request;
+    iamanager::v7::CertInfoList            response;
 
     request.set_type("test-type");
 
@@ -325,7 +385,7 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
         return ErrorEnum::eFailed;
     }));
 
-    auto reader = clientStub->SubscribeCertChanged(&context, request);
+    auto reader = clientStub->SubscribeCertsChanged(&context, request);
 
     ASSERT_FALSE(reader->Read(&response));
 

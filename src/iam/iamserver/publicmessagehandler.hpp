@@ -127,7 +127,7 @@ protected:
     }
 
 private:
-    static constexpr auto cIAMAPIVersion = 7;
+    static constexpr auto cIAMAPIVersion       = 7;
     static constexpr auto cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto cRequestRetryMaxTry  = 3;
 
@@ -144,9 +144,11 @@ private:
     // IAMPublicCertService interface
     ::grpc::Status GetCert(::grpc::ServerContext* context, const ::iamanager::v7::GetCertRequest* request,
         ::iamanager::v7::CertInfo* response) override;
-    ::grpc::Status SubscribeCertChanged(::grpc::ServerContext* context,
-        const ::iamanager::v7::SubscribeCertChangedRequest*    request,
-        ::grpc::ServerWriter<::iamanager::v7::CertInfo>*       writer) override;
+    ::grpc::Status GetAllCerts(::grpc::ServerContext* context, const ::iamanager::v7::GetCertRequest* request,
+        ::iamanager::v7::CertInfoList* response) override;
+    ::grpc::Status SubscribeCertsChanged(::grpc::ServerContext* context,
+        const ::iamanager::v7::SubscribeCertsChangedRequest*    request,
+        ::grpc::ServerWriter<::iamanager::v7::CertInfoList>*    writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(

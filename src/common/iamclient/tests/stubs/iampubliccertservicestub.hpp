@@ -12,6 +12,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server.h>
@@ -22,7 +24,7 @@
 #include <common/utils/grpchelper.hpp>
 
 /**
- * Test stub for IAMPublicCertService v6.
+ * Test stub for IAMPublicCertService v7.
  */
 class IAMPublicCertServiceStub final : public iamanager::v7::IAMPublicCertService::Service {
 public:
@@ -36,6 +38,8 @@ public:
         mKeyURL  = keyURL;
     }
 
+    void AddAllCert(const std::string& certURL, const std::string& keyURL) { mAllCerts.push_back({certURL, keyURL}); }
+
     std::string GetRequestedCertType() const { return mRequestedCertType; }
 
     bool SendCertChanged(const std::string& certType, const std::string& certURL, const std::string& keyURL)
@@ -47,12 +51,14 @@ public:
             return false;
         }
 
-        iamanager::v7::CertInfo certInfo;
-        certInfo.set_type(certType);
-        certInfo.set_cert_url(certURL);
-        certInfo.set_key_url(keyURL);
+        iamanager::v7::CertInfoList certInfoList;
+        auto*                       certInfo = certInfoList.add_certs();
 
-        return it->second->Write(certInfo);
+        certInfo->set_type(certType);
+        certInfo->set_cert_url(certURL);
+        certInfo->set_key_url(keyURL);
+
+        return it->second->Write(certInfoList);
     }
 
     bool WaitForConnection(const std::string& certType = "", std::chrono::seconds timeout = std::chrono::seconds(5))
@@ -105,9 +111,25 @@ private:
         return grpc::Status::OK;
     }
 
-    grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
-        const iamanager::v7::SubscribeCertChangedRequest*  request,
-        grpc::ServerWriter<iamanager::v7::CertInfo>*       writer) override
+    grpc::Status GetAllCerts(grpc::ServerContext*, const iamanager::v7::GetCertRequest* request,
+        iamanager::v7::CertInfoList* response) override
+    {
+        mRequestedCertType = request->type();
+
+        for (const auto& [certURL, keyURL] : mAllCerts) {
+            auto* certInfo = response->add_certs();
+
+            certInfo->set_type(request->type());
+            certInfo->set_cert_url(certURL);
+            certInfo->set_key_url(keyURL);
+        }
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status SubscribeCertsChanged(grpc::ServerContext* context,
+        const iamanager::v7::SubscribeCertsChangedRequest*  request,
+        grpc::ServerWriter<iamanager::v7::CertInfoList>*    writer) override
     {
         std::string certType = request->type();
 
@@ -135,14 +157,15 @@ private:
         return grpc::Status::OK;
     }
 
-    std::unique_ptr<grpc::Server>                                       mServer;
-    std::string                                                         mCertURL;
-    std::string                                                         mKeyURL;
-    std::string                                                         mRequestedCertType;
-    std::map<std::string, grpc::ServerWriter<iamanager::v7::CertInfo>*> mWriters;
-    std::mutex                                                          mMutex;
-    std::condition_variable                                             mCV;
-    bool                                                                mClose {false};
+    std::unique_ptr<grpc::Server>                                           mServer;
+    std::string                                                             mCertURL;
+    std::string                                                             mKeyURL;
+    std::string                                                             mRequestedCertType;
+    std::vector<std::pair<std::string, std::string>>                        mAllCerts;
+    std::map<std::string, grpc::ServerWriter<iamanager::v7::CertInfoList>*> mWriters;
+    std::mutex                                                              mMutex;
+    std::condition_variable                                                 mCV;
+    bool                                                                    mClose {false};
 };
 
 #endif
