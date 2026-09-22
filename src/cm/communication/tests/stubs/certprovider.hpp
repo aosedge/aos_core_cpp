@@ -39,6 +39,11 @@ public:
         return ErrorEnum::eNone;
     }
 
+    Error GetAllCerts(const String& certType, Array<CertInfo>& resCerts) const override
+    {
+        return mCertHandler.GetAllCerts(certType, resCerts);
+    }
+
     Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
     {
         (void)certType;

@@ -27,6 +27,14 @@ public:
         return ErrorEnum::eNone;
     }
 
+    Error GetAllCerts(const String& certType, Array<CertInfo>& resCerts) const override
+    {
+        (void)certType;
+        (void)resCerts;
+
+        return ErrorEnum::eNone;
+    }
+
     Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
     {
         (void)certType;
