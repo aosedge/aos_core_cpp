@@ -57,7 +57,7 @@ ModuleConfig ParseModuleConfig(const common::utils::CaseInsensitiveObjectWrapper
             object, "alternativeNames", [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); }),
         object.GetValue<bool>("disabled"),
         object.GetValue<bool>("skipValidation"),
-        object.GetValue<bool>("selfSigned"),
+        object.GetOptionalValue<std::string>("certType").value_or("normal"),
         object.Get("params"),
     };
 }
