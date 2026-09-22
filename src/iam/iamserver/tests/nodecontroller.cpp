@@ -599,4 +599,56 @@ TEST_F(NodeControllerTest, ApplyCertSucceeds)
     ASSERT_TRUE(status.ok()) << status.error_message();
 }
 
+TEST_F(NodeControllerTest, UpdateRootCertsSucceeds)
+{
+    auto stream = CreateRegisterNodeClientStream();
+    ASSERT_NE(stream, nullptr) << "Failed to create client stream";
+
+    mOutgoingMessage.mutable_node_info()->set_node_id("node1");
+    mOutgoingMessage.mutable_node_info()->set_state(cProvisionedState.ToString().CStr());
+
+    stream->Write(mOutgoingMessage);
+
+    iamproto::UpdateRootCertsRequest  request;
+    iamproto::UpdateRootCertsResponse response;
+
+    request.set_node_id("node1");
+
+    auto async = std::async(std::launch::async, [&]() {
+        ASSERT_TRUE(stream->Read(&mIncomingMessage));
+        ASSERT_TRUE(mIncomingMessage.has_update_root_certs_request());
+        ASSERT_EQ(mIncomingMessage.update_root_certs_request().node_id(), "node1");
+
+        LOG_DBG() << "Received update root certs request: " << mIncomingMessage.DebugString().c_str();
+
+        iamproto::IAMOutgoingMessages mOutgoingMessage;
+        mOutgoingMessage.mutable_update_root_certs_response();
+
+        ASSERT_TRUE(stream->Write(mOutgoingMessage));
+    });
+
+    grpc::Status status;
+
+    for (size_t i = 1; i < 4; ++i) {
+        auto steamHandler = GetNodeController()->GetNodeStreamHandler("node1");
+        if (!steamHandler) {
+            LOG_ERR() << "Node stream handler not found: nodeID = node1";
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100 * i));
+
+            continue;
+        }
+
+        status = steamHandler->UpdateRootCerts(&request, &response, std::chrono::seconds(1));
+
+        if (status.ok()) {
+            break;
+        }
+    }
+
+    stream->WritesDone();
+
+    ASSERT_TRUE(status.ok()) << status.error_message();
+}
+
 } // namespace aos::iam::iamserver
