@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include <iamanager/v7/iamanager.grpc.pb.h>
@@ -106,6 +107,13 @@ public:
         return mLastPemCert;
     }
 
+    std::vector<std::string> GetLastRootCerts() const
+    {
+        std::lock_guard lock {mMutex};
+
+        return mLastRootCerts;
+    }
+
     grpc::Status CreateKey([[maybe_unused]] grpc::ServerContext* context,
         const iamanager::v7::CreateKeyRequest* request, iamanager::v7::CreateKeyResponse* response) override
     {
@@ -146,6 +154,24 @@ public:
         return grpc::Status::OK;
     }
 
+    grpc::Status UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+        const iamanager::v7::UpdateRootCertsRequest* request, iamanager::v7::UpdateRootCertsResponse* response) override
+    {
+        std::lock_guard lock {mMutex};
+
+        mLastNodeID = request->node_id();
+        mLastRootCerts.assign(request->root_certs().begin(), request->root_certs().end());
+
+        response->set_node_id(mLastNodeID);
+
+        if (mHasError) {
+            response->mutable_error()->set_exit_code(mErrorExitCode);
+            response->mutable_error()->set_message(mErrorMessage);
+        }
+
+        return grpc::Status::OK;
+    }
+
 private:
     std::unique_ptr<grpc::Server> mServer;
     mutable std::mutex            mMutex;
@@ -160,6 +186,7 @@ private:
     std::string                   mLastSubject;
     std::string                   mLastPassword;
     std::string                   mLastPemCert;
+    std::vector<std::string>      mLastRootCerts;
 };
 
 #endif

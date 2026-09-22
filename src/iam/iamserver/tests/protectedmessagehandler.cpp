@@ -425,6 +425,55 @@ TEST_F(ProtectedMessageHandlerTest, DeprovisionFails)
  * IAMCertificateService tests
  **********************************************************************************************************************/
 
+TEST_F(ProtectedMessageHandlerTest, UpdateRootCertsSucceeds)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext               context;
+    iamproto::UpdateRootCertsRequest  request;
+    iamproto::UpdateRootCertsResponse response;
+
+    request.set_node_id("node0");
+    request.add_root_certs("root-cert1");
+    request.add_root_certs("root-cert2");
+
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts).WillOnce(Return(ErrorEnum::eNone));
+
+    auto status = clientStub->UpdateRootCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "UpdateRootCerts failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    EXPECT_EQ(response.node_id(), "node0");
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
+    EXPECT_TRUE(response.error().message().empty());
+}
+
+TEST_F(ProtectedMessageHandlerTest, UpdateRootCertsFails)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext               context;
+    iamproto::UpdateRootCertsRequest  request;
+    iamproto::UpdateRootCertsResponse response;
+
+    request.set_node_id("node0");
+    request.add_root_certs("root-cert1");
+
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts).WillOnce(Return(ErrorEnum::eFailed));
+
+    auto status = clientStub->UpdateRootCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "UpdateRootCerts failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    EXPECT_EQ(response.node_id(), "node0");
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
+    EXPECT_FALSE(response.error().message().empty());
+}
+
 TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
 {
     auto clientStub = CreateClientStub<iamproto::IAMCertificateService>();

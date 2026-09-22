@@ -270,6 +270,11 @@ public:
 
                     OnCertTypesResponse(ConvertFromProtoArray(response.types()));
                     mResponseCV.notify_all();
+                } else if (incomingMsg.has_update_root_certs_response()) {
+                    const auto& response = incomingMsg.update_root_certs_response();
+
+                    OnUpdateRootCertsResponse(response.node_id(), response.error());
+                    mResponseCV.notify_all();
                 }
             }
         } catch (const std::exception& e) {
@@ -364,6 +369,19 @@ public:
         mStream->Write(request);
     }
 
+    void UpdateRootCertsRequest(const std::string& id, const std::vector<std::string>& rootCerts)
+    {
+        iamanager::v7::IAMIncomingMessages request;
+
+        request.mutable_update_root_certs_request()->set_node_id(id);
+
+        for (const auto& rootCert : rootCerts) {
+            request.mutable_update_root_certs_request()->add_root_certs(rootCert);
+        }
+
+        mStream->Write(request);
+    }
+
     MOCK_METHOD(void, OnNodeInfo, (const iamanager::v7::NodeInfo& nodeInfo));
     MOCK_METHOD(void, OnStartProvisioningResponse, (const ::common::v2::ErrorInfo& errorInfo));
     MOCK_METHOD(void, OnFinishProvisioningResponse, (const ::common::v2::ErrorInfo& errorInfo));
@@ -376,6 +394,7 @@ public:
         (const std::string& type, const std::string& certURL, const std::string& serial,
             const ::common::v2::ErrorInfo& errorInfo));
     MOCK_METHOD(void, OnCertTypesResponse, (const std::vector<std::string>& types));
+    MOCK_METHOD(void, OnUpdateRootCertsResponse, (const std::string& nodeID, const ::common::v2::ErrorInfo& errorInfo));
 
     void WaitNodeInfo(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
@@ -829,6 +848,22 @@ TEST_F(IAMClientTest, GetCertTypes)
     EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
 
     server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
+    server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
+}
+
+TEST_F(IAMClientTest, UpdateRootCerts)
+{
+    // Init
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
+
+    // UpdateRootCerts
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts(_, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*server, OnUpdateRootCertsResponse(std::string(nodeInfo.mNodeID.CStr()), ::common::v2::ErrorInfo()));
+
+    server->UpdateRootCertsRequest(nodeInfo.mNodeID.CStr(), {"root_cert1", "root_cert2"});
     server->WaitResponse();
 
     EXPECT_TRUE(client->Stop().IsNone());

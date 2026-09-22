@@ -59,6 +59,15 @@ public:
     Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo);
 
     /**
+     * Updates root certificates.
+     *
+     * @param nodeID node ID.
+     * @param pemCerts root certificates in PEM format.
+     * @returns Error.
+     */
+    Error UpdateRootCerts(const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts) override;
+
+    /**
      * Reconnects to the server.
      *
      * @returns Error.

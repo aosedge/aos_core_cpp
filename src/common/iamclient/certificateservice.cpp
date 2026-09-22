@@ -135,4 +135,38 @@ Error CertificateService::ApplyCert(
     }
 }
 
+Error CertificateService::UpdateRootCerts(
+    const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Update root certificates" << Log::Field("nodeID", nodeID) << Log::Field("count", pemCerts.Size());
+
+    try {
+        auto ctx = std::make_unique<grpc::ClientContext>();
+        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+
+        iamanager::v7::UpdateRootCertsRequest  request;
+        iamanager::v7::UpdateRootCertsResponse response;
+
+        request.set_node_id(nodeID.CStr());
+
+        for (const auto& pemCert : pemCerts) {
+            request.add_root_certs(pemCert.CStr());
+        }
+
+        if (auto status = mStub->UpdateRootCerts(ctx.get(), request, &response); !status.ok()) {
+            return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+        }
+
+        if (response.has_error()) {
+            return Error(response.error().exit_code(), response.error().message().c_str());
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
+}
+
 } // namespace aos::common::iamclient

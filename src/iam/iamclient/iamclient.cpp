@@ -5,7 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <memory>
+
 #include <core/common/tools/logger.hpp>
+#include <core/iam/certhandler/itf/hsm.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
@@ -99,6 +102,10 @@ Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 
     if (msg.has_get_cert_types_request()) {
         return ProcessGetCertTypes(msg.get_cert_types_request());
+    }
+
+    if (msg.has_update_root_certs_request()) {
+        return ProcessUpdateRootCerts(msg.update_root_certs_request());
     }
 
     return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
@@ -375,6 +382,26 @@ Error IAMClient::ProcessGetCertTypes(const iamanager::v7::GetCertTypesRequest& r
     return SendGetCertTypesResponse(certTypes, err);
 }
 
+Error IAMClient::ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request)
+{
+    const String nodeID = request.node_id().c_str();
+
+    LOG_DBG() << "Process update root certs request: nodeID=" << nodeID << ", count=" << request.root_certs_size();
+
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request.root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            return SendUpdateRootCertsResponse(nodeID, AOS_ERROR_WRAP(err));
+        }
+    }
+
+    auto err = AOS_ERROR_WRAP(mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos));
+
+    return SendUpdateRootCertsResponse(nodeID, err);
+}
+
 Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
@@ -446,6 +473,17 @@ Error IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& typ
     for (const auto& type : types) {
         response.mutable_types()->Add(type.CStr());
     }
+
+    return SendMessage(outgoingMsg);
+}
+
+Error IAMClient::SendUpdateRootCertsResponse(const String& nodeID, const Error& error)
+{
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_update_root_certs_response();
+
+    response.set_node_id(nodeID.CStr());
+    common::pbconvert::SetErrorInfo(error, response);
 
     return SendMessage(outgoingMsg);
 }
