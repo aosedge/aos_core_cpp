@@ -69,7 +69,7 @@ struct ModuleConfig {
     std::vector<std::string> mAlternativeNames;
     bool                     mDisabled;
     bool                     mSkipValidation;
-    bool                     mIsSelfSigned;
+    std::string              mCertType;
     Poco::Dynamic::Var       mParams;
 };
 

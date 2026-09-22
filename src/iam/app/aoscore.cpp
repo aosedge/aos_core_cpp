@@ -38,7 +38,10 @@ Error ConvertCertModuleConfig(const config::ModuleConfig& config, certhandler::M
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
-    aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
+
+    if (auto err = aosConfig.mCertType.FromString(config.mCertType.c_str()); !err.IsNone()) {
+        return err;
+    }
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         certhandler::ExtendedKeyUsage keyUsage;
