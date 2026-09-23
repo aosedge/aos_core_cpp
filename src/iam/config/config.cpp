@@ -117,7 +117,6 @@ IAMConfig ParseIAMConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
 {
     IAMConfig config;
 
-    config.mCACert                   = object.GetValue<std::string>("caCert");
     config.mCertStorage              = object.GetValue<std::string>("certStorage");
     config.mStartProvisioningCmdArgs = common::utils::GetArrayValue<std::string>(object, "startProvisioningCmdArgs",
         [](const Poco::Dynamic::Var& value) { return value.convert<std::string>(); });
