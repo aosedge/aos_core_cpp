@@ -94,7 +94,6 @@ TEST_F(ConfigTest, ParseConfig)
     ASSERT_EQ(result.mError, ErrorEnum::eNone);
     const Config& config = result.mValue;
 
-    EXPECT_EQ(config.mCACert, "/etc/Root_CA.pem");
     EXPECT_EQ(config.mCertStorage, "sm");
     EXPECT_EQ(config.mWorkingDir, "/path/to/download");
     EXPECT_EQ(config.mImageStoreDir, "/path/to/images");

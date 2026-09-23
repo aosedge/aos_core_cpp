@@ -70,7 +70,6 @@ struct Config {
     VChanConfig          mVChan;
     CMConfig             mCMConfig;
     std::string          mCertStorage;
-    std::string          mCACert;
     std::string          mImageStoreDir;
     Download             mDownload;
     IAMConfig            mIAMConfig;
