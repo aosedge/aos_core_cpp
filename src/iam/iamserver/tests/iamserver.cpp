@@ -28,6 +28,7 @@
 #include <core/iam/tests/mocks/permhandlermock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/grpchelper.hpp>
 #include <iam/database/database.hpp>
 #include <iam/iamserver/iamserver.hpp>
@@ -58,14 +59,25 @@ protected:
     {
     }
 
-    void RegisterPKCS11Module(const String& name, crypto::KeyType keyType = crypto::KeyTypeEnum::eRSA);
-    void SetUpCertificates();
+    void RegisterPKCS11Module(const String& name, crypto::KeyType keyType = crypto::KeyTypeEnum::eRSA,
+        certhandler::CertModuleTypeEnum certModuleType = certhandler::CertModuleTypeEnum::eNormal);
 
     template <typename T>
     std::unique_ptr<typename T::Stub> CreateCustomStub(const std::string& url, const bool insecure = false)
     {
-        auto tlsChannelCreds = insecure ? grpc::InsecureChannelCredentials()
-                                        : common::utils::GetTLSClientCredentials(GetClientConfig().mCACert.c_str());
+        std::shared_ptr<grpc::ChannelCredentials> tlsChannelCreds;
+
+        if (insecure) {
+            tlsChannelCreds = grpc::InsecureChannelCredentials();
+        } else {
+            auto [rootCertsPem, err] = common::utils::LoadRootCertificates(mCertHandler, mCertLoader, mCryptoProvider);
+            if (!err.IsNone()) {
+                return nullptr;
+            }
+
+            tlsChannelCreds = common::utils::GetTLSClientCredentials(rootCertsPem);
+        }
+
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }
@@ -107,10 +119,12 @@ private:
     void TearDown() override;
 
     // CertHandler function
-    certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType);
+    certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType,
+              certhandler::CertModuleTypeEnum certModuleType = certhandler::CertModuleTypeEnum::eNormal);
     certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig();
     void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
         const String& intermCertPath, uint64_t serial, CertInfo& certInfo);
+    void ApplyRootCertificates();
 
     config::IAMServerConfig GetServerConfig();
     config::IAMClientConfig GetClientConfig();
@@ -136,11 +150,14 @@ void IAMServerTest::SetUp()
     ASSERT_TRUE(mCertHandler.SetOwner("client", cPIN).IsNone());
 
     RegisterPKCS11Module("server");
+    RegisterPKCS11Module(
+        common::utils::cRootCertType, crypto::KeyTypeEnum::eRSA, certhandler::CertModuleTypeEnum::eRoot);
 
     ApplyCertificate("client", "client", CERTIFICATES_IAM_DIR "/client_int.key", CERTIFICATES_IAM_DIR "/client_int.cer",
         0x3333444, mClientInfo);
     ApplyCertificate("server", "localhost", CERTIFICATES_IAM_DIR "/server_int.key",
         CERTIFICATES_IAM_DIR "/server_int.cer", 0x3333333, mServerInfo);
+    ApplyRootCertificates();
 
     mServerConfig = GetServerConfig();
     mClientConfig = GetClientConfig();
@@ -167,7 +184,8 @@ void IAMServerTest::TearDown()
     fs::ClearDir(SOFTHSM_BASE_IAM_DIR "/tokens");
 }
 
-void IAMServerTest::RegisterPKCS11Module(const String& name, crypto::KeyType keyType)
+void IAMServerTest::RegisterPKCS11Module(
+    const String& name, crypto::KeyType keyType, certhandler::CertModuleTypeEnum certModuleType)
 {
     ASSERT_TRUE(mPKCS11Modules.EmplaceBack().IsNone());
     ASSERT_TRUE(mCertModules.EmplaceBack().IsNone());
@@ -175,7 +193,9 @@ void IAMServerTest::RegisterPKCS11Module(const String& name, crypto::KeyType key
     auto& certModule   = mCertModules.Back();
     ASSERT_TRUE(pkcs11Module.Init(mAllocator, name, GetPKCS11ModuleConfig(), mSOFTHSMEnv.GetManager(), mCryptoProvider)
                     .IsNone());
-    ASSERT_TRUE(certModule.Init(mAllocator, name, GetCertModuleConfig(keyType), mCryptoProvider, pkcs11Module, mStorage)
+    ASSERT_TRUE(certModule
+                    .Init(mAllocator, name, GetCertModuleConfig(keyType, certModuleType), mCryptoProvider, pkcs11Module,
+                        mStorage)
                     .IsNone());
     ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
 }
@@ -185,7 +205,6 @@ config::IAMServerConfig IAMServerTest::GetServerConfig()
     config::IAMServerConfig config;
 
     config.mCertStorage               = "server";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
@@ -198,7 +217,6 @@ config::IAMClientConfig IAMServerTest::GetClientConfig()
     config::IAMClientConfig config;
 
     config.mCertStorage               = "client";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mMainIAMPublicServerURL    = "localhost:8088";
     config.mMainIAMProtectedServerURL = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
@@ -215,7 +233,8 @@ NodeInfo IAMServerTest::GetNodeInfo()
     return nodeInfo;
 }
 
-certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyType keyType)
+certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(
+    crypto::KeyType keyType, certhandler::CertModuleTypeEnum certModuleType)
 {
     certhandler::ModuleConfig config;
 
@@ -225,6 +244,7 @@ certhandler::ModuleConfig IAMServerTest::GetCertModuleConfig(crypto::KeyType key
     config.mAlternativeNames.EmplaceBack("epam.com");
     config.mAlternativeNames.EmplaceBack("www.epam.com");
     config.mSkipValidation = false;
+    config.mCertType       = certModuleType;
 
     return config;
 }
@@ -271,6 +291,18 @@ void IAMServerTest::ApplyCertificate(const String& certType, const String& subje
     // apply client certificate
     ASSERT_TRUE(mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo).IsNone());
     EXPECT_EQ(certInfo.mSerial, serialArr);
+}
+
+void IAMServerTest::ApplyRootCertificates()
+{
+    StaticString<crypto::cCertPEMLen>                   caCert;
+    StaticArray<StaticString<crypto::cCertPEMLen>, 1>   pemCerts;
+    StaticArray<CertInfo, certhandler::cCertsPerModule> resCerts;
+
+    ASSERT_TRUE(fs::ReadFileToString(CERTIFICATES_IAM_DIR "/ca.cer", caCert).IsNone());
+    ASSERT_TRUE(pemCerts.PushBack(caCert).IsNone());
+    ASSERT_TRUE(mCertHandler.UpdateCerts(common::utils::cRootCertType, pemCerts, "", resCerts).IsNone());
+    ASSERT_FALSE(resCerts.IsEmpty());
 }
 
 /***********************************************************************************************************************

@@ -16,6 +16,7 @@
 #include <core/common/tools/string.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/exec.hpp>
 #include <common/utils/grpchelper.hpp>
@@ -110,9 +111,14 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
                 return AOS_ERROR_WRAP(err);
             }
 
-            mPublicCred    = common::utils::GetTLSServerCredentials(*certInfo, certLoader, cryptoProvider);
-            mProtectedCred = common::utils::GetMTLSServerCredentials(
-                *certInfo, mConfig.mCACert.c_str(), certLoader, cryptoProvider);
+            auto [rootCertsPem, rootErr] = common::utils::LoadRootCertificates(certHandler, certLoader, cryptoProvider);
+            if (!rootErr.IsNone()) {
+                return AOS_ERROR_WRAP(rootErr);
+            }
+
+            mPublicCred = grpc::InsecureServerCredentials();
+            mProtectedCred
+                = common::utils::GetMTLSServerCredentials(*certInfo, rootCertsPem, certLoader, cryptoProvider);
         } else {
             mPublicCred    = grpc::InsecureServerCredentials();
             mProtectedCred = grpc::InsecureServerCredentials();
@@ -283,9 +289,15 @@ void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
 
 void IAMServer::OnCertChanged(const CertInfo& info)
 {
-    mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
-    mProtectedCred
-        = common::utils::GetMTLSServerCredentials(info, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+    auto [rootCertsPem, rootErr] = common::utils::LoadRootCertificates(*mCertHandler, *mCertLoader, *mCryptoProvider);
+    if (!rootErr.IsNone()) {
+        LOG_ERR() << "Failed to load root certificates" << Log::Field(rootErr);
+
+        return;
+    }
+
+    mPublicCred    = grpc::InsecureServerCredentials();
+    mProtectedCred = common::utils::GetMTLSServerCredentials(info, rootCertsPem, *mCertLoader, *mCryptoProvider);
 
     // postpone restart so it didn't block ApplyCert
     mCertChangedResult = std::async(std::launch::async, [this]() {

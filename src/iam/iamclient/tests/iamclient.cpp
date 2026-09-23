@@ -445,7 +445,6 @@ protected:
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
         config.mCertStorage               = "iam";
-        config.mCACert                    = "";
 
         config.mStartProvisioningCmdArgs  = {"/bin/sh", "-c", "echo 'Hello World'"};
         config.mDiskEncryptionCmdArgs     = {"/bin/sh", "-c", "echo 'Hello World'"};
