@@ -28,6 +28,7 @@
 #include <core/iam/tests/mocks/permhandlermock.hpp>
 #include <core/iam/tests/mocks/provisionmanagermock.hpp>
 
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/grpchelper.hpp>
 #include <iam/database/database.hpp>
 #include <iam/iamserver/iamserver.hpp>
@@ -64,8 +65,19 @@ protected:
     template <typename T>
     std::unique_ptr<typename T::Stub> CreateCustomStub(const std::string& url, const bool insecure = false)
     {
-        auto tlsChannelCreds = insecure ? grpc::InsecureChannelCredentials()
-                                        : common::utils::GetTLSClientCredentials(GetClientConfig().mCACert.c_str());
+        std::shared_ptr<grpc::ChannelCredentials> tlsChannelCreds;
+
+        if (insecure) {
+            tlsChannelCreds = grpc::InsecureChannelCredentials();
+        } else {
+            auto [rootCertsPem, err] = common::utils::LoadRootCertificates(mCertHandler, mCertLoader, mCryptoProvider);
+            if (!err.IsNone()) {
+                return nullptr;
+            }
+
+            tlsChannelCreds = common::utils::GetTLSClientCredentials(rootCertsPem);
+        }
+
         if (tlsChannelCreds == nullptr) {
             return nullptr;
         }
@@ -185,7 +197,6 @@ config::IAMServerConfig IAMServerTest::GetServerConfig()
     config::IAMServerConfig config;
 
     config.mCertStorage               = "server";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
@@ -198,7 +209,6 @@ config::IAMClientConfig IAMServerTest::GetClientConfig()
     config::IAMClientConfig config;
 
     config.mCertStorage               = "client";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mMainIAMPublicServerURL    = "localhost:8088";
     config.mMainIAMProtectedServerURL = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};

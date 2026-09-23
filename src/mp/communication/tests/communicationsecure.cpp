@@ -124,8 +124,6 @@ protected:
         mConfig.mLogConfig.mMaxPartSize  = 1024;
         mConfig.mLogConfig.mMaxPartCount = 10;
 
-        mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
-
         ASSERT_TRUE(mCryptoProvider.Init().IsNone());
         ASSERT_TRUE(mSOFTHSMEnv
                         .Init("", "certhandler-integration-tests", SOFTHSM_BASE_MP_DIR "/softhsm2.conf",

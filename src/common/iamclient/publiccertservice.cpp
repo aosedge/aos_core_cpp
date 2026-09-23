@@ -66,12 +66,16 @@ Error PublicCertService::Reconnect()
 
     LOG_INF() << "Reconnect public cert service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v7::IAMPublicCertService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
