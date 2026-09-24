@@ -1,5 +1,5 @@
 /*
-\ * Copyright (C) 2025 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,7 +9,10 @@
 
 #include <memory>
 
+#include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/crypto/itf/uuid.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/tools/memory.hpp>
 #include <core/iam/identhandler/itf/identmodule.hpp>
 
 #include <iam/config/config.hpp>
@@ -22,10 +25,14 @@ namespace aos::iam::identhandler {
  *
  * @param config identifier module config.
  * @param uuidProvider UUID provider.
+ * @param certProvider certificate provider.
+ * @param certLoader certificate loader.
+ * @param allocator allocator.
  * @return std::unique_ptr<IdentModuleItf>.
  */
-std::unique_ptr<IdentModuleItf> InitializeIdentModule(
-    const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider);
+std::unique_ptr<IdentModuleItf> InitializeIdentModule(const config::IdentifierConfig& config,
+    crypto::UUIDItf& uuidProvider, iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    AllocatorItf& allocator);
 
 } // namespace aos::iam::identhandler
 

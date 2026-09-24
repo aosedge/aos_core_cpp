@@ -1,5 +1,5 @@
 /*
-\ * Copyright (C) 2025 EPAM Systems, Inc.
+ * Copyright (C) 2025 EPAM Systems, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,7 @@
 #include <common/utils/exception.hpp>
 #include <core/iam/identhandler/identmodules/fileidentifier/fileidentifier.hpp>
 
+#include "certidentifier.hpp"
 #include "identhandler.hpp"
 // TODO: Disabled due to crash on shutdown (see eVISIdentifier case below)
 // #include "visidentifier/visidentifier.hpp"
@@ -23,6 +24,7 @@ class IdentifierModuleType {
 public:
     enum class Enum {
         eFileIdentifier,
+        eCertIdentifier,
         eVISIdentifier,
         eNone,
     };
@@ -31,6 +33,7 @@ public:
     {
         static const char* const sStrings[] = {
             "fileidentifier",
+            "certidentifier",
             "visidentifier",
             "none",
         };
@@ -48,8 +51,9 @@ using IdentifierModule     = EnumStringer<IdentifierModuleType>;
  * Public
  **********************************************************************************************************************/
 
-std::unique_ptr<IdentModuleItf> InitializeIdentModule(
-    const config::IdentifierConfig& config, [[maybe_unused]] crypto::UUIDItf& uuidProvider)
+std::unique_ptr<IdentModuleItf> InitializeIdentModule(const config::IdentifierConfig& config,
+    [[maybe_unused]] crypto::UUIDItf& uuidProvider, iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, AllocatorItf& allocator)
 {
     const std::string& plugin = config.mPlugin.empty() ? "none" : config.mPlugin;
 
@@ -69,6 +73,20 @@ std::unique_ptr<IdentModuleItf> InitializeIdentModule(
 
         err = identifier->Init(*params);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file identifier module");
+
+        return identifier;
+    }
+
+    case IdentifierModuleEnum::eCertIdentifier: {
+        auto identifier = std::make_unique<CertIdentifier>();
+
+        auto params = std::make_unique<CertIdentifierConfig>();
+
+        err = config::ParseCertIdentifierModuleParams(config.mParams, *params);
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        err = identifier->Init(*params, certProvider, certLoader, allocator);
+        AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert identifier module");
 
         return identifier;
     }
