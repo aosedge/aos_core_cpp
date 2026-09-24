@@ -273,6 +273,28 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
     return grpc::Status::OK;
 }
 
+grpc::Status NodeStreamHandler::UpdateRootCerts(const iamproto::UpdateRootCertsRequest* request,
+    iamproto::UpdateRootCertsResponse* response, const std::chrono::seconds responseTimeout)
+{
+    iamproto::IAMIncomingMessages incoming;
+    iamproto::IAMOutgoingMessages outgoing;
+
+    outgoing.mutable_update_root_certs_response();
+    incoming.mutable_update_root_certs_request()->CopyFrom(*request);
+
+    if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    if (!outgoing.has_update_root_certs_response()) {
+        return grpc::Status::CANCELLED;
+    }
+
+    response->CopyFrom(outgoing.update_root_certs_response());
+
+    return grpc::Status::OK;
+}
+
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/

@@ -9,7 +9,7 @@
 
 #include <mutex>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/iamclient/itf/certhandler.hpp>
 
@@ -59,6 +59,15 @@ public:
     Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo);
 
     /**
+     * Updates root certificates.
+     *
+     * @param nodeID node ID.
+     * @param pemCerts root certificates in PEM format.
+     * @returns Error.
+     */
+    Error UpdateRootCerts(const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts) override;
+
+    /**
      * Reconnects to the server.
      *
      * @returns Error.
@@ -73,7 +82,7 @@ private:
     bool                                                        mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                   mCredentials;
     TLSCredentialsItf*                                          mTLSCredentials {};
-    std::unique_ptr<iamanager::v6::IAMCertificateService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMCertificateService::Stub> mStub;
     std::mutex                                                  mMutex;
 };
 

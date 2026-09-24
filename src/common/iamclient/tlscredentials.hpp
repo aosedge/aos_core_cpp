@@ -7,9 +7,7 @@
 #ifndef AOS_COMMON_IAMCLIENT_TLSCREDENTIALS_HPP_
 #define AOS_COMMON_IAMCLIENT_TLSCREDENTIALS_HPP_
 
-#include <functional>
 #include <memory>
-#include <string>
 
 #include <common/utils/grpchelper.hpp>
 #include <core/common/crypto/itf/certloader.hpp>
@@ -28,11 +26,13 @@ public:
     /**
      * Initializes TLS credentials.
      *
-     * @param mtlsCredentialsFunc MTLS credentials function.
+     * @param certProvider certificate provider.
+     * @param certLoader certificate loader.
+     * @param cryptoProvider crypto provider.
      * @return Error.
      */
-    Error Init(const std::string& caCert, aos::iamclient::CertProviderItf& certProvider,
-        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider);
+    Error Init(aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+        crypto::x509::ProviderItf& cryptoProvider);
 
     /**
      * Gets MTLS configuration.
@@ -54,7 +54,6 @@ private:
     aos::iamclient::CertProviderItf* mCertProvider {};
     crypto::CertLoaderItf*           mCertLoader {};
     crypto::x509::ProviderItf*       mCryptoProvider {};
-    std::string                      mCACert;
 };
 
 } // namespace aos::common::iamclient

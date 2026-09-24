@@ -17,7 +17,7 @@
 
 #include <common/iamclient/tests/mocks/tlscredentialsmock.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>
@@ -38,14 +38,14 @@ inline bool operator==(const ErrorInfo& left, const ErrorInfo& right)
 
 } // namespace common::v2
 
-namespace iamanager::v6 {
+namespace iamanager::v7 {
 
-inline bool operator==(const iamanager::v6::NodeInfo& left, const iamanager::v6::NodeInfo& right)
+inline bool operator==(const iamanager::v7::NodeInfo& left, const iamanager::v7::NodeInfo& right)
 {
     return google::protobuf::util::MessageDifferencer::Equals(left, right);
 }
 
-} // namespace iamanager::v6
+} // namespace iamanager::v7
 
 namespace aos::iam::iamclient {
 
@@ -134,9 +134,9 @@ NodeInfo DefaultNodeInfo(NodeState state = NodeStateEnum::eProvisioned, bool isC
     return nodeInfo;
 }
 
-iamanager::v6::CPUInfo CreateCPUInfoProto()
+iamanager::v7::CPUInfo CreateCPUInfoProto()
 {
-    iamanager::v6::CPUInfo cpuInfo;
+    iamanager::v7::CPUInfo cpuInfo;
 
     cpuInfo.set_model_name("11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz");
     cpuInfo.set_num_cores(4);
@@ -147,9 +147,9 @@ iamanager::v6::CPUInfo CreateCPUInfoProto()
     return cpuInfo;
 }
 
-iamanager::v6::PartitionInfo CreatePartitionInfoProto(const char* name, const std::initializer_list<const char*> types)
+iamanager::v7::PartitionInfo CreatePartitionInfoProto(const char* name, const std::initializer_list<const char*> types)
 {
-    iamanager::v6::PartitionInfo partitionInfo;
+    iamanager::v7::PartitionInfo partitionInfo;
 
     partitionInfo.set_name(name);
     partitionInfo.set_path("/sys/kernel/tracing");
@@ -159,9 +159,9 @@ iamanager::v6::PartitionInfo CreatePartitionInfoProto(const char* name, const st
     return partitionInfo;
 }
 
-iamanager::v6::NodeAttribute CreateAttributeProto(const char* name, const char* value)
+iamanager::v7::NodeAttribute CreateAttributeProto(const char* name, const char* value)
 {
-    iamanager::v6::NodeAttribute attribute;
+    iamanager::v7::NodeAttribute attribute;
 
     attribute.set_name(name);
     attribute.set_value(value);
@@ -169,9 +169,9 @@ iamanager::v6::NodeAttribute CreateAttributeProto(const char* name, const char* 
     return attribute;
 }
 
-iamanager::v6::NodeInfo DefaultNodeInfoProto(const std::string& state = "provisioned")
+iamanager::v7::NodeInfo DefaultNodeInfoProto(const std::string& state = "provisioned")
 {
-    iamanager::v6::NodeInfo nodeInfo;
+    iamanager::v7::NodeInfo nodeInfo;
 
     nodeInfo.set_node_id("node0");
     nodeInfo.set_node_type("main");
@@ -195,7 +195,7 @@ iamanager::v6::NodeInfo DefaultNodeInfoProto(const std::string& state = "provisi
  * Suite
  **********************************************************************************************************************/
 
-class TestPublicNodeService : public iamanager::v6::IAMPublicNodesService::Service {
+class TestPublicNodeService : public iamanager::v7::IAMPublicNodesService::Service {
 public:
     TestPublicNodeService(const std::string& url)
     {
@@ -213,7 +213,7 @@ public:
     }
 
     grpc::Status RegisterNode(grpc::ServerContext*                                                        context,
-        grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>* stream)
+        grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>* stream)
     {
         LOG_INF() << "Test server message thread started";
 
@@ -222,7 +222,7 @@ public:
             mStream              = stream;
             mRegisterNodeContext = context;
 
-            iamanager::v6::IAMOutgoingMessages incomingMsg;
+            iamanager::v7::IAMOutgoingMessages incomingMsg;
 
             while (stream->Read(&incomingMsg)) {
                 if (incomingMsg.has_node_info()) {
@@ -270,6 +270,11 @@ public:
 
                     OnCertTypesResponse(ConvertFromProtoArray(response.types()));
                     mResponseCV.notify_all();
+                } else if (incomingMsg.has_update_root_certs_response()) {
+                    const auto& response = incomingMsg.update_root_certs_response();
+
+                    OnUpdateRootCertsResponse(response.node_id(), response.error());
+                    mResponseCV.notify_all();
                 }
             }
         } catch (const std::exception& e) {
@@ -285,7 +290,7 @@ public:
 
     void StartProvisioningRequest(const std::string& id, const std::string& password)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_start_provisioning_request()->set_node_id(id);
         request.mutable_start_provisioning_request()->set_password(password);
@@ -295,7 +300,7 @@ public:
 
     void FinishProvisioningRequest(const std::string& id, const std::string& password)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_finish_provisioning_request()->set_node_id(id);
         request.mutable_finish_provisioning_request()->set_password(password);
@@ -305,7 +310,7 @@ public:
 
     void DeprovisionRequest(const std::string& id, const std::string& password)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_deprovision_request()->set_node_id(id);
         request.mutable_deprovision_request()->set_password(password);
@@ -315,7 +320,7 @@ public:
 
     void PauseNodeRequest(const std::string& id)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_pause_node_request()->set_node_id(id);
 
@@ -324,7 +329,7 @@ public:
 
     void ResumeNodeRequest(const std::string& id)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_resume_node_request()->set_node_id(id);
 
@@ -334,7 +339,7 @@ public:
     void CreateKeyRequest(
         const std::string& id, const std::string& subject, const std::string& type, const std::string& password)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_create_key_request()->set_node_id(id);
         request.mutable_create_key_request()->set_subject(subject);
@@ -346,7 +351,7 @@ public:
 
     void ApplyCertRequest(const std::string& id, const std::string& type, const std::string& cert)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_apply_cert_request()->set_node_id(id);
         request.mutable_apply_cert_request()->set_type(type);
@@ -357,14 +362,27 @@ public:
 
     void GetCertTypesRequest(const std::string& id)
     {
-        iamanager::v6::IAMIncomingMessages request;
+        iamanager::v7::IAMIncomingMessages request;
 
         request.mutable_get_cert_types_request()->set_node_id(id);
 
         mStream->Write(request);
     }
 
-    MOCK_METHOD(void, OnNodeInfo, (const iamanager::v6::NodeInfo& nodeInfo));
+    void UpdateRootCertsRequest(const std::string& id, const std::vector<std::string>& rootCerts)
+    {
+        iamanager::v7::IAMIncomingMessages request;
+
+        request.mutable_update_root_certs_request()->set_node_id(id);
+
+        for (const auto& rootCert : rootCerts) {
+            request.mutable_update_root_certs_request()->add_root_certs(rootCert);
+        }
+
+        mStream->Write(request);
+    }
+
+    MOCK_METHOD(void, OnNodeInfo, (const iamanager::v7::NodeInfo& nodeInfo));
     MOCK_METHOD(void, OnStartProvisioningResponse, (const ::common::v2::ErrorInfo& errorInfo));
     MOCK_METHOD(void, OnFinishProvisioningResponse, (const ::common::v2::ErrorInfo& errorInfo));
     MOCK_METHOD(void, OnDeprovisionResponse, (const ::common::v2::ErrorInfo& errorInfo));
@@ -376,6 +394,7 @@ public:
         (const std::string& type, const std::string& certURL, const std::string& serial,
             const ::common::v2::ErrorInfo& errorInfo));
     MOCK_METHOD(void, OnCertTypesResponse, (const std::vector<std::string>& types));
+    MOCK_METHOD(void, OnUpdateRootCertsResponse, (const std::string& nodeID, const ::common::v2::ErrorInfo& errorInfo));
 
     void WaitNodeInfo(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
@@ -400,12 +419,12 @@ private:
         common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort(addr, credentials);
-        builder.RegisterService(static_cast<iamanager::v6::IAMPublicNodesService::Service*>(this));
+        builder.RegisterService(static_cast<iamanager::v7::IAMPublicNodesService::Service*>(this));
 
         return builder.BuildAndStart();
     }
 
-    grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>* mStream;
+    grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>* mStream;
     grpc::ServerContext* mRegisterNodeContext {};
 
     std::mutex              mLock;
@@ -426,7 +445,6 @@ protected:
         config.mMainIAMPublicServerURL    = "localhost:5555";
         config.mMainIAMProtectedServerURL = "localhost:5556";
         config.mCertStorage               = "iam";
-        config.mCACert                    = "";
 
         config.mStartProvisioningCmdArgs  = {"/bin/sh", "-c", "echo 'Hello World'"};
         config.mDiskEncryptionCmdArgs     = {"/bin/sh", "-c", "echo 'Hello World'"};
@@ -466,7 +484,7 @@ protected:
         auto server = CreateServer(config.mMainIAMPublicServerURL);
 
         NodeInfo                nodeInfo    = DefaultNodeInfo(state);
-        iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto(state.ToString().CStr());
+        iamanager::v7::NodeInfo expNodeInfo = DefaultNodeInfoProto(state.ToString().CStr());
 
         EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
             .WillOnce(DoAll(SetArgReferee<0>(nodeInfo), Return(ErrorEnum::eNone)));
@@ -531,7 +549,7 @@ TEST_F(IAMClientTest, Reconnect)
     // Init
     auto [server1, client]              = InitTest(NodeStateEnum::eUnprovisioned);
     NodeInfo                nodeInfo    = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
-    iamanager::v6::NodeInfo expNodeInfo = DefaultNodeInfoProto("unprovisioned");
+    iamanager::v7::NodeInfo expNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
     // close server
     server1.reset();
@@ -613,7 +631,7 @@ TEST_F(IAMClientTest, FinishProvisioning)
 
     // FinishProvisioning
     NodeInfo                provNodeInfo    = DefaultNodeInfo(NodeStateEnum::eProvisioned);
-    iamanager::v6::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("provisioned");
+    iamanager::v7::NodeInfo expProvNodeInfo = DefaultNodeInfoProto("provisioned");
 
     EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eProvisioned)));
     EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
@@ -654,7 +672,7 @@ TEST_F(IAMClientTest, Deprovision)
 
     // Deprovision
     NodeInfo                deprovNodeInfo    = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
-    iamanager::v6::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("unprovisioned");
+    iamanager::v7::NodeInfo expDeprovNodeInfo = DefaultNodeInfoProto("unprovisioned");
 
     EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eUnprovisioned)));
     EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
@@ -696,7 +714,7 @@ TEST_F(IAMClientTest, PauseNode)
 
     // Pause
     NodeInfo                pausedNodeInfo    = DefaultNodeInfo(NodeStateEnum::ePaused);
-    iamanager::v6::NodeInfo expPausedNodeInfo = DefaultNodeInfoProto("paused");
+    iamanager::v7::NodeInfo expPausedNodeInfo = DefaultNodeInfoProto("paused");
 
     EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::ePaused)));
     EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
@@ -739,7 +757,7 @@ TEST_F(IAMClientTest, ResumeNode)
 
     // Resume
     NodeInfo                resumedNodeInfo    = DefaultNodeInfo(NodeStateEnum::eProvisioned);
-    iamanager::v6::NodeInfo expResumedNodeInfo = DefaultNodeInfoProto("provisioned");
+    iamanager::v7::NodeInfo expResumedNodeInfo = DefaultNodeInfoProto("provisioned");
 
     EXPECT_CALL(mCurrentNodeHandler, SetState(NodeState(NodeStateEnum::eProvisioned)));
     EXPECT_CALL(mCurrentNodeHandler, GetCurrentNodeInfo)
@@ -829,6 +847,22 @@ TEST_F(IAMClientTest, GetCertTypes)
     EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
 
     server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
+    server->WaitResponse();
+
+    EXPECT_TRUE(client->Stop().IsNone());
+}
+
+TEST_F(IAMClientTest, UpdateRootCerts)
+{
+    // Init
+    auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
+    NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
+
+    // UpdateRootCerts
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts(_, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*server, OnUpdateRootCertsResponse(std::string(nodeInfo.mNodeID.CStr()), ::common::v2::ErrorInfo()));
+
+    server->UpdateRootCertsRequest(nodeInfo.mNodeID.CStr(), {"root_cert1", "root_cert2"});
     server->WaitResponse();
 
     EXPECT_TRUE(client->Stop().IsNone());

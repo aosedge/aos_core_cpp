@@ -18,15 +18,15 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPublicNodesService v6.
  */
-class IAMPublicNodesServiceStub final : public iamanager::v6::IAMPublicNodesService::Service {
+class IAMPublicNodesServiceStub final : public iamanager::v7::IAMPublicNodesService::Service {
 public:
     IAMPublicNodesServiceStub()
     {
@@ -68,7 +68,7 @@ public:
             return false;
         }
 
-        iamanager::v6::NodeInfo nodeInfo;
+        iamanager::v7::NodeInfo nodeInfo;
 
         nodeInfo.set_node_id(nodeID);
         nodeInfo.set_node_type(nodeType);
@@ -91,7 +91,7 @@ public:
         return mRegisterNodeCV.wait_for(lock, timeout, [this] { return mRegisterNodeStream != nullptr; });
     }
 
-    bool SendIncomingMessage(const iamanager::v6::IAMIncomingMessages& message)
+    bool SendIncomingMessage(const iamanager::v7::IAMIncomingMessages& message)
     {
         std::lock_guard lock {mRegisterNodeMutex};
 
@@ -103,7 +103,7 @@ public:
     }
 
     bool WaitForOutgoingMessage(
-        iamanager::v6::IAMOutgoingMessages& message, std::chrono::seconds timeout = std::chrono::seconds(5))
+        iamanager::v7::IAMOutgoingMessages& message, std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mRegisterNodeMutex};
 
@@ -125,7 +125,7 @@ public:
     }
 
     grpc::Status GetAllNodeIDs([[maybe_unused]] grpc::ServerContext* context,
-        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v6::NodesID* response) override
+        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v7::NodesID* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -137,7 +137,7 @@ public:
     }
 
     grpc::Status GetNodeInfo([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::GetNodeInfoRequest* request, iamanager::v6::NodeInfo* response) override
+        const iamanager::v7::GetNodeInfoRequest* request, iamanager::v7::NodeInfo* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -155,7 +155,7 @@ public:
 
     grpc::Status SubscribeNodeChanged(grpc::ServerContext* context,
         [[maybe_unused]] const google::protobuf::Empty*    request,
-        grpc::ServerWriter<iamanager::v6::NodeInfo>*       writer) override
+        grpc::ServerWriter<iamanager::v7::NodeInfo>*       writer) override
     {
         {
             std::lock_guard lock {mMutex};
@@ -180,7 +180,7 @@ public:
     }
 
     grpc::Status RegisterNode([[maybe_unused]] grpc::ServerContext*                                       context,
-        grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>* stream)
+        grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>* stream)
         override
     {
         {
@@ -190,7 +190,7 @@ public:
             mRegisterNodeCV.notify_all();
         }
 
-        iamanager::v6::IAMOutgoingMessages outgoingMsg;
+        iamanager::v7::IAMOutgoingMessages outgoingMsg;
 
         while (stream->Read(&outgoingMsg)) {
             std::lock_guard lock {mRegisterNodeMutex};
@@ -212,16 +212,16 @@ private:
     std::unique_ptr<grpc::Server>                mServer;
     mutable std::mutex                           mMutex;
     std::condition_variable                      mCV;
-    grpc::ServerWriter<iamanager::v6::NodeInfo>* mWriter {nullptr};
+    grpc::ServerWriter<iamanager::v7::NodeInfo>* mWriter {nullptr};
     std::vector<std::string>                     mNodeIds;
     std::map<std::string, std::string>           mNodeInfos;
 
     // RegisterNode support
     mutable std::mutex      mRegisterNodeMutex;
     std::condition_variable mRegisterNodeCV;
-    grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>*
+    grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>*
                                                    mRegisterNodeStream {nullptr};
-    std::queue<iamanager::v6::IAMOutgoingMessages> mReceivedMessages;
+    std::queue<iamanager::v7::IAMOutgoingMessages> mReceivedMessages;
 };
 
 #endif

@@ -38,7 +38,10 @@ Error ConvertCertModuleConfig(const config::ModuleConfig& config, certhandler::M
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
-    aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
+
+    if (auto err = aosConfig.mCertType.FromString(config.mCertType.c_str()); !err.IsNone()) {
+        return err;
+    }
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         certhandler::ExtendedKeyUsage keyUsage;
@@ -111,7 +114,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     auto config = config::ParseConfig(configFile.empty() ? cDefaultConfigFile : configFile);
     AOS_ERROR_CHECK_AND_THROW(config.mError, "can't parse config");
 
-    err = mDatabase.Init(config.mValue.mDatabase);
+    err = mDatabase.Init(config.mValue.mDatabase, provisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
 
     err = mCurrentNodeHandler.Init(config.mValue.mNodeInfo);
@@ -129,7 +132,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
-    err = mTLSCredentials.Init(config.mValue.mIAMClient.mCACert, mCertHandler, mCertLoader, mCryptoProvider);
+    err = mTLSCredentials.Init(mCertHandler, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize TLS credentials");
 
     err = InitCertModules(config.mValue);
@@ -149,7 +152,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize provision manager");
 
     err = mIAMServer.Init(config.mValue.mIAMServer, mCertHandler, *mIdentifier, *mPermHandler, mCertLoader,
-        mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mProvisioning);
+        mCryptoProvider, mCurrentNodeHandler, mNodeManager, mCertHandler, mProvisionManager, mDatabase, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM server");
 
     const auto& clientConfig = config.mValue.mIAMClient;

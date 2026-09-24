@@ -229,7 +229,7 @@ TEST_F(PBConvertCommon, ConvertArchInfoToAos)
 TEST_F(PBConvertCommon, ConvertNodeInfoToAos)
 {
     // Create protobuf NodeInfo
-    iamanager::v6::NodeInfo src;
+    iamanager::v7::NodeInfo src;
     src.set_node_id("test-node-id");
     src.set_node_type("test-node-type");
     src.set_title("test-title");
@@ -362,7 +362,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAos)
 TEST_F(PBConvertCommon, ConvertNodeInfoToAosWithoutOptionalFields)
 {
     // Create protobuf NodeInfo with minimal fields
-    iamanager::v6::NodeInfo src;
+    iamanager::v7::NodeInfo src;
     src.set_node_id("minimal-node");
     src.set_node_type("minimal-type");
     src.set_title("minimal-title");

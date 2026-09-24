@@ -12,15 +12,15 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMProvisioningService v6.
  */
-class IAMProvisioningServiceStub final : public iamanager::v6::IAMProvisioningService::Service {
+class IAMProvisioningServiceStub final : public iamanager::v7::IAMProvisioningService::Service {
 public:
     IAMProvisioningServiceStub()
     {
@@ -78,7 +78,7 @@ public:
     }
 
     grpc::Status GetCertTypes([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::GetCertTypesRequest* request, iamanager::v6::CertTypes* response) override
+        const iamanager::v7::GetCertTypesRequest* request, iamanager::v7::CertTypes* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -92,8 +92,8 @@ public:
     }
 
     grpc::Status StartProvisioning([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::StartProvisioningRequest*                   request,
-        iamanager::v6::StartProvisioningResponse*                        response) override
+        const iamanager::v7::StartProvisioningRequest*                   request,
+        iamanager::v7::StartProvisioningResponse*                        response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -109,8 +109,8 @@ public:
     }
 
     grpc::Status FinishProvisioning([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::FinishProvisioningRequest*                   request,
-        iamanager::v6::FinishProvisioningResponse*                        response) override
+        const iamanager::v7::FinishProvisioningRequest*                   request,
+        iamanager::v7::FinishProvisioningResponse*                        response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -126,7 +126,7 @@ public:
     }
 
     grpc::Status Deprovision([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::DeprovisionRequest* request, iamanager::v6::DeprovisionResponse* response) override
+        const iamanager::v7::DeprovisionRequest* request, iamanager::v7::DeprovisionResponse* response) override
     {
         std::lock_guard lock {mMutex};
 

@@ -149,7 +149,6 @@ public:
         tests::utils::InitLog();
 
         mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
-        mConfig.mCACert                   = CERTIFICATES_CM_DIR "/ca.cer";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentProviderMock, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
@@ -185,9 +184,12 @@ public:
 
         auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
+        (void)certPEM;
 
-        err = mCryptoHelper.Init(mAllocator, mCertProviderStub, mCryptoProvider, mCertLoader,
-            mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
+        mCertProviderStub.SetRootCerts({"file://" CERTIFICATES_CM_DIR "/ca.cer"});
+
+        err = mCryptoHelper.Init(
+            mAllocator, mCertProviderStub, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
 
         StartHTTPServer();

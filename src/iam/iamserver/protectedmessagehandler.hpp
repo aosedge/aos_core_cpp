@@ -19,7 +19,7 @@
 #include <core/iam/permhandler/itf/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
@@ -101,6 +101,8 @@ private:
         iamproto::DeprovisionResponse* response) override;
 
     // IAMCertificateService interface
+    grpc::Status UpdateRootCerts(grpc::ServerContext* context, const iamproto::UpdateRootCertsRequest* request,
+        iamproto::UpdateRootCertsResponse* response) override;
     grpc::Status CreateKey(grpc::ServerContext* context, const iamproto::CreateKeyRequest* request,
         iamproto::CreateKeyResponse* response) override;
     grpc::Status ApplyCert(grpc::ServerContext* context, const iamproto::ApplyCertRequest* request,

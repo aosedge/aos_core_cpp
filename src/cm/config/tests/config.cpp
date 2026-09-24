@@ -24,7 +24,6 @@ using namespace testing;
 namespace {
 
 constexpr auto cFullTestConfigJSON = R"({
-    "CACert": "CACert",
     "certStorage": "/var/aos/crypt/cm/",
     "storageDir": "/var/aos/storage",
     "stateDir": "/var/aos/state",
@@ -66,7 +65,6 @@ constexpr auto cFullTestConfigJSON = R"({
 })";
 
 constexpr auto cMinimalTestConfigJSON = R"({
-    "CACert" : "CACert",
     "workingDir" : "workingDir",
     "serviceDiscoveryUrl" : "www.aos.com",
     "iamProtectedServerUrl" : "localhost:8089",
@@ -116,7 +114,6 @@ TEST_F(CMConfigTest, ParseFullConfig)
 
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mCACert, "CACert");
     EXPECT_EQ(config.mServiceDiscoveryURL, "www.aos.com");
     EXPECT_EQ(config.mStorageDir, "/var/aos/storage");
     EXPECT_EQ(config.mStateDir, "/var/aos/state");
@@ -158,8 +155,6 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     auto err = aos::cm::config::ParseConfig(cMinimalTestConfigFileName, config);
 
     ASSERT_EQ(err, aos::ErrorEnum::eNone);
-
-    EXPECT_EQ(config.mCACert, "CACert");
 
     EXPECT_EQ(config.mServiceDiscoveryURL, "www.aos.com");
     EXPECT_EQ(config.mWorkingDir, "workingDir");

@@ -3,7 +3,7 @@
 COMMAND="$1"
 
 clear_disks() {
-    echo "Remove IAM DB and PKCS11 storage"
+    echo "Restore unprovisioned state and remove PKCS11 storage"
 
     rm /var/aos/iam -rf
 
@@ -26,6 +26,10 @@ deprovision_async() {
         systemctl stop -- $(systemctl show -p Wants aos.target | cut -d= -f2)
 
         remove_firewall_rules
+
+        # IAM DB is on encrypted workdirs — clear it while the volume is still mounted
+        echo "Remove IAM DB from workdirs" | systemd-cat
+        rm /var/aos/workdirs/iam -rf
 
         echo "Restore unprovisioned flag" | systemd-cat
         rm /var/aos/.provisionstate -f

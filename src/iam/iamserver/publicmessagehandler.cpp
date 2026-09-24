@@ -164,7 +164,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
  **********************************************************************************************************************/
 
 ::grpc::Status PublicMessageHandler::GetCurrentNodeInfo([[maybe_unused]] ::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v6::NodeInfo* response)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v7::NodeInfo* response)
 {
     LOG_DBG() << "Process get current node info";
 
@@ -174,7 +174,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
 }
 
 ::grpc::Status PublicMessageHandler::SubscribeCurrentNodeChanged(::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v7::NodeInfo>* writer)
 {
     LOG_DBG() << "Process subscribe current node changed";
 
@@ -220,10 +220,47 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     return grpc::Status::OK;
 }
 
-grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
-    const iamanager::v6::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v6::CertInfo>* writer)
+grpc::Status PublicMessageHandler::GetAllCerts([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::GetCertRequest* request, iamproto::CertInfoList* response)
 {
-    LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
+    LOG_DBG() << "Process get all certs request: type=" << request->type().c_str();
+
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    if (auto err = mCertProvider->GetAllCerts(request->type().c_str(), *certInfos); !err.IsNone()) {
+        LOG_ERR() << "Failed to get all certs: " << err;
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    for (const auto& certInfo : *certInfos) {
+        auto* item = response->add_certs();
+
+        item->set_type(request->type());
+        item->set_key_url(certInfo.mKeyURL.CStr());
+        item->set_cert_url(certInfo.mCertURL.CStr());
+        item->set_issuer(certInfo.mIssuer.Get(), certInfo.mIssuer.Size());
+
+        Error       err;
+        std::string serial;
+
+        Tie(serial, err) = common::pbconvert::ConvertSerialToProto(certInfo.mSerial);
+        if (!err.IsNone()) {
+            LOG_ERR() << "Convert serial failed: error=" << err;
+
+            return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+        }
+
+        item->set_serial(serial);
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status PublicMessageHandler::SubscribeCertsChanged([[maybe_unused]] grpc::ServerContext* context,
+    const iamanager::v7::SubscribeCertsChangedRequest* request, grpc::ServerWriter<iamanager::v7::CertInfoList>* writer)
+{
+    LOG_DBG() << "Process subscribe certs changed: type=" << request->type().c_str();
 
     auto certWriter = std::make_shared<CertWriter>(request->type());
 
@@ -235,7 +272,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
     auto err = mCertProvider->SubscribeListener(request->type().c_str(), *certWriter);
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
+        LOG_ERR() << "Failed to subscribe certs changed, err=" << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
@@ -244,7 +281,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
     err = mCertProvider->UnsubscribeListener(*certWriter);
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
+        LOG_ERR() << "Failed to unsubscribe certs changed, err=" << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
