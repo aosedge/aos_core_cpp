@@ -101,7 +101,6 @@ private:
     aos::common::utils::FSBufferedWatcher                       mFSWatcher;
     aos::fs::FileInfoProvider                                   mFileInfoProvider;
     aos::common::oci::OCISpec                                   mOCISpec;
-    common::fileserver::Fileserver                              mFileServer;
     common::iamclient::TLSCredentials                           mTLSCredentials;
     cm::alerts::Alerts                                          mAlerts;
     cm::imagemanager::ImageManager                              mImageManager;
@@ -118,6 +117,7 @@ private:
     communication::Communication                                mCommunication;
     database::Database                                          mDatabase;
     iamclient::IAMClient                                        mIAMClient;
+    common::fileserver::Fileserver                              mFileServer;
     common::logger::Logger                                      mLogger;
     aos::common::utils::CleanupManager                          mCleanupManager;
 

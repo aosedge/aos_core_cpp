@@ -89,7 +89,8 @@ void AosCore::Init(const std::string& configFile)
     err = mDownloader.Init(&mAlerts);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
 
-    err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mInstallPath.CStr());
+    err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mInstallPath.CStr(), mConfig.mCertStorage,
+        mConfig.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
     err = mImageManager.Init(mAllocator, mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,

@@ -18,7 +18,10 @@
 #include <curl/curl.h>
 
 #include <core/common/alerts/itf/sender.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
+#include <core/common/crypto/itf/crypto.hpp>
 #include <core/common/downloader/itf/downloader.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
 
 namespace aos::common::downloader {
 
@@ -35,6 +38,22 @@ public:
      * @return Error.
      */
     Error Init(
+        aos::alerts::SenderItf* sender = nullptr, std::chrono::seconds progressInterval = std::chrono::seconds {30});
+
+    /**
+     * Initializes an HTTPS-only downloader with mutual TLS.
+     *
+     * @param certStorage IAM certificate storage.
+     * @param caCert CA certificate path.
+     * @param certProvider certificate provider.
+     * @param certLoader certificate loader.
+     * @param cryptoProvider crypto provider.
+     * @param sender alerts sender.
+     * @param progressInterval progress interval.
+     * @return Error.
+     */
+    Error Init(const std::string& certStorage, const std::string& caCert, aos::iamclient::CertProviderItf& certProvider,
+        crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         aos::alerts::SenderItf* sender = nullptr, std::chrono::seconds progressInterval = std::chrono::seconds {30});
 
     /**
@@ -78,6 +97,9 @@ private:
         curl_off_t                            mDownloadedSize {0};
     };
 
+    Error           ConfigureTLS(CURL* curl);
+    static CURLcode SSLContextCallback(CURL* curl, void* sslContext, void* userData);
+
     bool  SupportsRangeRequests(const String& url);
     Error DownloadImage(const String& url, const String& path, ProgressContext* context);
     Error CopyFile(const Poco::URI& uri, const String& outfilename);
@@ -97,6 +119,12 @@ private:
     std::chrono::seconds mProgressInterval {std::chrono::seconds {30}};
 
     aos::alerts::SenderItf* mSender {nullptr};
+
+    std::string                      mCertStorage;
+    std::string                      mCACert;
+    aos::iamclient::CertProviderItf* mCertProvider {};
+    crypto::CertLoaderItf*           mCertLoader {};
+    crypto::x509::ProviderItf*       mCryptoProvider {};
 
     std::unordered_map<std::string, std::atomic<bool>> mCancelFlags;
 };

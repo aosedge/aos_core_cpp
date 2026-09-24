@@ -11,6 +11,7 @@
 #include <core/common/tools/logger.hpp>
 #include <core/common/types/alerts.hpp>
 
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 
 #include "downloader.hpp"
@@ -31,6 +32,23 @@ Error Downloader::Init(aos::alerts::SenderItf* sender, std::chrono::seconds prog
     return ErrorEnum::eNone;
 }
 
+Error Downloader::Init(const std::string& certStorage, const std::string& caCert,
+    aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    crypto::x509::ProviderItf& cryptoProvider, aos::alerts::SenderItf* sender, std::chrono::seconds progressInterval)
+{
+    if (caCert.empty()) {
+        return Error(ErrorEnum::eInvalidArgument, "CA certificate path is empty");
+    }
+
+    mCertStorage    = certStorage;
+    mCACert         = caCert;
+    mCertProvider   = &certProvider;
+    mCertLoader     = &certLoader;
+    mCryptoProvider = &cryptoProvider;
+
+    return Init(sender, progressInterval);
+}
+
 Downloader::~Downloader()
 {
     std::lock_guard lock {mMutex};
@@ -41,6 +59,16 @@ Downloader::~Downloader()
 
 Error Downloader::Download(const String& digest, const String& url, const String& path)
 {
+    if (mCertProvider) {
+        try {
+            if (Poco::URI(url.CStr()).getScheme() != "https") {
+                return Error(ErrorEnum::eInvalidArgument, "mutual TLS download requires HTTPS");
+            }
+        } catch (const std::exception& e) {
+            return utils::ToAosError(e);
+        }
+    }
+
     LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path) << Log::Field("digest", digest);
 
     ProgressContext context;
@@ -75,10 +103,60 @@ Error Downloader::Download(const String& digest, const String& url, const String
  * Private
  **********************************************************************************************************************/
 
+Error Downloader::ConfigureTLS(CURL* curl)
+{
+    if (!mCertProvider) {
+        return ErrorEnum::eNone;
+    }
+
+    CURLcode result;
+    if ((result = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_CAINFO, mCACert.c_str())) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_CAPATH, static_cast<const char*>(nullptr))) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "https")) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, &Downloader::SSLContextCallback)) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_SSL_CTX_DATA, this)) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L)) != CURLE_OK
+        || (result = curl_easy_setopt(curl, CURLOPT_SSL_SESSIONID_CACHE, 0L)) != CURLE_OK) {
+        return Error(ErrorEnum::eFailed, curl_easy_strerror(result));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
+{
+    auto* downloader = static_cast<Downloader*>(userData);
+
+    try {
+        if (auto err = utils::ConfigureSSLContext(downloader->mCertStorage.c_str(), downloader->mCACert.c_str(),
+                *downloader->mCertProvider, *downloader->mCertLoader, *downloader->mCryptoProvider,
+                static_cast<SSL_CTX*>(sslContext));
+            !err.IsNone()) {
+            LOG_ERR() << "Failed to configure downloader TLS" << Log::Field(err);
+
+            return CURLE_SSL_CERTPROBLEM;
+        }
+    } catch (const std::exception& e) {
+        LOG_ERR() << "Failed to configure downloader TLS" << utils::ToAosError(e);
+
+        return CURLE_SSL_CERTPROBLEM;
+    } catch (...) {
+        return CURLE_SSL_CERTPROBLEM;
+    }
+
+    return CURLE_OK;
+}
+
 bool Downloader::SupportsRangeRequests(const String& url)
 {
     std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
     if (!curl) {
+        return false;
+    }
+
+    if (auto err = ConfigureTLS(curl.get()); !err.IsNone()) {
         return false;
     }
 
@@ -118,6 +196,10 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
     std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
     if (!curl) {
         return Error(ErrorEnum::eFailed, "failed to init curl");
+    }
+
+    if (auto err = ConfigureTLS(curl.get()); !err.IsNone()) {
+        return err;
     }
 
     curl_off_t existingSize = 0;

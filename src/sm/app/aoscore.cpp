@@ -124,7 +124,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize downloader
 
-    err = mDownloader.Init();
+    err = mDownloader.Init(mConfig.mSMClientConfig.mCertStorage, mConfig.mIAMClientConfig.mCACert, mIAMClient,
+        mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
 
     // Initialize file info provider
