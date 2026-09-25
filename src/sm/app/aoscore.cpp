@@ -46,6 +46,12 @@ void AosCore::Init(const std::string& configFile)
     err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
+    // Initialize crypto helper
+
+    err = mCryptoHelper.Init(
+        mAllocator, mIAMClient, mCryptoProvider, mCertLoader, "", mConfig.mIAMClientConfig.mCACert.c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
+
     // Initialize TLS credentials
 
     err = mTLSCredentials.Init(mConfig.mIAMClientConfig.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
@@ -139,8 +145,11 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize image manager
 
+    err = mBlobDecryptor.Init(mAllocator, mIAMClient, mCertLoader, cLayerEncryptionCertType);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize blob decryptor");
+
     err = mImageManager.Init(mAllocator, mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader,
-        mFileInfoProvider, mOCISpec, mImageHandler, mDatabase);
+        mFileInfoProvider, mOCISpec, mImageHandler, mDatabase, mBlobDecryptor);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
     // Initialize launcher
