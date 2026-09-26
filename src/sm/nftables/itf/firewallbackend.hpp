@@ -244,11 +244,11 @@ public:
     virtual Error Commit(std::vector<FWRuleHandle>& addedHandles) = 0;
 
     /**
-     * Submits the queued batch and returns the jump rules it added with their
-     * handles, so the caller can attribute added jumps to their target chains
-     * when many instances are committed together.
+     * Submits the queued batch and returns the jump and accept rules it added with their
+     * handles and match fields, so the caller can attribute dispatch jumps
+     * and final accept rules when many instances are committed together.
      *
-     * @param[out] addedRules jump rules added by this batch.
+     * @param[out] addedRules jump and accept rules added by this batch.
      * @return error.
      */
     virtual Error Commit(std::vector<FWListedRule>& addedRules) = 0;

@@ -139,3 +139,27 @@ Restarts the DNS server to apply hosts updates.
 
 [networkmanager-networkmanager-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/networkmanager/itf/networkmanager.hpp
 [crypto-random-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/crypto/itf/rand.hpp
+
+## Allowed connection targets
+
+Allowed connections received from SM use `target/port/protocol` (or `target/port`, with TCP as the default).
+The target can be an item ID or a hostname registered for an instance in `UpdateItemNetworkParams.mHosts`,
+including the configured service hostname and generated instance DNS names. Matching is exact and uses CM's
+instance registry, without external DNS resolution.
+
+CM first searches all instances by item ID. Only when no item ID matches does it search registered hostnames.
+An existing item ID retains precedence even if it does not expose the requested ports. Hostnames remain globally
+unique, as enforced during instance allocation. An item ID still uses the existing instance-selection behavior.
+
+For example, both `service-id/8080:8082/tcp` and `hostname-service/8080:8082/tcp` are supported. The cloud already
+converts service configuration port ranges to the colon format; port parsing is unchanged. Every requested port
+must be exposed with the matching protocol. Instances in the same subnet do not require a separate firewall rule.
+
+Unresolved targets are stored as pending connections and retried after instance allocation, hostname updates and
+network-state synchronization. Pending records retain the original target string. For compatibility, the database
+column is still named `targetItemID`, although it can also contain a hostname.
+
+Registered hostnames are persisted with the instance and restored when CM starts. Database migration 1 adds an
+empty hostname list to existing instance records; those lists are populated when SM next supplies the instance's
+network parameters. Renaming a hostname affects subsequent lookups; this does not introduce revocation or
+retargeting of firewall rules that have already been installed.

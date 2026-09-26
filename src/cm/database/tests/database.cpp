@@ -103,6 +103,9 @@ networkmanager::Instance CreateInstance(const char* itemID, const char* subjectI
     port3.mPort     = "7400";
     AOS_ERROR_CHECK_AND_THROW(inst.mExposedPorts.PushBack(port3), "can't add exposed port");
 
+    AOS_ERROR_CHECK_AND_THROW(inst.mHosts.EmplaceBack("hostname-service"), "can't add hostname");
+    AOS_ERROR_CHECK_AND_THROW(inst.mHosts.EmplaceBack("0.subject.service"), "can't add hostname");
+
     // Add sample DNS servers
     AOS_ERROR_CHECK_AND_THROW(inst.mDNSServers.EmplaceBack("8.8.8.8"), "can't add DNS server");
     AOS_ERROR_CHECK_AND_THROW(inst.mDNSServers.EmplaceBack("1.1.1.1"), "can't add DNS server");
@@ -121,7 +124,7 @@ networkmanager::PendingConnection CreatePendingConnection(const char* requesterI
     conn.mNetworkID       = networkID;
     conn.mRequesterIP     = requesterIP;
     conn.mRequesterSubnet = requesterSubnet;
-    conn.mTargetItemID    = targetItemID;
+    conn.mTarget          = targetItemID;
     conn.mPort            = port;
     conn.mProtocol        = protocol;
 
@@ -258,7 +261,7 @@ public:
 private:
     int GetVersion() const override { return mVersion; }
 
-    int mVersion = 0;
+    int mVersion = 1;
 };
 
 } // namespace
@@ -1190,6 +1193,95 @@ TEST_F(CMDatabaseTest, PendingConnectionRemove)
 
     ASSERT_EQ(connections.Size(), 1);
     EXPECT_EQ(connections[0], conn3);
+}
+
+TEST_F(CMDatabaseTest, NetworkManagerUpdatesHostnamesAndPersistsLongPendingTarget)
+{
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+    ASSERT_TRUE(mDB.AddNetwork(CreateNetwork("network1", "172.17.0.0/16", 1000)).IsNone());
+    ASSERT_TRUE(mDB.AddHost("network1", CreateHost("node1", "172.17.0.1")).IsNone());
+
+    auto instance = CreateInstance("service1", "subject1", 0, "network1", "node1", "172.17.0.10");
+
+    ASSERT_TRUE(mDB.AddInstance(instance).IsNone());
+    instance.mHosts.Clear();
+
+    const std::string hostname(cHostNameLen, 'h');
+
+    ASSERT_TRUE(instance.mHosts.EmplaceBack(hostname.c_str()).IsNone());
+    ASSERT_TRUE(mDB.UpdateInstanceHosts(instance.mInstanceIdent, instance.mHosts).IsNone());
+
+    auto pending = CreatePendingConnection("requester", "subject1", 0, "node1", "network1", "172.17.0.11",
+        "172.17.0.0/16", hostname.c_str(), "8080:8081", "tcp");
+
+    ASSERT_TRUE(mDB.AddPendingConnection(pending).IsNone());
+
+    Database reopened;
+
+    ASSERT_TRUE(reopened.Init(mDatabaseConfig).IsNone());
+
+    StaticArray<networkmanager::Instance, 1> instances;
+
+    ASSERT_TRUE(reopened.GetInstances("network1", "node1", instances).IsNone());
+
+    ASSERT_EQ(instances.Size(), 1U);
+    EXPECT_EQ(instances[0], instance);
+
+    StaticArray<networkmanager::PendingConnection, 1> connections;
+
+    ASSERT_TRUE(reopened.GetPendingConnectionsByTarget(hostname.c_str(), connections).IsNone());
+
+    ASSERT_EQ(connections.Size(), 1U);
+    EXPECT_EQ(connections[0], pending);
+
+    ASSERT_TRUE(reopened.RemovePendingConnection(pending).IsNone());
+    ASSERT_TRUE(reopened.GetAllPendingConnections(connections).IsNone());
+
+    EXPECT_TRUE(connections.IsEmpty());
+}
+
+TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending)
+{
+    mDB.SetVersion(0);
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+    ASSERT_TRUE(mDB.AddNetwork(CreateNetwork("network1", "172.17.0.0/16", 1000)).IsNone());
+    ASSERT_TRUE(mDB.AddHost("network1", CreateHost("node1", "172.17.0.1")).IsNone());
+
+    auto pending = CreatePendingConnection(
+        "requester", "subject1", 0, "node1", "network1", "172.17.0.11", "172.17.0.0/16", "service1", "8080", "tcp");
+
+    ASSERT_TRUE(mDB.AddPendingConnection(pending).IsNone());
+
+    {
+        Poco::Data::Session legacy("SQLite", (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string());
+        legacy << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, "
+                  "networkID, nodeID, ip, exposedPorts, dnsServers) VALUES "
+                  "('service1', 'subject1', 0, 'service', 0, 'network1', 'node1', '172.17.0.10', "
+                  "'[{\"port\":\"8080\",\"protocol\":\"tcp\"}]', '[\"8.8.8.8\"]');",
+            Poco::Data::Keywords::now;
+    }
+
+    Database upgraded;
+
+    ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
+
+    StaticArray<networkmanager::Instance, 1> instances;
+
+    ASSERT_TRUE(upgraded.GetInstances("network1", "node1", instances).IsNone());
+
+    ASSERT_EQ(instances.Size(), 1U);
+    EXPECT_EQ(instances[0].mInstanceIdent.mItemID, "service1");
+    EXPECT_EQ(instances[0].mIP, "172.17.0.10");
+    EXPECT_TRUE(instances[0].mHosts.IsEmpty());
+    ASSERT_EQ(instances[0].mExposedPorts.Size(), 1U);
+    EXPECT_EQ(instances[0].mExposedPorts[0].mPort, "8080");
+
+    StaticArray<networkmanager::PendingConnection, 1> connections;
+
+    ASSERT_TRUE(upgraded.GetAllPendingConnections(connections).IsNone());
+
+    ASSERT_EQ(connections.Size(), 1U);
+    EXPECT_EQ(connections[0], pending);
 }
 
 } // namespace aos::cm::database

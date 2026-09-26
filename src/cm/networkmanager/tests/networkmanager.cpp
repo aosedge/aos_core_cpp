@@ -1621,7 +1621,7 @@ TEST_F(CMNetworkManagerTest, SyncNetworkState_ReResolvePendingConnections)
             pending.mNetworkID       = networkID1;
             pending.mRequesterIP     = resultA.mIP;
             pending.mRequesterSubnet = resultA.mSubnet;
-            pending.mTargetItemID    = "serviceB";
+            pending.mTarget          = "serviceB";
             pending.mPort            = "8080";
             pending.mProtocol        = "tcp";
             connections.PushBack(pending);
@@ -1736,7 +1736,7 @@ TEST_F(CMNetworkManagerTest, SyncNetworkState_ConfirmedPendingCleanedFromDB)
             pending.mNetworkID       = networkID1;
             pending.mRequesterIP     = resultA.mIP;
             pending.mRequesterSubnet = resultA.mSubnet;
-            pending.mTargetItemID    = "serviceB";
+            pending.mTarget          = "serviceB";
             pending.mPort            = "8080";
             pending.mProtocol        = "tcp";
             connections.PushBack(pending);
@@ -1747,6 +1747,354 @@ TEST_F(CMNetworkManagerTest, SyncNetworkState_ConfirmedPendingCleanedFromDB)
 
     err = mNetworkManager->SyncNetworkState(nodeID1, smState);
     EXPECT_TRUE(err.IsNone());
+}
+
+class CMHostnameConnectionTest : public CMNetworkManagerTest {
+protected:
+    void SetUp() override
+    {
+        CMNetworkManagerTest::SetUp();
+
+        mRequester.mItemID    = "requester";
+        mRequester.mSubjectID = "subject";
+        mTarget.mItemID       = "target-id";
+        mTarget.mSubjectID    = "subject";
+        mTargetData.mHosts.PushBack("hostname-service");
+        mTargetData.mHosts.PushBack("0.subject.target-id");
+        mTargetData.mExposedPorts.PushBack("8080/tcp");
+        mTargetData.mExposedPorts.PushBack("8081/tcp");
+        mRequesterData.mAllowedConnections.PushBack("hostname-service/8080:8081/tcp");
+
+        EXPECT_CALL(*mStorage, GetNetworks(_)).WillRepeatedly(Invoke([](Array<Network>& networks) -> Error {
+            Network network;
+
+            network.mNetworkID = "requester-net";
+            network.mSubnet    = "172.17.0.0/16";
+            network.mVlanID    = 1000;
+            networks.PushBack(network);
+
+            network.mNetworkID = "target-net";
+            network.mSubnet    = "172.18.0.0/16";
+            network.mVlanID    = 1001;
+
+            return networks.PushBack(network);
+        }));
+
+        EXPECT_CALL(*mStorage, GetHosts(_, _))
+            .WillRepeatedly(Invoke([](const String& network, Array<Host>& hosts) -> Error {
+                Host host;
+
+                host.mNodeID = "node";
+                host.mIP     = network == "requester-net" ? "172.17.0.1" : "172.18.0.1";
+
+                return hosts.PushBack(host);
+            }));
+
+        EXPECT_CALL(*mStorage, GetInstances(_, _, _))
+            .WillRepeatedly(
+                Invoke([this](const String& network, const String& node, Array<Instance>& instances) -> Error {
+                    for (const auto& instance : mSavedInstances) {
+                        if (instance.mNetworkID == network && instance.mNodeID == node) {
+                            instances.PushBack(instance);
+                        }
+                    }
+
+                    return ErrorEnum::eNone;
+                }));
+
+        EXPECT_CALL(*mStorage, AddInstance(_)).WillRepeatedly(Invoke([this](const Instance& instance) -> Error {
+            mSavedInstances.push_back(instance);
+
+            return ErrorEnum::eNone;
+        }));
+
+        EXPECT_CALL(*mStorage, UpdateInstanceHosts(_, _))
+            .WillRepeatedly(
+                Invoke([this](const InstanceIdent& ident, const Array<StaticString<cHostNameLen>>& hosts) -> Error {
+                    for (auto& instance : mSavedInstances) {
+                        if (instance.mInstanceIdent == ident) {
+                            instance.mHosts = hosts;
+                        }
+                    }
+
+                    return ErrorEnum::eNone;
+                }));
+
+        EXPECT_CALL(*mStorage, AddPendingConnection(_))
+            .WillRepeatedly(Invoke([this](const PendingConnection& pending) -> Error {
+                mSavedPending.push_back(pending);
+
+                return ErrorEnum::eNone;
+            }));
+
+        EXPECT_CALL(*mStorage, GetAllPendingConnections(_))
+            .WillRepeatedly(Invoke([this](Array<PendingConnection>& pending) -> Error {
+                for (const auto& connection : mSavedPending) {
+                    pending.PushBack(connection);
+                }
+
+                return ErrorEnum::eNone;
+            }));
+
+        EXPECT_CALL(*mStorage, RemovePendingConnection(_))
+            .WillRepeatedly(Invoke([this](const PendingConnection& pending) -> Error {
+                mSavedPending.erase(
+                    std::remove(mSavedPending.begin(), mSavedPending.end(), pending), mSavedPending.end());
+
+                return ErrorEnum::eNone;
+            }));
+
+        EXPECT_CALL(*mDNSServer, GetIP()).WillRepeatedly(Return("8.8.8.8"));
+        EXPECT_CALL(*mDNSServer, UpdateHostsFile(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mDNSServer, Restart()).WillRepeatedly(Return(ErrorEnum::eNone));
+        ASSERT_TRUE(mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer, &mHandler).IsNone());
+    }
+
+    Error AllocateTarget(const String& network = "target-net")
+    {
+        mTargetResult = {};
+
+        return mNetworkManager->AllocateInstanceNetwork(mTarget, network, "node", mTargetData, mTargetResult);
+    }
+
+    Error AllocateRequester()
+    {
+        mRequesterResult = {};
+
+        return mNetworkManager->AllocateInstanceNetwork(
+            mRequester, "requester-net", "node", mRequesterData, mRequesterResult);
+    }
+
+    void ExpectPendingUpdate()
+    {
+        EXPECT_CALL(mHandler, OnPendingFirewallUpdate(_, _))
+            .WillOnce(Invoke([this](const String& node, const aos::networkmanager::PendingFirewallUpdate& update) {
+                EXPECT_EQ(node, "node");
+                EXPECT_EQ(update.mInstanceIdent, mRequester);
+                ASSERT_EQ(update.mFirewallRules.Size(), 1U);
+                EXPECT_EQ(update.mFirewallRules[0].mSrcIP, mRequesterResult.mIP);
+                EXPECT_EQ(update.mFirewallRules[0].mDstIP, mTargetResult.mIP);
+                EXPECT_EQ(update.mFirewallRules[0].mDstPort, "8080:8081");
+                EXPECT_EQ(update.mFirewallRules[0].mProto, "tcp");
+            }));
+    }
+
+    InstanceIdent                        mRequester;
+    InstanceIdent                        mTarget;
+    UpdateItemNetworkParams              mRequesterData;
+    UpdateItemNetworkParams              mTargetData;
+    InstanceNetworkAllocation            mRequesterResult;
+    InstanceNetworkAllocation            mTargetResult;
+    StrictMock<PendingUpdateHandlerMock> mHandler;
+    std::vector<Instance>                mSavedInstances;
+    std::vector<PendingConnection>       mSavedPending;
+};
+
+TEST_F(CMHostnameConnectionTest, ResolvesHostnameAliasAndItemID)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    for (const auto* target : {"hostname-service", "0.subject.target-id", "target-id"}) {
+        mRequesterData.mAllowedConnections.Clear();
+
+        const auto connection = std::string(target) + "/8080:8081/tcp";
+
+        ASSERT_TRUE(mRequesterData.mAllowedConnections.EmplaceBack(connection.c_str()).IsNone());
+        ASSERT_TRUE(AllocateRequester().IsNone());
+
+        ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), 1U);
+        EXPECT_EQ(mRequesterResult.mFirewallRules[0].mDstIP, mTargetResult.mIP);
+        EXPECT_EQ(mRequesterResult.mFirewallRules[0].mSrcIP, mRequesterResult.mIP);
+        EXPECT_EQ(mRequesterResult.mFirewallRules[0].mDstPort, "8080:8081");
+    }
+}
+
+TEST_F(CMHostnameConnectionTest, MissingExposedPortOrProtocolDoesNotCreateRule)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    for (const auto* connection : {"hostname-service/8080:8082/tcp", "hostname-service/8080/udp"}) {
+        mRequesterData.mAllowedConnections.Clear();
+        mRequesterData.mAllowedConnections.PushBack(connection);
+        ASSERT_TRUE(AllocateRequester().IsNone());
+
+        EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+        EXPECT_TRUE(mSavedPending.empty());
+    }
+}
+
+TEST_F(CMHostnameConnectionTest, SameSubnetNeedsNoRule)
+{
+    ASSERT_TRUE(AllocateTarget("requester-net").IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+    EXPECT_TRUE(mSavedPending.empty());
+}
+
+TEST_F(CMHostnameConnectionTest, ItemIDTakesPrecedenceOverHostname)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    mRequester.mItemID = "hostname-service";
+    // The matching ID is in the requester's subnet and does not expose the ports.
+    // Falling back to the other instance's hostname would incorrectly create a rule.
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+    EXPECT_TRUE(mSavedPending.empty());
+}
+
+TEST_F(CMHostnameConnectionTest, MatchingItemIDWithoutExposedPortsDoesNotFallBackToHostname)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    mTarget.mItemID = "hostname-service";
+    mTargetData.mHosts.Clear();
+    mTargetData.mExposedPorts.Clear();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+    EXPECT_TRUE(mSavedPending.empty());
+}
+
+TEST_F(CMHostnameConnectionTest, MatchingItemIDSelectsItsIPInsteadOfHostnameIP)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    const auto hostnameIP = mTargetResult.mIP;
+
+    mTarget.mItemID = "hostname-service";
+    mTargetData.mHosts.Clear();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), 1U);
+    EXPECT_EQ(mRequesterResult.mFirewallRules[0].mDstIP, mTargetResult.mIP);
+    EXPECT_NE(mRequesterResult.mFirewallRules[0].mDstIP, hostnameIP);
+}
+
+TEST_F(CMHostnameConnectionTest, PendingHostnameResolvesWhenTargetStarts)
+{
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mSavedPending.size(), 1U);
+    EXPECT_EQ(mSavedPending[0].mTarget, "hostname-service");
+
+    ExpectPendingUpdate();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+}
+
+TEST_F(CMHostnameConnectionTest, PendingHostnameResolvesWhenExistingTargetGetsName)
+{
+    mTargetData.mHosts.Clear();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+    mTargetData.mHosts.PushBack("hostname-service");
+    ExpectPendingUpdate();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    EXPECT_EQ(mSavedInstances[0].mHosts, mTargetData.mHosts);
+}
+
+TEST_F(CMHostnameConnectionTest, RestoresHostnameAndPendingAfterRestartAndConfirmsRule)
+{
+    ASSERT_TRUE(AllocateRequester().IsNone());
+    ExpectPendingUpdate();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    ASSERT_EQ(mSavedPending.size(), 1U);
+
+    mNetworkManager = std::make_unique<NetworkManager>();
+    ASSERT_TRUE(mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer, &mHandler).IsNone());
+
+    auto                     states = std::make_unique<StaticArray<InstanceNetworkStateInfo, 2>>();
+    InstanceNetworkStateInfo requester;
+
+    requester.mInstanceIdent = mRequester;
+    states->PushBack(requester);
+
+    InstanceNetworkStateInfo target;
+
+    target.mInstanceIdent = mTarget;
+    states->PushBack(target);
+    ExpectPendingUpdate();
+    ASSERT_TRUE(mNetworkManager->SyncNetworkState("node", *states).IsNone());
+
+    FirewallRule rule;
+
+    rule.mSrcIP   = mRequesterResult.mIP;
+    rule.mDstIP   = mTargetResult.mIP;
+    rule.mDstPort = "8080:8081";
+    rule.mProto   = "tcp";
+    (*states)[0].mFirewallRules.PushBack(rule);
+    ASSERT_TRUE(mNetworkManager->SyncNetworkState("node", *states).IsNone());
+
+    EXPECT_TRUE(mSavedPending.empty());
+
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), 1U);
+    EXPECT_EQ(mRequesterResult.mFirewallRules[0], rule);
+}
+
+TEST_F(CMHostnameConnectionTest, SupportsMaximumHostnameLengthInPendingConnection)
+{
+    const std::string hostname(cHostNameLen, 'h');
+
+    mTargetData.mHosts.Clear();
+    ASSERT_TRUE(mTargetData.mHosts.EmplaceBack(hostname.c_str()).IsNone());
+    mRequesterData.mAllowedConnections.Clear();
+    ASSERT_TRUE(mRequesterData.mAllowedConnections.EmplaceBack((hostname + "/8080:8081/tcp").c_str()).IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mSavedPending.size(), 1U);
+    EXPECT_EQ(mSavedPending[0].mTarget, hostname.c_str());
+
+    ExpectPendingUpdate();
+    ASSERT_TRUE(AllocateTarget().IsNone());
+}
+
+TEST_F(CMHostnameConnectionTest, RejectsTargetThatWouldBeTruncatedInPendingStorage)
+{
+    const std::string hostname(cConnectionTargetLen + 1, 'h');
+
+    mRequesterData.mAllowedConnections.Clear();
+    ASSERT_TRUE(mRequesterData.mAllowedConnections.EmplaceBack((hostname + "/80/tcp").c_str()).IsNone());
+
+    EXPECT_FALSE(AllocateRequester().IsNone());
+    EXPECT_TRUE(mSavedPending.empty());
+}
+
+TEST_F(CMHostnameConnectionTest, RenamingTargetRemovesOldHostname)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    mTargetData.mHosts.Clear();
+    mTargetData.mHosts.PushBack("renamed-service");
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+
+    mRequesterData.mAllowedConnections.Clear();
+    mRequesterData.mAllowedConnections.PushBack("renamed-service/8080/tcp");
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), 1U);
+    EXPECT_EQ(mRequesterResult.mFirewallRules[0].mDstIP, mTargetResult.mIP);
+}
+
+TEST_F(CMHostnameConnectionTest, FailedHostnameUpdateKeepsPreviousLookup)
+{
+    ASSERT_TRUE(AllocateTarget().IsNone());
+    mTargetData.mHosts.Clear();
+    mTargetData.mHosts.PushBack("renamed-service");
+    EXPECT_CALL(*mStorage, UpdateInstanceHosts(_, _)).WillOnce(Return(ErrorEnum::eRuntime));
+
+    EXPECT_FALSE(AllocateTarget().IsNone());
+
+    ASSERT_TRUE(AllocateRequester().IsNone());
+
+    ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), 1U);
 }
 
 } // namespace aos::cm::networkmanager

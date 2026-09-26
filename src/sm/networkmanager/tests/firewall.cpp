@@ -4,1092 +4,555 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
-
 #include <sm/networkmanager/firewall.hpp>
-#include <sm/tests/mocks/firewallbackendmock.hpp>
+
+#include "stubs/firewallbackend.hpp"
 
 using namespace aos;
 using namespace aos::sm::nftables;
 using namespace aos::sm::networkmanager;
-using namespace testing;
-
-/***********************************************************************************************************************
- * Helpers
- **********************************************************************************************************************/
 
 namespace {
 
-InputAccessConfig MakeInput(const char* port, const char* proto)
+InstanceFirewallParams MakeParams(const char* ip, const char* subnet, bool allowPublic = true)
 {
-    InputAccessConfig c;
+    InstanceFirewallParams params;
 
-    c.mPort     = port;
-    c.mProtocol = proto;
+    params.mIP          = ip;
+    params.mSubnet      = subnet;
+    params.mAllowPublic = allowPublic;
 
-    return c;
+    return params;
 }
 
-OutputAccessConfig MakeOutput(const char* dstIP, const char* dstPort, const char* proto, const char* srcIP = "")
+void Expose(InstanceFirewallParams& params, const char* port = "7410", const char* proto = "udp")
 {
-    OutputAccessConfig c;
-
-    c.mDstIP   = dstIP;
-    c.mDstPort = dstPort;
-    c.mProto   = proto;
-    c.mSrcIP   = srcIP;
-
-    return c;
+    ASSERT_TRUE(params.mInput.PushBack({port, proto}).IsNone());
 }
 
-InstanceFirewallParams MakeParams(const char* ip, bool allowPublic)
+void Allow(InstanceFirewallParams& params, const char* ip, const char* port = "7410", const char* proto = "udp")
 {
-    InstanceFirewallParams p;
-
-    p.mIP          = ip;
-    p.mAllowPublic = allowPublic;
-
-    return p;
-}
-
-MATCHER_P(BaseChainNamed, name, "")
-{
-    return arg.mName == name;
-}
-
-MATCHER_P(ChainNamed, name, "")
-{
-    return arg.mName == name;
-}
-
-MATCHER_P4(InputRule, dstAddr, proto, port, action, "")
-{
-    return arg.mDstAddr == dstAddr && arg.mProto == proto && arg.mDstPort == port && arg.mDstPortEnd == 0
-        && arg.mAction == action && arg.mSrcAddr.empty();
-}
-
-MATCHER_P5(InputRangeRule, dstAddr, proto, portFrom, portTo, action, "")
-{
-    return arg.mDstAddr == dstAddr && arg.mProto == proto && arg.mDstPort == portFrom && arg.mDstPortEnd == portTo
-        && arg.mAction == action && arg.mSrcAddr.empty();
-}
-
-MATCHER_P5(OutputRule, srcAddr, dstIP, proto, port, action, "")
-{
-    return arg.mSrcAddr == srcAddr && arg.mDstAddr == dstIP && arg.mProto == proto && arg.mDstPort == port
-        && arg.mDstPortEnd == 0 && arg.mAction == action;
-}
-
-MATCHER_P6(OutputRangeRule, srcAddr, dstIP, proto, portFrom, portTo, action, "")
-{
-    return arg.mSrcAddr == srcAddr && arg.mDstAddr == dstIP && arg.mProto == proto && arg.mDstPort == portFrom
-        && arg.mDstPortEnd == portTo && arg.mAction == action;
-}
-
-MATCHER_P2(TerminalInRule, dstAddr, action, "")
-{
-    return arg.mAction == action && arg.mDstAddr == dstAddr && arg.mSrcAddr.empty() && arg.mProto.empty()
-        && arg.mDstPort == 0 && arg.mOIFName.empty();
-}
-
-MATCHER_P2(TerminalOutRule, srcAddr, action, "")
-{
-    return arg.mAction == action && arg.mSrcAddr == srcAddr && arg.mDstAddr.empty() && arg.mProto.empty()
-        && arg.mDstPort == 0 && arg.mOIFName.empty();
-}
-
-MATCHER_P2(SameNetRule, srcAddr, dstAddr, "")
-{
-    return arg.mAction == FWActionEnum::eAccept && arg.mSrcAddr == srcAddr && arg.mDstAddr == dstAddr
-        && arg.mProto.empty() && arg.mDstPort == 0 && arg.mOIFName.empty();
-}
-
-MATCHER_P2(JumpRule, addrField, target, "")
-{
-    return arg.mAction == FWActionEnum::eJump && arg.mJumpTarget == target && addrField(arg);
-}
-
-MATCHER_P2(MasqueradeRule, subnet, oifname, "")
-{
-    return arg.mAction == FWActionEnum::eMasquerade && arg.mSrcAddr == subnet && arg.mOIFName == oifname
-        && !arg.mOIFNeg;
-}
-
-MATCHER_P(BaseChainPolicy, policy, "")
-{
-    return arg.mPolicy == policy;
+    ASSERT_TRUE(params.mOutput.PushBack({ip, port, proto, params.mIP}).IsNone());
 }
 
 } // namespace
 
 /***********************************************************************************************************************
- * Fixture
+ * Suite
  **********************************************************************************************************************/
 
-class FirewallTest : public ::testing::Test {
+class FirewallTest : public testing::Test {
 protected:
     void SetUp() override
     {
         aos::tests::utils::InitLog();
 
         ASSERT_TRUE(mFirewall.Init(mBackend).IsNone());
+        ASSERT_TRUE(mFirewall.Start().IsNone());
     }
 
-    std::unique_ptr<StrictMock<MockFWTxn>> NewMockTx()
+    void AddPair(bool receiverFirst = false)
     {
-        auto tx = std::make_unique<StrictMock<MockFWTxn>>();
+        if (receiverFirst) {
+            ASSERT_TRUE(mFirewall.AddInstance("b", mB).IsNone());
+        }
 
-        mTxnPtr = tx.get();
+        ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
 
-        return tx;
+        if (!receiverFirst) {
+            ASSERT_TRUE(mFirewall.AddInstance("b", mB).IsNone());
+        }
     }
 
-    StrictMock<MockFWBackend> mBackend;
-    Firewall                  mFirewall;
-    StrictMock<MockFWTxn>*    mTxnPtr {};
+    aos::sm::networkmanager::tests::FirewallBackend mBackend;
+    Firewall                                        mFirewall;
+    InstanceFirewallParams                          mA = MakeParams("172.18.0.3", "172.18.0.0/16");
+    InstanceFirewallParams                          mB = MakeParams("172.17.0.3", "172.17.0.0/16");
+    aos::sm::networkmanager::tests::Packet          mPacket {"172.18.0.3", "172.17.0.3"};
 };
 
 /***********************************************************************************************************************
- * Start / Stop
+ * Tests
  **********************************************************************************************************************/
 
-TEST_F(FirewallTest, StartAdoptsExistingTableWithoutRecreating)
+TEST_F(FirewallTest, SkeletonKeepsDefaultDropAndOrdersBothChecksBeforeAccept)
 {
-    // Provisioned forward chain: ct rules only, no instance jumps.
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
-    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eAccept, ""}, FWRuleHandle {2}});
+    EXPECT_EQ(mBackend.mState.mPolicies.at("forward"), FWActionEnum::eDrop);
+    const auto& rules = mBackend.mState.mChains.at("forward");
 
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    EXPECT_TRUE(mFirewall.Start().IsNone());
+    ASSERT_EQ(rules.size(), 5U);
+    EXPECT_EQ(rules[2].mRule.mJumpTarget, "egress");
+    EXPECT_EQ(rules[3].mRule.mJumpTarget, "ingress");
+    EXPECT_EQ(rules[4].mRule.mJumpTarget, "accepted");
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 }
 
-TEST_F(FirewallTest, StartKeepsRulesLeftByPreviousLifetime)
+TEST_F(FirewallTest, ExposedPortWithoutAllowConnectionIsDeniedInBothCreationOrders)
 {
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_alive"}, FWRuleHandle {30}});
+    Expose(mB);
+    AddPair();
 
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 
-    EXPECT_TRUE(mFirewall.Start().IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("a").IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("b").IsNone());
+    AddPair(true);
+
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 }
 
-/***********************************************************************************************************************
- * RemoveOrphans
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, RemoveOrphansDropsUnknownInstanceChainsAndKeepsKnownOnes)
+TEST_F(FirewallTest, AllowConnectionAndExposedPortPermitBothCreationOrders)
 {
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"", "", "", 0, 0, "", FWActionEnum::eDrop, ""}, FWRuleHandle {1}});
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_alive"}, FWRuleHandle {20}});
-    forwardRules.push_back({{"10.0.0.6", "", "", 0, 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {30}});
-    forwardRules.push_back({{"", "10.0.0.6", "", 0, 0, "", FWActionEnum::eJump, "instance_stale"}, FWRuleHandle {31}});
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    std::vector<FWListedRule> postRules;
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 
-    auto tx = NewMockTx();
+    ASSERT_TRUE(mFirewall.UpdateInstance("a", mA).IsNone());
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {30}));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {31}));
-    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_stale")));
-    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_stale")));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 
-    StaticArray<StaticString<cIDLen>, 2> knownInstances;
-    knownInstances.PushBack("alive");
+    ASSERT_TRUE(mFirewall.UpdateInstance("b", mB).IsNone());
 
-    StaticArray<MasqueradeParams, 2> knownMasquerades;
-
-    EXPECT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 }
 
-TEST_F(FirewallTest, RemoveOrphansDropsUnknownMasqueradeOnly)
+TEST_F(FirewallTest, AllowConnectionDoesNotBypassReceiverExposedPorts)
 {
-    std::vector<FWListedRule> forwardRules;
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    std::vector<FWListedRule> postRules;
-    postRules.push_back(
-        {{"10.0.0.0/24", "", "", 0, 0, "eth0", FWActionEnum::eMasquerade, "", false, "", false}, FWRuleHandle {40}});
-    postRules.push_back(
-        {{"10.0.1.0/24", "", "", 0, 0, "eth1", FWActionEnum::eMasquerade, "", false, "", false}, FWRuleHandle {41}});
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 
-    auto tx = NewMockTx();
+    Expose(mB);
+    ASSERT_TRUE(mFirewall.UpdateInstance("b", mB).IsNone());
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {41}));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    StaticArray<StaticString<cIDLen>, 2> knownInstances;
-
-    StaticArray<MasqueradeParams, 2> knownMasquerades;
-    knownMasquerades.PushBack({"10.0.0.0/24", "eth0"});
-
-    EXPECT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 }
 
-TEST_F(FirewallTest, RemoveOrphansDropsLegacyNegatedMasquerade)
+TEST_F(FirewallTest, SameNetworkIsUnrestrictedWithoutExposedPortsOrAllowConnections)
 {
-    std::vector<FWListedRule> forwardRules;
-
-    std::vector<FWListedRule> postRules;
-    postRules.push_back(
-        {{"10.0.0.0/24", "", "", 0, 0, "br-sp1", FWActionEnum::eMasquerade, "", false, "", true}, FWRuleHandle {40}});
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {40}));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    StaticArray<StaticString<cIDLen>, 2> knownInstances;
-
-    StaticArray<MasqueradeParams, 2> knownMasquerades;
-    knownMasquerades.PushBack({"10.0.0.0/24", "eth0"});
-
-    EXPECT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
-}
-
-TEST_F(FirewallTest, AdoptedMasqueradeIsNotAddedAgain)
-{
-    std::vector<FWListedRule> forwardRules;
-
-    std::vector<FWListedRule> postRules;
-    postRules.push_back(
-        {{"10.0.0.0/24", "", "", 0, 0, "eth0", FWActionEnum::eMasquerade, "", false, "", false}, FWRuleHandle {40}});
-
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    StaticArray<StaticString<cIDLen>, 2> knownInstances;
-
-    StaticArray<MasqueradeParams, 2> knownMasquerades;
-    knownMasquerades.PushBack({"10.0.0.0/24", "eth0"});
-
-    ASSERT_TRUE(mFirewall.RemoveOrphans(knownInstances, knownMasquerades).IsNone());
-
-    EXPECT_TRUE(mFirewall.AddMasquerade("10.0.0.0/24", "eth0").IsNone());
-}
-
-TEST_F(FirewallTest, StartFallbackCreatesSkeletonWithForwardPolicyDrop)
-{
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddTable(_));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(AllOf(BaseChainNamed("forward"), BaseChainPolicy(FWActionEnum::eDrop))));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(AllOf(BaseChainNamed("postrouting"), BaseChainPolicy(FWActionEnum::eAccept))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mCtState, "invalid"), Field(&FWRule::mAction, FWActionEnum::eDrop))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mCtState, "established,related"), Field(&FWRule::mAction, FWActionEnum::eAccept))));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.Start().IsNone());
-}
-
-TEST_F(FirewallTest, StartFallbackFailsWhenCommitFails)
-{
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddTable(_));
-    EXPECT_CALL(*mTxnPtr, AddBaseChain(_)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(Error(ErrorEnum::eFailed)));
-
-    EXPECT_FALSE(mFirewall.Start().IsNone());
-}
-
-TEST_F(FirewallTest, StopRemovesArtifactsButKeepsTable)
-{
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {40}});
-
-    std::vector<FWListedRule> postRules;
-    postRules.push_back({{"10.0.0.0/24", "", "", 0, 0, "br-test", FWActionEnum::eMasquerade, ""}, FWRuleHandle {50}});
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {40}));
-    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {50}));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    // No DeleteTable: the base table and policy drop must survive SM shutdown.
-    EXPECT_TRUE(mFirewall.Stop().IsNone());
-}
-
-TEST_F(FirewallTest, StopWithNoTableIsNoOp)
-{
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _)).WillOnce(Return(Error(ErrorEnum::eFailed)));
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    EXPECT_TRUE(mFirewall.Stop().IsNone());
-}
-
-/***********************************************************************************************************************
- * AddInstance
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, AddInstanceInputRulesTranslated)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "tcp")).IsNone());
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("53", "udp")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_test")));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("udp"), 53, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceOutputRulesTranslated)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("192.168.1.0/24", "443", "tcp")).IsNone());
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("8.8.8.8", "53", "udp", "10.0.0.5")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            OutputRule(std::string("10.0.0.5"), std::string("192.168.1.0/24"), std::string("tcp"), 443,
-                FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            OutputRule(
-                std::string("10.0.0.5"), std::string("8.8.8.8"), std::string("udp"), 53, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceDenyPublicProducesDrop)
-{
-    auto params = MakeParams("10.0.0.5", false);
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceInstallsBothJumpsInForward)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mDstAddr, "10.0.0.5"), Field(&FWRule::mSrcAddr, ""),
-                Field(&FWRule::mAction, FWActionEnum::eJump), Field(&FWRule::mJumpTarget, "instance_test"))));
-
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mSrcAddr, "10.0.0.5"), Field(&FWRule::mDstAddr, ""),
-                Field(&FWRule::mAction, FWActionEnum::eJump), Field(&FWRule::mJumpTarget, "instance_test"))));
-
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceSameNetworkAcceptsIntraSubnetBeforeAccessRules)
-{
-    auto params    = MakeParams("10.0.0.5", true);
-    params.mSubnet = "10.0.0.0/24";
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "tcp")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_test")));
-    // Same-network accepts sit at the top of the instance chain, ahead of the
-    // per-instance access rules and the terminal drop.
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.0/24"), std::string("10.0.0.5"))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), SameNetRule(std::string("10.0.0.5"), std::string("10.0.0.0/24"))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceNoSubnetSkipsSameNetworkAccepts)
-{
-    // Without a subnet the instance chain keeps the original shape: no
-    // same-network accepts, only the terminal verdicts.
-    auto params = MakeParams("10.0.0.5", true);
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceSanitisesInstanceID)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_abc_123_de")));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_abc_123_de"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_abc_123_de")))
-        .Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("abc-123-de", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceDefaultsMissingProtocolToTcp)
-{
-    auto params = MakeParams("10.0.0.5", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080", "")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsInputAccessWithoutPort)
-{
-    auto params = MakeParams("10.0.0.5", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("", "")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsUnsupportedInputProtocol)
-{
-    auto params = MakeParams("10.0.0.5", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("80", "sctp")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsEmptyInstanceIP)
-{
-    auto params = MakeParams("", true);
-
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, UpdateInstanceRejectsEmptyInstanceIP)
-{
-    auto params = MakeParams("", true);
-
-    EXPECT_CALL(mBackend, ListChainRules(_, _, _)).Times(0);
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    EXPECT_FALSE(mFirewall.UpdateInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsOutputAccessWithoutDstIP)
-{
-    auto params = MakeParams("10.0.0.5", false);
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("", "", "")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsOutputAccessWithoutDstPort)
-{
-    auto params = MakeParams("10.0.0.5", false);
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("8.8.8.8", "", "tcp")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsUnsupportedOutputProtocol)
-{
-    auto params = MakeParams("10.0.0.5", false);
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("8.8.8.8", "53", "sctp")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsInvalidPort)
-{
-    auto params = MakeParams("10.0.0.5", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("abc", "tcp")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsZeroPort)
-{
-    auto params = MakeParams("10.0.0.5", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("0", "tcp")).IsNone());
-
-    auto tx = NewMockTx();
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-    EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-/***********************************************************************************************************************
- * Port ranges
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, AddInstanceExposedRangeProducesSingleRangedRule)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("7400:7650", "udp")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_test")));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRangeRule(std::string("10.0.0.5"), std::string("udp"), 7400, 7650, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceOutputRangeTranslated)
-{
-    auto params = MakeParams("10.0.0.5", true);
-
-    ASSERT_TRUE(params.mOutput.PushBack(MakeOutput("10.0.1.7", "7400:7650", "udp")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            OutputRangeRule(std::string("10.0.0.5"), std::string("10.0.1.7"), std::string("udp"), 7400, 7650,
-                FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.5"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.5"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceSinglePortLeavesRangeEndUnset)
-{
-    // A degenerate range must be emitted as a plain `dport <port>`, otherwise
-    // ListChainRules() would parse back a rule that differs from the added one.
-    auto params = MakeParams("10.0.0.5", true);
-
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("8080:8080", "tcp")).IsNone());
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.5"), std::string("tcp"), 8080, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_test"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddInstance("test", params).IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceRejectsInvalidPortRanges)
-{
-    for (const auto* port :
-        {"0:10", "10:5", "1:70000", "abc", "7400:", ":7650", "7400::7650", "74 00:7650", "8080-8081"}) {
-        auto params = MakeParams("10.0.0.5", true);
-        ASSERT_TRUE(params.mInput.PushBack(MakeInput(port, "udp")).IsNone());
-
-        auto tx = NewMockTx();
-        EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-        EXPECT_CALL(*mTxnPtr, AddChain(_));
-        EXPECT_CALL(*mTxnPtr, Commit()).Times(0);
-
-        EXPECT_FALSE(mFirewall.AddInstance("test", params).IsNone()) << port;
-
-        Mock::VerifyAndClearExpectations(&mBackend);
+    mB              = MakeParams("172.18.0.4", "172.18.0.0/16", false);
+    mA.mAllowPublic = false;
+    AddPair();
+
+    for (const auto* proto : {"udp", "tcp", "icmp"}) {
+        EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), proto, 65000}));
+        EXPECT_TRUE(mBackend.Accepts({mB.mIP.CStr(), mA.mIP.CStr(), proto, 65000}));
     }
 }
 
-/***********************************************************************************************************************
- * UpdateInstance
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, UpdateInstanceFlushesRepopulatesAndRepointsJumps)
+TEST_F(FirewallTest, PublicAccessDoesNotAuthorizeAnyReservedAosNetwork)
 {
-    auto params = MakeParams("10.0.0.9", true);
-    ASSERT_TRUE(params.mInput.PushBack(MakeInput("9090", "tcp")).IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
 
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {20}});
-    forwardRules.push_back({{"", "10.0.0.5", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {21}});
+    for (int octet = 17; octet <= 31; ++octet) {
+        if (octet == 18) {
+            continue;
+        }
 
-    auto tx = NewMockTx();
+        EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), "172." + std::to_string(octet) + ".0.9"}));
+    }
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"),
-            InputRule(std::string("10.0.0.9"), std::string("tcp"), 9090, FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalInRule(std::string("10.0.0.9"), FWActionEnum::eDrop)));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("instance_test"), TerminalOutRule(std::string("10.0.0.9"), FWActionEnum::eAccept)));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {20}));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {21}));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mDstAddr, "10.0.0.9"), Field(&FWRule::mJumpTarget, "instance_test"))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("forward"),
-            AllOf(Field(&FWRule::mSrcAddr, "10.0.0.9"), Field(&FWRule::mJumpTarget, "instance_test"))));
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.UpdateInstance("test", params).IsNone());
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8", "udp", 53}));
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "192.168.1.10", "tcp", 443}));
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "10.0.0.20", "tcp", 443}));
 }
 
-/***********************************************************************************************************************
- * RemoveInstance
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, RemoveInstanceDeletesJumpsAndChain)
+TEST_F(FirewallTest, DenyPublicKeepsExplicitConnectionAndSameNetworkWorking)
 {
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {11}});
-    forwardRules.push_back({{"", "10.0.0.5", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {12}});
-    forwardRules.push_back({{"", "10.0.0.7", "", 0, 0, "", FWActionEnum::eJump, "instance_other"}, FWRuleHandle {13}});
+    mA.mAllowPublic = false;
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {11}));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {12}));
-    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.RemoveInstance("test").IsNone());
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "172.18.0.99", "tcp", 12}));
 }
 
-TEST_F(FirewallTest, RemoveInstanceNoMatchIsNoOp)
+TEST_F(FirewallTest, RemoteNodesCheckTheirOwnSourceAndDestination)
 {
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"", "10.0.0.7", "", 0, 0, "", FWActionEnum::eJump, "instance_other"}, FWRuleHandle {13}});
+    aos::sm::networkmanager::tests::FirewallBackend remoteBackend;
 
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
+    Firewall remote;
 
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+    ASSERT_TRUE(remote.Init(remoteBackend).IsNone());
+    ASSERT_TRUE(remote.Start().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
+    Expose(mB);
+    ASSERT_TRUE(remote.AddInstance("b", mB).IsNone());
 
-    EXPECT_TRUE(mFirewall.RemoveInstance("test").IsNone());
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
+    EXPECT_TRUE(remoteBackend.Accepts(mPacket));
+
+    Allow(mA, mB.mIP.CStr());
+    ASSERT_TRUE(mFirewall.UpdateInstance("a", mA).IsNone());
+
+    EXPECT_TRUE(mBackend.Accepts(mPacket) && remoteBackend.Accepts(mPacket));
+
+    mB.mInput.Clear();
+    ASSERT_TRUE(remote.UpdateInstance("b", mB).IsNone());
+
+    EXPECT_FALSE(mBackend.Accepts(mPacket) && remoteBackend.Accepts(mPacket));
 }
 
-/***********************************************************************************************************************
- * Batch
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, BatchStagesInstancesIntoSingleCommit)
+TEST_F(FirewallTest, ReplyTrafficIsAllowedButNewReverseConnectionNeedsPermission)
 {
-    auto tx = NewMockTx();
+    Expose(mB);
+    Expose(mA);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_inst1")));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_inst1"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_inst1"))).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddChain(ChainNamed("instance_inst2")));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("instance_inst2"), _)).Times(2);
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("forward"), Field(&FWRule::mJumpTarget, "instance_inst2"))).Times(2);
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+    EXPECT_FALSE(mBackend.Accepts({mB.mIP.CStr(), mA.mIP.CStr()}));
+    EXPECT_TRUE(mBackend.Accepts({mB.mIP.CStr(), mA.mIP.CStr(), "udp", 56000, "established"}));
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "udp", 7410, "invalid"}));
+}
 
+TEST_F(FirewallTest, PortRangesAndProtocolsRestrictBothDirections)
+{
+    Expose(mB, "7410:7449");
+    Allow(mA, mB.mIP.CStr(), "7410:7449");
+    AddPair();
+
+    for (uint16_t port : {7410, 7425, 7449}) {
+        EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "udp", port}));
+    }
+
+    for (uint16_t port : {7409, 7450}) {
+        EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "udp", port}));
+    }
+
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "tcp", 7410}));
+}
+
+TEST_F(FirewallTest, MissingProtocolDefaultsToTcp)
+{
+    Expose(mB, "8080", "");
+    Allow(mA, mB.mIP.CStr(), "8080", "");
+    AddPair();
+
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "tcp", 8080}));
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr(), "udp", 8080}));
+}
+
+TEST_F(FirewallTest, RemovingPermissionBlocksNewConnections)
+{
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
+
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+
+    mA.mOutput.Clear();
+    ASSERT_TRUE(mFirewall.UpdateInstance("a", mA).IsNone());
+
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
+}
+
+TEST_F(FirewallTest, AddressUpdateRemovesOldDispatchAndAcceptRules)
+{
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
+    mA.mIP = "172.18.0.7";
+    ASSERT_TRUE(mFirewall.UpdateInstance("a", mA).IsNone());
+
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), mB.mIP.CStr()}));
+    EXPECT_FALSE(mBackend.Accepts({"172.18.0.3", "8.8.8.8"}));
+
+    for (const auto& entry : mBackend.mState.mChains.at("accepted")) {
+        EXPECT_NE(entry.mRule.mSrcAddr, "172.18.0.3");
+    }
+}
+
+TEST_F(FirewallTest, RemoveInstanceRemovesBothChainsAndPublicAccess)
+{
+    ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("a").IsNone());
+
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_a"), 0U);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_a_out"), 0U);
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+    const auto commits = mBackend.mCommits;
+    ASSERT_TRUE(mFirewall.RemoveInstance("a").IsNone());
+
+    EXPECT_EQ(mBackend.mCommits, commits);
+}
+
+TEST_F(FirewallTest, RestartAdoptsRulesWithoutRewritingAndSupportsRemoval)
+{
+    Expose(mB, "7410:7449");
+    Allow(mA, mB.mIP.CStr(), "7410:7449");
+    AddPair();
+
+    Firewall restarted;
+
+    ASSERT_TRUE(restarted.Init(mBackend).IsNone());
+    const auto commits = mBackend.mCommits;
+
+    ASSERT_TRUE(restarted.Start().IsNone());
+
+    EXPECT_EQ(mBackend.mCommits, commits);
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+    EXPECT_FALSE(mBackend.Accepts({mB.mIP.CStr(), mA.mIP.CStr()}));
+
+    ASSERT_TRUE(restarted.RemoveInstance("a").IsNone());
+
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+}
+
+TEST_F(FirewallTest, StopKeepsDefaultDropAndRemovesInstanceAndNatRules)
+{
+    AddPair();
+    ASSERT_TRUE(mFirewall.AddMasquerade("172.18.0.0/16", "eth0").IsNone());
+    ASSERT_TRUE(mFirewall.Stop().IsNone());
+
+    EXPECT_EQ(mBackend.mState.mPolicies.at("forward"), FWActionEnum::eDrop);
+    EXPECT_TRUE(mBackend.mState.mChains.at("postrouting").empty());
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
+
+    ASSERT_TRUE(mFirewall.Stop().IsNone());
+}
+
+TEST_F(FirewallTest, BatchStagesUntilSingleAtomicCommit)
+{
+    const auto commits = mBackend.mCommits;
     ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
-    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
-    ASSERT_TRUE(mFirewall.AddInstance("inst2", MakeParams("10.0.0.6", true)).IsNone());
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
-}
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
+    EXPECT_EQ(mBackend.mCommits, commits);
 
-TEST_F(FirewallTest, BatchStagesRemoveInstanceDeletes)
-{
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {11}});
-    forwardRules.push_back({{"", "10.0.0.5", "", 0, 0, "", FWActionEnum::eJump, "instance_test"}, FWRuleHandle {12}});
-
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {11}));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {12}));
-    EXPECT_CALL(*mTxnPtr, FlushChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, DeleteChain(_, std::string("instance_test")));
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
-    ASSERT_TRUE(mFirewall.RemoveInstance("test").IsNone());
-
-    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
-}
-
-TEST_F(FirewallTest, AddInstanceCommitsImmediatelyAfterFlushBatch)
-{
-    auto  batchTx  = NewMockTx();
-    auto* batchPtr = mTxnPtr;
-
-    auto  directTx  = NewMockTx();
-    auto* directPtr = mTxnPtr;
-
-    EXPECT_CALL(mBackend, NewTxn())
-        .WillOnce(Return(ByMove(std::move(batchTx))))
-        .WillOnce(Return(ByMove(std::move(directTx))));
-
-    EXPECT_CALL(*batchPtr, AddChain(_));
-    EXPECT_CALL(*batchPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(ErrorEnum::eNone));
-
-    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
-    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
     ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
 
-    // Batch is over: the next instance gets its own transaction and commits now.
-    EXPECT_CALL(*directPtr, AddChain(ChainNamed("instance_inst2")));
-    EXPECT_CALL(*directPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*directPtr, Commit(An<std::vector<FWRuleHandle>&>())).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_EQ(mBackend.mCommits, commits + 1);
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 
-    EXPECT_TRUE(mFirewall.AddInstance("inst2", MakeParams("10.0.0.6", true)).IsNone());
+    ASSERT_TRUE(mFirewall.Revert().IsNone());
+
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 }
 
-TEST_F(FirewallTest, RevertDeletesFlushedHandlesAndBatchChains)
+TEST_F(FirewallTest, BatchRemovalIsDeferredUntilFlush)
 {
-    auto  batchTx  = NewMockTx();
-    auto* batchPtr = mTxnPtr;
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
 
-    auto  revertTx  = NewMockTx();
-    auto* revertPtr = mTxnPtr;
-
-    EXPECT_CALL(mBackend, NewTxn())
-        .WillOnce(Return(ByMove(std::move(batchTx))))
-        .WillOnce(Return(ByMove(std::move(revertTx))));
-
-    EXPECT_CALL(*batchPtr, AddChain(_));
-    EXPECT_CALL(*batchPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*batchPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce([](std::vector<FWListedRule>& added) {
-        added = {
-            {{}, FWRuleHandle {100}},
-            {{}, FWRuleHandle {101}},
-            {{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {102}},
-            {{"", "10.0.0.5", "", 0, 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {103}},
-        };
-
-        return Error(ErrorEnum::eNone);
-    });
-
+    const auto commits = mBackend.mCommits;
     ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
-    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("b").IsNone());
+
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+    EXPECT_EQ(mBackend.mCommits, commits);
+
     ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
 
-    std::vector<FWListedRule> forwardRules;
-    forwardRules.push_back({{"10.0.0.5", "", "", 0, 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {102}});
-    forwardRules.push_back({{"", "10.0.0.5", "", 0, 0, "", FWActionEnum::eJump, "instance_inst1"}, FWRuleHandle {103}});
-    forwardRules.push_back({{"", "10.0.0.9", "", 0, 0, "", FWActionEnum::eJump, "instance_other"}, FWRuleHandle {7}});
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("forward"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(forwardRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {102}));
-    EXPECT_CALL(*revertPtr, DeleteRuleByHandle(_, std::string("forward"), FWRuleHandle {103}));
-    EXPECT_CALL(*revertPtr, FlushChain(_, std::string("instance_inst1")));
-    EXPECT_CALL(*revertPtr, DeleteChain(_, std::string("instance_inst1")));
-    EXPECT_CALL(*revertPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.Revert().IsNone());
+    EXPECT_EQ(mBackend.mCommits, commits + 1);
+    EXPECT_FALSE(mBackend.mState.mChains.count("instance_b"));
+    EXPECT_FALSE(mBackend.mState.mChains.count("instance_b_out"));
 }
 
-TEST_F(FirewallTest, RevertAfterFailedFlushIsNoOp)
+TEST_F(FirewallTest, FailedUpdateOrBatchKeepsPreviouslyInstalledRules)
 {
-    auto tx = NewMockTx();
+    Expose(mB);
+    Allow(mA, mB.mIP.CStr());
+    AddPair();
+    mA.mOutput.Clear();
+    mBackend.mFailCommit = true;
 
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddChain(_));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, _, _)).Times(4).WillRepeatedly(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*mTxnPtr, Commit(An<std::vector<FWListedRule>&>())).WillOnce(Return(Error(ErrorEnum::eFailed)));
+    EXPECT_FALSE(mFirewall.UpdateInstance("a", mA).IsNone());
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
 
     ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
-    ASSERT_TRUE(mFirewall.AddInstance("inst1", MakeParams("10.0.0.5", true)).IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("a").IsNone());
 
     EXPECT_FALSE(mFirewall.FlushBatch().IsNone());
 
-    // The batch was atomic: nothing was applied, so there is nothing to undo.
-    EXPECT_TRUE(mFirewall.Revert().IsNone());
+    mBackend.mFailCommit = false;
+    ASSERT_TRUE(mFirewall.Revert().IsNone());
+
+    EXPECT_TRUE(mBackend.Accepts(mPacket));
+
+    ASSERT_TRUE(mFirewall.UpdateInstance("a", mA).IsNone());
+
+    EXPECT_FALSE(mBackend.Accepts(mPacket));
 }
 
-TEST_F(FirewallTest, FlushBatchAndRevertWithoutBeginAreNoOp)
+TEST_F(FirewallTest, AbortBatchDoesNotChangeInstalledRules)
 {
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-    EXPECT_CALL(mBackend, ListChainRules(_, _, _)).Times(0);
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
+    ASSERT_TRUE(mFirewall.AbortBatch().IsNone());
+    ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
+    ASSERT_TRUE(mFirewall.Revert().IsNone());
 
-    EXPECT_TRUE(mFirewall.FlushBatch().IsNone());
-    EXPECT_TRUE(mFirewall.Revert().IsNone());
+    EXPECT_FALSE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
 }
 
-/***********************************************************************************************************************
- * Masquerade
- **********************************************************************************************************************/
-
-TEST_F(FirewallTest, AddMasqueradeAddsRule)
+TEST_F(FirewallTest, RemoveOrphansAfterRestartKeepsKnownInstanceAndMasquerade)
 {
-    auto tx = NewMockTx();
-
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr,
-        AddRule(_, std::string("postrouting"), MasqueradeRule(std::string("10.0.0.0/24"), std::string("eth0"))));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
-    EXPECT_TRUE(mFirewall.AddMasquerade("10.0.0.0/24", "eth0").IsNone());
-}
-
-TEST_F(FirewallTest, AddMasqueradeMatchesUplinkPositively)
-{
-    auto tx = NewMockTx();
-
-    FWRule captured;
-
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SaveArg<2>(&captured), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
-
+    AddPair();
+    ASSERT_TRUE(mFirewall.AddMasquerade("172.18.0.0/16", "eth0").IsNone());
     ASSERT_TRUE(mFirewall.AddMasquerade("172.17.0.0/16", "eth0").IsNone());
 
-    EXPECT_EQ(captured.mOIFName, std::string("eth0"));
-    EXPECT_FALSE(captured.mOIFNeg);
-    EXPECT_EQ(captured.mSrcAddr, std::string("172.17.0.0/16"));
+    StaticArray<StaticString<cIDLen>, 1> known;
+
+    known.PushBack("a");
+
+    StaticArray<MasqueradeParams, 1> nat;
+
+    nat.PushBack({"172.18.0.0/16", "eth0"});
+
+    Firewall restarted;
+
+    ASSERT_TRUE(restarted.Init(mBackend).IsNone());
+    ASSERT_TRUE(restarted.Start().IsNone());
+    ASSERT_TRUE(restarted.RemoveOrphans(known, nat).IsNone());
+
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_b"), 0U);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_b_out"), 0U);
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+    EXPECT_FALSE(mBackend.Accepts({mB.mIP.CStr(), "8.8.8.8"}));
+    ASSERT_EQ(mBackend.mState.mChains.at("postrouting").size(), 1U);
+    const auto commits = mBackend.mCommits;
+
+    ASSERT_TRUE(restarted.AddMasquerade("172.18.0.0/16", "eth0").IsNone());
+
+    EXPECT_EQ(mBackend.mCommits, commits);
 }
 
-TEST_F(FirewallTest, AddMasqueradeIsIdempotent)
+TEST_F(FirewallTest, MasqueradeUsesPositiveUplinkMatchAndCanBeRemoved)
 {
-    auto tx = NewMockTx();
+    ASSERT_TRUE(mFirewall.AddMasquerade("172.18.0.0/16", "eth0").IsNone());
+    const auto& rule = mBackend.mState.mChains.at("postrouting").front().mRule;
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, AddRule(_, _, _));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_EQ(rule.mOIFName, "eth0");
+    EXPECT_FALSE(rule.mOIFNeg);
 
-    EXPECT_TRUE(mFirewall.AddMasquerade("10.0.0.0/24", "eth0").IsNone());
+    ASSERT_TRUE(mFirewall.RemoveMasquerade("172.18.0.0/16", "eth0").IsNone());
 
-    EXPECT_TRUE(mFirewall.AddMasquerade("10.0.0.0/24", "eth0").IsNone());
+    EXPECT_TRUE(mBackend.mState.mChains.at("postrouting").empty());
+
+    ASSERT_TRUE(mFirewall.RemoveMasquerade("172.18.0.0/16", "eth0").IsNone());
 }
 
-TEST_F(FirewallTest, RemoveMasqueradeFindsHandleAndDeletes)
+TEST_F(FirewallTest, InvalidPortsAndProtocolsAreRejectedWithoutInstallingRules)
 {
-    std::vector<FWListedRule> postRules;
-    postRules.push_back({{"10.0.0.0/24", "", "", 0, 0, "eth0", FWActionEnum::eMasquerade, ""}, FWRuleHandle {7}});
+    for (const auto* port : {"", "0", "65536", "abc", "10:5", ":5", "5:", "1:2:3"}) {
+        mA.mInput.Clear();
+        Expose(mA, port);
 
-    auto tx = NewMockTx();
+        EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone()) << port;
+        EXPECT_EQ(mBackend.mState.mChains.count("instance_a"), 0U);
+    }
 
-    InSequence seq;
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-    EXPECT_CALL(mBackend, NewTxn()).WillOnce(Return(ByMove(std::move(tx))));
-    EXPECT_CALL(*mTxnPtr, DeleteRuleByHandle(_, std::string("postrouting"), FWRuleHandle {7}));
-    EXPECT_CALL(*mTxnPtr, Commit()).WillOnce(Return(ErrorEnum::eNone));
+    mA.mInput.Clear();
+    Expose(mA, "80", "sctp");
 
-    EXPECT_TRUE(mFirewall.RemoveMasquerade("10.0.0.0/24", "eth0").IsNone());
+    EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
+
+    mA.mInput.Clear();
+
+    for (const auto* port : {"", "0", "65536", "10:5"}) {
+        mA.mOutput.Clear();
+        Allow(mA, mB.mIP.CStr(), port);
+
+        EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
+    }
+
+    mA.mOutput.Clear();
+    Allow(mA, "");
+
+    EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
+
+    mA.mOutput.Clear();
+    Allow(mA, mB.mIP.CStr(), "80", "sctp");
+
+    EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
 }
 
-TEST_F(FirewallTest, RemoveMasqueradeIgnoresNegatedRule)
+TEST_F(FirewallTest, EmptyIPIsRejectedForAddAndUpdate)
 {
-    std::vector<FWListedRule> postRules;
-    postRules.push_back(
-        {{"10.0.0.0/24", "", "", 0, 0, "eth0", FWActionEnum::eMasquerade, "", false, "", true}, FWRuleHandle {7}});
+    mA.mIP.Clear();
 
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
-
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
-
-    EXPECT_TRUE(mFirewall.RemoveMasquerade("10.0.0.0/24", "eth0").IsNone());
+    EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
+    EXPECT_FALSE(mFirewall.UpdateInstance("a", mA).IsNone());
 }
 
-TEST_F(FirewallTest, RemoveMasqueradeNotFoundIsNoOp)
+TEST_F(FirewallTest, BackendFailuresArePropagatedWithoutChangingLiveRules)
 {
-    std::vector<FWListedRule> postRules;
+    mBackend.mFailAdd = true;
 
-    EXPECT_CALL(mBackend, ListChainRules(_, std::string("postrouting"), _))
-        .WillOnce(DoAll(SetArgReferee<2>(postRules), Return(ErrorEnum::eNone)));
+    EXPECT_FALSE(mFirewall.AddInstance("a", mA).IsNone());
 
-    EXPECT_CALL(mBackend, NewTxn()).Times(0);
+    mBackend.mFailAdd = false;
+    ASSERT_TRUE(mFirewall.AddInstance("a", mA).IsNone());
+    mBackend.mFailList = "ingress";
 
-    EXPECT_TRUE(mFirewall.RemoveMasquerade("10.0.0.0/24", "eth0").IsNone());
+    EXPECT_FALSE(mFirewall.UpdateInstance("a", mA).IsNone());
+    EXPECT_TRUE(mBackend.Accepts({mA.mIP.CStr(), "8.8.8.8"}));
+}
+
+TEST(FirewallLifecycleTest, StopBeforeStartIsIdempotent)
+{
+    aos::sm::networkmanager::tests::FirewallBackend backend;
+
+    Firewall firewall;
+
+    ASSERT_TRUE(firewall.Init(backend).IsNone());
+
+    EXPECT_TRUE(firewall.Stop().IsNone());
+    EXPECT_TRUE(firewall.Stop().IsNone());
+}
+
+TEST_F(FirewallTest, BatchCommitKeepsNewAndExistingDispatchHandlesCached)
+{
+    ASSERT_TRUE(mFirewall.AddInstance("existing", MakeParams("172.19.0.3", "172.19.0.0/16")).IsNone());
+    const auto lists   = mBackend.mLists;
+    const auto commits = mBackend.mCommits;
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    AddPair();
+    ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
+
+    EXPECT_EQ(mBackend.mCommits, commits + 1);
+    EXPECT_EQ(mBackend.mLists, lists);
+
+    ASSERT_TRUE(mFirewall.RemoveInstance("a").IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("b").IsNone());
+    ASSERT_TRUE(mFirewall.RemoveInstance("existing").IsNone());
+
+    EXPECT_EQ(mBackend.mLists, lists);
+}
+
+TEST_F(FirewallTest, BatchRevertListsEachDispatchChainOnceAndKeepsOtherInstances)
+{
+    ASSERT_TRUE(mFirewall.AddInstance("existing", MakeParams("172.19.0.3", "172.19.0.0/16")).IsNone());
+    ASSERT_TRUE(mFirewall.BeginBatch().IsNone());
+    AddPair();
+    ASSERT_TRUE(mFirewall.FlushBatch().IsNone());
+    const auto lists   = mBackend.mLists;
+    const auto commits = mBackend.mCommits;
+    ASSERT_TRUE(mFirewall.Revert().IsNone());
+
+    EXPECT_EQ(mBackend.mCommits, commits + 1);
+    EXPECT_EQ(mBackend.mLists, lists + 3);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_a"), 0U);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_a_out"), 0U);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_b"), 0U);
+    EXPECT_EQ(mBackend.mState.mChains.count("instance_b_out"), 0U);
+    EXPECT_TRUE(mBackend.Accepts({"172.19.0.3", "8.8.8.8"}));
+
+    ASSERT_TRUE(mFirewall.RemoveInstance("existing").IsNone());
+
+    EXPECT_EQ(mBackend.mLists, lists + 3);
 }

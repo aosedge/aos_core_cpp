@@ -5,13 +5,13 @@
  */
 
 #include <cstdint>
-#include <map>
 #include <stdexcept>
 
 #include <arpa/inet.h>
 #include <netlink/addr.h>
 #include <netlink/netlink.h>
 
+#include <common/network/netpools.hpp>
 #include <common/network/utils.hpp>
 #include <core/common/tools/memory.hpp>
 
@@ -20,19 +20,6 @@
 namespace aos::cm::networkmanager {
 
 namespace {
-
-/***********************************************************************************************************************
- * Constants
- **********************************************************************************************************************/
-
-const std::map<std::string, int> cNetPools = {
-    {"172.17.0.0/16", 16},
-    {"172.18.0.0/16", 16},
-    {"172.19.0.0/16", 16},
-    {"172.20.0.0/14", 16},
-    {"172.24.0.0/14", 16},
-    {"172.28.0.0/14", 16},
-};
 
 /***********************************************************************************************************************
  * Static
@@ -95,7 +82,7 @@ std::vector<std::string> GetNetPools()
 {
     std::vector<std::string> pools;
 
-    for (const auto& [pool, size] : cNetPools) {
+    for (const auto& [pool, size] : common::network::cNetworkPools) {
         auto [baseIP, basePrefix] = ParseCIDRWithNetlink(pool);
 
         if (size <= 0 || size < basePrefix) {
