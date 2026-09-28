@@ -135,7 +135,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error Verify(const Variant<ECDSAPublicKey, RSAPublicKey>& pubKey, Hash hashFunc, Padding padding,
+    Error Verify(const Variant<ECDSAPublicKey, RSAPublicKey>& pubKey, const Hash& hashFunc, const Padding& padding,
         const Array<uint8_t>& digest, const Array<uint8_t>& signature) override
     {
         (void)pubKey;
