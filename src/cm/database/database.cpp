@@ -664,7 +664,7 @@ Error Database::GetAllPendingConnections(Array<networkmanager::PendingConnection
 
         *mSession << "SELECT requesterItemID, requesterSubjectID, requesterInstance, requesterType, "
                      "requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, targetItemID, "
-                     "port, protocol FROM pending_connections;",
+                     "port, protocol FROM pending_connections ORDER BY rowid;",
             into(rows), now;
 
         auto connection = std::make_unique<networkmanager::PendingConnection>();

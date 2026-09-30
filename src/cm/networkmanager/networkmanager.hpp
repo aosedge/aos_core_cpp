@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <core/common/crypto/itf/crypto.hpp>
@@ -102,12 +103,12 @@ private:
     uint64_t GenerateVlanID();
     bool     IsHostExist(const std::string& hostName) const;
 
-    struct UnresolvedConnection {
+    struct Connection {
         std::string mTarget;
         std::string mPort;
         std::string mProtocol;
 
-        UnresolvedConnection(std::string target, std::string port, std::string protocol)
+        Connection(std::string target, std::string port, std::string protocol)
             : mTarget(std::move(target))
             , mPort(std::move(port))
             , mProtocol(std::move(protocol))
@@ -115,18 +116,29 @@ private:
         }
     };
 
+    using FirewallUpdates
+        = std::unordered_map<InstanceIdent, std::pair<std::string, aos::networkmanager::PendingFirewallUpdate>>;
+
     std::optional<FirewallRule> GetInstanceRule(const std::string& target, const std::string& port,
         const std::string& protocol, const std::string& subnet, const String& ip, bool& instanceFound);
     bool  RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
     void  ParseAllowConnection(const String& connection, std::string& target, std::string& port, std::string& protocol);
-    Error PrepareFirewallRules(const std::string& subnet, const String& ip,
+    Error PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
-        std::vector<UnresolvedConnection>& unresolvedConnections);
+        std::vector<Connection>& connections);
     void  StorePendingConnections(const InstanceIdent& requesterIdent, const String& nodeID, const String& networkID,
-         const String& ip, const std::string& subnet, const std::vector<UnresolvedConnection>& unresolvedConnections);
-    void  ResolvePendingConnections(const InstanceIdent& newInstanceIdent);
-    void  ReloadPendingConnections(const String& nodeID);
-    void  CleanConfirmedPendingConnections(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances);
+         const String& ip, const std::string& subnet, const std::vector<Connection>& connections);
+    bool  IsInstanceIP(const String& ip) const;
+    void  AddFirewallRule(const InstanceIdent& requesterIdent, const std::string& target, const FirewallRule& rule,
+         Array<FirewallRule>& rules) const;
+    void  GetRequesterRules(const InstanceIdent& requesterIdent, Array<FirewallRule>& rules);
+    void  UpdateRequesters(const std::vector<std::string>& targets, const InstanceIdent& allocatedIdent);
+    void  PushFirewallUpdates(const FirewallUpdates& updates);
+
+    Error RemoveInstance(const InstanceIdent& instanceIdent, const String& nodeID, std::vector<std::string>& targets);
+    Error RemoveNode(const String& networkID, const String& nodeID, std::vector<std::string>& targets);
+
+    std::vector<std::string> GetInstanceTargets(const InstanceIdent& instanceIdent) const;
 
     bool  MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
          const std::string& currentNodeID, StaticString<cIPLen>& ip,
@@ -140,11 +152,13 @@ private:
     DNSServerItf*      mDNSServer {};
     IpSubnet           mIpSubnet;
 
-    mutable std::mutex                                        mMutex;
-    std::unordered_map<std::string, NetworkState>             mNetworkStates;
-    std::unordered_map<std::string, std::vector<std::string>> mHosts;
-    std::unordered_multimap<std::string, PendingConnection>   mPendingConnections;
-    aos::networkmanager::PendingUpdateHandlerItf*             mPendingUpdateHandler {};
+    mutable std::mutex                                                mMutex;
+    std::mutex                                                        mUpdateMutex;
+    std::unordered_map<std::string, NetworkState>                     mNetworkStates;
+    std::unordered_map<std::string, std::vector<std::string>>         mHosts;
+    std::unordered_map<InstanceIdent, std::vector<PendingConnection>> mPendingConnections;
+    std::unordered_set<InstanceIdent>                                 mPushedRequesters;
+    aos::networkmanager::PendingUpdateHandlerItf*                     mPendingUpdateHandler {};
 };
 
 } // namespace aos::cm::networkmanager

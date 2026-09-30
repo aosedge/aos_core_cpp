@@ -93,7 +93,7 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
     }
 
     for (const auto& pending : *pendingConnections) {
-        mPendingConnections.emplace(pending.mTarget.CStr(), pending);
+        mPendingConnections[pending.mRequesterIdent].push_back(pending);
     }
 
     return ErrorEnum::eNone;
@@ -195,9 +195,13 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
     std::transform(serviceData.mHosts.begin(), serviceData.mHosts.end(), std::back_inserter(hosts),
         [](const auto& host) { return host.CStr(); });
 
+    auto targets = GetInstanceTargets(instanceIdent);
+
+    (void)targets.insert(targets.end(), hosts.begin(), hosts.end());
+
     try {
-        std::vector<UnresolvedConnection> unresolvedConnections;
-        auto                              it = mNetworkStates.find(networkID.CStr());
+        std::vector<Connection> connections;
+        auto                    it = mNetworkStates.find(networkID.CStr());
         if (it == mNetworkStates.end()) {
             return Error(ErrorEnum::eRuntime, "network not found");
         }
@@ -215,24 +219,18 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             result.mIP         = itInstance->second.mIP;
             result.mDNSServers = itInstance->second.mDNSServers;
 
-            if (auto err = PrepareFirewallRules(it->second.mNetwork.mSubnet.CStr(), itInstance->second.mIP,
-                    serviceData.mAllowedConnections, result, unresolvedConnections);
+            if (auto err = PrepareFirewallRules(instanceIdent, it->second.mNetwork.mSubnet.CStr(),
+                    itInstance->second.mIP, serviceData.mAllowedConnections, result, connections);
                 !err.IsNone()) {
                 return err;
             }
 
-            for (auto pendIt = mPendingConnections.begin(); pendIt != mPendingConnections.end();) {
-                if (pendIt->second.mRequesterIdent == instanceIdent) {
-                    pendIt = mPendingConnections.erase(pendIt);
-                } else {
-                    ++pendIt;
-                }
-            }
+            (void)mPendingConnections.erase(instanceIdent);
 
             mStorage->RemovePendingConnections(instanceIdent);
 
             StorePendingConnections(instanceIdent, nodeID, networkID, itInstance->second.mIP,
-                it->second.mNetwork.mSubnet.CStr(), unresolvedConnections);
+                it->second.mNetwork.mSubnet.CStr(), connections);
 
             Error err;
 
@@ -277,7 +275,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             // Finish the rollback guard before releasing the mutex.
             rollbackHosts.Release();
             lock.unlock();
-            ResolvePendingConnections(instanceIdent);
+            UpdateRequesters(targets, instanceIdent);
 
             return ErrorEnum::eNone;
         }
@@ -331,9 +329,9 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             }
         });
 
-        if (err = PrepareFirewallRules(it->second.mNetwork.mSubnet.CStr(), IP.c_str(), serviceData.mAllowedConnections,
-                result, unresolvedConnections);
-            !err.IsNone()) {
+        err = PrepareFirewallRules(instanceIdent, it->second.mNetwork.mSubnet.CStr(), IP.c_str(),
+            serviceData.mAllowedConnections, result, connections);
+        if (!err.IsNone()) {
             return err;
         }
 
@@ -355,7 +353,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
         }
 
         StorePendingConnections(
-            instanceIdent, nodeID, networkID, result.mIP, it->second.mNetwork.mSubnet.CStr(), unresolvedConnections);
+            instanceIdent, nodeID, networkID, result.mIP, it->second.mNetwork.mSubnet.CStr(), connections);
 
         LOG_DBG() << "Allocated instance network" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID)
                   << Log::Field("instanceIdent", instanceIdent) << Log::Field("IP", result.mIP);
@@ -366,126 +364,46 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
 
     lock.unlock();
 
-    ResolvePendingConnections(instanceIdent);
+    UpdateRequesters(targets, instanceIdent);
 
     return ErrorEnum::eNone;
 }
 
 Error NetworkManager::ReleaseInstanceNetwork(const InstanceIdent& instanceIdent, const String& nodeID)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Releasing instance network" << Log::Field("instanceIdent", instanceIdent);
 
-    try {
-        for (auto& [networkID, networkState] : mNetworkStates) {
-            auto itHost = networkState.mHostInstances.find(nodeID.CStr());
-            if (itHost == networkState.mHostInstances.end()) {
-                continue;
-            }
+    std::vector<std::string> targets;
 
-            auto itInstance = itHost->second.mInstances.find(instanceIdent);
-            if (itInstance == itHost->second.mInstances.end()) {
-                continue;
-            }
+    auto err = RemoveInstance(instanceIdent, nodeID, targets);
 
-            mIpSubnet.ReleaseIPToSubnet(networkID, itInstance->second.mIP.CStr());
-            mHosts.erase(itInstance->second.mIP.CStr());
+    if (err.IsNone() && targets.empty()) {
+        LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent);
 
-            auto err = mStorage->RemoveNetworkInstance(instanceIdent);
-            AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
-
-            itHost->second.mInstances.erase(itInstance);
-
-            // Remove pending connections where this instance is the requester
-            for (auto it = mPendingConnections.begin(); it != mPendingConnections.end();) {
-                if (it->second.mRequesterIdent == instanceIdent) {
-                    it = mPendingConnections.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-
-            if (auto pendingErr = mStorage->RemovePendingConnections(instanceIdent); !pendingErr.IsNone()) {
-                LOG_ERR() << "Failed to remove pending connections" << Log::Field("instanceIdent", instanceIdent)
-                          << Log::Field(pendingErr);
-            }
-
-            if (auto dnsErr = RestartDNS(); !dnsErr.IsNone()) {
-                return dnsErr;
-            }
-
-            LOG_DBG() << "Released instance network" << Log::Field("networkID", networkID.c_str())
-                      << Log::Field("instanceIdent", instanceIdent);
-
-            return ErrorEnum::eNone;
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+        return ErrorEnum::eNone;
     }
 
-    LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent);
+    if (!targets.empty()) {
+        UpdateRequesters(targets, instanceIdent);
+    }
 
-    return ErrorEnum::eNone;
+    return err;
 }
 
 Error NetworkManager::ReleaseNodeNetwork(const String& networkID, const String& nodeID)
 {
-    std::lock_guard lock {mMutex};
-
     LOG_DBG() << "Releasing node network" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
 
-    try {
-        auto it = mNetworkStates.find(networkID.CStr());
-        if (it == mNetworkStates.end()) {
-            return Error(ErrorEnum::eRuntime, "network not found");
-        }
+    std::vector<std::string> targets;
 
-        auto itHost = it->second.mHostInstances.find(nodeID.CStr());
-        if (itHost == it->second.mHostInstances.end()) {
-            return Error(ErrorEnum::eRuntime, "host not found");
-        }
+    auto err = RemoveNode(networkID, nodeID, targets);
 
-        for (auto& [_, instance] : itHost->second.mInstances) {
-            mIpSubnet.ReleaseIPToSubnet(networkID.CStr(), instance.mIP.CStr());
-            mHosts.erase(instance.mIP.CStr());
+    if (!targets.empty()) {
+        UpdateRequesters(targets, {});
+    }
 
-            auto err = mStorage->RemoveNetworkInstance(instance.mInstanceIdent);
-            AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
-
-            for (auto pendIt = mPendingConnections.begin(); pendIt != mPendingConnections.end();) {
-                if (pendIt->second.mRequesterIdent == instance.mInstanceIdent) {
-                    pendIt = mPendingConnections.erase(pendIt);
-                } else {
-                    ++pendIt;
-                }
-            }
-
-            if (auto pendingErr = mStorage->RemovePendingConnections(instance.mInstanceIdent); !pendingErr.IsNone()) {
-                LOG_ERR() << "Failed to remove pending connections"
-                          << Log::Field("instanceIdent", instance.mInstanceIdent) << Log::Field(pendingErr);
-            }
-        }
-
-        auto err = mStorage->RemoveHost(networkID, nodeID);
-        AOS_ERROR_CHECK_AND_THROW(err, "error removing host");
-
-        it->second.mHostInstances.erase(itHost);
-
-        if (it->second.mHostInstances.empty()) {
-            mIpSubnet.ReleaseIPNetPool(networkID.CStr());
-
-            err = mStorage->RemoveNetwork(networkID);
-            AOS_ERROR_CHECK_AND_THROW(err, "error removing network");
-
-            mNetworkStates.erase(it);
-        }
-
-        if (auto dnsErr = RestartDNS(); !dnsErr.IsNone()) {
-            return dnsErr;
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    if (!err.IsNone()) {
+        return err;
     }
 
     LOG_DBG() << "Released node network" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
@@ -530,27 +448,36 @@ Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<Instanc
         }
     }
 
-    std::vector<InstanceIdent> allInstances;
+    std::lock_guard updateLock {mUpdateMutex};
+
+    FirewallUpdates updates;
 
     {
         std::lock_guard lock {mMutex};
 
-        CleanConfirmedPendingConnections(nodeID, instances);
+        for (const auto& instance : instances) {
+            if (mPendingConnections.find(instance.mInstanceIdent) == mPendingConnections.end()) {
+                continue;
+            }
 
-        ReloadPendingConnections(nodeID);
+            auto update = std::make_unique<aos::networkmanager::PendingFirewallUpdate>();
 
-        for (const auto& [networkID, networkState] : mNetworkStates) {
-            for (const auto& [hostNodeID, hostInstances] : networkState.mHostInstances) {
-                for (const auto& [instanceIdent, instance] : hostInstances.mInstances) {
-                    allInstances.push_back(instanceIdent);
-                }
+            update->mInstanceIdent = instance.mInstanceIdent;
+
+            GetRequesterRules(instance.mInstanceIdent, update->mFirewallRules);
+
+            const auto missing = std::any_of(update->mFirewallRules.begin(), update->mFirewallRules.end(),
+                [&instance](const auto& rule) { return !instance.mFirewallRules.Contains(rule); });
+            const auto stale   = std::any_of(instance.mFirewallRules.begin(), instance.mFirewallRules.end(),
+                  [this](const auto& rule) { return !IsInstanceIP(rule.mDstIP); });
+
+            if (missing || stale) {
+                updates[instance.mInstanceIdent] = std::make_pair(std::string(nodeID.CStr()), *update);
             }
         }
     }
 
-    for (const auto& instanceIdent : allInstances) {
-        ResolvePendingConnections(instanceIdent);
-    }
+    PushFirewallUpdates(updates);
 
     return ErrorEnum::eNone;
 }
@@ -698,9 +625,9 @@ std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& t
     return std::nullopt;
 }
 
-Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const String& ip,
-    const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
-    std::vector<UnresolvedConnection>& unresolvedConnections)
+Error NetworkManager::PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet,
+    const String& ip, const Array<StaticString<cConnectionNameLen>>& allowedConnections,
+    InstanceNetworkAllocation& result, std::vector<Connection>& connections)
 {
     if (allowedConnections.IsEmpty()) {
         return ErrorEnum::eNone;
@@ -713,13 +640,12 @@ Error NetworkManager::PrepareFirewallRules(const std::string& subnet, const Stri
             ParseAllowConnection(connection, target, port, protocol);
 
             bool instanceFound = false;
-            auto rule          = GetInstanceRule(target, port, protocol, subnet, ip, instanceFound);
 
-            if (rule) {
-                result.mFirewallRules.PushBack(*rule);
-            } else if (!instanceFound) {
-                unresolvedConnections.emplace_back(target, port, protocol);
+            if (auto rule = GetInstanceRule(target, port, protocol, subnet, ip, instanceFound); rule) {
+                AddFirewallRule(instanceIdent, target, *rule, result.mFirewallRules);
             }
+
+            (void)connections.emplace_back(target, port, protocol);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -787,13 +713,7 @@ bool NetworkManager::MigrateInstanceFromOtherNode(const InstanceIdent& instanceI
 
         otherHostInstances.mInstances.erase(itInstance);
 
-        for (auto pendIt = mPendingConnections.begin(); pendIt != mPendingConnections.end();) {
-            if (pendIt->second.mRequesterIdent == instanceIdent) {
-                pendIt = mPendingConnections.erase(pendIt);
-            } else {
-                ++pendIt;
-            }
-        }
+        (void)mPendingConnections.erase(instanceIdent);
 
         if (auto pendingErr = mStorage->RemovePendingConnections(instanceIdent); !pendingErr.IsNone()) {
             LOG_ERR() << "Failed to remove pending connections during migration"
@@ -833,14 +753,13 @@ Error NetworkManager::RestartDNS()
 }
 
 void NetworkManager::StorePendingConnections(const InstanceIdent& requesterIdent, const String& nodeID,
-    const String& networkID, const String& ip, const std::string& subnet,
-    const std::vector<UnresolvedConnection>& unresolvedConnections)
+    const String& networkID, const String& ip, const std::string& subnet, const std::vector<Connection>& connections)
 {
-    if (unresolvedConnections.empty()) {
+    if (connections.empty()) {
         return;
     }
 
-    for (const auto& unresolved : unresolvedConnections) {
+    for (const auto& connection : connections) {
         auto pending = std::make_unique<PendingConnection>();
 
         pending->mRequesterIdent  = requesterIdent;
@@ -848,163 +767,243 @@ void NetworkManager::StorePendingConnections(const InstanceIdent& requesterIdent
         pending->mNetworkID       = networkID;
         pending->mRequesterIP     = ip;
         pending->mRequesterSubnet = subnet.c_str();
-        pending->mTarget          = unresolved.mTarget.c_str();
-        pending->mPort            = unresolved.mPort.c_str();
-        pending->mProtocol        = unresolved.mProtocol.c_str();
+        pending->mTarget          = connection.mTarget.c_str();
+        pending->mPort            = connection.mPort.c_str();
+        pending->mProtocol        = connection.mProtocol.c_str();
 
-        mPendingConnections.emplace(unresolved.mTarget, *pending);
+        mPendingConnections[requesterIdent].push_back(*pending);
 
         if (auto err = mStorage->AddPendingConnection(*pending); !err.IsNone()) {
             LOG_ERR() << "Failed to store pending connection" << Log::Field("instanceIdent", requesterIdent)
                       << Log::Field(err);
         } else {
             LOG_DBG() << "Stored pending connection" << Log::Field("requester", requesterIdent)
-                      << Log::Field("target", unresolved.mTarget.c_str());
+                      << Log::Field("target", connection.mTarget.c_str());
         }
     }
 }
 
-void NetworkManager::ReloadPendingConnections(const String& nodeID)
+Error NetworkManager::RemoveInstance(
+    const InstanceIdent& instanceIdent, const String& nodeID, std::vector<std::string>& targets)
 {
-    auto pendingConnections = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
+    std::lock_guard lock {mMutex};
 
-    if (auto err = mStorage->GetAllPendingConnections(*pendingConnections); !err.IsNone()) {
-        LOG_ERR() << "Failed to get pending connections from DB" << Log::Field(err);
-
-        return;
-    }
-
-    for (const auto& pending : *pendingConnections) {
-        if (pending.mNodeID != nodeID) {
-            continue;
-        }
-
-        auto key   = pending.mTarget.CStr();
-        bool found = false;
-        auto range = mPendingConnections.equal_range(key);
-
-        for (auto it = range.first; it != range.second; ++it) {
-            if (it->second == pending) {
-                found = true;
-
-                break;
-            }
-        }
-
-        if (!found) {
-            mPendingConnections.emplace(key, pending);
-        }
-    }
-}
-
-void NetworkManager::CleanConfirmedPendingConnections(
-    const String& nodeID, const Array<InstanceNetworkStateInfo>& instances)
-{
-    auto dbPending = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
-
-    if (auto err = mStorage->GetAllPendingConnections(*dbPending); !err.IsNone()) {
-        LOG_ERR() << "Failed to get pending connections for cleanup" << Log::Field(err);
-
-        return;
-    }
-
-    for (const auto& pending : *dbPending) {
-        if (pending.mNodeID != nodeID) {
-            continue;
-        }
-
-        for (const auto& smInstance : instances) {
-            if (smInstance.mInstanceIdent != pending.mRequesterIdent) {
+    try {
+        for (auto& [networkID, networkState] : mNetworkStates) {
+            auto itHost = networkState.mHostInstances.find(nodeID.CStr());
+            if (itHost == networkState.mHostInstances.end()) {
                 continue;
             }
 
-            bool instanceFound = false;
-            auto rule          = GetInstanceRule(pending.mTarget.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
-                         pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
-
-            if (!rule) {
-                break;
+            auto itInstance = itHost->second.mInstances.find(instanceIdent);
+            if (itInstance == itHost->second.mInstances.end()) {
+                continue;
             }
 
-            auto confirmed = std::any_of(smInstance.mFirewallRules.begin(), smInstance.mFirewallRules.end(),
-                [&](const auto& smRule) { return smRule == *rule; });
+            auto instanceTargets = GetInstanceTargets(instanceIdent);
 
-            if (confirmed) {
-                if (auto err = mStorage->RemovePendingConnection(pending); !err.IsNone()) {
-                    LOG_ERR() << "Failed to remove confirmed pending connection"
-                              << Log::Field("instanceIdent", pending.mRequesterIdent) << Log::Field(err);
-                }
+            mIpSubnet.ReleaseIPToSubnet(networkID, itInstance->second.mIP.CStr());
+            (void)mHosts.erase(itInstance->second.mIP.CStr());
 
-                auto key   = pending.mTarget.CStr();
-                auto range = mPendingConnections.equal_range(key);
+            auto err = mStorage->RemoveNetworkInstance(instanceIdent);
+            AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
 
-                for (auto it = range.first; it != range.second; ++it) {
-                    if (it->second == pending) {
-                        mPendingConnections.erase(it);
+            (void)itHost->second.mInstances.erase(itInstance);
 
-                        break;
-                    }
-                }
+            targets = std::move(instanceTargets);
+
+            (void)mPendingConnections.erase(instanceIdent);
+
+            if (auto pendingErr = mStorage->RemovePendingConnections(instanceIdent); !pendingErr.IsNone()) {
+                LOG_ERR() << "Failed to remove pending connections" << Log::Field("instanceIdent", instanceIdent)
+                          << Log::Field(pendingErr);
             }
 
-            break;
+            err = RestartDNS();
+            if (err.IsNone()) {
+                LOG_DBG() << "Released instance network" << Log::Field("networkID", networkID.c_str())
+                          << Log::Field("instanceIdent", instanceIdent);
+            }
+
+            return err;
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::RemoveNode(const String& networkID, const String& nodeID, std::vector<std::string>& targets)
+{
+    std::lock_guard lock {mMutex};
+
+    try {
+        auto it = mNetworkStates.find(networkID.CStr());
+        if (it == mNetworkStates.end()) {
+            return Error(ErrorEnum::eRuntime, "network not found");
+        }
+
+        auto itHost = it->second.mHostInstances.find(nodeID.CStr());
+        if (itHost == it->second.mHostInstances.end()) {
+            return Error(ErrorEnum::eRuntime, "host not found");
+        }
+
+        std::vector<std::string> nodeTargets;
+
+        for (auto& [_, instance] : itHost->second.mInstances) {
+            const auto instanceTargets = GetInstanceTargets(instance.mInstanceIdent);
+
+            (void)nodeTargets.insert(nodeTargets.end(), instanceTargets.begin(), instanceTargets.end());
+
+            mIpSubnet.ReleaseIPToSubnet(networkID.CStr(), instance.mIP.CStr());
+            (void)mHosts.erase(instance.mIP.CStr());
+
+            auto err = mStorage->RemoveNetworkInstance(instance.mInstanceIdent);
+            AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
+
+            (void)mPendingConnections.erase(instance.mInstanceIdent);
+
+            if (auto pendingErr = mStorage->RemovePendingConnections(instance.mInstanceIdent); !pendingErr.IsNone()) {
+                LOG_ERR() << "Failed to remove pending connections"
+                          << Log::Field("instanceIdent", instance.mInstanceIdent) << Log::Field(pendingErr);
+            }
+        }
+
+        auto err = mStorage->RemoveHost(networkID, nodeID);
+        AOS_ERROR_CHECK_AND_THROW(err, "error removing host");
+
+        (void)it->second.mHostInstances.erase(itHost);
+
+        if (it->second.mHostInstances.empty()) {
+            mIpSubnet.ReleaseIPNetPool(networkID.CStr());
+
+            err = mStorage->RemoveNetwork(networkID);
+            AOS_ERROR_CHECK_AND_THROW(err, "error removing network");
+
+            (void)mNetworkStates.erase(it);
+        }
+
+        targets = std::move(nodeTargets);
+
+        return RestartDNS();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+}
+
+std::vector<std::string> NetworkManager::GetInstanceTargets(const InstanceIdent& instanceIdent) const
+{
+    std::vector<std::string> targets {instanceIdent.mItemID.CStr()};
+
+    for (const auto& [_, network] : mNetworkStates) {
+        for (const auto& [nodeID, host] : network.mHostInstances) {
+            if (const auto instance = host.mInstances.find(instanceIdent); instance != host.mInstances.end()) {
+                std::transform(instance->second.mHosts.begin(), instance->second.mHosts.end(),
+                    std::back_inserter(targets), [](const auto& hostname) { return hostname.CStr(); });
+            }
+        }
+    }
+
+    return targets;
+}
+
+bool NetworkManager::IsInstanceIP(const String& ip) const
+{
+    for (const auto& [_, network] : mNetworkStates) {
+        for (const auto& [nodeID, host] : network.mHostInstances) {
+            if (std::any_of(host.mInstances.begin(), host.mInstances.end(),
+                    [&ip](const auto& instance) { return instance.second.mIP == ip; })) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void NetworkManager::AddFirewallRule(const InstanceIdent& requesterIdent, const std::string& target,
+    const FirewallRule& rule, Array<FirewallRule>& rules) const
+{
+    if (rules.Contains(rule)) {
+        return;
+    }
+
+    if (auto err = rules.PushBack(rule); !err.IsNone()) {
+        LOG_WRN() << "Too many firewall rules, rule dropped" << Log::Field("instanceIdent", requesterIdent)
+                  << Log::Field("target", target.c_str()) << Log::Field("dstIP", rule.mDstIP)
+                  << Log::Field("dstPort", rule.mDstPort) << Log::Field(err);
+    }
+}
+
+void NetworkManager::GetRequesterRules(const InstanceIdent& requesterIdent, Array<FirewallRule>& rules)
+{
+    auto it = mPendingConnections.find(requesterIdent);
+    if (it == mPendingConnections.end()) {
+        return;
+    }
+
+    for (const auto& connection : it->second) {
+        bool instanceFound = false;
+
+        if (auto rule = GetInstanceRule(connection.mTarget.CStr(), connection.mPort.CStr(), connection.mProtocol.CStr(),
+                connection.mRequesterSubnet.CStr(), connection.mRequesterIP, instanceFound);
+            rule) {
+            AddFirewallRule(requesterIdent, connection.mTarget.CStr(), *rule, rules);
         }
     }
 }
-void NetworkManager::ResolvePendingConnections(const InstanceIdent& newInstanceIdent)
+
+void NetworkManager::UpdateRequesters(const std::vector<std::string>& targets, const InstanceIdent& allocatedIdent)
 {
-    std::unordered_map<InstanceIdent, std::pair<std::string /*nodeID*/, aos::networkmanager::PendingFirewallUpdate>>
-        updates;
+    std::lock_guard updateLock {mUpdateMutex};
+
+    FirewallUpdates updates;
 
     {
         std::lock_guard lock {mMutex};
 
-        std::vector<std::string> targets {newInstanceIdent.mItemID.CStr()};
+        std::unordered_map<InstanceIdent, std::string> requesters;
 
-        for (const auto& [_, network] : mNetworkStates) {
-            for (const auto& [nodeID, host] : network.mHostInstances) {
-                if (const auto instance = host.mInstances.find(newInstanceIdent); instance != host.mInstances.end()) {
-                    std::transform(instance->second.mHosts.begin(), instance->second.mHosts.end(),
-                        std::back_inserter(targets), [](const auto& hostname) { return hostname.CStr(); });
-                }
+        for (const auto& [requesterIdent, connections] : mPendingConnections) {
+            const auto affected = requesterIdent == allocatedIdent
+                ? mPushedRequesters.count(requesterIdent) != 0
+                : std::any_of(connections.begin(), connections.end(), [&targets](const auto& connection) {
+                      return std::find(targets.begin(), targets.end(), connection.mTarget.CStr()) != targets.end();
+                  });
+
+            if (affected && !connections.empty()) {
+                requesters[requesterIdent] = connections.front().mNodeID.CStr();
             }
         }
 
-        for (auto it = mPendingConnections.begin(); it != mPendingConnections.end();) {
-            const auto& pending = it->second;
+        for (const auto& [requesterIdent, nodeID] : requesters) {
+            auto& [updateNodeID, update] = updates[requesterIdent];
 
-            if (std::find(targets.begin(), targets.end(), pending.mTarget.CStr()) == targets.end()) {
-                ++it;
-                continue;
-            }
+            updateNodeID          = nodeID;
+            update.mInstanceIdent = requesterIdent;
 
-            bool instanceFound = false;
-            auto rule          = GetInstanceRule(pending.mTarget.CStr(), pending.mPort.CStr(), pending.mProtocol.CStr(),
-                         pending.mRequesterSubnet.CStr(), pending.mRequesterIP, instanceFound);
-
-            if (rule) {
-                auto& [nodeID, update] = updates[pending.mRequesterIdent];
-                nodeID                 = pending.mNodeID.CStr();
-                update.mInstanceIdent  = pending.mRequesterIdent;
-                update.mFirewallRules.PushBack(*rule);
-
-                // Remove from memory only; keep in DB until SM confirms via SyncNetworkState
-                it = mPendingConnections.erase(it);
-            } else {
-                ++it;
-            }
+            GetRequesterRules(requesterIdent, update.mFirewallRules);
         }
     }
 
-    if (mPendingUpdateHandler) {
-        for (const auto& [_, updatePair] : updates) {
-            const auto& [nodeID, update] = updatePair;
+    PushFirewallUpdates(updates);
+}
 
-            LOG_DBG() << "Pushing pending firewall update" << Log::Field("instanceIdent", update.mInstanceIdent)
-                      << Log::Field("nodeID", nodeID.c_str()) << Log::Field("rulesCount", update.mFirewallRules.Size());
+void NetworkManager::PushFirewallUpdates(const FirewallUpdates& updates)
+{
+    if (!mPendingUpdateHandler) {
+        return;
+    }
 
-            mPendingUpdateHandler->OnPendingFirewallUpdate(nodeID.c_str(), update);
-        }
+    for (const auto& [_, updatePair] : updates) {
+        const auto& [nodeID, update] = updatePair;
+
+        LOG_DBG() << "Pushing firewall update" << Log::Field("instanceIdent", update.mInstanceIdent)
+                  << Log::Field("nodeID", nodeID.c_str()) << Log::Field("rulesCount", update.mFirewallRules.Size());
+
+        mPendingUpdateHandler->OnPendingFirewallUpdate(nodeID.c_str(), update);
+        (void)mPushedRequesters.insert(update.mInstanceIdent);
     }
 }
 
