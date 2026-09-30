@@ -155,11 +155,22 @@ For example, both `service-id/8080:8082/tcp` and `hostname-service/8080:8082/tcp
 converts service configuration port ranges to the colon format; port parsing is unchanged. Every requested port
 must be exposed with the matching protocol. Instances in the same subnet do not require a separate firewall rule.
 
-Unresolved targets are stored as pending connections and retried after instance allocation, hostname updates and
-network-state synchronization. Pending records retain the original target string. For compatibility, the database
-column is still named `targetItemID`, although it can also contain a hostname.
+All allowed connections of an instance are stored as pending connection records, whether or not their target is
+currently resolvable, and are kept until the requester instance is released or allocated again. Records retain the
+original target string. For compatibility, the table is still named `pending_connections` and the column
+`targetItemID`, although it can also contain a hostname.
+
+When a target instance is allocated, re-allocated, renamed or released, CM re-resolves every requester whose records
+reference the target's item ID or hostnames and pushes the requester's whole current rule set to its node, which
+replaces the rules it holds. Rules to a released or re-addressed target are therefore removed and rules to its new
+address are added. A requester that has already received such an update also gets its rule set pushed after its own
+allocation, so an older update still in flight cannot override the allocation result. On network-state
+synchronization CM pushes the rule set again to any reported requester that lacks a resolved rule or holds a rule to
+an address no longer allocated to any instance.
+
+A rule set is limited to `cMaxNumFirewallRules` rules. Rules are taken in the order of the requester's allowed
+connections; the rest are dropped with a warning, identically on allocation and on pushed updates.
 
 Registered hostnames are persisted with the instance and restored when CM starts. Database migration 1 adds an
 empty hostname list to existing instance records; those lists are populated when SM next supplies the instance's
-network parameters. Renaming a hostname affects subsequent lookups; this does not introduce revocation or
-retargeting of firewall rules that have already been installed.
+network parameters. Renaming a hostname updates the rules of requesters that reference the old or the new name.
