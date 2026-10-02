@@ -15,7 +15,7 @@
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/tools/error.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/iamclient/publicnodeservice.hpp>
 #include <common/utils/channel.hpp>
@@ -84,7 +84,7 @@ public:
     Error ReconnectClient() override;
 
 protected:
-    Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
+    Error ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg) override;
     void  OnConnected() override;
     void  OnDisconnected() override;
 
@@ -103,7 +103,7 @@ private:
     common::utils::Channel<std::vector<uint8_t>> mOutgoingMsgChannel;
     common::utils::Channel<std::vector<uint8_t>> mIncomingMsgChannel;
 
-    std::queue<iamanager::v6::IAMOutgoingMessages> mMessageCache;
+    std::queue<iamanager::v7::IAMOutgoingMessages> mMessageCache;
 };
 
 } // namespace aos::mp::iamclient

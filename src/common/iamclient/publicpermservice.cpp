@@ -6,7 +6,7 @@
 
 #include <grpcpp/grpcpp.h>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/tools/logger.hpp>
 
@@ -45,7 +45,7 @@ Error PublicPermissionsService::Init(
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPublicPermissionsService::NewStub(
+    mStub = iamanager::v7::IAMPublicPermissionsService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -57,14 +57,18 @@ Error PublicPermissionsService::Reconnect()
 
     LOG_INF() << "Reconnect public permissions service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
-    if (!err.IsNone()) {
-        return err;
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
+
+        mCredentials = credentials;
     }
 
-    mCredentials = credentials;
-
-    mStub = iamanager::v6::IAMPublicPermissionsService::NewStub(
+    mStub = iamanager::v7::IAMPublicPermissionsService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -84,7 +88,7 @@ Error PublicPermissionsService::GetPermissions(const String& secret, const Strin
 
         auto request = pbconvert::ConvertToProto(secret, funcServerID);
 
-        iamanager::v6::PermissionsResponse response;
+        iamanager::v7::PermissionsResponse response;
 
         if (auto status = mStub->GetPermissions(ctx.get(), request, &response); !status.ok()) {
             return ErrorEnum::eRuntime;

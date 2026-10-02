@@ -12,15 +12,15 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPermissionsService v6.
  */
-class IAMPermissionsServiceStub final : public iamanager::v6::IAMPermissionsService::Service {
+class IAMPermissionsServiceStub final : public iamanager::v7::IAMPermissionsService::Service {
 public:
     IAMPermissionsServiceStub()
     {
@@ -65,8 +65,8 @@ public:
     }
 
     grpc::Status RegisterInstance([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::RegisterInstanceRequest*                   request,
-        iamanager::v6::RegisterInstanceResponse*                        response) override
+        const iamanager::v7::RegisterInstanceRequest*                   request,
+        iamanager::v7::RegisterInstanceResponse*                        response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -80,7 +80,7 @@ public:
     }
 
     grpc::Status UnregisterInstance([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::UnregisterInstanceRequest*                   request,
+        const iamanager::v7::UnregisterInstanceRequest*                   request,
         [[maybe_unused]] google::protobuf::Empty*                         response) override
     {
         std::lock_guard lock {mMutex};

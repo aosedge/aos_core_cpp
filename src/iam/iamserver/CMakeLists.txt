@@ -24,6 +24,7 @@ set(LIBRARIES
     aos::core::iam::currentnode
     aos::core::iam::nodemanager
     aos::core::iam::provisionmanager
+    aos::iam::database
     Poco::Util
 )
 

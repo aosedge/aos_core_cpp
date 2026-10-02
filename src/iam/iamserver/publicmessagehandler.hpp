@@ -127,7 +127,7 @@ protected:
     }
 
 private:
-    static constexpr auto cIAMAPIVersion       = 6;
+    static constexpr auto cIAMAPIVersion       = 7;
     static constexpr auto cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto cRequestRetryMaxTry  = 3;
 
@@ -137,16 +137,18 @@ private:
 
     // IAMPublicCurrentNodeService interface
     ::grpc::Status GetCurrentNodeInfo(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
-        ::iamanager::v6::NodeInfo* response) override;
+        ::iamanager::v7::NodeInfo* response) override;
     ::grpc::Status SubscribeCurrentNodeChanged(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
-        ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer) override;
+        ::grpc::ServerWriter<::iamanager::v7::NodeInfo>* writer) override;
 
     // IAMPublicCertService interface
-    ::grpc::Status GetCert(::grpc::ServerContext* context, const ::iamanager::v6::GetCertRequest* request,
-        ::iamanager::v6::CertInfo* response) override;
-    ::grpc::Status SubscribeCertChanged(::grpc::ServerContext* context,
-        const ::iamanager::v6::SubscribeCertChangedRequest*    request,
-        ::grpc::ServerWriter<::iamanager::v6::CertInfo>*       writer) override;
+    ::grpc::Status GetCert(::grpc::ServerContext* context, const ::iamanager::v7::GetCertRequest* request,
+        ::iamanager::v7::CertInfo* response) override;
+    ::grpc::Status GetAllCerts(::grpc::ServerContext* context, const ::iamanager::v7::GetCertRequest* request,
+        ::iamanager::v7::CertInfoList* response) override;
+    ::grpc::Status SubscribeCertsChanged(::grpc::ServerContext* context,
+        const ::iamanager::v7::SubscribeCertsChangedRequest*    request,
+        ::grpc::ServerWriter<::iamanager::v7::CertInfoList>*    writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(

@@ -30,7 +30,6 @@ namespace aos::cm::config {
  * Config structure.
  */
 struct Config {
-    std::string               mCACert;
     monitoring::Config        mMonitoring;
     common::config::Migration mMigration;
     alerts::Config            mAlerts;

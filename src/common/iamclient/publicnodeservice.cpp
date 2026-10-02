@@ -85,7 +85,7 @@ Error PublicNodesService::GetAllNodeIDs(Array<StaticString<cIDLen>>& ids) const
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
     google::protobuf::Empty request;
-    iamanager::v6::NodesID  response;
+    iamanager::v7::NodesID  response;
 
     if (auto status = mStub->GetAllNodeIDs(ctx.get(), request, &response); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
@@ -111,8 +111,8 @@ Error PublicNodesService::GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) 
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-    iamanager::v6::GetNodeInfoRequest request;
-    iamanager::v6::NodeInfo           response;
+    iamanager::v7::GetNodeInfoRequest request;
+    iamanager::v7::NodeInfo           response;
 
     request.set_node_id(nodeID.CStr());
 
@@ -140,7 +140,7 @@ Error PublicNodesService::SubscribeListener(aos::iamclient::NodeInfoListenerItf&
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v6::NodeInfo& proto, NodeInfo& aos) -> Error {
+        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
             return pbconvert::ConvertToAos(proto, aos);
         };
 
@@ -149,7 +149,7 @@ Error PublicNodesService::SubscribeListener(aos::iamclient::NodeInfoListenerItf&
         };
 
         mSubscriptionManager = std::make_unique<NodeInfoSubscriptionManager>(mStub.get(), request,
-            &iamanager::v6::IAMPublicNodesService::Stub::SubscribeNodeChanged, convertFunc, notifyFunc,
+            &iamanager::v7::IAMPublicNodesService::Stub::SubscribeNodeChanged, convertFunc, notifyFunc,
             "NodeSubscription");
     }
 
@@ -216,7 +216,7 @@ void PublicNodesService::Stop()
     }
 }
 
-Error PublicNodesService::SendMessage(const iamanager::v6::IAMOutgoingMessages& message)
+Error PublicNodesService::SendMessage(const iamanager::v7::IAMOutgoingMessages& message)
 {
     std::lock_guard lock {mMutex};
 
@@ -299,7 +299,7 @@ Error PublicNodesService::RegisterNode()
             return ErrorEnum::eNone;
         }
 
-        mStub = iamanager::v6::IAMPublicNodesService::NewStub(channel);
+        mStub = iamanager::v7::IAMPublicNodesService::NewStub(channel);
 
         if (mSubscriptionManager) {
             mSubscriptionManager->Reconnect(mStub.get());
@@ -331,7 +331,7 @@ Error PublicNodesService::RegisterNode()
     return ErrorEnum::eNone;
 }
 
-Error PublicNodesService::ReceiveMessage([[maybe_unused]] const iamanager::v6::IAMIncomingMessages&
+Error PublicNodesService::ReceiveMessage([[maybe_unused]] const iamanager::v7::IAMIncomingMessages&
         msg) // virtual function should be override in inherit classes
 {
     return ErrorEnum::eNotSupported;
@@ -347,7 +347,7 @@ void PublicNodesService::OnDisconnected()
 
 Error PublicNodesService::HandleIncomingMessage()
 {
-    iamanager::v6::IAMIncomingMessages incomingMsg;
+    iamanager::v7::IAMIncomingMessages incomingMsg;
 
     while (true) {
         if (!mStream->Read(&incomingMsg)) {
@@ -394,7 +394,7 @@ Error PublicNodesService::RebuildStub()
         return Error(ErrorEnum::eRuntime, "no credentials configured");
     }
 
-    mStub = iamanager::v6::IAMPublicNodesService::NewStub(grpc::CreateCustomChannel(
+    mStub = iamanager::v7::IAMPublicNodesService::NewStub(grpc::CreateCustomChannel(
         mIAMPublicServerURL, mCredentials[mActiveCredentialIdx], common::utils::CreateGRPCChannelArguments()));
 
     if (mSubscriptionManager) {

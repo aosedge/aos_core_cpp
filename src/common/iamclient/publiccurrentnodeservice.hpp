@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
@@ -23,8 +23,8 @@ namespace aos::common::iamclient {
 
 // Type alias for CurrentNodeInfo subscription manager
 using CurrentNodeInfoSubscriptionManager
-    = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCurrentNodeService::Stub,
-        aos::iamclient::CurrentNodeInfoListenerItf, iamanager::v6::NodeInfo, NodeInfo, google::protobuf::Empty>;
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCurrentNodeService::Stub,
+        aos::iamclient::CurrentNodeInfoListenerItf, iamanager::v7::NodeInfo, NodeInfo, google::protobuf::Empty>;
 
 /**
  * Public current node service.
@@ -83,7 +83,7 @@ private:
     std::string                                                       mIAMPublicServerURL;
     bool                                                              mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                         mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicCurrentNodeService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMPublicCurrentNodeService::Stub> mStub;
     TLSCredentialsItf*                                                mTLSCredentials {};
     mutable std::mutex                                                mMutex;
     std::unique_ptr<CurrentNodeInfoSubscriptionManager>               mSubscriptionManager;

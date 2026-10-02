@@ -94,7 +94,7 @@ TEST_F(PBConvertIAMTest, ConvertSubjectsToProto)
 {
     const StaticString<cIDLen> subjects[] = {"subject-id-1", "subject-id-2"};
 
-    iamanager::v6::Subjects result = ConvertToProto(Array<StaticString<cIDLen>>(subjects, std::size(subjects)));
+    iamanager::v7::Subjects result = ConvertToProto(Array<StaticString<cIDLen>>(subjects, std::size(subjects)));
 
     ASSERT_EQ(result.subjects_size(), std::size(subjects));
 
@@ -109,7 +109,7 @@ TEST_F(PBConvertIAMTest, ConvertNodeAttributeToProto)
     src.mName  = "name";
     src.mValue = "value";
 
-    iamanager::v6::NodeAttribute result = ConvertToProto(src);
+    iamanager::v7::NodeAttribute result = ConvertToProto(src);
 
     EXPECT_STREQ(result.name().c_str(), src.mName.CStr());
     EXPECT_STREQ(result.value().c_str(), src.mValue.CStr());
@@ -224,7 +224,7 @@ TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
 
 TEST_F(PBConvertIAMTest, ConvertPermissionsResponseToAos)
 {
-    iamanager::v6::PermissionsResponse src;
+    iamanager::v7::PermissionsResponse src;
 
     auto* instance = src.mutable_instance();
     instance->set_item_id("test-item");
@@ -270,7 +270,7 @@ TEST_F(PBConvertIAMTest, ConvertPermissionsResponseToAos)
 
 TEST_F(PBConvertIAMTest, ConvertPermissionsResponseToAosEmpty)
 {
-    iamanager::v6::PermissionsResponse src;
+    iamanager::v7::PermissionsResponse src;
 
     auto* instance = src.mutable_instance();
     instance->set_item_id("test-item");
@@ -293,7 +293,7 @@ TEST_F(PBConvertIAMTest, ConvertPermissionsResponseToAosEmpty)
 
 TEST_F(PBConvertIAMTest, ConvertCertInfoToAos)
 {
-    iamanager::v6::CertInfo src;
+    iamanager::v7::CertInfo src;
 
     src.set_type("cert-type");
     src.set_cert_url("cert-url");

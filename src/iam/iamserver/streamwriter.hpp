@@ -8,7 +8,18 @@
 #ifndef AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 #define AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <chrono>
+#include <condition_variable>
+#include <optional>
+#include <shared_mutex>
+#include <string>
+
+#include <iamanager/v7/iamanager.grpc.pb.h>
+
+#include <common/pbconvert/iam.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/utils.hpp>
 
 namespace aos::iam::iamserver {
 
@@ -111,7 +122,7 @@ private:
 /**
  * Sends certificate updates to GRPC streams.
  */
-class CertWriter : public StreamWriter<iamanager::v6::CertInfo>, public aos::iamclient::CertListenerItf {
+class CertWriter : public StreamWriter<iamanager::v7::CertInfoList>, public aos::iamclient::CertListenerItf {
 public:
     /**
      * CertWriter constructor.
@@ -126,13 +137,23 @@ public:
 private:
     void OnCertChanged(const CertInfo& info) override
     {
-        iamanager::v6::CertInfo grpcCertInfo;
+        iamanager::v7::CertInfoList grpcCertInfoList;
+        auto*                       grpcCertInfo = grpcCertInfoList.add_certs();
 
-        grpcCertInfo.set_type(mCertType);
-        grpcCertInfo.set_key_url(info.mKeyURL.CStr());
-        grpcCertInfo.set_cert_url(info.mCertURL.CStr());
+        grpcCertInfo->set_type(mCertType);
+        grpcCertInfo->set_key_url(info.mKeyURL.CStr());
+        grpcCertInfo->set_cert_url(info.mCertURL.CStr());
+        grpcCertInfo->set_issuer(info.mIssuer.Get(), info.mIssuer.Size());
 
-        WriteToStreams(grpcCertInfo);
+        Error       err;
+        std::string serial;
+
+        Tie(serial, err) = common::pbconvert::ConvertSerialToProto(info.mSerial);
+        if (err.IsNone()) {
+            grpcCertInfo->set_serial(serial);
+        }
+
+        WriteToStreams(grpcCertInfoList);
     }
 
     std::string mCertType;

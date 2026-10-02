@@ -10,17 +10,18 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMCertificateService v6.
  */
-class IAMCertificateServiceStub final : public iamanager::v6::IAMCertificateService::Service {
+class IAMCertificateServiceStub final : public iamanager::v7::IAMCertificateService::Service {
 public:
     IAMCertificateServiceStub()
     {
@@ -106,8 +107,15 @@ public:
         return mLastPemCert;
     }
 
+    std::vector<std::string> GetLastRootCerts() const
+    {
+        std::lock_guard lock {mMutex};
+
+        return mLastRootCerts;
+    }
+
     grpc::Status CreateKey([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::CreateKeyRequest* request, iamanager::v6::CreateKeyResponse* response) override
+        const iamanager::v7::CreateKeyRequest* request, iamanager::v7::CreateKeyResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -127,7 +135,7 @@ public:
     }
 
     grpc::Status ApplyCert([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::ApplyCertRequest* request, iamanager::v6::ApplyCertResponse* response) override
+        const iamanager::v7::ApplyCertRequest* request, iamanager::v7::ApplyCertResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -141,6 +149,24 @@ public:
         } else {
             response->mutable_cert_info()->set_cert_url(mCertURL);
             response->mutable_cert_info()->set_key_url(mKeyURL);
+        }
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+        const iamanager::v7::UpdateRootCertsRequest* request, iamanager::v7::UpdateRootCertsResponse* response) override
+    {
+        std::lock_guard lock {mMutex};
+
+        mLastNodeID = request->node_id();
+        mLastRootCerts.assign(request->root_certs().begin(), request->root_certs().end());
+
+        response->set_node_id(mLastNodeID);
+
+        if (mHasError) {
+            response->mutable_error()->set_exit_code(mErrorExitCode);
+            response->mutable_error()->set_message(mErrorMessage);
         }
 
         return grpc::Status::OK;
@@ -160,6 +186,7 @@ private:
     std::string                   mLastSubject;
     std::string                   mLastPassword;
     std::string                   mLastPemCert;
+    std::vector<std::string>      mLastRootCerts;
 };
 
 #endif

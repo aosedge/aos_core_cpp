@@ -298,6 +298,51 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
  * IAMCertificateService implementation
  **********************************************************************************************************************/
 
+grpc::Status ProtectedMessageHandler::UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::UpdateRootCertsRequest* request, iamproto::UpdateRootCertsResponse* response)
+{
+    const auto& nodeID = request->node_id();
+
+    LOG_DBG() << "Process update root certs request: nodeID=" << nodeID.c_str()
+              << ", count=" << request->root_certs_size();
+
+    response->set_node_id(nodeID);
+
+    if (!ProcessOnThisNode(nodeID)) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
+            return handler->UpdateRootCerts(request, response, cDefaultTimeout);
+        });
+    }
+
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request->root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            LOG_ERR() << "Update root certs failed: error=" << err;
+
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+    }
+
+    if (auto err = mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos); !err.IsNone()) {
+        LOG_ERR() << "Update root certs failed: error=" << err;
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    return grpc::Status::OK;
+}
+
 grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::CreateKeyRequest* request, iamproto::CreateKeyResponse* response)
 {

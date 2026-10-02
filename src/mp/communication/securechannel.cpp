@@ -262,6 +262,11 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
         return errLoad;
     }
 
+    auto [rootCertsPem, errRoot] = common::utils::LoadRootCertificates(*mCertProvider, *mCertLoader, *mCryptoProvider);
+    if (!errRoot.IsNone()) {
+        return errRoot;
+    }
+
     auto [pkey, errLoadKey] = LoadPrivateKey(certInfo.mKeyURL.CStr());
     if (!errLoadKey.IsNone()) {
         return errLoadKey;
@@ -302,8 +307,8 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    if (SSL_CTX_load_verify_locations(ctx, mCfg->mCACert.c_str(), nullptr) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    if (auto err = common::utils::LoadRootCertsToSSLContext(rootCertsPem, ctx); !err.IsNone()) {
+        return err;
     }
 
     LOG_DBG() << "SSL context configured";
