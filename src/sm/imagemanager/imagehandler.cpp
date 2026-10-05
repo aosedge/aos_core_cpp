@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <sys/stat.h>
 #include <sys/xattr.h>
@@ -25,8 +27,13 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-constexpr auto cWhiteoutPrefix    = ".wh.";
-constexpr auto cWhiteoutOpaqueDir = ".wh..wh..opq";
+constexpr auto cWhiteoutPrefix      = ".wh.";
+constexpr auto cWhiteoutOpaqueDir   = ".wh..wh..opq";
+constexpr auto cSupportedMediaTypes = std::array {
+    oci::cMediaTypeLayerTar,
+    oci::cMediaTypeLayerTarGZip,
+    oci::cMediaTypeLayerTarGZipEncrypted,
+};
 
 /***********************************************************************************************************************
  * Static
@@ -143,7 +150,9 @@ RetWithError<StaticString<oci::cDigestLen>> ImageHandler::GetUnpackedLayerDigest
 
 Error ImageHandler::CheckMediaType(const String& mediaType) const
 {
-    if (mediaType != oci::cMediaTypeLayerTar && mediaType != oci::cMediaTypeLayerTarGZip) {
+    if (std::find_if(cSupportedMediaTypes.cbegin(), cSupportedMediaTypes.cend(),
+            [mediaType](const String& supported) { return supported == mediaType; })
+        == cSupportedMediaTypes.cend()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotSupported, "unsupported layer media type"));
     }
 
