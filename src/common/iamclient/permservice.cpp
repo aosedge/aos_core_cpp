@@ -84,7 +84,8 @@ RetWithError<StaticString<cSecretLen>> PermissionsService::RegisterInstance(
         iamanager::v6::RegisterInstanceResponse response;
 
         if (auto status = mStub->RegisterInstance(ctx.get(), request, &response); !status.ok()) {
-            return {StaticString<cSecretLen>(), ErrorEnum::eRuntime};
+            return {StaticString<cSecretLen>(),
+                Error(static_cast<int>(status.error_code()), status.error_message().c_str())};
         }
 
         return {response.secret().c_str(), ErrorEnum::eNone};
@@ -109,7 +110,7 @@ Error PermissionsService::UnregisterInstance(const InstanceIdent& instanceIdent)
         google::protobuf::Empty response;
 
         if (auto status = mStub->UnregisterInstance(ctx.get(), request, &response); !status.ok()) {
-            return ErrorEnum::eRuntime;
+            return Error(static_cast<int>(status.error_code()), status.error_message().c_str());
         }
 
         return ErrorEnum::eNone;

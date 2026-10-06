@@ -101,6 +101,20 @@ TEST_F(PublicPermissionsServiceTest, GetPermissionsEmpty)
     EXPECT_STREQ(mStub->GetLastFuncServerID().c_str(), "funcServer2");
 }
 
+TEST_F(PublicPermissionsServiceTest, GetPermissionsWithError)
+{
+    mStub->SetStatus(grpc::Status(grpc::StatusCode::NOT_FOUND, "Permissions not found"));
+
+    aos::InstanceIdent                             instanceIdent;
+    aos::StaticArray<aos::FunctionPermissions, 10> servicePermissions;
+
+    auto err = mService->GetPermissions("secret123", "funcServer1", instanceIdent, servicePermissions);
+
+    EXPECT_EQ(err.Value(), aos::ErrorEnum::eRuntime);
+    EXPECT_EQ(err.Code(), static_cast<int>(grpc::StatusCode::NOT_FOUND));
+    EXPECT_STREQ(err.Message(), "Permissions not found");
+}
+
 TEST_F(PublicPermissionsServiceTest, Reconnect)
 {
     mStub->SetInstanceIdent("app_before", "user_before", 111);

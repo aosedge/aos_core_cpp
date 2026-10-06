@@ -73,6 +73,25 @@ TEST_F(PermissionsServiceTest, RegisterInstance)
     EXPECT_EQ(mStub->GetLastInstance(), 42);
 }
 
+TEST_F(PermissionsServiceTest, RegisterInstanceWithError)
+{
+    mStub->SetStatus(grpc::Status(grpc::StatusCode::INTERNAL, "Register failed"));
+
+    aos::InstanceIdent instanceIdent;
+    instanceIdent.mItemID    = "service1";
+    instanceIdent.mSubjectID = "subject1";
+    instanceIdent.mInstance  = 42;
+
+    aos::StaticArray<aos::FunctionServicePermissions, 5> permissions;
+
+    auto [secret, err] = mService->RegisterInstance(instanceIdent, permissions);
+
+    EXPECT_EQ(err.Value(), aos::ErrorEnum::eRuntime);
+    EXPECT_EQ(err.Code(), static_cast<int>(grpc::StatusCode::INTERNAL));
+    EXPECT_STREQ(err.Message(), "Register failed");
+    EXPECT_TRUE(secret.IsEmpty());
+}
+
 TEST_F(PermissionsServiceTest, UnregisterInstance)
 {
     aos::InstanceIdent instanceIdent;
@@ -86,6 +105,22 @@ TEST_F(PermissionsServiceTest, UnregisterInstance)
     EXPECT_STREQ(mStub->GetLastItemID().c_str(), "service2");
     EXPECT_STREQ(mStub->GetLastSubjectID().c_str(), "subject2");
     EXPECT_EQ(mStub->GetLastInstance(), 99);
+}
+
+TEST_F(PermissionsServiceTest, UnregisterInstanceWithError)
+{
+    mStub->SetStatus(grpc::Status(grpc::StatusCode::NOT_FOUND, "Unregister failed"));
+
+    aos::InstanceIdent instanceIdent;
+    instanceIdent.mItemID    = "service2";
+    instanceIdent.mSubjectID = "subject2";
+    instanceIdent.mInstance  = 99;
+
+    auto err = mService->UnregisterInstance(instanceIdent);
+
+    EXPECT_EQ(err.Value(), aos::ErrorEnum::eRuntime);
+    EXPECT_EQ(err.Code(), static_cast<int>(grpc::StatusCode::NOT_FOUND));
+    EXPECT_STREQ(err.Message(), "Unregister failed");
 }
 
 TEST_F(PermissionsServiceTest, Reconnect)
