@@ -283,24 +283,24 @@ void FunctionServicePermissionsFromJSON(const Poco::Dynamic::Var& var, Array<Fun
         }
 
         auto err = permissions.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
+        AOS_ERROR_CHECK_AND_THROW(err, "too many functional servers");
 
         auto& parsedPermission = permissions.Back();
 
         err = parsedPermission.mName.Assign(name.c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
+        AOS_ERROR_CHECK_AND_THROW(err, "functional server name too long: " + name);
 
         for (const auto& [key, value] : *permObj) {
             err = parsedPermission.mPermissions.EmplaceBack();
-            AOS_ERROR_CHECK_AND_THROW(err, "permissions parsing error");
+            AOS_ERROR_CHECK_AND_THROW(err, "too many permission keys: " + name);
 
             auto& parsedFuncPermission = parsedPermission.mPermissions.Back();
 
             err = parsedFuncPermission.mFunction.Assign(key.c_str());
-            AOS_ERROR_CHECK_AND_THROW(err, "permission key parsing error");
+            AOS_ERROR_CHECK_AND_THROW(err, "permission key too long: " + key);
 
             err = parsedFuncPermission.mPermissions.Assign(value.convert<std::string>().c_str());
-            AOS_ERROR_CHECK_AND_THROW(err, "permission value parsing error");
+            AOS_ERROR_CHECK_AND_THROW(err, "permission value too long: " + key);
         }
     }
 }
