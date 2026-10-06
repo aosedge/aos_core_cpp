@@ -219,7 +219,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mIAMClient                = ParseIAMClientConfig(object);
         config.mIAMServer                = ParseIAMServerConfig(object);
         config.mDatabase                 = ParseDatabaseConfig(object, config.mCertModules);
-        config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler");
+        config.mEnablePermissionsHandler = object.GetValue<bool>("enablePermissionsHandler", true);
 
         if (object.Has("identifier")) {
             config.mIdentifier = ParseIdentifier(object.GetObject("identifier"));
