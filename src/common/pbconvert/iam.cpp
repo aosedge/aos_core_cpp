@@ -11,9 +11,9 @@
 
 namespace aos::common::pbconvert {
 
-iamanager::v6::Subjects ConvertToProto(const Array<StaticString<cIDLen>>& src)
+iamanager::v7::Subjects ConvertToProto(const Array<StaticString<cIDLen>>& src)
 {
-    iamanager::v6::Subjects result;
+    iamanager::v7::Subjects result;
 
     for (const auto& subject : src) {
         result.add_subjects(subject.CStr());
@@ -22,9 +22,9 @@ iamanager::v6::Subjects ConvertToProto(const Array<StaticString<cIDLen>>& src)
     return result;
 }
 
-iamanager::v6::NodeAttribute ConvertToProto(const NodeAttribute& src)
+iamanager::v7::NodeAttribute ConvertToProto(const NodeAttribute& src)
 {
-    iamanager::v6::NodeAttribute result;
+    iamanager::v7::NodeAttribute result;
 
     result.set_name(src.mName.CStr());
     result.set_value(src.mValue.CStr());
@@ -32,9 +32,9 @@ iamanager::v6::NodeAttribute ConvertToProto(const NodeAttribute& src)
     return result;
 }
 
-iamanager::v6::PartitionInfo ConvertToProto(const PartitionInfo& src)
+iamanager::v7::PartitionInfo ConvertToProto(const PartitionInfo& src)
 {
-    iamanager::v6::PartitionInfo result;
+    iamanager::v7::PartitionInfo result;
 
     result.set_name(src.mName.CStr());
     result.set_total_size(src.mTotalSize);
@@ -47,9 +47,9 @@ iamanager::v6::PartitionInfo ConvertToProto(const PartitionInfo& src)
     return result;
 }
 
-iamanager::v6::CPUInfo ConvertToProto(const CPUInfo& src)
+iamanager::v7::CPUInfo ConvertToProto(const CPUInfo& src)
 {
-    iamanager::v6::CPUInfo result;
+    iamanager::v7::CPUInfo result;
 
     result.set_model_name(src.mModelName.CStr());
     result.set_num_cores(src.mNumCores);
@@ -69,9 +69,9 @@ iamanager::v6::CPUInfo ConvertToProto(const CPUInfo& src)
     return result;
 }
 
-iamanager::v6::NodeInfo ConvertToProto(const NodeInfo& src)
+iamanager::v7::NodeInfo ConvertToProto(const NodeInfo& src)
 {
-    iamanager::v6::NodeInfo result;
+    iamanager::v7::NodeInfo result;
 
     result.set_node_id(src.mNodeID.CStr());
     result.set_node_type(src.mNodeType.CStr());
@@ -115,9 +115,9 @@ RetWithError<std::string> ConvertSerialToProto(const StaticArray<uint8_t, crypto
     return {result.Get(), err};
 }
 
-iamanager::v6::PermissionsRequest ConvertToProto(const String& secret, const String& funcServerID)
+iamanager::v7::PermissionsRequest ConvertToProto(const String& secret, const String& funcServerID)
 {
-    iamanager::v6::PermissionsRequest result;
+    iamanager::v7::PermissionsRequest result;
 
     result.set_secret(secret.CStr());
     result.set_functional_server_id(funcServerID.CStr());
@@ -125,7 +125,7 @@ iamanager::v6::PermissionsRequest ConvertToProto(const String& secret, const Str
     return result;
 }
 
-Error ConvertToAos(const iamanager::v6::PermissionsResponse& src, InstanceIdent& instanceIdent,
+Error ConvertToAos(const iamanager::v7::PermissionsResponse& src, InstanceIdent& instanceIdent,
     Array<FunctionPermissions>& servicePermissions)
 {
     instanceIdent = ConvertToAos(src.instance());
@@ -144,7 +144,7 @@ Error ConvertToAos(const iamanager::v6::PermissionsResponse& src, InstanceIdent&
     return ErrorEnum::eNone;
 }
 
-Error ConvertToAos(const iamanager::v6::CertInfo& src, CertInfo& dst)
+Error ConvertToAos(const iamanager::v7::CertInfo& src, CertInfo& dst)
 {
     dst.mCertType = src.type().c_str();
     dst.mCertURL  = src.cert_url().c_str();

@@ -17,11 +17,11 @@
 
 #include <core/iam/nodemanager/itf/nodemanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 namespace aos::iam::iamserver {
 
-namespace iamproto = iamanager::v6;
+namespace iamproto = iamanager::v7;
 
 using NodeServerReaderWriter = grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>;
 
@@ -176,6 +176,17 @@ public:
      */
     grpc::Status ApplyCert(const iamproto::ApplyCertRequest* request, iamproto::ApplyCertResponse* response,
         const std::chrono::seconds responseTimeout);
+
+    /**
+     * Sends update root certs request and waits for response with timeout.
+     *
+     * @param request update root certs request.
+     * @param[out] response update root certs response.
+     * @param responseTimeout response timeout.
+     * @return grpc::Status.
+     */
+    grpc::Status UpdateRootCerts(const iamproto::UpdateRootCertsRequest* request,
+        iamproto::UpdateRootCertsResponse* response, const std::chrono::seconds responseTimeout);
 
 private:
     NodeStreamHandler(NodeServerReaderWriter* stream, grpc::ServerContext* context,

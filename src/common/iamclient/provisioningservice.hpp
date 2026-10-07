@@ -10,7 +10,7 @@
 #include <memory>
 #include <mutex>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/iamclient/itf/provisioning.hpp>
 
@@ -87,7 +87,7 @@ private:
     bool                                                         mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                    mCredentials;
     TLSCredentialsItf*                                           mTLSCredentials {};
-    std::unique_ptr<iamanager::v6::IAMProvisioningService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMProvisioningService::Stub> mStub;
     mutable std::mutex                                           mMutex;
 };
 

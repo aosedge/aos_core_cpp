@@ -13,7 +13,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -24,8 +24,9 @@
 namespace aos::common::iamclient {
 
 // Type alias for CertInfo subscription manager
-using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
+using CertSubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::CertInfoList, iamanager::v7::CertInfoList, iamanager::v7::SubscribeCertsChangedRequest>;
 
 /**
  * Public cert service.
@@ -59,6 +60,15 @@ public:
         CertInfo& resCert) const override;
 
     /**
+     * Returns all certificates for the given type.
+     *
+     * @param certType certificate type.
+     * @param[out] resCerts result certificates.
+     * @returns Error.
+     */
+    Error GetAllCerts(const String& certType, Array<CertInfo>& resCerts) const override;
+
+    /**
      * Subscribes certificates receiver.
      *
      * @param certType certificate type.
@@ -89,7 +99,7 @@ private:
     std::string                                                mIAMPublicServerURL;
     bool                                                       mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                  mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicCertService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMPublicCertService::Stub> mStub;
     TLSCredentialsItf*                                         mTLSCredentials {};
     mutable std::mutex                                         mMutex;
 

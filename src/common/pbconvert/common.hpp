@@ -13,7 +13,7 @@
 #include <core/common/tools/optional.hpp>
 #include <core/common/types/common.hpp>
 #include <core/common/types/permissions.hpp>
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 namespace aos::common::pbconvert {
 
@@ -47,9 +47,9 @@ grpc::Status ConvertAosErrorToGrpcStatus(const aos::Error& error);
  *
  * @param instanceIdent instance ident.
  * @param instancePermissions instance permissions to convert.
- * @return iamanager::v6::RegisterInstanceRequest.
+ * @return iamanager::v7::RegisterInstanceRequest.
  */
-iamanager::v6::RegisterInstanceRequest ConvertToProto(
+iamanager::v7::RegisterInstanceRequest ConvertToProto(
     const InstanceIdent& instanceIdent, const Array<FunctionServicePermissions>& instancePermissions);
 
 /**
@@ -123,7 +123,7 @@ Error ConvertToAos(const ::common::v2::ArchInfo& src, ArchInfo& dst);
  * @param[out] dst aos cpus.
  * @return Error.
  */
-Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUInfo>& src, CPUInfoArray& dst);
+Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v7::CPUInfo>& src, CPUInfoArray& dst);
 
 /**
  * Converts protobuf partitions to aos.
@@ -133,7 +133,7 @@ Error ConvertToAos(const google::protobuf::RepeatedPtrField<iamanager::v6::CPUIn
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v6::PartitionInfo>& src, PartitionInfoArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v7::PartitionInfo>& src, PartitionInfoArray& dst);
 
 /**
  * Converts protobuf node attributes to aos.
@@ -143,7 +143,7 @@ Error ConvertToAos(
  * @return Error.
  */
 Error ConvertToAos(
-    const google::protobuf::RepeatedPtrField<iamanager::v6::NodeAttribute>& src, NodeAttributeArray& dst);
+    const google::protobuf::RepeatedPtrField<iamanager::v7::NodeAttribute>& src, NodeAttributeArray& dst);
 
 /**
  * Converts protobuf node info to aos.
@@ -152,7 +152,7 @@ Error ConvertToAos(
  * @param[out] dst aos node info.
  * @return Error.
  */
-Error ConvertToAos(const iamanager::v6::NodeInfo& src, NodeInfo& dst);
+Error ConvertToAos(const iamanager::v7::NodeInfo& src, NodeInfo& dst);
 
 /**
  * Sets protobuf error message from aos.

@@ -17,7 +17,6 @@ namespace aos::cm::smcontroller {
 struct Config {
     std::string mCMServerURL;
     std::string mCertStorage;
-    std::string mCACert;
 };
 
 } // namespace aos::cm::smcontroller

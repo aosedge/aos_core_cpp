@@ -11,6 +11,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -39,6 +40,25 @@ public:
         return ErrorEnum::eNone;
     }
 
+    Error GetAllCerts(const String& certType, Array<CertInfo>& resCerts) const override
+    {
+        if (certType == cRootCertType) {
+            for (const auto& certURL : mRootCertURLs) {
+                CertInfo certInfo;
+
+                certInfo.mCertURL = certURL.c_str();
+
+                if (auto err = resCerts.PushBack(certInfo); !err.IsNone()) {
+                    return err;
+                }
+            }
+
+            return ErrorEnum::eNone;
+        }
+
+        return mCertHandler.GetAllCerts(certType, resCerts);
+    }
+
     Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
     {
         (void)certType;
@@ -65,11 +85,16 @@ public:
 
     void ResetCertCalled() { mCertCalled = false; }
 
+    void SetRootCerts(const std::vector<std::string>& certURLs) { mRootCertURLs = certURLs; }
+
 private:
+    static constexpr auto cRootCertType = "rootcerts";
+
     iam::certhandler::CertHandler&  mCertHandler;
     mutable std::atomic_bool        mCertCalled {};
     std::mutex                      mMutex;
     mutable std::condition_variable mCondVar;
+    std::vector<std::string>        mRootCertURLs;
     constexpr static auto           cWaitTimeout = std::chrono::seconds(3);
 };
 

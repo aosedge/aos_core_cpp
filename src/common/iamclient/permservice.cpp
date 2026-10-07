@@ -43,7 +43,7 @@ Error PermissionsService::Init(const std::string& iamProtectedServerURL, const s
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPermissionsService::NewStub(
+    mStub = iamanager::v7::IAMPermissionsService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -62,7 +62,7 @@ Error PermissionsService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMPermissionsService::NewStub(
+    mStub = iamanager::v7::IAMPermissionsService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -81,7 +81,7 @@ RetWithError<StaticString<cSecretLen>> PermissionsService::RegisterInstance(
 
         auto request = pbconvert::ConvertToProto(instanceIdent, instancePermissions);
 
-        iamanager::v6::RegisterInstanceResponse response;
+        iamanager::v7::RegisterInstanceResponse response;
 
         if (auto status = mStub->RegisterInstance(ctx.get(), request, &response); !status.ok()) {
             return {StaticString<cSecretLen>(), ErrorEnum::eRuntime};
@@ -103,7 +103,7 @@ Error PermissionsService::UnregisterInstance(const InstanceIdent& instanceIdent)
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::UnregisterInstanceRequest request;
+        iamanager::v7::UnregisterInstanceRequest request;
         request.mutable_instance()->CopyFrom(pbconvert::ConvertToProto(instanceIdent));
 
         google::protobuf::Empty response;
