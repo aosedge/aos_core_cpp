@@ -234,6 +234,22 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "Value2");
 }
 
+TEST_F(ConfigTest, ParseConfigWithoutEnablePermissionsHandler)
+{
+    std::ofstream file(mFileName);
+    file << R"({
+        "NodeInfo": {},
+        "WorkingDir": "/var/aos/iamanager",
+        "Migration": {
+            "MigrationPath": "/usr/share/aos/iam/migration",
+            "MergedMigrationPath": "/var/aos/workdirs/iam/migration"
+        }
+    })";
+    file.close();
+
+    EXPECT_TRUE(ParseConfig(mFileName).mError.Is(ErrorEnum::eInvalidArgument));
+}
+
 TEST_F(ConfigTest, ParsePKCS11ModuleParams)
 {
     Poco::JSON::Object::Ptr params = new Poco::JSON::Object();

@@ -46,6 +46,12 @@ public:
         mSecret = secret;
     }
 
+    void SetStatus(const grpc::Status& status)
+    {
+        std::lock_guard lock {mMutex};
+        mStatus = status;
+    }
+
     std::string GetLastItemID() const
     {
         std::lock_guard lock {mMutex};
@@ -76,7 +82,7 @@ public:
 
         response->set_secret(mSecret);
 
-        return grpc::Status::OK;
+        return mStatus;
     }
 
     grpc::Status UnregisterInstance([[maybe_unused]] grpc::ServerContext* context,
@@ -89,7 +95,7 @@ public:
         mLastSubjectID = request->instance().subject_id();
         mLastInstance  = request->instance().instance();
 
-        return grpc::Status::OK;
+        return mStatus;
     }
 
 private:
@@ -99,6 +105,7 @@ private:
     std::string                   mLastItemID;
     std::string                   mLastSubjectID;
     uint64_t                      mLastInstance {0};
+    grpc::Status                  mStatus {grpc::Status::OK};
 };
 
 #endif

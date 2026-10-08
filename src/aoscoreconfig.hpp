@@ -17,4 +17,14 @@
  */
 #define AOS_CONFIG_URL_LEN 4096
 
+/**
+ * Function name length.
+ */
+#define AOS_CONFIG_TYPES_FUNCTION_LEN 128
+
+/**
+ * Maximum number of functional services.
+ */
+#define AOS_CONFIG_TYPES_FUNC_SERVICE_MAX_COUNT 8
+
 #endif

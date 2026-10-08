@@ -304,6 +304,20 @@ std::string MakeImageConfigWithPorts(const std::string& ports)
 )";
 }
 
+std::string MakeItemConfigWithPermissions(const std::string& permissions)
+{
+    return R"(
+{
+    "author": "gtest",
+    "skipResourceLimits": false,
+    "permissions": {
+)" + permissions
+        + R"(
+    }
+}
+)";
+}
+
 class OCISpecTest : public Test {
 public:
     void SetUp() override
@@ -485,6 +499,87 @@ TEST_F(OCISpecTest, LoadAndSaveItemConfig)
     checkKeyAndValue(itSystemCorePems->mPermissions, "Services.Restart", "w");
     checkKeyAndValue(itSystemCorePems->mPermissions, "SomeRole", "rw");
     checkKeyAndValue(itSystemCorePems->mPermissions, "AnotherRole", "r");
+}
+
+TEST_F(OCISpecTest, LoadItemConfigWithLongPermissionKeys)
+{
+    const auto        cPath   = fs::JoinPath(cTestBaseDir, "item-config-long-permission-keys.json");
+    const std::string cVSSKey = "Vehicle.CarlaSimulation.ChaosWheel.Row1.Left.LateralSlipAngle";
+    const std::string cMaxLenKey(aos::cFunctionLen, 'k');
+
+    fs::WriteStringToFile(cPath,
+        MakeItemConfigWithPermissions(R"("kuksa": {")" + cVSSKey + R"(": "r", ")" + cMaxLenKey + R"(": "rw"})").c_str(),
+        S_IRUSR | S_IWUSR);
+
+    auto itemConfig = std::make_unique<aos::oci::ItemConfig>();
+
+    auto err = mOCISpec.LoadItemConfig(cPath, *itemConfig);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    ASSERT_EQ(itemConfig->mPermissions.Size(), 1);
+    EXPECT_EQ(itemConfig->mPermissions[0].mName, "kuksa");
+
+    const auto& perms = itemConfig->mPermissions[0].mPermissions;
+
+    ASSERT_EQ(perms.Size(), 2);
+    EXPECT_TRUE(perms.Contains(FunctionPermissions {cVSSKey.c_str(), "r"}));
+    EXPECT_TRUE(perms.Contains(FunctionPermissions {cMaxLenKey.c_str(), "rw"}));
+}
+
+TEST_F(OCISpecTest, LoadItemConfigPermissionsExceedLimitsFails)
+{
+    struct TestCase {
+        std::string mPermissions;
+        std::string mErrMessage;
+    };
+
+    auto makeKeys = [](size_t count) {
+        std::string keys;
+
+        for (size_t i = 0; i < count; ++i) {
+            keys += (keys.empty() ? "" : ", ") + std::string("\"key") + std::to_string(i) + "\": \"r\"";
+        }
+
+        return keys;
+    };
+
+    auto makeServers = [](size_t count) {
+        std::string servers;
+
+        for (size_t i = 0; i < count; ++i) {
+            servers += (servers.empty() ? "" : ", ") + std::string("\"server") + std::to_string(i) + "\": {}";
+        }
+
+        return servers;
+    };
+
+    const auto longKey    = std::string(aos::cFunctionLen + 1, 'k');
+    const auto longServer = std::string(aos::cFuncServiceLen + 1, 's');
+
+    const std::vector<TestCase> testCases = {
+        {R"("kuksa": {")" + longKey + R"(": "r"})", "permission key too long: " + longKey},
+        {R"("kuksa": {"key": ")" + std::string(aos::cPermissionsLen + 1, 'r') + R"("})",
+            "permission value too long: key"},
+        {R"(")" + longServer + R"(": {"key": "r"})", "functional server name too long: " + longServer},
+        {R"("kuksa": {)" + makeKeys(aos::cFunctionsMaxCount + 1) + "}", "too many permission keys: kuksa"},
+        {makeServers(aos::cFuncServiceMaxCount + 1), "too many functional servers"},
+    };
+
+    for (size_t i = 0; i < testCases.size(); ++i) {
+        LOG_DBG() << "Running test case #" << i;
+
+        const auto cPath = fs::JoinPath(cTestBaseDir, "item-config-permissions-limits.json");
+
+        fs::WriteStringToFile(
+            cPath, MakeItemConfigWithPermissions(testCases[i].mPermissions).c_str(), S_IRUSR | S_IWUSR);
+
+        auto itemConfig = std::make_unique<aos::oci::ItemConfig>();
+
+        auto err = mOCISpec.LoadItemConfig(cPath, *itemConfig);
+
+        EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << tests::utils::ErrorToStr(err);
+        EXPECT_EQ(std::string(err.Message()), testCases[i].mErrMessage.substr(0, AOS_CONFIG_TOOLS_ERROR_MESSAGE_LEN));
+    }
 }
 
 TEST_F(OCISpecTest, ServiceConfigFromFileRunParams)

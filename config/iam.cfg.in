@@ -4,6 +4,7 @@
     "iamProtectedServerUrl": ":8089",
     "iamPublicServerUrl": ":8090",
     "workingDir": "/var/aos/iam",
+    "enablePermissionsHandler": true,
     "nodeInfo": {
         "nodeIdPath": "/etc/machine-id",
         "nodeName": "main",

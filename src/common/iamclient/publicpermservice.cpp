@@ -87,7 +87,10 @@ Error PublicPermissionsService::GetPermissions(const String& secret, const Strin
         iamanager::v6::PermissionsResponse response;
 
         if (auto status = mStub->GetPermissions(ctx.get(), request, &response); !status.ok()) {
-            return ErrorEnum::eRuntime;
+            const auto message
+                = "gRPC code " + std::to_string(static_cast<int>(status.error_code())) + ": " + status.error_message();
+
+            return Error(ErrorEnum::eRuntime, message.c_str());
         }
 
         return pbconvert::ConvertToAos(response, instanceIdent, servicePermissions);

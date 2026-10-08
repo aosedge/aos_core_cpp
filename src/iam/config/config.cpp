@@ -215,6 +215,10 @@ RetWithError<Config> ParseConfig(const std::string& filename)
                       common::utils::CaseInsensitiveObjectWrapper(value.extract<Poco::JSON::Object::Ptr>()));
               });
 
+        if (!object.Has("enablePermissionsHandler")) {
+            AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "enablePermissionsHandler is not set");
+        }
+
         config.mNodeInfo                 = ParseNodeInfoConfig(object.GetObject("nodeInfo"));
         config.mIAMClient                = ParseIAMClientConfig(object);
         config.mIAMServer                = ParseIAMServerConfig(object);
