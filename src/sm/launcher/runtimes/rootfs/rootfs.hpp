@@ -9,6 +9,9 @@
 
 #include <filesystem>
 #include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <thread>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
@@ -36,6 +39,11 @@ constexpr auto cRuntimeRootfs = "rootfs";
  */
 class RootfsRuntime : public RuntimeItf {
 public:
+    /**
+     * Destructor.
+     */
+    ~RootfsRuntime();
+
     /**
      * Initializes rootfs runtime.
      *
@@ -121,15 +129,18 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cImageExtension             = ".squashfs";
-    static constexpr auto cFullMediaTypePrefix        = "vnd.aos.image.component.full";
-    static constexpr auto cIncrementalMediaTypePrefix = "vnd.aos.image.component.inc";
-    static constexpr auto cInstalledInstanceFileName  = "installed_instance.json";
-    static constexpr auto cPendingInstanceFileName    = "pending_instance.json";
-    static constexpr auto cMaxNumInstances            = 1;
+    static constexpr auto cInstalledInstanceFileName = "installed_instance.json";
+    static constexpr auto cPendingInstanceFileName   = "pending_instance.json";
+    static constexpr auto cMaxNumInstances           = 1;
 
     /**
      * Action type type.
+     *
+     * Action files are shared with the initramfs aosupdate module:
+     *  - do_update - written by SM to request update, contains update type (full or incremental);
+     *  - updated   - written by initramfs when update image is mounted (trial boot);
+     *  - do_apply  - written by SM when trial boot is confirmed by health check;
+     *  - failed    - written by SM or initramfs when update failed, contains error message.
      */
     class ActionTypeType {
     public:
@@ -158,25 +169,40 @@ private:
     using ActionTypeEnum = ActionTypeType::Enum;
     using ActionType     = EnumStringer<ActionTypeType>;
 
-    void                                    RunHealthCheck(std::unique_ptr<InstanceStatus> status);
-    RetWithError<StaticString<cVersionLen>> GetCurrentVersion() const;
-    Error                                   InitInstalledData();
-    Error                                   InitPendingData();
-    Error                                   CreateRuntimeInfo();
-    Error                                   ProcessUpdateAction(Array<InstanceStatus>& statuses);
-    Error                                   ProcessUpdated(Array<InstanceStatus>& statuses);
-    Error                                   ProcessFailed(Array<InstanceStatus>& statuses);
-    Error                                   ProcessNoAction(Array<InstanceStatus>& statuses);
+    /**
+     * Existing action files.
+     */
+    struct Actions {
+        bool mUpdated {};
+        bool mDoApply {};
+        bool mDoUpdate {};
+        bool mFailed {};
+    };
+
+    void  RunHealthCheck(std::unique_ptr<InstanceStatus> status);
+    void  JoinHealthCheck();
+    Error InitInstalledData();
+    Error InitPendingData();
+    Error CreateRuntimeInfo();
+    Error ProcessUpdateAction(Array<InstanceStatus>& statuses);
+    Error ProcessNoPending(Array<InstanceStatus>& statuses, const Actions& actions);
+    Error ProcessUpdated(Array<InstanceStatus>& statuses);
+    Error ProcessWaitReboot(Array<InstanceStatus>& statuses, InstanceStateEnum state, const Actions& actions);
+    Error ProcessFailed(Array<InstanceStatus>& statuses, const Error& err);
+    Error ProcessNoAction(Array<InstanceStatus>& statuses);
+    Error StoreVerdict(bool confirmed, const Error& err = ErrorEnum::eNone);
+    void  ResetPending();
+    RetWithError<bool> GetCurrentOrPendingStatus(const InstanceInfo& instance, InstanceStatus& status) const;
+    Error              SendRebootRequest();
+    RetWithError<bool> IsPendingBoot() const;
     void  FillInstanceStatus(const InstanceInfo& instanceInfo, InstanceStateEnum state, InstanceStatus& status) const;
-    Error SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path) const;
-    Error LoadInstanceInfo(const std::filesystem::path& path, InstanceInfo& instance);
     Error GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
     Error CopyImage(const oci::ImageManifest& manifest) const;
-    Error PrepareUpdateFileContent(const oci::ImageManifest& manifest, std::string& updateType) const;
-    void  ClearUpdateArtifacts() const;
-    Error StoreAction(const ActionType& action, const std::string& data = "") const;
-    ActionType            ReadAction() const;
-    Error                 PrepareUpdate(const InstanceInfo& instance);
+    Error ClearUpdateArtifacts() const;
+    Error StoreAction(const ActionType& action, std::string_view data = "") const;
+    Error ReadActions(Actions& actions) const;
+    Error ReadFailedReason() const;
+    Error PrepareUpdate(const InstanceInfo& instance);
     std::filesystem::path GetPath(const std::string& fileName) const;
 
     RuntimeConfig                          mRuntimeConfig;
@@ -190,10 +216,18 @@ private:
     InstanceIdent                          mDefaultInstanceIdent;
 
     mutable std::mutex         mMutex;
+    std::mutex                 mHealthCheckMutex;
     std::optional<std::thread> mHealthCheckThread;
     InstanceInfo               mCurrentInstance;
     RuntimeInfo                mRuntimeInfo;
     InstanceInfo               mPendingInstance;
+    bool                       mHasPending {};
+    std::string                mPendingBootID;
+    bool                       mPendingConfirmed {};
+    bool                       mRebootRequired {};
+    bool                       mRunHealthCheck {};
+    InstanceStateEnum          mPendingState {InstanceStateEnum::eActivating};
+    Error                      mPendingError;
 };
 
 } // namespace aos::sm::launcher
