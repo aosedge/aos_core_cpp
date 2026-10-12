@@ -10,10 +10,12 @@
 #include <optional>
 
 #include <core/common/crypto/certloader.hpp>
+#include <core/common/crypto/cryptohelper.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/spaceallocator/spaceallocator.hpp>
 #include <core/common/tools/heapallocator.hpp>
+#include <core/sm/imagemanager/blobdecryptor.hpp>
 #include <core/sm/imagemanager/imagemanager.hpp>
 #include <core/sm/launcher/launcher.hpp>
 #include <core/sm/networkmanager/networkmanager.hpp>
@@ -90,6 +92,7 @@ private:
     config::Config mConfig = {};
 
     aos::crypto::CertLoader                                     mCertLoader;
+    aos::crypto::CryptoHelper                                   mCryptoHelper;
     aos::crypto::DefaultCryptoProvider                          mCryptoProvider;
     aos::fs::FileInfoProvider                                   mFileInfoProvider;
     aos::monitoring::Monitoring                                 mMonitoring;
@@ -113,6 +116,7 @@ private:
     sm::database::Database                 mDatabase;
     sm::iamclient::IAMClient               mIAMClient;
     sm::imagemanager::ImageHandler         mImageHandler;
+    sm::imagemanager::BlobDecryptor        mBlobDecryptor;
     sm::imagemanager::ImageManager         mImageManager;
     sm::launcher::InstanceIDProvider       mInstanceIDProvider;
     sm::launcher::Launcher                 mLauncher;
@@ -131,7 +135,8 @@ private:
     sm::utils::SystemdConn                 mSystemdConn;
 
 private:
-    static constexpr auto cDefaultConfigFile = "aos_servicemanager.cfg";
+    static constexpr auto cDefaultConfigFile       = "aos_servicemanager.cfg";
+    static constexpr auto cLayerEncryptionCertType = "itemencryption";
 };
 
 } // namespace aos::sm::app
