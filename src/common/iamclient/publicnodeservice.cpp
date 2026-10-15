@@ -22,7 +22,9 @@ namespace aos::common::iamclient {
 
 PublicNodesService::~PublicNodesService()
 {
-    Stop();
+    if (auto err = PublicNodesService::Stop(); !err.IsNone()) {
+        LOG_ERR() << "Failed to stop public nodes service" << Log::Field(err);
+    }
 
     if (mSubscriptionManager) {
         mSubscriptionManager->Close();
@@ -190,7 +192,7 @@ Error PublicNodesService::Start()
     return ErrorEnum::eNone;
 }
 
-void PublicNodesService::Stop()
+Error PublicNodesService::Stop()
 {
     {
         std::lock_guard lock {mMutex};
@@ -198,7 +200,7 @@ void PublicNodesService::Stop()
         LOG_INF() << "Stop node registration";
 
         if (!mStart) {
-            return;
+            return ErrorEnum::eNone;
         }
 
         mStop  = true;
@@ -214,6 +216,8 @@ void PublicNodesService::Stop()
     if (mConnectionThread.joinable()) {
         mConnectionThread.join();
     }
+
+    return ErrorEnum::eNone;
 }
 
 Error PublicNodesService::SendMessage(const iamanager::v6::IAMOutgoingMessages& message)

@@ -47,7 +47,7 @@ Error IAMClient::Start()
     return PublicNodesService::Start();
 }
 
-void IAMClient::Stop()
+Error IAMClient::Stop()
 {
     LOG_DBG() << "Stop IAM client";
 
@@ -55,7 +55,7 @@ void IAMClient::Stop()
         std::lock_guard lock {mMutex};
 
         if (!mStarted) {
-            return;
+            return ErrorEnum::eNone;
         }
 
         mStarted = false;
@@ -68,15 +68,19 @@ void IAMClient::Stop()
 
     StopReconnectTimer();
 
-    PublicNodesService::Stop();
+    auto err = PublicNodesService::Stop();
 
     if (mOutgoingMsgThread.joinable()) {
         mOutgoingMsgThread.join();
     }
 
     if (!mCertStorage.empty()) {
-        mCertProvider->UnsubscribeListener(*this);
+        if (auto unsubscribeErr = mCertProvider->UnsubscribeListener(*this); !unsubscribeErr.IsNone() && err.IsNone()) {
+            err = AOS_ERROR_WRAP(unsubscribeErr);
+        }
     }
+
+    return err;
 }
 
 Error IAMClient::SendMessages(std::vector<uint8_t> messages)

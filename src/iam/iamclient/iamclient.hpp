@@ -58,14 +58,14 @@ public:
      *
      * @returns Error.
      */
-    Error Start();
+    Error Start() override;
 
     /**
      * Stops IAM client.
      *
      * @returns Error.
      */
-    Error Stop();
+    Error Stop() override;
 
     /**
      * Reconnects IAM client.

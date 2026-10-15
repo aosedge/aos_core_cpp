@@ -39,7 +39,7 @@ public:
     /**
      * Destructor
      */
-    ~PublicNodesService();
+    virtual ~PublicNodesService();
 
     /**
      * Initializes public nodes service.
@@ -99,12 +99,14 @@ public:
      *
      * @return Error.
      */
-    Error Start();
+    virtual Error Start();
 
     /**
      * Stop node registration.
+     *
+     * @return Error.
      */
-    void Stop();
+    virtual Error Stop();
 
     /**
      * Send message.

@@ -54,7 +54,9 @@ Error IAMClient::Stop()
 
     StopReconnectTimer();
 
-    PublicNodesService::Stop();
+    if (auto err = PublicNodesService::Stop(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (!mCertStorage.empty()) {
         return AOS_ERROR_WRAP(mCertProvider->UnsubscribeListener(*this));
