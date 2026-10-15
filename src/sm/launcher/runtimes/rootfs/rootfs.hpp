@@ -190,6 +190,9 @@ private:
     Error ProcessWaitReboot(Array<InstanceStatus>& statuses, InstanceStateEnum state, const Actions& actions);
     Error ProcessFailed(Array<InstanceStatus>& statuses, const Error& err);
     Error ProcessNoAction(Array<InstanceStatus>& statuses);
+    Error RejectTrialBoot(Array<InstanceStatus>& statuses, Error err);
+    bool  IsTrialRootfs() const;
+    Error VerifyInstalledInstance(Array<InstanceStatus>& statuses);
     Error StoreVerdict(bool confirmed, const Error& err = ErrorEnum::eNone);
     void  ResetPending();
     RetWithError<bool> GetCurrentOrPendingStatus(const InstanceInfo& instance, InstanceStatus& status) const;
@@ -203,6 +206,7 @@ private:
     Error ReadActions(Actions& actions) const;
     Error ReadFailedReason() const;
     Error PrepareUpdate(const InstanceInfo& instance);
+    Error StoreUpdate(const InstanceInfo& instance, const oci::ImageManifest& manifest, const std::string& updateType);
     std::filesystem::path GetPath(const std::string& fileName) const;
 
     RuntimeConfig                          mRuntimeConfig;
@@ -219,6 +223,7 @@ private:
     std::mutex                 mHealthCheckMutex;
     std::optional<std::thread> mHealthCheckThread;
     InstanceInfo               mCurrentInstance;
+    Error                      mCurrentError;
     RuntimeInfo                mRuntimeInfo;
     InstanceInfo               mPendingInstance;
     bool                       mHasPending {};
@@ -226,6 +231,7 @@ private:
     bool                       mPendingConfirmed {};
     bool                       mRebootRequired {};
     bool                       mRunHealthCheck {};
+    bool                       mApplyIncomplete {};
     InstanceStateEnum          mPendingState {InstanceStateEnum::eActivating};
     Error                      mPendingError;
 };

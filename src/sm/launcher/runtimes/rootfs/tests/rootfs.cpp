@@ -5,11 +5,18 @@
  */
 
 #include <atomic>
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
+#include <mutex>
 #include <set>
 #include <sstream>
+
+#include <fcntl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include <Poco/DigestEngine.h>
 #include <Poco/DigestStream.h>
@@ -53,6 +60,68 @@ std::ostream& operator<<(std::ostream& os, const InstanceStatus& info)
 }
 
 } // namespace aos
+
+/***********************************************************************************************************************
+ * File operations fault injection
+ **********************************************************************************************************************/
+
+namespace {
+
+using FaultPredicate = std::function<bool(const std::filesystem::path&)>;
+
+std::mutex     sFaultMutex;
+FaultPredicate sUnlinkFault;
+FaultPredicate sFsyncFault;
+
+FaultPredicate GetFault(const FaultPredicate& fault)
+{
+    std::lock_guard lock {sFaultMutex};
+
+    return fault;
+}
+
+void SetFaults(FaultPredicate unlinkFault, FaultPredicate fsyncFault = nullptr)
+{
+    std::lock_guard lock {sFaultMutex};
+
+    sUnlinkFault = std::move(unlinkFault);
+    sFsyncFault  = std::move(fsyncFault);
+}
+
+} // namespace
+
+// File operations are intercepted to inject errors which can't be reproduced with file permissions: unlink error of a
+// regular file regardless of the user, directory sync error after successful unlink. Predicates receive absolute path.
+extern "C" int unlink(const char* path) noexcept
+{
+    if (auto fault = GetFault(sUnlinkFault); fault) {
+        std::error_code ec;
+
+        if (const auto absPath = std::filesystem::absolute(path, ec); !ec && fault(absPath)) {
+            errno = EIO;
+
+            return -1;
+        }
+    }
+
+    return static_cast<int>(syscall(SYS_unlinkat, AT_FDCWD, path, 0));
+}
+
+extern "C" int fsync(int fd)
+{
+    if (auto fault = GetFault(sFsyncFault); fault) {
+        std::error_code ec;
+
+        if (const auto path = std::filesystem::read_symlink("/proc/self/fd/" + std::to_string(fd), ec);
+            !ec && fault(path)) {
+            errno = EIO;
+
+            return -1;
+        }
+    }
+
+    return static_cast<int>(syscall(SYS_fsync, fd));
+}
 
 namespace aos::sm::launcher {
 
@@ -216,6 +285,8 @@ protected:
             return ErrorEnum::eNone;
         }));
     }
+
+    void TearDown() override { SetFaults(nullptr); }
 
     std::string GetExpectedRuntimeID() const
     {
@@ -820,6 +891,71 @@ TEST_F(RootfsRuntimeTest, CorruptedInstalledInstanceIsRestored)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
+TEST_F(RootfsRuntimeTest, CorruptedInstalledInstanceIsNotRestoredDuringTrialBoot)
+{
+    // Installed instance is corrupted during trial boot: trial version should not be stored as installed one, as the
+    // update may be reverted to the installed rootfs.
+
+    WriteFile(cInstanceFile, "");
+    WritePendingInstance("previousBootId");
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cVersionFile, R"(VERSION="1.0.1")");
+
+    EXPECT_CALL(mSystemdConn, GetUnitStatus("sm")).WillOnce(Invoke([](const auto&) {
+        sm::utils::UnitStatus status;
+
+        status.mName        = "sm";
+        status.mActiveState = sm::utils::UnitStateEnum::eFailed;
+
+        return RetWithError<sm::utils::UnitStatus>(status, ErrorEnum::eNone);
+    }));
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActivating);
+
+    statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_TRUE(IsRebootRequested());
+    EXPECT_EQ(ReadFile(cInstanceFile), "");
+
+    // Simulate reboot: initramfs reverts the update and the installed rootfs is running.
+
+    std::filesystem::remove(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "failed", "update not confirmed");
+    WriteFile(cVersionFile, R"(VERSION="1.0.0")");
+
+    err = mRootfsRuntime.Start();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 2u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
+    EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(statuses[1].mItemID.CStr(), "rootfs");
+    EXPECT_STREQ(statuses[1].mVersion.CStr(), "1.0.0");
+
+    EXPECT_EQ(GetWorkingDirFiles(), (std::set {cInstanceFile}));
+    EXPECT_NE(ReadFile(cInstanceFile).find(R"("version":"1.0.0")"), std::string::npos);
+
+    err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
 TEST_F(RootfsRuntimeTest, IncompleteInstalledInstanceIsRestored)
 {
     WriteFile(cInstanceFile, R"({"itemId": "", "version": ""})");
@@ -879,10 +1015,11 @@ TEST_F(RootfsRuntimeTest, CorruptedPendingInstanceCancelsUpdate)
 
 TEST_F(RootfsRuntimeTest, CorruptedPendingInstanceRevertsTrialBoot)
 {
+    // Trial boot without do_apply: initramfs didn't modify the rootfs, revert is safe.
+
     WriteFile(cUpdateInstanceFile, "");
     WriteFile(cWorkingDir / "do_update", "full");
     WriteFile(cWorkingDir / "updated");
-    WriteFile(cWorkingDir / "do_apply");
     WriteFile(cWorkingDir / "image.squashfs", "image");
 
     InitAndStart();
@@ -1571,6 +1708,10 @@ TEST_F(RootfsRuntimeTest, StartInstanceFailsOnCleanupError)
 
     std::filesystem::create_directories(cWorkingDir / "do_update" / "subdir");
     WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cUpdateRootfsFile, "rootfs image");
+
+    ExpectUpdateImage("rootfsImageDigest", CalculateSHA256(cUpdateRootfsFile), "vnd.aos.image.component.full.v1",
+        std::filesystem::file_size(cUpdateRootfsFile));
 
     auto status = std::make_unique<InstanceStatus>();
 
@@ -1722,7 +1863,7 @@ TEST_F(RootfsRuntimeTest, CleanupStopsIfPendingInstanceCantBeRemoved)
     std::filesystem::remove(cUpdateInstanceFile);
     std::filesystem::create_directories(cUpdateInstanceFile / "subdir");
     WriteFile(cWorkingDir / "failed", "error");
-    WriteFile(cWorkingDir / "do_apply");
+    WriteFile(cWorkingDir / "do_update", "full");
 
     InitAndStart();
 
@@ -1732,7 +1873,7 @@ TEST_F(RootfsRuntimeTest, CleanupStopsIfPendingInstanceCantBeRemoved)
     EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActive);
 
     EXPECT_EQ(GetWorkingDirFiles(),
-        (std::set {cInstanceFile, cUpdateInstanceFile, cWorkingDir / "failed", cWorkingDir / "do_apply"}));
+        (std::set {cInstanceFile, cUpdateInstanceFile, cWorkingDir / "failed", cWorkingDir / "do_update"}));
 
     auto err = mRootfsRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
@@ -1869,31 +2010,98 @@ TEST_F(RootfsRuntimeTest, RejectedUpdateWithStuckDoApplyPostponesReboot)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(RootfsRuntimeTest, CorruptedPendingWithStuckDoApplyPostponesReboot)
+TEST_F(RootfsRuntimeTest, CorruptedPendingWithFailedApplyKeepsArtifacts)
 {
-    // Pending instance is corrupted during trial boot and do_apply can't be removed: reboot should not be requested,
-    // otherwise initramfs applies update which can't be tracked.
+    // Initramfs failed to apply the update, the rootfs may be partially updated, and pending instance is corrupted.
+    // Initramfs revert doesn't restore the rootfs: SM should keep apply artifacts, so initramfs retries the apply, and
+    // should not request reboot or report the current instance as active.
 
-    WriteFile(cUpdateInstanceFile, "");
-    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cUpdateInstanceFile, "{");
+    WriteFile(cWorkingDir / "do_update", "incremental");
     WriteFile(cWorkingDir / "updated");
-    std::filesystem::create_directories(cWorkingDir / "do_apply" / "subdir");
+    WriteFile(cWorkingDir / "do_apply");
+    WriteFile(cWorkingDir / "failed", "rsync failed");
     WriteFile(cWorkingDir / "image.squashfs", "image");
+
+    const auto cExpectedFiles = GetWorkingDirFiles();
+
+    EXPECT_CALL(mSystemdConn, GetUnitStatus).Times(0);
 
     InitAndStart();
 
     auto statuses = GetStatuses();
 
     ASSERT_EQ(statuses.size(), 1u);
-    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActive);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
     EXPECT_STREQ(statuses[0].mItemID.CStr(), "itemId");
-    EXPECT_FALSE(statuses[0].mError.IsNone());
+    EXPECT_STREQ(statuses[0].mError.Message(), "rootfs update state is unknown, recovery is required");
 
     EXPECT_FALSE(IsRebootRequested());
-    EXPECT_TRUE(std::filesystem::exists(cWorkingDir / "do_apply"));
-    EXPECT_FALSE(std::filesystem::exists(cWorkingDir / "failed"));
+    EXPECT_EQ(GetWorkingDirFiles(), cExpectedFiles);
+    EXPECT_EQ(ReadFile(cWorkingDir / "do_update"), "incremental");
 
-    auto err = mRootfsRuntime.Stop();
+    // Start instance request for the current instance reports failure as well.
+
+    auto status = std::make_unique<InstanceStatus>();
+
+    auto instance           = CreateInstance("itemId", "manifestDigest", "1.0.0");
+    instance->mPreinstalled = true;
+
+    auto err = mRootfsRuntime.StartInstance(*instance, *status);
+    EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eFailed);
+    EXPECT_FALSE(IsRebootRequested());
+    EXPECT_EQ(GetWorkingDirFiles(), cExpectedFiles);
+
+    err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, CleanupKeepsApplyModeIfDoApplyCantBeRemoved)
+{
+    // Confirmed incremental update is replaced by the new one, but regular do_apply file can't be removed: pending
+    // instance, do_update and image should be kept, otherwise initramfs applies incremental image as full one or the
+    // applied update is not tracked.
+
+    WritePendingInstance(GetBootID(), "1.0.1", true);
+    WriteFile(cWorkingDir / "do_update", "incremental");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "do_apply");
+    WriteFile(cWorkingDir / "image.squashfs", "incremental image");
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActivating);
+    EXPECT_TRUE(IsRebootRequested());
+
+    const auto cDoApplyPath = std::filesystem::absolute(cWorkingDir / "do_apply");
+
+    SetFaults([cDoApplyPath](const std::filesystem::path& path) { return path == cDoApplyPath; });
+
+    auto status = std::make_unique<InstanceStatus>();
+
+    WriteFile(cUpdateRootfsFile, "rootfs image");
+
+    ExpectUpdateImage("newManifest", CalculateSHA256(cUpdateRootfsFile), "vnd.aos.image.component.full.v1",
+        std::filesystem::file_size(cUpdateRootfsFile));
+
+    auto err = mRootfsRuntime.StartInstance(*CreateInstance("itemId", "newManifest"), *status);
+    EXPECT_FALSE(err.IsNone());
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eFailed);
+    EXPECT_EQ(GetWorkingDirFiles(),
+        (std::set {cInstanceFile, cUpdateInstanceFile, cWorkingDir / "do_apply", cWorkingDir / "do_update",
+            cWorkingDir / "updated", cWorkingDir / "image.squashfs"}));
+    EXPECT_TRUE(std::filesystem::is_regular_file(cWorkingDir / "do_apply"));
+    EXPECT_EQ(ReadFile(cWorkingDir / "do_update"), "incremental");
+    EXPECT_EQ(ReadFile(cWorkingDir / "image.squashfs"), "incremental image");
+    EXPECT_FALSE(IsRebootRequested());
+
+    err = mRootfsRuntime.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
@@ -1941,7 +2149,12 @@ TEST_F(RootfsRuntimeTest, StartInstanceKeepsUpdateOnRebootRequestError)
 
 TEST_F(RootfsRuntimeTest, HealthCheckVerdictStoreErrorPostponesReboot)
 {
-    // do_apply is stored but the verdict can't be completed: reboot would apply the update reported as failed.
+    // do_apply is stored but the verdict can't be completed and do_apply can't be removed: reboot would apply the
+    // update reported as failed.
+
+    const auto cDoApplyPath = std::filesystem::absolute(cWorkingDir / "do_apply");
+
+    SetFaults([cDoApplyPath](const std::filesystem::path& path) { return path == cDoApplyPath; });
 
     WritePendingInstance("previousBootId");
     WriteFile(cWorkingDir / "do_update", "full");
@@ -1980,6 +2193,295 @@ TEST_F(RootfsRuntimeTest, HealthCheckVerdictStoreErrorPostponesReboot)
     EXPECT_TRUE(std::filesystem::exists(cWorkingDir / "do_apply"));
 
     std::filesystem::remove_all(cWorkingDir / "pending_instance.json.tmp");
+}
+
+TEST_F(RootfsRuntimeTest, HealthCheckDoApplyRemovalSyncErrorPostponesReboot)
+{
+    // Update confirmation fails after do_apply is stored, the rejection fallback removes do_apply but working dir sync
+    // fails: do_apply is absent but its removal isn't durable, so reboot should not be requested.
+
+    WritePendingInstance("previousBootId");
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cVersionFile, R"(VERSION="1.0.1")");
+
+    const auto cDoApplyPath    = std::filesystem::absolute(cWorkingDir / "do_apply");
+    const auto cWorkingDirPath = std::filesystem::canonical(cWorkingDir);
+    auto       doApplyRemoved  = std::make_shared<std::atomic_bool>(false);
+
+    SetFaults(
+        [cDoApplyPath, doApplyRemoved](const std::filesystem::path& path) {
+            if (path == cDoApplyPath) {
+                *doApplyRemoved = true;
+            }
+
+            return false;
+        },
+        [cWorkingDirPath, doApplyRemoved](const std::filesystem::path& path) {
+            if (path != cWorkingDirPath) {
+                return false;
+            }
+
+            // Fail confirmation after do_apply is stored, and any sync after do_apply is removed.
+            const auto confirmed = std::filesystem::exists(cWorkingDir / "do_apply")
+                && ReadFile(cUpdateInstanceFile).find(R"("confirmed":true)") != std::string::npos;
+
+            return confirmed || *doApplyRemoved;
+        });
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eActivating);
+
+    statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_FALSE(statuses[0].mError.IsNone());
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_TRUE(*doApplyRemoved);
+    EXPECT_FALSE(std::filesystem::exists(cWorkingDir / "do_apply"));
+    EXPECT_FALSE(IsRebootRequested());
+}
+
+TEST_F(RootfsRuntimeTest, CleanupRemovesDoApplyBeforePendingInstance)
+{
+    // Confirmed update is replaced by the new one, but pending instance can't be removed: do_apply should be already
+    // durably removed, otherwise initramfs applies the update which is not tracked anymore.
+
+    WritePendingInstance(GetBootID(), "1.0.1", true);
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "do_apply");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cUpdateRootfsFile, "rootfs image");
+
+    InitAndStart();
+
+    GetStatuses();
+
+    const auto cPendingPath = std::filesystem::absolute(cUpdateInstanceFile);
+
+    SetFaults([cPendingPath](const std::filesystem::path& path) { return path == cPendingPath; });
+
+    ExpectUpdateImage("newManifest", CalculateSHA256(cUpdateRootfsFile), "vnd.aos.image.component.full.v1",
+        std::filesystem::file_size(cUpdateRootfsFile));
+
+    auto status = std::make_unique<InstanceStatus>();
+
+    auto err = mRootfsRuntime.StartInstance(*CreateInstance("itemId", "newManifest"), *status);
+    EXPECT_FALSE(err.IsNone());
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eFailed);
+    EXPECT_EQ(GetWorkingDirFiles(),
+        (std::set {cInstanceFile, cUpdateInstanceFile, cWorkingDir / "do_update", cWorkingDir / "updated",
+            cWorkingDir / "image.squashfs"}));
+
+    err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, MismatchedInstalledInstanceIsRestored)
+{
+    // Rootfs is changed without SM tracking, e.g. initramfs applied the update after pending instance was lost.
+
+    std::filesystem::remove(cUpdateInstanceFile);
+    WriteFile(cVersionFile, R"(VERSION="1.0.2")");
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 2u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eInactive);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "itemId");
+    EXPECT_STREQ(statuses[0].mVersion.CStr(), "1.0.0");
+    EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(statuses[1].mItemID.CStr(), "rootfs");
+    EXPECT_STREQ(statuses[1].mSubjectID.CStr(), "nodeType");
+    EXPECT_STREQ(statuses[1].mVersion.CStr(), "1.0.2");
+    EXPECT_TRUE(statuses[1].mPreinstalled);
+
+    EXPECT_NE(ReadFile(cInstanceFile).find(R"("version":"1.0.2")"), std::string::npos);
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, FailedUpdateRestoresMismatchedInstalledInstance)
+{
+    WritePendingInstance("previousBootId");
+    WriteFile(cWorkingDir / "failed", "update not confirmed");
+    WriteFile(cVersionFile, R"(VERSION="1.0.2")");
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 3u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
+    EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eInactive);
+    EXPECT_STREQ(statuses[1].mItemID.CStr(), "itemId");
+    EXPECT_EQ(statuses[2].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(statuses[2].mItemID.CStr(), "rootfs");
+    EXPECT_STREQ(statuses[2].mVersion.CStr(), "1.0.2");
+
+    EXPECT_EQ(GetWorkingDirFiles(), (std::set {cInstanceFile}));
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, IncompleteApplyAllowsOnlyFullUpdate)
+{
+    // Initramfs failed to apply the update: rootfs may be partially updated, so incremental update can't be applied
+    // over it. Apply artifacts are kept, full update replaces them.
+
+    WritePendingInstance("previousBootId", "1.0.1", true);
+    WriteFile(cWorkingDir / "do_update", "incremental");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "do_apply");
+    WriteFile(cWorkingDir / "failed", "rsync failed");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cUpdateRootfsFile, "rootfs image");
+
+    const auto cExpectedFiles = GetWorkingDirFiles();
+    const auto cLayerDigest   = CalculateSHA256(cUpdateRootfsFile);
+    const auto cLayerSize     = std::filesystem::file_size(cUpdateRootfsFile);
+
+    InitAndStart();
+
+    GetStatuses();
+
+    ExpectUpdateImage("incManifest", cLayerDigest, "vnd.aos.image.component.inc.v1", cLayerSize);
+
+    auto status = std::make_unique<InstanceStatus>();
+
+    auto err = mRootfsRuntime.StartInstance(*CreateInstance("itemId", "incManifest", "1.0.2"), *status);
+    EXPECT_TRUE(err.Is(ErrorEnum::eWrongState)) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eFailed);
+    EXPECT_EQ(GetWorkingDirFiles(), cExpectedFiles);
+    EXPECT_FALSE(IsRebootRequested());
+
+    // Failed pending instance is still reported.
+
+    err = mRootfsRuntime.StartInstance(
+        *CreateInstance("updateItemId", "updateManifestDigest", "1.0.1", "updateSubjectId"), *status);
+    EXPECT_STREQ(err.Message(), "rsync failed");
+
+    ExpectUpdateImage("fullManifest", cLayerDigest, "vnd.aos.image.component.full.v1", cLayerSize);
+    ExpectLayerBlob(cLayerDigest);
+
+    err = mRootfsRuntime.StartInstance(*CreateInstance("itemId", "fullManifest", "1.0.2"), *status);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    EXPECT_EQ(status->mState, InstanceStateEnum::eActivating);
+    EXPECT_EQ(GetWorkingDirFiles(),
+        (std::set {cInstanceFile, cUpdateInstanceFile, cWorkingDir / "image.squashfs", cWorkingDir / "do_update"}));
+    EXPECT_EQ(ReadFile(cWorkingDir / "do_update"), "full");
+    EXPECT_TRUE(IsRebootRequested());
+
+    err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, TrialBootWithStaleFailedIsRejected)
+{
+    // Only part of initramfs revert flags removal is durable: failed remains, updated is removed, do_update remains.
+    // Initramfs starts the trial boot again: the update should be rejected and reverted, not cleared while the node
+    // runs the trial rootfs.
+
+    WritePendingInstance("previousBootId");
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "failed", "health check failed");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cVersionFile, R"(VERSION="1.0.1")");
+
+    const auto cExpectedFiles = GetWorkingDirFiles();
+
+    EXPECT_CALL(mSystemdConn, GetUnitStatus).Times(0);
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mItemID.CStr(), "updateItemId");
+    EXPECT_STREQ(statuses[0].mError.Message(), "health check failed");
+
+    EXPECT_TRUE(IsRebootRequested());
+    EXPECT_EQ(GetWorkingDirFiles(), cExpectedFiles);
+    EXPECT_NE(ReadFile(cUpdateInstanceFile).find(GetBootID()), std::string::npos);
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, UpdatedAndFailedAfterRebootWithoutTrialIsFailed)
+{
+    // updated and failed after reboot, but the node doesn't run the pending rootfs: rejection would cause reboot loop.
+
+    WritePendingInstance("previousBootId");
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "failed", "health check failed");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 2u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mError.Message(), "health check failed");
+    EXPECT_EQ(statuses[1].mState, InstanceStateEnum::eActive);
+    EXPECT_STREQ(statuses[1].mItemID.CStr(), "itemId");
+
+    EXPECT_FALSE(IsRebootRequested());
+    EXPECT_EQ(GetWorkingDirFiles(), (std::set {cInstanceFile}));
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(RootfsRuntimeTest, InterruptedVerdictIsRejected)
+{
+    // SM is restarted after pending boot ID is updated by verdict but before do_apply or failed is stored: the verdict
+    // is unknown, health check should not run again.
+
+    WritePendingInstance(GetBootID());
+    WriteFile(cWorkingDir / "do_update", "full");
+    WriteFile(cWorkingDir / "updated");
+    WriteFile(cWorkingDir / "image.squashfs", "image");
+    WriteFile(cVersionFile, R"(VERSION="1.0.1")");
+
+    EXPECT_CALL(mSystemdConn, GetUnitStatus).Times(0);
+
+    InitAndStart();
+
+    auto statuses = GetStatuses();
+
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].mState, InstanceStateEnum::eFailed);
+    EXPECT_STREQ(statuses[0].mError.Message(), "update verdict is interrupted");
+
+    EXPECT_TRUE(IsRebootRequested());
+    EXPECT_FALSE(std::filesystem::exists(cWorkingDir / "do_apply"));
+    EXPECT_EQ(ReadFile(cWorkingDir / "failed"), "update verdict is interrupted");
+
+    auto err = mRootfsRuntime.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::sm::launcher
