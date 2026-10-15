@@ -44,8 +44,8 @@ public:
      * @param[out] csr certificate signing request.
      * @returns Error.
      */
-    Error CreateKey(
-        const String& nodeID, const String& certType, const String& subject, const String& password, String& csr);
+    Error CreateKey(const String& nodeID, const String& certType, const String& subject, const String& password,
+        String& csr) override;
 
     /**
      * Applies certificate.
@@ -56,7 +56,7 @@ public:
      * @param certInfo certificate info.
      * @returns Error.
      */
-    Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo);
+    Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo) override;
 
     /**
      * Reconnects to the server.
