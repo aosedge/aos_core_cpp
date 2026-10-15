@@ -29,7 +29,7 @@ public:
      *
      * @param capacity channel capacity.
      */
-    Channel(size_t capacity = 1)
+    explicit Channel(size_t capacity = 1)
         : mCapacity(capacity)
     {
     }

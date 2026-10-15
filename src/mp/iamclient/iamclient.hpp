@@ -54,12 +54,14 @@ public:
      *
      * @return Error error code.
      */
-    Error Start();
+    Error Start() override;
 
     /**
      * Stops the client.
+     *
+     * @return Error error code.
      */
-    void Stop();
+    Error Stop() override;
 
     /**
      * Sends messages.
