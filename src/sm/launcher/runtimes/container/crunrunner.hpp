@@ -9,24 +9,27 @@
 
 #include <string>
 
+#include "config.hpp"
 #include "itf/containerrunner.hpp"
 
 namespace aos::sm::launcher {
 
 /**
  * crun container runner.
+ *
+ * Containers are created through conmon, which stays alive as the container monitor (subreaper) for the container's
+ * whole lifetime and records its exit code and OOM kill into a per-instance persist directory under the conmon dir.
  */
 class CRunRunner : public ContainerRunnerItf {
 public:
     /**
      * Initializes the crun runner.
      *
-     * @param runtimeDir base directory for per-instance runtime files.
-     * @param stateRoot crun state root directory (--root).
-     * @param crunExecutable path to the crun executable.
+     * @param config container runtime config.
      * @return Error.
      */
-    Error Init(const std::string& runtimeDir, const std::string& stateRoot, const std::string& crunExecutable);
+    Error Init(const ContainerConfig& config);
+
     /**
      * Starts a container for the given instance.
      *
@@ -72,11 +75,17 @@ public:
     Error RemoveContainer(const std::string& instanceID) override;
 
 private:
-    RetWithError<ContainerStatus> CheckProcessAlive(const std::string& instanceID) const;
+    RetWithError<ContainerStatus> GetStatus(const std::string& instanceID) const;
+    void                          ReadExitStatus(const std::string& instanceID, ContainerStatus& status) const;
+    Error                         CreateContainer(const std::string& instanceID);
+    void                          WaitConmonExit(const std::string& instanceID) const;
+    std::string                   GetPersistDir(const std::string& instanceID) const;
 
     std::string mRuntimeDir;
     std::string mStateRoot;
     std::string mCRunExecutable;
+    std::string mConmonExecutable;
+    std::string mConmonDir;
 };
 
 } // namespace aos::sm::launcher
