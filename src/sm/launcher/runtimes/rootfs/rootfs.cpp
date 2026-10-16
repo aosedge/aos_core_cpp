@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <locale>
+#include <map>
 #include <sstream>
 #include <string_view>
 #include <vector>
@@ -24,8 +25,6 @@
 #include <core/common/tools/fs.hpp>
 #include <core/common/tools/logger.hpp>
 
-#include <common/utils/exception.hpp>
-#include <common/utils/json.hpp>
 #include <common/utils/utils.hpp>
 
 #include <sm/launcher/runtimes/utils/utils.hpp>
@@ -52,7 +51,6 @@ constexpr auto cFullMediaTypePrefix        = "vnd.aos.image.component.full";
 constexpr auto cIncrementalMediaTypePrefix = "vnd.aos.image.component.inc";
 constexpr auto cMediaTypeVersionPrefix     = ".v";
 constexpr auto cMediaTypeSuffixSeparator   = '+';
-constexpr auto cBootIDFilePath             = "/proc/sys/kernel/random/boot_id";
 constexpr auto cFullUpdateType             = "full";
 constexpr auto cIncrementalUpdateType      = "incremental";
 
@@ -70,6 +68,14 @@ std::filesystem::path GetTmpPath(const std::filesystem::path& path)
     tmpPath += cTmpExtension;
 
     return tmpPath;
+}
+
+// Keeps the first error: the error is assigned only if no error is stored yet.
+void KeepFirstError(Error& firstErr, const Error& err)
+{
+    if (firstErr.IsNone()) {
+        firstErr = err;
+    }
 }
 
 Error CloseFile(int32_t fd)
@@ -94,9 +100,7 @@ Error SyncDir(const std::filesystem::path& dir)
         err = Error(errno, "can't sync dir");
     }
 
-    if (auto closeErr = CloseFile(fd); !closeErr.IsNone() && err.IsNone()) {
-        err = closeErr;
-    }
+    KeepFirstError(err, CloseFile(fd));
 
     return err;
 }
@@ -148,9 +152,7 @@ Error CommitFile(int32_t fd, const std::filesystem::path& tmpPath, const std::fi
         err = Error(errno, "can't sync file");
     }
 
-    if (auto closeErr = CloseFile(fd); !closeErr.IsNone() && err.IsNone()) {
-        err = closeErr;
-    }
+    KeepFirstError(err, CloseFile(fd));
 
     if (err.IsNone() && rename(tmpPath.c_str(), path.c_str()) != 0) { // NOSONAR
         err = Error(errno, "can't rename file");
@@ -264,12 +266,6 @@ Error ParseSHA256Digest(const String& digest, std::string& hash)
     return ErrorEnum::eNone;
 }
 
-// InstanceInfo is too big to be created on stack.
-void ResetInstanceInfo(InstanceInfo& instance)
-{
-    instance = *std::make_unique<InstanceInfo>();
-}
-
 std::string ErrorToString(const Error& err)
 {
     if (err.Message()[0] != '\0') {
@@ -324,103 +320,49 @@ Error VerifyRootfsVersion(const std::string& versionFilePath, const String& expe
     return ErrorEnum::eNone;
 }
 
-RetWithError<std::string> GetBootID()
+// Update state file format: one "<key>=<value>" pair per line, the value is the rest of the line. The format is parsed
+// by the initramfs shell script, so values can't contain line breaks.
+std::string SanitizeValue(std::string value)
 {
-    std::ifstream file(cBootIDFilePath);
-    std::string   bootID;
+    std::replace_if(value.begin(), value.end(), [](char c) { return c == '\n' || c == '\r'; }, ' ');
 
-    if (!file.is_open() || !std::getline(file, bootID) || Poco::trim(bootID).empty()) {
-        return {"", Error(ErrorEnum::eNotFound, "can't read boot ID")};
-    }
-
-    return Poco::trim(bootID);
+    return value;
 }
 
-Error SaveInstanceInfo(const InstanceInfo& instance, const std::filesystem::path& path, const std::string& bootID = "",
-    bool confirmed = false)
+RetWithError<std::map<std::string, std::string>> ParseKeyValues(const std::filesystem::path& path)
 {
-    LOG_DBG() << "Save instance info" << Log::Field("ident", static_cast<const InstanceIdent&>(instance))
-              << Log::Field("path", path.c_str());
-
-    auto               json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-    std::ostringstream content;
-
-    try {
-        (void)json->set("itemId", instance.mItemID.CStr());
-        (void)json->set("subjectId", instance.mSubjectID.CStr());
-        (void)json->set("instance", instance.mInstance);
-        (void)json->set("manifestDigest", instance.mManifestDigest.CStr());
-        (void)json->set("type", instance.mType.ToString().CStr());
-        (void)json->set("version", instance.mVersion.CStr());
-        (void)json->set("preinstalled", instance.mPreinstalled);
-
-        (void)json->set("bootId", bootID);
-        (void)json->set("confirmed", confirmed);
-
-        json->stringify(content);
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    if (auto err = WriteFileDurable(path, content.str()); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error LoadInstanceInfo(
-    const std::filesystem::path& path, InstanceInfo& instance, std::string* bootID = nullptr, bool* confirmed = nullptr)
-{
-    LOG_DBG() << "Load instance info" << Log::Field("path", path.c_str());
-
-    instance.mType = UpdateItemTypeEnum::eComponent;
-
-    std::ifstream file(path);
-
+    std::ifstream file(path); // NOSONAR
     if (!file.is_open()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "can't open instance info file"));
+        return {{}, Error(ErrorEnum::eNotFound, "can't open update state file")};
     }
 
-    try {
-        auto parseResult = common::utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW(parseResult.mError);
+    std::map<std::string, std::string> values;
+    std::string                        line;
 
-        auto jsonObject = common::utils::CaseInsensitiveObjectWrapper(parseResult.mValue);
-
-        auto err = instance.mItemID.Assign(jsonObject.GetValue<std::string>("itemId").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err);
-
-        err = instance.mSubjectID.Assign(jsonObject.GetValue<std::string>("subjectId").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err);
-
-        instance.mInstance = jsonObject.GetValue<uint64_t>("instance");
-
-        err = instance.mManifestDigest.Assign(jsonObject.GetValue<std::string>("manifestDigest").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err);
-
-        err = instance.mVersion.Assign(jsonObject.GetValue<std::string>("version").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err);
-
-        instance.mType         = UpdateItemTypeEnum::eComponent;
-        instance.mPreinstalled = jsonObject.GetValue<bool>("preinstalled");
-
-        if (bootID) {
-            *bootID = jsonObject.GetValue<std::string>("bootId");
+    while (std::getline(file, line)) {
+        const auto pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
         }
 
-        if (confirmed) {
-            *confirmed = jsonObject.GetValue<bool>("confirmed");
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+        // The first value wins: initramfs reads the first matching line.
+        (void)values.emplace(line.substr(0, pos), line.substr(pos + 1));
     }
 
-    if (instance.mItemID.IsEmpty() || instance.mVersion.IsEmpty()) {
-        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "instance info is incomplete"));
+    if (file.bad()) {
+        return {{}, Error(ErrorEnum::eFailed, "can't read update state file")};
     }
 
-    return ErrorEnum::eNone;
+    return values;
+}
+
+std::string GetValue(const std::map<std::string, std::string>& values, const std::string& key)
+{
+    if (auto it = values.find(key); it != values.end()) {
+        return it->second;
+    }
+
+    return "";
 }
 
 // Media type format: [application/]<type prefix>.v<version>[+<suffix>].
@@ -471,7 +413,7 @@ RetWithError<std::string> GetUpdateType(const oci::ImageManifest& manifest)
 
 Error RootfsRuntime::Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
     imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
-    InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn)
+    InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn, runtimes::StorageItf& storage)
 {
     LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());
 
@@ -480,6 +422,7 @@ Error RootfsRuntime::Init(const RuntimeConfig& config, iamclient::CurrentNodeInf
     mItemInfoProvider        = &itemInfoProvider;
     mOCISpec                 = &ociSpec;
     mStatusReceiver          = &statusReceiver;
+    mStorage                 = &storage;
 
     if (auto err = ParseConfig(mRuntimeConfig, mRootfsConfig); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -515,8 +458,8 @@ Error RootfsRuntime::Start()
     // Health check thread of previous start may still be running.
     JoinHealthCheck();
 
-    // Failed pending instance, previous installed instance and current instance.
-    auto statuses       = std::make_unique<StaticArray<InstanceStatus, 3>>();
+    // Pending instance (previous current instance on promotion) and current instance.
+    auto statuses       = std::make_unique<StaticArray<InstanceStatus, 2>>();
     auto rebootRequired = false;
     auto runHealthCheck = false;
 
@@ -525,15 +468,15 @@ Error RootfsRuntime::Start()
 
         LOG_DBG() << "Start runtime";
 
-        if (auto err = InitInstalledData(); !err.IsNone()) {
+        if (auto err = LoadInstances(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = InitPendingData(); !err.IsNone()) {
+        if (auto err = LoadUpdateState(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        if (auto err = ProcessUpdateAction(*statuses); !err.IsNone()) {
+        if (auto err = ProcessUpdateState(*statuses); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -544,9 +487,7 @@ Error RootfsRuntime::Start()
 
     // Status receiver is called outside of runtime lock: the launcher calls the runtime under its own lock.
     if (rebootRequired) {
-        if (auto err = SendRebootRequest(); !err.IsNone() && statuses->Back().mError.IsNone()) {
-            statuses->Back().mError = err;
-        }
+        KeepFirstError(statuses->Back().mError, SendRebootRequest());
     }
 
     mStatusReceiver->OnInstancesStatusesReceived(*statuses);
@@ -607,7 +548,12 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
     if (!found) {
         lock.unlock();
 
-        FillInstanceStatus(instance, InstanceStateEnum::eActivating, status);
+        static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
+        status.mVersion                     = instance.mVersion;
+        status.mManifestDigest              = instance.mManifestDigest;
+        status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
+        status.mState                       = InstanceStateEnum::eActivating;
+        status.mError                       = ErrorEnum::eNone;
 
         mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
 
@@ -626,6 +572,8 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
 
             return AOS_ERROR_WRAP(err);
         }
+
+        FillInstanceStatus(mPending, status);
     }
 
     const auto rebootRequired = mRebootRequired;
@@ -637,15 +585,10 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
     }
 
     // Prepared update is kept if reboot request fails: the request is retried on next start instance request.
-    if (auto rebootErr = SendRebootRequest(); !rebootErr.IsNone()) {
-        if (status.mError.IsNone()) {
-            status.mError = rebootErr;
-        }
+    const auto rebootErr = SendRebootRequest();
 
-        if (err.IsNone()) {
-            err = rebootErr;
-        }
-    }
+    KeepFirstError(status.mError, rebootErr);
+    KeepFirstError(err, rebootErr);
 
     return err;
 }
@@ -684,6 +627,9 @@ Error RootfsRuntime::GetInstanceMonitoringData(
  * Private
  **********************************************************************************************************************/
 
+// The verdict is a single state change. If it can't be stored, the update is reported as failed and the reboot is
+// requested anyway: the state is either trial, which initramfs reverts, or confirmed, which initramfs applies and SM
+// promotes on next start.
 void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
 {
     LOG_DBG() << "Start health check for rootfs update";
@@ -695,61 +641,42 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
         checkErr = AOS_ERROR_WRAP(checkErr);
     }
 
-    auto rebootAllowed = true;
-
     {
         std::lock_guard lock {mMutex};
 
-        if (!mHasPending
-            || static_cast<const InstanceIdent&>(mPendingInstance) != static_cast<const InstanceIdent&>(*status)
-            || mPendingInstance.mManifestDigest != status->mManifestDigest) {
+        if (mPending.mItemID.IsEmpty() || !mHasUpdateState || mUpdateState != UpdateStateEnum::eTrial
+            || static_cast<const InstanceIdent&>(mPending) != static_cast<const InstanceIdent&>(*status)
+            || mPending.mManifestDigest != status->mManifestDigest) {
             LOG_WRN() << "Pending rootfs update is changed, health check verdict is discarded";
 
             return;
         }
 
-        if (auto err = StoreVerdict(checkErr.IsNone(), checkErr); !err.IsNone()) {
-            LOG_ERR() << "Can't store rootfs update verdict" << Log::Field(err);
+        if (checkErr.IsNone()) {
+            if (auto err = StoreUpdateState(UpdateStateEnum::eConfirmed); !err.IsNone()) {
+                LOG_ERR() << "Can't confirm rootfs update" << Log::Field(err);
 
-            if (checkErr.IsNone()) {
-                // Without do_apply initramfs reverts the update on next boot, so the update is failed anyway.
-                checkErr = AOS_ERROR_WRAP(err);
-
-                if (auto storeErr = StoreVerdict(false, checkErr); !storeErr.IsNone()) {
-                    LOG_ERR() << "Can't store rootfs update failure" << Log::Field(storeErr);
-                }
-            }
-
-            // do_apply may remain if the verdict can't be stored: reboot would apply the update reported as failed.
-            // Reboot is allowed only if do_apply is durably removed: do_apply absence doesn't mean that its removal is
-            // synced. Otherwise reboot is postponed, the update state is processed again on SM restart.
-            if (auto removeErr
-                = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(ActionType(ActionTypeEnum::eDoApply).ToString().CStr())));
-                !removeErr.IsNone()) {
-                LOG_ERR() << "Can't remove rootfs update do_apply, reboot is postponed" << Log::Field(removeErr);
-
-                rebootAllowed = false;
+                checkErr = err;
             }
         }
 
         if (!checkErr.IsNone()) {
-            mPendingState = InstanceStateEnum::eFailed;
-            mPendingError = checkErr;
+            if (auto err = StoreUpdateState(UpdateStateEnum::eRejected, ErrorToString(checkErr)); !err.IsNone()) {
+                LOG_ERR() << "Can't reject rootfs update" << Log::Field(err);
+            }
 
-            status->mState = InstanceStateEnum::eFailed;
-            status->mError = checkErr;
+            SetPendingFailed(checkErr);
+
+            status->mState = mPending.mState;
+            status->mError = mPending.mError;
         }
 
         // Reboot request is retried on start instance request if it fails.
-        mRebootRequired = rebootAllowed;
+        mRebootRequired = true;
     }
 
     // Status receiver is called outside of runtime lock: the launcher calls the runtime under its own lock.
-    if (rebootAllowed) {
-        if (auto err = SendRebootRequest(); !err.IsNone() && status->mError.IsNone()) {
-            status->mError = err;
-        }
-    }
+    KeepFirstError(status->mError, SendRebootRequest());
 
     mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
 }
@@ -763,86 +690,6 @@ void RootfsRuntime::JoinHealthCheck()
     }
 
     mHealthCheckThread.reset();
-}
-
-Error RootfsRuntime::InitInstalledData()
-{
-    mCurrentError = ErrorEnum::eNone;
-
-    const auto      path = GetPath(cInstalledInstanceFileName);
-    std::error_code ec;
-
-    // Lookup error should not be treated as missing file, otherwise installed instance is overwritten.
-    const auto exists = std::filesystem::exists(path, ec);
-    if (ec) {
-        return AOS_ERROR_WRAP(Error(ec.value(), "can't check installed instance file"));
-    }
-
-    if (exists) {
-        auto err = LoadInstanceInfo(path, mCurrentInstance);
-        if (err.IsNone()) {
-            return ErrorEnum::eNone;
-        }
-
-        LOG_ERR() << "Installed instance info is corrupted, restore default" << Log::Field(err);
-    }
-
-    auto [version, err] = GetCurrentVersion(mRootfsConfig.mVersionFilePath);
-    if (!err.IsNone()) {
-        return err;
-    }
-
-    ResetInstanceInfo(mCurrentInstance);
-
-    static_cast<InstanceIdent&>(mCurrentInstance) = mDefaultInstanceIdent;
-    mCurrentInstance.mVersion                     = version;
-
-    Actions actions;
-
-    if (auto actionsErr = ReadActions(actions); !actionsErr.IsNone()) {
-        return AOS_ERROR_WRAP(actionsErr);
-    }
-
-    // During trial boot the version file belongs to the trial rootfs, and after failed apply the rootfs may be
-    // partially updated: the version is not stored as installed one. Installed instance is restored on start when the
-    // installed rootfs is running.
-    if (actions.mUpdated || actions.mDoApply) {
-        LOG_WRN() << "Rootfs update is in progress, installed instance is not restored"
-                  << Log::Field("version", version);
-
-        return ErrorEnum::eNone;
-    }
-
-    return SaveInstanceInfo(mCurrentInstance, path);
-}
-
-Error RootfsRuntime::InitPendingData()
-{
-    ResetPending();
-
-    const auto      path = GetPath(cPendingInstanceFileName);
-    std::error_code ec;
-
-    const auto exists = std::filesystem::exists(path, ec);
-    if (ec) {
-        return AOS_ERROR_WRAP(Error(ec.value(), "can't check pending instance file"));
-    }
-
-    if (!exists) {
-        return ErrorEnum::eNone;
-    }
-
-    if (auto err = LoadInstanceInfo(path, mPendingInstance, &mPendingBootID, &mPendingConfirmed); !err.IsNone()) {
-        LOG_ERR() << "Pending instance info is corrupted" << Log::Field(err);
-
-        ResetPending();
-
-        return ErrorEnum::eNone;
-    }
-
-    mHasPending = true;
-
-    return ErrorEnum::eNone;
 }
 
 Error RootfsRuntime::CreateRuntimeInfo()
@@ -871,127 +718,200 @@ Error RootfsRuntime::CreateRuntimeInfo()
     return ErrorEnum::eNone;
 }
 
-// Action files priority: do_apply, updated, failed, do_update. It follows initramfs aosupdate module, failed is handled
-// before do_update as initramfs keeps do_update when the update fails. failed together with do_apply or updated is
-// handled as waiting for reboot or failed apply.
-Error RootfsRuntime::ProcessUpdateAction(Array<InstanceStatus>& statuses)
+// Storage keeps the current (active) instance and the pending one. If the current instance doesn't exist (first start),
+// it is created from the version file with the default ident.
+Error RootfsRuntime::LoadInstances()
 {
-    mApplyIncomplete = false;
+    mCurrent = {};
 
-    Actions actions;
+    ResetPending();
 
-    if (auto err = ReadActions(actions); !err.IsNone()) {
+    auto instances = std::make_unique<StaticArray<runtimes::RuntimeInstanceData, cMaxNumStoredInstances>>();
+
+    if (auto err = mStorage->GetRuntimeInstances(mRuntimeInfo.mRuntimeID, *instances); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    LOG_DBG() << "Process rootfs update" << Log::Field("hasPending", mHasPending)
-              << Log::Field("updated", actions.mUpdated) << Log::Field("doApply", actions.mDoApply)
-              << Log::Field("doUpdate", actions.mDoUpdate) << Log::Field("failed", actions.mFailed);
-
-    if (!mHasPending) {
-        return ProcessNoPending(statuses, actions);
-    }
-
-    // do_apply or updated with failed: health check rejected the update before reboot, or initramfs failed to apply
-    // the update after reboot.
-    if (actions.mDoApply || actions.mUpdated) {
-        if (actions.mFailed) {
-            mPendingError = ReadFailedReason();
-
-            return ProcessWaitReboot(statuses, InstanceStateEnum::eFailed, actions);
+    for (const auto& instance : *instances) {
+        if (instance.mState == InstanceStateEnum::eActive) {
+            mCurrent = instance;
+        } else {
+            mPending = instance;
         }
-
-        if (actions.mDoApply) {
-            return ProcessWaitReboot(statuses, InstanceStateEnum::eActivating, actions);
-        }
-
-        return ProcessUpdated(statuses);
     }
 
-    if (actions.mFailed) {
-        return ProcessFailed(statuses, ReadFailedReason());
+    if (!mCurrent.mItemID.IsEmpty()) {
+        return ErrorEnum::eNone;
     }
 
-    if (actions.mDoUpdate) {
-        return ProcessWaitReboot(statuses, InstanceStateEnum::eActivating, actions);
-    }
+    LOG_WRN() << "Current rootfs instance is not found, create default";
 
-    return ProcessNoAction(statuses);
+    return RestoreDefaultCurrent();
 }
 
-// No valid pending instance: update can't be tracked, so it should be canceled if it is safe.
-Error RootfsRuntime::ProcessNoPending(Array<InstanceStatus>& statuses, const Actions& actions)
+// State file is written atomically, so it may be invalid only if the filesystem is damaged: invalid state is treated as
+// no update.
+Error RootfsRuntime::LoadUpdateState()
 {
-    if (actions.mDoApply) {
-        // do_apply means that the update is confirmed or initramfs failed to apply it. In the latter case the rootfs
-        // may be partially updated, and initramfs revert only clears action files without restoring it. Cancellation is
-        // not safe: artifacts are kept, so initramfs retries the apply on next boot, and recovery required is reported.
-        LOG_ERR() << "Rootfs update state is unknown, update artifacts are kept";
+    mHasUpdateState = false;
+    mUpdateState    = UpdateStateEnum::eNumStates;
+    mUpdateType.clear();
+    mUpdateError.clear();
 
-        mCurrentError
-            = AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "rootfs update state is unknown, recovery is required"));
-        mApplyIncomplete = true;
-    } else if (actions.mUpdated) {
-        // Trial boot: initramfs didn't modify the rootfs, so the update can be safely reverted.
-        LOG_ERR() << "Rootfs trial boot without valid pending instance, revert update";
+    const auto      path = GetPath(cUpdateStateFileName);
+    std::error_code ec;
 
-        if (auto err = RemoveFile(GetPath(cPendingInstanceFileName)); !err.IsNone()) {
-            LOG_ERR() << "Can't remove pending instance" << Log::Field(AOS_ERROR_WRAP(err));
-        }
-
-        if (auto err = StoreAction(ActionTypeEnum::eFailed, "pending instance info is missing or corrupted");
-            !err.IsNone()) {
-            LOG_ERR() << "Can't store failed action" << Log::Field(err);
-        }
-
-        mRebootRequired = true;
-    } else {
-        if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
-            LOG_ERR() << "Failed to clear update artifacts" << Log::Field(err);
-        }
-
-        // No update in progress: the installed rootfs is running.
-        if (auto err = VerifyInstalledInstance(statuses); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    // Lookup error should not be treated as missing file, otherwise the update being applied is canceled.
+    const auto exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return AOS_ERROR_WRAP(Error(ec.value(), "can't check update state file"));
     }
 
-    if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
+    if (!exists) {
+        return ErrorEnum::eNone;
+    }
+
+    auto [values, err] = ParseKeyValues(path);
+    if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mCurrentInstance,
-        mCurrentError.IsNone() ? InstanceStateEnum::eActive : InstanceStateEnum::eFailed, statuses.Back());
-    statuses.Back().mError = mCurrentError;
+    // Empty value matches the sentinel string of the enum.
+    if (err = mUpdateState.FromString(GetValue(values, "state").c_str());
+        !err.IsNone() || mUpdateState == UpdateStateEnum::eNumStates) {
+        LOG_ERR() << "Rootfs update state is invalid" << Log::Field("state", GetValue(values, "state").c_str());
+
+        return ErrorEnum::eNone;
+    }
+
+    mUpdateType     = GetValue(values, "type");
+    mUpdateError    = Poco::trim(GetValue(values, "reason"));
+    mHasUpdateState = true;
 
     return ErrorEnum::eNone;
 }
 
-Error RootfsRuntime::ProcessUpdated(Array<InstanceStatus>& statuses)
+// Initramfs always changes prepared, confirmed and rejected states on boot: the state means that SM was restarted
+// before reboot. Confirmed state with the reason means that initramfs failed to apply the update.
+Error RootfsRuntime::ProcessUpdateState(Array<InstanceStatus>& statuses)
 {
-    auto [isPendingBoot, bootErr] = IsPendingBoot();
-    if (!bootErr.IsNone()) {
-        return AOS_ERROR_WRAP(bootErr);
+    if (!mHasUpdateState) {
+        return ProcessNoUpdate(statuses);
     }
 
-    // Pending boot ID is updated to the trial boot ID only when the verdict is being stored. Same boot means that SM
-    // was restarted while the verdict was stored: confirm and reject start with the same step, so the verdict is
-    // unknown. The update is rejected, otherwise the health check may confirm the update that it has just rejected.
-    if (isPendingBoot) {
-        return RejectTrialBoot(statuses, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "update verdict is interrupted")));
+    if (mPending.mItemID.IsEmpty()) {
+        return ProcessUntracked(statuses);
     }
 
-    if (auto err = VerifyRootfsVersion(mRootfsConfig.mVersionFilePath, mPendingInstance.mVersion); !err.IsNone()) {
+    LOG_DBG() << "Process rootfs update" << Log::Field("state", mUpdateState)
+              << Log::Field("reason", mUpdateError.c_str());
+
+    switch (mUpdateState.GetValue()) {
+    case UpdateStateEnum::ePrepared:
+        return WaitReboot(statuses);
+
+    case UpdateStateEnum::eTrial:
+        return ProcessTrial(statuses);
+
+    case UpdateStateEnum::eConfirmed:
+        if (mUpdateError.empty()) {
+            return WaitReboot(statuses);
+        }
+
+        return ProcessApplyFailed(statuses);
+
+    case UpdateStateEnum::eRejected:
+        // SM may be interrupted after rejected state is stored and before the pending instance is failed.
+        if (mPending.mState != InstanceStateEnum::eFailed) {
+            SetPendingFailed(GetUpdateError("update is rejected"));
+        }
+
+        return WaitReboot(statuses);
+
+    case UpdateStateEnum::eApplied:
+        return ProcessApplied(statuses);
+
+    case UpdateStateEnum::eReverted:
+        return ProcessFailed(statuses, GetUpdateError("update is reverted"));
+
+    default:
+        return ProcessFailed(statuses, GetUpdateError("update failed"));
+    }
+}
+
+// No update state: the pending instance is either failed or the update was interrupted before it is committed.
+Error RootfsRuntime::ProcessNoUpdate(Array<InstanceStatus>& statuses)
+{
+    // Removes invalid state file, stale images and temporary files.
+    if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
+        LOG_ERR() << "Failed to clear update artifacts" << Log::Field(err);
+    }
+
+    if (!mPending.mItemID.IsEmpty()) {
+        if (mPending.mState != InstanceStateEnum::eFailed) {
+            SetPendingFailed(AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "update is not started")));
+        }
+
+        if (auto err = AddStatus(statuses, mPending); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return AddStatus(statuses, mCurrent);
+}
+
+// Update state without pending instance: storage is lost or the promotion is interrupted after storage is updated.
+Error RootfsRuntime::ProcessUntracked(Array<InstanceStatus>& statuses)
+{
+    LOG_WRN() << "Rootfs update without pending instance" << Log::Field("state", mUpdateState);
+
+    if (mUpdateState == UpdateStateEnum::eConfirmed) {
+        // The rootfs may be partially updated, cancellation is not safe: initramfs applies the update, and the current
+        // instance is restored from the applied rootfs.
+        return AddStatus(statuses, mCurrent);
+    }
+
+    // Trial rootfs may be running, but the installed rootfs is not modified: without the state file the installed
+    // rootfs is booted.
+    if (mUpdateState == UpdateStateEnum::eTrial || mUpdateState == UpdateStateEnum::eRejected) {
+        mRebootRequired = true;
+    }
+
+    if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
+        LOG_ERR() << "Failed to clear update artifacts" << Log::Field(err);
+    }
+
+    if (mUpdateState == UpdateStateEnum::eApplied) {
+        auto [version, err] = GetCurrentVersion(mRootfsConfig.mVersionFilePath);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (version != mCurrent.mVersion) {
+            LOG_WRN() << "Current instance doesn't match applied rootfs, restore default"
+                      << Log::Field("version", version);
+
+            if (err = RestoreDefaultCurrent(); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+    }
+
+    return AddStatus(statuses, mCurrent);
+}
+
+// Initramfs mounted the update image as rootfs. SM restart before the verdict is stored runs the health check again.
+Error RootfsRuntime::ProcessTrial(Array<InstanceStatus>& statuses)
+{
+    if (auto err = VerifyRootfsVersion(mRootfsConfig.mVersionFilePath, mPending.mVersion); !err.IsNone()) {
         LOG_ERR() << "Rootfs trial boot verification failed" << Log::Field(err);
 
         return RejectTrialBoot(statuses, err);
     }
 
-    if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (auto err = AddStatus(statuses, mPending); !err.IsNone()) {
+        return err;
     }
-
-    FillInstanceStatus(mPendingInstance, InstanceStateEnum::eActivating, statuses.Back());
 
     // Health check is started by Start after statuses are sent.
     mRunHealthCheck = true;
@@ -999,315 +919,227 @@ Error RootfsRuntime::ProcessUpdated(Array<InstanceStatus>& statuses)
     return ErrorEnum::eNone;
 }
 
-// Rejects the update during trial boot: initramfs reverts the update on next boot as do_apply is absent. Error is
-// passed by value as it may refer to the pending error, which is overwritten.
-Error RootfsRuntime::RejectTrialBoot(Array<InstanceStatus>& statuses, Error err)
+// The rootfs may be partially updated: the state is kept, so initramfs retries the apply on next boot. Reboot is not
+// requested to avoid reboot loop.
+Error RootfsRuntime::ProcessApplyFailed(Array<InstanceStatus>& statuses)
 {
-    LOG_ERR() << "Rootfs trial boot is rejected" << Log::Field(err);
+    LOG_ERR() << "Rootfs update apply failed, apply will be retried on next boot"
+              << Log::Field("reason", mUpdateError.c_str());
 
-    if (auto storeErr = StoreVerdict(false, err); !storeErr.IsNone()) {
-        LOG_ERR() << "Can't store rootfs update failure" << Log::Field(storeErr);
-    }
+    SetPendingFailed(GetUpdateError(""));
 
-    mPendingState = InstanceStateEnum::eFailed;
-    mPendingError = err;
-
-    if (auto emplaceErr = statuses.EmplaceBack(); !emplaceErr.IsNone()) {
-        return AOS_ERROR_WRAP(emplaceErr);
-    }
-
-    FillInstanceStatus(mPendingInstance, mPendingState, statuses.Back());
-    statuses.Back().mError = mPendingError;
-
-    mRebootRequired = true;
-
-    return ErrorEnum::eNone;
+    return AddStatus(statuses, mPending);
 }
 
-// The node runs the pending rootfs if the version file matches the pending version that differs from the installed one.
-// Same version update can't be detected and is treated as not running.
-bool RootfsRuntime::IsTrialRootfs() const
+Error RootfsRuntime::ProcessApplied(Array<InstanceStatus>& statuses)
 {
-    if (mPendingInstance.mVersion == mCurrentInstance.mVersion) {
-        return false;
-    }
-
-    return VerifyRootfsVersion(mRootfsConfig.mVersionFilePath, mPendingInstance.mVersion).IsNone();
-}
-
-// Rootfs may be changed without SM tracking, e.g. if pending instance is lost while do_apply exists. When the installed
-// rootfs is running, the installed instance is checked against the version file and restored from it on mismatch, the
-// previous one is reported as inactive. Restore errors don't fail the start: the check is repeated on next start.
-Error RootfsRuntime::VerifyInstalledInstance(Array<InstanceStatus>& statuses)
-{
-    auto [version, err] = GetCurrentVersion(mRootfsConfig.mVersionFilePath);
-    if (!err.IsNone()) {
-        LOG_ERR() << "Can't verify installed instance" << Log::Field(AOS_ERROR_WRAP(err));
-
-        return ErrorEnum::eNone;
-    }
-
-    if (version == mCurrentInstance.mVersion) {
-        return ErrorEnum::eNone;
-    }
-
-    LOG_ERR() << "Installed instance doesn't match rootfs, restore default"
-              << Log::Field("installed", mCurrentInstance.mVersion) << Log::Field("rootfs", version);
-
-    auto prevInstance = std::make_unique<InstanceInfo>(mCurrentInstance);
-
-    ResetInstanceInfo(mCurrentInstance);
-
-    static_cast<InstanceIdent&>(mCurrentInstance) = mDefaultInstanceIdent;
-    mCurrentInstance.mVersion                     = version;
-
-    if (auto saveErr = SaveInstanceInfo(mCurrentInstance, GetPath(cInstalledInstanceFileName)); !saveErr.IsNone()) {
-        LOG_ERR() << "Can't save installed instance" << Log::Field(saveErr);
-    }
-
-    if (static_cast<const InstanceIdent&>(*prevInstance) != static_cast<const InstanceIdent&>(mCurrentInstance)
-        || prevInstance->mManifestDigest != mCurrentInstance.mManifestDigest) {
-        if (auto emplaceErr = statuses.EmplaceBack(); !emplaceErr.IsNone()) {
-            return AOS_ERROR_WRAP(emplaceErr);
-        }
-
-        FillInstanceStatus(*prevInstance, InstanceStateEnum::eInactive, statuses.Back());
-    }
-
-    return ErrorEnum::eNone;
-}
-
-// Update is waiting for reboot to be processed by initramfs. If SM is restarted within the same boot, reboot is
-// requested again. If reboot was done but initramfs didn't process the update, the update is failed.
-Error RootfsRuntime::ProcessWaitReboot(Array<InstanceStatus>& statuses, InstanceStateEnum state, const Actions& actions)
-{
-    auto [isPendingBoot, bootErr] = IsPendingBoot();
-    if (!bootErr.IsNone()) {
-        return AOS_ERROR_WRAP(bootErr);
-    }
-
-    if (!isPendingBoot && actions.mDoApply) {
-        // Initramfs failed to apply the update, rootfs may be partially updated. Update artifacts are kept, so
-        // initramfs retries to apply the update on next boot.
-        auto err
-            = mPendingError.IsNone() ? Error(ErrorEnum::eFailed, "update is not applied after reboot") : mPendingError;
-
-        LOG_ERR() << "Rootfs update apply failed, apply will be retried on next boot" << Log::Field(err);
-
-        mPendingState    = InstanceStateEnum::eFailed;
-        mPendingError    = err;
-        mRebootRequired  = false;
-        mApplyIncomplete = true;
-
-        if (auto emplaceErr = statuses.EmplaceBack(); !emplaceErr.IsNone()) {
-            return AOS_ERROR_WRAP(emplaceErr);
-        }
-
-        FillInstanceStatus(mPendingInstance, mPendingState, statuses.Back());
-        statuses.Back().mError = mPendingError;
-
-        return ErrorEnum::eNone;
-    }
-
-    // updated with failed after reboot: initramfs revert removes updated, so initramfs started the trial boot again and
-    // failed is stale. It happens if only part of the revert flags removal is durable. Clearing artifacts would leave
-    // the node running the trial rootfs reported as the installed one: the update is rejected and reverted instead.
-    // The version check prevents a reboot loop if initramfs didn't process the flags at all.
-    if (!isPendingBoot && actions.mUpdated && IsTrialRootfs()) {
-        return RejectTrialBoot(statuses, mPendingError);
-    }
-
-    if (!isPendingBoot) {
-        auto err
-            = actions.mFailed ? ReadFailedReason() : Error(ErrorEnum::eFailed, "update is not processed after reboot");
-
+    if (auto err = VerifyRootfsVersion(mRootfsConfig.mVersionFilePath, mPending.mVersion); !err.IsNone()) {
         return ProcessFailed(statuses, err);
     }
 
-    LOG_INF() << "Rootfs update is waiting for reboot" << Log::Field("state", InstanceState(state));
+    LOG_INF() << "Rootfs update applied" << Log::Field("ident", static_cast<const InstanceIdent&>(mPending))
+              << Log::Field("version", mPending.mVersion);
 
-    mPendingState = state;
+    auto prevInstance = mCurrent;
 
-    auto rebootAllowed = true;
-
-    if (actions.mDoApply && state == InstanceStateEnum::eFailed) {
-        // Update is rejected but do_apply removal failed: retry it, otherwise initramfs applies rejected update. Reboot
-        // is not requested until do_apply is durably removed, removal is retried on next start.
-        if (auto err
-            = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(ActionType(ActionTypeEnum::eDoApply).ToString().CStr())));
-            !err.IsNone()) {
-            LOG_ERR() << "Can't remove action, reboot is postponed" << Log::Field(err);
-
-            rebootAllowed = false;
-        }
-    } else if (actions.mDoApply && !mPendingConfirmed) {
-        // SM was interrupted after do_apply is stored but before update is confirmed. Directory is synced to make sure
-        // do_apply is durable before update is confirmed.
-        auto err = AOS_ERROR_WRAP(SyncDir(mRootfsConfig.mWorkingDir));
-
-        if (err.IsNone()) {
-            err = SaveInstanceInfo(mPendingInstance, GetPath(cPendingInstanceFileName), mPendingBootID, true);
-        }
-
-        if (!err.IsNone()) {
-            LOG_ERR() << "Can't confirm update" << Log::Field(err);
-        } else {
-            mPendingConfirmed = true;
-        }
-    }
-
-    if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
+    if (auto err = PromotePending(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mPendingInstance, mPendingState, statuses.Back());
-    statuses.Back().mError = mPendingError;
-
-    mRebootRequired = rebootAllowed;
-
-    return ErrorEnum::eNone;
-}
-
-Error RootfsRuntime::ProcessFailed(Array<InstanceStatus>& statuses, const Error& err)
-{
-    LOG_ERR() << "Rootfs update failed" << Log::Field("ident", static_cast<const InstanceIdent&>(mPendingInstance))
-              << Log::Field("version", mPendingInstance.mVersion) << Log::Field(err);
-
-    mPendingState   = InstanceStateEnum::eFailed;
-    mPendingError   = err;
-    mRebootRequired = false;
-
-    if (auto emplaceErr = statuses.EmplaceBack(); !emplaceErr.IsNone()) {
-        return AOS_ERROR_WRAP(emplaceErr);
-    }
-
-    FillInstanceStatus(mPendingInstance, mPendingState, statuses.Back());
-    statuses.Back().mError = mPendingError;
-
-    // Pending instance is kept in memory to report failed status on start instance request.
-    if (auto clearErr = ClearUpdateArtifacts(); !clearErr.IsNone()) {
-        LOG_ERR() << "Failed to clear update artifacts" << Log::Field(clearErr);
-    }
-
-    mHasPending = false;
-
-    // Update failed or reverted without do_apply: the installed rootfs is running.
-    if (auto verifyErr = VerifyInstalledInstance(statuses); !verifyErr.IsNone()) {
-        return AOS_ERROR_WRAP(verifyErr);
-    }
-
-    if (auto emplaceErr = statuses.EmplaceBack(); !emplaceErr.IsNone()) {
-        return AOS_ERROR_WRAP(emplaceErr);
-    }
-
-    FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, statuses.Back());
-
-    return ErrorEnum::eNone;
-}
-
-// No action files and pending instance: either the update is applied by initramfs or the update was interrupted before
-// it was committed or confirmed. Update is promoted only if it is confirmed and rootfs version matches.
-Error RootfsRuntime::ProcessNoAction(Array<InstanceStatus>& statuses)
-{
-    // Not confirmed update with different version is promoted if rootfs version matches: version change proves that the
-    // update is applied. Same version update requires confirmation.
-    if (!mPendingConfirmed && mPendingInstance.mVersion == mCurrentInstance.mVersion) {
-        return ProcessFailed(statuses, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "update is not confirmed")));
-    }
-
-    if (auto err = VerifyRootfsVersion(mRootfsConfig.mVersionFilePath, mPendingInstance.mVersion); !err.IsNone()) {
-        return ProcessFailed(statuses, err);
-    }
-
-    LOG_INF() << "Rootfs update applied" << Log::Field("ident", static_cast<const InstanceIdent&>(mPendingInstance))
-              << Log::Field("version", mPendingInstance.mVersion);
-
-    if (auto err = SaveInstanceInfo(mPendingInstance, GetPath(cInstalledInstanceFileName)); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    auto prevInstance = std::make_unique<InstanceInfo>(mCurrentInstance);
-
-    mCurrentInstance = mPendingInstance;
-
-    ResetPending();
-
-    // If cleanup is interrupted, the same update is promoted again on next start.
+    // If cleanup is interrupted, the state is processed as untracked on next start.
     if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
         LOG_ERR() << "Failed to clear update artifacts" << Log::Field(err);
     }
 
-    // Previous instance may be equal to current one if promotion was interrupted before pending instance removal.
-    if (static_cast<const InstanceIdent&>(*prevInstance) != static_cast<const InstanceIdent&>(mCurrentInstance)
-        || prevInstance->mManifestDigest != mCurrentInstance.mManifestDigest) {
-        if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    prevInstance.mState = InstanceStateEnum::eInactive;
 
-        FillInstanceStatus(*prevInstance, InstanceStateEnum::eInactive, statuses.Back());
+    if (auto err = AddStatus(statuses, prevInstance); !err.IsNone()) {
+        return err;
     }
 
+    return AddStatus(statuses, mCurrent);
+}
+
+// Update is finished without changing the rootfs: the installed rootfs is running. Failed pending instance is kept in
+// storage, so the failure is reported after SM restart.
+Error RootfsRuntime::ProcessFailed(Array<InstanceStatus>& statuses, const Error& err)
+{
+    LOG_ERR() << "Rootfs update failed" << Log::Field("ident", static_cast<const InstanceIdent&>(mPending))
+              << Log::Field("version", mPending.mVersion) << Log::Field(err);
+
+    SetPendingFailed(err);
+
+    if (auto clearErr = ClearUpdateArtifacts(); !clearErr.IsNone()) {
+        LOG_ERR() << "Failed to clear update artifacts" << Log::Field(clearErr);
+    }
+
+    if (auto addErr = AddStatus(statuses, mPending); !addErr.IsNone()) {
+        return addErr;
+    }
+
+    return AddStatus(statuses, mCurrent);
+}
+
+Error RootfsRuntime::WaitReboot(Array<InstanceStatus>& statuses)
+{
+    LOG_INF() << "Rootfs update is waiting for reboot" << Log::Field("state", mUpdateState);
+
+    mRebootRequired = true;
+
+    return AddStatus(statuses, mPending);
+}
+
+// Rejects the update during trial boot: initramfs reverts the update on next boot. Trial state is reverted as well, so
+// reboot is requested even if the rejection can't be stored. Error is passed by value as it may refer to the pending
+// error, which is overwritten.
+Error RootfsRuntime::RejectTrialBoot(Array<InstanceStatus>& statuses, Error err)
+{
+    LOG_ERR() << "Rootfs trial boot is rejected" << Log::Field(err);
+
+    if (auto storeErr = StoreUpdateState(UpdateStateEnum::eRejected, ErrorToString(err)); !storeErr.IsNone()) {
+        LOG_ERR() << "Can't reject rootfs update" << Log::Field(storeErr);
+    }
+
+    SetPendingFailed(err);
+
+    return WaitReboot(statuses);
+}
+
+// The pending instance becomes current and the previous current one is removed in one storage transaction.
+Error RootfsRuntime::PromotePending()
+{
+    auto promoted = mPending;
+
+    promoted.mState = InstanceStateEnum::eActive;
+    promoted.mError = ErrorEnum::eNone;
+
+    if (auto err = mStorage->BeginTransaction(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto err = mStorage->UpdateRuntimeInstance(promoted);
+    if (err.IsNone()) {
+        err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent, mCurrent.mManifestDigest);
+    }
+
+    if (err.IsNone()) {
+        err = mStorage->CommitTransaction();
+    }
+
+    if (!err.IsNone()) {
+        if (auto rollbackErr = mStorage->RollbackTransaction(); !rollbackErr.IsNone()) {
+            LOG_ERR() << "Can't rollback storage transaction" << Log::Field(AOS_ERROR_WRAP(rollbackErr));
+        }
+
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mCurrent = promoted;
+
+    ResetPending();
+
+    return ErrorEnum::eNone;
+}
+
+// Replaces the current instance with the default one created from the version file.
+Error RootfsRuntime::RestoreDefaultCurrent()
+{
+    auto [version, err] = GetCurrentVersion(mRootfsConfig.mVersionFilePath);
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    runtimes::RuntimeInstanceData instance;
+
+    static_cast<InstanceIdent&>(instance) = mDefaultInstanceIdent;
+    instance.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
+    instance.mVersion                     = version;
+    instance.mState                       = InstanceStateEnum::eActive;
+
+    if (err = mStorage->BeginTransaction(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (!mCurrent.mItemID.IsEmpty()) {
+        err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent, mCurrent.mManifestDigest);
+    }
+
+    if (err.IsNone()) {
+        err = mStorage->AddRuntimeInstance(instance);
+    }
+
+    if (err.IsNone()) {
+        err = mStorage->CommitTransaction();
+    }
+
+    if (!err.IsNone()) {
+        if (auto rollbackErr = mStorage->RollbackTransaction(); !rollbackErr.IsNone()) {
+            LOG_ERR() << "Can't rollback storage transaction" << Log::Field(AOS_ERROR_WRAP(rollbackErr));
+        }
+
+        return AOS_ERROR_WRAP(err);
+    }
+
+    mCurrent = instance;
+
+    return ErrorEnum::eNone;
+}
+
+// Storage errors don't stop the update processing: the failure is reported, and the update state is processed again on
+// next start.
+void RootfsRuntime::SetPendingFailed(const Error& err)
+{
+    // The error is stored with the same text as the update state reason.
+    mPending.mState = InstanceStateEnum::eFailed;
+    mPending.mError = err.Message()[0] == '\0' ? Error(err, ErrorToString(err).c_str()) : err;
+
+    if (auto storageErr = mStorage->UpdateRuntimeInstance(mPending); !storageErr.IsNone()) {
+        LOG_ERR() << "Can't store failed rootfs update" << Log::Field(AOS_ERROR_WRAP(storageErr));
+    }
+}
+
+Error RootfsRuntime::AddStatus(Array<InstanceStatus>& statuses, const runtimes::RuntimeInstanceData& instance) const
+{
     if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, statuses.Back());
+    FillInstanceStatus(instance, statuses.Back());
 
     return ErrorEnum::eNone;
 }
 
-// Stores health check verdict. Pending instance boot ID is updated first to detect SM restart before reboot. Confirmed
-// flag is stored only after do_apply is durable, so confirmed pending instance without action files means that
-// initramfs has applied the update. Any interruption between these steps results in failed update, never in promotion
-// of not applied update.
-Error RootfsRuntime::StoreVerdict(bool confirmed, const Error& err)
+// Atomically replaces the update state file. Initramfs changes only the state and the reason.
+Error RootfsRuntime::StoreUpdateState(UpdateStateEnum state, const std::string& reason)
 {
-    auto [bootID, bootErr] = GetBootID();
-    if (!bootErr.IsNone()) {
-        return AOS_ERROR_WRAP(bootErr);
+    std::ostringstream content;
+
+    content << "state=" << UpdateState(state).ToString().CStr() << "\n"
+            << "type=" << SanitizeValue(mUpdateType) << "\n"
+            << "reason=" << SanitizeValue(reason) << "\n";
+
+    LOG_DBG() << "Store rootfs update state" << Log::Field("state", UpdateState(state));
+
+    if (auto err = WriteFileDurable(GetPath(cUpdateStateFileName), content.str()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
-    const auto pendingPath = GetPath(cPendingInstanceFileName);
-
-    if (auto saveErr = SaveInstanceInfo(mPendingInstance, pendingPath, bootID); !saveErr.IsNone()) {
-        return saveErr;
-    }
-
-    mPendingBootID    = bootID;
-    mPendingConfirmed = false;
-
-    if (!confirmed) {
-        if (auto removeErr
-            = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(ActionType(ActionTypeEnum::eDoApply).ToString().CStr())));
-            !removeErr.IsNone()) {
-            return removeErr;
-        }
-
-        return StoreAction(ActionTypeEnum::eFailed, ErrorToString(err));
-    }
-
-    if (auto storeErr = StoreAction(ActionTypeEnum::eDoApply); !storeErr.IsNone()) {
-        return storeErr;
-    }
-
-    if (auto saveErr = SaveInstanceInfo(mPendingInstance, pendingPath, bootID, true); !saveErr.IsNone()) {
-        return saveErr;
-    }
-
-    mPendingConfirmed = true;
+    mHasUpdateState = true;
+    mUpdateState    = state;
+    mUpdateError    = reason;
 
     return ErrorEnum::eNone;
+}
+
+Error RootfsRuntime::GetUpdateError(const char* defaultReason) const
+{
+    return Error(ErrorEnum::eFailed, mUpdateError.empty() ? defaultReason : mUpdateError.c_str());
 }
 
 void RootfsRuntime::ResetPending()
 {
-    mHasPending = false;
-    ResetInstanceInfo(mPendingInstance);
-    mPendingState = InstanceStateEnum::eActivating;
-    mPendingError = ErrorEnum::eNone;
-    mPendingBootID.clear();
-    mPendingConfirmed = false;
-    mRebootRequired   = false;
+    mPending        = {};
+    mRebootRequired = false;
 }
 
 // Fills status if the instance is the current or the pending one. Returns false if the instance is unknown and the
@@ -1315,35 +1147,24 @@ void RootfsRuntime::ResetPending()
 // start as active instance.
 RetWithError<bool> RootfsRuntime::GetCurrentOrPendingStatus(const InstanceInfo& instance, InstanceStatus& status) const
 {
-    if (static_cast<const InstanceIdent&>(instance) == static_cast<const InstanceIdent&>(mCurrentInstance)
-        && mCurrentInstance.mManifestDigest == instance.mManifestDigest) {
-        // Current instance is failed if the update state is unknown and recovery is required.
-        if (!mCurrentError.IsNone()) {
-            FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eFailed, status);
-            status.mError = mCurrentError;
-
-            return {true, mCurrentError};
+    for (const auto* known : {&mCurrent, &mPending}) {
+        if (known->mItemID.IsEmpty()
+            || static_cast<const InstanceIdent&>(instance) != static_cast<const InstanceIdent&>(*known)
+            || known->mManifestDigest != instance.mManifestDigest) {
+            continue;
         }
 
-        FillInstanceStatus(mCurrentInstance, InstanceStateEnum::eActive, status);
+        FillInstanceStatus(*known, status);
 
-        return true;
+        if (known->mState != InstanceStateEnum::eFailed) {
+            return true;
+        }
+
+        return {
+            true, known->mError.IsNone() ? AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "update failed")) : known->mError};
     }
 
-    if (mPendingInstance.mItemID.IsEmpty()
-        || static_cast<const InstanceIdent&>(instance) != static_cast<const InstanceIdent&>(mPendingInstance)
-        || mPendingInstance.mManifestDigest != instance.mManifestDigest) {
-        return false;
-    }
-
-    FillInstanceStatus(mPendingInstance, mPendingState, status);
-    status.mError = mPendingError;
-
-    if (mPendingState != InstanceStateEnum::eFailed) {
-        return true;
-    }
-
-    return {true, mPendingError.IsNone() ? AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "update failed")) : mPendingError};
+    return false;
 }
 
 // Should be called outside of runtime lock: the launcher calls the runtime under its own lock.
@@ -1358,26 +1179,15 @@ Error RootfsRuntime::SendRebootRequest()
     return ErrorEnum::eNone;
 }
 
-RetWithError<bool> RootfsRuntime::IsPendingBoot() const
+void RootfsRuntime::FillInstanceStatus(const runtimes::RuntimeInstanceData& instance, InstanceStatus& status) const
 {
-    auto [bootID, err] = GetBootID();
-    if (!err.IsNone()) {
-        return {false, err};
-    }
-
-    return bootID == mPendingBootID;
-}
-
-void RootfsRuntime::FillInstanceStatus(
-    const InstanceInfo& instanceInfo, InstanceStateEnum state, InstanceStatus& status) const
-{
-    static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instanceInfo);
-    status.mState                       = state;
-    status.mVersion                     = instanceInfo.mVersion;
+    static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
+    status.mState                       = instance.mState;
+    status.mError                       = instance.mError;
+    status.mVersion                     = instance.mVersion;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
-    status.mManifestDigest              = instanceInfo.mManifestDigest;
+    status.mManifestDigest              = instance.mManifestDigest;
     status.mType                        = UpdateItemTypeEnum::eComponent;
-    status.mPreinstalled                = instanceInfo.mPreinstalled;
 }
 
 Error RootfsRuntime::GetImageManifest(const String& digest, oci::ImageManifest& manifest) const
@@ -1428,27 +1238,12 @@ Error RootfsRuntime::CopyImage(const oci::ImageManifest& manifest) const
     return ErrorEnum::eNone;
 }
 
-// Cleanup is done in steps, each step is synced and cleanup stops if the step fails:
-// - do_apply: initramfs applies the update if do_apply exists. If pending instance is removed first, the update applied
-//   on next boot is not tracked and the installed instance doesn't match the rootfs. Without do_apply, initramfs
-//   reverts the trial boot, and the remaining pending instance is reported as failed;
-// - pending instance: action files without pending instance are treated as stale and removed on start, while removing
-//   action files (e.g. failed) when pending instance remains may lead to promotion of failed update;
-// - other action files: removing image while action files remain may lead to update without image.
-// Image and temporary files removal errors don't stop cleanup, the first error is returned.
+// The state file is durably removed first and cleanup stops if it fails: the image must never be removed while the
+// state file remains. Images and temporary files removal errors don't stop cleanup, the first error is returned.
 Error RootfsRuntime::ClearUpdateArtifacts() const
 {
-    // do_apply must never remain without do_update and image: initramfs treats missing do_update as full update, and
-    // applying incremental image as full one removes the rootfs files missing in the image.
-    if (auto err = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(ActionType(ActionTypeEnum::eDoApply).ToString().CStr())));
-        !err.IsNone()) {
-        LOG_ERR() << "Failed to remove action file" << Log::Field(err);
-
-        return err;
-    }
-
-    if (auto err = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(cPendingInstanceFileName))); !err.IsNone()) {
-        LOG_ERR() << "Failed to remove pending instance" << Log::Field(err);
+    if (auto err = AOS_ERROR_WRAP(RemoveFileDurable(GetPath(cUpdateStateFileName))); !err.IsNone()) {
+        LOG_ERR() << "Failed to remove update state" << Log::Field(err);
 
         return err;
     }
@@ -1462,26 +1257,8 @@ Error RootfsRuntime::ClearUpdateArtifacts() const
 
         LOG_ERR() << msg << Log::Field(err);
 
-        if (firstErr.IsNone()) {
-            firstErr = err;
-        }
+        KeepFirstError(firstErr, err);
     };
-
-    for (const auto action : {ActionTypeEnum::eUpdated, ActionTypeEnum::eDoUpdate, ActionTypeEnum::eFailed}) {
-        if (auto err = AOS_ERROR_WRAP(RemoveFile(GetPath(ActionType(action).ToString().CStr()))); !err.IsNone()) {
-            LOG_ERR() << "Failed to remove action file" << Log::Field(err);
-
-            return err;
-        }
-    }
-
-    // Action files removal should be durable before image is removed: otherwise initramfs may find action files without
-    // image.
-    if (auto err = AOS_ERROR_WRAP(SyncDir(mRootfsConfig.mWorkingDir)); !err.IsNone()) {
-        LOG_ERR() << "Failed to sync working dir" << Log::Field(err);
-
-        return err;
-    }
 
     std::error_code                     ec;
     std::filesystem::directory_iterator it(mRootfsConfig.mWorkingDir, ec);
@@ -1503,85 +1280,53 @@ Error RootfsRuntime::ClearUpdateArtifacts() const
     return firstErr;
 }
 
-Error RootfsRuntime::StoreAction(const ActionType& action, std::string_view data) const
-{
-    if (auto err = WriteFileDurable(GetPath(action.ToString().CStr()), data); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    return ErrorEnum::eNone;
-}
-
-// Lookup errors are returned instead of treating the action as absent: wrong update state may lead to promotion of
-// unconfirmed update.
-Error RootfsRuntime::ReadActions(Actions& actions) const
-{
-    auto hasAction = [this](ActionTypeEnum action, bool& exists) {
-        std::error_code ec;
-
-        exists = std::filesystem::exists(GetPath(ActionType(action).ToString().CStr()), ec);
-        if (ec) {
-            return Error(ec.value(), "can't check action file");
-        }
-
-        return Error(ErrorEnum::eNone);
-    };
-
-    for (const auto& [action, exists] : {std::pair {ActionTypeEnum::eUpdated, &actions.mUpdated},
-             std::pair {ActionTypeEnum::eDoApply, &actions.mDoApply},
-             std::pair {ActionTypeEnum::eDoUpdate, &actions.mDoUpdate},
-             std::pair {ActionTypeEnum::eFailed, &actions.mFailed}}) {
-        if (auto err = hasAction(action, *exists); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error RootfsRuntime::ReadFailedReason() const
-{
-    std::ifstream file(GetPath(ActionType(ActionTypeEnum::eFailed).ToString().CStr()));
-    std::string   reason;
-
-    if (file.is_open()) {
-        std::stringstream buffer;
-
-        buffer << file.rdbuf();
-        reason = Poco::trim(buffer.str());
-    }
-
-    if (reason.empty()) {
-        reason = "update failed";
-    }
-
-    return Error(ErrorEnum::eFailed, reason.c_str());
-}
-
-// Partially updated rootfs (initramfs apply failed or update state is unknown) can be restored only by full update:
-// incremental image is mounted over and applied to the current rootfs. Incremental update is refused without changing
-// update artifacts, so initramfs retries the apply on next boot. Any other preparation error clears update artifacts.
+// Update artifacts are written in order: image, pending instance in storage, prepared state. The state file is the
+// commit point: initramfs starts the update only if it exists, and at this moment the image and the pending instance
+// are durable. On error update artifacts and the pending instance are removed.
 Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
 {
     LOG_DBG() << "Preparing update" << Log::Field("ident", static_cast<const InstanceIdent&>(instance));
 
+    // The state file of the previous update is removed first, so initramfs doesn't act on it anymore.
+    if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (!mPending.mItemID.IsEmpty()) {
+        if (auto err = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending, mPending.mManifestDigest);
+            !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    ResetPending();
+
     auto imageManifest = std::make_unique<oci::ImageManifest>();
-    auto err           = GetImageManifest(instance.mManifestDigest, *imageManifest);
-    auto updateType    = std::string();
+    auto pendingAdded  = false;
+
+    auto err = GetImageManifest(instance.mManifestDigest, *imageManifest);
 
     if (err.IsNone()) {
-        Tie(updateType, err) = GetUpdateType(*imageManifest);
-    }
-
-    if (err.IsNone() && mApplyIncomplete && updateType != cFullUpdateType) {
-        LOG_ERR() << "Rootfs may be partially updated, incremental update is refused";
-
-        return AOS_ERROR_WRAP(
-            Error(ErrorEnum::eWrongState, "rootfs may be partially updated, full update is required"));
+        Tie(mUpdateType, err) = GetUpdateType(*imageManifest);
     }
 
     if (err.IsNone()) {
-        err = StoreUpdate(instance, *imageManifest, updateType);
+        err = CopyImage(*imageManifest);
+    }
+
+    if (err.IsNone()) {
+        static_cast<InstanceIdent&>(mPending) = static_cast<const InstanceIdent&>(instance);
+        mPending.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
+        mPending.mManifestDigest              = instance.mManifestDigest;
+        mPending.mVersion                     = instance.mVersion;
+        mPending.mState                       = InstanceStateEnum::eActivating;
+
+        err          = mStorage->AddRuntimeInstance(mPending);
+        pendingAdded = err.IsNone();
+    }
+
+    if (err.IsNone()) {
+        err = StoreUpdateState(UpdateStateEnum::ePrepared);
     }
 
     if (!err.IsNone()) {
@@ -1589,49 +1334,20 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
             LOG_ERR() << "Failed to clear update artifacts" << Log::Field(clearErr);
         }
 
-        // Memory state is reset even if cleanup failed: remaining artifacts are handled on next start according to the
-        // cleanup order.
+        if (pendingAdded) {
+            if (auto removeErr
+                = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending, mPending.mManifestDigest);
+                !removeErr.IsNone()) {
+                LOG_ERR() << "Can't remove pending instance" << Log::Field(AOS_ERROR_WRAP(removeErr));
+            }
+        }
+
         ResetPending();
 
-        return err;
-    }
-
-    return ErrorEnum::eNone;
-}
-
-// Update artifacts are written in order: image, pending instance, do_update. do_update is the commit point: initramfs
-// starts the update only if it exists, and at this moment all other artifacts are durable.
-Error RootfsRuntime::StoreUpdate(
-    const InstanceInfo& instance, const oci::ImageManifest& manifest, const std::string& updateType)
-{
-    auto [bootID, bootErr] = GetBootID();
-    if (!bootErr.IsNone()) {
-        return AOS_ERROR_WRAP(bootErr);
-    }
-
-    // Previous do_update commit marker must be durably removed before update artifacts are replaced.
-    if (auto err = ClearUpdateArtifacts(); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    ResetPending();
-
-    if (auto err = CopyImage(manifest); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = SaveInstanceInfo(instance, GetPath(cPendingInstanceFileName), bootID); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    if (auto err = StoreAction(ActionTypeEnum::eDoUpdate, updateType); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
-    }
-
-    mHasPending      = true;
-    mPendingInstance = instance;
-    mPendingBootID   = bootID;
-    mRebootRequired  = true;
+    mRebootRequired = true;
 
     return ErrorEnum::eNone;
 }
