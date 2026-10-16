@@ -19,6 +19,7 @@
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
+#include <sm/launcher/runtimes/itf/storage.hpp>
 #include <sm/utils/itf/systemdconn.hpp>
 
 #include "runtimes/container/container.hpp"
@@ -45,13 +46,14 @@ public:
      * @param statusReceiver instance status receiver.
      * @param systemdConn systemd connection.
      * @param instanceIDProvider instance ID provider.
+     * @param runtimeStorage runtime storage.
      * @return Error.
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn,
-        launcher::InstanceIDProviderItf& instanceIDProvider);
+        launcher::InstanceIDProviderItf& instanceIDProvider, runtimes::StorageItf& runtimeStorage);
 
     /**
      * Returns runtimes.

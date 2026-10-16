@@ -72,6 +72,23 @@ aos::sm::imagemanager::UpdateItemData CreateUpdateItemData(const aos::String& id
     return item;
 }
 
+aos::sm::launcher::runtimes::RuntimeInstanceData CreateRuntimeInstance(const std::string& runtimeID,
+    const std::string& manifestDigest, aos::InstanceState state = aos::InstanceStateEnum::eActive,
+    const aos::Error& error = aos::ErrorEnum::eNone)
+{
+    aos::sm::launcher::runtimes::RuntimeInstanceData instance;
+
+    static_cast<aos::InstanceIdent&>(instance)
+        = CreateInstanceIdent("rootfs", "nodeType", 0, aos::UpdateItemTypeEnum::eComponent);
+    instance.mRuntimeID      = runtimeID.c_str();
+    instance.mManifestDigest = manifestDigest.c_str();
+    instance.mVersion        = "1.0.0";
+    instance.mState          = state;
+    instance.mError          = error;
+
+    return instance;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -735,4 +752,177 @@ TEST_F(DatabaseTest, JournalCursor)
 
     ASSERT_TRUE(mDB.GetJournalCursor(journalCursor).IsNone());
     EXPECT_EQ(journalCursor, aos::String("cursor"));
+}
+
+/***********************************************************************************************************************
+ * Tests - launcher::runtimes::StorageItf
+ **********************************************************************************************************************/
+
+TEST_F(DatabaseTest, AddAndGetRuntimeInstances)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    // Current and pending instances have the same ident and differ by manifest digest.
+    const auto current = CreateRuntimeInstance("rootfs-runtime", "sha256:current");
+    const auto pending = CreateRuntimeInstance("rootfs-runtime", "sha256:pending", aos::InstanceStateEnum::eFailed,
+        aos::Error(aos::ErrorEnum::eFailed, EIO, "health check failed"));
+    const auto other   = CreateRuntimeInstance("boot-runtime", "sha256:current");
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(current).IsNone());
+    ASSERT_TRUE(mDB.AddRuntimeInstance(pending).IsNone());
+    ASSERT_TRUE(mDB.AddRuntimeInstance(other).IsNone());
+
+    aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 4> result;
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 2);
+    EXPECT_EQ(result[0], current);
+    EXPECT_EQ(result[1], pending);
+    EXPECT_STREQ(result[1].mError.Message(), "health check failed");
+    EXPECT_EQ(result[1].mError.Errno(), EIO);
+
+    result.Clear();
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("boot-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0], other);
+
+    result.Clear();
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("unknown-runtime", result).IsNone());
+    EXPECT_TRUE(result.IsEmpty());
+}
+
+TEST_F(DatabaseTest, AddRuntimeInstanceAlreadyExists)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    const auto instance = CreateRuntimeInstance("rootfs-runtime", "sha256:current");
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(instance).IsNone());
+
+    auto err = mDB.AddRuntimeInstance(instance);
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eAlreadyExist)) << aos::tests::utils::ErrorToStr(err);
+}
+
+TEST_F(DatabaseTest, UpdateRuntimeInstance)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    auto instance = CreateRuntimeInstance("rootfs-runtime", "sha256:pending", aos::InstanceStateEnum::eActivating);
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(instance).IsNone());
+
+    instance.mVersion = "1.0.1";
+    instance.mState   = aos::InstanceStateEnum::eFailed;
+    instance.mError   = aos::Error(aos::ErrorEnum::eFailed, "rootfs version mismatch");
+
+    ASSERT_TRUE(mDB.UpdateRuntimeInstance(instance).IsNone());
+
+    aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 1> result;
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0], instance);
+
+    // Error is cleared.
+
+    instance.mState = aos::InstanceStateEnum::eActive;
+    instance.mError = aos::ErrorEnum::eNone;
+
+    ASSERT_TRUE(mDB.UpdateRuntimeInstance(instance).IsNone());
+
+    result.Clear();
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0], instance);
+    EXPECT_TRUE(result[0].mError.IsNone());
+
+    // Instance with another manifest digest is not found.
+
+    auto err = mDB.UpdateRuntimeInstance(CreateRuntimeInstance("rootfs-runtime", "sha256:unknown"));
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << aos::tests::utils::ErrorToStr(err);
+}
+
+TEST_F(DatabaseTest, RemoveRuntimeInstance)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    const auto current = CreateRuntimeInstance("rootfs-runtime", "sha256:current");
+    const auto pending = CreateRuntimeInstance("rootfs-runtime", "sha256:pending", aos::InstanceStateEnum::eActivating);
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(current).IsNone());
+    ASSERT_TRUE(mDB.AddRuntimeInstance(pending).IsNone());
+
+    ASSERT_TRUE(mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mManifestDigest).IsNone());
+
+    aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 2> result;
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0], pending);
+
+    auto err = mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mManifestDigest);
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << aos::tests::utils::ErrorToStr(err);
+}
+
+TEST_F(DatabaseTest, GetRuntimeInstancesExceedsLimit)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(CreateRuntimeInstance("rootfs-runtime", "sha256:current")).IsNone());
+    ASSERT_TRUE(mDB.AddRuntimeInstance(CreateRuntimeInstance("rootfs-runtime", "sha256:pending")).IsNone());
+
+    aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 1> result;
+
+    auto err = mDB.GetRuntimeInstances("rootfs-runtime", result);
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eNoMemory)) << aos::tests::utils::ErrorToStr(err);
+}
+
+TEST_F(DatabaseTest, RuntimeInstancePromotionInTransaction)
+{
+    ASSERT_TRUE(mDB.Init(mWorkingDir.string(), mMigrationConfig).IsNone());
+
+    const auto current = CreateRuntimeInstance("rootfs-runtime", "sha256:current");
+    auto       pending = CreateRuntimeInstance("rootfs-runtime", "sha256:pending", aos::InstanceStateEnum::eActivating);
+
+    ASSERT_TRUE(mDB.AddRuntimeInstance(current).IsNone());
+    ASSERT_TRUE(mDB.AddRuntimeInstance(pending).IsNone());
+
+    pending.mState = aos::InstanceStateEnum::eActive;
+
+    // Rolled back promotion keeps both instances unchanged.
+
+    ASSERT_TRUE(mDB.BeginTransaction().IsNone());
+    ASSERT_TRUE(mDB.UpdateRuntimeInstance(pending).IsNone());
+    ASSERT_TRUE(mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mManifestDigest).IsNone());
+    ASSERT_TRUE(mDB.RollbackTransaction().IsNone());
+
+    aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 2> result;
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 2);
+    EXPECT_EQ(result[0], current);
+    EXPECT_EQ(result[1].mState, aos::InstanceStateEnum::eActivating);
+
+    // Committed promotion leaves only the new current instance.
+
+    ASSERT_TRUE(mDB.BeginTransaction().IsNone());
+    ASSERT_TRUE(mDB.UpdateRuntimeInstance(pending).IsNone());
+    ASSERT_TRUE(mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mManifestDigest).IsNone());
+    ASSERT_TRUE(mDB.CommitTransaction().IsNone());
+
+    result.Clear();
+
+    ASSERT_TRUE(mDB.GetRuntimeInstances("rootfs-runtime", result).IsNone());
+
+    ASSERT_EQ(result.Size(), 1);
+    EXPECT_EQ(result[0], pending);
 }
