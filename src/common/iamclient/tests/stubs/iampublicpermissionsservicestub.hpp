@@ -57,6 +57,13 @@ public:
         mFuncIDs = funcIDs;
     }
 
+    void SetStatus(const grpc::Status& status)
+    {
+        std::lock_guard lock {mMutex};
+
+        mStatus = status;
+    }
+
     std::string GetLastSecret() const
     {
         std::lock_guard lock {mMutex};
@@ -88,7 +95,7 @@ public:
             (*permissionsMap)[funcID] = "";
         }
 
-        return grpc::Status::OK;
+        return mStatus;
     }
 
 private:
@@ -100,6 +107,7 @@ private:
     std::vector<std::string>      mFuncIDs;
     std::string                   mLastSecret;
     std::string                   mLastFuncServerID;
+    grpc::Status                  mStatus {grpc::Status::OK};
 };
 
 #endif

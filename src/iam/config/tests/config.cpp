@@ -234,6 +234,45 @@ TEST_F(ConfigTest, ParseConfig)
     EXPECT_EQ(params->get("Param2").convert<std::string>(), "Value2");
 }
 
+TEST_F(ConfigTest, ParseConfigWithoutEnablePermissionsHandler)
+{
+    std::ofstream file(mFileName);
+    file << R"({
+        "NodeInfo": {},
+        "WorkingDir": "/var/aos/iamanager",
+        "Migration": {
+            "MigrationPath": "/usr/share/aos/iam/migration",
+            "MergedMigrationPath": "/var/aos/workdirs/iam/migration"
+        }
+    })";
+    file.close();
+
+    auto [config, err] = ParseConfig(mFileName);
+
+    ASSERT_EQ(err, ErrorEnum::eNone);
+    EXPECT_TRUE(config.mEnablePermissionsHandler);
+}
+
+TEST_F(ConfigTest, ParseConfigWithPermissionsHandlerDisabled)
+{
+    std::ofstream file(mFileName);
+    file << R"({
+        "NodeInfo": {},
+        "EnablePermissionsHandler": false,
+        "WorkingDir": "/var/aos/iamanager",
+        "Migration": {
+            "MigrationPath": "/usr/share/aos/iam/migration",
+            "MergedMigrationPath": "/var/aos/workdirs/iam/migration"
+        }
+    })";
+    file.close();
+
+    auto [config, err] = ParseConfig(mFileName);
+
+    ASSERT_EQ(err, ErrorEnum::eNone);
+    EXPECT_FALSE(config.mEnablePermissionsHandler);
+}
+
 TEST_F(ConfigTest, ParsePKCS11ModuleParams)
 {
     Poco::JSON::Object::Ptr params = new Poco::JSON::Object();

@@ -490,6 +490,39 @@ TEST_F(PublicMessageHandlerTest, GetPermissionsSucceeds)
                              << ", message = " << status.error_message();
 }
 
+TEST_F(PublicMessageHandlerTest, GetPermissionsMaxFunctionsSucceeds)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMPublicPermissionsService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext           context;
+    iamproto::PermissionsRequest  request;
+    iamproto::PermissionsResponse response;
+
+    EXPECT_CALL(mPermHandler, GetPermissions)
+        .WillOnce(Invoke([](const String&, const String&, InstanceIdent&, Array<FunctionPermissions>& out) {
+            for (size_t i = 0; i < cFunctionsMaxCount; ++i) {
+                const auto function
+                    = "Vehicle.CarlaSimulation.ChaosWheel.Row1.Left.LateralSlipAngle" + std::to_string(i);
+
+                if (auto err = out.PushBack({function.c_str(), "r"}); !err.IsNone()) {
+                    return err;
+                }
+            }
+
+            return Error(ErrorEnum::eNone);
+        }));
+
+    const auto status = clientStub->GetPermissions(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "GetPermissions failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    ASSERT_EQ(static_cast<size_t>(response.permissions().permissions_size()), cFunctionsMaxCount);
+    EXPECT_EQ(
+        response.permissions().permissions().at("Vehicle.CarlaSimulation.ChaosWheel.Row1.Left.LateralSlipAngle0"), "r");
+}
+
 TEST_F(PublicMessageHandlerTest, GetPermissionsFails)
 {
     auto clientStub = CreateClientStub<iamproto::IAMPublicPermissionsService>();
