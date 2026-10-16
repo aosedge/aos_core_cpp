@@ -308,28 +308,20 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 
     auto subject = request->subject();
 
-    if (subject.empty() && !GetIdentProvider()) {
-        Error err(ErrorEnum::eNotFound, "Subject can't be empty");
+    if (subject.empty()) {
+        subject = nodeID.empty() ? GetNodeInfo().mNodeID.CStr() : nodeID;
+    }
+
+    LOG_INF() << "Create key subject: nodeID=" << nodeID.c_str() << ", subject=[" << subject.c_str() << "]";
+
+    if (subject.empty()) {
+        Error err(ErrorEnum::eNotFound, "Subject can't be empty: node ID is not available");
 
         LOG_ERR() << "Create key failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
 
         return grpc::Status::OK;
-    }
-
-    if (subject.empty() && GetIdentProvider()) {
-        auto systemInfo = std::make_unique<SystemInfo>();
-
-        if (auto err = GetIdentProvider()->GetSystemInfo(*systemInfo); !err.IsNone()) {
-            LOG_ERR() << "Get systemInfo failed" << Log::Field(err);
-
-            common::pbconvert::SetErrorInfo(err, *response);
-
-            return grpc::Status::OK;
-        }
-
-        subject = systemInfo->mSystemID.CStr();
     }
 
     if (!ProcessOnThisNode(nodeID)) {

@@ -33,7 +33,7 @@ namespace {
 constexpr auto cDefaultCPUInfoPath            = "/proc/cpuinfo";
 constexpr auto cDefaultMemInfoPath            = "/proc/meminfo";
 constexpr auto cDefaultProvisioningStatusPath = "/var/aos/.provisionstate";
-constexpr auto cDefaultNodeIDPath             = "/etc/machine-id";
+constexpr auto cDefaultHardwareIDPath         = "/etc/machine-id";
 
 /***********************************************************************************************************************
  * Static
@@ -85,9 +85,10 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
 
     nodeInfoConfig.mProvisioningStatePath
         = object.GetValue<std::string>("provisioningStatePath", cDefaultProvisioningStatusPath);
-    nodeInfoConfig.mCPUInfoPath         = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
-    nodeInfoConfig.mMemInfoPath         = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
-    nodeInfoConfig.mNodeIDPath          = object.GetValue<std::string>("nodeIDPath", cDefaultNodeIDPath);
+    nodeInfoConfig.mCPUInfoPath    = object.GetValue<std::string>("cpuInfoPath", cDefaultCPUInfoPath);
+    nodeInfoConfig.mMemInfoPath    = object.GetValue<std::string>("memInfoPath", cDefaultMemInfoPath);
+    nodeInfoConfig.mHardwareIDPath = object.GetValue<std::string>(
+        "hardwareIDPath", object.GetValue<std::string>("nodeIDPath", cDefaultHardwareIDPath));
     nodeInfoConfig.mNodeName            = object.GetValue<std::string>("nodeName");
     nodeInfoConfig.mNodeType            = object.GetValue<std::string>("nodeType");
     nodeInfoConfig.mMaxDMIPS            = object.GetValue<uint64_t>("maxDMIPS");
@@ -287,6 +288,23 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
         AOS_ERROR_CHECK_AND_THROW(err, "failed to parse systemIDPath");
 
         err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse unitModelPath");
+
+        err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse subjectsPath");
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ParseCertIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::CertIdentifierConfig& config)
+{
+    try {
+        common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
+
+        auto err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "failed to parse unitModelPath");
 
         err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());

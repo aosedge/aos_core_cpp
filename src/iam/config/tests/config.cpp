@@ -29,7 +29,7 @@ public:
             "NodeInfo": {
                 "CPUInfoPath": "/proc/cpuinfo",
                 "MemInfoPath": "/proc/meminfo",
-                "NodeIDPath": "NodeIDPath",
+                "HardwareIDPath": "HardwareIDPath",
                 "NodeType": "NodeType",
                 "NodeName": "NodeName",
                 "Architecture": "NodeArchitecture",
@@ -143,7 +143,7 @@ TEST_F(ConfigTest, ParseConfig)
     auto [config, error] = ParseConfig(mFileName);
     ASSERT_EQ(error, ErrorEnum::eNone);
 
-    EXPECT_EQ(config.mNodeInfo.mNodeIDPath, "NodeIDPath");
+    EXPECT_EQ(config.mNodeInfo.mHardwareIDPath, "HardwareIDPath");
     EXPECT_EQ(config.mNodeInfo.mNodeType, "NodeType");
     EXPECT_EQ(config.mNodeInfo.mNodeName, "NodeName");
     EXPECT_EQ(config.mNodeInfo.mArchitecture, "NodeArchitecture");
@@ -288,6 +288,21 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     EXPECT_EQ(fileIdentifierParams->mSystemIDPath, "test-system-id-path");
     EXPECT_EQ(fileIdentifierParams->mUnitModelPath, "test-unit-model-path");
     EXPECT_EQ(fileIdentifierParams->mSubjectsPath, "test-subjects-path");
+}
+
+TEST_F(ConfigTest, ParseCertIdentifierModuleParams)
+{
+    Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
+    params->set("unitModelPath", "test-unit-model-path");
+    params->set("subjectsPath", "test-subjects-path");
+
+    auto certIdentifierParams = std::make_unique<iam::identhandler::CertIdentifierConfig>();
+
+    auto err = ParseCertIdentifierModuleParams(params, *certIdentifierParams);
+    ASSERT_EQ(err, ErrorEnum::eNone);
+
+    EXPECT_EQ(certIdentifierParams->mUnitModelPath, "test-unit-model-path");
+    EXPECT_EQ(certIdentifierParams->mSubjectsPath, "test-subjects-path");
 }
 
 } // namespace aos::iam::config

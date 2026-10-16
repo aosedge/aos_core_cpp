@@ -14,13 +14,15 @@ set(TARGET_NAME identhandler)
 # Sources
 # ######################################################################################################################
 
-set(SOURCES identhandler.cpp)
+set(SOURCES identhandler.cpp certidentifier.cpp)
 
 # ######################################################################################################################
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::core::iam::identmodules::fileidentifier aos::iam::config aos::iam::visidentifier)
+set(LIBRARIES aos::core::iam::identmodules::fileidentifier aos::core::common::crypto aos::iam::config
+              aos::iam::visidentifier
+)
 
 # ######################################################################################################################
 # Target
