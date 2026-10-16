@@ -13,9 +13,22 @@
 
 namespace aos::sm::launcher {
 
+namespace {
+
 /***********************************************************************************************************************
  * Statics
  **********************************************************************************************************************/
+
+Error MakeExitError(const Optional<int32_t>& exitCode)
+{
+    if (!exitCode.HasValue()) {
+        return ErrorEnum::eNone;
+    }
+
+    return Error(exitCode.GetValue(), "container exited");
+}
+
+} // namespace
 
 /***********************************************************************************************************************
  * Public
@@ -70,7 +83,7 @@ RunStatus Runner::GetInstanceStatus(const std::string& instanceID)
         return {instanceID, InstanceStateEnum::eFailed, err};
     }
 
-    return {instanceID, status.mState, ErrorEnum::eNone};
+    return {instanceID, status.mState, MakeExitError(status.mExitCode)};
 }
 
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
@@ -133,7 +146,7 @@ Error Runner::StopInstance(const std::string& instanceID)
             return mClosed || mInstancesToRestart.find(instanceID) == mInstancesToRestart.end();
         });
 
-        mRunningContainers.erase(instanceID);
+        mManagedInstances.erase(instanceID);
     }
 
     auto err = mContainerRunner->StopContainer(instanceID);
@@ -170,7 +183,7 @@ bool Runner::SyncStates()
     bool       stateChanged = false;
     const auto now          = Time::Now();
 
-    for (auto& stored : mRunningContainers) {
+    for (auto& stored : mManagedInstances) {
         auto currentIt = std::find_if(currentStates.begin(), currentStates.end(),
             [&stored](const ContainerStatus& status) { return status.mInstanceID == stored.first; });
 
@@ -189,6 +202,7 @@ bool Runner::SyncStates()
         }
 
         storedData.mRunState = newState;
+        storedData.mExitCode = currentIt->mExitCode;
 
         if (newState == InstanceStateEnum::eActive || storedData.mExceedsBurstLimit) {
             storedData.mNextRestartAt.reset();
@@ -215,7 +229,7 @@ void Runner::SetInstancesToRestart()
 
     mInstancesToRestart.clear();
 
-    for (auto& [instanceID, runningState] : mRunningContainers) {
+    for (auto& [instanceID, runningState] : mManagedInstances) {
         if (!runningState.mNextRestartAt.has_value() || now < *runningState.mNextRestartAt) {
             continue;
         }
@@ -257,8 +271,8 @@ void Runner::MonitorContainers()
 
             const auto stateChanged = SyncStates();
 
-            if (stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
-                runStatusUpdate = GetRunningInstances();
+            if (stateChanged || mManagedInstances.size() != mStatusCache.size()) {
+                runStatusUpdate = RefreshStatusCache();
             }
 
             SetInstancesToRestart();
@@ -272,16 +286,16 @@ void Runner::MonitorContainers()
     }
 }
 
-std::vector<RunStatus>& Runner::GetRunningInstances() const
+std::vector<RunStatus>& Runner::RefreshStatusCache() const
 {
-    mRunningInstances.clear();
+    mStatusCache.clear();
 
-    std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
-        [](const auto& unit) {
-            return RunStatus {unit.first, unit.second.mRunState, {}};
+    std::transform(
+        mManagedInstances.begin(), mManagedInstances.end(), std::back_inserter(mStatusCache), [](const auto& unit) {
+            return RunStatus {unit.first, unit.second.mRunState, MakeExitError(unit.second.mExitCode)};
         });
 
-    return mRunningInstances;
+    return mStatusCache;
 }
 
 RunParameters Runner::GetFixedParams(const RunParameters& params) const
@@ -313,7 +327,7 @@ RetWithError<InstanceState> Runner::InitContainerState(const std::string& instan
     {
         std::unique_lock lock {mMutex};
 
-        auto& runningUnit     = mRunningContainers[instanceID];
+        auto& runningUnit     = mManagedInstances[instanceID];
         runningUnit.mRunState = status.mState;
         runningUnit.mParams   = params;
     }
