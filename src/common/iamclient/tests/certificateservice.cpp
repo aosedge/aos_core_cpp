@@ -78,7 +78,7 @@ TEST_F(CertificateServiceTest, CreateKeyWithError)
     auto err = mService->CreateKey("node1", "online", "CN=test", "password123", csr);
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 1);
+    EXPECT_EQ(err.Code(), 1);
     EXPECT_STREQ(err.Message(), "Key creation failed");
 }
 
@@ -109,7 +109,7 @@ TEST_F(CertificateServiceTest, ApplyCertWithError)
         "node2", "offline", "-----BEGIN CERTIFICATE-----\ntest_cert\n-----END CERTIFICATE-----", certInfo);
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 2);
+    EXPECT_EQ(err.Code(), 2);
     EXPECT_STREQ(err.Message(), "Certificate application failed");
 }
 

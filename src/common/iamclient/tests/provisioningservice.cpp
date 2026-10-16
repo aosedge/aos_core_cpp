@@ -85,7 +85,7 @@ TEST_F(ProvisioningServiceTest, StartProvisioningWithError)
     auto err = mService->StartProvisioning("node1", "password123");
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 1);
+    EXPECT_EQ(err.Code(), 1);
     EXPECT_STREQ(err.Message(), "Provisioning failed");
 }
 
@@ -105,7 +105,7 @@ TEST_F(ProvisioningServiceTest, FinishProvisioningWithError)
     auto err = mService->FinishProvisioning("node2", "password456");
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 2);
+    EXPECT_EQ(err.Code(), 2);
     EXPECT_STREQ(err.Message(), "Finish failed");
 }
 
@@ -125,7 +125,7 @@ TEST_F(ProvisioningServiceTest, DeprovisionWithError)
     auto err = mService->Deprovision("node3", "password789");
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 3);
+    EXPECT_EQ(err.Code(), 3);
     EXPECT_STREQ(err.Message(), "Deprovision failed");
 }
 

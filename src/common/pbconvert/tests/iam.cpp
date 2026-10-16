@@ -218,7 +218,7 @@ TEST_F(PBConvertIAMTest, ConvertNodeInfoToProto)
     }
 
     EXPECT_TRUE(result.has_error());
-    EXPECT_EQ(result.error().exit_code(), src.mError.Errno());
+    EXPECT_EQ(result.error().exit_code(), src.mError.Code());
     EXPECT_STREQ(result.error().message().c_str(), src.mError.Message());
 }
 
