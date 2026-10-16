@@ -28,7 +28,7 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, Error& e
 Error ToJSON(const Error& error, Poco::JSON::Object& json)
 {
     json.set("aosCode", static_cast<int>(error.Value()));
-    json.set("exitCode", error.Errno());
+    json.set("exitCode", error.Code());
     json.set("message", error.Message());
 
     return ErrorEnum::eNone;

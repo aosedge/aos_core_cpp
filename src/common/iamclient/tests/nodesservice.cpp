@@ -68,7 +68,7 @@ TEST_F(NodesServiceTest, PauseNodeWithError)
     auto err = mService->PauseNode("node1");
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 1);
+    EXPECT_EQ(err.Code(), 1);
     EXPECT_STREQ(err.Message(), "Pause failed");
 }
 
@@ -87,7 +87,7 @@ TEST_F(NodesServiceTest, ResumeNodeWithError)
     auto err = mService->ResumeNode("node2");
 
     EXPECT_NE(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(err.Errno(), 2);
+    EXPECT_EQ(err.Code(), 2);
     EXPECT_STREQ(err.Message(), "Resume failed");
 }
 

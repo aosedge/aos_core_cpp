@@ -146,7 +146,7 @@ TEST_F(PBConvertSMTest, ConvertErrorInfoFromProtoWithoutAosCode)
     auto result = ConvertFromProto(grpcError);
 
     EXPECT_EQ(result.Value(), ErrorEnum::eNone);
-    EXPECT_EQ(result.Errno(), 42);
+    EXPECT_EQ(result.Code(), 42);
     EXPECT_EQ(String(result.Message()), String("exit code error"));
 }
 
@@ -161,7 +161,7 @@ TEST_F(PBConvertSMTest, ConvertErrorInfoFromProtoWithAosCodeAndExitCode)
     auto result = ConvertFromProto(grpcError);
 
     EXPECT_EQ(result.Value(), ErrorEnum::eFailed);
-    EXPECT_EQ(result.Errno(), 7);
+    EXPECT_EQ(result.Code(), 7);
     EXPECT_EQ(String(result.Message()), String("container exited"));
 }
 
