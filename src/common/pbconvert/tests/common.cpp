@@ -52,7 +52,7 @@ TEST_F(PBConvertCommon, ConvertAosErrorToProto)
         auto result = aos::common::pbconvert::ConvertAosErrorToProto(err);
 
         EXPECT_EQ(result.aos_code(), static_cast<int32_t>(err.Value()));
-        EXPECT_EQ(result.exit_code(), err.Errno());
+        EXPECT_EQ(result.exit_code(), err.Code());
         EXPECT_EQ(aos::String(result.message().c_str()), err.Message()) << err.Message();
     }
 }
@@ -355,7 +355,7 @@ TEST_F(PBConvertCommon, ConvertNodeInfoToAos)
 
     // Verify error
     EXPECT_FALSE(dst.mError.IsNone());
-    EXPECT_EQ(dst.mError.Errno(), 2);
+    EXPECT_EQ(dst.mError.Code(), 2);
     EXPECT_EQ(aos::String(dst.mError.Message()), aos::String("test error message"));
 }
 

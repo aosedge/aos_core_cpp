@@ -15,7 +15,7 @@ namespace aos::common::utils {
  **********************************************************************************************************************/
 
 AosException::AosException(const Error& err, const std::string& message)
-    : Poco::Exception(message, err.Message(), err.Errno())
+    : Poco::Exception(message, err.Message(), err.Code())
     , mError(err, message.empty() ? nullptr : message.c_str())
 {
     std::string finalMessage;

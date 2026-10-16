@@ -13,7 +13,7 @@ namespace aos::common::pbconvert {
     ::common::v2::ErrorInfo result;
 
     result.set_aos_code(static_cast<int32_t>(error.Value()));
-    result.set_exit_code(error.Errno());
+    result.set_exit_code(error.Code());
 
     if (!error.IsNone()) {
         StaticString<cErrorMessageLen> message;
