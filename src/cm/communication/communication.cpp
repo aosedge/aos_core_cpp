@@ -124,6 +124,7 @@ std::unique_ptr<ReceivedMessageVariant> ParseMessage(const common::utils::CaseIn
         return result;
     }
 
+
     case common::cloudprotocol::MessageTypeEnum::eRenewCertificatesNotification: {
         err = common::cloudprotocol::FromJSON(json, result->emplace<RenewCertsNotification>());
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -520,8 +521,8 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 
     auto context = Poco::makeAuto<Poco::Net::Context>(Poco::Net::Context::TLS_CLIENT_USE, "");
 
-    err = common::utils::ConfigureSSLContext(cOnlineCertificate, mConfig->mCACert.c_str(), *mCertProvider, *mCertLoader,
-        *mCryptoProvider, context->sslContext());
+    err = common::utils::ConfigureSSLContext(
+        cOnlineCertificate, *mCertProvider, *mCertLoader, *mCryptoProvider, context->sslContext());
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
@@ -1388,6 +1389,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const Deprovisioning
         LOG_ERR() << "Send deprovisioning response failed" << Log::Field(err);
     }
 }
+
 
 void Communication::HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification)
 {

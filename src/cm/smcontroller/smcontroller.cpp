@@ -14,6 +14,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/sm.hpp>
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 #include <common/utils/grpchelper.hpp>
 
@@ -434,8 +435,14 @@ Error SMController::CreateServerCredentials()
             return AOS_ERROR_WRAP(err);
         }
 
-        mCredentials = aos::common::utils::GetMTLSServerCredentials(
-            *certInfo, mConfig.mCACert.c_str(), *mCertLoader, *mCryptoProvider);
+        auto [rootCertsPem, rootErr]
+            = aos::common::utils::LoadRootCertificates(*mCertProvider, *mCertLoader, *mCryptoProvider);
+        if (!rootErr.IsNone()) {
+            return AOS_ERROR_WRAP(rootErr);
+        }
+
+        mCredentials
+            = aos::common::utils::GetMTLSServerCredentials(*certInfo, rootCertsPem, *mCertLoader, *mCryptoProvider);
     } else {
         mCredentials = grpc::InsecureServerCredentials();
     }
