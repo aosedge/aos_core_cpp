@@ -69,7 +69,7 @@ struct ModuleConfig {
     std::vector<std::string> mAlternativeNames;
     bool                     mDisabled;
     bool                     mSkipValidation;
-    bool                     mIsSelfSigned;
+    std::string              mCertType;
     Poco::Dynamic::Var       mParams;
 };
 
@@ -115,7 +115,6 @@ struct DatabaseConfig {
  * Common config params for IAM client/server.
  */
 struct IAMConfig {
-    std::string              mCACert;
     std::string              mCertStorage;
     std::vector<std::string> mStartProvisioningCmdArgs;
     std::vector<std::string> mDiskEncryptionCmdArgs;
