@@ -186,12 +186,12 @@ TEST_F(PublicNodesServiceTest, Reconnect)
 
 class PublicNodesServiceStub : public PublicNodesService {
 public:
-    std::vector<iamanager::v6::IAMIncomingMessages> mReceivedMessages;
+    std::vector<iamanager::v7::IAMIncomingMessages> mReceivedMessages;
     std::mutex                                      mMessagesMutex;
     std::condition_variable                         mMessagesCV;
 
 protected:
-    aos::Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override
+    aos::Error ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg) override
     {
         std::lock_guard lock {mMessagesMutex};
 
@@ -216,7 +216,7 @@ public:
         return mReceivedMessages.size();
     }
 
-    iamanager::v6::IAMIncomingMessages GetLastMessage()
+    iamanager::v7::IAMIncomingMessages GetLastMessage()
     {
         std::lock_guard lock {mMessagesMutex};
 
@@ -271,14 +271,14 @@ TEST_F(RegisterNodeTest, SendMessage)
 
     ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     outgoingMsg.mutable_node_info()->set_node_id("test-node");
     outgoingMsg.mutable_node_info()->set_node_type("secondary");
 
     err = mService->SendMessage(outgoingMsg);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    iamanager::v6::IAMOutgoingMessages receivedMsg;
+    iamanager::v7::IAMOutgoingMessages receivedMsg;
     ASSERT_TRUE(mStub->WaitForOutgoingMessage(receivedMsg));
 
     EXPECT_TRUE(receivedMsg.has_node_info());
@@ -293,7 +293,7 @@ TEST_F(RegisterNodeTest, ReceiveMessage)
 
     ASSERT_TRUE(mStub->WaitForRegisterNodeConnection());
 
-    iamanager::v6::IAMIncomingMessages incomingMsg;
+    iamanager::v7::IAMIncomingMessages incomingMsg;
     incomingMsg.mutable_start_provisioning_request()->set_node_id("test-node");
     incomingMsg.mutable_start_provisioning_request()->set_password("test-password");
 
@@ -311,7 +311,7 @@ TEST_F(RegisterNodeTest, ReceiveMessage)
 
 TEST_F(RegisterNodeTest, SendMessageWhenNotConnected)
 {
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     outgoingMsg.mutable_node_info()->set_node_id("test-node");
 
     auto err = mService->SendMessage(outgoingMsg);

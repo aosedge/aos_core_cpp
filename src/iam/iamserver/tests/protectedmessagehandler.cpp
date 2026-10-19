@@ -246,9 +246,9 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesSucceeds)
     auto clientStub = CreateClientStub<iamproto::IAMProvisioningService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext           context;
-    iamproto::GetCertTypesRequest request;
-    iamproto::CertTypes           response;
+    grpc::ClientContext                    context;
+    iamproto::GetCertKeyStorageIDsRequest request;
+    iamproto::CertKeyStorageIDs           response;
 
     request.set_node_id("node0");
 
@@ -259,14 +259,14 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesSucceeds)
     EXPECT_CALL(mProvisionManager, GetCertTypes)
         .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>(certTypes, ErrorEnum::eNone)));
 
-    auto status = clientStub->GetCertTypes(&context, request, &response);
+    auto status = clientStub->GetCertKeyStorageIDs(&context, request, &response);
 
     ASSERT_TRUE(status.ok()) << "GetCertTypes failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.types_size(), certTypes.Size());
+    ASSERT_EQ(response.storage_ids_size(), certTypes.Size());
     for (size_t i = 0; i < certTypes.Size(); i++) {
-        EXPECT_EQ(String(response.types(i).c_str()), certTypes[i]);
+        EXPECT_EQ(String(response.storage_ids(i).c_str()), certTypes[i]);
     }
 }
 
@@ -275,16 +275,16 @@ TEST_F(ProtectedMessageHandlerTest, GetCertTypesFails)
     auto clientStub = CreateClientStub<iamproto::IAMProvisioningService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext           context;
-    iamproto::GetCertTypesRequest request;
-    iamproto::CertTypes           response;
+    grpc::ClientContext                    context;
+    iamproto::GetCertKeyStorageIDsRequest request;
+    iamproto::CertKeyStorageIDs           response;
 
     request.set_node_id("node0");
 
     EXPECT_CALL(mProvisionManager, GetCertTypes)
         .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>({}, ErrorEnum::eFailed)));
 
-    auto status = clientStub->GetCertTypes(&context, request, &response);
+    auto status = clientStub->GetCertKeyStorageIDs(&context, request, &response);
 
     ASSERT_FALSE(status.ok());
 }
@@ -462,7 +462,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertSucceeds)
     iamproto::ApplyCertResponse response;
 
     request.set_node_id("node0");
-    request.set_type("cert-type");
+    request.set_storage_id("cert-type");
 
     EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(ErrorEnum::eNone));
 
@@ -472,7 +472,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertSucceeds)
                              << ", message = " << status.error_message();
 
     EXPECT_EQ(response.node_id(), "node0");
-    EXPECT_EQ(response.cert_info().type(), "cert-type");
+    EXPECT_EQ(response.cert_info().storage_id(), "cert-type");
 
     EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
     EXPECT_TRUE(response.error().message().empty());
@@ -488,7 +488,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertFails)
     iamproto::ApplyCertResponse response;
 
     request.set_node_id("node0");
-    request.set_type("cert-type");
+    request.set_storage_id("cert-type");
 
     EXPECT_CALL(mProvisionManager, ApplyCert).WillOnce(Return(ErrorEnum::eFailed));
 
@@ -498,7 +498,7 @@ TEST_F(ProtectedMessageHandlerTest, ApplyCertFails)
                              << ", message = " << status.error_message();
 
     EXPECT_EQ(response.node_id(), "node0");
-    EXPECT_EQ(response.cert_info().type(), "cert-type");
+    EXPECT_EQ(response.cert_info().storage_id(), "cert-type");
 
     EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
     EXPECT_FALSE(response.error().message().empty());

@@ -15,15 +15,15 @@
 #include <thread>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMPublicCurrentNodeService v6.
  */
-class IAMPublicCurrentNodeServiceStub final : public iamanager::v6::IAMPublicCurrentNodeService::Service {
+class IAMPublicCurrentNodeServiceStub final : public iamanager::v7::IAMPublicCurrentNodeService::Service {
 public:
     IAMPublicCurrentNodeServiceStub()
     {
@@ -59,7 +59,7 @@ public:
             return false;
         }
 
-        iamanager::v6::NodeInfo nodeInfo;
+        iamanager::v7::NodeInfo nodeInfo;
 
         nodeInfo.set_node_id(nodeID);
         nodeInfo.set_node_type(nodeType);
@@ -83,7 +83,7 @@ public:
     }
 
     grpc::Status GetCurrentNodeInfo([[maybe_unused]] grpc::ServerContext* context,
-        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v6::NodeInfo* response) override
+        [[maybe_unused]] const google::protobuf::Empty* request, iamanager::v7::NodeInfo* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -96,7 +96,7 @@ public:
 
     grpc::Status SubscribeCurrentNodeChanged(grpc::ServerContext* context,
         [[maybe_unused]] const google::protobuf::Empty*           request,
-        grpc::ServerWriter<iamanager::v6::NodeInfo>*              writer) override
+        grpc::ServerWriter<iamanager::v7::NodeInfo>*              writer) override
     {
         {
             std::lock_guard lock {mMutex};
@@ -123,7 +123,7 @@ private:
     std::unique_ptr<grpc::Server>                mServer;
     mutable std::mutex                           mMutex;
     std::condition_variable                      mCV;
-    grpc::ServerWriter<iamanager::v6::NodeInfo>* mWriter {};
+    grpc::ServerWriter<iamanager::v7::NodeInfo>* mWriter {};
     std::string                                  mNodeID;
     std::string                                  mNodeType;
 };
