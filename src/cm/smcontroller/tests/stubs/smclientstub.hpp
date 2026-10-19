@@ -68,6 +68,8 @@ public:
         }
 
         mContext = std::make_unique<grpc::ClientContext>();
+        // Server may be restarting: wait until it is ready instead of failing immediately.
+        mContext->set_wait_for_ready(true);
 
         mStream = mStub->RegisterSM(mContext.get());
         if (!mStream) {
