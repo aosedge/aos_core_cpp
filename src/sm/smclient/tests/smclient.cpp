@@ -1620,6 +1620,9 @@ TEST_F(SMClientTest, SubscribeListener_NotifiesOnConnect)
 
     ASSERT_EQ(listener.mConnected.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
 
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
