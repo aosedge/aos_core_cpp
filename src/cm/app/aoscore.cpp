@@ -53,7 +53,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize TLS credentials
 
-    err = mTLSCredentials.Init(mConfig.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
+    err = mTLSCredentials.Init(mIAMClient, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize TLS credentials");
 
     // Initialize IAM client
@@ -91,7 +91,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
 
     err = mFileServer.Init(mConfig.mFileServerURL, mConfig.mImageManager.mImagePath.CStr(), mConfig.mCertStorage,
-        mConfig.mCACert, mIAMClient, mCertLoader, mCryptoProvider);
+        mIAMClient, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
     err = mImageManager.Init(mAllocator, mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,
