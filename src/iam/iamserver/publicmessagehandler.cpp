@@ -109,7 +109,12 @@ void PublicMessageHandler::Close()
             certWriter->Close();
         }
 
+        for (auto& certWriter : mRootCertWriters) {
+            certWriter->Close();
+        }
+
         mCertWriters.clear();
+        mRootCertWriters.clear();
     }
 
     mClose = true;
@@ -221,9 +226,23 @@ grpc::Status PublicMessageHandler::GetCertKey([[maybe_unused]] grpc::ServerConte
 }
 
 grpc::Status PublicMessageHandler::GetRootCerts([[maybe_unused]] grpc::ServerContext* context,
-    [[maybe_unused]] const google::protobuf::Empty* request, [[maybe_unused]] iamproto::RootCertsInfos* response)
+    [[maybe_unused]] const google::protobuf::Empty* request, iamproto::RootCertsInfos* response)
 {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+    LOG_DBG() << "Process get root certs request";
+
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    if (auto err = mCertProvider->GetRootCerts(*certInfos); !err.IsNone()) {
+        LOG_ERR() << "Failed to get root certs" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    for (const auto& certInfo : *certInfos) {
+        response->add_root_certs()->set_cert_url(certInfo.mCertURL.CStr());
+    }
+
+    return grpc::Status::OK;
 }
 
 grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc::ServerContext* context,
@@ -267,10 +286,42 @@ grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc
 }
 
 grpc::Status PublicMessageHandler::SubscribeRootCertsChanged([[maybe_unused]] grpc::ServerContext* context,
-    [[maybe_unused]] const google::protobuf::Empty*                                                request,
-    [[maybe_unused]] grpc::ServerWriter<iamanager::v7::RootCertsInfos>*                            writer)
+    [[maybe_unused]] const google::protobuf::Empty* request, grpc::ServerWriter<iamanager::v7::RootCertsInfos>* writer)
 {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+    LOG_DBG() << "Process subscribe root certs changed";
+
+    auto certWriter = std::make_shared<RootCertWriter>();
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        mRootCertWriters.push_back(certWriter);
+    }
+
+    auto err = mCertProvider->SubscribeRootCertsListener(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to subscribe root certs changed" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    auto status = certWriter->HandleStream(context, writer);
+
+    err = mCertProvider->UnsubscribeListener(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to unsubscribe root certs changed" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        auto iter = std::remove(mRootCertWriters.begin(), mRootCertWriters.end(), certWriter);
+        mRootCertWriters.erase(iter, mRootCertWriters.end());
+    }
+
+    return status;
 }
 
 /***********************************************************************************************************************
