@@ -298,6 +298,20 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
  * IAMCertificateService implementation
  **********************************************************************************************************************/
 
+grpc::Status ProtectedMessageHandler::UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const iamproto::UpdateRootCertsRequest*                                request,
+    [[maybe_unused]] iamproto::UpdateRootCertsResponse*                                     response)
+{
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+}
+
+grpc::Status ProtectedMessageHandler::GetRootCertsFingerprints([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const iamproto::GetRootCertsFingerprintsRequest*                                request,
+    [[maybe_unused]] iamproto::RootCertsFingerprints*                                                response)
+{
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+}
+
 grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::CreateKeyRequest* request, iamproto::CreateKeyResponse* response)
 {
