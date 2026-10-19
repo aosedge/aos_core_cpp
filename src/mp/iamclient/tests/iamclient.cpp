@@ -74,7 +74,7 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
 
     // send StartProvisioningResponse
     outgoingMsg.mutable_start_provisioning_response();
@@ -140,13 +140,13 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
     EXPECT_TRUE(outgoingMsg.has_apply_cert_response());
 
     // send CertTypesResponse
-    outgoingMsg.mutable_cert_types_response();
+    outgoingMsg.mutable_cert_key_storage_ids_response();
     data.resize(outgoingMsg.ByteSizeLong());
     EXPECT_TRUE(outgoingMsg.SerializeToArray(data.data(), data.size()));
     mClient->SendMessages(std::move(data));
     mIAMServerStub->WaitResponse();
     outgoingMsg = mIAMServerStub->GetOutgoingMessage();
-    EXPECT_TRUE(outgoingMsg.has_cert_types_response());
+    EXPECT_TRUE(outgoingMsg.has_cert_key_storage_ids_response());
 }
 
 TEST_F(IamClientTest, RegisterNodeIncomingMessages)
@@ -166,7 +166,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
 
     EXPECT_TRUE(mIAMServerStub->WaitForConnection());
 
-    iamanager::v6::IAMIncomingMessages incomingMsg;
+    iamanager::v7::IAMIncomingMessages incomingMsg;
 
     // receive StartProvisioningRequest
     incomingMsg.mutable_start_provisioning_request();
@@ -177,12 +177,12 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     EXPECT_TRUE(incomingMsg.has_start_provisioning_request());
 
     // receive GetCertTypesRequest
-    incomingMsg.mutable_get_cert_types_request();
+    incomingMsg.mutable_get_cert_key_storage_ids_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
     EXPECT_EQ(res.mError, ErrorEnum::eNone);
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
-    EXPECT_TRUE(incomingMsg.has_get_cert_types_request());
+    EXPECT_TRUE(incomingMsg.has_get_cert_key_storage_ids_request());
 
     // receive FinishProvisioningRequest
     incomingMsg.mutable_finish_provisioning_request();

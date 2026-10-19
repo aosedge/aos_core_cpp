@@ -12,15 +12,15 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMNodesService v6.
  */
-class IAMNodesServiceStub final : public iamanager::v6::IAMNodesService::Service {
+class IAMNodesServiceStub final : public iamanager::v7::IAMNodesService::Service {
 public:
     IAMNodesServiceStub()
     {
@@ -64,7 +64,7 @@ public:
     }
 
     grpc::Status PauseNode([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::PauseNodeRequest* request, iamanager::v6::PauseNodeResponse* response) override
+        const iamanager::v7::PauseNodeRequest* request, iamanager::v7::PauseNodeResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -79,7 +79,7 @@ public:
     }
 
     grpc::Status ResumeNode([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::ResumeNodeRequest* request, iamanager::v6::ResumeNodeResponse* response) override
+        const iamanager::v7::ResumeNodeRequest* request, iamanager::v7::ResumeNodeResponse* response) override
     {
         std::lock_guard lock {mMutex};
 

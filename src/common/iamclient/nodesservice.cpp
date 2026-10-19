@@ -5,7 +5,7 @@
  */
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/tools/logger.hpp>
 
@@ -45,7 +45,7 @@ Error NodesService::Init(const std::string& iamProtectedServerURL, const std::st
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMNodesService::NewStub(
+    mStub = iamanager::v7::IAMNodesService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -64,7 +64,7 @@ Error NodesService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMNodesService::NewStub(
+    mStub = iamanager::v7::IAMNodesService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -80,8 +80,8 @@ Error NodesService::PauseNode(const String& nodeID)
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::PauseNodeRequest  request;
-        iamanager::v6::PauseNodeResponse response;
+        iamanager::v7::PauseNodeRequest  request;
+        iamanager::v7::PauseNodeResponse response;
 
         request.set_node_id(nodeID.CStr());
 
@@ -109,8 +109,8 @@ Error NodesService::ResumeNode(const String& nodeID)
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::ResumeNodeRequest  request;
-        iamanager::v6::ResumeNodeResponse response;
+        iamanager::v7::ResumeNodeRequest  request;
+        iamanager::v7::ResumeNodeResponse response;
 
         request.set_node_id(nodeID.CStr());
 

@@ -17,14 +17,14 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
- * Test stub for IAMPublicCertService v6.
+ * Test stub for IAMPublicCertificateService v7.
  */
-class IAMPublicCertServiceStub final : public iamanager::v6::IAMPublicCertService::Service {
+class IAMPublicCertServiceStub final : public iamanager::v7::IAMPublicCertificateService::Service {
 public:
     IAMPublicCertServiceStub() { mServer = CreateServer(); }
 
@@ -47,8 +47,9 @@ public:
             return false;
         }
 
-        iamanager::v6::CertInfo certInfo;
-        certInfo.set_type(certType);
+        iamanager::v7::CertKeyInfo certInfo;
+
+        certInfo.set_storage_id(certType);
         certInfo.set_cert_url(certURL);
         certInfo.set_key_url(keyURL);
 
@@ -93,23 +94,23 @@ private:
         return builder.BuildAndStart();
     }
 
-    grpc::Status GetCert(
-        grpc::ServerContext*, const iamanager::v6::GetCertRequest* request, iamanager::v6::CertInfo* response) override
+    grpc::Status GetCertKey(grpc::ServerContext*, const iamanager::v7::GetCertKeyRequest* request,
+        iamanager::v7::CertKeyInfo* response) override
     {
-        mRequestedCertType = request->type();
+        mRequestedCertType = request->storage_id();
 
         response->set_cert_url(mCertURL);
         response->set_key_url(mKeyURL);
-        response->set_type(request->type());
+        response->set_storage_id(request->storage_id());
 
         return grpc::Status::OK;
     }
 
-    grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
-        const iamanager::v6::SubscribeCertChangedRequest*  request,
-        grpc::ServerWriter<iamanager::v6::CertInfo>*       writer) override
+    grpc::Status SubscribeCertKeyChanged(grpc::ServerContext* context,
+        const iamanager::v7::SubscribeCertKeyChangedRequest* request,
+        grpc::ServerWriter<iamanager::v7::CertKeyInfo>*      writer) override
     {
-        std::string certType = request->type();
+        std::string certType = request->storage_id();
 
         {
             std::lock_guard lock {mMutex};
@@ -135,14 +136,14 @@ private:
         return grpc::Status::OK;
     }
 
-    std::unique_ptr<grpc::Server>                                       mServer;
-    std::string                                                         mCertURL;
-    std::string                                                         mKeyURL;
-    std::string                                                         mRequestedCertType;
-    std::map<std::string, grpc::ServerWriter<iamanager::v6::CertInfo>*> mWriters;
-    std::mutex                                                          mMutex;
-    std::condition_variable                                             mCV;
-    bool                                                                mClose {false};
+    std::unique_ptr<grpc::Server>                                           mServer;
+    std::string                                                             mCertURL;
+    std::string                                                             mKeyURL;
+    std::string                                                             mRequestedCertType;
+    std::map<std::string, grpc::ServerWriter<iamanager::v7::CertKeyInfo>*> mWriters;
+    std::mutex                                                              mMutex;
+    std::condition_variable                                                 mCV;
+    bool                                                                    mClose {false};
 };
 
 #endif
