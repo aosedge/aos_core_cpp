@@ -139,7 +139,7 @@ TEST_F(IamClientTest, RegisterNodeOutgoingMessages)
     outgoingMsg = mIAMServerStub->GetOutgoingMessage();
     EXPECT_TRUE(outgoingMsg.has_apply_cert_response());
 
-    // send CertTypesResponse
+    // send CertKeyStorageIDsResponse
     outgoingMsg.mutable_cert_key_storage_ids_response();
     data.resize(outgoingMsg.ByteSizeLong());
     EXPECT_TRUE(outgoingMsg.SerializeToArray(data.data(), data.size()));
@@ -176,7 +176,7 @@ TEST_F(IamClientTest, RegisterNodeIncomingMessages)
     EXPECT_TRUE(incomingMsg.ParseFromArray(res.mValue.data(), res.mValue.size()));
     EXPECT_TRUE(incomingMsg.has_start_provisioning_request());
 
-    // receive GetCertTypesRequest
+    // receive GetCertKeyStorageIDsRequest
     incomingMsg.mutable_get_cert_key_storage_ids_request();
     EXPECT_TRUE(mIAMServerStub->SendIncomingMessage(incomingMsg));
     res = mClient->ReceiveMessages();
