@@ -189,8 +189,8 @@ add_subdirectory(src)
 
 if(WITH_AOS_INSTALL)
     # Apps link against these at runtime, but conan only tracks them in ~/.conan2, so `make install` must copy the shared
-    # artifacts out of the conan cache itself (there is no build target that owns them). crun is installed from
-    # src/sm/CMakeLists.txt instead, since it's only relevant when the container runtime is built.
+    # artifacts out of the conan cache itself (there is no build target that owns them). crun and conmon are installed
+    # from src/sm/app/CMakeLists.txt instead, since they're only relevant when the container runtime is built.
 
     find_package(OpenSSL REQUIRED)
     find_package(pkcs11provider REQUIRED)
