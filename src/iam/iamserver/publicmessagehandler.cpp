@@ -220,9 +220,15 @@ grpc::Status PublicMessageHandler::GetCertKey([[maybe_unused]] grpc::ServerConte
     return grpc::Status::OK;
 }
 
+grpc::Status PublicMessageHandler::GetRootCerts([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const google::protobuf::Empty* request, [[maybe_unused]] iamproto::RootCertsInfos* response)
+{
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+}
+
 grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc::ServerContext* context,
-    const iamanager::v7::SubscribeCertKeyChangedRequest* request,
-    grpc::ServerWriter<iamanager::v7::CertKeyInfo>*      writer)
+    const iamanager::v7::SubscribeCertKeyChangedRequest*                                         request,
+    grpc::ServerWriter<iamanager::v7::CertKeyInfo>*                                              writer)
 {
     LOG_DBG() << "Process subscribe cert key changed: storageID=" << request->storage_id().c_str();
 
@@ -258,6 +264,13 @@ grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc
     }
 
     return status;
+}
+
+grpc::Status PublicMessageHandler::SubscribeRootCertsChanged([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const google::protobuf::Empty*                                                request,
+    [[maybe_unused]] grpc::ServerWriter<iamanager::v7::RootCertsInfos>*                            writer)
+{
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
 }
 
 /***********************************************************************************************************************

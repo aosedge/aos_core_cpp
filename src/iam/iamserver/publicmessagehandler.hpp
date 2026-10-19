@@ -144,9 +144,13 @@ private:
     // IAMPublicCertificateService interface
     ::grpc::Status GetCertKey(::grpc::ServerContext* context, const ::iamanager::v7::GetCertKeyRequest* request,
         ::iamanager::v7::CertKeyInfo* response) override;
+    ::grpc::Status GetRootCerts(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::iamanager::v7::RootCertsInfos* response) override;
     ::grpc::Status SubscribeCertKeyChanged(::grpc::ServerContext* context,
-        const ::iamanager::v7::SubscribeCertKeyChangedRequest* request,
-        ::grpc::ServerWriter<::iamanager::v7::CertKeyInfo>*    writer) override;
+        const ::iamanager::v7::SubscribeCertKeyChangedRequest*    request,
+        ::grpc::ServerWriter<::iamanager::v7::CertKeyInfo>*       writer) override;
+    ::grpc::Status SubscribeRootCertsChanged(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::grpc::ServerWriter<::iamanager::v7::RootCertsInfos>* writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(

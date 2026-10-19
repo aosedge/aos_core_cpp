@@ -103,6 +103,14 @@ Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
         return ProcessGetCertKeyStorageIDs(msg.get_cert_key_storage_ids_request());
     }
 
+    if (msg.has_update_root_certs_request()) {
+        return ProcessUpdateRootCerts(msg.update_root_certs_request());
+    }
+
+    if (msg.has_get_root_certs_fingerprints_request()) {
+        return ProcessGetRootCertsFingerprints(msg.get_root_certs_fingerprints_request());
+    }
+
     return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
 }
 
@@ -377,6 +385,24 @@ Error IAMClient::ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStor
     return SendGetCertKeyStorageIDsResponse(storageIDs, err);
 }
 
+Error IAMClient::ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request)
+{
+    const String nodeID = request.node_id().c_str();
+
+    LOG_DBG() << "Process update root certs request: nodeID=" << nodeID;
+
+    return SendUpdateRootCertsResponse(nodeID, AOS_ERROR_WRAP(ErrorEnum::eNotSupported));
+}
+
+Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request)
+{
+    const String nodeID = request.node_id().c_str();
+
+    LOG_DBG() << "Process get root cert fingerprints" << Log::Field("nodeID", nodeID);
+
+    return SendGetRootCertsFingerprintsResponse(nodeID, {}, AOS_ERROR_WRAP(ErrorEnum::eNotSupported));
+}
+
 Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
@@ -448,6 +474,36 @@ Error IAMClient::SendGetCertKeyStorageIDsResponse(const provisionmanager::Storag
     for (const auto& type : types) {
         response.add_storage_ids(type.CStr());
     }
+
+    return SendMessage(outgoingMsg);
+}
+
+Error IAMClient::SendUpdateRootCertsResponse(const String& nodeID, const Error& error)
+{
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_update_root_certs_response();
+
+    response.set_node_id(nodeID.CStr());
+    common::pbconvert::SetErrorInfo(error, response);
+
+    return SendMessage(outgoingMsg);
+}
+
+Error IAMClient::SendGetRootCertsFingerprintsResponse(
+    const String& nodeID, const Array<SHA256Fingerprint>& fingerprints, const Error& error)
+{
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_get_root_certs_fingerprints_response();
+
+    response.set_node_id(nodeID.CStr());
+
+    if (error.IsNone()) {
+        for (const auto& fingerprint : fingerprints) {
+            response.add_cert_fingerprints(fingerprint.CStr());
+        }
+    }
+
+    common::pbconvert::SetErrorInfo(error, response);
 
     return SendMessage(outgoingMsg);
 }

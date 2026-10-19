@@ -13,6 +13,7 @@
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
+#include <core/common/types/certificates.hpp>
 #include <core/iam/currentnode/itf/currentnodehandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
@@ -89,6 +90,8 @@ private:
     Error ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request);
     Error ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request);
     Error ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStorageIDsRequest& request);
+    Error ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request);
+    Error ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request);
 
     Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
@@ -96,6 +99,9 @@ private:
     Error SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
     Error SendGetCertKeyStorageIDsResponse(const provisionmanager::StorageIDs& types, const Error& error);
+    Error SendUpdateRootCertsResponse(const String& nodeID, const Error& error);
+    Error SendGetRootCertsFingerprintsResponse(
+        const String& nodeID, const Array<SHA256Fingerprint>& fingerprints, const Error& error);
 
     aos::iamclient::IdentProviderItf*      mIdentProvider      = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager   = nullptr;
