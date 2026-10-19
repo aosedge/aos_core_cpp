@@ -13,7 +13,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -23,9 +23,10 @@
 
 namespace aos::common::iamclient {
 
-// Type alias for CertInfo subscription manager
-using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
+// Type alias for cert key subscription manager
+using CertKeySubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertificateService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::CertKeyInfo, iamanager::v7::CertKeyInfo, iamanager::v7::SubscribeCertKeyChangedRequest>;
 
 /**
  * Public cert service.
@@ -102,14 +103,14 @@ public:
 private:
     static constexpr auto cServiceTimeout = std::chrono::seconds(10);
 
-    std::string                                                mIAMPublicServerURL;
-    bool                                                       mInsecureConnection {false};
-    std::shared_ptr<grpc::ChannelCredentials>                  mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicCertService::Stub> mStub;
-    TLSCredentialsItf*                                         mTLSCredentials {};
-    mutable std::mutex                                         mMutex;
+    std::string                                                       mIAMPublicServerURL;
+    bool                                                              mInsecureConnection {false};
+    std::shared_ptr<grpc::ChannelCredentials>                         mCredentials;
+    std::unique_ptr<iamanager::v7::IAMPublicCertificateService::Stub> mStub;
+    TLSCredentialsItf*                                                mTLSCredentials {};
+    mutable std::mutex                                                mMutex;
 
-    std::unordered_map<std::string, std::unique_ptr<CertSubscriptionManager>> mSubscriptions;
+    std::unordered_map<std::string, std::unique_ptr<CertKeySubscriptionManager>> mCertKeySubscriptions;
 };
 
 } // namespace aos::common::iamclient

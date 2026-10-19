@@ -6,6 +6,8 @@
 
 #include <grpcpp/grpcpp.h>
 
+#include <memory>
+
 #include <core/common/tools/logger.hpp>
 
 #include <common/pbconvert/iam.hpp>
@@ -22,7 +24,7 @@ namespace aos::common::iamclient {
 
 PublicCertService::~PublicCertService()
 {
-    for (auto& [certType, manager] : mSubscriptions) {
+    for (auto& [certType, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Close();
         }
@@ -52,7 +54,7 @@ Error PublicCertService::Init(
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPublicCertService::NewStub(
+    mStub = iamanager::v7::IAMPublicCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -71,10 +73,10 @@ Error PublicCertService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMPublicCertService::NewStub(
+    mStub = iamanager::v7::IAMPublicCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
-    for (auto& [certType, manager] : mSubscriptions) {
+    for (auto& [certType, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Reconnect(mStub.get());
         }
@@ -89,22 +91,32 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
 
     LOG_DBG() << "Subscribe to certificate changed" << Log::Field("certType", certType);
 
-    auto& manager = mSubscriptions[certType.CStr()];
+    auto& manager = mCertKeySubscriptions[certType.CStr()];
     if (!manager) {
-        iamanager::v6::SubscribeCertChangedRequest request;
-        request.set_type(certType.CStr());
+        iamanager::v7::SubscribeCertKeyChangedRequest request;
+        request.set_storage_id(certType.CStr());
 
-        auto convertFunc = [](const iamanager::v6::CertInfo& proto, CertInfo& aos) -> Error {
-            return pbconvert::ConvertToAos(proto, aos);
+        auto convertFunc = [](const iamanager::v7::CertKeyInfo& proto, iamanager::v7::CertKeyInfo& aos) -> Error {
+            aos = proto;
+
+            return ErrorEnum::eNone;
         };
 
-        auto notifyFunc = [](aos::iamclient::CertListenerItf& listener, const CertInfo& certInfo) {
-            listener.OnCertChanged(certInfo);
+        auto notifyFunc = [](aos::iamclient::CertListenerItf& listener, const iamanager::v7::CertKeyInfo& protoCert) {
+            auto certInfo = std::make_unique<CertInfo>();
+
+            if (auto err = pbconvert::ConvertToAos(protoCert, *certInfo); !err.IsNone()) {
+                LOG_ERR() << "Failed to convert cert info" << Log::Field(err);
+
+                return;
+            }
+
+            listener.OnCertChanged(*certInfo);
         };
 
-        manager = std::make_unique<CertSubscriptionManager>(mStub.get(), request,
-            &iamanager::v6::IAMPublicCertService::Stub::SubscribeCertChanged, convertFunc, notifyFunc,
-            std::string("CertSubscription:") + certType.CStr());
+        manager = std::make_unique<CertKeySubscriptionManager>(mStub.get(), request,
+            &iamanager::v7::IAMPublicCertificateService::Stub::SubscribeCertKeyChanged, convertFunc, notifyFunc,
+            std::string("CertKeySubscription:") + certType.CStr());
     }
 
     return manager->Subscribe(certListener);
@@ -116,13 +128,13 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& ce
 
     LOG_DBG() << "Unsubscribe from certificate changed";
 
-    for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
+    for (auto it = mCertKeySubscriptions.begin(); it != mCertKeySubscriptions.end();) {
         auto& manager = it->second;
 
         if (manager->Unsubscribe(certListener)) {
             LOG_DBG() << "Unsubscribe from certificate changed" << Log::Field("certType", it->first.c_str());
 
-            it = mSubscriptions.erase(it);
+            it = mCertKeySubscriptions.erase(it);
         } else {
             ++it;
         }
@@ -141,10 +153,10 @@ Error PublicCertService::GetCert(
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-    iamanager::v6::GetCertRequest request;
-    iamanager::v6::CertInfo       certInfoResponse;
+    iamanager::v7::GetCertKeyRequest request;
+    iamanager::v7::CertKeyInfo       response;
 
-    request.set_type(certType.CStr());
+    request.set_storage_id(certType.CStr());
 
     aos::StaticString<aos::crypto::cSerialNumStrLen> serialStr;
 
@@ -156,12 +168,13 @@ Error PublicCertService::GetCert(
     request.set_issuer(issuer.Get(), issuer.Size());
     request.set_serial(serialStr.CStr());
 
-    if (auto status = mStub->GetCert(ctx.get(), request, &certInfoResponse); !status.ok()) {
+    if (auto status = mStub->GetCertKey(ctx.get(), request, &response); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    resCert.mCertURL = certInfoResponse.cert_url().c_str();
-    resCert.mKeyURL  = certInfoResponse.key_url().c_str();
+    if (auto err = pbconvert::ConvertToAos(response, resCert); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     LOG_DBG() << "Certificate received" << Log::Field("certURL", resCert.mCertURL)
               << Log::Field("keyURL", resCert.mKeyURL);

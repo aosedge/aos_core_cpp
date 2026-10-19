@@ -447,11 +447,11 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 
     EXPECT_NE(stub, nullptr) << "Failed to create a stub";
 
-    grpc::ClientContext           context;
-    iamproto::GetCertTypesRequest request;
-    iamproto::CertTypes           response;
+    grpc::ClientContext                    context;
+    iamproto::GetCertKeyStorageIDsRequest request;
+    iamproto::CertKeyStorageIDs           response;
 
-    auto status = stub->GetCertTypes(&context, request, &response);
+    auto status = stub->GetCertKeyStorageIDs(&context, request, &response);
 
     EXPECT_EQ(status.error_code(), grpc::StatusCode::UNIMPLEMENTED)
         << "IAMProvisioningService must be unimplemented: code = " << status.error_code()

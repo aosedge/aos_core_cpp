@@ -156,12 +156,12 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
  * IAMProvisioningService implementation
  **********************************************************************************************************************/
 
-grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::ServerContext* context,
-    const iamproto::GetCertTypesRequest* request, iamproto::CertTypes* response)
+grpc::Status ProtectedMessageHandler::GetCertKeyStorageIDs([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::GetCertKeyStorageIDsRequest* request, iamproto::CertKeyStorageIDs* response)
 {
     const auto& nodeID = request->node_id();
 
-    LOG_DBG() << "Process get cert types: nodeID=" << nodeID.c_str();
+    LOG_DBG() << "Process get cert key storage IDs: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -170,7 +170,7 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
                 return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
-            return handler->GetCertTypes(request, response, cDefaultTimeout);
+            return handler->GetCertKeyStorageIDs(request, response, cDefaultTimeout);
         });
     }
 
@@ -185,7 +185,7 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
     }
 
     for (const auto& type : certTypes) {
-        response->add_types(type.CStr());
+        response->add_storage_ids(type.CStr());
     }
 
     return grpc::Status::OK;
@@ -302,9 +302,9 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     const iamproto::CreateKeyRequest* request, iamproto::CreateKeyResponse* response)
 {
     const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
+    const auto  certType = String(request->storage_id().c_str());
 
-    LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", type=" << certType;
+    LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", storageID=" << certType;
 
     auto subject = request->subject();
 
@@ -359,7 +359,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     response->set_node_id(nodeID);
-    response->set_type(certType.CStr());
+    response->set_storage_id(certType.CStr());
     response->set_csr(csr->CStr());
 
     return grpc::Status::OK;
@@ -369,12 +369,12 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     const iamproto::ApplyCertRequest* request, iamproto::ApplyCertResponse* response)
 {
     const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
+    const auto  certType = String(request->storage_id().c_str());
 
-    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ",type=" << certType;
+    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ", storageID=" << certType;
 
     response->set_node_id(nodeID);
-    response->mutable_cert_info()->set_type(certType.CStr());
+    response->mutable_cert_info()->set_storage_id(certType.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {

@@ -44,7 +44,7 @@ Error CertificateService::Init(const std::string& iamProtectedServerURL, const s
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMCertificateService::NewStub(
+    mStub = iamanager::v7::IAMCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -63,7 +63,7 @@ Error CertificateService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMCertificateService::NewStub(
+    mStub = iamanager::v7::IAMCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -81,11 +81,11 @@ Error CertificateService::CreateKey(
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::CreateKeyRequest  request;
-        iamanager::v6::CreateKeyResponse response;
+        iamanager::v7::CreateKeyRequest  request;
+        iamanager::v7::CreateKeyResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_type(certType.CStr());
+        request.set_storage_id(certType.CStr());
         request.set_subject(subject.CStr());
         request.set_password(password.CStr());
 
@@ -114,11 +114,11 @@ Error CertificateService::ApplyCert(
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::ApplyCertRequest  request;
-        iamanager::v6::ApplyCertResponse response;
+        iamanager::v7::ApplyCertRequest  request;
+        iamanager::v7::ApplyCertResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_type(certType.CStr());
+        request.set_storage_id(certType.CStr());
         request.set_cert(pemCert.CStr());
 
         if (auto status = mStub->ApplyCert(ctx.get(), request, &response); !status.ok()) {
