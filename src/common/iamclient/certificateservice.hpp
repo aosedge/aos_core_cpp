@@ -59,6 +59,24 @@ public:
     Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo) override;
 
     /**
+     * Updates root certificates.
+     *
+     * @param nodeID node ID.
+     * @param pemCerts root certificates in PEM format.
+     * @returns Error.
+     */
+    Error UpdateRootCerts(const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts) override;
+
+    /**
+     * Gets root certificate SHA-256 fingerprints.
+     *
+     * @param nodeID node ID.
+     * @param[out] fingerprints root certificate SHA-256 fingerprints.
+     * @returns Error.
+     */
+    Error GetRootCerts(const String& nodeID, Array<SHA256Fingerprint>& fingerprints) override;
+
+    /**
      * Reconnects to the server.
      *
      * @returns Error.

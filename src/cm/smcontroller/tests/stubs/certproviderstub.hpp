@@ -27,10 +27,24 @@ public:
         return ErrorEnum::eNone;
     }
 
+    Error GetRootCerts(Array<CertInfo>& resCerts) const override
+    {
+        (void)resCerts;
+
+        return ErrorEnum::eNone;
+    }
+
     Error SubscribeCertKeyListener(const String& certType, CertKeyListenerItf& certListener) override
     {
         (void)certType;
 
+        mListener = &certListener;
+
+        return ErrorEnum::eNone;
+    }
+
+    Error SubscribeRootCertsListener(CertKeyListenerItf& certListener) override
+    {
         mListener = &certListener;
 
         return ErrorEnum::eNone;
