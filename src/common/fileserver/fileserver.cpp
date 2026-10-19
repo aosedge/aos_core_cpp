@@ -73,7 +73,7 @@ Fileserver::~Fileserver()
 }
 
 Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir, std::string_view certStorage,
-    std::string_view caCert, aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider)
 {
     try {
@@ -102,7 +102,6 @@ Error Fileserver::Init(const std::string& serverURL, const std::string& rootDir,
         }
 
         mCertStorage    = certStorage;
-        mCACert         = caCert;
         mCertProvider   = &certProvider;
         mCertLoader     = &certLoader;
         mCryptoProvider = &cryptoProvider;
@@ -353,8 +352,8 @@ Error Fileserver::CreateSSLContext(Poco::Net::Context::Ptr& context)
             return mConfigureContext(context->sslContext());
         }
 
-        return common::utils::ConfigureSSLContext(mCertStorage.c_str(), mCACert.c_str(), *mCertProvider, *mCertLoader,
-            *mCryptoProvider, context->sslContext());
+        return common::utils::ConfigureSSLContext(
+            mCertStorage.c_str(), *mCertProvider, *mCertLoader, *mCryptoProvider, context->sslContext());
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
