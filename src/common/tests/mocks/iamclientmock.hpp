@@ -23,8 +23,10 @@ public:
     MOCK_METHOD(aos::Error, GetCertKey,
         (const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, aos::CertInfo&),
         (const, override));
+    MOCK_METHOD(aos::Error, GetRootCerts, (aos::Array<aos::CertInfo>&), (const, override));
     MOCK_METHOD(
         aos::Error, SubscribeCertKeyListener, (const aos::String&, aos::iamclient::CertKeyListenerItf&), (override));
+    MOCK_METHOD(aos::Error, SubscribeRootCertsListener, (aos::iamclient::CertKeyListenerItf&), (override));
     MOCK_METHOD(aos::Error, UnsubscribeListener, (aos::iamclient::CertKeyListenerItf&), (override));
 };
 

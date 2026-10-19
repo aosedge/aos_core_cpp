@@ -38,7 +38,8 @@ Error ConvertCertModuleConfig(const config::ModuleConfig& config, certhandler::M
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
-    aosConfig.mIsSelfSigned    = config.mIsSelfSigned;
+    aosConfig.mCertType        = config.mIsSelfSigned ? certhandler::CertModuleTypeEnum::eSelfSigned
+                                                      : certhandler::CertModuleTypeEnum::eCertKeyPair;
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         certhandler::ExtendedKeyUsage keyUsage;
