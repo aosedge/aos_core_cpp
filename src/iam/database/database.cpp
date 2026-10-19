@@ -110,12 +110,12 @@ Error Database::Save()
  * certhandler::StorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::AddCertInfo(const String& certType, const aos::CertInfo& certInfo)
+Error Database::AddCertInfo(const String& storageID, const aos::CertInfo& certInfo)
 {
     try {
         CertInfo dbCertInfo;
 
-        FromAosCertInfo(certType, certInfo, dbCertInfo);
+        FromAosCertInfo(storageID, certInfo, dbCertInfo);
 
         *mSession
             << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) VALUES (?, ?, ?, ?, ?, ?);",
@@ -127,10 +127,10 @@ Error Database::AddCertInfo(const String& certType, const aos::CertInfo& certInf
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveCertInfo(const String& certType, const String& certURL)
+Error Database::RemoveCertInfo(const String& storageID, const String& certURL)
 {
     try {
-        *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(certType.CStr()),
+        *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(storageID.CStr()),
             bind(certURL.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -139,10 +139,10 @@ Error Database::RemoveCertInfo(const String& certType, const String& certURL)
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveAllCertsInfo(const String& certType)
+Error Database::RemoveAllCertsInfo(const String& storageID)
 {
     try {
-        *mSession << "DELETE FROM certificates WHERE type = ?;", bind(certType.CStr()), now;
+        *mSession << "DELETE FROM certificates WHERE type = ?;", bind(storageID.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -172,12 +172,12 @@ Error Database::GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t>& 
     return ErrorEnum::eNone;
 }
 
-Error Database::GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo)
+Error Database::GetCertsInfo(const String& storageID, Array<aos::CertInfo>& certsInfo)
 {
     try {
         std::vector<CertInfo> result;
 
-        *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(certType.CStr()), into(result), now;
+        *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(storageID.CStr()), into(result), now;
 
         for (const auto& cert : result) {
             auto certInfo = std::make_unique<aos::CertInfo>();
@@ -347,9 +347,9 @@ void Database::CreateTables()
         now;
 }
 
-void Database::FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result)
+void Database::FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result)
 {
-    result.set<CertColumns::eType>(certType.CStr());
+    result.set<CertColumns::eType>(storageID.CStr());
     result.set<CertColumns::eIssuer>(Poco::Data::BLOB {certInfo.mIssuer.Get(), certInfo.mIssuer.Size()});
     result.set<CertColumns::eSerial>(Poco::Data::BLOB {certInfo.mSerial.Get(), certInfo.mSerial.Size()});
     result.set<CertColumns::eCertURL>(certInfo.mCertURL.CStr());

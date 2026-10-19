@@ -268,7 +268,7 @@ public:
                 } else if (incomingMsg.has_cert_key_storage_ids_response()) {
                     const auto& response = incomingMsg.cert_key_storage_ids_response();
 
-                    OnCertTypesResponse(ConvertFromProtoArray(response.storage_ids()));
+                    OnCertKeyStorageIDsResponse(ConvertFromProtoArray(response.storage_ids()));
                     mResponseCV.notify_all();
                 }
             }
@@ -355,7 +355,7 @@ public:
         mStream->Write(request);
     }
 
-    void GetCertTypesRequest(const std::string& id)
+    void GetCertKeyStorageIDsRequest(const std::string& id)
     {
         iamanager::v7::IAMIncomingMessages request;
 
@@ -375,7 +375,7 @@ public:
     MOCK_METHOD(void, OnApplyCertResponse,
         (const std::string& type, const std::string& certURL, const std::string& serial,
             const ::common::v2::ErrorInfo& errorInfo));
-    MOCK_METHOD(void, OnCertTypesResponse, (const std::vector<std::string>& types));
+    MOCK_METHOD(void, OnCertKeyStorageIDsResponse, (const std::vector<std::string>& types));
 
     void WaitNodeInfo(const std::chrono::seconds& timeout = std::chrono::seconds(4))
     {
@@ -481,7 +481,7 @@ protected:
     }
 
     const String                  cSubject     = "aos-core";
-    const String                  cCertType    = "iam";
+    const String                  cStorageID   = "iam";
     const String                  cPassword    = "admin";
     const ::common::v2::ErrorInfo cErrorInfoOK = ::common::v2::ErrorInfo();
 
@@ -784,11 +784,11 @@ TEST_F(IAMClientTest, CreateKey)
     systemInfo->mSystemID = cSubject;
 
     // CreateKey
-    EXPECT_CALL(mProvisionManager, CreateKey(cCertType, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cCertType.CStr()), _, ::common::v2::ErrorInfo()));
+    EXPECT_CALL(mProvisionManager, CreateKey(cStorageID, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cStorageID.CStr()), _, ::common::v2::ErrorInfo()));
     EXPECT_CALL(mIdentProvider, GetSystemInfo).WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eNone)));
 
-    server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());
+    server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cStorageID.CStr(), cPassword.CStr());
     server->WaitResponse();
 
     EXPECT_TRUE(client->Stop().IsNone());
@@ -803,32 +803,33 @@ TEST_F(IAMClientTest, ApplyCert)
     // ApplyCert
     CertInfo certInfo;
 
-    EXPECT_CALL(mProvisionManager, ApplyCert(cCertType, _, _))
+    EXPECT_CALL(mProvisionManager, ApplyCert(cStorageID, _, _))
         .WillOnce(DoAll(SetArgReferee<2>(certInfo), Return(ErrorEnum::eNone)));
     EXPECT_CALL(*server,
         OnApplyCertResponse(
-            std::string(cCertType.CStr()), std::string(certInfo.mCertURL.CStr()), _, ::common::v2::ErrorInfo()));
+            std::string(cStorageID.CStr()), std::string(certInfo.mCertURL.CStr()), _, ::common::v2::ErrorInfo()));
 
-    server->ApplyCertRequest(nodeInfo.mNodeID.CStr(), cCertType.CStr(), {});
+    server->ApplyCertRequest(nodeInfo.mNodeID.CStr(), cStorageID.CStr(), {});
     server->WaitResponse();
 
     EXPECT_TRUE(client->Stop().IsNone());
 }
 
-TEST_F(IAMClientTest, GetCertTypes)
+TEST_F(IAMClientTest, GetCertKeyStorageIDs)
 {
     // Init
     auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
     NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
-    // GetCertTypes
-    provisionmanager::CertTypes types;
+    // GetCertKeyStorageIDs
+    provisionmanager::StorageIDs types;
     FillArray({"iam", "online", "offline"}, types);
 
-    EXPECT_CALL(mProvisionManager, GetCertTypes()).WillOnce(Return(RetWithError<provisionmanager::CertTypes>(types)));
-    EXPECT_CALL(*server, OnCertTypesResponse(ElementsAre("iam", "online", "offline")));
+    EXPECT_CALL(mProvisionManager, GetCertKeyStorageIDs())
+        .WillOnce(Return(RetWithError<provisionmanager::StorageIDs>(types)));
+    EXPECT_CALL(*server, OnCertKeyStorageIDsResponse(ElementsAre("iam", "online", "offline")));
 
-    server->GetCertTypesRequest(nodeInfo.mNodeID.CStr());
+    server->GetCertKeyStorageIDsRequest(nodeInfo.mNodeID.CStr());
     server->WaitResponse();
 
     EXPECT_TRUE(client->Stop().IsNone());

@@ -313,7 +313,7 @@ TEST_F(PBConvertIAMTest, ConvertCertInfoToAos)
     CertInfo dst;
 
     ASSERT_TRUE(ConvertToAos(src, dst).IsNone());
-    EXPECT_EQ(dst.mCertType, String("cert-type"));
+    EXPECT_EQ(dst.mStorageID, String("cert-type"));
     EXPECT_EQ(dst.mCertURL, String("cert-url"));
     EXPECT_EQ(dst.mKeyURL, String("key-url"));
     EXPECT_EQ(dst.mSerial, expectedSerial);

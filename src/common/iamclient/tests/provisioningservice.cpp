@@ -53,19 +53,19 @@ protected:
  * Tests
  **********************************************************************************************************************/
 
-TEST_F(ProvisioningServiceTest, GetCertTypes)
+TEST_F(ProvisioningServiceTest, GetCertKeyStorageIDs)
 {
-    mStub->SetCertTypes({"online", "offline", "iam"});
+    mStub->SetStorageIDs({"online", "offline", "iam"});
 
-    aos::StaticArray<aos::StaticString<aos::cCertTypeLen>, 10> certTypes;
+    aos::StaticArray<aos::StaticString<aos::cStorageIDLen>, 10> storageIDs;
 
-    auto err = mService->GetCertTypes("node1", certTypes);
+    auto err = mService->GetCertKeyStorageIDs("node1", storageIDs);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(certTypes.Size(), 3);
-    EXPECT_STREQ(certTypes[0].CStr(), "online");
-    EXPECT_STREQ(certTypes[1].CStr(), "offline");
-    EXPECT_STREQ(certTypes[2].CStr(), "iam");
+    EXPECT_EQ(storageIDs.Size(), 3);
+    EXPECT_STREQ(storageIDs[0].CStr(), "online");
+    EXPECT_STREQ(storageIDs[1].CStr(), "offline");
+    EXPECT_STREQ(storageIDs[2].CStr(), "iam");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node1");
 }
 
@@ -134,15 +134,15 @@ TEST_F(ProvisioningServiceTest, Reconnect)
     auto err = mService->Reconnect();
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    mStub->SetCertTypes({"online", "offline"});
+    mStub->SetStorageIDs({"online", "offline"});
 
-    aos::StaticArray<aos::StaticString<aos::cCertTypeLen>, 10> certTypes;
+    aos::StaticArray<aos::StaticString<aos::cStorageIDLen>, 10> storageIDs;
 
-    err = mService->GetCertTypes("node4", certTypes);
+    err = mService->GetCertKeyStorageIDs("node4", storageIDs);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
-    EXPECT_EQ(certTypes.Size(), 2);
-    EXPECT_STREQ(certTypes[0].CStr(), "online");
-    EXPECT_STREQ(certTypes[1].CStr(), "offline");
+    EXPECT_EQ(storageIDs.Size(), 2);
+    EXPECT_STREQ(storageIDs[0].CStr(), "online");
+    EXPECT_STREQ(storageIDs[1].CStr(), "offline");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node4");
 }
