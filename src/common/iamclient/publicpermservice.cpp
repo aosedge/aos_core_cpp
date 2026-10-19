@@ -57,12 +57,16 @@ Error PublicPermissionsService::Reconnect()
 
     LOG_INF() << "Reconnect public permissions service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v7::IAMPublicPermissionsService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));

@@ -116,7 +116,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
                 return AOS_ERROR_WRAP(rootErr);
             }
 
-            mPublicCred = common::utils::GetTLSServerCredentials(*certInfo, certLoader, cryptoProvider);
+            mPublicCred = grpc::InsecureServerCredentials();
             mProtectedCred
                 = common::utils::GetMTLSServerCredentials(*certInfo, rootCertsPem, certLoader, cryptoProvider);
         } else {
@@ -143,7 +143,7 @@ Error IAMServer::Start()
     LOG_DBG() << "Start IAM server";
 
     if (!mProvisioningMode) {
-        auto err = mCertHandler->SubscribeListener(String(mConfig.mCertStorage.c_str()), *this);
+        auto err = common::utils::SubscribeCertChanges(*mCertHandler, String(mConfig.mCertStorage.c_str()), *this);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -287,21 +287,41 @@ void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
     mProtectedMessageHandler.SubjectsChanged(subjects);
 }
 
-void IAMServer::OnCertChanged(const CertInfo& info)
+void IAMServer::OnCertChanged([[maybe_unused]] const CertInfo& info)
 {
-    auto [rootCertsPem, err] = common::utils::LoadRootCertificates(*mCertHandler, *mCertLoader, *mCryptoProvider);
-    if (!err.IsNone()) {
-        LOG_ERR() << "Failed to load root certificates" << Log::Field(err);
+    LOG_INF() << "Certificate changed, restart IAM server";
 
-        return;
-    }
-
-    mPublicCred    = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
-    mProtectedCred = common::utils::GetMTLSServerCredentials(info, rootCertsPem, *mCertLoader, *mCryptoProvider);
-
-    // postpone restart so it didn't block ApplyCert
+    // Postpone the restart so certificate updates are not blocked, and reload the service certificate
+    // after the cert handler releases its lock. Root-certificate notifications do not carry that certificate.
     mCertChangedResult = std::async(std::launch::async, [this]() {
         sleep(1);
+
+        auto certInfo = std::make_unique<CertInfo>();
+
+        if (auto err = mCertHandler->GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo); !err.IsNone()) {
+            LOG_ERR() << "Failed to get server certificate" << Log::Field(err);
+
+            return;
+        }
+
+        auto [rootCertsPem, rootErr]
+            = common::utils::LoadRootCertificates(*mCertHandler, *mCertLoader, *mCryptoProvider);
+        if (!rootErr.IsNone()) {
+            LOG_ERR() << "Failed to load root certificates" << Log::Field(rootErr);
+
+            return;
+        }
+
+        try {
+            mPublicCred = grpc::InsecureServerCredentials();
+            mProtectedCred
+                = common::utils::GetMTLSServerCredentials(*certInfo, rootCertsPem, *mCertLoader, *mCryptoProvider);
+        } catch (const std::exception& e) {
+            LOG_ERR() << "Failed to create server credentials" << Log::Field(common::utils::ToAosError(e));
+
+            return;
+        }
+
         Stop();
         Start();
     });

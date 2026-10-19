@@ -228,7 +228,7 @@ Error Fileserver::Start()
         return err;
     }
 
-    if (auto err = mCertProvider->SubscribeListener(mCertStorage.c_str(), *this); !err.IsNone()) {
+    if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, mCertStorage.c_str(), *this); !err.IsNone()) {
         return err;
     }
 

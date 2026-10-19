@@ -81,6 +81,17 @@ Error CollectRootCertFingerprints(const ::aos::iamclient::CertProviderItf& certP
 Error ConfigureSSLContext(const String& storageID, const ::aos::iamclient::CertProviderItf& certProvider,
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx);
 
+/**
+ * Subscribes a listener to service certificate and trusted root certificate changes.
+ *
+ * @param certProvider certificate provider.
+ * @param storageID service certificate type. Empty subscribes to root certificates only.
+ * @param listener certificate listener.
+ * @return Error.
+ */
+Error SubscribeCertChanges(::aos::iamclient::CertProviderItf& certProvider, const String& storageID,
+    ::aos::iamclient::CertListenerItf& listener);
+
 } // namespace aos::common::utils
 
 #endif

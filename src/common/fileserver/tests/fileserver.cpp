@@ -199,6 +199,7 @@ protected:
                             mCryptoProvider)
                         .IsNone());
         EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
+        EXPECT_CALL(mCertProvider, SubscribeRootCertsListener(Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mCertProvider, UnsubscribeListener(Ref(*mServer)))
             .Times(AtLeast(1))
             .WillRepeatedly(Return(ErrorEnum::eNone));
@@ -280,6 +281,9 @@ TEST_F(FileserverRotationTest, RestartAfterStopRestoresListenerAndSubscription)
 {
     Init();
     EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer)))
+        .WillOnce(Return(ErrorEnum::eNone))
+        .RetiresOnSaturation();
+    EXPECT_CALL(mCertProvider, SubscribeRootCertsListener(Ref(*mServer)))
         .WillOnce(Return(ErrorEnum::eNone))
         .RetiresOnSaturation();
     ASSERT_TRUE(mServer->Start().IsNone());

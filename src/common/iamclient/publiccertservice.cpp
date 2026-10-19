@@ -29,6 +29,10 @@ PublicCertService::~PublicCertService()
             manager->Close();
         }
     }
+
+    if (mRootCertsSubscription) {
+        mRootCertsSubscription->Close();
+    }
 }
 
 Error PublicCertService::Init(
@@ -66,12 +70,16 @@ Error PublicCertService::Reconnect()
 
     LOG_INF() << "Reconnect public cert service";
 
-    auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
-    if (!err.IsNone()) {
-        return err;
-    }
+    if (mInsecureConnection) {
+        mCredentials = grpc::InsecureChannelCredentials();
+    } else {
+        auto [credentials, err] = mTLSCredentials->GetTLSClientCredentials();
+        if (!err.IsNone()) {
+            return err;
+        }
 
-    mCredentials = credentials;
+        mCredentials = credentials;
+    }
 
     mStub = iamanager::v7::IAMPublicCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
@@ -80,6 +88,10 @@ Error PublicCertService::Reconnect()
         if (manager) {
             manager->Reconnect(mStub.get());
         }
+    }
+
+    if (mRootCertsSubscription) {
+        mRootCertsSubscription->Reconnect(mStub.get());
     }
 
     return ErrorEnum::eNone;
@@ -140,6 +152,12 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& ce
         }
     }
 
+    if (mRootCertsSubscription && mRootCertsSubscription->Unsubscribe(certListener)) {
+        LOG_DBG() << "Unsubscribe from root certificates changed";
+
+        mRootCertsSubscription.reset();
+    }
+
     return ErrorEnum::eNone;
 }
 
@@ -152,6 +170,7 @@ Error PublicCertService::GetCert(
 
     auto ctx = std::make_unique<grpc::ClientContext>();
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+    ctx->set_wait_for_ready(true);
 
     iamanager::v7::GetCertKeyRequest request;
     iamanager::v7::CertKeyInfo       response;
@@ -214,9 +233,36 @@ Error PublicCertService::GetRootCerts(Array<CertInfo>& resCerts) const
 
 Error PublicCertService::SubscribeRootCertsListener(aos::iamclient::CertListenerItf& certListener)
 {
-    (void)certListener;
+    std::lock_guard lock {mMutex};
 
-    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    LOG_DBG() << "Subscribe to root certificates changed";
+
+    if (!mRootCertsSubscription) {
+        google::protobuf::Empty request;
+
+        auto convertFunc = [](const iamanager::v7::RootCertsInfos& proto, iamanager::v7::RootCertsInfos& aos) -> Error {
+            aos = proto;
+
+            return ErrorEnum::eNone;
+        };
+
+        auto notifyFunc
+            = [](aos::iamclient::CertListenerItf& listener, const iamanager::v7::RootCertsInfos& rootCerts) {
+                  for (const auto& rootCert : rootCerts.root_certs()) {
+                      auto certInfo = std::make_unique<CertInfo>();
+
+                      certInfo->mCertURL = rootCert.cert_url().c_str();
+
+                      listener.OnCertChanged(*certInfo);
+                  }
+              };
+
+        mRootCertsSubscription = std::make_unique<RootCertsSubscriptionManager>(mStub.get(), request,
+            &iamanager::v7::IAMPublicCertificateService::Stub::SubscribeRootCertsChanged, convertFunc, notifyFunc,
+            "RootCertsSubscription");
+    }
+
+    return mRootCertsSubscription->Subscribe(certListener);
 }
 
 } // namespace aos::common::iamclient

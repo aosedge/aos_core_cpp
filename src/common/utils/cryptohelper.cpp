@@ -290,4 +290,16 @@ Error ConfigureSSLContext(const String& storageID, const ::aos::iamclient::CertP
     return LoadRootCertsToSSLContext(rootCertsPem, ctx);
 }
 
+Error SubscribeCertChanges(::aos::iamclient::CertProviderItf& certProvider, const String& storageID,
+    ::aos::iamclient::CertListenerItf& listener)
+{
+    if (!storageID.IsEmpty()) {
+        if (auto err = certProvider.SubscribeListener(storageID, listener); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return certProvider.SubscribeRootCertsListener(listener);
+}
+
 } // namespace aos::common::utils

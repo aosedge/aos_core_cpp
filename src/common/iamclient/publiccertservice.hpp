@@ -13,6 +13,8 @@
 #include <thread>
 #include <unordered_map>
 
+#include <google/protobuf/empty.pb.h>
+
 #include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
@@ -27,6 +29,11 @@ namespace aos::common::iamclient {
 using CertKeySubscriptionManager
     = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertificateService::Stub, aos::iamclient::CertListenerItf,
         iamanager::v7::CertKeyInfo, iamanager::v7::CertKeyInfo, iamanager::v7::SubscribeCertKeyChangedRequest>;
+
+// Type alias for root certificates subscription manager
+using RootCertsSubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertificateService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::RootCertsInfos, iamanager::v7::RootCertsInfos, google::protobuf::Empty>;
 
 /**
  * Public cert service.
@@ -111,6 +118,7 @@ private:
     mutable std::mutex                                                mMutex;
 
     std::unordered_map<std::string, std::unique_ptr<CertKeySubscriptionManager>> mCertKeySubscriptions;
+    std::unique_ptr<RootCertsSubscriptionManager>                                mRootCertsSubscription;
 };
 
 } // namespace aos::common::iamclient

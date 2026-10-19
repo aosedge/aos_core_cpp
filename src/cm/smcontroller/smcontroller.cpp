@@ -66,7 +66,8 @@ Error SMController::Start()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mCertProvider->SubscribeListener(String(mConfig.mCertStorage.c_str()), *this); !err.IsNone()) {
+    if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, String(mConfig.mCertStorage.c_str()), *this);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

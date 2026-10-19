@@ -8,6 +8,8 @@
 
 #include <core/common/tools/log.hpp>
 
+#include <common/utils/cryptohelper.hpp>
+
 namespace aos::cm::iamclient {
 
 IAMClient::~IAMClient()
@@ -23,7 +25,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
 {
     LOG_DBG() << "Init IAM client";
 
-    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, true);
     if (!err.IsNone()) {
         return err;
     }
@@ -43,22 +45,22 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    err = PublicNodesService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicNodesService::Init(iamPublicServerURL, tlsCredentials, true, true, certStorage);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicCertService::SubscribeListener(storageID, *this);
+    err = common::utils::SubscribeCertChanges(*this, storageID, *this);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, true);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicIdentityService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicIdentityService::Init(iamPublicServerURL, tlsCredentials, true);
     if (!err.IsNone()) {
         return err;
     }

@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/cryptohelper.hpp>
+
 #include "iamclient.hpp"
 
 namespace aos::mp::iamclient {
@@ -35,7 +37,8 @@ Error IAMClient::Start()
     LOG_DBG() << "Start IAM client";
 
     if (!mCertStorage.empty()) {
-        if (auto err = mCertProvider->SubscribeListener(String(mCertStorage.c_str()), *this); !err.IsNone()) {
+        if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, String(mCertStorage.c_str()), *this);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
