@@ -46,12 +46,6 @@ void AosCore::Init(const std::string& configFile)
     err = mCertLoader.Init(mAllocator, mCryptoProvider, mPKCS11Manager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize cert loader");
 
-    // Initialize crypto helper
-
-    err = mCryptoHelper.Init(mAllocator, mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str(),
-        mConfig.mCACert.c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
-
     // Initialize file info provider
 
     err = mFileInfoProvider.Init(mAllocator, mCryptoProvider);
@@ -67,6 +61,12 @@ void AosCore::Init(const std::string& configFile)
     err = mIAMClient.Init(mConfig.mIAMProtectedServerURL, mConfig.mIAMPublicServerURL, mConfig.mCertStorage,
         mTLSCredentials, mConfig.mCertStorage.c_str(), false);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
+
+    // Initialize crypto helper
+
+    err = mCryptoHelper.Init(
+        mAllocator, mIAMClient, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize crypto helper");
 
     // Initialize communication
 

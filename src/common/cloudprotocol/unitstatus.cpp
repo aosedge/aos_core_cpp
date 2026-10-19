@@ -262,7 +262,7 @@ Poco::JSON::Object::Ptr InstanceToJSON(const UnitInstancesStatuses& statuses)
         instanceJson->set("instance", instanceStatus->mInstance);
 
         if (!instanceStatus->mStateChecksum.IsEmpty()) {
-            StaticString<crypto::cSHA256Size * 2> checksum;
+            StaticString<crypto::cSHA256HexLen> checksum;
 
             auto err = checksum.ByteArrayToHex(instanceStatus->mStateChecksum);
             AOS_ERROR_CHECK_AND_THROW(err, "can't convert state checksum to JSON");
