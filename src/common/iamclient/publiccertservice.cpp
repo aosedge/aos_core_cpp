@@ -170,4 +170,18 @@ Error PublicCertService::GetCertKey(
     return ErrorEnum::eNone;
 }
 
+Error PublicCertService::GetRootCerts(Array<CertInfo>& resCerts) const
+{
+    (void)resCerts;
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
+Error PublicCertService::SubscribeRootCertsListener(aos::iamclient::CertKeyListenerItf& certListener)
+{
+    (void)certListener;
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
 } // namespace aos::common::iamclient
