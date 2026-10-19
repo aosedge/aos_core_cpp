@@ -98,6 +98,34 @@ void IssuedCertDataFromJSON(const common::utils::CaseInsensitiveObjectWrapper& j
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse certificateChain");
 }
 
+void DesiredNodeRootCertificatesFromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& json, DesiredNodeRootCertificates& nodeRootCertificates)
+{
+    if (!json.Has("node")) {
+        AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "missing node tag");
+    }
+
+    AosIdentity identity;
+
+    auto err = ParseAosIdentity(json.GetObject("node"), identity);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node");
+
+    if (!identity.mCodename.has_value()) {
+        AOS_ERROR_THROW(ErrorEnum::eNotFound, "node codename is missing");
+    }
+
+    err = nodeRootCertificates.mNodeID.Assign(identity.mCodename->c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't parse node ID");
+
+    common::utils::ForEach(json, "certificates", [&nodeRootCertificates](const Poco::Dynamic::Var& certJson) {
+        auto err = nodeRootCertificates.mCertificates.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse root certificate");
+
+        err = nodeRootCertificates.mCertificates.Back().Assign(certJson.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(err, "can't parse root certificate");
+    });
+}
+
 void RenewCertDataFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, RenewCertData& renewCertData)
 {
     CertIdentFromJSON(json, renewCertData);
@@ -167,6 +195,28 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, IssuedUn
     return ErrorEnum::eNone;
 }
 
+Error FromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& json, DesiredUnitRootCertificates& desiredUnitRootCertificates)
+{
+    try {
+        if (auto err = FromJSON(json, static_cast<Protocol&>(desiredUnitRootCertificates)); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        common::utils::ForEach(json, "nodeCertificates", [&desiredUnitRootCertificates](const auto& nodeCertsJson) {
+            auto err = desiredUnitRootCertificates.mNodeCertificates.EmplaceBack();
+            AOS_ERROR_CHECK_AND_THROW(err, "can't parse node certificates");
+
+            DesiredNodeRootCertificatesFromJSON(common::utils::CaseInsensitiveObjectWrapper(nodeCertsJson),
+                desiredUnitRootCertificates.mNodeCertificates.Back());
+        });
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error ToJSON(const IssueUnitCerts& issueUnitCerts, Poco::JSON::Object& json)
 {
     constexpr MessageType cMessageType = MessageTypeEnum::eIssueUnitCertificates;
@@ -219,6 +269,38 @@ Error ToJSON(const InstallUnitCertsConfirmation& confirmation, Poco::JSON::Objec
 
             return certJson;
         }));
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ToJSON(const UnitRootCertificates& unitRootCertificates, Poco::JSON::Object& json)
+{
+    constexpr MessageType cMessageType = MessageTypeEnum::eUnitRootCertificates;
+
+    try {
+        json.set("messageType", cMessageType.ToString().CStr());
+
+        if (auto err = ToJSON(static_cast<const Protocol&>(unitRootCertificates), json); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        json.set("isPartial", unitRootCertificates.mIsPartial);
+        json.set("nodeCertificates",
+            common::utils::ToJsonArray(unitRootCertificates.mNodeCertificates, [](const auto& nodeCertificates) {
+                auto nodeJson = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
+
+                AosIdentity identity;
+                identity.mCodename = nodeCertificates.mNodeID.CStr();
+
+                nodeJson->set("node", CreateAosIdentity(identity));
+                nodeJson->set("sha256Fingerprints",
+                    common::utils::ToJsonArray(nodeCertificates.mSHA256Fingerprints, common::utils::ToStdString));
+
+                return nodeJson;
+            }));
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

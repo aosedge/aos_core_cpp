@@ -15,6 +15,7 @@
 #include <core/cm/launcher/launcher.hpp>
 #include <core/cm/monitoring/monitoring.hpp>
 #include <core/cm/nodeinfoprovider/nodeinfoprovider.hpp>
+#include <core/cm/rootcerts/rootcerts.hpp>
 #include <core/cm/smcontroller/itf/smcontroller.hpp>
 #include <core/cm/storagestate/storagestate.hpp>
 #include <core/cm/unitconfig/unitconfig.hpp>
@@ -114,6 +115,7 @@ private:
     cm::unitconfig::JSONProvider                                mJSONProvider;
     cm::unitconfig::UnitConfig                                  mUnitConfig;
     cm::updatemanager::UpdateManager                            mUpdateManager;
+    cm::rootcerts::RootCerts                                    mRootCerts;
     communication::Communication                                mCommunication;
     database::Database                                          mDatabase;
     iamclient::IAMClient                                        mIAMClient;
