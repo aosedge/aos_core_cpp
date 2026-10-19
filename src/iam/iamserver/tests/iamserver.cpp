@@ -109,7 +109,7 @@ private:
     // CertHandler function
     certhandler::ModuleConfig       GetCertModuleConfig(crypto::KeyType keyType);
     certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig();
-    void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+    void ApplyCertificate(const String& storageID, const String& subject, const String& intermKeyPath,
         const String& intermCertPath, uint64_t serial, CertInfo& certInfo);
 
     config::IAMServerConfig GetServerConfig();
@@ -241,11 +241,11 @@ certhandler::PKCS11ModuleConfig IAMServerTest::GetPKCS11ModuleConfig()
     return config;
 }
 
-void IAMServerTest::ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+void IAMServerTest::ApplyCertificate(const String& storageID, const String& subject, const String& intermKeyPath,
     const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
 {
     StaticString<crypto::cCSRPEMLen> csr;
-    ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
+    ASSERT_TRUE(mCertHandler.CreateKey(storageID, subject, cPIN, csr).IsNone());
 
     // create certificate from CSR, CA priv key, CA cert
     StaticString<crypto::cPrivKeyPEMLen> intermKey;
@@ -269,7 +269,7 @@ void IAMServerTest::ApplyCertificate(const String& certType, const String& subje
     clientCertChain.Append(caCert);
 
     // apply client certificate
-    ASSERT_TRUE(mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo).IsNone());
+    ASSERT_TRUE(mCertHandler.ApplyCertificate(storageID, clientCertChain, certInfo).IsNone());
     EXPECT_EQ(certInfo.mSerial, serialArr);
 }
 
@@ -447,7 +447,7 @@ TEST_F(IAMServerTest, ProvisioningServiceIsNotImplementedOnSecondaryNode)
 
     EXPECT_NE(stub, nullptr) << "Failed to create a stub";
 
-    grpc::ClientContext                    context;
+    grpc::ClientContext                   context;
     iamproto::GetCertKeyStorageIDsRequest request;
     iamproto::CertKeyStorageIDs           response;
 

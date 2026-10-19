@@ -68,7 +68,8 @@ Error ProvisioningService::Reconnect()
     return ErrorEnum::eNone;
 }
 
-Error ProvisioningService::GetCertTypes(const String& nodeID, Array<StaticString<cCertTypeLen>>& certTypes) const
+Error ProvisioningService::GetCertKeyStorageIDs(
+    const String& nodeID, Array<StaticString<cStorageIDLen>>& storageIDs) const
 {
     std::lock_guard lock {mMutex};
 
@@ -88,7 +89,7 @@ Error ProvisioningService::GetCertTypes(const String& nodeID, Array<StaticString
         }
 
         for (const auto& type : response.storage_ids()) {
-            if (auto err = certTypes.EmplaceBack(type.c_str()); !err.IsNone()) {
+            if (auto err = storageIDs.EmplaceBack(type.c_str()); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
         }

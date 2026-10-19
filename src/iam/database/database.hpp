@@ -59,11 +59,11 @@ public:
     /**
      * Adds new certificate info to the storage.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certInfo certificate information.
      * @return Error.
      */
-    Error AddCertInfo(const String& certType, const aos::CertInfo& certInfo) override;
+    Error AddCertInfo(const String& storageID, const aos::CertInfo& certInfo) override;
 
     /**
      * Returns information about certificate with specified issuer and serial number.
@@ -78,28 +78,28 @@ public:
     /**
      * Returns info for all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certsInfo result certificates info.
      * @return Error.
      */
-    Error GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo) override;
+    Error GetCertsInfo(const String& storageID, Array<aos::CertInfo>& certsInfo) override;
 
     /**
      * Removes certificate with specified certificate type and url.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certURL certificate URL.
      * @return Error.
      */
-    Error RemoveCertInfo(const String& certType, const String& certURL) override;
+    Error RemoveCertInfo(const String& storageID, const String& certURL) override;
 
     /**
      * Removes all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @return Error.
      */
-    Error RemoveAllCertsInfo(const String& certType) override;
+    Error RemoveAllCertsInfo(const String& storageID) override;
 
     //
     // nodemanager::NodeInfoStorageItf interface
@@ -157,7 +157,7 @@ private:
     void DropMigrationData();
 
     void CreateTables();
-    void FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result);
+    void FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result);
     void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
 
     config::DatabaseConfig                      mConfig;

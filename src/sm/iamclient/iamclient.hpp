@@ -43,13 +43,13 @@ public:
      * @param iamPublicServerURL IAM public server URL.
      * @param certStorage certificate storage.
      * @param tlsCredentials TLS credentials.
-     * @param certType certificate type to subscribe for updates.
+     * @param storageID certificate storage ID to subscribe for updates.
      * @param insecureConnection use insecure connection.
      * @return Error.
      */
     Error Init(const std::string& iamProtectedServerURL, const std::string& iamPublicServerURL,
         const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials,
-        const String& certType, bool insecureConnection = false);
+        const String& storageID, bool insecureConnection = false);
 
     /**
      * Reconnects all IAM services.
