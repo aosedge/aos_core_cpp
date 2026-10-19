@@ -12,11 +12,13 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
+#include <google/protobuf/empty.pb.h>
 #include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpchelper.hpp>
@@ -35,6 +37,8 @@ public:
         mCertURL = certURL;
         mKeyURL  = keyURL;
     }
+
+    void AddAllCert(const std::string& certURL, const std::string& keyURL) { mAllCerts.push_back({certURL, keyURL}); }
 
     std::string GetRequestedStorageID() const { return mRequestedStorageID; }
 
@@ -106,6 +110,18 @@ private:
         return grpc::Status::OK;
     }
 
+    grpc::Status GetRootCerts(
+        grpc::ServerContext*, const google::protobuf::Empty*, iamanager::v7::RootCertsInfos* response) override
+    {
+        for (const auto& [certURL, keyURL] : mAllCerts) {
+            (void)keyURL;
+
+            response->add_root_certs()->set_cert_url(certURL);
+        }
+
+        return grpc::Status::OK;
+    }
+
     grpc::Status SubscribeCertKeyChanged(grpc::ServerContext* context,
         const iamanager::v7::SubscribeCertKeyChangedRequest*  request,
         grpc::ServerWriter<iamanager::v7::CertKeyInfo>*       writer) override
@@ -136,10 +152,17 @@ private:
         return grpc::Status::OK;
     }
 
+    grpc::Status SubscribeRootCertsChanged(grpc::ServerContext*, const google::protobuf::Empty*,
+        grpc::ServerWriter<iamanager::v7::RootCertsInfos>*) override
+    {
+        return grpc::Status::OK;
+    }
+
     std::unique_ptr<grpc::Server>                                          mServer;
     std::string                                                            mCertURL;
     std::string                                                            mKeyURL;
     std::string                                                            mRequestedStorageID;
+    std::vector<std::pair<std::string, std::string>>                       mAllCerts;
     std::map<std::string, grpc::ServerWriter<iamanager::v7::CertKeyInfo>*> mWriters;
     std::mutex                                                             mMutex;
     std::condition_variable                                                mCV;

@@ -14,6 +14,7 @@
 
 #include <grpcpp/server_builder.h>
 
+#include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/permhandler/itf/permhandler.hpp>
@@ -50,11 +51,12 @@ public:
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
+     * @param certLoader certificate loader.
      */
     Error Init(NodeController& nodeController, aos::iamclient::IdentProviderItf& identProvider,
         iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
         iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider,
-        iam::provisionmanager::ProvisionManagerItf& provisionManager);
+        iam::provisionmanager::ProvisionManagerItf& provisionManager, crypto::CertLoaderItf& certLoader);
 
     /**
      * Registers grpc services.
@@ -117,6 +119,7 @@ private:
         google::protobuf::Empty* response) override;
 
     iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    crypto::CertLoaderItf*                      mCertLoader       = nullptr;
 };
 
 } // namespace aos::iam::iamserver

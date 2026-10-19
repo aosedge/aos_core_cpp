@@ -47,12 +47,13 @@ public:
      * @param tlsCredentials TLS credentials.
      * @param currentNodeHandler current node handler.
      * @param provisioningMode flag indicating whether provisioning mode is active.
+     * @param certLoader certificate loader.
      * @returns Error.
      */
     Error Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
-        bool provisioningMode);
+        bool provisioningMode, crypto::CertLoaderItf& certLoader);
 
     /**
      * Starts IAM client.
@@ -108,7 +109,8 @@ private:
     aos::iamclient::CertProviderItf*       mCertProvider       = nullptr;
     currentnode::CurrentNodeHandlerItf*    mCurrentNodeHandler = nullptr;
 
-    std::string mCertStorage;
+    std::string            mCertStorage;
+    crypto::CertLoaderItf* mCertLoader {};
 };
 
 } // namespace aos::iam::iamclient
