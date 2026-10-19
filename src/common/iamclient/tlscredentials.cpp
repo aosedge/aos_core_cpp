@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/cryptohelper.hpp>
+
 #include "tlscredentials.hpp"
 
 namespace aos::common::iamclient {
@@ -14,13 +16,12 @@ namespace aos::common::iamclient {
  * Public
  **********************************************************************************************************************/
 
-Error TLSCredentials::Init(const std::string& caCert, aos::iamclient::CertProviderItf& certProvider,
-    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+Error TLSCredentials::Init(aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
+    crypto::x509::ProviderItf& cryptoProvider)
 {
     LOG_DBG() << "Init TLS credentials";
 
     mCertProvider   = &certProvider;
-    mCACert         = caCert;
     mCertLoader     = &certLoader;
     mCryptoProvider = &cryptoProvider;
 
@@ -38,7 +39,12 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSC
         return {nullptr, err};
     }
 
-    return {common::utils::GetMTLSClientCredentials(*certInfo, mCACert.c_str(), *mCertLoader, *mCryptoProvider),
+    auto [rootCertsPem, rootErr] = common::utils::LoadRootCertificates(*mCertProvider, *mCertLoader, *mCryptoProvider);
+    if (!rootErr.IsNone()) {
+        return {nullptr, rootErr};
+    }
+
+    return {common::utils::GetMTLSClientCredentials(*certInfo, rootCertsPem, *mCertLoader, *mCryptoProvider),
         ErrorEnum::eNone};
 }
 
@@ -46,11 +52,12 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetTLSCl
 {
     LOG_DBG() << "Get TLS config";
 
-    if (!mCACert.empty()) {
-        return {common::utils::GetTLSClientCredentials(mCACert.c_str()), ErrorEnum::eNone};
+    auto [rootCertsPem, err] = common::utils::LoadRootCertificates(*mCertProvider, *mCertLoader, *mCryptoProvider);
+    if (!err.IsNone()) {
+        return {nullptr, err};
     }
 
-    return {nullptr, ErrorEnum::eNotFound};
+    return {common::utils::GetTLSClientCredentials(rootCertsPem), ErrorEnum::eNone};
 }
 
 } // namespace aos::common::iamclient
