@@ -38,8 +38,10 @@ Error ConvertCertModuleConfig(const config::ModuleConfig& config, certhandler::M
 
     aosConfig.mMaxCertificates = config.mMaxItems;
     aosConfig.mSkipValidation  = config.mSkipValidation;
-    aosConfig.mCertType        = config.mIsSelfSigned ? certhandler::CertModuleTypeEnum::eSelfSigned
-                                                      : certhandler::CertModuleTypeEnum::eCertKeyPair;
+
+    if (auto err = aosConfig.mCertType.FromString(config.mCertType.c_str()); !err.IsNone()) {
+        return err;
+    }
 
     for (auto const& keyUsageStr : config.mExtendedKeyUsage) {
         certhandler::ExtendedKeyUsage keyUsage;
@@ -241,6 +243,8 @@ Error AosCore::InitCertModules(const config::Config& config)
 {
     LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
 
+    size_t rootCertsModulesCount = 0;
+
     for (const auto& moduleConfig : config.mCertModules) {
         if (moduleConfig.mPlugin != cPKCS11CertModule) {
             return AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument);
@@ -261,6 +265,10 @@ Error AosCore::InitCertModules(const config::Config& config)
         auto err = ConvertCertModuleConfig(moduleConfig, aosConfig);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
+        }
+
+        if (aosConfig.mCertType == certhandler::CertModuleTypeEnum::eRootCerts) {
+            rootCertsModulesCount++;
         }
 
         certhandler::PKCS11ModuleConfig aosParams {};
@@ -292,6 +300,10 @@ Error AosCore::InitCertModules(const config::Config& config)
         }
 
         mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
+    }
+
+    if (rootCertsModulesCount != 1) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "exactly one root certs module expected"));
     }
 
     return ErrorEnum::eNone;

@@ -127,7 +127,6 @@ RetWithError<Config> ParseConfig(const std::string& filename)
         config.mVChan         = ParseVChanConfig(object.GetObject("VChan"));
         config.mCMConfig      = ParseCMConfig(object.GetObject("CMConfig"));
         config.mCertStorage   = object.GetValue<std::string>("CertStorage");
-        config.mCACert        = object.GetValue<std::string>("CACert");
         config.mImageStoreDir = object.GetValue<std::string>("ImageStoreDir");
         config.mDownload      = ParseDownloader(object.GetObject("Downloader"));
         config.mIAMConfig     = ParseIAMConfig(object.GetObject("IAMConfig"));

@@ -204,7 +204,6 @@ config::IAMServerConfig IAMServerTest::GetServerConfig()
     config::IAMServerConfig config;
 
     config.mCertStorage               = "server";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mIAMPublicServerURL        = "localhost:8088";
     config.mIAMProtectedServerURL     = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
@@ -217,7 +216,6 @@ config::IAMClientConfig IAMServerTest::GetClientConfig()
     config::IAMClientConfig config;
 
     config.mCertStorage               = "client";
-    config.mCACert                    = CERTIFICATES_IAM_DIR "/ca.cer";
     config.mMainIAMPublicServerURL    = "localhost:8088";
     config.mMainIAMProtectedServerURL = "localhost:8089";
     config.mFinishProvisioningCmdArgs = config.mDiskEncryptionCmdArgs = {};
