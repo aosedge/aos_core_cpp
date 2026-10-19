@@ -20,10 +20,11 @@
 #include <common/migration/migration.hpp>
 #include <sm/alerts/itf/storage.hpp>
 #include <sm/config/config.hpp>
+#include <sm/launcher/runtimes/itf/storage.hpp>
 
 namespace aos::sm::database {
 
-class Database : public DatabaseItf, public sm::alerts::StorageItf {
+class Database : public DatabaseItf, public sm::alerts::StorageItf, public sm::launcher::runtimes::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -248,8 +249,46 @@ public:
      */
     Error GetJournalCursor(String& cursor) const override;
 
+    // sm::launcher::runtimes::StorageItf interface
+
+    /**
+     * Adds runtime instance to storage.
+     *
+     * @param instance runtime instance data.
+     * @return Error.
+     */
+    Error AddRuntimeInstance(const sm::launcher::runtimes::RuntimeInstanceData& instance) override;
+
+    /**
+     * Updates runtime instance in storage.
+     *
+     * @param instance runtime instance data.
+     * @return Error.
+     */
+    Error UpdateRuntimeInstance(const sm::launcher::runtimes::RuntimeInstanceData& instance) override;
+
+    /**
+     * Removes runtime instance from storage.
+     *
+     * @param runtimeID runtime ID.
+     * @param ident instance ident.
+     * @param version instance version.
+     * @return Error.
+     */
+    Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version) override;
+
+    /**
+     * Returns all instances of the runtime.
+     *
+     * @param runtimeID runtime ID.
+     * @param[out] instances runtime instances.
+     * @return Error.
+     */
+    Error GetRuntimeInstances(
+        const String& runtimeID, Array<sm::launcher::runtimes::RuntimeInstanceData>& instances) const override;
+
 private:
-    static constexpr int  sVersion    = 5;
+    static constexpr int  sVersion    = 6;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Item data columns
@@ -312,6 +351,25 @@ private:
 
     using InstanceNetworkInfoRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string>;
 
+    // Runtime instance columns
+    enum class RuntimeInstanceColumns : int {
+        eRuntimeID = 0,
+        eItemID,
+        eSubjectID,
+        eVersion,
+        eInstance,
+        eType,
+        ePreinstalled,
+        eManifestDigest,
+        eState,
+        eErrorAosCode,
+        eErrorSysCode,
+        eErrorMessage,
+    };
+
+    using RuntimeInstanceRow = Poco::Tuple<std::string, std::string, std::string, std::string, uint64_t, std::string,
+        uint32_t, std::string, std::string, int32_t, int32_t, std::string>;
+
     bool TableExist(const std::string& tableName);
     void CreateConfigTable();
     void CreateTables();
@@ -329,6 +387,9 @@ private:
 
     static void FromAos(const sm::networkmanager::InstanceNetworkInfo& src, InstanceNetworkInfoRow& dst);
     static void ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::InstanceNetworkInfo& dst);
+
+    static void FromAos(const sm::launcher::runtimes::RuntimeInstanceData& src, RuntimeInstanceRow& dst);
+    static void ToAos(const RuntimeInstanceRow& src, sm::launcher::runtimes::RuntimeInstanceData& dst);
 
     mutable std::unique_ptr<Poco::Data::Session> mSession;
     std::optional<common::migration::Migration>  mMigration;
