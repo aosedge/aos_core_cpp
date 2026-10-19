@@ -132,8 +132,8 @@ The runtime instances are stored in the SM storage `runtimeInstances` table, key
   the version file with the default ident: item ID is the runtime type, subject ID is the node type, the instance is
   preinstalled;
 - **pending instance** - the update, state `eActivating` while in progress. When the update fails, the pending
-  instance is reported as `eFailed` with the error and removed from storage, so the update can be retried. A failed
-  apply is the exception: the pending instance is kept in storage as `eFailed`, as initramfs retries the apply.
+  instance is kept in storage as `eFailed` with the error, and it is reported on every SM start. It is removed when the
+  instance is stopped or replaced by another update. A failed apply is retried by initramfs.
 
 The rootfs version file of the update image must contain the version of the update item. The version is used to check
 that the node really runs the updated rootfs.
@@ -236,8 +236,8 @@ changes the state. Initramfs doesn't verify the image, it relies on the verifica
 4. SM starts in trial boot (`state=trial`):
    1. the version file must match the pending version, otherwise the update is rejected with `rootfs version mismatch`;
    2. health check OK: `state=confirmed`, request reboot. The pending instance stays `eActivating`;
-   3. health check failed: `state=rejected` with the reason, pending instance `eFailed` with the error and removed from
-      storage, request reboot.
+   3. health check failed: `state=rejected` with the reason, pending instance stored as `eFailed` with the error,
+      request reboot.
 5. SM starts after apply (`state=applied`):
    1. the version file must match the pending version, otherwise the update is failed, and the current instance is
       restored from the version file if it doesn't match it either. If the version file can't be read, the state is
@@ -247,8 +247,8 @@ changes the state. Initramfs doesn't verify the image, it relies on the verifica
    3. remove `update_state` (synced), then the image;
    4. report the old instance as `eInactive` and the new one as `eActive`.
 6. SM starts after failure (`state=reverted` or `state=failed`):
-   1. pending instance `eFailed` with the reason, removed from storage;
-   2. remove `update_state`, then the image;
+   1. pending instance stored as `eFailed` with the reason;
+   2. remove `update_state`, then the image. If the failure can't be stored, they are kept for the next start;
    3. report the pending instance as `eFailed` and the current one as `eActive`.
 
 ```mermaid
@@ -283,7 +283,7 @@ sequenceDiagram
 ```
 
 If the health check or the version check fails, SM writes `rejected` with the reason, reports the pending instance as
-`eFailed`, removes it from storage and requests reboot. Initramfs reverts the update on the next boot, and SM clears
+`eFailed`, stores the failure and requests reboot. Initramfs reverts the update on the next boot, and SM clears
 the update artifacts.
 
 ### Start instance
@@ -295,9 +295,13 @@ the update artifacts.
   successful start as an active instance. A failed apply is retried by initramfs on next boot, not by
   `StartInstance`. After a failed apply or if the applied rootfs can't be verified, the current instance is reported
   as `eFailed` with the update error as well: the rootfs may be partially updated or is not the current one;
+- if the pending instance failed and its update is finished, the update error is returned as well, on every call: the
+  launcher starts its stored instances on every SM start, and the CM sends all scheduled instances on every balancing,
+  so these calls can't be distinguished from a retry. `StopInstance` removes the failed instance, and the next
+  `StartInstance` prepares the update. A different image replaces the failed instance without a stop;
 - if a reboot is still required, the reboot request is sent again. The launcher skips duplicated requests.
 
-Otherwise, including the failed pending instance, the update is prepared. An instance with the ident and the version of
+Otherwise the update is prepared. An instance with the ident and the version of
 the current instance but a different manifest digest is rejected with `eInvalidArgument`: the storage key doesn't
 include the manifest digest, and the trial boot is verified by the version only. If the current instance is restored
 from the version file, it has no manifest digest: such an instance is the installed rootfs, `eAlreadyExist` is returned
@@ -351,7 +355,7 @@ flowchart TD
     file -- no --> pendNoFile{pending instance?}
     pendNoFile -- no --> idle[current Active,<br/>remove stale artifacts]
     pendNoFile -- eActivating --> notStarted[pending Failed: update is not started,<br/>remove artifacts]
-    pendNoFile -- eFailed --> reportFailed[report Failed,<br/>remove pending]
+    pendNoFile -- eFailed --> reportFailed[report Failed,<br/>keep pending]
 
     file -- yes --> pend{pending instance?}
     pend -- no --> untracked[untracked state]
@@ -367,21 +371,22 @@ flowchart TD
 | `update_state`       | Pending       | Action                                                                  |
 | -------------------- | ------------- | ----------------------------------------------------------------------- |
 | none or invalid      | none          | Current `eActive`, remove stale image and temporary files.              |
-| none or invalid      | `eActivating` | Not started: pending `eFailed` with `update is not started`, removed.   |
-| none or invalid      | `eFailed`     | Not removed before: report `eFailed`, remove the pending instance.      |
+| none or invalid      | `eActivating` | Not started: pending `eFailed` with `update is not started`, removed,   |
+|                      |               | prepared again on next `StartInstance`.                                 |
+| none or invalid      | `eFailed`     | Finished: report `eFailed`, keep it until stop or another update.       |
 | `prepared`           | present       | SM restarted before reboot: report storage state, request reboot again. |
-| `rejected`           | present       | Pending not removed before: report `eFailed`, remove it, reboot again.  |
+| `rejected`           | present       | Report pending `eFailed`, store the failure, reboot again.              |
 | `confirmed`          | present       | SM restarted before reboot: report storage state, request reboot again. |
 | `trial`              | present       | Version check and health check.                                         |
 | `applying`           | present       | Apply failed: pending `eFailed` with the reason, state kept, no reboot. |
 | `applied`            | present       | Version check, then promote, see [Update flow](#update-flow).           |
-| `reverted`, `failed` | present       | Pending `eFailed`, remove it, clear artifacts.                          |
+| `reverted`, `failed` | present       | Pending `eFailed`, stored, then artifacts cleared.                      |
 | any                  | none          | See [Untracked state](#untracked-state).                                |
 
 Initramfs always changes `prepared`, `confirmed` and `rejected` on boot. These states on SM start mean that SM was
 restarted before the reboot. `applying` on SM start means that initramfs failed to apply the update, and the rootfs may
 be partially updated. In this case SM doesn't request reboot to avoid a reboot loop. If SM was interrupted after
-`rejected` is stored but before the pending instance is removed, it is reported as failed and removed on start.
+`rejected` is stored but before the failure is stored, the failure is stored on start.
 
 The state file is written atomically, so it is invalid (unknown state) only if the filesystem is damaged. An invalid
 state is treated as no update.
@@ -427,7 +432,7 @@ storage was lost:
 | mount, before `trial`         | `prepared`                        | Next boot repeats the mount.                   |
 | after `trial`, before verdict | `trial`                           | Next boot: initramfs reverts, update failed.   |
 | verdict write                 | `trial` or the verdict (atomic)   | Revert or the verdict, both consistent.        |
-| before pending removal        | `rejected`, pending `eActivating` | Pending removed on SM restart or after revert. |
+| before failure is stored      | `rejected`, pending `eActivating` | Stored on SM restart or after revert.          |
 | initramfs revert              | `trial` or `rejected`             | Revert repeated on next boot.                  |
 | apply, before `applying`      | `confirmed`                       | Next boot repeats the apply.                   |
 | during rsync                  | `applying`                        | Next boot repeats the apply.                   |
@@ -457,9 +462,9 @@ storage was lost:
 3. **Storage and working directory are located on the persistent data partition**, not on the rootfs. During trial
    boot the rootfs is the update image or an overlay: storage on the rootfs is lost on revert or taken from the image.
 4. **Ordering rule**: on update, *storage first, state file last* (the state file is the commit point); on cleanup,
-   *state file before image* (initramfs stops acting first). Failure handling removes the failed pending instance
-   before the state file: an interruption leaves `rejected`, `reverted` or `failed` without the pending instance, which
-   is processed as untracked state, only the failure reason is lost.
+   *state file before image* (initramfs stops acting first). Failure handling stores the failed pending instance
+   before the state file is removed: if it can't be stored, the state is kept and processed again on next start, so
+   the failed update can't be taken for one that is not started.
 5. **Initramfs syncs every state change** before it continues boot.
 6. **The image is never removed while the state file exists**: initramfs fails the update without the image.
 
@@ -520,8 +525,9 @@ and on `StartInstance`, until the version file is readable on a later start.
 - The runtime uses its own storage table (`runtimeInstances`), separate from the launcher instances. The runtime
   removes the previous current instance itself on promotion.
 - Storage transactions are not used: ordered atomic storage calls are enough to recover every interruption.
-- A failed pending instance is removed from storage: the failure is reported once, and `StartInstance` for the same
-  instance retries the update. Retry policy belongs to the cloud. A failed apply is kept and not retried by
+- A failed pending instance is kept in storage: a start of the same image can't be a retry decision, as the launcher
+  and the CM repeat it on their own. The retry is the stop of the instance, which removes the failure, followed by a
+  start: the cloud removes the update from the desired status and adds it again. A failed apply is kept and not retried by
   `StartInstance`: the rootfs may be partially updated, and initramfs retries the apply.
 - Only one update image is stored, and only one update is in progress. The update in trial boot is finalized before
   the next one is prepared: changing it would require a rejected state without the image and an extra reboot path.
@@ -543,9 +549,8 @@ and on `StartInstance`, until the version file is readable on a later start.
   reboot.
 - If storage is lost during an update, the current instance is restored from the version file with the default ident.
 - A rootfs image can't be updated without changing its version.
-- The failure of an update isn't reported after SM restart.
-- The launcher starts its stored instances on every SM start. A failed update stays in the launcher storage, so it is
-  retried on every SM start: an update that always fails reboots the node on every start until the cloud changes the
-  desired instance.
+- The same image can't be retried while it stays in the desired status: the cloud has to remove it first.
+- If the instance is stopped before the update is finished (rejected and waiting for reboot, or a failed apply), the
+  failure is kept: the instance has to be stopped again after the update is finished.
 - If the promotion is interrupted after the old current instance is removed, the old instance is not reported as
   `eInactive` on the repeated promotion.
