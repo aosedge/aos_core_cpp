@@ -184,9 +184,32 @@ Error PublicCertService::GetCert(
 
 Error PublicCertService::GetRootCerts(Array<CertInfo>& resCerts) const
 {
-    (void)resCerts;
+    std::lock_guard lock {mMutex};
 
-    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    LOG_DBG() << "Get root certificates";
+
+    auto ctx = std::make_unique<grpc::ClientContext>();
+    ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+    ctx->set_wait_for_ready(true);
+
+    google::protobuf::Empty       request;
+    iamanager::v7::RootCertsInfos response;
+
+    if (auto status = mStub->GetRootCerts(ctx.get(), request, &response); !status.ok()) {
+        return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+    }
+
+    for (const auto& rootCert : response.root_certs()) {
+        auto certInfo = std::make_unique<CertInfo>();
+
+        certInfo->mCertURL = rootCert.cert_url().c_str();
+
+        if (auto err = resCerts.PushBack(*certInfo); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error PublicCertService::SubscribeRootCertsListener(aos::iamclient::CertListenerItf& certListener)

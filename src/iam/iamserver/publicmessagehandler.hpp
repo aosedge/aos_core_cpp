@@ -101,6 +101,7 @@ protected:
     NodeController*                          GetNodeController() { return mNodeController; }
     NodeInfo&                                GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*        GetNodeManager() { return mNodeManager; }
+    aos::iamclient::CertProviderItf*         GetCertProvider() { return mCertProvider; }
     Error                                    SetNodeState(const std::string& nodeID, const NodeState& state);
     bool                                     ProcessOnThisNode(const std::string& nodeID);
 
@@ -185,11 +186,12 @@ private:
     StreamWriter<iamproto::Subjects>         mSubjectsChangedController;
     NodeInfo                                 mNodeInfo;
 
-    std::vector<std::shared_ptr<CertWriter>> mCertWriters;
-    std::mutex                               mCertWritersLock;
-    std::condition_variable                  mRetryCondVar;
-    std::mutex                               mMutex;
-    bool                                     mClose = false;
+    std::vector<std::shared_ptr<CertWriter>>     mCertWriters;
+    std::vector<std::shared_ptr<RootCertWriter>> mRootCertWriters;
+    std::mutex                                   mCertWritersLock;
+    std::condition_variable                      mRetryCondVar;
+    std::mutex                                   mMutex;
+    bool                                         mClose = false;
 };
 
 } // namespace aos::iam::iamserver

@@ -6,9 +6,11 @@
  */
 
 #include <core/common/tools/logger.hpp>
+#include <core/iam/certhandler/itf/hsm.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 
 #include "iamclient.hpp"
@@ -22,12 +24,13 @@ namespace aos::iam::iamclient {
 Error IAMClient::Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
     aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
-    bool provisioningMode)
+    bool provisioningMode, crypto::CertLoaderItf& certLoader)
 {
     mIdentProvider      = identProvider;
     mCurrentNodeHandler = &currentNodeHandler;
     mCertProvider       = &certProvider;
     mProvisionManager   = &provisionManager;
+    mCertLoader         = &certLoader;
     mCertStorage        = !provisioningMode ? config.mCertStorage : "";
 
     return PublicNodesService::Init(
@@ -389,9 +392,21 @@ Error IAMClient::ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequ
 {
     const String nodeID = request.node_id().c_str();
 
-    LOG_DBG() << "Process update root certs request: nodeID=" << nodeID;
+    LOG_DBG() << "Process update root certs request" << Log::Field("nodeID", nodeID)
+              << Log::Field("count", request.root_certs_size());
 
-    return SendUpdateRootCertsResponse(nodeID, AOS_ERROR_WRAP(ErrorEnum::eNotSupported));
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request.root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            return SendUpdateRootCertsResponse(nodeID, AOS_ERROR_WRAP(err));
+        }
+    }
+
+    auto err = AOS_ERROR_WRAP(mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos));
+
+    return SendUpdateRootCertsResponse(nodeID, err);
 }
 
 Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request)
@@ -400,7 +415,11 @@ Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCer
 
     LOG_DBG() << "Process get root cert fingerprints" << Log::Field("nodeID", nodeID);
 
-    return SendGetRootCertsFingerprintsResponse(nodeID, {}, AOS_ERROR_WRAP(ErrorEnum::eNotSupported));
+    auto fingerprints = std::make_unique<StaticArray<SHA256Fingerprint, crypto::cMaxRootCerts>>();
+
+    auto err = AOS_ERROR_WRAP(common::utils::CollectRootCertFingerprints(*mCertProvider, *mCertLoader, *fingerprints));
+
+    return SendGetRootCertsFingerprintsResponse(nodeID, *fingerprints, err);
 }
 
 Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)

@@ -272,14 +272,62 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
     ASSERT_FALSE(status.ok());
 }
 
+TEST_F(PublicMessageHandlerTest, GetRootCertsSucceeds)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext      context;
+    google::protobuf::Empty  request;
+    iamproto::RootCertsInfos response;
+
+    CertInfo certInfo1;
+    certInfo1.mCertURL = "test-cert-url1";
+
+    CertInfo certInfo2;
+    certInfo2.mCertURL = "test-cert-url2";
+
+    EXPECT_CALL(mCertProvider, GetRootCerts).WillOnce(Invoke([&](Array<CertInfo>& out) {
+        out.PushBack(certInfo1);
+        out.PushBack(certInfo2);
+
+        return ErrorEnum::eNone;
+    }));
+
+    auto status = clientStub->GetRootCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "GetRootCerts failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    ASSERT_EQ(response.root_certs_size(), 2);
+    EXPECT_EQ(response.root_certs(0).cert_url(), "test-cert-url1");
+    EXPECT_EQ(response.root_certs(1).cert_url(), "test-cert-url2");
+}
+
+TEST_F(PublicMessageHandlerTest, GetRootCertsFails)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMPublicCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext      context;
+    google::protobuf::Empty  request;
+    iamproto::RootCertsInfos response;
+
+    EXPECT_CALL(mCertProvider, GetRootCerts).WillOnce(Invoke([](Array<CertInfo>&) { return ErrorEnum::eFailed; }));
+
+    auto status = clientStub->GetRootCerts(&context, request, &response);
+
+    ASSERT_FALSE(status.ok());
+}
+
 TEST_F(PublicMessageHandlerTest, SubscribeCertsChangedSucceeds)
 {
     auto clientStub = CreateClientStub<iamproto::IAMPublicCertificateService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext                        context;
-    iamproto::SubscribeCertKeyChangedRequest   request;
-    iamanager::v7::CertKeyInfo                 response;
+    grpc::ClientContext                      context;
+    iamproto::SubscribeCertKeyChangedRequest request;
+    iamanager::v7::CertKeyInfo               response;
 
     request.set_storage_id("test-type");
 

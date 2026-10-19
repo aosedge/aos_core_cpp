@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 
 #include <core/common/crypto/cryptoprovider.hpp>
+#include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/tests/mocks/certprovidermock.hpp>
 #include <core/common/tests/mocks/identprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
@@ -24,6 +25,27 @@
 #include "stubs/storagestub.hpp"
 
 using namespace testing;
+
+namespace aos::crypto {
+
+class CertLoaderStub : public CertLoaderItf {
+public:
+    RetWithError<SharedPtr<x509::CertificateChain>> LoadCertsChainByURL(const String& url) override
+    {
+        (void)url;
+
+        return {SharedPtr<x509::CertificateChain>(), ErrorEnum::eNone};
+    }
+
+    RetWithError<SharedPtr<PrivateKeyItf>> LoadPrivKeyByURL(const String& url) override
+    {
+        (void)url;
+
+        return {SharedPtr<PrivateKeyItf>()};
+    }
+};
+
+} // namespace aos::crypto
 
 namespace aos::iam::iamserver {
 
@@ -75,6 +97,7 @@ protected:
     nodemanager::NodeManagerMock           mNodeManager;
     provisionmanager::ProvisionManagerMock mProvisionManager;
     iamclient::CertProviderMock            mCertProvider;
+    crypto::CertLoaderStub                 mCertLoader;
 
 private:
     void SetUp() override;
@@ -108,7 +131,7 @@ void ProtectedMessageHandlerTest::SetUp()
     }));
 
     auto err = mServerHandler.Init(mNodeController, mIdentProvider, mPermHandler, mCurrentNodeHandler, mNodeManager,
-        mCertProvider, mProvisionManager);
+        mCertProvider, mProvisionManager, mCertLoader);
 
     ASSERT_TRUE(err.IsNone()) << "Failed to initialize public message handler: " << err.Message();
 
@@ -424,6 +447,55 @@ TEST_F(ProtectedMessageHandlerTest, DeprovisionFails)
 /***********************************************************************************************************************
  * IAMCertificateService tests
  **********************************************************************************************************************/
+
+TEST_F(ProtectedMessageHandlerTest, UpdateRootCertsSucceeds)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext               context;
+    iamproto::UpdateRootCertsRequest  request;
+    iamproto::UpdateRootCertsResponse response;
+
+    request.set_node_id("node0");
+    request.add_root_certs("root-cert1");
+    request.add_root_certs("root-cert2");
+
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts).WillOnce(Return(ErrorEnum::eNone));
+
+    auto status = clientStub->UpdateRootCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "UpdateRootCerts failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    EXPECT_EQ(response.node_id(), "node0");
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eNone));
+    EXPECT_TRUE(response.error().message().empty());
+}
+
+TEST_F(ProtectedMessageHandlerTest, UpdateRootCertsFails)
+{
+    auto clientStub = CreateClientStub<iamproto::IAMCertificateService>();
+    ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
+
+    grpc::ClientContext               context;
+    iamproto::UpdateRootCertsRequest  request;
+    iamproto::UpdateRootCertsResponse response;
+
+    request.set_node_id("node0");
+    request.add_root_certs("root-cert1");
+
+    EXPECT_CALL(mProvisionManager, UpdateRootCerts).WillOnce(Return(ErrorEnum::eFailed));
+
+    auto status = clientStub->UpdateRootCerts(&context, request, &response);
+
+    ASSERT_TRUE(status.ok()) << "UpdateRootCerts failed: code = " << status.error_code()
+                             << ", message = " << status.error_message();
+
+    EXPECT_EQ(response.node_id(), "node0");
+    EXPECT_EQ(response.error().aos_code(), static_cast<int>(ErrorEnum::eFailed));
+    EXPECT_FALSE(response.error().message().empty());
+}
 
 TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
 {

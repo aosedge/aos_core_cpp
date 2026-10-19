@@ -138,18 +138,70 @@ Error CertificateService::ApplyCert(
 Error CertificateService::UpdateRootCerts(
     const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts)
 {
-    (void)nodeID;
-    (void)pemCerts;
+    std::lock_guard lock {mMutex};
 
-    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    LOG_INF() << "Update root certificates" << Log::Field("nodeID", nodeID) << Log::Field("count", pemCerts.Size());
+
+    try {
+        auto ctx = std::make_unique<grpc::ClientContext>();
+        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+
+        iamanager::v7::UpdateRootCertsRequest  request;
+        iamanager::v7::UpdateRootCertsResponse response;
+
+        request.set_node_id(nodeID.CStr());
+
+        for (const auto& pemCert : pemCerts) {
+            request.add_root_certs(pemCert.CStr());
+        }
+
+        if (auto status = mStub->UpdateRootCerts(ctx.get(), request, &response); !status.ok()) {
+            return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+        }
+
+        if (response.has_error()) {
+            return Error(response.error().exit_code(), response.error().message().c_str());
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
 }
 
 Error CertificateService::GetRootCerts(const String& nodeID, Array<SHA256Fingerprint>& fingerprints)
 {
-    (void)nodeID;
-    (void)fingerprints;
+    std::lock_guard lock {mMutex};
 
-    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    LOG_INF() << "Get root certificate fingerprints" << Log::Field("nodeID", nodeID);
+
+    try {
+        auto ctx = std::make_unique<grpc::ClientContext>();
+        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+
+        iamanager::v7::GetRootCertsFingerprintsRequest request;
+        iamanager::v7::RootCertsFingerprints           response;
+
+        request.set_node_id(nodeID.CStr());
+
+        if (auto status = mStub->GetRootCertsFingerprints(ctx.get(), request, &response); !status.ok()) {
+            return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+        }
+
+        if (response.has_error()) {
+            return Error(response.error().exit_code(), response.error().message().c_str());
+        }
+
+        for (const auto& fingerprint : response.cert_fingerprints()) {
+            if (auto err = fingerprints.EmplaceBack(fingerprint.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
 }
 
 } // namespace aos::common::iamclient

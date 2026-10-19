@@ -158,6 +158,21 @@ private:
     std::string mStorageID;
 };
 
+/**
+ * Sends root certificate updates to GRPC streams.
+ */
+class RootCertWriter : public StreamWriter<iamanager::v7::RootCertsInfos>, public aos::iamclient::CertListenerItf {
+private:
+    void OnCertChanged(const CertInfo& info) override
+    {
+        iamanager::v7::RootCertsInfos rootCerts;
+
+        rootCerts.add_root_certs()->set_cert_url(info.mCertURL.CStr());
+
+        WriteToStreams(rootCerts);
+    }
+};
+
 } // namespace aos::iam::iamserver
 
 #endif

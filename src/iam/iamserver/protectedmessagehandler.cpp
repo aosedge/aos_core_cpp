@@ -14,6 +14,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
+#include <common/utils/cryptohelper.hpp>
 
 #include "protectedmessagehandler.hpp"
 
@@ -36,11 +37,12 @@ const Error cStreamNotFoundError = {ErrorEnum::eNotFound, "stream not found"};
 Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::IdentProviderItf& identProvider,
     iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
-    iam::provisionmanager::ProvisionManagerItf& provisionManager)
+    iam::provisionmanager::ProvisionManagerItf& provisionManager, crypto::CertLoaderItf& certLoader)
 {
     LOG_DBG() << "Init message handler: handler=protected";
 
     mProvisionManager = &provisionManager;
+    mCertLoader       = &certLoader;
 
     return PublicMessageHandler::Init(
         nodeController, identProvider, permHandler, currentNodeHandler, nodeManager, certProvider);
@@ -299,17 +301,86 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
  **********************************************************************************************************************/
 
 grpc::Status ProtectedMessageHandler::UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
-    [[maybe_unused]] const iamproto::UpdateRootCertsRequest*                                request,
-    [[maybe_unused]] iamproto::UpdateRootCertsResponse*                                     response)
+    const iamproto::UpdateRootCertsRequest* request, iamproto::UpdateRootCertsResponse* response)
 {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+    const auto& nodeID = request->node_id();
+
+    LOG_DBG() << "Process update root certs request" << Log::Field("nodeID", nodeID.c_str())
+              << Log::Field("count", request->root_certs_size());
+
+    response->set_node_id(nodeID);
+
+    if (!ProcessOnThisNode(nodeID)) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
+            return handler->UpdateRootCerts(request, response, cDefaultTimeout);
+        });
+    }
+
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request->root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            LOG_ERR() << "Update root certs failed" << Log::Field(err);
+
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+    }
+
+    if (auto err = mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos); !err.IsNone()) {
+        LOG_ERR() << "Update root certs failed" << Log::Field(err);
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    return grpc::Status::OK;
 }
 
 grpc::Status ProtectedMessageHandler::GetRootCertsFingerprints([[maybe_unused]] grpc::ServerContext* context,
-    [[maybe_unused]] const iamproto::GetRootCertsFingerprintsRequest*                                request,
-    [[maybe_unused]] iamproto::RootCertsFingerprints*                                                response)
+    const iamproto::GetRootCertsFingerprintsRequest* request, iamproto::RootCertsFingerprints* response)
 {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not implemented");
+    const auto& nodeID = request->node_id();
+
+    LOG_DBG() << "Process get root cert fingerprints" << Log::Field("nodeID", nodeID.c_str());
+
+    response->set_node_id(nodeID);
+
+    if (!ProcessOnThisNode(nodeID)) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
+            return handler->GetRootCertsFingerprints(request, response, cDefaultTimeout);
+        });
+    }
+
+    auto fingerprints = std::make_unique<StaticArray<SHA256Fingerprint, crypto::cMaxRootCerts>>();
+
+    if (auto err = common::utils::CollectRootCertFingerprints(*GetCertProvider(), *mCertLoader, *fingerprints);
+        !err.IsNone()) {
+        LOG_ERR() << "Get root cert fingerprints failed" << Log::Field(err);
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    for (const auto& fingerprint : *fingerprints) {
+        response->add_cert_fingerprints(fingerprint.CStr());
+    }
+
+    return grpc::Status::OK;
 }
 
 grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerContext* context,
