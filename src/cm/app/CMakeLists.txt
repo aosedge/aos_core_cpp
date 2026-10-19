@@ -40,6 +40,7 @@ set(LIBRARIES
     aos::core::cm::launcher
     aos::core::cm::monitoring
     aos::core::cm::nodeinfoprovider
+    aos::core::cm::rootcerts
     aos::core::cm::storagestate
     aos::core::cm::unitconfig
     aos::core::cm::updatemanager
