@@ -82,7 +82,7 @@ public:
     /**
      * Subscribes to certificate changes.
      *
-     * @param certType Certificate type.
+     * @param storageID Certificate storage ID.
      */
     void OnCertKeyChanged(const CertInfo& info) override;
 

@@ -39,7 +39,7 @@ std::string GetOpensslErrorString();
 /**
  * Configures SSL context with the provided cert type.
  *
- * @param certType cert type.
+ * @param storageID cert storage ID.
  * @param caCertPath CA certificate path.
  * @param certProvider certificate provider.
  * @param certLoader certificate loader.
@@ -47,7 +47,7 @@ std::string GetOpensslErrorString();
  * @param[out] ctx SSL context.
  * @return Error
  */
-Error ConfigureSSLContext(const String& certType, const String& caCertPath,
+Error ConfigureSSLContext(const String& storageID, const String& caCertPath,
     const iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx);
 

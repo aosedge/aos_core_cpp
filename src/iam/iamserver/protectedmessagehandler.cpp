@@ -174,17 +174,17 @@ grpc::Status ProtectedMessageHandler::GetCertKeyStorageIDs([[maybe_unused]] grpc
         });
     }
 
-    Error                            err;
-    iam::provisionmanager::CertTypes certTypes;
+    Error                             err;
+    iam::provisionmanager::StorageIDs storageIDs;
 
-    Tie(certTypes, err) = mProvisionManager->GetCertTypes();
+    Tie(storageIDs, err) = mProvisionManager->GetCertKeyStorageIDs();
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types error: " << AOS_ERROR_WRAP(err);
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
     }
 
-    for (const auto& type : certTypes) {
+    for (const auto& type : storageIDs) {
         response->add_storage_ids(type.CStr());
     }
 
@@ -301,8 +301,8 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
 grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::CreateKeyRequest* request, iamproto::CreateKeyResponse* response)
 {
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->storage_id().c_str());
+    const auto& nodeID    = request->node_id();
+    const auto  storageID = String(request->storage_id().c_str());
 
     auto subject = request->subject();
 
@@ -311,7 +311,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     LOG_DBG() << "Process create key request" << Log::Field("nodeID", nodeID.c_str())
-              << Log::Field("storageID", certType) << Log::Field("subject", subject.c_str());
+              << Log::Field("storageID", storageID) << Log::Field("subject", subject.c_str());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -331,7 +331,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     const auto password = String(request->password().c_str());
     auto       csr      = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    if (auto err = mProvisionManager->CreateKey(certType, subject.c_str(), password, *csr); !err.IsNone()) {
+    if (auto err = mProvisionManager->CreateKey(storageID, subject.c_str(), password, *csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -340,7 +340,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     response->set_node_id(nodeID);
-    response->set_storage_id(certType.CStr());
+    response->set_storage_id(storageID.CStr());
     response->set_csr(csr->CStr());
 
     return grpc::Status::OK;
@@ -349,13 +349,13 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::ApplyCertRequest* request, iamproto::ApplyCertResponse* response)
 {
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->storage_id().c_str());
+    const auto& nodeID    = request->node_id();
+    const auto  storageID = String(request->storage_id().c_str());
 
-    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ", storageID=" << certType;
+    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ", storageID=" << storageID;
 
     response->set_node_id(nodeID);
-    response->mutable_cert_info()->set_storage_id(certType.CStr());
+    response->mutable_cert_info()->set_storage_id(storageID.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -371,7 +371,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     const auto pemCert  = String(request->cert().c_str());
     auto       certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = mProvisionManager->ApplyCert(certType, pemCert, *certInfo); !err.IsNone()) {
+    if (auto err = mProvisionManager->ApplyCert(storageID, pemCert, *certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);

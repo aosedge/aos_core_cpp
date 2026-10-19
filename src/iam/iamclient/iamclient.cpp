@@ -100,7 +100,7 @@ Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
     }
 
     if (msg.has_get_cert_key_storage_ids_request()) {
-        return ProcessGetCertTypes(msg.get_cert_key_storage_ids_request());
+        return ProcessGetCertKeyStorageIDs(msg.get_cert_key_storage_ids_request());
     }
 
     return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
@@ -314,51 +314,51 @@ Error IAMClient::ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& reque
 
 Error IAMClient::ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request)
 {
-    const String         nodeID   = request.node_id().c_str();
-    const String         certType = request.storage_id().c_str();
-    StaticString<cIDLen> subject  = request.subject().c_str();
-    const String         password = request.password().c_str();
+    const String         nodeID    = request.node_id().c_str();
+    const String         storageID = request.storage_id().c_str();
+    StaticString<cIDLen> subject   = request.subject().c_str();
+    const String         password  = request.password().c_str();
 
     if (subject.IsEmpty()) {
         subject = nodeID;
     }
 
-    LOG_DBG() << "Process create key request" << Log::Field("nodeID", nodeID) << Log::Field("type", certType)
+    LOG_DBG() << "Process create key request" << Log::Field("nodeID", nodeID) << Log::Field("storageID", storageID)
               << Log::Field("subject", subject);
 
     auto csr = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    auto err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
+    auto err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(storageID, subject, password, *csr));
 
-    return SendCreateKeyResponse(nodeID, certType, *csr, err);
+    return SendCreateKeyResponse(nodeID, storageID, *csr, err);
 }
 
 Error IAMClient::ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request)
 {
-    const String nodeID   = request.node_id().c_str();
-    const String certType = request.storage_id().c_str();
-    const String pemCert  = request.cert().c_str();
+    const String nodeID    = request.node_id().c_str();
+    const String storageID = request.storage_id().c_str();
+    const String pemCert   = request.cert().c_str();
 
-    LOG_DBG() << "Process apply cert request: type=" << certType;
+    LOG_DBG() << "Process apply cert request: type=" << storageID;
 
     auto  certInfo = std::make_unique<CertInfo>();
-    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, *certInfo));
+    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
 
-    return SendApplyCertResponse(nodeID, certType, certInfo->mCertURL, certInfo->mSerial, err);
+    return SendApplyCertResponse(nodeID, storageID, certInfo->mCertURL, certInfo->mSerial, err);
 }
 
-Error IAMClient::ProcessGetCertTypes(const iamanager::v7::GetCertKeyStorageIDsRequest& request)
+Error IAMClient::ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStorageIDsRequest& request)
 {
     const String nodeID = request.node_id().c_str();
 
     LOG_DBG() << "Process get cert types: nodeID=" << nodeID;
 
-    auto [certTypes, err] = mProvisionManager->GetCertTypes();
+    auto [storageIDs, err] = mProvisionManager->GetCertKeyStorageIDs();
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types failed: error=" << AOS_ERROR_WRAP(err);
     }
 
-    return SendGetCertTypesResponse(certTypes, err);
+    return SendGetCertKeyStorageIDsResponse(storageIDs, err);
 }
 
 Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
@@ -422,7 +422,7 @@ Error IAMClient::SendApplyCertResponse(
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error)
+Error IAMClient::SendGetCertKeyStorageIDsResponse(const provisionmanager::StorageIDs& types, const Error& error)
 {
     (void)error;
 
