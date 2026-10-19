@@ -96,6 +96,37 @@ RetWithError<std::string> LoadPEMCertificates(
     }
 }
 
+RetWithError<std::string> LoadRootCertificates(const ::aos::iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider)
+{
+    try {
+        auto certInfos = std::make_unique<StaticArray<CertInfo, crypto::cMaxRootCerts>>();
+
+        if (auto err = certProvider.GetRootCerts(*certInfos); !err.IsNone()) {
+            return {"", AOS_ERROR_WRAP(Error(err, "Load root certificates failed"))};
+        }
+
+        std::string rootCertsPem;
+
+        for (const auto& certInfo : *certInfos) {
+            auto [rootCert, err] = LoadPEMCertificates(certInfo.mCertURL, certLoader, cryptoProvider);
+            if (!err.IsNone()) {
+                return {"", AOS_ERROR_WRAP(err)};
+            }
+
+            rootCertsPem += rootCert;
+        }
+
+        if (rootCertsPem.empty()) {
+            return {"", AOS_ERROR_WRAP(ErrorEnum::eNotFound)};
+        }
+
+        return {rootCertsPem, ErrorEnum::eNone};
+    } catch (const std::exception& e) {
+        return {"", AOS_ERROR_WRAP(utils::ToAosError(e))};
+    }
+}
+
 std::string GetOpensslErrorString()
 {
     std::ostringstream oss;
@@ -111,11 +142,94 @@ std::string GetOpensslErrorString()
     return oss.str();
 }
 
-Error ConfigureSSLContext(const String& storageID, const String& caCertPath,
-    const iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx)
+Error CollectRootCertFingerprints(const ::aos::iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, Array<SHA256Fingerprint>& fingerprints)
+{
+    auto certInfos = std::make_unique<StaticArray<CertInfo, crypto::cMaxRootCerts>>();
+
+    if (auto err = certProvider.GetRootCerts(*certInfos); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    fingerprints.Clear();
+
+    for (const auto& certInfo : *certInfos) {
+        auto [certificates, err] = certLoader.LoadCertsChainByURL(certInfo.mCertURL);
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (certificates->IsEmpty()) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+
+        const auto&                               raw = (*certificates)[0].mRaw;
+        StaticArray<uint8_t, crypto::cSHA256Size> hash;
+
+        if (auto resizeErr = hash.Resize(crypto::cSHA256Size); !resizeErr.IsNone()) {
+            return AOS_ERROR_WRAP(resizeErr);
+        }
+
+        SHA256(raw.Get(), raw.Size(), hash.Get());
+
+        if (auto pushErr = fingerprints.EmplaceBack(); !pushErr.IsNone()) {
+            return AOS_ERROR_WRAP(pushErr);
+        }
+
+        if (auto hexErr = fingerprints.Back().ByteArrayToHex(hash); !hexErr.IsNone()) {
+            return AOS_ERROR_WRAP(hexErr);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error LoadRootCertsToSSLContext(const std::string& rootCertsPem, SSL_CTX* ctx)
+{
+    BIO* bio = BIO_new_mem_buf(rootCertsPem.c_str(), -1);
+    if (!bio) {
+        return Error(ErrorEnum::eRuntime, "failed to create BIO");
+    }
+
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
+
+    X509_STORE* store = SSL_CTX_get_cert_store(ctx);
+    if (!store) {
+        return Error(ErrorEnum::eRuntime, "failed to get cert store");
+    }
+
+    size_t caCount = 0;
+
+    X509* ca = nullptr;
+    while ((ca = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr) {
+        std::unique_ptr<X509, decltype(&X509_free)> caPtr(ca, X509_free);
+
+        if (X509_STORE_add_cert(store, ca) != 1) {
+            return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+        }
+
+        ++caCount;
+    }
+
+    if (caCount == 0) {
+        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error ConfigureSSLContext(const String& storageID, const ::aos::iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx)
 {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+
+    // Drop file and system CAs. Trusted roots come from the PKCS#11 root certificate storage.
+    auto* store = X509_STORE_new();
+    if (store == nullptr) {
+        return Error(ErrorEnum::eRuntime, "failed to create cert store");
+    }
+
+    SSL_CTX_set_cert_store(ctx, store);
 
     auto certInfo = std::make_unique<CertInfo>();
 
@@ -126,6 +240,11 @@ Error ConfigureSSLContext(const String& storageID, const String& caCertPath,
     auto [certificate, errLoad] = common::utils::LoadPEMCertificates(certInfo->mCertURL, certLoader, cryptoProvider);
     if (!errLoad.IsNone()) {
         return errLoad;
+    }
+
+    auto [rootCertsPem, errRoot] = LoadRootCertificates(certProvider, certLoader, cryptoProvider);
+    if (!errRoot.IsNone()) {
+        return errRoot;
     }
 
     auto [pkey, errLoadKey] = LoadPrivateKey(certInfo->mKeyURL.CStr());
@@ -168,11 +287,7 @@ Error ConfigureSSLContext(const String& storageID, const String& caCertPath,
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    if (SSL_CTX_load_verify_locations(ctx, caCertPath.CStr(), nullptr) <= 0) {
-        return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
-    }
-
-    return ErrorEnum::eNone;
+    return LoadRootCertsToSSLContext(rootCertsPem, ctx);
 }
 
 } // namespace aos::common::utils
