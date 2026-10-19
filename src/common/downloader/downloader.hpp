@@ -43,9 +43,9 @@ public:
 
     /**
      * Initializes an HTTPS-only downloader with mutual TLS.
+     * Trusted roots are loaded from the PKCS#11 root certificate storage.
      *
      * @param certStorage IAM certificate storage.
-     * @param caCert CA certificate path.
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
@@ -53,7 +53,7 @@ public:
      * @param progressInterval progress interval.
      * @return Error.
      */
-    Error Init(std::string_view certStorage, std::string_view caCert, aos::iamclient::CertProviderItf& certProvider,
+    Error Init(std::string_view certStorage, aos::iamclient::CertProviderItf& certProvider,
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         aos::alerts::SenderItf* sender = nullptr, std::chrono::seconds progressInterval = std::chrono::seconds {30});
 
@@ -122,7 +122,6 @@ private:
     aos::alerts::SenderItf* mSender {nullptr};
 
     std::string                      mCertStorage;
-    std::string                      mCACert;
     aos::iamclient::CertProviderItf* mCertProvider {};
     crypto::CertLoaderItf*           mCertLoader {};
     crypto::x509::ProviderItf*       mCryptoProvider {};
