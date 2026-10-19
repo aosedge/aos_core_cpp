@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <core/cm/tests/mocks/rootcertsmock.hpp>
 #include <core/common/crypto/certloader.hpp>
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/crypto/softhsmenv.hpp>
@@ -149,7 +150,6 @@ public:
         tests::utils::InitLog();
 
         mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
-        mConfig.mCACert                   = CERTIFICATES_CM_DIR "/ca.cer";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentProviderMock, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
@@ -238,7 +238,7 @@ public:
 
         auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProviderMock, mIdentProviderMock, mCertProviderStub,
             mCertLoader, mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManagerMock, mStateHandlerMock,
-            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock);
+            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock, mRootCertsMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
@@ -353,6 +353,7 @@ protected:
     launcher::EnvVarHandlerMock            mEnvVarHandlerMock;
     iamclient::CertHandlerMock             mCertHandlerMock;
     iamclient::ProvisioningMock            mProvisioningMock;
+    rootcerts::RootCertsMock               mRootCertsMock;
 
     std::optional<HTTPServer>     mDiscoveryServer;
     std::optional<HTTPServer>     mCloudServer;
@@ -781,6 +782,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
     StaticArray<StaticString<oci::cDigestLen>, 1> digests;
     digests.EmplaceBack("sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b");
 
+    // cppcheck-suppress templateRecursion
     auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
 
     auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
