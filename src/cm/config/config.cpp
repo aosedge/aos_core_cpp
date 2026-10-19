@@ -131,7 +131,6 @@ Error ParseConfig(const std::string& filename, Config& config)
         common::utils::CaseInsensitiveObjectWrapper object(result);
         auto empty = common::utils::CaseInsensitiveObjectWrapper(Poco::makeShared<Poco::JSON::Object>());
 
-        config.mCACert     = object.GetValue<std::string>("caCert");
         config.mWorkingDir = object.GetValue<std::string>("workingDir");
 
         ParseMonitoringConfig(object.Has("monitoring") ? object.GetObject("monitoring") : empty, config.mMonitoring);
