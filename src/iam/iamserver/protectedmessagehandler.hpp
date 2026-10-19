@@ -19,7 +19,7 @@
 #include <core/iam/permhandler/itf/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
@@ -91,8 +91,8 @@ private:
         iamproto::ResumeNodeResponse* response) override;
 
     // IAMProvisioningService interface
-    grpc::Status GetCertTypes(grpc::ServerContext* context, const iamproto::GetCertTypesRequest* request,
-        iamproto::CertTypes* response) override;
+    grpc::Status GetCertKeyStorageIDs(grpc::ServerContext* context,
+        const iamproto::GetCertKeyStorageIDsRequest* request, iamproto::CertKeyStorageIDs* response) override;
     grpc::Status StartProvisioning(grpc::ServerContext* context, const iamproto::StartProvisioningRequest* request,
         iamproto::StartProvisioningResponse* response) override;
     grpc::Status FinishProvisioning(grpc::ServerContext* context, const iamproto::FinishProvisioningRequest* request,

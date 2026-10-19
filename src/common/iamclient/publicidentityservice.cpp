@@ -49,7 +49,7 @@ Error PublicIdentityService::Init(
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
+    mStub = iamanager::v7::IAMPublicIdentityService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -68,7 +68,7 @@ Error PublicIdentityService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMPublicIdentityService::NewStub(
+    mStub = iamanager::v7::IAMPublicIdentityService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     if (mSubscriptionManager) {
@@ -88,7 +88,7 @@ Error PublicIdentityService::GetSystemInfo(SystemInfo& info)
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
     google::protobuf::Empty   request;
-    iamanager::v6::SystemInfo response;
+    iamanager::v7::SystemInfo response;
 
     if (auto status = mStub->GetSystemInfo(ctx.get(), request, &response); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
@@ -114,7 +114,7 @@ Error PublicIdentityService::GetSubjects(Array<StaticString<cIDLen>>& subjects)
     ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
     google::protobuf::Empty request;
-    iamanager::v6::Subjects response;
+    iamanager::v7::Subjects response;
 
     if (auto status = mStub->GetSubjects(ctx.get(), request, &response); !status.ok()) {
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
@@ -140,7 +140,7 @@ Error PublicIdentityService::SubscribeListener(aos::iamclient::SubjectsListenerI
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v6::Subjects& proto, SubjectArray& subjects) -> Error {
+        auto convertFunc = [](const iamanager::v7::Subjects& proto, SubjectArray& subjects) -> Error {
             for (const auto& subject : proto.subjects()) {
                 if (auto err = subjects.EmplaceBack(subject.c_str()); !err.IsNone()) {
                     return AOS_ERROR_WRAP(err);
@@ -154,7 +154,7 @@ Error PublicIdentityService::SubscribeListener(aos::iamclient::SubjectsListenerI
         };
 
         mSubscriptionManager = std::make_unique<SubjectsSubscriptionManager>(mStub.get(), request,
-            &iamanager::v6::IAMPublicIdentityService::Stub::SubscribeSubjectsChanged, convertFunc, notifyFunc,
+            &iamanager::v7::IAMPublicIdentityService::Stub::SubscribeSubjectsChanged, convertFunc, notifyFunc,
             "SubjectsSubscription");
     }
 
