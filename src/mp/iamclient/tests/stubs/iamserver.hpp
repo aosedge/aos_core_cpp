@@ -13,14 +13,14 @@
 
 #include <common/utils/grpchelper.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/iam/certhandler/certhandler.hpp>
 
 /**
  * Test IAM server.
  */
-class TestIAMServer final : public iamanager::v6::IAMPublicNodesService::Service {
+class TestIAMServer final : public iamanager::v7::IAMPublicNodesService::Service {
 public:
     /**
      * Constructor.
@@ -40,7 +40,7 @@ public:
      * @param message Message.
      * @return True if success.
      */
-    bool SendIncomingMessage(const iamanager::v6::IAMIncomingMessages& message) { return mStream->Write(message); }
+    bool SendIncomingMessage(const iamanager::v7::IAMIncomingMessages& message) { return mStream->Write(message); }
 
     /**
      * Wait for connection.
@@ -87,7 +87,7 @@ public:
      *
      * @return Outgoing message.
      */
-    iamanager::v6::IAMOutgoingMessages GetOutgoingMessage() const { return mOutgoingMsg; }
+    iamanager::v7::IAMOutgoingMessages GetOutgoingMessage() const { return mOutgoingMsg; }
 
 private:
     constexpr static std::chrono::seconds kTimeout = std::chrono::seconds(5);
@@ -99,18 +99,18 @@ private:
         aos::common::utils::SetGRPCServerOptions(builder);
 
         builder.AddListeningPort("localhost:8002", grpc::InsecureServerCredentials());
-        builder.RegisterService(static_cast<iamanager::v6::IAMPublicNodesService::Service*>(this));
+        builder.RegisterService(static_cast<iamanager::v7::IAMPublicNodesService::Service*>(this));
 
         return builder.BuildAndStart();
     }
 
     grpc::Status RegisterNode(grpc::ServerContext*,
-        grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>* stream)
+        grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>* stream)
     {
         try {
             mStream = stream;
 
-            iamanager::v6::IAMOutgoingMessages incomingMsg;
+            iamanager::v7::IAMOutgoingMessages incomingMsg;
 
             mConnected = true;
             mCV.notify_all();
@@ -131,9 +131,9 @@ private:
     std::unique_ptr<grpc::Server>      mServer;
     std::string                        mCertType;
     aos::CertInfo                      mCertInfo;
-    iamanager::v6::IAMOutgoingMessages mOutgoingMsg;
+    iamanager::v7::IAMOutgoingMessages mOutgoingMsg;
 
-    grpc::ServerReaderWriter<iamanager::v6::IAMIncomingMessages, iamanager::v6::IAMOutgoingMessages>* mStream {};
+    grpc::ServerReaderWriter<iamanager::v7::IAMIncomingMessages, iamanager::v7::IAMOutgoingMessages>* mStream {};
     std::mutex                                                                                        mLock;
     std::condition_variable                                                                           mCV;
     bool mConnected = false;
