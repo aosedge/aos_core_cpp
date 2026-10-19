@@ -33,10 +33,24 @@ public:
     /**
      * Initializes certificate info storage.
      *
+     * When @p provisioning is true, opens an in-memory SQLite session (`:memory:`).
+     * Otherwise opens the file-backed database at `<workingDir>/iamanager.db`.
+     *
      * @param config database configuration.
+     * @param provisioning whether IAM is started in provisioning mode.
      * @return Error.
      */
-    Error Init(const config::DatabaseConfig& config);
+    Error Init(const config::DatabaseConfig& config, bool provisioning = false);
+
+    /**
+     * Saves the in-memory database to `<workingDir>/iamanager.db`.
+     *
+     * Keeps the current in-memory session; the file is picked up after IAM restarts
+     * (e.g. after finish-provisioning restarts aos.target).
+     *
+     * @return Error.
+     */
+    Error Save();
 
     //
     // certhandler::StorageItf interface
@@ -139,13 +153,14 @@ private:
     // to be used in unit tests
     virtual int GetVersion() const;
 
-    void CreateMigrationData(const config::DatabaseConfig& config);
+    void CreateMigrationData();
     void DropMigrationData();
 
     void CreateTables();
     void FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result);
     void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
 
+    config::DatabaseConfig                      mConfig;
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;
 };
