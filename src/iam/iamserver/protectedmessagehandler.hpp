@@ -101,6 +101,10 @@ private:
         iamproto::DeprovisionResponse* response) override;
 
     // IAMCertificateService interface
+    grpc::Status UpdateRootCerts(grpc::ServerContext* context, const iamproto::UpdateRootCertsRequest* request,
+        iamproto::UpdateRootCertsResponse* response) override;
+    grpc::Status GetRootCertsFingerprints(grpc::ServerContext* context,
+        const iamproto::GetRootCertsFingerprintsRequest* request, iamproto::RootCertsFingerprints* response) override;
     grpc::Status CreateKey(grpc::ServerContext* context, const iamproto::CreateKeyRequest* request,
         iamproto::CreateKeyResponse* response) override;
     grpc::Status ApplyCert(grpc::ServerContext* context, const iamproto::ApplyCertRequest* request,
