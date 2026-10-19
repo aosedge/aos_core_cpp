@@ -59,6 +59,14 @@ public:
         CertInfo& resCert) const override;
 
     /**
+     * Returns trusted root certificates.
+     *
+     * @param[out] resCerts result certificates.
+     * @returns Error.
+     */
+    Error GetRootCerts(Array<CertInfo>& resCerts) const override;
+
+    /**
      * Subscribes certificates receiver.
      *
      * @param certType certificate type.
@@ -66,6 +74,14 @@ public:
      * @returns Error.
      */
     Error SubscribeListener(const String& certType, ::aos::iamclient::CertListenerItf& certListener) override;
+
+    /**
+     * Subscribes trusted root certificates receiver.
+     *
+     * @param certListener certificate listener.
+     * @returns Error.
+     */
+    Error SubscribeRootCertsListener(::aos::iamclient::CertListenerItf& certListener) override;
 
     /**
      * Unsubscribes certificate receiver.

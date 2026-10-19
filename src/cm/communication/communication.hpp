@@ -163,6 +163,14 @@ public:
     Error SendUnitStatus(const UnitStatus& unitStatus) override;
 
     /**
+     * Sends unit root certificates.
+     *
+     * @param unitRootCertificates unit root certificates.
+     * @return Error.
+     */
+    Error SendUnitRootCertificates(const UnitRootCertificates& unitRootCertificates) override;
+
+    /**
      * Subscribes to cloud connection events.
      *
      * @param listener listener reference.

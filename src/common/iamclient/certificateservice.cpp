@@ -135,4 +135,21 @@ Error CertificateService::ApplyCert(
     }
 }
 
+Error CertificateService::UpdateRootCerts(
+    const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts)
+{
+    (void)nodeID;
+    (void)pemCerts;
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
+Error CertificateService::GetRootCerts(const String& nodeID, Array<SHA256Fingerprint>& fingerprints)
+{
+    (void)nodeID;
+    (void)fingerprints;
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
 } // namespace aos::common::iamclient

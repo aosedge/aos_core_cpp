@@ -456,6 +456,13 @@ Error Communication::SendUnitStatus(const UnitStatus& unitStatus)
     return ErrorEnum::eNone;
 }
 
+Error Communication::SendUnitRootCertificates(const UnitRootCertificates& unitRootCertificates)
+{
+    (void)unitRootCertificates;
+
+    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+}
+
 Error Communication::SubscribeListener(cloudconnection::ConnectionListenerItf& listener)
 {
     std::lock_guard lock {mSubscribersMutex};
