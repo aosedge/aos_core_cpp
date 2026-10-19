@@ -155,8 +155,8 @@ TEST_F(CommonFileserverTest, StartReturnsCertificateErrorAndCanRetry)
     EXPECT_CALL(mCertProvider, GetCert(_, _, _, _))
         .Times(2)
         .WillRepeatedly(
-            Invoke([](const String& certType, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&) -> Error {
-                EXPECT_EQ(certType, "cm");
+            Invoke([](const String& storageID, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&) -> Error {
+                EXPECT_EQ(storageID, "cm");
                 return ErrorEnum::eNotFound;
             }));
 

@@ -293,9 +293,9 @@ TEST_P(DownloaderTLSFailureTest, CredentialFailureNeverDownloadsUnverifiedConten
     ASSERT_TRUE(mDownloader.Init("sm", ca, certProvider, certLoader, cryptoProvider).IsNone());
     EXPECT_CALL(certProvider, GetCert(_, _, _, _))
         .Times(4) // One HEAD for the partial file, then three failed GET attempts.
-        .WillRepeatedly(Invoke([&](const aos::String& certType, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
+        .WillRepeatedly(Invoke([&](const aos::String& storageID, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
                                    aos::CertInfo&) -> aos::Error {
-            EXPECT_EQ(certType, "sm");
+            EXPECT_EQ(storageID, "sm");
             switch (GetParam()) {
             case 1:
                 throw std::runtime_error("IAM unavailable");

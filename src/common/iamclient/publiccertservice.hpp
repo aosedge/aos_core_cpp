@@ -50,13 +50,13 @@ public:
     /**
      * Returns certificate info.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param issuer issuer name.
      * @param serial serial number.
      * @param[out] resCert result certificate.
      * @returns Error.
      */
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCert(const String& storageID, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override;
 
     /**
@@ -70,11 +70,11 @@ public:
     /**
      * Subscribes certificates receiver.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certReceiver certificate receiver.
      * @returns Error.
      */
-    Error SubscribeListener(const String& certType, ::aos::iamclient::CertListenerItf& certListener) override;
+    Error SubscribeListener(const String& storageID, ::aos::iamclient::CertListenerItf& certListener) override;
 
     /**
      * Subscribes trusted root certificates receiver.

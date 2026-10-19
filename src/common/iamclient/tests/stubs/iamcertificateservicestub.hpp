@@ -78,11 +78,11 @@ public:
         return mLastNodeID;
     }
 
-    std::string GetLastCertType() const
+    std::string GetLastStorageID() const
     {
         std::lock_guard lock {mMutex};
 
-        return mLastCertType;
+        return mLastStorageID;
     }
 
     std::string GetLastSubject() const
@@ -111,10 +111,10 @@ public:
     {
         std::lock_guard lock {mMutex};
 
-        mLastNodeID   = request->node_id();
-        mLastCertType = request->storage_id();
-        mLastSubject  = request->subject();
-        mLastPassword = request->password();
+        mLastNodeID    = request->node_id();
+        mLastStorageID = request->storage_id();
+        mLastSubject   = request->subject();
+        mLastPassword  = request->password();
 
         if (mHasError) {
             response->mutable_error()->set_exit_code(mErrorExitCode);
@@ -131,9 +131,9 @@ public:
     {
         std::lock_guard lock {mMutex};
 
-        mLastNodeID   = request->node_id();
-        mLastCertType = request->storage_id();
-        mLastPemCert  = request->cert();
+        mLastNodeID    = request->node_id();
+        mLastStorageID = request->storage_id();
+        mLastPemCert   = request->cert();
 
         if (mHasError) {
             response->mutable_error()->set_exit_code(mErrorExitCode);
@@ -156,7 +156,7 @@ private:
     int                           mErrorExitCode {0};
     std::string                   mErrorMessage;
     std::string                   mLastNodeID;
-    std::string                   mLastCertType;
+    std::string                   mLastStorageID;
     std::string                   mLastSubject;
     std::string                   mLastPassword;
     std::string                   mLastPemCert;

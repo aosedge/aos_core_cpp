@@ -1279,15 +1279,15 @@ void Communication::HandleMessage(const ResponseInfo& info, const StartProvision
         return;
     }
 
-    auto nodeCertTypes = std::make_unique<iam::provisionmanager::CertTypes>();
+    auto nodeStorageIDs = std::make_unique<iam::provisionmanager::StorageIDs>();
 
-    if (auto err = mProvisioningHandler->GetCertTypes(request.mNodeID, *nodeCertTypes); !err.IsNone()) {
+    if (auto err = mProvisioningHandler->GetCertKeyStorageIDs(request.mNodeID, *nodeStorageIDs); !err.IsNone()) {
         response->mError = AOS_ERROR_WRAP(err);
 
         return;
     }
 
-    for (const auto& cert : *nodeCertTypes) {
+    for (const auto& cert : *nodeStorageIDs) {
         if (auto err = response->mCSRs.EmplaceBack(); !err.IsNone()) {
             response->mError = AOS_ERROR_WRAP(err);
 

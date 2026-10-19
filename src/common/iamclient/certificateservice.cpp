@@ -70,11 +70,11 @@ Error CertificateService::Reconnect()
 }
 
 Error CertificateService::CreateKey(
-    const String& nodeID, const String& certType, const String& subject, const String& password, String& csr)
+    const String& nodeID, const String& storageID, const String& subject, const String& password, String& csr)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Create key" << Log::Field("nodeID", nodeID) << Log::Field("certType", certType)
+    LOG_INF() << "Create key" << Log::Field("nodeID", nodeID) << Log::Field("storageID", storageID)
               << Log::Field("subject", subject);
 
     try {
@@ -85,7 +85,7 @@ Error CertificateService::CreateKey(
         iamanager::v7::CreateKeyResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_storage_id(certType.CStr());
+        request.set_storage_id(storageID.CStr());
         request.set_subject(subject.CStr());
         request.set_password(password.CStr());
 
@@ -104,11 +104,11 @@ Error CertificateService::CreateKey(
 }
 
 Error CertificateService::ApplyCert(
-    const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo)
+    const String& nodeID, const String& storageID, const String& pemCert, CertInfo& certInfo)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Apply certificate" << Log::Field("nodeID", nodeID) << Log::Field("certType", certType);
+    LOG_INF() << "Apply certificate" << Log::Field("nodeID", nodeID) << Log::Field("storageID", storageID);
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
@@ -118,7 +118,7 @@ Error CertificateService::ApplyCert(
         iamanager::v7::ApplyCertResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_storage_id(certType.CStr());
+        request.set_storage_id(storageID.CStr());
         request.set_cert(pemCert.CStr());
 
         if (auto status = mStub->ApplyCert(ctx.get(), request, &response); !status.ok()) {

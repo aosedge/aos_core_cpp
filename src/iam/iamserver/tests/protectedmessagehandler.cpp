@@ -241,48 +241,48 @@ TEST_F(ProtectedMessageHandlerTest, ResumeNodeFails)
  * IAMProvisioningService tests
  **********************************************************************************************************************/
 
-TEST_F(ProtectedMessageHandlerTest, GetCertTypesSucceeds)
+TEST_F(ProtectedMessageHandlerTest, GetCertKeyStorageIDsSucceeds)
 {
     auto clientStub = CreateClientStub<iamproto::IAMProvisioningService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext                    context;
+    grpc::ClientContext                   context;
     iamproto::GetCertKeyStorageIDsRequest request;
     iamproto::CertKeyStorageIDs           response;
 
     request.set_node_id("node0");
 
-    iam::provisionmanager::CertTypes certTypes;
-    certTypes.PushBack("type1");
-    certTypes.PushBack("type2");
+    iam::provisionmanager::StorageIDs storageIDs;
+    storageIDs.PushBack("type1");
+    storageIDs.PushBack("type2");
 
-    EXPECT_CALL(mProvisionManager, GetCertTypes)
-        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>(certTypes, ErrorEnum::eNone)));
+    EXPECT_CALL(mProvisionManager, GetCertKeyStorageIDs)
+        .WillOnce(Return(RetWithError<iam::provisionmanager::StorageIDs>(storageIDs, ErrorEnum::eNone)));
 
     auto status = clientStub->GetCertKeyStorageIDs(&context, request, &response);
 
-    ASSERT_TRUE(status.ok()) << "GetCertTypes failed: code = " << status.error_code()
+    ASSERT_TRUE(status.ok()) << "GetCertKeyStorageIDs failed: code = " << status.error_code()
                              << ", message = " << status.error_message();
 
-    ASSERT_EQ(response.storage_ids_size(), certTypes.Size());
-    for (size_t i = 0; i < certTypes.Size(); i++) {
-        EXPECT_EQ(String(response.storage_ids(i).c_str()), certTypes[i]);
+    ASSERT_EQ(response.storage_ids_size(), storageIDs.Size());
+    for (size_t i = 0; i < storageIDs.Size(); i++) {
+        EXPECT_EQ(String(response.storage_ids(i).c_str()), storageIDs[i]);
     }
 }
 
-TEST_F(ProtectedMessageHandlerTest, GetCertTypesFails)
+TEST_F(ProtectedMessageHandlerTest, GetCertKeyStorageIDsFails)
 {
     auto clientStub = CreateClientStub<iamproto::IAMProvisioningService>();
     ASSERT_NE(clientStub, nullptr) << "Failed to create client stub";
 
-    grpc::ClientContext                    context;
+    grpc::ClientContext                   context;
     iamproto::GetCertKeyStorageIDsRequest request;
     iamproto::CertKeyStorageIDs           response;
 
     request.set_node_id("node0");
 
-    EXPECT_CALL(mProvisionManager, GetCertTypes)
-        .WillOnce(Return(RetWithError<iam::provisionmanager::CertTypes>({}, ErrorEnum::eFailed)));
+    EXPECT_CALL(mProvisionManager, GetCertKeyStorageIDs)
+        .WillOnce(Return(RetWithError<iam::provisionmanager::StorageIDs>({}, ErrorEnum::eFailed)));
 
     auto status = clientStub->GetCertKeyStorageIDs(&context, request, &response);
 

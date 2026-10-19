@@ -64,7 +64,7 @@ TEST_F(CertificateServiceTest, CreateKey)
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_STREQ(csr.CStr(), "-----BEGIN CERTIFICATE REQUEST-----\ntest_csr\n-----END CERTIFICATE REQUEST-----");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node1");
-    EXPECT_STREQ(mStub->GetLastCertType().c_str(), "online");
+    EXPECT_STREQ(mStub->GetLastStorageID().c_str(), "online");
     EXPECT_STREQ(mStub->GetLastSubject().c_str(), "CN=test");
     EXPECT_STREQ(mStub->GetLastPassword().c_str(), "password123");
 }
@@ -95,7 +95,7 @@ TEST_F(CertificateServiceTest, ApplyCert)
     EXPECT_STREQ(certInfo.mCertURL.CStr(), "file:///path/to/cert.pem");
     EXPECT_STREQ(certInfo.mKeyURL.CStr(), "file:///path/to/key.pem");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node2");
-    EXPECT_STREQ(mStub->GetLastCertType().c_str(), "offline");
+    EXPECT_STREQ(mStub->GetLastStorageID().c_str(), "offline");
     EXPECT_STREQ(mStub->GetLastPemCert().c_str(), "-----BEGIN CERTIFICATE-----\ntest_cert\n-----END CERTIFICATE-----");
 }
 

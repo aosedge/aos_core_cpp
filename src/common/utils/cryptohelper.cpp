@@ -111,7 +111,7 @@ std::string GetOpensslErrorString()
     return oss.str();
 }
 
-Error ConfigureSSLContext(const String& certType, const String& caCertPath,
+Error ConfigureSSLContext(const String& storageID, const String& caCertPath,
     const iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
     crypto::x509::ProviderItf& cryptoProvider, SSL_CTX* ctx)
 {
@@ -119,7 +119,7 @@ Error ConfigureSSLContext(const String& certType, const String& caCertPath,
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = certProvider.GetCert(certType, {}, {}, *certInfo); !err.IsNone()) {
+    if (auto err = certProvider.GetCert(storageID, {}, {}, *certInfo); !err.IsNone()) {
         return err;
     }
 

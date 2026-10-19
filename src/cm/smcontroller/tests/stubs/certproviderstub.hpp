@@ -16,10 +16,10 @@ namespace aos::iamclient {
  */
 class CertProviderStub : public CertProviderItf {
 public:
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCert(const String& storageID, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override
     {
-        (void)certType;
+        (void)storageID;
         (void)issuer;
         (void)serial;
         (void)resCert;
@@ -34,9 +34,9 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
+    Error SubscribeListener(const String& storageID, CertListenerItf& certListener) override
     {
-        (void)certType;
+        (void)storageID;
 
         mListener = &certListener;
 

@@ -32,7 +32,7 @@ public:
      *
      * @return Certificate type.
      */
-    std::string GetCertType() const { return mCertType; }
+    std::string GetStorageID() const { return mStorageID; }
 
     /**
      * Send incoming message.
@@ -129,7 +129,7 @@ private:
     }
 
     std::unique_ptr<grpc::Server>      mServer;
-    std::string                        mCertType;
+    std::string                        mStorageID;
     aos::CertInfo                      mCertInfo;
     iamanager::v7::IAMOutgoingMessages mOutgoingMsg;
 

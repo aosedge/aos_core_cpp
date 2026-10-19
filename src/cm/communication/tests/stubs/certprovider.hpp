@@ -26,7 +26,7 @@ public:
     {
     }
 
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCert(const String& storageID, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override
     {
         (void)issuer;
@@ -35,7 +35,7 @@ public:
         mCertCalled = true;
         mCondVar.notify_all();
 
-        mCertHandler.GetCert(certType, {}, {}, resCert);
+        mCertHandler.GetCert(storageID, {}, {}, resCert);
 
         return ErrorEnum::eNone;
     }
@@ -55,9 +55,9 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
+    Error SubscribeListener(const String& storageID, CertListenerItf& certListener) override
     {
-        (void)certType;
+        (void)storageID;
         (void)certListener;
 
         return ErrorEnum::eNone;

@@ -18,7 +18,7 @@ IAMClient::~IAMClient()
 }
 
 Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::string& iamPublicServerURL,
-    const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials, const String& certType,
+    const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials, const String& storageID,
     bool insecureConnection)
 {
     LOG_DBG() << "Init IAM client";
@@ -33,7 +33,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    err = PublicCertService::SubscribeListener(certType, *this);
+    err = PublicCertService::SubscribeListener(storageID, *this);
     if (!err.IsNone()) {
         return err;
     }

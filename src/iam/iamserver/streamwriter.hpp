@@ -127,10 +127,10 @@ public:
     /**
      * CertWriter constructor.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      */
-    explicit CertWriter(const std::string& certType)
-        : mCertType(certType)
+    explicit CertWriter(const std::string& storageID)
+        : mStorageID(storageID)
     {
     }
 
@@ -139,7 +139,7 @@ private:
     {
         iamanager::v7::CertKeyInfo grpcCertInfo;
 
-        grpcCertInfo.set_storage_id(mCertType);
+        grpcCertInfo.set_storage_id(mStorageID);
         grpcCertInfo.set_key_url(info.mKeyURL.CStr());
         grpcCertInfo.set_cert_url(info.mCertURL.CStr());
         grpcCertInfo.set_issuer(info.mIssuer.Get(), info.mIssuer.Size());
@@ -155,7 +155,7 @@ private:
         WriteToStreams(grpcCertInfo);
     }
 
-    std::string mCertType;
+    std::string mStorageID;
 };
 
 } // namespace aos::iam::iamserver
