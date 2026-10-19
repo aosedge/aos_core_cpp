@@ -109,8 +109,7 @@ void App::Init()
 
     mConfig = retConfig.mValue;
 
-    err = mPublicServiceHandler.Init(
-        common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL, mConfig.mCACert}, mCertLoader,
+    err = mPublicServiceHandler.Init(common::iamclient::Config {mConfig.mIAMConfig.mIAMPublicServerURL}, mCertLoader,
         mCryptoProvider, mProvisioning);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
 
