@@ -164,7 +164,7 @@ void AosCore::Init(const std::string& configFile, bool provisioning)
         mIAMClient = std::make_unique<iamclient::IAMClient>();
 
         err = mIAMClient->Init(clientConfig, mIdentHandler.get(), mCertHandler, mProvisionManager, mTLSCredentials,
-            mCurrentNodeHandler, mProvisioning);
+            mCurrentNodeHandler, mProvisioning, mCertLoader);
         AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
     }
 }
