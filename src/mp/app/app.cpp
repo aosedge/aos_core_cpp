@@ -20,6 +20,7 @@
 #include <core/common/version/version.hpp>
 
 #include <common/logger/logmodule.hpp>
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 #include <common/version/version.hpp>
 
@@ -151,15 +152,15 @@ void App::Init()
     // Subscribe to certificate changed
 
     if (!mProvisioning) {
-        err = mPublicServiceHandler.SubscribeCertKeyListener(mConfig.mCertStorage.c_str(), mCMClient);
+        err = common::utils::SubscribeCertChanges(mPublicServiceHandler, mConfig.mCertStorage.c_str(), mCMClient);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
-        err = mPublicServiceHandler.SubscribeCertKeyListener(
-            mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
+        err = common::utils::SubscribeCertChanges(
+            mPublicServiceHandler, mConfig.mIAMConfig.mCertStorage.c_str(), mProtectedNodeClient);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
-        err = mPublicServiceHandler.SubscribeCertKeyListener(
-            mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
+        err = common::utils::SubscribeCertChanges(
+            mPublicServiceHandler, mConfig.mVChan.mIAMCertStorage.c_str(), mCommunicationManager);
         AOS_ERROR_CHECK_AND_THROW(err, "can't subscribe to certificate changed");
 
         err = mPublicServiceHandler.SubscribeCertKeyListener(
