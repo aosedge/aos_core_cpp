@@ -35,6 +35,7 @@
 #include <cm/communication/communication.hpp>
 
 #include "mocks/launchermock.hpp"
+#include "mocks/rootcertsmock.hpp"
 #include "mocks/smcontrollermock.hpp"
 #include "mocks/storagestatemock.hpp"
 #include "mocks/updatemanagermock.hpp"
@@ -149,7 +150,6 @@ public:
         tests::utils::InitLog();
 
         mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
-        mConfig.mCACert                   = CERTIFICATES_CM_DIR "/ca.cer";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentProviderMock, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
@@ -238,7 +238,7 @@ public:
 
         auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProviderMock, mIdentProviderMock, mCertProviderStub,
             mCertLoader, mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManagerMock, mStateHandlerMock,
-            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock);
+            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock, mRootCertsMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
@@ -353,6 +353,7 @@ protected:
     launcher::EnvVarHandlerMock            mEnvVarHandlerMock;
     iamclient::CertHandlerMock             mCertHandlerMock;
     iamclient::ProvisioningMock            mProvisioningMock;
+    rootcerts::RootCertsMock               mRootCertsMock;
 
     std::optional<HTTPServer>     mDiscoveryServer;
     std::optional<HTTPServer>     mCloudServer;

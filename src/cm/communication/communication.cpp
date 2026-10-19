@@ -41,9 +41,10 @@ namespace {
  * Types
  **********************************************************************************************************************/
 
-using ReceivedMessageVariant = std::variant<common::cloudprotocol::Ack, common::cloudprotocol::Nack, BlobURLsInfo,
-    DesiredStatus, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
-    OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
+using ReceivedMessageVariant
+    = std::variant<common::cloudprotocol::Ack, common::cloudprotocol::Nack, BlobURLsInfo, DesiredStatus,
+        DesiredUnitRootCertificates, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
+        OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
 
 /***********************************************************************************************************************
  * Statics
@@ -124,6 +125,12 @@ std::unique_ptr<ReceivedMessageVariant> ParseMessage(const common::utils::CaseIn
         return result;
     }
 
+    case common::cloudprotocol::MessageTypeEnum::eDesiredUnitRootCertificates: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<DesiredUnitRootCertificates>());
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        return result;
+    }
 
     case common::cloudprotocol::MessageTypeEnum::eRenewCertificatesNotification: {
         err = common::cloudprotocol::FromJSON(json, result->emplace<RenewCertsNotification>());
@@ -186,7 +193,8 @@ Error Communication::Init(const cm::config::Config& config,
     crypto::x509::ProviderItf& cryptoProvider, crypto::CryptoHelper& cryptoHelper, crypto::UUIDItf& uuidProvider,
     updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
     smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
-    iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler)
+    iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler,
+    rootcerts::RootCertsItf& rootCerts)
 {
     LOG_DBG() << "Init communication";
 
@@ -206,6 +214,7 @@ Error Communication::Init(const cm::config::Config& config,
     mEnvVarHandler           = &envVarHandler;
     mCertHandler             = &certHandler;
     mProvisioningHandler     = &provisioningHandler;
+    mRootCerts               = &rootCerts;
 
     mCloudHttpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_GET);
     mCloudHttpRequest.setVersion(Poco::Net::HTTPMessage::HTTP_1_1);
@@ -459,9 +468,18 @@ Error Communication::SendUnitStatus(const UnitStatus& unitStatus)
 
 Error Communication::SendUnitRootCertificates(const UnitRootCertificates& unitRootCertificates)
 {
-    (void)unitRootCertificates;
+    LOG_DBG() << "Send unit root certificates" << Log::Field("count", unitRootCertificates.mNodeCertificates.Size())
+              << Log::Field("isPartial", unitRootCertificates.mIsPartial);
 
-    return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    try {
+        if (auto err = EnqueueMessage(CreateMessageData(unitRootCertificates), false); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error Communication::SubscribeListener(cloudconnection::ConnectionListenerItf& listener)
@@ -1390,6 +1408,18 @@ void Communication::HandleMessage(const ResponseInfo& info, const Deprovisioning
     }
 }
 
+void Communication::HandleMessage(const ResponseInfo& info, const DesiredUnitRootCertificates& desiredRootCerts)
+{
+    LOG_DBG() << "Received desired unit root certificates message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
+
+    if (auto err = mRootCerts->ProcessDesiredRootCertificates(desiredRootCerts); !err.IsNone()) {
+        LOG_ERR() << "Desired unit root certificates processing failed" << Log::Field(err);
+    }
+}
 
 void Communication::HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification)
 {

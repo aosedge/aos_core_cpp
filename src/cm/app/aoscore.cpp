@@ -71,7 +71,7 @@ void AosCore::Init(const std::string& configFile)
     // Initialize communication
 
     err = mCommunication.Init(mConfig, mIAMClient, mIAMClient, mIAMClient, mCertLoader, mCryptoProvider, mCryptoHelper,
-        mCryptoProvider, mUpdateManager, mStorageState, mSMController, mLauncher, mIAMClient, mIAMClient);
+        mCryptoProvider, mUpdateManager, mStorageState, mSMController, mLauncher, mIAMClient, mIAMClient, mRootCerts);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize communication");
 
     InitDatabase();
@@ -116,6 +116,9 @@ void AosCore::Init(const std::string& configFile)
     err = mUpdateManager.Init(mAllocator, {mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig,
         mNodeInfoProvider, mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize update manager");
+
+    err = mRootCerts.Init(mIAMClient, mNodeInfoProvider, mCommunication, mCommunication);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize root certificates");
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSPidFile, mConfig.mDNSIP);
 
@@ -228,6 +231,15 @@ void AosCore::Start()
         }
     });
 
+    err = mRootCerts.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start root certificates");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mRootCerts.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop root certificates" << Log::Field(err);
+        }
+    });
+
     err = mCommunication.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start communication");
 
@@ -291,7 +303,6 @@ void AosCore::InitSMController()
 {
     smcontroller::Config config;
 
-    config.mCACert      = mConfig.mCACert;
     config.mCertStorage = mConfig.mCertStorage;
     config.mCMServerURL = mConfig.mCMServerURL;
 

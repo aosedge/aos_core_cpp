@@ -42,6 +42,7 @@
 #include <core/iam/certhandler/certhandler.hpp>
 
 #include <cm/config/config.hpp>
+#include <cm/rootcerts/itf/rootcerts.hpp>
 #include <common/cloudprotocol/servicediscovery.hpp>
 #include <common/cloudprotocol/status.hpp>
 #include <common/utils/json.hpp>
@@ -71,6 +72,7 @@ public:
      * @param envVarHandler environment variable handler.
      * @param certHandler certificate handler.
      * @param provisioningHandler provisioning handler.
+     * @param rootCerts root certificates handler.
      * @return Error.
      */
     Error Init(const cm::config::Config& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
@@ -79,9 +81,8 @@ public:
         crypto::CryptoHelper& cryptoHelper, crypto::UUIDItf& uuidProvider,
         updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
         smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
-        iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler
-
-    );
+        iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler,
+        rootcerts::RootCertsItf& rootCerts);
 
     /**
      * Starts communication.
@@ -286,6 +287,7 @@ private:
     void  HandleMessage(const ResponseInfo& info, const StartProvisioningRequest& request);
     void  HandleMessage(const ResponseInfo& info, const FinishProvisioningRequest& request);
     void  HandleMessage(const ResponseInfo& info, const DeprovisioningRequest& request);
+    void  HandleMessage(const ResponseInfo& info, const DesiredUnitRootCertificates& desiredRootCerts);
     void  HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification);
     void  HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs);
     Error SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response);
@@ -310,6 +312,7 @@ private:
     launcher::EnvVarHandlerItf*                                    mEnvVarHandler {};
     iamclient::CertHandlerItf*                                     mCertHandler {};
     iamclient::ProvisioningItf*                                    mProvisioningHandler {};
+    rootcerts::RootCertsItf*                                       mRootCerts {};
     std::atomic_bool                                               mIsRunning {};
     SystemInfo                                                     mSystemInfo;
     std::mutex                                                     mSubscribersMutex;
