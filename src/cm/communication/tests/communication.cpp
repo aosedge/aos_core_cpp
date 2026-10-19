@@ -292,11 +292,11 @@ public:
         ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
     }
 
-    void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+    void ApplyCertificate(const String& storageID, const String& subject, const String& intermKeyPath,
         const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
     {
         StaticString<crypto::cCSRPEMLen> csr;
-        ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
+        ASSERT_TRUE(mCertHandler.CreateKey(storageID, subject, cPIN, csr).IsNone());
 
         // create certificate from CSR, CA priv key, CA cert
         StaticString<crypto::cPrivKeyPEMLen> intermKey;
@@ -320,7 +320,7 @@ public:
         clientCertChain.Append(caCert);
 
         // apply client certificate
-        auto err = mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo);
+        auto err = mCertHandler.ApplyCertificate(storageID, clientCertChain, certInfo);
         ASSERT_TRUE(err.IsNone()) << "Failed to apply certificate: " << tests::utils::ErrorToStr(err);
         EXPECT_EQ(certInfo.mSerial, serialArr);
     }
@@ -620,17 +620,17 @@ TEST_F(CMCommunicationTest, HandleStartProvisioning)
             return ErrorEnum::eNone;
         }));
 
-    EXPECT_CALL(mProvisioningMock, GetCertTypes).WillOnce(Invoke([](const auto& nodeID, auto& certTypes) {
+    EXPECT_CALL(mProvisioningMock, GetCertKeyStorageIDs).WillOnce(Invoke([](const auto& nodeID, auto& storageIDs) {
         EXPECT_STREQ(nodeID.CStr(), "nodeID");
 
-        certTypes.EmplaceBack("cm");
-        certTypes.EmplaceBack("iam");
+        storageIDs.EmplaceBack("cm");
+        storageIDs.EmplaceBack("iam");
         return ErrorEnum::eNone;
     }));
 
-    for (const auto& certType : {"cm", "iam"}) {
-        EXPECT_CALL(mCertHandlerMock, CreateKey(String("nodeID"), String(certType), _, String("Passw0rd!"), _))
-            .WillOnce(DoAll(SetArgReferee<4>(String {certType}), Return(ErrorEnum::eNone)));
+    for (const auto& storageID : {"cm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, CreateKey(String("nodeID"), String(storageID), _, String("Passw0rd!"), _))
+            .WillOnce(DoAll(SetArgReferee<4>(String {storageID}), Return(ErrorEnum::eNone)));
     }
 
     mCloudSendMessageQueue.Push(cMessage);
@@ -697,8 +697,8 @@ TEST_F(CMCommunicationTest, HandleFinishProvisioning)
             return ErrorEnum::eNone;
         }));
 
-    for (const auto& certType : {"sm", "iam"}) {
-        EXPECT_CALL(mCertHandlerMock, ApplyCert(String("nodeID"), String(certType), _, _))
+    for (const auto& storageID : {"sm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, ApplyCert(String("nodeID"), String(storageID), _, _))
             .WillOnce(Return(ErrorEnum::eNone));
     }
 
@@ -1145,10 +1145,10 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
 
     EXPECT_CALL(mCertHandlerMock, CreateKey)
         .Times(2)
-        .WillRepeatedly(Invoke([&createKeyPromises, &createKeyRequest](const String& nodeID, const String& certType,
+        .WillRepeatedly(Invoke([&createKeyPromises, &createKeyRequest](const String& nodeID, const String& storageID,
                                    const String& subject, const String& password, String& csr) {
             EXPECT_STREQ(nodeID.CStr(), std::string("node").append(std::to_string(createKeyRequest)).c_str());
-            EXPECT_STREQ(certType.CStr(), "iam");
+            EXPECT_STREQ(storageID.CStr(), "iam");
             EXPECT_TRUE(subject.IsEmpty());
             EXPECT_STREQ(password.CStr(), std::string("secret").append(std::to_string(createKeyRequest)).c_str());
 

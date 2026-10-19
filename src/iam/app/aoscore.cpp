@@ -267,7 +267,7 @@ Error AosCore::InitCertModules(const config::Config& config)
             return AOS_ERROR_WRAP(err);
         }
 
-        LOG_DBG() << "Register cert module: " << certModule->GetCertType();
+        LOG_DBG() << "Register cert module: " << certModule->GetStorageID();
 
         err = mCertHandler.RegisterModule(*certModule);
         if (!err.IsNone()) {

@@ -146,9 +146,9 @@ Error ConvertToAos(const iamanager::v7::PermissionsResponse& src, InstanceIdent&
 
 Error ConvertToAos(const iamanager::v7::CertKeyInfo& src, CertInfo& dst)
 {
-    dst.mCertType = src.storage_id().c_str();
-    dst.mCertURL  = src.cert_url().c_str();
-    dst.mKeyURL   = src.key_url().c_str();
+    dst.mStorageID = src.storage_id().c_str();
+    dst.mCertURL   = src.cert_url().c_str();
+    dst.mKeyURL    = src.key_url().c_str();
 
     if (!src.serial().empty()) {
         if (auto err = String(src.serial().c_str()).HexToByteArray(dst.mSerial); !err.IsNone()) {
