@@ -17,11 +17,11 @@
 
 #include <core/iam/nodemanager/itf/nodemanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 namespace aos::iam::iamserver {
 
-namespace iamproto = iamanager::v6;
+namespace iamproto = iamanager::v7;
 
 using NodeServerReaderWriter = grpc::ServerReaderWriter<iamproto::IAMIncomingMessages, iamproto::IAMOutgoingMessages>;
 
@@ -97,8 +97,8 @@ public:
      * @param responseTimeout response timeout.
      * @return grpc::Status.
      */
-    grpc::Status GetCertTypes(const iamproto::GetCertTypesRequest* request, iamproto::CertTypes* response,
-        const std::chrono::seconds responseTimeout);
+    grpc::Status GetCertKeyStorageIDs(const iamproto::GetCertKeyStorageIDsRequest* request,
+        iamproto::CertKeyStorageIDs* response, const std::chrono::seconds responseTimeout);
 
     /**
      * Sends start provisioning request and waits for response with timeout.

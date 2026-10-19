@@ -97,24 +97,24 @@ Error NodeStreamHandler::HandleStream()
     return err;
 }
 
-grpc::Status NodeStreamHandler::GetCertTypes(const iamproto::GetCertTypesRequest* request,
-    iamproto::CertTypes* response, const std::chrono::seconds responseTimeout)
+grpc::Status NodeStreamHandler::GetCertKeyStorageIDs(const iamproto::GetCertKeyStorageIDsRequest* request,
+    iamproto::CertKeyStorageIDs* response, const std::chrono::seconds responseTimeout)
 {
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_cert_types_response();
-    incoming.mutable_get_cert_types_request()->CopyFrom(*request);
+    outgoing.mutable_cert_key_storage_ids_response();
+    incoming.mutable_get_cert_key_storage_ids_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    if (!outgoing.has_cert_types_response()) {
+    if (!outgoing.has_cert_key_storage_ids_response()) {
         return grpc::Status::CANCELLED;
     }
 
-    response->CopyFrom(outgoing.cert_types_response());
+    response->CopyFrom(outgoing.cert_key_storage_ids_response());
 
     return grpc::Status::OK;
 }
