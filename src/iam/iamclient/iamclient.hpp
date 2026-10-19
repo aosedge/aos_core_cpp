@@ -88,14 +88,14 @@ private:
     Error ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& request);
     Error ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request);
     Error ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request);
-    Error ProcessGetCertTypes(const iamanager::v7::GetCertKeyStorageIDsRequest& request);
+    Error ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStorageIDsRequest& request);
 
     Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
     Error SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     Error SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
-    Error SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
+    Error SendGetCertKeyStorageIDsResponse(const provisionmanager::StorageIDs& types, const Error& error);
 
     aos::iamclient::IdentProviderItf*      mIdentProvider      = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager   = nullptr;

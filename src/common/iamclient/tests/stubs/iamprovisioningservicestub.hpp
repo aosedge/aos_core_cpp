@@ -40,11 +40,11 @@ public:
         }
     }
 
-    void SetCertTypes(const std::vector<std::string>& certTypes)
+    void SetStorageIDs(const std::vector<std::string>& storageIDs)
     {
         std::lock_guard lock {mMutex};
 
-        mCertTypes = certTypes;
+        mStorageIDs = storageIDs;
     }
 
     void SetProvisioningError(int exitCode, const std::string& message)
@@ -84,8 +84,8 @@ public:
 
         mLastNodeID = request->node_id();
 
-        for (const auto& certType : mCertTypes) {
-            response->add_storage_ids(certType);
+        for (const auto& storageID : mStorageIDs) {
+            response->add_storage_ids(storageID);
         }
 
         return grpc::Status::OK;
@@ -144,7 +144,7 @@ public:
 private:
     std::unique_ptr<grpc::Server> mServer;
     mutable std::mutex            mMutex;
-    std::vector<std::string>      mCertTypes;
+    std::vector<std::string>      mStorageIDs;
     bool                          mHasError {false};
     int                           mErrorExitCode {0};
     std::string                   mErrorMessage;
