@@ -54,11 +54,12 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
     crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
     currentnode::CurrentNodeHandlerItf& currentNodeHandler, nodemanager::NodeManagerItf& nodeManager,
     iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
-    bool provisioningMode)
+    database::Database& database, bool provisioningMode)
 {
     LOG_DBG() << "Init IAM server";
 
     mConfig           = config;
+    mDatabase         = &database;
     mCertLoader       = &certLoader;
     mCryptoProvider   = &cryptoProvider;
     mProvisioningMode = provisioningMode;
@@ -208,6 +209,12 @@ Error IAMServer::OnStartProvisioning(const String& password)
 Error IAMServer::OnFinishProvisioning(const String& password)
 {
     (void)password;
+
+    LOG_INF() << "Save IAM database to encrypted storage";
+
+    if (auto err = mDatabase->Save(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (!mConfig.mFinishProvisioningCmdArgs.empty()) {
         LOG_INF() << "Process on finish provisioning";
