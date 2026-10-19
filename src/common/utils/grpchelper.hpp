@@ -27,13 +27,13 @@ namespace aos::common::utils {
  * Get server credentials for mTLS.
  *
  * @param certInfo certificate information.
- * @param rootCertPath path to the root certificate.
+ * @param rootCertsPem trusted root certificates in PEM format.
  * @param certLoader certificate loader.
  * @param cryptoProvider crypto provider.
  * @return server credentials.
  */
 std::shared_ptr<grpc::ServerCredentials> GetMTLSServerCredentials(const CertInfo& certInfo,
-    const aos::String& rootCertPath, aos::crypto::CertLoaderItf& certLoader,
+    const std::string& rootCertsPem, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**
@@ -51,22 +51,22 @@ std::shared_ptr<grpc::ServerCredentials> GetTLSServerCredentials(
  * Get client credentials for MTLS connection.
  *
  * @param certInfo certificate information.
- * @param rootCertPath path to the root certificate.
+ * @param rootCertsPem trusted root certificates in PEM format.
  * @param certLoader certificate loader.
  * @param cryptoProvider crypto provider.
  * @return client credentials.
  */
 std::shared_ptr<grpc::ChannelCredentials> GetMTLSClientCredentials(const CertInfo& certInfo,
-    const aos::String& rootCertPath, aos::crypto::CertLoaderItf& certLoader,
+    const std::string& rootCertsPem, aos::crypto::CertLoaderItf& certLoader,
     aos::crypto::x509::ProviderItf& cryptoProvider);
 
 /**
  * Get client credentials for TLS connection.
  *
- * @param rootCertPath path to the root certificate.
+ * @param rootCertsPem trusted root certificates in PEM format.
  * @return client credentials.
  */
-std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const aos::String& rootCertPath);
+std::shared_ptr<grpc::ChannelCredentials> GetTLSClientCredentials(const std::string& rootCertsPem);
 
 /**
  * Create common gRPC channel arguments for clients.
