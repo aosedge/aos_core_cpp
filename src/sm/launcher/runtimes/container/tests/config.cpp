@@ -34,6 +34,8 @@ TEST(ContainerConfigTest, DefaultValues)
     EXPECT_TRUE(config.mHostBinds.empty());
     EXPECT_EQ(config.mCRunStateRoot, "/run/crun");
     EXPECT_EQ(config.mCRunExecutable, "/usr/bin/crun");
+    EXPECT_EQ(config.mConmonExecutable, "/usr/bin/conmon");
+    EXPECT_EQ(config.mConmonDir, "/run/aos/conmon");
 }
 
 TEST(ContainerConfigTest, ParseContainerConfig)
@@ -48,7 +50,9 @@ TEST(ContainerConfigTest, ParseContainerConfig)
             "lib"
         ],
         "crunStateRoot": "/var/aos/crun",
-        "crunExecutable": "/usr/local/bin/crun"
+        "crunExecutable": "/usr/local/bin/crun",
+        "conmonExecutable": "/usr/local/bin/conmon",
+        "conmonDir": "/var/aos/conmon"
     })";
 
     Poco::JSON::Parser                          parser;
@@ -66,6 +70,8 @@ TEST(ContainerConfigTest, ParseContainerConfig)
     EXPECT_EQ(config.mHostBinds, std::vector<std::string>({"usr", "lib"}));
     EXPECT_EQ(config.mCRunStateRoot, "/var/aos/crun");
     EXPECT_EQ(config.mCRunExecutable, "/usr/local/bin/crun");
+    EXPECT_EQ(config.mConmonExecutable, "/usr/local/bin/conmon");
+    EXPECT_EQ(config.mConmonDir, "/var/aos/conmon");
 }
 
 } // namespace aos::sm::launcher
