@@ -17,6 +17,27 @@ namespace aos::sm::launcher {
  * Statics
  **********************************************************************************************************************/
 
+namespace {
+
+Error GetContainerError(const ContainerStatus& status)
+{
+    if (status.mState == InstanceStateEnum::eActive) {
+        return ErrorEnum::eNone;
+    }
+
+    if (status.mOOMKilled) {
+        return Error(ErrorEnum::eFailed, "container killed by OOM");
+    }
+
+    if (status.mExitCode.HasValue() && *status.mExitCode != 0) {
+        return Error(ErrorEnum::eFailed, ("container exited with code " + std::to_string(*status.mExitCode)).c_str());
+    }
+
+    return ErrorEnum::eNone;
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -70,7 +91,7 @@ RunStatus Runner::GetInstanceStatus(const std::string& instanceID)
         return {instanceID, InstanceStateEnum::eFailed, err};
     }
 
-    return {instanceID, status.mState, ErrorEnum::eNone};
+    return {instanceID, status.mState, GetContainerError(status)};
 }
 
 RunStatus Runner::StartInstance(const std::string& instanceID, const RunParameters& params)
@@ -177,18 +198,21 @@ bool Runner::SyncStates()
         auto& storedData = stored.second;
 
         InstanceState newState = InstanceStateEnum::eFailed;
+        Error         newError;
 
         if (currentIt != currentStates.end()) {
             newState = currentIt->mState;
+            newError = GetContainerError(*currentIt);
         } else {
             LOG_WRN() << "Unknown container" << Log::Field("id", stored.first.c_str());
         }
 
-        if (newState != storedData.mRunState) {
+        if (newState != storedData.mRunState || newError != storedData.mRunError) {
             stateChanged = true;
         }
 
         storedData.mRunState = newState;
+        storedData.mRunError = newError;
 
         if (newState == InstanceStateEnum::eActive || storedData.mExceedsBurstLimit) {
             storedData.mNextRestartAt.reset();
@@ -278,7 +302,7 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
 
     std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
         [](const auto& unit) {
-            return RunStatus {unit.first, unit.second.mRunState, {}};
+            return RunStatus {unit.first, unit.second.mRunState, unit.second.mRunError};
         });
 
     return mRunningInstances;
@@ -315,6 +339,7 @@ RetWithError<InstanceState> Runner::InitContainerState(const std::string& instan
 
         auto& runningUnit     = mRunningContainers[instanceID];
         runningUnit.mRunState = status.mState;
+        runningUnit.mRunError = GetContainerError(status);
         runningUnit.mParams   = params;
     }
 

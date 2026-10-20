@@ -100,6 +100,7 @@ private:
 
     struct RunningUnitData {
         InstanceState       mRunState;
+        Error               mRunError;
         RunParameters       mParams;
         Time                mFirstStartTime = {Time::Now()};
         std::optional<Time> mNextRestartAt;
