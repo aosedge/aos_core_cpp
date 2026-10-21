@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fcntl.h>
 #include <filesystem>
 #include <memory>
 #include <sys/quota.h>
@@ -103,6 +104,30 @@ RetWithError<StaticString<cDeviceNameLen>> FSPlatform::GetBlockDevice(const Stri
     }
 
     return {device.c_str(), ErrorEnum::eNone};
+}
+
+Error FSPlatform::Sync(const String& path, bool syncFS) const
+{
+    auto fd = open(path.CStr(), O_RDONLY);
+    if (fd == -1) {
+        return AOS_ERROR_WRAP(Error(errno, "can't open path"));
+    }
+
+    Error err;
+
+    if (syncFS) {
+        if (syncfs(fd) == -1) {
+            err = AOS_ERROR_WRAP(Error(errno, "can't sync file system"));
+        }
+    } else {
+        if (fsync(fd) == -1) {
+            err = AOS_ERROR_WRAP(Error(errno, "can't sync file"));
+        }
+    }
+
+    close(fd);
+
+    return err;
 }
 
 } // namespace aos::common::utils
