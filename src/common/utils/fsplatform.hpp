@@ -73,6 +73,15 @@ public:
      */
     RetWithError<StaticString<cDeviceNameLen>> GetBlockDevice(const String& path) const override;
 
+    /**
+     * Flushes pending changes to the storage.
+     *
+     * @param path path to file or directory.
+     * @param syncFS if true, flushes the whole file system containing the path, otherwise flushes the file only.
+     * @return Error.
+     */
+    Error Sync(const String& path, bool syncFS) const override;
+
 private:
     static constexpr size_t cStatBlockSize = 512;
 };

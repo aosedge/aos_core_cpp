@@ -236,4 +236,48 @@ TEST(FSPlatformTest, GetBlockDeviceValidPath)
     std::filesystem::remove_all(tempDir);
 }
 
+TEST(FSPlatformTest, Sync)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    const auto tempDir = std::filesystem::temp_directory_path() / "sync-test";
+    const auto file    = tempDir / "sync-file.txt";
+
+    std::filesystem::create_directories(tempDir);
+
+    auto err = fs::WriteStringToFile(file.c_str(), "Test content", 0644);
+    ASSERT_TRUE(err.IsNone()) << "Failed to write file: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.Sync(tempDir.c_str(), true);
+    EXPECT_TRUE(err.IsNone()) << "Failed to sync file system by directory: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.Sync(file.c_str(), true);
+    EXPECT_TRUE(err.IsNone()) << "Failed to sync file system by file: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.Sync(file.c_str(), false);
+    EXPECT_TRUE(err.IsNone()) << "Failed to sync file: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.Sync(tempDir.c_str(), false);
+    EXPECT_TRUE(err.IsNone()) << "Failed to sync directory: " << tests::utils::ErrorToStr(err);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(FSPlatformTest, SyncInvalidPath)
+{
+    tests::utils::InitLog();
+
+    FSPlatform fsPlatform;
+
+    auto err = fsPlatform.Sync(String("/nonexistent/path"), true);
+    EXPECT_FALSE(err.IsNone()) << "Sync should fail for nonexistent path";
+    EXPECT_EQ(err.Code(), ENOENT) << "Expected ENOENT, got: " << tests::utils::ErrorToStr(err);
+
+    err = fsPlatform.Sync(String("/nonexistent/path"), false);
+    EXPECT_FALSE(err.IsNone()) << "Sync should fail for nonexistent path";
+    EXPECT_EQ(err.Code(), ENOENT) << "Expected ENOENT, got: " << tests::utils::ErrorToStr(err);
+}
+
 } // namespace aos::common::utils::test
