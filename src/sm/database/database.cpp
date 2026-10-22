@@ -413,6 +413,8 @@ Database::~Database()
 
 Error Database::Init(const std::string& workDir, const common::config::Migration& migrationConfig)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Init database" << Log::Field("workDir", workDir.c_str());
 
     if (mSession && mSession->isConnected()) {
@@ -427,6 +429,9 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
 
         const auto dbPath = Poco::Path(workDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
+
+        // Each committed write must survive power loss: runtimes rely on it to recover the update.
+        *mSession << "PRAGMA synchronous = FULL;", now;
 
         CreateTables();
 
