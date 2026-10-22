@@ -428,6 +428,9 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
         const auto dbPath = Poco::Path(workDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
 
+        // Each committed write must survive power loss: runtimes rely on it to recover the update.
+        *mSession << "PRAGMA synchronous = FULL;", now;
+
         CreateTables();
 
         mMigration.emplace(*mSession, migrationConfig.mMigrationPath, migrationConfig.mMergedMigrationPath);
