@@ -304,33 +304,14 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     const auto& nodeID   = request->node_id();
     const auto  certType = String(request->type().c_str());
 
-    LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", type=" << certType;
-
     auto subject = request->subject();
 
-    if (subject.empty() && !GetIdentProvider()) {
-        Error err(ErrorEnum::eNotFound, "Subject can't be empty");
-
-        LOG_ERR() << "Create key failed: error=" << err;
-
-        common::pbconvert::SetErrorInfo(err, *response);
-
-        return grpc::Status::OK;
+    if (subject.empty()) {
+        subject = nodeID;
     }
 
-    if (subject.empty() && GetIdentProvider()) {
-        auto systemInfo = std::make_unique<SystemInfo>();
-
-        if (auto err = GetIdentProvider()->GetSystemInfo(*systemInfo); !err.IsNone()) {
-            LOG_ERR() << "Get systemInfo failed" << Log::Field(err);
-
-            common::pbconvert::SetErrorInfo(err, *response);
-
-            return grpc::Status::OK;
-        }
-
-        subject = systemInfo->mSystemID.CStr();
-    }
+    LOG_DBG() << "Process create key request" << Log::Field("nodeID", nodeID.c_str()) << Log::Field("type", certType)
+              << Log::Field("subject", subject.c_str());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
