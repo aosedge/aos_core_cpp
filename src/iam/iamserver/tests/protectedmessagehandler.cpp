@@ -34,8 +34,6 @@ namespace {
  **********************************************************************************************************************/
 
 constexpr auto cServerURL = "0.0.0.0:4456";
-constexpr auto cSystemID  = "system-id";
-constexpr auto cUnitModel = "unit-model";
 
 template <typename T>
 std::unique_ptr<typename T::Stub> CreateClientStub()
@@ -436,12 +434,8 @@ TEST_F(ProtectedMessageHandlerTest, CreateKeySucceeds)
 
     request.set_node_id("node0");
 
-    auto systemInfo        = std::make_unique<SystemInfo>();
-    systemInfo->mSystemID  = cSystemID;
-    systemInfo->mUnitModel = cUnitModel;
-
-    EXPECT_CALL(mProvisionManager, CreateKey).WillOnce(Return(ErrorEnum::eNone));
-    EXPECT_CALL(mIdentProvider, GetSystemInfo).WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eNone)));
+    // empty subject falls back to node ID
+    EXPECT_CALL(mProvisionManager, CreateKey(_, String("node0"), _, _)).WillOnce(Return(ErrorEnum::eNone));
 
     auto status = clientStub->CreateKey(&context, request, &response);
 

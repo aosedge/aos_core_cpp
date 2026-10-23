@@ -480,7 +480,6 @@ protected:
         return std::make_pair(std::move(server), std::move(client));
     }
 
-    const String                  cSubject     = "aos-core";
     const String                  cCertType    = "iam";
     const String                  cPassword    = "admin";
     const ::common::v2::ErrorInfo cErrorInfoOK = ::common::v2::ErrorInfo();
@@ -780,13 +779,9 @@ TEST_F(IAMClientTest, CreateKey)
     auto [server, client] = InitTest(NodeStateEnum::eUnprovisioned);
     NodeInfo nodeInfo     = DefaultNodeInfo(NodeStateEnum::eUnprovisioned);
 
-    auto systemInfo       = std::make_unique<SystemInfo>();
-    systemInfo->mSystemID = cSubject;
-
-    // CreateKey
-    EXPECT_CALL(mProvisionManager, CreateKey(cCertType, cSubject, cPassword, _)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mProvisionManager, CreateKey(cCertType, String(nodeInfo.mNodeID), cPassword, _))
+        .WillOnce(Return(ErrorEnum::eNone));
     EXPECT_CALL(*server, OnCreateKeyResponse(std::string(cCertType.CStr()), _, ::common::v2::ErrorInfo()));
-    EXPECT_CALL(mIdentProvider, GetSystemInfo).WillOnce(DoAll(SetArgReferee<0>(*systemInfo), Return(ErrorEnum::eNone)));
 
     server->CreateKeyRequest(nodeInfo.mNodeID.CStr(), "", cCertType.CStr(), cPassword.CStr());
     server->WaitResponse();
