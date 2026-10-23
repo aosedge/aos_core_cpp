@@ -35,6 +35,7 @@
 #include <cm/communication/communication.hpp>
 
 #include "mocks/launchermock.hpp"
+#include "mocks/rootcertsmock.hpp"
 #include "mocks/smcontrollermock.hpp"
 #include "mocks/storagestatemock.hpp"
 #include "mocks/updatemanagermock.hpp"
@@ -149,7 +150,6 @@ public:
         tests::utils::InitLog();
 
         mConfig.mServiceDiscoveryURL      = cDiscoveryServerURL;
-        mConfig.mCACert                   = CERTIFICATES_CM_DIR "/ca.cer";
         mConfig.mCloudResponseWaitTimeout = Time::cSeconds * 5;
 
         EXPECT_CALL(mIdentProviderMock, GetSystemInfo).WillRepeatedly(Invoke([this](SystemInfo& info) {
@@ -185,9 +185,12 @@ public:
 
         auto [certPEM, err2] = common::utils::LoadPEMCertificates(certInfo.mCertURL, mCertLoader, mCryptoProvider);
         EXPECT_EQ(err2, ErrorEnum::eNone);
+        (void)certPEM;
 
-        err = mCryptoHelper.Init(mAllocator, mCertProviderStub, mCryptoProvider, mCertLoader,
-            mConfig.mServiceDiscoveryURL.c_str(), mConfig.mCACert.c_str());
+        mCertProviderStub.SetRootCerts({"file://" CERTIFICATES_CM_DIR "/ca.cer"});
+
+        err = mCryptoHelper.Init(
+            mAllocator, mCertProviderStub, mCryptoProvider, mCertLoader, mConfig.mServiceDiscoveryURL.c_str());
         ASSERT_TRUE(err.IsNone()) << "Failed to initialize crypto helper: " << tests::utils::ErrorToStr(err);
 
         StartHTTPServer();
@@ -235,7 +238,7 @@ public:
 
         auto err = mCommunication.Init(mConfig, mCurrentNodeInfoProviderMock, mIdentProviderMock, mCertProviderStub,
             mCertLoader, mCryptoProvider, mCryptoHelper, mUUIDProvider, mUpdateManagerMock, mStateHandlerMock,
-            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock);
+            mLogProviderMock, mEnvVarHandlerMock, mCertHandlerMock, mProvisioningMock, mRootCertsMock);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
@@ -289,11 +292,11 @@ public:
         ASSERT_TRUE(mCertHandler.RegisterModule(certModule).IsNone());
     }
 
-    void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+    void ApplyCertificate(const String& storageID, const String& subject, const String& intermKeyPath,
         const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
     {
         StaticString<crypto::cCSRPEMLen> csr;
-        ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
+        ASSERT_TRUE(mCertHandler.CreateKey(storageID, subject, cPIN, csr).IsNone());
 
         // create certificate from CSR, CA priv key, CA cert
         StaticString<crypto::cPrivKeyPEMLen> intermKey;
@@ -317,7 +320,7 @@ public:
         clientCertChain.Append(caCert);
 
         // apply client certificate
-        auto err = mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo);
+        auto err = mCertHandler.ApplyCertificate(storageID, clientCertChain, certInfo);
         ASSERT_TRUE(err.IsNone()) << "Failed to apply certificate: " << tests::utils::ErrorToStr(err);
         EXPECT_EQ(certInfo.mSerial, serialArr);
     }
@@ -350,6 +353,7 @@ protected:
     launcher::EnvVarHandlerMock            mEnvVarHandlerMock;
     iamclient::CertHandlerMock             mCertHandlerMock;
     iamclient::ProvisioningMock            mProvisioningMock;
+    rootcerts::RootCertsMock               mRootCertsMock;
 
     std::optional<HTTPServer>     mDiscoveryServer;
     std::optional<HTTPServer>     mCloudServer;
@@ -617,17 +621,17 @@ TEST_F(CMCommunicationTest, HandleStartProvisioning)
             return ErrorEnum::eNone;
         }));
 
-    EXPECT_CALL(mProvisioningMock, GetCertTypes).WillOnce(Invoke([](const auto& nodeID, auto& certTypes) {
+    EXPECT_CALL(mProvisioningMock, GetCertKeyStorageIDs).WillOnce(Invoke([](const auto& nodeID, auto& storageIDs) {
         EXPECT_STREQ(nodeID.CStr(), "nodeID");
 
-        certTypes.EmplaceBack("cm");
-        certTypes.EmplaceBack("iam");
+        storageIDs.EmplaceBack("cm");
+        storageIDs.EmplaceBack("iam");
         return ErrorEnum::eNone;
     }));
 
-    for (const auto& certType : {"cm", "iam"}) {
-        EXPECT_CALL(mCertHandlerMock, CreateKey(String("nodeID"), String(certType), _, String("Passw0rd!"), _))
-            .WillOnce(DoAll(SetArgReferee<4>(String {certType}), Return(ErrorEnum::eNone)));
+    for (const auto& storageID : {"cm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, CreateKey(String("nodeID"), String(storageID), _, String("Passw0rd!"), _))
+            .WillOnce(DoAll(SetArgReferee<4>(String {storageID}), Return(ErrorEnum::eNone)));
     }
 
     mCloudSendMessageQueue.Push(cMessage);
@@ -694,8 +698,8 @@ TEST_F(CMCommunicationTest, HandleFinishProvisioning)
             return ErrorEnum::eNone;
         }));
 
-    for (const auto& certType : {"sm", "iam"}) {
-        EXPECT_CALL(mCertHandlerMock, ApplyCert(String("nodeID"), String(certType), _, _))
+    for (const auto& storageID : {"sm", "iam"}) {
+        EXPECT_CALL(mCertHandlerMock, ApplyCert(String("nodeID"), String(storageID), _, _))
             .WillOnce(Return(ErrorEnum::eNone));
     }
 
@@ -1142,10 +1146,10 @@ TEST_F(CMCommunicationTest, ReceiveRenewCertsNotification)
 
     EXPECT_CALL(mCertHandlerMock, CreateKey)
         .Times(2)
-        .WillRepeatedly(Invoke([&createKeyPromises, &createKeyRequest](const String& nodeID, const String& certType,
+        .WillRepeatedly(Invoke([&createKeyPromises, &createKeyRequest](const String& nodeID, const String& storageID,
                                    const String& subject, const String& password, String& csr) {
             EXPECT_STREQ(nodeID.CStr(), std::string("node").append(std::to_string(createKeyRequest)).c_str());
-            EXPECT_STREQ(certType.CStr(), "iam");
+            EXPECT_STREQ(storageID.CStr(), "iam");
             EXPECT_TRUE(subject.IsEmpty());
             EXPECT_STREQ(password.CStr(), std::string("secret").append(std::to_string(createKeyRequest)).c_str());
 

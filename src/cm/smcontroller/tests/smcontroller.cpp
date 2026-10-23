@@ -812,9 +812,9 @@ TEST_F(SMControllerTest, OnCertChanged)
 
     // 4) Trigger certificate change
     CertInfo certInfo;
-    certInfo.mCertType = "online";
-    certInfo.mCertURL  = "file:///path/to/cert.pem";
-    certInfo.mKeyURL   = "file:///path/to/key.pem";
+    certInfo.mStorageID = "online";
+    certInfo.mCertURL   = "file:///path/to/cert.pem";
+    certInfo.mKeyURL    = "file:///path/to/key.pem";
 
     listener->OnCertChanged(certInfo);
 

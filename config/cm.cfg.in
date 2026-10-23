@@ -1,5 +1,4 @@
 {
-    "caCert": "@CMAKE_INSTALL_PREFIX@/share/ca-certificates/aos/AosRootCA.crt",
     "certStorage": "cm",
     "serviceDiscoveryUrl": "https://aoscloud.io:9000/sd/v7/",
     "iamProtectedServerUrl": "localhost:8089",

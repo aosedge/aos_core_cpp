@@ -34,6 +34,16 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, RenewCer
 Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, IssuedUnitCerts& issuedUnitCerts);
 
 /**
+ * Converts JSON object to desired unit root certificates object.
+ *
+ * @param json json object representation.
+ * @param[out] desiredUnitRootCertificates desired unit root certificates object to fill.
+ * @return Error.
+ */
+Error FromJSON(
+    const common::utils::CaseInsensitiveObjectWrapper& json, DesiredUnitRootCertificates& desiredUnitRootCertificates);
+
+/**
  * Converts JSON object to issue unit certs object.
  *
  * @param json json object representation.
@@ -50,6 +60,15 @@ Error ToJSON(const IssueUnitCerts& issueUnitCerts, Poco::JSON::Object& json);
  * @return Error.
  */
 Error ToJSON(const InstallUnitCertsConfirmation& confirmation, Poco::JSON::Object& json);
+
+/**
+ * Converts unit root certificates object to JSON object.
+ *
+ * @param unitRootCertificates unit root certificates object to convert.
+ * @param[out] json JSON object to fill.
+ * @return Error.
+ */
+Error ToJSON(const UnitRootCertificates& unitRootCertificates, Poco::JSON::Object& json);
 
 } // namespace aos::common::cloudprotocol
 

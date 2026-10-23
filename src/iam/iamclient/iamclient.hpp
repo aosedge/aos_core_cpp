@@ -13,6 +13,7 @@
 #include <core/common/iamclient/itf/certprovider.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/tools/error.hpp>
+#include <core/common/types/certificates.hpp>
 #include <core/iam/currentnode/itf/currentnodehandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
@@ -46,12 +47,13 @@ public:
      * @param tlsCredentials TLS credentials.
      * @param currentNodeHandler current node handler.
      * @param provisioningMode flag indicating whether provisioning mode is active.
+     * @param certLoader certificate loader.
      * @returns Error.
      */
     Error Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
         common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
-        bool provisioningMode);
+        bool provisioningMode, crypto::CertLoaderItf& certLoader);
 
     /**
      * Starts IAM client.
@@ -75,34 +77,40 @@ public:
     Error ReconnectClient() override;
 
 protected:
-    Error ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg) override;
+    Error ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg) override;
     void  OnConnected() override;
     void  OnDisconnected() override;
 
 private:
     Error SendNodeInfo();
-    Error ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request);
-    Error ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request);
-    Error ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request);
-    Error ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request);
-    Error ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request);
-    Error ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request);
-    Error ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request);
-    Error ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request);
+    Error ProcessStartProvisioning(const iamanager::v7::StartProvisioningRequest& request);
+    Error ProcessFinishProvisioning(const iamanager::v7::FinishProvisioningRequest& request);
+    Error ProcessDeprovision(const iamanager::v7::DeprovisionRequest& request);
+    Error ProcessPauseNode(const iamanager::v7::PauseNodeRequest& request);
+    Error ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& request);
+    Error ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request);
+    Error ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request);
+    Error ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStorageIDsRequest& request);
+    Error ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request);
+    Error ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request);
 
     Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
 
     Error SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     Error SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,
         const Array<uint8_t>& serial, const Error& error);
-    Error SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error);
+    Error SendGetCertKeyStorageIDsResponse(const provisionmanager::StorageIDs& types, const Error& error);
+    Error SendUpdateRootCertsResponse(const String& nodeID, const Error& error);
+    Error SendGetRootCertsFingerprintsResponse(
+        const String& nodeID, const Array<SHA256Fingerprint>& fingerprints, const Error& error);
 
     aos::iamclient::IdentProviderItf*      mIdentProvider      = nullptr;
     provisionmanager::ProvisionManagerItf* mProvisionManager   = nullptr;
     aos::iamclient::CertProviderItf*       mCertProvider       = nullptr;
     currentnode::CurrentNodeHandlerItf*    mCurrentNodeHandler = nullptr;
 
-    std::string mCertStorage;
+    std::string            mCertStorage;
+    crypto::CertLoaderItf* mCertLoader {};
 };
 
 } // namespace aos::iam::iamclient

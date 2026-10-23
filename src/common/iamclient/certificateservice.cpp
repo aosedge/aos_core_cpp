@@ -44,7 +44,7 @@ Error CertificateService::Init(const std::string& iamProtectedServerURL, const s
         mCredentials = credentials;
     }
 
-    mStub = iamanager::v6::IAMCertificateService::NewStub(
+    mStub = iamanager::v7::IAMCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
@@ -63,29 +63,29 @@ Error CertificateService::Reconnect()
 
     mCredentials = credentials;
 
-    mStub = iamanager::v6::IAMCertificateService::NewStub(
+    mStub = iamanager::v7::IAMCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMProtectedServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
     return ErrorEnum::eNone;
 }
 
 Error CertificateService::CreateKey(
-    const String& nodeID, const String& certType, const String& subject, const String& password, String& csr)
+    const String& nodeID, const String& storageID, const String& subject, const String& password, String& csr)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Create key" << Log::Field("nodeID", nodeID) << Log::Field("certType", certType)
+    LOG_INF() << "Create key" << Log::Field("nodeID", nodeID) << Log::Field("storageID", storageID)
               << Log::Field("subject", subject);
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::CreateKeyRequest  request;
-        iamanager::v6::CreateKeyResponse response;
+        iamanager::v7::CreateKeyRequest  request;
+        iamanager::v7::CreateKeyResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_type(certType.CStr());
+        request.set_storage_id(storageID.CStr());
         request.set_subject(subject.CStr());
         request.set_password(password.CStr());
 
@@ -104,21 +104,21 @@ Error CertificateService::CreateKey(
 }
 
 Error CertificateService::ApplyCert(
-    const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo)
+    const String& nodeID, const String& storageID, const String& pemCert, CertInfo& certInfo)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_INF() << "Apply certificate" << Log::Field("nodeID", nodeID) << Log::Field("certType", certType);
+    LOG_INF() << "Apply certificate" << Log::Field("nodeID", nodeID) << Log::Field("storageID", storageID);
 
     try {
         auto ctx = std::make_unique<grpc::ClientContext>();
         ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
 
-        iamanager::v6::ApplyCertRequest  request;
-        iamanager::v6::ApplyCertResponse response;
+        iamanager::v7::ApplyCertRequest  request;
+        iamanager::v7::ApplyCertResponse response;
 
         request.set_node_id(nodeID.CStr());
-        request.set_type(certType.CStr());
+        request.set_storage_id(storageID.CStr());
         request.set_cert(pemCert.CStr());
 
         if (auto status = mStub->ApplyCert(ctx.get(), request, &response); !status.ok()) {
@@ -130,6 +130,75 @@ Error CertificateService::ApplyCert(
         }
 
         return AOS_ERROR_WRAP(pbconvert::ConvertToAos(response.cert_info(), certInfo));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
+}
+
+Error CertificateService::UpdateRootCerts(
+    const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Update root certificates" << Log::Field("nodeID", nodeID) << Log::Field("count", pemCerts.Size());
+
+    try {
+        auto ctx = std::make_unique<grpc::ClientContext>();
+        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+
+        iamanager::v7::UpdateRootCertsRequest  request;
+        iamanager::v7::UpdateRootCertsResponse response;
+
+        request.set_node_id(nodeID.CStr());
+
+        for (const auto& pemCert : pemCerts) {
+            request.add_root_certs(pemCert.CStr());
+        }
+
+        if (auto status = mStub->UpdateRootCerts(ctx.get(), request, &response); !status.ok()) {
+            return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+        }
+
+        if (response.has_error()) {
+            return Error(response.error().exit_code(), response.error().message().c_str());
+        }
+
+        return ErrorEnum::eNone;
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
+    }
+}
+
+Error CertificateService::GetRootCerts(const String& nodeID, Array<SHA256Fingerprint>& fingerprints)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_INF() << "Get root certificate fingerprints" << Log::Field("nodeID", nodeID);
+
+    try {
+        auto ctx = std::make_unique<grpc::ClientContext>();
+        ctx->set_deadline(std::chrono::system_clock::now() + cServiceTimeout);
+
+        iamanager::v7::GetRootCertsFingerprintsRequest request;
+        iamanager::v7::RootCertsFingerprints           response;
+
+        request.set_node_id(nodeID.CStr());
+
+        if (auto status = mStub->GetRootCertsFingerprints(ctx.get(), request, &response); !status.ok()) {
+            return Error(ErrorEnum::eRuntime, status.error_message().c_str());
+        }
+
+        if (response.has_error()) {
+            return Error(response.error().exit_code(), response.error().message().c_str());
+        }
+
+        for (const auto& fingerprint : response.cert_fingerprints()) {
+            if (auto err = fingerprints.EmplaceBack(fingerprint.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
+
+        return ErrorEnum::eNone;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e, ErrorEnum::eRuntime));
     }

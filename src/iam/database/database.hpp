@@ -33,10 +33,24 @@ public:
     /**
      * Initializes certificate info storage.
      *
+     * When @p provisioning is true, opens an in-memory SQLite session (`:memory:`).
+     * Otherwise opens the file-backed database at `<workingDir>/iamanager.db`.
+     *
      * @param config database configuration.
+     * @param provisioning whether IAM is started in provisioning mode.
      * @return Error.
      */
-    Error Init(const config::DatabaseConfig& config);
+    Error Init(const config::DatabaseConfig& config, bool provisioning = false);
+
+    /**
+     * Saves the in-memory database to `<workingDir>/iamanager.db`.
+     *
+     * Keeps the current in-memory session; the file is picked up after IAM restarts
+     * (e.g. after finish-provisioning restarts aos.target).
+     *
+     * @return Error.
+     */
+    Error Save();
 
     //
     // certhandler::StorageItf interface
@@ -45,11 +59,11 @@ public:
     /**
      * Adds new certificate info to the storage.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certInfo certificate information.
      * @return Error.
      */
-    Error AddCertInfo(const String& certType, const aos::CertInfo& certInfo) override;
+    Error AddCertInfo(const String& storageID, const aos::CertInfo& certInfo) override;
 
     /**
      * Returns information about certificate with specified issuer and serial number.
@@ -64,28 +78,28 @@ public:
     /**
      * Returns info for all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certsInfo result certificates info.
      * @return Error.
      */
-    Error GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo) override;
+    Error GetCertsInfo(const String& storageID, Array<aos::CertInfo>& certsInfo) override;
 
     /**
      * Removes certificate with specified certificate type and url.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certURL certificate URL.
      * @return Error.
      */
-    Error RemoveCertInfo(const String& certType, const String& certURL) override;
+    Error RemoveCertInfo(const String& storageID, const String& certURL) override;
 
     /**
      * Removes all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @return Error.
      */
-    Error RemoveAllCertsInfo(const String& certType) override;
+    Error RemoveAllCertsInfo(const String& storageID) override;
 
     //
     // nodemanager::NodeInfoStorageItf interface
@@ -139,13 +153,14 @@ private:
     // to be used in unit tests
     virtual int GetVersion() const;
 
-    void CreateMigrationData(const config::DatabaseConfig& config);
+    void CreateMigrationData();
     void DropMigrationData();
 
     void CreateTables();
-    void FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result);
+    void FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result);
     void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
 
+    config::DatabaseConfig                      mConfig;
     std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;
 };

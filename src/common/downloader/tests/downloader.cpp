@@ -240,7 +240,7 @@ TEST_F(DownloaderTest, MutualTLSRejectsUnencryptedURLs)
     StrictMock<aos::crypto::CertLoaderMock>      certLoader;
     StrictMock<aos::crypto::x509::ProviderMock>  cryptoProvider;
 
-    ASSERT_TRUE(mDownloader.Init("sm", "ca.pem", certProvider, certLoader, cryptoProvider).IsNone());
+    ASSERT_TRUE(mDownloader.Init("sm", certProvider, certLoader, cryptoProvider).IsNone());
 
     EXPECT_TRUE(mDownloader.Download("http", "http://localhost:8000/test_file.dat", mFilePath.c_str())
                     .Is(aos::ErrorEnum::eInvalidArgument));
@@ -249,23 +249,13 @@ TEST_F(DownloaderTest, MutualTLSRejectsUnencryptedURLs)
     EXPECT_FALSE(std::filesystem::exists(mFilePath));
 }
 
-TEST_F(DownloaderTest, MutualTLSRequiresCA)
-{
-    StrictMock<aos::iamclient::CertProviderMock> certProvider;
-    StrictMock<aos::crypto::CertLoaderMock>      certLoader;
-    StrictMock<aos::crypto::x509::ProviderMock>  cryptoProvider;
-
-    EXPECT_TRUE(
-        mDownloader.Init("sm", "", certProvider, certLoader, cryptoProvider).Is(aos::ErrorEnum::eInvalidArgument));
-}
-
 TEST_F(DownloaderTest, MutualTLSDoesNotChangeOtherDownloaders)
 {
     StrictMock<aos::iamclient::CertProviderMock> certProvider;
     StrictMock<aos::crypto::CertLoaderMock>      certLoader;
     StrictMock<aos::crypto::x509::ProviderMock>  cryptoProvider;
 
-    ASSERT_TRUE(mDownloader.Init("sm", "ca.pem", certProvider, certLoader, cryptoProvider).IsNone());
+    ASSERT_TRUE(mDownloader.Init("sm", certProvider, certLoader, cryptoProvider).IsNone());
 
     aos::common::downloader::Downloader downloader;
     ASSERT_TRUE(downloader.Init().IsNone());
@@ -290,12 +280,12 @@ TEST_P(DownloaderTLSFailureTest, CredentialFailureNeverDownloadsUnverifiedConten
     Poco::Net::HTTPServer                     server(factory, socket, params);
     server.start();
 
-    ASSERT_TRUE(mDownloader.Init("sm", ca, certProvider, certLoader, cryptoProvider).IsNone());
+    ASSERT_TRUE(mDownloader.Init("sm", certProvider, certLoader, cryptoProvider).IsNone());
     EXPECT_CALL(certProvider, GetCert(_, _, _, _))
         .Times(4) // One HEAD for the partial file, then three failed GET attempts.
-        .WillRepeatedly(Invoke([&](const aos::String& certType, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
+        .WillRepeatedly(Invoke([&](const aos::String& storageID, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
                                    aos::CertInfo&) -> aos::Error {
-            EXPECT_EQ(certType, "sm");
+            EXPECT_EQ(storageID, "sm");
             switch (GetParam()) {
             case 1:
                 throw std::runtime_error("IAM unavailable");
@@ -322,7 +312,7 @@ TEST_F(DownloaderTest, MutualTLSRejectsMalformedURL)
     StrictMock<aos::iamclient::CertProviderMock> certProvider;
     StrictMock<aos::crypto::CertLoaderMock>      certLoader;
     StrictMock<aos::crypto::x509::ProviderMock>  cryptoProvider;
-    ASSERT_TRUE(mDownloader.Init("sm", "ca.pem", certProvider, certLoader, cryptoProvider).IsNone());
+    ASSERT_TRUE(mDownloader.Init("sm", certProvider, certLoader, cryptoProvider).IsNone());
     EXPECT_FALSE(mDownloader.Download("invalid", "https://[invalid", mFilePath.c_str()).IsNone());
     EXPECT_FALSE(std::filesystem::exists(mFilePath));
 }

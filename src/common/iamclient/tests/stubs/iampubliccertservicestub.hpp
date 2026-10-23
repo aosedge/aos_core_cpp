@@ -12,19 +12,21 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <google/protobuf/empty.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
- * Test stub for IAMPublicCertService v6.
+ * Test stub for IAMPublicCertificateService v7.
  */
-class IAMPublicCertServiceStub final : public iamanager::v6::IAMPublicCertService::Service {
+class IAMPublicCertServiceStub final : public iamanager::v7::IAMPublicCertificateService::Service {
 public:
     IAMPublicCertServiceStub() { mServer = CreateServer(); }
 
@@ -36,34 +38,37 @@ public:
         mKeyURL  = keyURL;
     }
 
-    std::string GetRequestedCertType() const { return mRequestedCertType; }
+    void AddAllCert(const std::string& certURL, const std::string& keyURL) { mAllCerts.push_back({certURL, keyURL}); }
 
-    bool SendCertChanged(const std::string& certType, const std::string& certURL, const std::string& keyURL)
+    std::string GetRequestedStorageID() const { return mRequestedStorageID; }
+
+    bool SendCertChanged(const std::string& storageID, const std::string& certURL, const std::string& keyURL)
     {
         std::lock_guard lock {mMutex};
 
-        auto it = mWriters.find(certType);
+        auto it = mWriters.find(storageID);
         if (it == mWriters.end() || !it->second) {
             return false;
         }
 
-        iamanager::v6::CertInfo certInfo;
-        certInfo.set_type(certType);
+        iamanager::v7::CertKeyInfo certInfo;
+
+        certInfo.set_storage_id(storageID);
         certInfo.set_cert_url(certURL);
         certInfo.set_key_url(keyURL);
 
         return it->second->Write(certInfo);
     }
 
-    bool WaitForConnection(const std::string& certType = "", std::chrono::seconds timeout = std::chrono::seconds(5))
+    bool WaitForConnection(const std::string& storageID = "", std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mMutex};
 
-        if (certType.empty()) {
+        if (storageID.empty()) {
             return mCV.wait_for(lock, timeout, [this] { return !mWriters.empty(); });
         }
 
-        return mCV.wait_for(lock, timeout, [this, &certType] { return mWriters.count(certType) > 0; });
+        return mCV.wait_for(lock, timeout, [this, &storageID] { return mWriters.count(storageID) > 0; });
     }
 
     void Close()
@@ -93,28 +98,40 @@ private:
         return builder.BuildAndStart();
     }
 
-    grpc::Status GetCert(
-        grpc::ServerContext*, const iamanager::v6::GetCertRequest* request, iamanager::v6::CertInfo* response) override
+    grpc::Status GetCertKey(grpc::ServerContext*, const iamanager::v7::GetCertKeyRequest* request,
+        iamanager::v7::CertKeyInfo* response) override
     {
-        mRequestedCertType = request->type();
+        mRequestedStorageID = request->storage_id();
 
         response->set_cert_url(mCertURL);
         response->set_key_url(mKeyURL);
-        response->set_type(request->type());
+        response->set_storage_id(request->storage_id());
 
         return grpc::Status::OK;
     }
 
-    grpc::Status SubscribeCertChanged(grpc::ServerContext* context,
-        const iamanager::v6::SubscribeCertChangedRequest*  request,
-        grpc::ServerWriter<iamanager::v6::CertInfo>*       writer) override
+    grpc::Status GetRootCerts(
+        grpc::ServerContext*, const google::protobuf::Empty*, iamanager::v7::RootCertsInfos* response) override
     {
-        std::string certType = request->type();
+        for (const auto& [certURL, keyURL] : mAllCerts) {
+            (void)keyURL;
+
+            response->add_root_certs()->set_cert_url(certURL);
+        }
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status SubscribeCertKeyChanged(grpc::ServerContext* context,
+        const iamanager::v7::SubscribeCertKeyChangedRequest*  request,
+        grpc::ServerWriter<iamanager::v7::CertKeyInfo>*       writer) override
+    {
+        std::string storageID = request->storage_id();
 
         {
             std::lock_guard lock {mMutex};
 
-            mWriters[certType] = writer;
+            mWriters[storageID] = writer;
         }
 
         mCV.notify_all();
@@ -126,7 +143,7 @@ private:
         {
             std::lock_guard lock {mMutex};
 
-            auto it = mWriters.find(certType);
+            auto it = mWriters.find(storageID);
             if (it != mWriters.end() && it->second == writer) {
                 mWriters.erase(it);
             }
@@ -135,14 +152,21 @@ private:
         return grpc::Status::OK;
     }
 
-    std::unique_ptr<grpc::Server>                                       mServer;
-    std::string                                                         mCertURL;
-    std::string                                                         mKeyURL;
-    std::string                                                         mRequestedCertType;
-    std::map<std::string, grpc::ServerWriter<iamanager::v6::CertInfo>*> mWriters;
-    std::mutex                                                          mMutex;
-    std::condition_variable                                             mCV;
-    bool                                                                mClose {false};
+    grpc::Status SubscribeRootCertsChanged(grpc::ServerContext*, const google::protobuf::Empty*,
+        grpc::ServerWriter<iamanager::v7::RootCertsInfos>*) override
+    {
+        return grpc::Status::OK;
+    }
+
+    std::unique_ptr<grpc::Server>                                          mServer;
+    std::string                                                            mCertURL;
+    std::string                                                            mKeyURL;
+    std::string                                                            mRequestedStorageID;
+    std::vector<std::pair<std::string, std::string>>                       mAllCerts;
+    std::map<std::string, grpc::ServerWriter<iamanager::v7::CertKeyInfo>*> mWriters;
+    std::mutex                                                             mMutex;
+    std::condition_variable                                                mCV;
+    bool                                                                   mClose {false};
 };
 
 #endif

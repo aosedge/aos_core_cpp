@@ -42,6 +42,7 @@
 #include <cm/iamclient/iamclient.hpp>
 #include <cm/networkmanager/dnsserver.hpp>
 #include <cm/networkmanager/networkmanager.hpp>
+#include <cm/rootcerts/rootcerts.hpp>
 #include <cm/smcontroller/smcontroller.hpp>
 #include <cm/unitconfig/jsonprovider.hpp>
 
@@ -114,6 +115,7 @@ private:
     cm::unitconfig::JSONProvider                                mJSONProvider;
     cm::unitconfig::UnitConfig                                  mUnitConfig;
     cm::updatemanager::UpdateManager                            mUpdateManager;
+    cm::rootcerts::RootCerts                                    mRootCerts;
     communication::Communication                                mCommunication;
     database::Database                                          mDatabase;
     iamclient::IAMClient                                        mIAMClient;

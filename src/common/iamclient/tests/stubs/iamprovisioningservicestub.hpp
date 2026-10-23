@@ -12,15 +12,15 @@
 #include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMProvisioningService v6.
  */
-class IAMProvisioningServiceStub final : public iamanager::v6::IAMProvisioningService::Service {
+class IAMProvisioningServiceStub final : public iamanager::v7::IAMProvisioningService::Service {
 public:
     IAMProvisioningServiceStub()
     {
@@ -40,11 +40,11 @@ public:
         }
     }
 
-    void SetCertTypes(const std::vector<std::string>& certTypes)
+    void SetStorageIDs(const std::vector<std::string>& storageIDs)
     {
         std::lock_guard lock {mMutex};
 
-        mCertTypes = certTypes;
+        mStorageIDs = storageIDs;
     }
 
     void SetProvisioningError(int exitCode, const std::string& message)
@@ -77,23 +77,23 @@ public:
         return mLastPassword;
     }
 
-    grpc::Status GetCertTypes([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::GetCertTypesRequest* request, iamanager::v6::CertTypes* response) override
+    grpc::Status GetCertKeyStorageIDs([[maybe_unused]] grpc::ServerContext* context,
+        const iamanager::v7::GetCertKeyStorageIDsRequest* request, iamanager::v7::CertKeyStorageIDs* response) override
     {
         std::lock_guard lock {mMutex};
 
         mLastNodeID = request->node_id();
 
-        for (const auto& certType : mCertTypes) {
-            response->add_types(certType);
+        for (const auto& storageID : mStorageIDs) {
+            response->add_storage_ids(storageID);
         }
 
         return grpc::Status::OK;
     }
 
     grpc::Status StartProvisioning([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::StartProvisioningRequest*                   request,
-        iamanager::v6::StartProvisioningResponse*                        response) override
+        const iamanager::v7::StartProvisioningRequest*                   request,
+        iamanager::v7::StartProvisioningResponse*                        response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -109,8 +109,8 @@ public:
     }
 
     grpc::Status FinishProvisioning([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::FinishProvisioningRequest*                   request,
-        iamanager::v6::FinishProvisioningResponse*                        response) override
+        const iamanager::v7::FinishProvisioningRequest*                   request,
+        iamanager::v7::FinishProvisioningResponse*                        response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -126,7 +126,7 @@ public:
     }
 
     grpc::Status Deprovision([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::DeprovisionRequest* request, iamanager::v6::DeprovisionResponse* response) override
+        const iamanager::v7::DeprovisionRequest* request, iamanager::v7::DeprovisionResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
@@ -144,7 +144,7 @@ public:
 private:
     std::unique_ptr<grpc::Server> mServer;
     mutable std::mutex            mMutex;
-    std::vector<std::string>      mCertTypes;
+    std::vector<std::string>      mStorageIDs;
     bool                          mHasError {false};
     int                           mErrorExitCode {0};
     std::string                   mErrorMessage;

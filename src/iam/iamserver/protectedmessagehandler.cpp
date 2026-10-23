@@ -14,6 +14,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
+#include <common/utils/cryptohelper.hpp>
 
 #include "protectedmessagehandler.hpp"
 
@@ -36,11 +37,12 @@ const Error cStreamNotFoundError = {ErrorEnum::eNotFound, "stream not found"};
 Error ProtectedMessageHandler::Init(NodeController& nodeController, iamclient::IdentProviderItf& identProvider,
     iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
     iam::nodemanager::NodeManagerItf& nodeManager, iamclient::CertProviderItf& certProvider,
-    iam::provisionmanager::ProvisionManagerItf& provisionManager)
+    iam::provisionmanager::ProvisionManagerItf& provisionManager, crypto::CertLoaderItf& certLoader)
 {
     LOG_DBG() << "Init message handler: handler=protected";
 
     mProvisionManager = &provisionManager;
+    mCertLoader       = &certLoader;
 
     return PublicMessageHandler::Init(
         nodeController, identProvider, permHandler, currentNodeHandler, nodeManager, certProvider);
@@ -156,12 +158,12 @@ grpc::Status ProtectedMessageHandler::ResumeNode([[maybe_unused]] grpc::ServerCo
  * IAMProvisioningService implementation
  **********************************************************************************************************************/
 
-grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::ServerContext* context,
-    const iamproto::GetCertTypesRequest* request, iamproto::CertTypes* response)
+grpc::Status ProtectedMessageHandler::GetCertKeyStorageIDs([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::GetCertKeyStorageIDsRequest* request, iamproto::CertKeyStorageIDs* response)
 {
     const auto& nodeID = request->node_id();
 
-    LOG_DBG() << "Process get cert types: nodeID=" << nodeID.c_str();
+    LOG_DBG() << "Process get cert key storage IDs: nodeID=" << nodeID.c_str();
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -170,22 +172,22 @@ grpc::Status ProtectedMessageHandler::GetCertTypes([[maybe_unused]] grpc::Server
                 return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
             }
 
-            return handler->GetCertTypes(request, response, cDefaultTimeout);
+            return handler->GetCertKeyStorageIDs(request, response, cDefaultTimeout);
         });
     }
 
-    Error                            err;
-    iam::provisionmanager::CertTypes certTypes;
+    Error                             err;
+    iam::provisionmanager::StorageIDs storageIDs;
 
-    Tie(certTypes, err) = mProvisionManager->GetCertTypes();
+    Tie(storageIDs, err) = mProvisionManager->GetCertKeyStorageIDs();
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types error: " << AOS_ERROR_WRAP(err);
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
     }
 
-    for (const auto& type : certTypes) {
-        response->add_types(type.CStr());
+    for (const auto& type : storageIDs) {
+        response->add_storage_ids(type.CStr());
     }
 
     return grpc::Status::OK;
@@ -298,13 +300,96 @@ grpc::Status ProtectedMessageHandler::Deprovision([[maybe_unused]] grpc::ServerC
  * IAMCertificateService implementation
  **********************************************************************************************************************/
 
+grpc::Status ProtectedMessageHandler::UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::UpdateRootCertsRequest* request, iamproto::UpdateRootCertsResponse* response)
+{
+    const auto& nodeID = request->node_id();
+
+    LOG_DBG() << "Process update root certs request" << Log::Field("nodeID", nodeID.c_str())
+              << Log::Field("count", request->root_certs_size());
+
+    response->set_node_id(nodeID);
+
+    if (!ProcessOnThisNode(nodeID)) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
+            return handler->UpdateRootCerts(request, response, cDefaultTimeout);
+        });
+    }
+
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request->root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            LOG_ERR() << "Update root certs failed" << Log::Field(err);
+
+            common::pbconvert::SetErrorInfo(err, *response);
+
+            return grpc::Status::OK;
+        }
+    }
+
+    if (auto err = mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos); !err.IsNone()) {
+        LOG_ERR() << "Update root certs failed" << Log::Field(err);
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status ProtectedMessageHandler::GetRootCertsFingerprints([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::GetRootCertsFingerprintsRequest* request, iamproto::RootCertsFingerprints* response)
+{
+    const auto& nodeID = request->node_id();
+
+    LOG_DBG() << "Process get root cert fingerprints" << Log::Field("nodeID", nodeID.c_str());
+
+    response->set_node_id(nodeID);
+
+    if (!ProcessOnThisNode(nodeID)) {
+        return RequestWithRetry([&]() {
+            auto handler = GetNodeController()->GetNodeStreamHandler(nodeID);
+            if (!handler) {
+                return common::pbconvert::ConvertAosErrorToGrpcStatus(cStreamNotFoundError);
+            }
+
+            return handler->GetRootCertsFingerprints(request, response, cDefaultTimeout);
+        });
+    }
+
+    auto fingerprints = std::make_unique<StaticArray<SHA256Fingerprint, crypto::cMaxRootCerts>>();
+
+    if (auto err = common::utils::CollectRootCertFingerprints(*GetCertProvider(), *mCertLoader, *fingerprints);
+        !err.IsNone()) {
+        LOG_ERR() << "Get root cert fingerprints failed" << Log::Field(err);
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    for (const auto& fingerprint : *fingerprints) {
+        response->add_cert_fingerprints(fingerprint.CStr());
+    }
+
+    return grpc::Status::OK;
+}
+
 grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::CreateKeyRequest* request, iamproto::CreateKeyResponse* response)
 {
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
+    const auto& nodeID    = request->node_id();
+    const auto  storageID = String(request->storage_id().c_str());
 
-    LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", type=" << certType;
+    LOG_DBG() << "Process create key request: nodeID=" << nodeID.c_str() << ", storageID=" << storageID;
 
     auto subject = request->subject();
 
@@ -350,7 +435,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     const auto password = String(request->password().c_str());
     auto       csr      = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    if (auto err = mProvisionManager->CreateKey(certType, subject.c_str(), password, *csr); !err.IsNone()) {
+    if (auto err = mProvisionManager->CreateKey(storageID, subject.c_str(), password, *csr); !err.IsNone()) {
         LOG_ERR() << "Create key failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);
@@ -359,7 +444,7 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
     }
 
     response->set_node_id(nodeID);
-    response->set_type(certType.CStr());
+    response->set_storage_id(storageID.CStr());
     response->set_csr(csr->CStr());
 
     return grpc::Status::OK;
@@ -368,13 +453,13 @@ grpc::Status ProtectedMessageHandler::CreateKey([[maybe_unused]] grpc::ServerCon
 grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerContext* context,
     const iamproto::ApplyCertRequest* request, iamproto::ApplyCertResponse* response)
 {
-    const auto& nodeID   = request->node_id();
-    const auto  certType = String(request->type().c_str());
+    const auto& nodeID    = request->node_id();
+    const auto  storageID = String(request->storage_id().c_str());
 
-    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ",type=" << certType;
+    LOG_DBG() << "Process apply cert request: nodeID=" << nodeID.c_str() << ", storageID=" << storageID;
 
     response->set_node_id(nodeID);
-    response->mutable_cert_info()->set_type(certType.CStr());
+    response->mutable_cert_info()->set_storage_id(storageID.CStr());
 
     if (!ProcessOnThisNode(nodeID)) {
         return RequestWithRetry([&]() {
@@ -390,7 +475,7 @@ grpc::Status ProtectedMessageHandler::ApplyCert([[maybe_unused]] grpc::ServerCon
     const auto pemCert  = String(request->cert().c_str());
     auto       certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = mProvisionManager->ApplyCert(certType, pemCert, *certInfo); !err.IsNone()) {
+    if (auto err = mProvisionManager->ApplyCert(storageID, pemCert, *certInfo); !err.IsNone()) {
         LOG_ERR() << "Apply cert failed: error=" << err;
 
         common::pbconvert::SetErrorInfo(err, *response);

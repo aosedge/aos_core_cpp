@@ -6,6 +6,8 @@
 
 #include <core/common/tools/log.hpp>
 
+#include <common/utils/cryptohelper.hpp>
+
 #include "iamclient.hpp"
 
 namespace aos::sm::iamclient {
@@ -18,22 +20,22 @@ IAMClient::~IAMClient()
 }
 
 Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::string& iamPublicServerURL,
-    const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials, const String& certType,
+    const std::string& certStorage, aos::common::iamclient::TLSCredentialsItf& tlsCredentials, const String& storageID,
     bool insecureConnection)
 {
     LOG_DBG() << "Init IAM client";
 
-    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    auto err = PublicCertService::Init(iamPublicServerURL, tlsCredentials, true);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, insecureConnection);
+    err = PublicCurrentNodeService::Init(iamPublicServerURL, tlsCredentials, true);
     if (!err.IsNone()) {
         return err;
     }
 
-    err = PublicCertService::SubscribeListener(certType, *this);
+    err = common::utils::SubscribeCertChanges(*this, storageID, *this);
     if (!err.IsNone()) {
         return err;
     }
