@@ -113,8 +113,8 @@ include(cmake/AosCoreRelease.cmake)
 if(NOT EXISTS ${AOS_CORE_LIB_DIR})
     FetchContent_Populate(
         aos_core_lib_cpp
-        GIT_REPOSITORY https://github.com/aosedge/aos_core_lib_cpp.git
-        GIT_TAG ${AOS_CORE_LIB_CPP_GIT_TAG}
+        GIT_REPOSITORY https://github.com/mykola-kobets-epam/aos_core_lib_cpp.git
+        GIT_TAG node-id.system-id
         SOURCE_DIR ${AOS_CORE_LIB_DIR}
     )
 endif()
