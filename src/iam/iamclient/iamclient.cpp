@@ -319,32 +319,16 @@ Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request
     StaticString<cIDLen> subject  = request.subject().c_str();
     const String         password = request.password().c_str();
 
-    LOG_DBG() << "Process create key request: type=" << certType << ", subject=" << subject;
-
-    if (subject.IsEmpty() && !mIdentProvider) {
-        LOG_ERR() << "Subject can't be empty";
-
-        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument));
+    if (subject.IsEmpty()) {
+        subject = nodeID;
     }
 
-    Error err = ErrorEnum::eNone;
-
-    if (subject.IsEmpty() && mIdentProvider) {
-        auto systemInfo = std::make_unique<SystemInfo>();
-
-        err = mIdentProvider->GetSystemInfo(*systemInfo);
-        if (!err.IsNone()) {
-            LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
-
-            return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(err));
-        }
-
-        subject = systemInfo->mSystemID;
-    }
+    LOG_DBG() << "Process create key request" << Log::Field("nodeID", nodeID) << Log::Field("type", certType)
+              << Log::Field("subject", subject);
 
     auto csr = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
+    auto err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
 
     return SendCreateKeyResponse(nodeID, certType, *csr, err);
 }
