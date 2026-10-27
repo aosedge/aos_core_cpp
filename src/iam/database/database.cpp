@@ -44,6 +44,10 @@ Error Database::Init(const config::DatabaseConfig& config)
 
         const auto dbPath = Poco::Path(config.mWorkingDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
+
+        // Each committed write must survive power loss: runtimes rely on it to recover the update.
+        *mSession << "PRAGMA synchronous = FULL;", now;
+
         CreateTables();
 
         mDatabase.emplace(*mSession, config.mMigrationPath, config.mMergedMigrationPath);
