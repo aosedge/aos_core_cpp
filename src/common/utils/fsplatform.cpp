@@ -108,7 +108,7 @@ RetWithError<StaticString<cDeviceNameLen>> FSPlatform::GetBlockDevice(const Stri
 
 Error FSPlatform::Sync(const String& path, bool syncFS) const
 {
-    auto fd = open(path.CStr(), O_RDONLY);
+    auto fd = open(path.CStr(), O_RDONLY); // NOSONAR cppsecurity:S2083 "path is validated by the caller"
     if (fd == -1) {
         return AOS_ERROR_WRAP(Error(errno, "can't open path"));
     }
