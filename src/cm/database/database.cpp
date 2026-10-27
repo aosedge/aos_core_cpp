@@ -261,6 +261,9 @@ Error Database::Init(const Config& config)
         // Enable foreign key
         *mSession << "PRAGMA foreign_keys = ON;", now;
 
+        // Each committed write must survive power loss: runtimes rely on it to recover the update.
+        *mSession << "PRAGMA synchronous = FULL;", now;
+
         CreateTables();
 
         mDatabase.emplace(*mSession, config.mMigrationPath, config.mMergedMigrationPath);
