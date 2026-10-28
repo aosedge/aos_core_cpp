@@ -22,9 +22,10 @@
 #include <core/iam/permhandler/itf/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
+#include <iam/database/database.hpp>
 
 #include "protectedmessagehandler.hpp"
 #include "publicmessagehandler.hpp"
@@ -57,6 +58,7 @@ public:
      * @param nodeManager node manager.
      * @param cryptoProvider crypto provider.
      * @param provisionManager provision manager.
+     * @param database IAM database.
      * @param provisioningMode flag indicating whether provisioning mode is active.
      */
     Error Init(const config::IAMServerConfig& config, certhandler::CertHandlerItf& certHandler,
@@ -64,7 +66,7 @@ public:
         crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider,
         currentnode::CurrentNodeHandlerItf& currentNodeHandler, nodemanager::NodeManagerItf& nodeManager,
         aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
-        bool provisioningMode);
+        database::Database& database, bool provisioningMode);
 
     /**
      * Starts IAM server.
@@ -134,6 +136,7 @@ private:
     crypto::CertLoaderItf*       mCertLoader     = nullptr;
     crypto::x509::ProviderItf*   mCryptoProvider = nullptr;
     certhandler::CertHandlerItf* mCertHandler    = nullptr;
+    database::Database*          mDatabase       = nullptr;
 
     NodeController                           mNodeController;
     PublicMessageHandler                     mPublicMessageHandler;

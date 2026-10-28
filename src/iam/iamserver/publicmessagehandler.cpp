@@ -47,7 +47,7 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 
     builder.RegisterService(static_cast<iamanager::IAMVersionService::Service*>(this));
     builder.RegisterService(static_cast<iamproto::IAMPublicCurrentNodeService::Service*>(this));
-    builder.RegisterService(static_cast<iamproto::IAMPublicCertService::Service*>(this));
+    builder.RegisterService(static_cast<iamproto::IAMPublicCertificateService::Service*>(this));
 
     if (GetPermHandler() != nullptr) {
         builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
@@ -109,7 +109,12 @@ void PublicMessageHandler::Close()
             certWriter->Close();
         }
 
+        for (auto& certWriter : mRootCertWriters) {
+            certWriter->Close();
+        }
+
         mCertWriters.clear();
+        mRootCertWriters.clear();
     }
 
     mClose = true;
@@ -164,7 +169,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
  **********************************************************************************************************************/
 
 ::grpc::Status PublicMessageHandler::GetCurrentNodeInfo([[maybe_unused]] ::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v6::NodeInfo* response)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::iamanager::v7::NodeInfo* response)
 {
     LOG_DBG() << "Process get current node info";
 
@@ -174,7 +179,7 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
 }
 
 ::grpc::Status PublicMessageHandler::SubscribeCurrentNodeChanged(::grpc::ServerContext* context,
-    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer)
+    [[maybe_unused]] const ::google::protobuf::Empty* request, ::grpc::ServerWriter<::iamanager::v7::NodeInfo>* writer)
 {
     LOG_DBG() << "Process subscribe current node changed";
 
@@ -182,16 +187,16 @@ grpc::Status PublicMessageHandler::GetAPIVersion([[maybe_unused]] grpc::ServerCo
 }
 
 /***********************************************************************************************************************
- * IAMPublicCertService implementation
+ * IAMPublicCertificateService implementation
  **********************************************************************************************************************/
 
-grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext* context,
-    const iamproto::GetCertRequest* request, iamproto::CertInfo* response)
+grpc::Status PublicMessageHandler::GetCertKey([[maybe_unused]] grpc::ServerContext* context,
+    const iamproto::GetCertKeyRequest* request, iamproto::CertKeyInfo* response)
 {
-    LOG_DBG() << "Process get cert request: type=" << request->type().c_str()
+    LOG_DBG() << "Process get cert request: storageID=" << request->storage_id().c_str()
               << ", serial=" << request->serial().c_str();
 
-    response->set_type(request->type());
+    response->set_storage_id(request->storage_id());
 
     auto issuer
         = Array<uint8_t> {reinterpret_cast<const uint8_t*>(request->issuer().c_str()), request->issuer().length()};
@@ -207,7 +212,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, *certInfo);
+    err = mCertProvider->GetCert(request->storage_id().c_str(), issuer, serial, *certInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get cert: " << err;
 
@@ -220,12 +225,33 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
     return grpc::Status::OK;
 }
 
-grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::ServerContext* context,
-    const iamanager::v6::SubscribeCertChangedRequest* request, grpc::ServerWriter<iamanager::v6::CertInfo>* writer)
+grpc::Status PublicMessageHandler::GetRootCerts([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const google::protobuf::Empty* request, iamproto::RootCertsInfos* response)
 {
-    LOG_DBG() << "Process subscribe cert changed: type=" << request->type().c_str();
+    LOG_DBG() << "Process get root certs request";
 
-    auto certWriter = std::make_shared<CertWriter>(request->type());
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    if (auto err = mCertProvider->GetRootCerts(*certInfos); !err.IsNone()) {
+        LOG_ERR() << "Failed to get root certs" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    for (const auto& certInfo : *certInfos) {
+        response->add_root_certs()->set_cert_url(certInfo.mCertURL.CStr());
+    }
+
+    return grpc::Status::OK;
+}
+
+grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc::ServerContext* context,
+    const iamanager::v7::SubscribeCertKeyChangedRequest*                                         request,
+    grpc::ServerWriter<iamanager::v7::CertKeyInfo>*                                              writer)
+{
+    LOG_DBG() << "Process subscribe cert key changed: storageID=" << request->storage_id().c_str();
+
+    auto certWriter = std::make_shared<CertWriter>(request->storage_id());
 
     {
         std::lock_guard lock {mCertWritersLock};
@@ -233,9 +259,9 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
         mCertWriters.push_back(certWriter);
     }
 
-    auto err = mCertProvider->SubscribeListener(request->type().c_str(), *certWriter);
+    auto err = mCertProvider->SubscribeListener(request->storage_id().c_str(), *certWriter);
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
+        LOG_ERR() << "Failed to subscribe cert key changed, err=" << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
@@ -244,7 +270,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
     err = mCertProvider->UnsubscribeListener(*certWriter);
     if (!err.IsNone()) {
-        LOG_ERR() << "Failed to unsubscribe cert changed, err=" << err;
+        LOG_ERR() << "Failed to unsubscribe cert key changed, err=" << err;
 
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
@@ -254,6 +280,45 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
 
         auto iter = std::remove(mCertWriters.begin(), mCertWriters.end(), certWriter);
         mCertWriters.erase(iter, mCertWriters.end());
+    }
+
+    return status;
+}
+
+grpc::Status PublicMessageHandler::SubscribeRootCertsChanged([[maybe_unused]] grpc::ServerContext* context,
+    [[maybe_unused]] const google::protobuf::Empty* request, grpc::ServerWriter<iamanager::v7::RootCertsInfos>* writer)
+{
+    LOG_DBG() << "Process subscribe root certs changed";
+
+    auto certWriter = std::make_shared<RootCertWriter>();
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        mRootCertWriters.push_back(certWriter);
+    }
+
+    auto err = mCertProvider->SubscribeRootCertsListener(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to subscribe root certs changed" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    auto status = certWriter->HandleStream(context, writer);
+
+    err = mCertProvider->UnsubscribeListener(*certWriter);
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to unsubscribe root certs changed" << Log::Field(err);
+
+        return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
+    }
+
+    {
+        std::lock_guard lock {mCertWritersLock};
+
+        auto iter = std::remove(mRootCertWriters.begin(), mRootCertWriters.end(), certWriter);
+        mRootCertWriters.erase(iter, mRootCertWriters.end());
     }
 
     return status;

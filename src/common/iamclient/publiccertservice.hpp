@@ -13,7 +13,9 @@
 #include <thread>
 #include <unordered_map>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <google/protobuf/empty.pb.h>
+
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <common/utils/grpcsubscriptionmanager.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
@@ -23,9 +25,15 @@
 
 namespace aos::common::iamclient {
 
-// Type alias for CertInfo subscription manager
-using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
+// Type alias for cert key subscription manager
+using CertKeySubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertificateService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::CertKeyInfo, iamanager::v7::CertKeyInfo, iamanager::v7::SubscribeCertKeyChangedRequest>;
+
+// Type alias for root certificates subscription manager
+using RootCertsSubscriptionManager
+    = utils::GRPCSubscriptionManager<iamanager::v7::IAMPublicCertificateService::Stub, aos::iamclient::CertListenerItf,
+        iamanager::v7::RootCertsInfos, iamanager::v7::RootCertsInfos, google::protobuf::Empty>;
 
 /**
  * Public cert service.
@@ -49,23 +57,39 @@ public:
     /**
      * Returns certificate info.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param issuer issuer name.
      * @param serial serial number.
      * @param[out] resCert result certificate.
      * @returns Error.
      */
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCert(const String& storageID, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override;
+
+    /**
+     * Returns trusted root certificates.
+     *
+     * @param[out] resCerts result certificates.
+     * @returns Error.
+     */
+    Error GetRootCerts(Array<CertInfo>& resCerts) const override;
 
     /**
      * Subscribes certificates receiver.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certReceiver certificate receiver.
      * @returns Error.
      */
-    Error SubscribeListener(const String& certType, ::aos::iamclient::CertListenerItf& certListener) override;
+    Error SubscribeListener(const String& storageID, ::aos::iamclient::CertListenerItf& certListener) override;
+
+    /**
+     * Subscribes trusted root certificates receiver.
+     *
+     * @param certListener certificate listener.
+     * @returns Error.
+     */
+    Error SubscribeRootCertsListener(::aos::iamclient::CertListenerItf& certListener) override;
 
     /**
      * Unsubscribes certificate receiver.
@@ -86,14 +110,15 @@ public:
 private:
     static constexpr auto cServiceTimeout = std::chrono::seconds(10);
 
-    std::string                                                mIAMPublicServerURL;
-    bool                                                       mInsecureConnection {false};
-    std::shared_ptr<grpc::ChannelCredentials>                  mCredentials;
-    std::unique_ptr<iamanager::v6::IAMPublicCertService::Stub> mStub;
-    TLSCredentialsItf*                                         mTLSCredentials {};
-    mutable std::mutex                                         mMutex;
+    std::string                                                       mIAMPublicServerURL;
+    bool                                                              mInsecureConnection {false};
+    std::shared_ptr<grpc::ChannelCredentials>                         mCredentials;
+    std::unique_ptr<iamanager::v7::IAMPublicCertificateService::Stub> mStub;
+    TLSCredentialsItf*                                                mTLSCredentials {};
+    mutable std::mutex                                                mMutex;
 
-    std::unordered_map<std::string, std::unique_ptr<CertSubscriptionManager>> mSubscriptions;
+    std::unordered_map<std::string, std::unique_ptr<CertKeySubscriptionManager>> mCertKeySubscriptions;
+    std::unique_ptr<RootCertsSubscriptionManager>                                mRootCertsSubscription;
 };
 
 } // namespace aos::common::iamclient

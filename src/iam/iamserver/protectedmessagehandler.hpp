@@ -14,12 +14,13 @@
 
 #include <grpcpp/server_builder.h>
 
+#include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/iam/certhandler/certhandler.hpp>
 #include <core/iam/permhandler/itf/permhandler.hpp>
 #include <core/iam/provisionmanager/provisionmanager.hpp>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <iam/config/config.hpp>
 
@@ -50,11 +51,12 @@ public:
      * @param nodeManager node manager.
      * @param certProvider certificate provider.
      * @param provisionManager provision manager.
+     * @param certLoader certificate loader.
      */
     Error Init(NodeController& nodeController, aos::iamclient::IdentProviderItf& identProvider,
         iam::permhandler::PermHandlerItf& permHandler, iam::currentnode::CurrentNodeHandlerItf& currentNodeHandler,
         iam::nodemanager::NodeManagerItf& nodeManager, aos::iamclient::CertProviderItf& certProvider,
-        iam::provisionmanager::ProvisionManagerItf& provisionManager);
+        iam::provisionmanager::ProvisionManagerItf& provisionManager, crypto::CertLoaderItf& certLoader);
 
     /**
      * Registers grpc services.
@@ -91,8 +93,8 @@ private:
         iamproto::ResumeNodeResponse* response) override;
 
     // IAMProvisioningService interface
-    grpc::Status GetCertTypes(grpc::ServerContext* context, const iamproto::GetCertTypesRequest* request,
-        iamproto::CertTypes* response) override;
+    grpc::Status GetCertKeyStorageIDs(grpc::ServerContext* context,
+        const iamproto::GetCertKeyStorageIDsRequest* request, iamproto::CertKeyStorageIDs* response) override;
     grpc::Status StartProvisioning(grpc::ServerContext* context, const iamproto::StartProvisioningRequest* request,
         iamproto::StartProvisioningResponse* response) override;
     grpc::Status FinishProvisioning(grpc::ServerContext* context, const iamproto::FinishProvisioningRequest* request,
@@ -101,6 +103,10 @@ private:
         iamproto::DeprovisionResponse* response) override;
 
     // IAMCertificateService interface
+    grpc::Status UpdateRootCerts(grpc::ServerContext* context, const iamproto::UpdateRootCertsRequest* request,
+        iamproto::UpdateRootCertsResponse* response) override;
+    grpc::Status GetRootCertsFingerprints(grpc::ServerContext* context,
+        const iamproto::GetRootCertsFingerprintsRequest* request, iamproto::RootCertsFingerprints* response) override;
     grpc::Status CreateKey(grpc::ServerContext* context, const iamproto::CreateKeyRequest* request,
         iamproto::CreateKeyResponse* response) override;
     grpc::Status ApplyCert(grpc::ServerContext* context, const iamproto::ApplyCertRequest* request,
@@ -113,6 +119,7 @@ private:
         google::protobuf::Empty* response) override;
 
     iam::provisionmanager::ProvisionManagerItf* mProvisionManager = nullptr;
+    crypto::CertLoaderItf*                      mCertLoader       = nullptr;
 };
 
 } // namespace aos::iam::iamserver

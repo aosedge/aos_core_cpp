@@ -21,11 +21,11 @@ public:
     /**
      * Adds new certificate info to the storage.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certInfo certificate information.
      * @return Error.
      */
-    Error AddCertInfo(const String& certType, const CertInfo& certInfo) override;
+    Error AddCertInfo(const String& storageID, const CertInfo& certInfo) override;
 
     /**
      * Returns information about certificate with specified issuer and serial number.
@@ -40,28 +40,28 @@ public:
     /**
      * Returns info for all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param[out] certsInfo result certificates info.
      * @return Error.
      */
-    Error GetCertsInfo(const String& certType, Array<CertInfo>& certsInfo) override;
+    Error GetCertsInfo(const String& storageID, Array<CertInfo>& certsInfo) override;
 
     /**
      * Removes certificate with specified certificate type and url.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param certURL certificate URL.
      * @return Error.
      */
-    Error RemoveCertInfo(const String& certType, const String& certURL) override;
+    Error RemoveCertInfo(const String& storageID, const String& certURL) override;
 
     /**
      * Removes all certificates with specified certificate type.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @return Error.
      */
-    Error RemoveAllCertsInfo(const String& certType) override;
+    Error RemoveAllCertsInfo(const String& storageID) override;
 
     /**
      * Destroys certificate info storage.
@@ -69,22 +69,22 @@ public:
     ~StorageStub() override = default;
 
 private:
-    static constexpr auto cCellSize      = 20;
-    static constexpr auto cCertTypeCount = 4;
+    static constexpr auto cCellSize       = 20;
+    static constexpr auto cStorageIDCount = 4;
 
     struct StorageCell {
-        StaticString<cCertTypeLen>       mCertType;
+        StaticString<cStorageIDLen>      mStorageID;
         StaticArray<CertInfo, cCellSize> mCertificates;
 
-        bool operator==(const StorageCell& other) const { return mCertType == other.mCertType; }
+        bool operator==(const StorageCell& other) const { return mStorageID == other.mStorageID; }
     };
 
     template <typename Res, typename Func>
-    Res TraverseCertTypes(Func func);
+    Res TraverseStorageIDs(Func func);
 
-    StorageCell* FindCell(const String& certType);
+    StorageCell* FindCell(const String& storageID);
 
-    StaticArray<StorageCell, cCertTypeCount> mStorage;
+    StaticArray<StorageCell, cStorageIDCount> mStorage;
 };
 
 } // namespace certhandler

@@ -68,7 +68,22 @@ TEST_F(PublicCertServiceTest, GetCert)
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_STREQ(certInfo.mCertURL.CStr(), "test_cert.pem");
     EXPECT_STREQ(certInfo.mKeyURL.CStr(), "test_key.pem");
-    EXPECT_STREQ(mStub->GetRequestedCertType().c_str(), "online");
+    EXPECT_STREQ(mStub->GetRequestedStorageID().c_str(), "online");
+}
+
+TEST_F(PublicCertServiceTest, GetRootCerts)
+{
+    mStub->AddAllCert("cert1.pem", "key1.pem");
+    mStub->AddAllCert("cert2.pem", "key2.pem");
+
+    aos::StaticArray<aos::CertInfo, 4> certInfos;
+
+    auto err = mService->GetRootCerts(certInfos);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    ASSERT_EQ(certInfos.Size(), 2);
+    EXPECT_STREQ(certInfos[0].mCertURL.CStr(), "cert1.pem");
+    EXPECT_STREQ(certInfos[1].mCertURL.CStr(), "cert2.pem");
 }
 
 TEST_F(PublicCertServiceTest, SubscribeCertChanged)
@@ -129,7 +144,7 @@ TEST_F(PublicCertServiceTest, SubscribeMultipleListeners)
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 }
 
-TEST_F(PublicCertServiceTest, SubscribeDifferentCertTypes)
+TEST_F(PublicCertServiceTest, SubscribeDifferentStorageIDs)
 {
     CertListenerMock onlineListener;
     CertListenerMock offlineListener;

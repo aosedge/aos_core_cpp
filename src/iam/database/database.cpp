@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/SQLite/Utility.h>
 #include <Poco/Path.h>
 
 #include <core/common/tools/logger.hpp>
@@ -21,6 +22,24 @@ using namespace Poco::Data::Keywords;
 
 namespace aos::iam::database {
 
+namespace {
+
+Error EnsureWorkingDir(const std::string& workingDir)
+{
+    try {
+        const auto dirPath = std::filesystem::path(workingDir);
+        if (!std::filesystem::exists(dirPath)) {
+            std::filesystem::create_directories(dirPath);
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -30,27 +49,56 @@ Database::Database()
     Poco::Data::SQLite::Connector::registerConnector();
 }
 
-Error Database::Init(const config::DatabaseConfig& config)
+Error Database::Init(const config::DatabaseConfig& config, bool provisioning)
 {
     if (mSession && mSession->isConnected()) {
         return ErrorEnum::eNone;
     }
 
     try {
-        auto dirPath = std::filesystem::path(config.mWorkingDir);
-        if (!std::filesystem::exists(dirPath)) {
-            std::filesystem::create_directories(dirPath);
+        mConfig = config;
+
+        std::string dbPath = ":memory:";
+
+        if (!provisioning) {
+            if (auto err = EnsureWorkingDir(mConfig.mWorkingDir); !err.IsNone()) {
+                return err;
+            }
+
+            dbPath = Poco::Path(mConfig.mWorkingDir, cDBFileName).toString();
         }
 
-        const auto dbPath = Poco::Path(config.mWorkingDir, cDBFileName);
-        mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
+        mSession = std::make_unique<Poco::Data::Session>("SQLite", dbPath);
         CreateTables();
 
-        mDatabase.emplace(*mSession, config.mMigrationPath, config.mMergedMigrationPath);
+        mDatabase.emplace(*mSession, mConfig.mMigrationPath, mConfig.mMergedMigrationPath);
 
-        CreateMigrationData(config);
+        CreateMigrationData();
         mDatabase->MigrateToVersion(GetVersion());
         DropMigrationData();
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::Save()
+{
+    if (!mSession || !mSession->isConnected()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+    }
+
+    try {
+        if (auto err = EnsureWorkingDir(mConfig.mWorkingDir); !err.IsNone()) {
+            return err;
+        }
+
+        const auto dbPath = Poco::Path(mConfig.mWorkingDir, cDBFileName).toString();
+
+        if (!Poco::Data::SQLite::Utility::memoryToFile(dbPath, *mSession)) {
+            return AOS_ERROR_WRAP(ErrorEnum::eFailed);
+        }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -62,12 +110,12 @@ Error Database::Init(const config::DatabaseConfig& config)
  * certhandler::StorageItf implementation
  **********************************************************************************************************************/
 
-Error Database::AddCertInfo(const String& certType, const aos::CertInfo& certInfo)
+Error Database::AddCertInfo(const String& storageID, const aos::CertInfo& certInfo)
 {
     try {
         CertInfo dbCertInfo;
 
-        FromAosCertInfo(certType, certInfo, dbCertInfo);
+        FromAosCertInfo(storageID, certInfo, dbCertInfo);
 
         *mSession
             << "INSERT INTO certificates (type, issuer, serial, certURL, keyURL, notAfter) VALUES (?, ?, ?, ?, ?, ?);",
@@ -79,10 +127,10 @@ Error Database::AddCertInfo(const String& certType, const aos::CertInfo& certInf
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveCertInfo(const String& certType, const String& certURL)
+Error Database::RemoveCertInfo(const String& storageID, const String& certURL)
 {
     try {
-        *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(certType.CStr()),
+        *mSession << "DELETE FROM certificates WHERE type = ? AND certURL = ?;", bind(storageID.CStr()),
             bind(certURL.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -91,10 +139,10 @@ Error Database::RemoveCertInfo(const String& certType, const String& certURL)
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveAllCertsInfo(const String& certType)
+Error Database::RemoveAllCertsInfo(const String& storageID)
 {
     try {
-        *mSession << "DELETE FROM certificates WHERE type = ?;", bind(certType.CStr()), now;
+        *mSession << "DELETE FROM certificates WHERE type = ?;", bind(storageID.CStr()), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
@@ -124,12 +172,12 @@ Error Database::GetCertInfo(const Array<uint8_t>& issuer, const Array<uint8_t>& 
     return ErrorEnum::eNone;
 }
 
-Error Database::GetCertsInfo(const String& certType, Array<aos::CertInfo>& certsInfo)
+Error Database::GetCertsInfo(const String& storageID, Array<aos::CertInfo>& certsInfo)
 {
     try {
         std::vector<CertInfo> result;
 
-        *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(certType.CStr()), into(result), now;
+        *mSession << "SELECT * FROM certificates WHERE type = ?;", bind(storageID.CStr()), into(result), now;
 
         for (const auto& cert : result) {
             auto certInfo = std::make_unique<aos::CertInfo>();
@@ -256,7 +304,7 @@ int Database::GetVersion() const
     return cVersion;
 }
 
-void Database::CreateMigrationData(const config::DatabaseConfig& config)
+void Database::CreateMigrationData()
 {
     DropMigrationData();
 
@@ -267,7 +315,7 @@ void Database::CreateMigrationData(const config::DatabaseConfig& config)
 
     insert << "INSERT INTO pins (path, value) VALUES(?, ?);", use(path), use(pin);
 
-    for (const auto& [key, value] : config.mPathToPin) {
+    for (const auto& [key, value] : mConfig.mPathToPin) {
         path = key;
         pin  = value;
 
@@ -299,9 +347,9 @@ void Database::CreateTables()
         now;
 }
 
-void Database::FromAosCertInfo(const String& certType, const aos::CertInfo& certInfo, CertInfo& result)
+void Database::FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result)
 {
-    result.set<CertColumns::eType>(certType.CStr());
+    result.set<CertColumns::eType>(storageID.CStr());
     result.set<CertColumns::eIssuer>(Poco::Data::BLOB {certInfo.mIssuer.Get(), certInfo.mIssuer.Size()});
     result.set<CertColumns::eSerial>(Poco::Data::BLOB {certInfo.mSerial.Get(), certInfo.mSerial.Size()});
     result.set<CertColumns::eCertURL>(certInfo.mCertURL.CStr());

@@ -6,6 +6,8 @@
 
 #include <core/common/tools/logger.hpp>
 
+#include <common/utils/cryptohelper.hpp>
+
 #include "iamclient.hpp"
 
 namespace aos::mp::iamclient {
@@ -35,7 +37,8 @@ Error IAMClient::Start()
     LOG_DBG() << "Start IAM client";
 
     if (!mCertStorage.empty()) {
-        if (auto err = mCertProvider->SubscribeListener(String(mCertStorage.c_str()), *this); !err.IsNone()) {
+        if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, String(mCertStorage.c_str()), *this);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -101,7 +104,7 @@ RetWithError<std::vector<uint8_t>> IAMClient::ReceiveMessages()
  * Protected
  **********************************************************************************************************************/
 
-Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
+Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 {
     std::vector<uint8_t> message(msg.ByteSizeLong());
 
@@ -169,7 +172,7 @@ void IAMClient::ProcessOutgoingMessages()
                 return;
             }
 
-            iamanager::v6::IAMOutgoingMessages outgoingMsg;
+            iamanager::v7::IAMOutgoingMessages outgoingMsg;
             if (!outgoingMsg.ParseFromArray(msg.data(), static_cast<int>(msg.size()))) {
                 LOG_ERR() << "Failed to parse outgoing message";
 

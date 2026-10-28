@@ -10,17 +10,18 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
-#include <iamanager/v6/iamanager.grpc.pb.h>
-#include <iamanager/v6/iamanager.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.pb.h>
 
 #include <common/utils/grpchelper.hpp>
 
 /**
  * Test stub for IAMCertificateService v6.
  */
-class IAMCertificateServiceStub final : public iamanager::v6::IAMCertificateService::Service {
+class IAMCertificateServiceStub final : public iamanager::v7::IAMCertificateService::Service {
 public:
     IAMCertificateServiceStub()
     {
@@ -78,11 +79,11 @@ public:
         return mLastNodeID;
     }
 
-    std::string GetLastCertType() const
+    std::string GetLastStorageID() const
     {
         std::lock_guard lock {mMutex};
 
-        return mLastCertType;
+        return mLastStorageID;
     }
 
     std::string GetLastSubject() const
@@ -106,15 +107,22 @@ public:
         return mLastPemCert;
     }
 
-    grpc::Status CreateKey([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::CreateKeyRequest* request, iamanager::v6::CreateKeyResponse* response) override
+    std::vector<std::string> GetLastRootCerts() const
     {
         std::lock_guard lock {mMutex};
 
-        mLastNodeID   = request->node_id();
-        mLastCertType = request->type();
-        mLastSubject  = request->subject();
-        mLastPassword = request->password();
+        return mLastRootCerts;
+    }
+
+    grpc::Status CreateKey([[maybe_unused]] grpc::ServerContext* context,
+        const iamanager::v7::CreateKeyRequest* request, iamanager::v7::CreateKeyResponse* response) override
+    {
+        std::lock_guard lock {mMutex};
+
+        mLastNodeID    = request->node_id();
+        mLastStorageID = request->storage_id();
+        mLastSubject   = request->subject();
+        mLastPassword  = request->password();
 
         if (mHasError) {
             response->mutable_error()->set_exit_code(mErrorExitCode);
@@ -127,13 +135,13 @@ public:
     }
 
     grpc::Status ApplyCert([[maybe_unused]] grpc::ServerContext* context,
-        const iamanager::v6::ApplyCertRequest* request, iamanager::v6::ApplyCertResponse* response) override
+        const iamanager::v7::ApplyCertRequest* request, iamanager::v7::ApplyCertResponse* response) override
     {
         std::lock_guard lock {mMutex};
 
-        mLastNodeID   = request->node_id();
-        mLastCertType = request->type();
-        mLastPemCert  = request->cert();
+        mLastNodeID    = request->node_id();
+        mLastStorageID = request->storage_id();
+        mLastPemCert   = request->cert();
 
         if (mHasError) {
             response->mutable_error()->set_exit_code(mErrorExitCode);
@@ -141,6 +149,24 @@ public:
         } else {
             response->mutable_cert_info()->set_cert_url(mCertURL);
             response->mutable_cert_info()->set_key_url(mKeyURL);
+        }
+
+        return grpc::Status::OK;
+    }
+
+    grpc::Status UpdateRootCerts([[maybe_unused]] grpc::ServerContext* context,
+        const iamanager::v7::UpdateRootCertsRequest* request, iamanager::v7::UpdateRootCertsResponse* response) override
+    {
+        std::lock_guard lock {mMutex};
+
+        mLastNodeID = request->node_id();
+        mLastRootCerts.assign(request->root_certs().begin(), request->root_certs().end());
+
+        response->set_node_id(mLastNodeID);
+
+        if (mHasError) {
+            response->mutable_error()->set_exit_code(mErrorExitCode);
+            response->mutable_error()->set_message(mErrorMessage);
         }
 
         return grpc::Status::OK;
@@ -156,10 +182,11 @@ private:
     int                           mErrorExitCode {0};
     std::string                   mErrorMessage;
     std::string                   mLastNodeID;
-    std::string                   mLastCertType;
+    std::string                   mLastStorageID;
     std::string                   mLastSubject;
     std::string                   mLastPassword;
     std::string                   mLastPemCert;
+    std::vector<std::string>      mLastRootCerts;
 };
 
 #endif

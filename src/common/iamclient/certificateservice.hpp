@@ -9,7 +9,7 @@
 
 #include <mutex>
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <iamanager/v7/iamanager.grpc.pb.h>
 
 #include <core/common/iamclient/itf/certhandler.hpp>
 
@@ -38,25 +38,43 @@ public:
      * Creates key.
      *
      * @param nodeID node ID.
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param subject subject.
      * @param password password.
      * @param[out] csr certificate signing request.
      * @returns Error.
      */
-    Error CreateKey(const String& nodeID, const String& certType, const String& subject, const String& password,
+    Error CreateKey(const String& nodeID, const String& storageID, const String& subject, const String& password,
         String& csr) override;
 
     /**
      * Applies certificate.
      *
      * @param nodeID node ID.
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      * @param pemCert certificate in PEM.
      * @param certInfo certificate info.
      * @returns Error.
      */
-    Error ApplyCert(const String& nodeID, const String& certType, const String& pemCert, CertInfo& certInfo) override;
+    Error ApplyCert(const String& nodeID, const String& storageID, const String& pemCert, CertInfo& certInfo) override;
+
+    /**
+     * Updates root certificates.
+     *
+     * @param nodeID node ID.
+     * @param pemCerts root certificates in PEM format.
+     * @returns Error.
+     */
+    Error UpdateRootCerts(const String& nodeID, const Array<StaticString<crypto::cCertPEMLen>>& pemCerts) override;
+
+    /**
+     * Gets root certificate SHA-256 fingerprints.
+     *
+     * @param nodeID node ID.
+     * @param[out] fingerprints root certificate SHA-256 fingerprints.
+     * @returns Error.
+     */
+    Error GetRootCerts(const String& nodeID, Array<SHA256Fingerprint>& fingerprints) override;
 
     /**
      * Reconnects to the server.
@@ -73,7 +91,7 @@ private:
     bool                                                        mInsecureConnection {false};
     std::shared_ptr<grpc::ChannelCredentials>                   mCredentials;
     TLSCredentialsItf*                                          mTLSCredentials {};
-    std::unique_ptr<iamanager::v6::IAMCertificateService::Stub> mStub;
+    std::unique_ptr<iamanager::v7::IAMCertificateService::Stub> mStub;
     std::mutex                                                  mMutex;
 };
 

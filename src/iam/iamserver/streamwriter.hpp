@@ -8,7 +8,18 @@
 #ifndef AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 #define AOS_IAM_IAMSERVER_STREAMWRITER_HPP_
 
-#include <iamanager/v6/iamanager.grpc.pb.h>
+#include <chrono>
+#include <condition_variable>
+#include <optional>
+#include <shared_mutex>
+#include <string>
+
+#include <iamanager/v7/iamanager.grpc.pb.h>
+
+#include <common/pbconvert/iam.hpp>
+#include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/tools/error.hpp>
+#include <core/common/tools/utils.hpp>
 
 namespace aos::iam::iamserver {
 
@@ -111,31 +122,55 @@ private:
 /**
  * Sends certificate updates to GRPC streams.
  */
-class CertWriter : public StreamWriter<iamanager::v6::CertInfo>, public aos::iamclient::CertListenerItf {
+class CertWriter : public StreamWriter<iamanager::v7::CertKeyInfo>, public aos::iamclient::CertListenerItf {
 public:
     /**
      * CertWriter constructor.
      *
-     * @param certType certificate type.
+     * @param storageID certificate storage ID.
      */
-    explicit CertWriter(const std::string& certType)
-        : mCertType(certType)
+    explicit CertWriter(const std::string& storageID)
+        : mStorageID(storageID)
     {
     }
 
 private:
     void OnCertChanged(const CertInfo& info) override
     {
-        iamanager::v6::CertInfo grpcCertInfo;
+        iamanager::v7::CertKeyInfo grpcCertInfo;
 
-        grpcCertInfo.set_type(mCertType);
+        grpcCertInfo.set_storage_id(mStorageID);
         grpcCertInfo.set_key_url(info.mKeyURL.CStr());
         grpcCertInfo.set_cert_url(info.mCertURL.CStr());
+        grpcCertInfo.set_issuer(info.mIssuer.Get(), info.mIssuer.Size());
+
+        Error       err;
+        std::string serial;
+
+        Tie(serial, err) = common::pbconvert::ConvertSerialToProto(info.mSerial);
+        if (err.IsNone()) {
+            grpcCertInfo.set_serial(serial);
+        }
 
         WriteToStreams(grpcCertInfo);
     }
 
-    std::string mCertType;
+    std::string mStorageID;
+};
+
+/**
+ * Sends root certificate updates to GRPC streams.
+ */
+class RootCertWriter : public StreamWriter<iamanager::v7::RootCertsInfos>, public aos::iamclient::CertListenerItf {
+private:
+    void OnCertChanged(const CertInfo& info) override
+    {
+        iamanager::v7::RootCertsInfos rootCerts;
+
+        rootCerts.add_root_certs()->set_cert_url(info.mCertURL.CStr());
+
+        WriteToStreams(rootCerts);
+    }
 };
 
 } // namespace aos::iam::iamserver
