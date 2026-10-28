@@ -225,7 +225,7 @@ public:
         });
     }
 
-    void SubscribeAndWaitConnected()
+    void InitAndSubscribe()
     {
         EXPECT_CALL(mCurrentNodeInfoProviderMock, GetCurrentNodeInfo).WillRepeatedly(Invoke([this](NodeInfo& info) {
             info.mNodeID = mNodeID;
@@ -240,12 +240,21 @@ public:
 
         err = mCommunication.SubscribeListener(mConnectionSubscriberStub);
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+    }
 
-        err = mCommunication.Start();
+    void StartAndWaitConnected()
+    {
+        auto err = mCommunication.Start();
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
         err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent);
         EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+    }
+
+    void SubscribeAndWaitConnected()
+    {
+        InitAndSubscribe();
+        StartAndWaitConnected();
     }
 
     iam::certhandler::PKCS11ModuleConfig GetPKCS11ModuleConfig()
@@ -956,6 +965,66 @@ TEST_F(CMCommunicationTest, SendStateRequest)
 
     const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
     EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedMessage)) << "Received message: " << cReceivedMessage;
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, MessageEnqueuedBeforeStartHasSystemID)
+{
+    const auto cExpectedMessage
+        = std::regex(R"(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"[^"]+",)"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"stateRequest","item":\{"id":""\},)"
+                     R"("subject":\{"id":""\},"instance":0,"default":false\}\}$)");
+
+    InitAndSubscribe();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto request = std::make_unique<StateRequest>();
+
+    // Message is enqueued before Start(), i.e. before the system ID is received from IAM.
+    auto err = mCommunication.SendStateRequest(*request);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    StartAndWaitConnected();
+
+    const auto cReceivedMessage = mCloudReceivedMessages.Pop().value_or("");
+    EXPECT_TRUE(std::regex_match(cReceivedMessage, cExpectedMessage)) << "Received message: " << cReceivedMessage;
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, MessageHeaderIsRebuiltOnRetry)
+{
+    mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds * 500;
+
+    const auto cExpectedMessage
+        = std::regex(R"re(^\{"header":\{"version":7,"systemId":"test_system_id","createdAt":"([^"]+)",)re"
+                     R"("txn":"fb6e8461-2601-4f9a-8957-7ab4e52f304c"\},)"
+                     R"("data":\{"messageType":"stateRequest","item":\{"id":""\},)"
+                     R"("subject":\{"id":""\},"instance":0,"default":false\}\}$)");
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto request = std::make_unique<StateRequest>();
+
+    auto err = mCommunication.SendStateRequest(*request);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    std::smatch firstMatch, retryMatch;
+
+    const auto cFirstMessage = mCloudReceivedMessages.Pop().value_or("");
+    ASSERT_TRUE(std::regex_match(cFirstMessage, firstMatch, cExpectedMessage)) << "Received message: " << cFirstMessage;
+
+    const auto cRetryMessage = mCloudReceivedMessages.Pop().value_or("");
+    ASSERT_TRUE(std::regex_match(cRetryMessage, retryMatch, cExpectedMessage)) << "Received message: " << cRetryMessage;
+
+    EXPECT_NE(firstMatch[1].str(), retryMatch[1].str()) << "createdAt is not updated on retry";
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
