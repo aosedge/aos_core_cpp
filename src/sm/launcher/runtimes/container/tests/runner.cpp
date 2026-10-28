@@ -74,6 +74,20 @@ TEST_F(ContainerRunnerTest, StartInstance)
     mRunner.Stop();
 }
 
+TEST_F(ContainerRunnerTest, GetInstanceStatusReportsExitCode)
+{
+    ContainerStatus status = {"service0", InstanceStateEnum::eFailed, {3}};
+
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(status, ErrorEnum::eNone)));
+
+    auto runStatus = mRunner.GetInstanceStatus("service0");
+
+    EXPECT_EQ(runStatus.mState, InstanceStateEnum::eFailed);
+    EXPECT_TRUE(runStatus.mError.Is(ErrorEnum::eFailed));
+    EXPECT_STREQ(runStatus.mError.Message(), "container exited with code 3");
+}
+
 TEST_F(ContainerRunnerTest, StartContainerFailed)
 {
     RunParameters params = {};
@@ -174,6 +188,63 @@ TEST_F(ContainerRunnerTest, RestartOnContainerFailure)
     EXPECT_EQ(mRunner.StartInstance("service0", params).mState, InstanceStateEnum::eActive);
 
     EXPECT_TRUE(restartedPromise.get_future().wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+
+    EXPECT_TRUE(mRunner.StopInstance("service0").IsNone());
+
+    mRunner.Stop();
+}
+
+TEST_F(ContainerRunnerTest, ReportContainerExitStatus)
+{
+    RunParameters params = {{10 * Time::cSeconds}, {0}, {0}};
+
+    Error           err          = ErrorEnum::eNone;
+    ContainerStatus activeStatus = {"service0", InstanceStateEnum::eActive, {}};
+    ContainerStatus exitedStatus = {"service0", InstanceStateEnum::eFailed, {1}};
+    ContainerStatus oomStatus    = {"service0", InstanceStateEnum::eFailed, {137}, true};
+
+    // Failed containers are restarted in between, which doesn't matter for the reported statuses.
+    EXPECT_CALL(mContainerRunnerMock, StartContainer("service0")).WillRepeatedly(Return(err));
+    EXPECT_CALL(mContainerRunnerMock, RemoveContainer("service0")).WillRepeatedly(Return(err));
+    EXPECT_CALL(mContainerRunnerMock, GetContainerStatus("service0"))
+        .WillOnce(Return(RetWithError<ContainerStatus>(activeStatus, err)));
+
+    std::vector<ContainerStatus> activeStatuses = {activeStatus};
+    std::vector<ContainerStatus> exitedStatuses = {exitedStatus};
+    std::vector<ContainerStatus> oomStatuses    = {oomStatus};
+
+    EXPECT_CALL(mContainerRunnerMock, ListContainers())
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(exitedStatuses, err)))
+        .WillOnce(Return(RetWithError<std::vector<ContainerStatus>>(activeStatuses, err)))
+        .WillRepeatedly(Return(RetWithError<std::vector<ContainerStatus>>(oomStatuses, err)));
+
+    std::vector<std::string> errorMessages;
+    std::promise<void>       oomReported;
+
+    EXPECT_CALL(mRunStatusReceiver, UpdateRunStatus(_))
+        .WillRepeatedly(Invoke([&errorMessages, &oomReported](const std::vector<RunStatus>& instances) {
+            EXPECT_EQ(instances.size(), 1);
+
+            if (!instances.empty() && !instances[0].mError.IsNone()) {
+                errorMessages.emplace_back(instances[0].mError.Message());
+
+                if (errorMessages.back() == "container killed by OOM") {
+                    oomReported.set_value();
+                }
+            }
+
+            return Error();
+        }));
+
+    mRunner.Start();
+
+    EXPECT_EQ(mRunner.StartInstance("service0", params).mState, InstanceStateEnum::eActive);
+
+    ASSERT_EQ(oomReported.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    EXPECT_EQ(errorMessages, std::vector<std::string>({"container exited with code 1", "container killed by OOM"}));
+
+    EXPECT_CALL(mContainerRunnerMock, StopContainer("service0")).WillOnce(Return(err));
 
     EXPECT_TRUE(mRunner.StopInstance("service0").IsNone());
 

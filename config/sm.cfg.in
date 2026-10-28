@@ -14,7 +14,8 @@
             "config": {
                 "stateDir": "/var/aos/states",
                 "storageDir": "/var/aos/storages",
-                "crunExecutable": "@CMAKE_INSTALL_PREFIX@/bin/crun"
+                "crunExecutable": "@CMAKE_INSTALL_PREFIX@/bin/crun",
+                "conmonExecutable": "@CMAKE_INSTALL_PREFIX@/bin/conmon"
             }
         }
     ],

@@ -22,6 +22,7 @@ struct ContainerStatus {
     std::string       mInstanceID;
     InstanceState     mState;
     Optional<int32_t> mExitCode;
+    bool              mOOMKilled = {};
 };
 
 /**
