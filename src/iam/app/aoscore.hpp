@@ -16,6 +16,7 @@
 #include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tools/heapallocator.hpp>
 #include <core/iam/certhandler/certmodules/pkcs11/pkcs11.hpp>
+#include <core/iam/currentnode/filehwinfoprovider.hpp>
 #include <core/iam/identhandler/itf/identmodule.hpp>
 #include <core/iam/nodemanager/nodemanager.hpp>
 #include <core/iam/permhandler/permhandler.hpp>
@@ -88,6 +89,7 @@ private:
     pkcs11::PKCS11Manager         mPKCS11Manager;
     std::vector<std::pair<std::unique_ptr<certhandler::HSMItf>, std::unique_ptr<certhandler::CertModule>>> mCertModules;
     database::Database                                                                                     mDatabase;
+    currentnode::FileHwInfoProvider               mHwInfoProvider;
     currentnode::CurrentNodeHandler               mCurrentNodeHandler;
     nodemanager::NodeManager                      mNodeManager;
     provisionmanager::ProvisionManager            mProvisionManager;

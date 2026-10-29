@@ -9,6 +9,7 @@
 #include <fstream>
 
 #include <core/common/tools/logger.hpp>
+#include <core/common/tools/uuid.hpp>
 
 #include <common/utils/exception.hpp>
 
@@ -17,48 +18,20 @@
 
 namespace aos::iam::currentnode {
 
-namespace {
-
-/***********************************************************************************************************************
- * Static
- **********************************************************************************************************************/
-
-Error GetNodeID(const std::string& path, String& nodeID)
-{
-    std::ifstream file;
-
-    if (file.open(path); !file.is_open()) {
-        return ErrorEnum::eNotFound;
-    }
-
-    std::string line;
-
-    if (!std::getline(file, line)) {
-        return ErrorEnum::eFailed;
-    }
-
-    nodeID = line.c_str();
-
-    return ErrorEnum::eNone;
-}
-
-} // namespace
-
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
 
-Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
+Error CurrentNodeHandler::Init(
+    const iam::config::NodeInfoConfig& config, crypto::UUIDItf& uuidProvider, HwInfoProviderItf& hwInfoProvider)
 {
-    Error err;
-
     LOG_DBG() << "Init current node handler";
 
-    if (err = GetNodeID(config.mNodeIDPath, mNodeInfo.mNodeID); !err.IsNone()) {
+    if (auto err = InitNodeID(hwInfoProvider, uuidProvider); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = InitOSInfo(config); !err.IsNone()) {
+    if (auto err = InitOSInfo(config); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -67,29 +40,31 @@ Error CurrentNodeHandler::Init(const iam::config::NodeInfoConfig& config)
     mNodeInfo.mTitle        = config.mNodeName.c_str();
     mNodeInfo.mMaxDMIPS     = config.mMaxDMIPS;
 
+    Error err;
+
     // cppcheck-suppress unusedScopedObject
     Tie(mNodeInfo.mTotalRAM, err) = utils::GetMemTotal(config.mMemInfoPath);
     if (!err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = InitAtrributesInfo(config); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (auto initErr = InitAtrributesInfo(config); !initErr.IsNone()) {
+        return AOS_ERROR_WRAP(initErr);
     }
 
-    if (err = InitCPUInfo(config); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (auto initErr = InitCPUInfo(config); !initErr.IsNone()) {
+        return AOS_ERROR_WRAP(initErr);
     }
 
-    if (err = InitPartitionInfo(config); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    if (auto initErr = InitPartitionInfo(config); !initErr.IsNone()) {
+        return AOS_ERROR_WRAP(initErr);
     }
 
-    if (err = ReadNodeState(); !err.IsNone()) {
-        LOG_ERR() << "Failed to read node state" << Log::Field(err);
+    if (auto stateErr = ReadNodeState(); !stateErr.IsNone()) {
+        LOG_ERR() << "Failed to read node state" << Log::Field(stateErr);
 
         mNodeInfo.mState = NodeStateEnum::eError;
-        mNodeInfo.mError = err;
+        mNodeInfo.mError = stateErr;
     }
 
     return ErrorEnum::eNone;
@@ -179,6 +154,39 @@ Error CurrentNodeHandler::SetConnected(bool isConnected)
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+Error CurrentNodeHandler::InitNodeID(HwInfoProviderItf& hwInfoProvider, crypto::UUIDItf& uuidProvider)
+{
+    StaticString<cHardwareIDLen> hardwareID;
+
+    if (auto err = hwInfoProvider.GetHardwareID(hardwareID); !err.IsNone()) {
+        return err;
+    }
+
+    uuid::UUID space;
+    Error      err;
+
+    Tie(space, err) = uuid::StringToUUID(cNodeIDNamespaceUUID);
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    uuid::UUID nodeUUID;
+
+    Tie(nodeUUID, err) = uuidProvider.CreateUUIDv5(space, hardwareID.AsByteArray());
+    if (!err.IsNone()) {
+        return err;
+    }
+
+    if (auto assignErr = mNodeInfo.mNodeID.Assign(uuid::UUIDToString(nodeUUID).CStr()); !assignErr.IsNone()) {
+        return assignErr;
+    }
+
+    LOG_INF() << "Node identity initialized" << Log::Field("hardwareID", hardwareID)
+              << Log::Field("nodeID", mNodeInfo.mNodeID);
+
+    return ErrorEnum::eNone;
+}
 
 Error CurrentNodeHandler::ReadNodeState()
 {
@@ -305,8 +313,8 @@ Error CurrentNodeHandler::InitPartitionInfo(const iam::config::NodeInfoConfig& c
         }
 
         for (const auto& type : partition.mTypes) {
-            if (err = partitionInfo.mTypes.EmplaceBack(type.c_str()); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
+            if (auto typeErr = partitionInfo.mTypes.EmplaceBack(type.c_str()); !typeErr.IsNone()) {
+                return AOS_ERROR_WRAP(typeErr);
             }
         }
     }

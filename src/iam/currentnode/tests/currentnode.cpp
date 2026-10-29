@@ -14,8 +14,12 @@
 #include <Poco/Environment.h>
 #include <gmock/gmock.h>
 
+#include <core/common/crypto/cryptoprovider.hpp>
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
 #include <core/common/tests/utils/log.hpp>
+#include <core/common/tools/heapallocator.hpp>
+#include <core/common/tools/uuid.hpp>
+#include <core/iam/tests/mocks/hwinfoprovidermock.hpp>
 
 #include <iam/currentnode/currentnodehandler.hpp>
 
@@ -31,12 +35,11 @@ namespace {
 
 #define TEST_TMP_DIR "test-tmp"
 
-const std::string cNodeIDPath            = TEST_TMP_DIR "/node-id";
 const std::string cProvisioningStatePath = TEST_TMP_DIR "/provisioning-state";
 const std::string cCPUInfoPath           = TEST_TMP_DIR "/cpuinfo";
 const std::string cMemInfoPath           = TEST_TMP_DIR "/meminfo";
 const std::array  cPartitionsInfoConfig {iam::config::PartitionInfoConfig {"Name1", {"Type1"}, ""}};
-constexpr auto    cNodeIDFileContent           = "node-id";
+constexpr auto    cHardwareID                  = "node-id";
 constexpr auto    cCPUInfoFileContent          = R"(processor	: 0
 cpu family	: 6
 model		: 141
@@ -86,7 +89,6 @@ iam::config::NodeInfoConfig CreateConfig()
     config.mProvisioningStatePath = cProvisioningStatePath;
     config.mCPUInfoPath           = cCPUInfoPath;
     config.mMemInfoPath           = cMemInfoPath;
-    config.mNodeIDPath            = cNodeIDPath;
     config.mNodeName              = "node-name";
     config.mMaxDMIPS              = 1000;
     config.mOS                    = "testOS";
@@ -162,6 +164,8 @@ protected:
     {
         tests::utils::InitLog();
 
+        ASSERT_TRUE(mCryptoProvider.Init(mAllocator).IsNone());
+
         std::filesystem::create_directory(TEST_TMP_DIR);
 
         std::ofstream cpuInfoFile(cCPUInfoPath);
@@ -174,25 +178,57 @@ protected:
             FAIL() << "Failed to create test memory info file by path: " << cMemInfoPath;
         }
 
-        std::ofstream nodeIDFile(cNodeIDPath);
-        if (!nodeIDFile.is_open()) {
-            FAIL() << "Failed to create test node ID file by path: " << cNodeIDPath;
-        }
-
         cpuInfoFile << cCPUInfoFileContent;
         memInfoFile << cMemInfoFileContent;
-        nodeIDFile << cNodeIDFileContent;
+
+        ON_CALL(mHwInfoProvider, GetHardwareID).WillByDefault(Invoke([](String& hwID) {
+            return hwID.Assign(cHardwareID);
+        }));
     }
 
     void TearDown() override { std::filesystem::remove_all(TEST_TMP_DIR); }
+
+    Error InitHandler(CurrentNodeHandler& handler, const iam::config::NodeInfoConfig& config = CreateConfig())
+    {
+        return handler.Init(config, mCryptoProvider, mHwInfoProvider);
+    }
+
+    StaticString<uuid::cUUIDLen> ExpectedNodeID()
+    {
+        uuid::UUID space;
+        Error      err;
+
+        Tie(space, err) = uuid::StringToUUID(cNodeIDNamespaceUUID);
+        EXPECT_TRUE(err.IsNone());
+
+        uuid::UUID nodeUUID;
+        Tie(nodeUUID, err) = mCryptoProvider.CreateUUIDv5(space, String(cHardwareID).AsByteArray());
+        EXPECT_TRUE(err.IsNone());
+
+        return uuid::UUIDToString(nodeUUID);
+    }
+
+    HeapAllocator                 mAllocator;
+    crypto::DefaultCryptoProvider mCryptoProvider;
+    NiceMock<HwInfoProviderMock>  mHwInfoProvider;
 };
 
 TEST_F(CurrentNodeTest, InitFailsWithEmptyNodeConfigStruct)
 {
     CurrentNodeHandler handler;
 
-    auto err = handler.Init(iam::config::NodeInfoConfig {});
+    auto err = InitHandler(handler, iam::config::NodeInfoConfig {});
     EXPECT_FALSE(err.IsNone()) << "Init should fail with empty config";
+}
+
+TEST_F(CurrentNodeTest, InitFailsIfGetHardwareIDFails)
+{
+    CurrentNodeHandler handler;
+
+    EXPECT_CALL(mHwInfoProvider, GetHardwareID).WillOnce(Return(ErrorEnum::eNotFound));
+
+    auto err = InitHandler(handler);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
 }
 
 TEST_F(CurrentNodeTest, InitFailsIfMemInfoFileNotFound)
@@ -204,7 +240,7 @@ TEST_F(CurrentNodeTest, InitFailsIfMemInfoFileNotFound)
     // remove test memory info file
     std::filesystem::remove(cMemInfoPath);
 
-    auto err = handler.Init(config);
+    auto err = InitHandler(handler, config);
     EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Init should return not found error, err = " << err.Message();
 }
 
@@ -219,7 +255,7 @@ TEST_F(CurrentNodeTest, InitFailsIfMemInfoFileIsEmpty)
 
     CurrentNodeHandler handler;
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     EXPECT_TRUE(err.Is(ErrorEnum::eFailed)) << "Init should return failed error, err = " << err.Message();
 }
 
@@ -230,7 +266,7 @@ TEST_F(CurrentNodeTest, InitReturnsDefaultInfoCPUInfoFileNotFound)
     // remove test cpu info file
     std::filesystem::remove(cCPUInfoPath);
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     EXPECT_TRUE(err.IsNone());
 
     NodeInfo nodeInfo;
@@ -257,7 +293,7 @@ TEST_F(CurrentNodeTest, InitReturnsDefaultInfoCPUInfoCorrupted)
     cpuInfoFile << cCPUInfoFileCorruptedContent;
     cpuInfoFile.close();
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     EXPECT_TRUE(err.IsNone());
 
     NodeInfo nodeInfo;
@@ -281,7 +317,7 @@ TEST_F(CurrentNodeTest, InitFailsIfConfigAttributesExceedMaxAllowed)
 
     CurrentNodeHandler handler;
 
-    auto err = handler.Init(config);
+    auto err = InitHandler(handler, config);
     EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << "Init should return no memory error, err = " << err.Message();
 }
 
@@ -298,7 +334,7 @@ TEST_F(CurrentNodeTest, InitSucceedsOnNonStandardProcFile)
     cpuInfoFile << cEmptyProcFileContent;
     cpuInfoFile.close();
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     ASSERT_TRUE(err.IsNone());
 
     NodeInfo nodeInfo;
@@ -322,13 +358,13 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoSucceeds)
     CurrentNodeHandler handler;
     NodeInfo           nodeInfo;
 
-    auto err = handler.Init(config);
+    auto err = InitHandler(handler, config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     err = handler.GetCurrentNodeInfo(nodeInfo);
     ASSERT_TRUE(err.IsNone()) << "GetCurrentNodeInfo should succeed, err = " << err.Message();
 
-    EXPECT_STREQ(nodeInfo.mNodeID.CStr(), cNodeIDFileContent);
+    EXPECT_STREQ(nodeInfo.mNodeID.CStr(), ExpectedNodeID().CStr());
     EXPECT_STREQ(nodeInfo.mNodeType.CStr(), config.mNodeType.c_str());
     EXPECT_STREQ(nodeInfo.mTitle.CStr(), config.mNodeName.c_str());
     EXPECT_STREQ(nodeInfo.mOSInfo.mOS.CStr(), config.mOS->c_str());
@@ -367,7 +403,7 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoReadsProvisioningStateFromFile)
     CurrentNodeHandler handler;
     NodeInfo           nodeInfo;
 
-    auto err = handler.Init(config);
+    auto err = InitHandler(handler, config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     err = handler.GetCurrentNodeInfo(nodeInfo);
@@ -378,7 +414,7 @@ TEST_F(CurrentNodeTest, GetCurrentNodeInfoReadsProvisioningStateFromFile)
 
     SetStateFile(NodeStateEnum::eProvisioned);
 
-    err = handler.Init(config);
+    err = InitHandler(handler, config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     err = handler.GetCurrentNodeInfo(nodeInfo);
@@ -399,7 +435,7 @@ TEST_F(CurrentNodeTest, NodeConfigOSAndArchInfoApplied)
     CurrentNodeHandler handler;
     NodeInfo           nodeInfo;
 
-    auto err = handler.Init(config);
+    auto err = InitHandler(handler, config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     err = handler.GetCurrentNodeInfo(nodeInfo);
@@ -410,7 +446,7 @@ TEST_F(CurrentNodeTest, NodeConfigOSAndArchInfoApplied)
 
     SetStateFile(NodeStateEnum::eProvisioned);
 
-    err = handler.Init(config);
+    err = InitHandler(handler, config);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     err = handler.GetCurrentNodeInfo(nodeInfo);
@@ -432,7 +468,7 @@ TEST_F(CurrentNodeTest, CheckStates)
 {
     CurrentNodeHandler handler;
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err = " << err.Message();
 
     struct TestCase {
@@ -497,7 +533,7 @@ TEST_F(CurrentNodeTest, ListenersAreNotNotifiedIfStateNotChanged)
     iamclient::CurrentNodeInfoListenerMock listener1, listener2;
     CurrentNodeHandler                     handler;
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
 
     err = handler.SubscribeListener(listener1);
@@ -523,7 +559,7 @@ TEST_F(CurrentNodeTest, ObserversAreNotifiedOnStateChange)
     iamclient::CurrentNodeInfoListenerMock listener1, listener2;
     CurrentNodeHandler                     handler;
 
-    auto err = handler.Init(CreateConfig());
+    auto err = InitHandler(handler);
     ASSERT_TRUE(err.IsNone()) << "Init should succeed, err=" << err.Message();
 
     err = handler.SubscribeListener(listener1);
