@@ -27,6 +27,7 @@ public:
         eDeprovisioningRequest,
         eDeprovisioningResponse,
         eDesiredStatus,
+        eDesiredUnitRootCertificates,
         eFinishProvisioningRequest,
         eFinishProvisioningResponse,
         eInstallUnitCertificatesConfirmation,
@@ -47,6 +48,7 @@ public:
         eStateRequest,
         eUnitStatus,
         eUpdateState,
+        eUnitRootCertificates,
     };
 
     static const Array<const char* const> GetStrings()
@@ -58,6 +60,7 @@ public:
             "deprovisioningRequest",
             "deprovisioningResponse",
             "desiredStatus",
+            "desiredUnitRootCertificates",
             "finishProvisioningRequest",
             "finishProvisioningResponse",
             "installUnitCertificatesConfirmation",
@@ -78,6 +81,7 @@ public:
             "stateRequest",
             "unitStatus",
             "updateState",
+            "unitRootCertificates",
         };
 
         return Array<const char* const>(sStrings, ArraySize(sStrings));

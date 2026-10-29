@@ -32,16 +32,11 @@ Error Downloader::Init(aos::alerts::SenderItf* sender, std::chrono::seconds prog
     return ErrorEnum::eNone;
 }
 
-Error Downloader::Init(std::string_view certStorage, std::string_view caCert,
-    aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, aos::alerts::SenderItf* sender, std::chrono::seconds progressInterval)
+Error Downloader::Init(std::string_view certStorage, aos::iamclient::CertProviderItf& certProvider,
+    crypto::CertLoaderItf& certLoader, crypto::x509::ProviderItf& cryptoProvider, aos::alerts::SenderItf* sender,
+    std::chrono::seconds progressInterval)
 {
-    if (caCert.empty()) {
-        return Error(ErrorEnum::eInvalidArgument, "CA certificate path is empty");
-    }
-
     mCertStorage    = certStorage;
-    mCACert         = caCert;
     mCertProvider   = &certProvider;
     mCertLoader     = &certLoader;
     mCryptoProvider = &cryptoProvider;
@@ -117,7 +112,8 @@ Error Downloader::ConfigureTLS(CURL* curl)
         return Error(ErrorEnum::eFailed, curl_easy_strerror(result));
     }
 
-    if (auto result = curl_easy_setopt(curl, CURLOPT_CAINFO, mCACert.c_str()); result != CURLE_OK) {
+    // Disable default CA bundle: trusted roots are loaded from PKCS#11 in SSLContextCallback.
+    if (auto result = curl_easy_setopt(curl, CURLOPT_CAINFO, static_cast<const char*>(nullptr)); result != CURLE_OK) {
         return Error(ErrorEnum::eFailed, curl_easy_strerror(result));
     }
 
@@ -154,9 +150,8 @@ CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
     auto* downloader = static_cast<Downloader*>(userData);
 
     try {
-        if (auto err = utils::ConfigureSSLContext(downloader->mCertStorage.c_str(), downloader->mCACert.c_str(),
-                *downloader->mCertProvider, *downloader->mCertLoader, *downloader->mCryptoProvider,
-                static_cast<SSL_CTX*>(sslContext));
+        if (auto err = utils::ConfigureSSLContext(downloader->mCertStorage.c_str(), *downloader->mCertProvider,
+                *downloader->mCertLoader, *downloader->mCryptoProvider, static_cast<SSL_CTX*>(sslContext));
             !err.IsNone()) {
             LOG_ERR() << "Failed to configure downloader TLS" << Log::Field(err);
 

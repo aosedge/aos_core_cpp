@@ -16,7 +16,6 @@ namespace aos::common::iamclient {
  */
 struct Config {
     std::string mIAMPublicServerURL;
-    std::string mCACert;
 };
 
 } // namespace aos::common::iamclient

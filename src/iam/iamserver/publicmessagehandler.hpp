@@ -39,7 +39,7 @@ class PublicMessageHandler :
     // public services
     protected iamanager::IAMVersionService::Service,
     protected iamproto::IAMPublicCurrentNodeService::Service,
-    protected iamproto::IAMPublicCertService::Service,
+    protected iamproto::IAMPublicCertificateService::Service,
     protected iamproto::IAMPublicIdentityService::Service,
     protected iamproto::IAMPublicPermissionsService::Service,
     protected iamproto::IAMPublicNodesService::Service,
@@ -101,6 +101,7 @@ protected:
     NodeController*                          GetNodeController() { return mNodeController; }
     NodeInfo&                                GetNodeInfo() { return mNodeInfo; }
     iam::nodemanager::NodeManagerItf*        GetNodeManager() { return mNodeManager; }
+    aos::iamclient::CertProviderItf*         GetCertProvider() { return mCertProvider; }
     Error                                    SetNodeState(const std::string& nodeID, const NodeState& state);
     bool                                     ProcessOnThisNode(const std::string& nodeID);
 
@@ -127,7 +128,7 @@ protected:
     }
 
 private:
-    static constexpr auto cIAMAPIVersion       = 6;
+    static constexpr auto cIAMAPIVersion       = 7;
     static constexpr auto cRequestRetryTimeout = std::chrono::seconds(10);
     static constexpr auto cRequestRetryMaxTry  = 3;
 
@@ -137,16 +138,20 @@ private:
 
     // IAMPublicCurrentNodeService interface
     ::grpc::Status GetCurrentNodeInfo(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
-        ::iamanager::v6::NodeInfo* response) override;
+        ::iamanager::v7::NodeInfo* response) override;
     ::grpc::Status SubscribeCurrentNodeChanged(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
-        ::grpc::ServerWriter<::iamanager::v6::NodeInfo>* writer) override;
+        ::grpc::ServerWriter<::iamanager::v7::NodeInfo>* writer) override;
 
-    // IAMPublicCertService interface
-    ::grpc::Status GetCert(::grpc::ServerContext* context, const ::iamanager::v6::GetCertRequest* request,
-        ::iamanager::v6::CertInfo* response) override;
-    ::grpc::Status SubscribeCertChanged(::grpc::ServerContext* context,
-        const ::iamanager::v6::SubscribeCertChangedRequest*    request,
-        ::grpc::ServerWriter<::iamanager::v6::CertInfo>*       writer) override;
+    // IAMPublicCertificateService interface
+    ::grpc::Status GetCertKey(::grpc::ServerContext* context, const ::iamanager::v7::GetCertKeyRequest* request,
+        ::iamanager::v7::CertKeyInfo* response) override;
+    ::grpc::Status GetRootCerts(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::iamanager::v7::RootCertsInfos* response) override;
+    ::grpc::Status SubscribeCertKeyChanged(::grpc::ServerContext* context,
+        const ::iamanager::v7::SubscribeCertKeyChangedRequest*    request,
+        ::grpc::ServerWriter<::iamanager::v7::CertKeyInfo>*       writer) override;
+    ::grpc::Status SubscribeRootCertsChanged(::grpc::ServerContext* context, const ::google::protobuf::Empty* request,
+        ::grpc::ServerWriter<::iamanager::v7::RootCertsInfos>* writer) override;
 
     // IAMPublicIdentityService interface
     grpc::Status GetSystemInfo(
@@ -181,11 +186,12 @@ private:
     StreamWriter<iamproto::Subjects>         mSubjectsChangedController;
     NodeInfo                                 mNodeInfo;
 
-    std::vector<std::shared_ptr<CertWriter>> mCertWriters;
-    std::mutex                               mCertWritersLock;
-    std::condition_variable                  mRetryCondVar;
-    std::mutex                               mMutex;
-    bool                                     mClose = false;
+    std::vector<std::shared_ptr<CertWriter>>     mCertWriters;
+    std::vector<std::shared_ptr<RootCertWriter>> mRootCertWriters;
+    std::mutex                                   mCertWritersLock;
+    std::condition_variable                      mRetryCondVar;
+    std::mutex                                   mMutex;
+    bool                                         mClose = false;
 };
 
 } // namespace aos::iam::iamserver

@@ -46,8 +46,7 @@ protected:
             .Times(AnyNumber())
             .WillRepeatedly(Return(ErrorEnum::eNone));
         ASSERT_TRUE(
-            mFileserver.Init("localhost:8000", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
-                .IsNone());
+            mFileserver.Init("localhost:8000", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider).IsNone());
     }
 
     StrictMock<aos::iamclient::CertProviderMock> mCertProvider;
@@ -98,16 +97,14 @@ TEST_F(CommonFileserverTest, TranslateFilePathURL)
 TEST_F(CommonFileserverTest, RejectHTTP)
 {
     EXPECT_FALSE(
-        mFileserver
-            .Init("http://localhost:8000", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
+        mFileserver.Init("http://localhost:8000", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider)
             .IsNone());
 }
 
 TEST_F(CommonFileserverTest, ExplicitHTTPSPreservesHostAndPort)
 {
     ASSERT_TRUE(
-        mFileserver.Init("https://main:8094", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
-            .IsNone());
+        mFileserver.Init("https://main:8094", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider).IsNone());
     StaticString<256> url;
     ASSERT_TRUE(mFileserver.TranslateFilePathURL("download/test_file.dat", url).IsNone());
     EXPECT_EQ(url, "https://main:8094/test_file.dat");
@@ -116,8 +113,7 @@ TEST_F(CommonFileserverTest, ExplicitHTTPSPreservesHostAndPort)
 TEST_F(CommonFileserverTest, EmptyHostDefaultsToLocalhost)
 {
     ASSERT_TRUE(
-        mFileserver.Init("https://:8094", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
-            .IsNone());
+        mFileserver.Init("https://:8094", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider).IsNone());
     StaticString<256> url;
     ASSERT_TRUE(mFileserver.TranslateFilePathURL("download/test_file.dat", url).IsNone());
     EXPECT_EQ(url, "https://localhost:8094/test_file.dat");
@@ -126,11 +122,9 @@ TEST_F(CommonFileserverTest, EmptyHostDefaultsToLocalhost)
 TEST_F(CommonFileserverTest, InvalidURLReturnsErrorAndInitCanRetry)
 {
     EXPECT_FALSE(
-        mFileserver.Init("https://[invalid", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
-            .IsNone());
+        mFileserver.Init("https://[invalid", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider).IsNone());
     ASSERT_TRUE(
-        mFileserver.Init("localhost:8094", "download", "cm", "ca.pem", mCertProvider, mCertLoader, mCryptoProvider)
-            .IsNone());
+        mFileserver.Init("localhost:8094", "download", "cm", mCertProvider, mCertLoader, mCryptoProvider).IsNone());
     StaticString<256> url;
     ASSERT_TRUE(mFileserver.TranslateFilePathURL("download/test_file.dat", url).IsNone());
     EXPECT_EQ(url, "https://localhost:8094/test_file.dat");
@@ -155,8 +149,8 @@ TEST_F(CommonFileserverTest, StartReturnsCertificateErrorAndCanRetry)
     EXPECT_CALL(mCertProvider, GetCert(_, _, _, _))
         .Times(2)
         .WillRepeatedly(
-            Invoke([](const String& certType, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&) -> Error {
-                EXPECT_EQ(certType, "cm");
+            Invoke([](const String& storageID, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&) -> Error {
+                EXPECT_EQ(storageID, "cm");
                 return ErrorEnum::eNotFound;
             }));
 
@@ -201,10 +195,11 @@ protected:
         mServer = std::make_unique<Fileserver>(
             [this](SSL_CTX* context) { return mConfigure.Call(context); }, retryInterval);
         ASSERT_TRUE(mServer
-                        ->Init("localhost:" + std::to_string(mPort), "download", "cm", "ca.pem", mCertProvider,
-                            mCertLoader, mCryptoProvider)
+                        ->Init("localhost:" + std::to_string(mPort), "download", "cm", mCertProvider, mCertLoader,
+                            mCryptoProvider)
                         .IsNone());
         EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
+        EXPECT_CALL(mCertProvider, SubscribeRootCertsListener(Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mCertProvider, UnsubscribeListener(Ref(*mServer)))
             .Times(AtLeast(1))
             .WillRepeatedly(Return(ErrorEnum::eNone));
@@ -286,6 +281,9 @@ TEST_F(FileserverRotationTest, RestartAfterStopRestoresListenerAndSubscription)
 {
     Init();
     EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer)))
+        .WillOnce(Return(ErrorEnum::eNone))
+        .RetiresOnSaturation();
+    EXPECT_CALL(mCertProvider, SubscribeRootCertsListener(Ref(*mServer)))
         .WillOnce(Return(ErrorEnum::eNone))
         .RetiresOnSaturation();
     ASSERT_TRUE(mServer->Start().IsNone());

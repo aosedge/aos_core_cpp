@@ -61,19 +61,19 @@ public:
         return {nullptr, ErrorEnum::eNone};
     }
 
-    Error GetCert(const String& certType, [[maybe_unused]] const Array<uint8_t>& issuer,
+    Error GetCert(const String& storageID, [[maybe_unused]] const Array<uint8_t>& issuer,
         [[maybe_unused]] const Array<uint8_t>& serial, CertInfo& resCert) const
     {
         mCertCalled = true;
         mCondVar.notify_all();
 
-        mCertHandler.GetCert(certType, {}, {}, resCert);
+        mCertHandler.GetCert(storageID, {}, {}, resCert);
 
         return ErrorEnum::eNone;
     }
 
     Error SubscribeListener(
-        [[maybe_unused]] const String& certType, [[maybe_unused]] iamclient::CertListenerItf& listener) override
+        [[maybe_unused]] const String& storageID, [[maybe_unused]] iamclient::CertListenerItf& listener) override
     {
         return ErrorEnum::eNone;
     }
@@ -123,8 +123,6 @@ protected:
         mConfig.mCMConfig.mSecurePort    = 30002;
         mConfig.mLogConfig.mMaxPartSize  = 1024;
         mConfig.mLogConfig.mMaxPartCount = 10;
-
-        mConfig.mCACert = CERTIFICATES_MP_DIR "/ca.cer";
 
         ASSERT_TRUE(mCryptoProvider.Init().IsNone());
         ASSERT_TRUE(mSOFTHSMEnv
@@ -205,11 +203,11 @@ protected:
         return config;
     }
 
-    void ApplyCertificate(const String& certType, const String& subject, const String& intermKeyPath,
+    void ApplyCertificate(const String& storageID, const String& subject, const String& intermKeyPath,
         const String& intermCertPath, uint64_t serial, CertInfo& certInfo)
     {
         StaticString<crypto::cCSRPEMLen> csr;
-        ASSERT_TRUE(mCertHandler.CreateKey(certType, subject, cPIN, csr).IsNone());
+        ASSERT_TRUE(mCertHandler.CreateKey(storageID, subject, cPIN, csr).IsNone());
 
         // create certificate from CSR, CA priv key, CA cert
         StaticString<crypto::cPrivKeyPEMLen> intermKey;
@@ -232,7 +230,7 @@ protected:
         ASSERT_TRUE(fs::ReadFileToString(CERTIFICATES_MP_DIR "/ca.cer", caCert).IsNone());
         clientCertChain.Append(caCert);
 
-        auto err = mCertHandler.ApplyCertificate(certType, clientCertChain, certInfo);
+        auto err = mCertHandler.ApplyCertificate(storageID, clientCertChain, certInfo);
         // apply client certificate
         LOG_DBG() << "err = " << err;
         ASSERT_TRUE(err.IsNone());

@@ -6,9 +6,11 @@
  */
 
 #include <core/common/tools/logger.hpp>
+#include <core/iam/certhandler/itf/hsm.hpp>
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/iam.hpp>
+#include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
 
 #include "iamclient.hpp"
@@ -22,12 +24,13 @@ namespace aos::iam::iamclient {
 Error IAMClient::Init(const config::IAMClientConfig& config, aos::iamclient::IdentProviderItf* identProvider,
     aos::iamclient::CertProviderItf& certProvider, provisionmanager::ProvisionManagerItf& provisionManager,
     common::iamclient::TLSCredentialsItf& tlsCredentials, currentnode::CurrentNodeHandlerItf& currentNodeHandler,
-    bool provisioningMode)
+    bool provisioningMode, crypto::CertLoaderItf& certLoader)
 {
     mIdentProvider      = identProvider;
     mCurrentNodeHandler = &currentNodeHandler;
     mCertProvider       = &certProvider;
     mProvisionManager   = &provisionManager;
+    mCertLoader         = &certLoader;
     mCertStorage        = !provisioningMode ? config.mCertStorage : "";
 
     return PublicNodesService::Init(
@@ -40,7 +43,8 @@ Error IAMClient::Start()
     LOG_DBG() << "Start IAM client";
 
     if (!mCertStorage.empty()) {
-        if (auto err = mCertProvider->SubscribeListener(String(mCertStorage.c_str()), *this); !err.IsNone()) {
+        if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, String(mCertStorage.c_str()), *this);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -69,7 +73,7 @@ Error IAMClient::Stop()
  * Protected
  **********************************************************************************************************************/
 
-Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
+Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 {
     if (msg.has_start_provisioning_request()) {
         return ProcessStartProvisioning(msg.start_provisioning_request());
@@ -99,8 +103,16 @@ Error IAMClient::ReceiveMessage(const iamanager::v6::IAMIncomingMessages& msg)
         return ProcessApplyCert(msg.apply_cert_request());
     }
 
-    if (msg.has_get_cert_types_request()) {
-        return ProcessGetCertTypes(msg.get_cert_types_request());
+    if (msg.has_get_cert_key_storage_ids_request()) {
+        return ProcessGetCertKeyStorageIDs(msg.get_cert_key_storage_ids_request());
+    }
+
+    if (msg.has_update_root_certs_request()) {
+        return ProcessUpdateRootCerts(msg.update_root_certs_request());
+    }
+
+    if (msg.has_get_root_certs_fingerprints_request()) {
+        return ProcessGetRootCertsFingerprints(msg.get_root_certs_fingerprints_request());
     }
 
     return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
@@ -142,7 +154,7 @@ Error IAMClient::SendNodeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     *outgoingMsg.mutable_node_info() = common::pbconvert::ConvertToProto(*nodeInfo);
 
     LOG_DBG() << "Send node info: state=" << nodeInfo->mState;
@@ -150,11 +162,11 @@ Error IAMClient::SendNodeInfo()
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioningRequest& request)
+Error IAMClient::ProcessStartProvisioning(const iamanager::v7::StartProvisioningRequest& request)
 {
     LOG_DBG() << "Process start provisioning request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_start_provisioning_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
@@ -172,11 +184,11 @@ Error IAMClient::ProcessStartProvisioning(const iamanager::v6::StartProvisioning
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioningRequest& request)
+Error IAMClient::ProcessFinishProvisioning(const iamanager::v7::FinishProvisioningRequest& request)
 {
     LOG_DBG() << "Process finish provisioning request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_finish_provisioning_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eUnprovisioned}});
@@ -207,11 +219,11 @@ Error IAMClient::ProcessFinishProvisioning(const iamanager::v6::FinishProvisioni
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& request)
+Error IAMClient::ProcessDeprovision(const iamanager::v7::DeprovisionRequest& request)
 {
     LOG_DBG() << "Process deprovision request";
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_deprovision_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned, NodeStateEnum::ePaused}});
@@ -242,13 +254,13 @@ Error IAMClient::ProcessDeprovision(const iamanager::v6::DeprovisionRequest& req
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request)
+Error IAMClient::ProcessPauseNode(const iamanager::v7::PauseNodeRequest& request)
 {
     LOG_DBG() << "Process pause node request";
 
     (void)request;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_pause_node_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::eProvisioned}});
@@ -277,13 +289,13 @@ Error IAMClient::ProcessPauseNode(const iamanager::v6::PauseNodeRequest& request
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& request)
+Error IAMClient::ProcessResumeNode(const iamanager::v7::ResumeNodeRequest& request)
 {
     LOG_DBG() << "Process resume node request";
 
     (void)request;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_resume_node_response();
 
     auto err = CheckCurrentNodeState({{NodeStateEnum::ePaused}});
@@ -312,19 +324,19 @@ Error IAMClient::ProcessResumeNode(const iamanager::v6::ResumeNodeRequest& reque
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request)
+Error IAMClient::ProcessCreateKey(const iamanager::v7::CreateKeyRequest& request)
 {
-    const String         nodeID   = request.node_id().c_str();
-    const String         certType = request.type().c_str();
-    StaticString<cIDLen> subject  = request.subject().c_str();
-    const String         password = request.password().c_str();
+    const String         nodeID    = request.node_id().c_str();
+    const String         storageID = request.storage_id().c_str();
+    StaticString<cIDLen> subject   = request.subject().c_str();
+    const String         password  = request.password().c_str();
 
-    LOG_DBG() << "Process create key request: type=" << certType << ", subject=" << subject;
+    LOG_DBG() << "Process create key request: type=" << storageID << ", subject=" << subject;
 
     if (subject.IsEmpty() && !mIdentProvider) {
         LOG_ERR() << "Subject can't be empty";
 
-        return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument));
+        return SendCreateKeyResponse(nodeID, storageID, {}, AOS_ERROR_WRAP(ErrorEnum::eInvalidArgument));
     }
 
     Error err = ErrorEnum::eNone;
@@ -336,7 +348,7 @@ Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request
         if (!err.IsNone()) {
             LOG_ERR() << "Getting system ID error: error=" << AOS_ERROR_WRAP(err);
 
-            return SendCreateKeyResponse(nodeID, certType, {}, AOS_ERROR_WRAP(err));
+            return SendCreateKeyResponse(nodeID, storageID, {}, AOS_ERROR_WRAP(err));
         }
 
         subject = systemInfo->mSystemID;
@@ -344,37 +356,71 @@ Error IAMClient::ProcessCreateKey(const iamanager::v6::CreateKeyRequest& request
 
     auto csr = std::make_unique<StaticString<crypto::cCSRPEMLen>>();
 
-    err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(certType, subject, password, *csr));
+    err = AOS_ERROR_WRAP(mProvisionManager->CreateKey(storageID, subject, password, *csr));
 
-    return SendCreateKeyResponse(nodeID, certType, *csr, err);
+    return SendCreateKeyResponse(nodeID, storageID, *csr, err);
 }
 
-Error IAMClient::ProcessApplyCert(const iamanager::v6::ApplyCertRequest& request)
+Error IAMClient::ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request)
 {
-    const String nodeID   = request.node_id().c_str();
-    const String certType = request.type().c_str();
-    const String pemCert  = request.cert().c_str();
+    const String nodeID    = request.node_id().c_str();
+    const String storageID = request.storage_id().c_str();
+    const String pemCert   = request.cert().c_str();
 
-    LOG_DBG() << "Process apply cert request: type=" << certType;
+    LOG_DBG() << "Process apply cert request: type=" << storageID;
 
     auto  certInfo = std::make_unique<CertInfo>();
-    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(certType, pemCert, *certInfo));
+    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
 
-    return SendApplyCertResponse(nodeID, certType, certInfo->mCertURL, certInfo->mSerial, err);
+    return SendApplyCertResponse(nodeID, storageID, certInfo->mCertURL, certInfo->mSerial, err);
 }
 
-Error IAMClient::ProcessGetCertTypes(const iamanager::v6::GetCertTypesRequest& request)
+Error IAMClient::ProcessGetCertKeyStorageIDs(const iamanager::v7::GetCertKeyStorageIDsRequest& request)
 {
     const String nodeID = request.node_id().c_str();
 
     LOG_DBG() << "Process get cert types: nodeID=" << nodeID;
 
-    auto [certTypes, err] = mProvisionManager->GetCertTypes();
+    auto [storageIDs, err] = mProvisionManager->GetCertKeyStorageIDs();
     if (!err.IsNone()) {
         LOG_ERR() << "Get certificate types failed: error=" << AOS_ERROR_WRAP(err);
     }
 
-    return SendGetCertTypesResponse(certTypes, err);
+    return SendGetCertKeyStorageIDsResponse(storageIDs, err);
+}
+
+Error IAMClient::ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request)
+{
+    const String nodeID = request.node_id().c_str();
+
+    LOG_DBG() << "Process update root certs request" << Log::Field("nodeID", nodeID)
+              << Log::Field("count", request.root_certs_size());
+
+    auto pemCerts  = std::make_unique<StaticArray<StaticString<crypto::cCertPEMLen>, certhandler::cCertsPerModule>>();
+    auto certInfos = std::make_unique<StaticArray<CertInfo, certhandler::cCertsPerModule>>();
+
+    for (const auto& rootCert : request.root_certs()) {
+        if (auto err = pemCerts->EmplaceBack(rootCert.c_str()); !err.IsNone()) {
+            return SendUpdateRootCertsResponse(nodeID, AOS_ERROR_WRAP(err));
+        }
+    }
+
+    auto err = AOS_ERROR_WRAP(mProvisionManager->UpdateRootCerts(*pemCerts, *certInfos));
+
+    return SendUpdateRootCertsResponse(nodeID, err);
+}
+
+Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request)
+{
+    const String nodeID = request.node_id().c_str();
+
+    LOG_DBG() << "Process get root cert fingerprints" << Log::Field("nodeID", nodeID);
+
+    auto fingerprints = std::make_unique<StaticArray<SHA256Fingerprint, crypto::cMaxRootCerts>>();
+
+    auto err = AOS_ERROR_WRAP(common::utils::GetRootCertsFingerprints(*mCertProvider, *mCertLoader, *fingerprints));
+
+    return SendGetRootCertsFingerprintsResponse(nodeID, *fingerprints, err);
 }
 
 Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
@@ -398,11 +444,11 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
 
 Error IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error)
 {
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_create_key_response();
 
     response.set_node_id(nodeID.CStr());
-    response.set_type(type.CStr());
+    response.set_storage_id(type.CStr());
     response.set_csr(csr.CStr());
 
     common::pbconvert::SetErrorInfo(error, response);
@@ -413,7 +459,7 @@ Error IAMClient::SendCreateKeyResponse(const String& nodeID, const String& type,
 Error IAMClient::SendApplyCertResponse(
     const String& nodeID, const String& type, const String& certURL, const Array<uint8_t>& serial, const Error& error)
 {
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
     auto&                              response = *outgoingMsg.mutable_apply_cert_response();
 
     std::string protoSerial;
@@ -429,7 +475,7 @@ Error IAMClient::SendApplyCertResponse(
 
     response.set_node_id(nodeID.CStr());
 
-    response.mutable_cert_info()->set_type(type.CStr());
+    response.mutable_cert_info()->set_storage_id(type.CStr());
     response.mutable_cert_info()->set_cert_url(certURL.CStr());
     response.mutable_cert_info()->set_serial(protoSerial);
 
@@ -438,16 +484,46 @@ Error IAMClient::SendApplyCertResponse(
     return SendMessage(outgoingMsg);
 }
 
-Error IAMClient::SendGetCertTypesResponse(const provisionmanager::CertTypes& types, const Error& error)
+Error IAMClient::SendGetCertKeyStorageIDsResponse(const provisionmanager::StorageIDs& types, const Error& error)
 {
     (void)error;
 
-    iamanager::v6::IAMOutgoingMessages outgoingMsg;
-    auto&                              response = *outgoingMsg.mutable_cert_types_response();
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_cert_key_storage_ids_response();
 
     for (const auto& type : types) {
-        response.mutable_types()->Add(type.CStr());
+        response.add_storage_ids(type.CStr());
     }
+
+    return SendMessage(outgoingMsg);
+}
+
+Error IAMClient::SendUpdateRootCertsResponse(const String& nodeID, const Error& error)
+{
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_update_root_certs_response();
+
+    response.set_node_id(nodeID.CStr());
+    common::pbconvert::SetErrorInfo(error, response);
+
+    return SendMessage(outgoingMsg);
+}
+
+Error IAMClient::SendGetRootCertsFingerprintsResponse(
+    const String& nodeID, const Array<SHA256Fingerprint>& fingerprints, const Error& error)
+{
+    iamanager::v7::IAMOutgoingMessages outgoingMsg;
+    auto&                              response = *outgoingMsg.mutable_get_root_certs_fingerprints_response();
+
+    response.set_node_id(nodeID.CStr());
+
+    if (error.IsNone()) {
+        for (const auto& fingerprint : fingerprints) {
+            response.add_cert_fingerprints(fingerprint.CStr());
+        }
+    }
+
+    common::pbconvert::SetErrorInfo(error, response);
 
     return SendMessage(outgoingMsg);
 }

@@ -64,7 +64,7 @@ TEST_F(CertificateServiceTest, CreateKey)
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_STREQ(csr.CStr(), "-----BEGIN CERTIFICATE REQUEST-----\ntest_csr\n-----END CERTIFICATE REQUEST-----");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node1");
-    EXPECT_STREQ(mStub->GetLastCertType().c_str(), "online");
+    EXPECT_STREQ(mStub->GetLastStorageID().c_str(), "online");
     EXPECT_STREQ(mStub->GetLastSubject().c_str(), "CN=test");
     EXPECT_STREQ(mStub->GetLastPassword().c_str(), "password123");
 }
@@ -95,7 +95,7 @@ TEST_F(CertificateServiceTest, ApplyCert)
     EXPECT_STREQ(certInfo.mCertURL.CStr(), "file:///path/to/cert.pem");
     EXPECT_STREQ(certInfo.mKeyURL.CStr(), "file:///path/to/key.pem");
     EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node2");
-    EXPECT_STREQ(mStub->GetLastCertType().c_str(), "offline");
+    EXPECT_STREQ(mStub->GetLastStorageID().c_str(), "offline");
     EXPECT_STREQ(mStub->GetLastPemCert().c_str(), "-----BEGIN CERTIFICATE-----\ntest_cert\n-----END CERTIFICATE-----");
 }
 
@@ -111,6 +111,39 @@ TEST_F(CertificateServiceTest, ApplyCertWithError)
     EXPECT_NE(err, aos::ErrorEnum::eNone);
     EXPECT_EQ(err.Code(), 2);
     EXPECT_STREQ(err.Message(), "Certificate application failed");
+}
+
+TEST_F(CertificateServiceTest, UpdateRootCerts)
+{
+    aos::StaticArray<aos::StaticString<aos::crypto::cCertPEMLen>, 2> pemCerts;
+
+    pemCerts.PushBack("-----BEGIN CERTIFICATE-----\nroot_cert1\n-----END CERTIFICATE-----");
+    pemCerts.PushBack("-----BEGIN CERTIFICATE-----\nroot_cert2\n-----END CERTIFICATE-----");
+
+    auto err = mService->UpdateRootCerts("node4", pemCerts);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_STREQ(mStub->GetLastNodeID().c_str(), "node4");
+
+    auto rootCerts = mStub->GetLastRootCerts();
+    ASSERT_EQ(rootCerts.size(), 2);
+    EXPECT_EQ(rootCerts[0], "-----BEGIN CERTIFICATE-----\nroot_cert1\n-----END CERTIFICATE-----");
+    EXPECT_EQ(rootCerts[1], "-----BEGIN CERTIFICATE-----\nroot_cert2\n-----END CERTIFICATE-----");
+}
+
+TEST_F(CertificateServiceTest, UpdateRootCertsWithError)
+{
+    mStub->SetError(3, "Update root certs failed");
+
+    aos::StaticArray<aos::StaticString<aos::crypto::cCertPEMLen>, 1> pemCerts;
+
+    pemCerts.PushBack("-----BEGIN CERTIFICATE-----\nroot_cert1\n-----END CERTIFICATE-----");
+
+    auto err = mService->UpdateRootCerts("node4", pemCerts);
+
+    EXPECT_NE(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(err.Code(), 3);
+    EXPECT_STREQ(err.Message(), "Update root certs failed");
 }
 
 TEST_F(CertificateServiceTest, Reconnect)

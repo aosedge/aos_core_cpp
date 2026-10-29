@@ -28,7 +28,7 @@ namespace aos::common::utils {
  *
  * @tparam TStub gRPC stub type (e.g., IAMPublicCertService::Stub).
  * @tparam TListener Listener interface type (e.g., CertListenerItf).
- * @tparam TProtoMsg Protobuf message type (e.g., iamanager::v6::CertInfo).
+ * @tparam TProtoMsg Protobuf message type (e.g., iamanager::v7::CertInfo).
  * @tparam TAosType AOS native type (e.g., CertInfo).
  * @tparam TRequest Protobuf request type (e.g., SubscribeCertChangedRequest).
  */

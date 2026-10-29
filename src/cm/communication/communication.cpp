@@ -41,9 +41,10 @@ namespace {
  * Types
  **********************************************************************************************************************/
 
-using ReceivedMessageVariant = std::variant<common::cloudprotocol::Ack, common::cloudprotocol::Nack, BlobURLsInfo,
-    DesiredStatus, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
-    OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
+using ReceivedMessageVariant
+    = std::variant<common::cloudprotocol::Ack, common::cloudprotocol::Nack, BlobURLsInfo, DesiredStatus,
+        DesiredUnitRootCertificates, RequestLog, StateAcceptance, UpdateState, RenewCertsNotification, IssuedUnitCerts,
+        OverrideEnvVarsRequest, StartProvisioningRequest, FinishProvisioningRequest, DeprovisioningRequest>;
 
 /***********************************************************************************************************************
  * Statics
@@ -124,6 +125,13 @@ std::unique_ptr<ReceivedMessageVariant> ParseMessage(const common::utils::CaseIn
         return result;
     }
 
+    case common::cloudprotocol::MessageTypeEnum::eDesiredUnitRootCertificates: {
+        err = common::cloudprotocol::FromJSON(json, result->emplace<DesiredUnitRootCertificates>());
+        AOS_ERROR_CHECK_AND_THROW(err);
+
+        return result;
+    }
+
     case common::cloudprotocol::MessageTypeEnum::eRenewCertificatesNotification: {
         err = common::cloudprotocol::FromJSON(json, result->emplace<RenewCertsNotification>());
         AOS_ERROR_CHECK_AND_THROW(err);
@@ -185,7 +193,8 @@ Error Communication::Init(const cm::config::Config& config,
     crypto::x509::ProviderItf& cryptoProvider, crypto::CryptoHelper& cryptoHelper, crypto::UUIDItf& uuidProvider,
     updatemanager::UpdateManagerItf& updateManager, storagestate::StateHandlerItf& stateHandler,
     smcontroller::LogProviderItf& logProvider, launcher::EnvVarHandlerItf& envVarHandler,
-    iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler)
+    iamclient::CertHandlerItf& certHandler, iamclient::ProvisioningItf& provisioningHandler,
+    rootcerts::RootCertsItf& rootCerts)
 {
     LOG_DBG() << "Init communication";
 
@@ -205,6 +214,7 @@ Error Communication::Init(const cm::config::Config& config,
     mEnvVarHandler           = &envVarHandler;
     mCertHandler             = &certHandler;
     mProvisioningHandler     = &provisioningHandler;
+    mRootCerts               = &rootCerts;
 
     mCloudHttpRequest.setMethod(Poco::Net::HTTPRequest::HTTP_GET);
     mCloudHttpRequest.setVersion(Poco::Net::HTTPMessage::HTTP_1_1);
@@ -456,6 +466,22 @@ Error Communication::SendUnitStatus(const UnitStatus& unitStatus)
     return ErrorEnum::eNone;
 }
 
+Error Communication::SendUnitRootCertificates(const UnitRootCertificates& unitRootCertificates)
+{
+    LOG_DBG() << "Send unit root certificates" << Log::Field("count", unitRootCertificates.mNodeCertificates.Size())
+              << Log::Field("isPartial", unitRootCertificates.mIsPartial);
+
+    try {
+        if (auto err = EnqueueMessage(CreateMessageData(unitRootCertificates), false); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    } catch (const std::exception& e) {
+        return common::utils::ToAosError(e);
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error Communication::SubscribeListener(cloudconnection::ConnectionListenerItf& listener)
 {
     std::lock_guard lock {mSubscribersMutex};
@@ -513,8 +539,8 @@ std::unique_ptr<Poco::Net::HTTPClientSession> Communication::CreateSession(const
 
     auto context = Poco::makeAuto<Poco::Net::Context>(Poco::Net::Context::TLS_CLIENT_USE, "");
 
-    err = common::utils::ConfigureSSLContext(cOnlineCertificate, mConfig->mCACert.c_str(), *mCertProvider, *mCertLoader,
-        *mCryptoProvider, context->sslContext());
+    err = common::utils::ConfigureSSLContext(
+        cOnlineCertificate, *mCertProvider, *mCertLoader, *mCryptoProvider, context->sslContext());
     AOS_ERROR_CHECK_AND_THROW(err);
 
     return std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
@@ -1272,15 +1298,15 @@ void Communication::HandleMessage(const ResponseInfo& info, const StartProvision
         return;
     }
 
-    auto nodeCertTypes = std::make_unique<iam::provisionmanager::CertTypes>();
+    auto nodeStorageIDs = std::make_unique<iam::provisionmanager::StorageIDs>();
 
-    if (auto err = mProvisioningHandler->GetCertTypes(request.mNodeID, *nodeCertTypes); !err.IsNone()) {
+    if (auto err = mProvisioningHandler->GetCertKeyStorageIDs(request.mNodeID, *nodeStorageIDs); !err.IsNone()) {
         response->mError = AOS_ERROR_WRAP(err);
 
         return;
     }
 
-    for (const auto& cert : *nodeCertTypes) {
+    for (const auto& cert : *nodeStorageIDs) {
         if (auto err = response->mCSRs.EmplaceBack(); !err.IsNone()) {
             response->mError = AOS_ERROR_WRAP(err);
 
@@ -1379,6 +1405,19 @@ void Communication::HandleMessage(const ResponseInfo& info, const Deprovisioning
 
     if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
         LOG_ERR() << "Send deprovisioning response failed" << Log::Field(err);
+    }
+}
+
+void Communication::HandleMessage(const ResponseInfo& info, const DesiredUnitRootCertificates& desiredRootCerts)
+{
+    LOG_DBG() << "Received desired unit root certificates message" << Log::Field("txn", info.mTxn.c_str());
+
+    if (auto err = SendAck(info.mTxn); !err.IsNone()) {
+        LOG_ERR() << "Send ack failed" << Log::Field("txn", info.mTxn.c_str()) << Log::Field(err);
+    }
+
+    if (auto err = mRootCerts->ProcessDesiredRootCertificates(desiredRootCerts); !err.IsNone()) {
+        LOG_ERR() << "Desired unit root certificates processing failed" << Log::Field(err);
     }
 }
 

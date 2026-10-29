@@ -11,6 +11,7 @@
 
 #include <common/pbconvert/common.hpp>
 #include <common/pbconvert/sm.hpp>
+#include <common/utils/cryptohelper.hpp>
 
 #include "smclient.hpp"
 
@@ -63,7 +64,8 @@ Error SMClient::Start()
     }
 
     if (mSecureConnection) {
-        if (auto err = mCertProvider->SubscribeListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
+        if (auto err = common::utils::SubscribeCertChanges(*mCertProvider, mConfig.mCertStorage.c_str(), *this);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
     }
