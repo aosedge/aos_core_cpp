@@ -413,6 +413,8 @@ Database::~Database()
 
 Error Database::Init(const std::string& workDir, const common::config::Migration& migrationConfig)
 {
+    std::lock_guard lock {mMutex};
+
     LOG_DBG() << "Init database" << Log::Field("workDir", workDir.c_str());
 
     if (mSession && mSession->isConnected()) {
@@ -427,6 +429,9 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
 
         const auto dbPath = Poco::Path(workDir, cDBFileName);
         mSession          = std::make_unique<Poco::Data::Session>("SQLite", dbPath.toString());
+
+        // Each committed write must survive power loss: runtimes rely on it to recover the update.
+        *mSession << "PRAGMA synchronous = FULL;", now;
 
         CreateTables();
 
@@ -997,6 +1002,132 @@ Error Database::GetJournalCursor(String& cursor) const
 }
 
 /***********************************************************************************************************************
+ * sm::launcher::runtimes::StorageItf implementation
+ **********************************************************************************************************************/
+
+Error Database::AddRuntimeInstance(const sm::launcher::runtimes::RuntimeInstanceData& instance)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Add runtime instance" << Log::Field("runtimeID", instance.mRuntimeID)
+              << Log::Field("instance", static_cast<const InstanceIdent&>(instance))
+              << Log::Field("manifestDigest", instance.mManifestDigest) << Log::Field("state", instance.mState);
+
+    try {
+        RuntimeInstanceRow row;
+
+        FromAos(instance, row);
+
+        *mSession << "INSERT INTO runtimeInstances (runtimeID, itemID, subjectID, version, instance, type, "
+                     "preinstalled, manifestDigest, state, errorAosCode, errorSysCode, errorMessage) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            bind(row), now;
+    } catch (const Poco::Data::SQLite::ConstraintViolationException&) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eAlreadyExist, "runtime instance already exists"));
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::UpdateRuntimeInstance(const sm::launcher::runtimes::RuntimeInstanceData& instance)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Update runtime instance" << Log::Field("runtimeID", instance.mRuntimeID)
+              << Log::Field("instance", static_cast<const InstanceIdent&>(instance))
+              << Log::Field("manifestDigest", instance.mManifestDigest) << Log::Field("state", instance.mState);
+
+    try {
+        RuntimeInstanceRow row;
+
+        FromAos(instance, row);
+
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "UPDATE runtimeInstances SET preinstalled = ?, manifestDigest = ?, state = ?, errorAosCode = ?, "
+                     "errorSysCode = ?, errorMessage = ? WHERE runtimeID = ? AND itemID = ? AND subjectID = ? AND "
+                     "instance = ? AND type = ? AND version = ?;",
+            bind(row.get<ToInt(RuntimeInstanceColumns::ePreinstalled)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eManifestDigest)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eState)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eErrorAosCode)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eErrorSysCode)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eErrorMessage)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eRuntimeID)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eItemID)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eSubjectID)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eInstance)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eType)>()),
+            bind(row.get<ToInt(RuntimeInstanceColumns::eVersion)>());
+
+        if (statement.execute() == 0) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version)
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Remove runtime instance" << Log::Field("runtimeID", runtimeID) << Log::Field("instance", ident)
+              << Log::Field("version", version);
+
+    try {
+        Poco::Data::Statement statement {*mSession};
+
+        statement << "DELETE FROM runtimeInstances WHERE runtimeID = ? AND itemID = ? AND subjectID = ? AND "
+                     "instance = ? AND type = ? AND version = ?;",
+            bind(runtimeID.CStr()), bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
+            bind(ident.mType.ToString().CStr()), bind(version.CStr());
+
+        if (statement.execute() == 0) {
+            return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Database::GetRuntimeInstances(
+    const String& runtimeID, Array<sm::launcher::runtimes::RuntimeInstanceData>& instances) const
+{
+    std::lock_guard lock {mMutex};
+
+    LOG_DBG() << "Get runtime instances" << Log::Field("runtimeID", runtimeID);
+
+    try {
+        std::vector<RuntimeInstanceRow> rows;
+
+        *mSession << "SELECT runtimeID, itemID, subjectID, version, instance, type, preinstalled, manifestDigest, "
+                     "state, errorAosCode, errorSysCode, errorMessage FROM runtimeInstances WHERE runtimeID = ?;",
+            bind(runtimeID.CStr()), into(rows), now;
+
+        auto instance = std::make_unique<sm::launcher::runtimes::RuntimeInstanceData>();
+
+        for (const auto& row : rows) {
+            ToAos(row, *instance);
+
+            if (auto err = instances.PushBack(*instance); !err.IsNone()) {
+                return AOS_ERROR_WRAP(Error(err, "db runtime instances count exceeds application limit"));
+            }
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+/***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
 
@@ -1189,6 +1320,44 @@ void Database::ToAos(const InstanceNetworkInfoRow& src, sm::networkmanager::Inst
     DeserializeNetworkConfig(src.get<ToInt(InstanceNetworkInfoColumns::eNetworkConfig)>(), dst.mNetworkConfig);
     DeserializeAllocatedParams(src.get<ToInt(InstanceNetworkInfoColumns::eAllocatedParams)>(), dst.mAllocatedParams);
     dst.mHostIfName = src.get<ToInt(InstanceNetworkInfoColumns::eHostIfName)>().c_str();
+}
+
+void Database::FromAos(const sm::launcher::runtimes::RuntimeInstanceData& src, RuntimeInstanceRow& dst)
+{
+    dst.set<ToInt(RuntimeInstanceColumns::eRuntimeID)>(src.mRuntimeID.CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eItemID)>(src.mItemID.CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eSubjectID)>(src.mSubjectID.CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eInstance)>(src.mInstance);
+    dst.set<ToInt(RuntimeInstanceColumns::eType)>(src.mType.ToString().CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::ePreinstalled)>(src.mPreinstalled);
+    dst.set<ToInt(RuntimeInstanceColumns::eManifestDigest)>(src.mManifestDigest.CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eState)>(src.mState.ToString().CStr());
+    dst.set<ToInt(RuntimeInstanceColumns::eErrorAosCode)>(static_cast<int32_t>(src.mError.Value()));
+    dst.set<ToInt(RuntimeInstanceColumns::eErrorSysCode)>(src.mError.Code());
+    dst.set<ToInt(RuntimeInstanceColumns::eErrorMessage)>(src.mError.Message());
+}
+
+void Database::ToAos(const RuntimeInstanceRow& src, sm::launcher::runtimes::RuntimeInstanceData& dst)
+{
+    dst.mRuntimeID      = src.get<ToInt(RuntimeInstanceColumns::eRuntimeID)>().c_str();
+    dst.mItemID         = src.get<ToInt(RuntimeInstanceColumns::eItemID)>().c_str();
+    dst.mSubjectID      = src.get<ToInt(RuntimeInstanceColumns::eSubjectID)>().c_str();
+    dst.mVersion        = src.get<ToInt(RuntimeInstanceColumns::eVersion)>().c_str();
+    dst.mInstance       = src.get<ToInt(RuntimeInstanceColumns::eInstance)>();
+    dst.mPreinstalled   = src.get<ToInt(RuntimeInstanceColumns::ePreinstalled)>();
+    dst.mManifestDigest = src.get<ToInt(RuntimeInstanceColumns::eManifestDigest)>().c_str();
+
+    AOS_ERROR_CHECK_AND_THROW(
+        dst.mType.FromString(src.get<ToInt(RuntimeInstanceColumns::eType)>().c_str()), "failed to parse instance type");
+
+    AOS_ERROR_CHECK_AND_THROW(dst.mState.FromString(src.get<ToInt(RuntimeInstanceColumns::eState)>().c_str()),
+        "failed to parse instance state");
+
+    const auto& message = src.get<ToInt(RuntimeInstanceColumns::eErrorMessage)>();
+
+    dst.mError = Error(static_cast<ErrorEnum>(src.get<ToInt(RuntimeInstanceColumns::eErrorAosCode)>()),
+        src.get<ToInt(RuntimeInstanceColumns::eErrorSysCode)>(), message.empty() ? nullptr : message.c_str());
 }
 
 } // namespace aos::sm::database
