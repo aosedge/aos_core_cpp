@@ -13,12 +13,14 @@
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
 #include <core/common/iamclient/itf/permhandler.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
+#include <core/common/tools/fs.hpp>
 #include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 
+#include <sm/launcher/runtimes/itf/storage.hpp>
 #include <sm/utils/itf/systemdconn.hpp>
 
 #include "runtimes/container/container.hpp"
@@ -45,13 +47,16 @@ public:
      * @param statusReceiver instance status receiver.
      * @param systemdConn systemd connection.
      * @param instanceIDProvider instance ID provider.
+     * @param runtimeStorage runtime storage.
+     * @param fileInfoProvider file info provider.
      * @return Error.
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn,
-        launcher::InstanceIDProviderItf& instanceIDProvider);
+        launcher::InstanceIDProviderItf& instanceIDProvider, runtimes::StorageItf& runtimeStorage,
+        fs::FileInfoProviderItf& fileInfoProvider);
 
     /**
      * Returns runtimes.

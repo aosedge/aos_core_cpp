@@ -31,7 +31,8 @@ Error Runtimes::Init(const Config&                             config,
     [[maybe_unused]] resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
     [[maybe_unused]] oci::OCISpecItf& ociSpec, [[maybe_unused]] InstanceStatusReceiverItf& statusReceiver,
     [[maybe_unused]] sm::utils::SystemdConnItf&       systemdConn,
-    [[maybe_unused]] launcher::InstanceIDProviderItf& instanceIDProvider)
+    [[maybe_unused]] launcher::InstanceIDProviderItf& instanceIDProvider,
+    [[maybe_unused]] runtimes::StorageItf& runtimeStorage, [[maybe_unused]] fs::FileInfoProviderItf& fileInfoProvider)
 {
     LOG_DBG() << "Init runtimes" << Log::Field("numRuntimes", config.mRuntimes.size());
 
@@ -69,8 +70,8 @@ Error Runtimes::Init(const Config&                             config,
             if (runtimeConfig.mPlugin == cRuntimeRootfs) {
             auto runtime = std::make_unique<RootfsRuntime>();
 
-            if (auto err = runtime->Init(
-                    runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec, statusReceiver, systemdConn);
+            if (auto err = runtime->Init(runtimeConfig, currentNodeInfoProvider, itemInfoProvider, ociSpec,
+                    statusReceiver, systemdConn, runtimeStorage, fileInfoProvider);
                 !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }

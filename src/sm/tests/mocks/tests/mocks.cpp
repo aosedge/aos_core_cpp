@@ -5,4 +5,5 @@
  */
 
 #include <sm/tests/mocks/journalmock.hpp>
+#include <sm/tests/mocks/runtimestoragemock.hpp>
 #include <sm/tests/mocks/systemdconnmock.hpp>
