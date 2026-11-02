@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/fileinfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
@@ -23,6 +24,7 @@
 #include <sm/launcher/runtimes/boot/boot.hpp>
 #include <sm/launcher/runtimes/container/container.hpp>
 #include <sm/launcher/runtimes/rootfs/rootfs.hpp>
+#include <sm/tests/mocks/runtimestoragemock.hpp>
 #include <sm/tests/mocks/systemdconnmock.hpp>
 
 using namespace testing;
@@ -73,6 +75,8 @@ protected:
     NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
     NiceMock<sm::utils::SystemdConnMock>                mSystemdConnMock;
     NiceMock<launcher::InstanceIDProviderMock>          mInstanceIDProviderMock;
+    NiceMock<runtimes::StorageMock>                     mRuntimeStorageMock;
+    NiceMock<fs::FileInfoProviderMock>                  mFileInfoProviderMock;
 };
 
 /***********************************************************************************************************************
@@ -85,7 +89,7 @@ TEST_F(RuntimesTest, InitNoRuntimes)
 
     auto err = runtimes.Init(Config {}, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
         mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock,
-        mInstanceIDProviderMock);
+        mInstanceIDProviderMock, mRuntimeStorageMock, mFileInfoProviderMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -116,7 +120,7 @@ TEST_F(RuntimesTest, InitRuntimes)
 
     auto err = runtimes.Init(config, mCurrentNodeInfoProviderMock, mItemInfoProviderMock, mNetworkManagerMock,
         mPermHandlerMock, mResourceInfoProviderMock, mOCISpecMock, mInstanceStatusReceiverMock, mSystemdConnMock,
-        mInstanceIDProviderMock);
+        mInstanceIDProviderMock, mRuntimeStorageMock, mFileInfoProviderMock);
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
     auto runtimesArray = std::make_unique<StaticArray<RuntimeItf*, cMaxNumNodeRuntimes>>();
