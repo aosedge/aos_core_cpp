@@ -106,10 +106,15 @@ void AosCore::Init(const std::string& configFile)
     err = mNodeMonitoringProvider.Init(mIAMClient, mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize node monitoring provider");
 
+    // Initialize file info provider
+
+    err = mFileInfoProvider.Init(mAllocator, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file info provider");
+
     // Initialize runtimes
 
     err = mRuntimes.Init(mConfig.mLauncher, mIAMClient, mImageManager, mNetworkManager, mIAMClient, mResourceManager,
-        mOCISpec, mLauncher, mSystemdConn, mInstanceIDProvider);
+        mOCISpec, mLauncher, mSystemdConn, mInstanceIDProvider, mDatabase, mFileInfoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize runtimes");
 
     auto runtimes = std::make_unique<StaticArray<launcher::RuntimeItf*, cMaxNumNodeRuntimes>>();
@@ -128,11 +133,6 @@ void AosCore::Init(const std::string& configFile)
     err = mDownloader.Init(mConfig.mSMClientConfig.mCertStorage, mConfig.mIAMClientConfig.mCACert, mIAMClient,
         mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize downloader");
-
-    // Initialize file info provider
-
-    err = mFileInfoProvider.Init(mAllocator, mCryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file info provider");
 
     // Initialize image handler
     err = mImageHandler.Init();
