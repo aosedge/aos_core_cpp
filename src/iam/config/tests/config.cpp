@@ -327,7 +327,6 @@ TEST_F(ConfigTest, ParseVISIdentifierModuleParams)
 TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
 {
     Poco::JSON::Object::Ptr params = new Poco::JSON::Object();
-    params->set("systemIDPath", "test-system-id-path");
     params->set("unitModelPath", "test-unit-model-path");
     params->set("subjectsPath", "test-subjects-path");
 
@@ -336,7 +335,6 @@ TEST_F(ConfigTest, ParseFileIdentifierModuleParams)
     auto err = ParseFileIdentifierModuleParams(params, *fileIdentifierParams);
     ASSERT_EQ(err, ErrorEnum::eNone);
 
-    EXPECT_EQ(fileIdentifierParams->mSystemIDPath, "test-system-id-path");
     EXPECT_EQ(fileIdentifierParams->mUnitModelPath, "test-unit-model-path");
     EXPECT_EQ(fileIdentifierParams->mSubjectsPath, "test-subjects-path");
 }
