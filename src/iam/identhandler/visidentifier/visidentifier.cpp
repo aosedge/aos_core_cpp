@@ -94,22 +94,21 @@ Error VISIdentifier::Stop()
     return ErrorEnum::eNone;
 }
 
-Error VISIdentifier::GetSystemInfo(SystemInfo& info)
+Error VISIdentifier::GetUnitModelInfo(UnitModelInfo& info)
 {
     {
         std::lock_guard lock {mMutex};
 
-        if (mSystemInfo) {
-            info = *mSystemInfo;
+        if (mUnitModelInfo) {
+            info = *mUnitModelInfo;
 
             return ErrorEnum::eNone;
         }
     }
 
-    SystemInfo localInfo;
+    UnitModelInfo localInfo;
 
     try {
-        SetSystemID(localInfo);
         SetUnitModelAndVersion(localInfo);
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -118,8 +117,8 @@ Error VISIdentifier::GetSystemInfo(SystemInfo& info)
     {
         std::lock_guard lock {mMutex};
 
-        mSystemInfo = localInfo;
-        info        = localInfo;
+        mUnitModelInfo = localInfo;
+        info           = localInfo;
     }
 
     return ErrorEnum::eNone;
@@ -286,7 +285,7 @@ void VISIdentifier::HandleConnection()
             {
                 std::lock_guard lock(mMutex);
 
-                mSystemInfo.reset();
+                mUnitModelInfo.reset();
                 mSubjects.Clear();
             }
 
@@ -427,24 +426,7 @@ std::vector<std::string> VISIdentifier::GetValueArrayByPath(
     return valueArray;
 }
 
-void VISIdentifier::SetSystemID(SystemInfo& info)
-{
-    const VISMessage response(SendGetRequest(cVinVISPath));
-
-    if (!response.Is(VISActionEnum::eGet)) {
-        AOS_ERROR_THROW(ErrorEnum::eFailed, "failed to get systemID");
-    }
-
-    const auto systemId = GetValueByPath(response.GetJSON(), cVinVISPath);
-    if (systemId.empty()) {
-        AOS_ERROR_THROW(ErrorEnum::eFailed, "systemID is empty");
-    }
-
-    auto err = info.mSystemID.Assign(systemId.c_str());
-    AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err));
-}
-
-void VISIdentifier::SetUnitModelAndVersion(SystemInfo& info)
+void VISIdentifier::SetUnitModelAndVersion(UnitModelInfo& info)
 {
     const VISMessage response(SendGetRequest(cUnitModelPath));
 

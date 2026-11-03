@@ -290,10 +290,7 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
     try {
         common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
 
-        auto err = config.mSystemIDPath.Assign(object.GetValue<std::string>("systemIDPath").c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse systemIDPath");
-
-        err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
+        auto err = config.mUnitModelPath.Assign(object.GetValue<std::string>("unitModelPath").c_str());
         AOS_ERROR_CHECK_AND_THROW(err, "failed to parse unitModelPath");
 
         err = config.mSubjectsPath.Assign(object.GetValue<std::string>("subjectsPath").c_str());

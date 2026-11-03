@@ -167,7 +167,7 @@ TEST_F(PocoWSClientTests, AsyncSendMessageFails)
     SetUpTestSuite();
 }
 
-TEST_F(PocoWSClientTests, VisidentifierGetSystemInfo)
+TEST_F(PocoWSClientTests, VisidentifierGetUnitModelInfo)
 {
     VISIdentifier visIdentifier;
 
@@ -176,22 +176,18 @@ TEST_F(PocoWSClientTests, VisidentifierGetSystemInfo)
     ASSERT_TRUE(visIdentifier.Init(config, *mCryptoProvider).IsNone());
     ASSERT_TRUE(visIdentifier.Start().IsNone());
 
-    const std::string expectedSystemId {"test-system-id"};
-    VISParams::Instance().Set("Attribute.Vehicle.VehicleIdentification.VIN", expectedSystemId);
-
     const std::string expectedUnitModel {"test-unit-model"};
     const std::string expectedVersion {"1.0.0"};
     VISParams::Instance().Set(
         "Attribute.Aos.UnitModel", std::string(expectedUnitModel).append(";").append(expectedVersion));
 
-    auto systemInfo = std::make_unique<SystemInfo>();
+    UnitModelInfo unitModelInfo;
 
-    const auto err = visIdentifier.GetSystemInfo(*systemInfo);
+    const auto err = visIdentifier.GetUnitModelInfo(unitModelInfo);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 
-    EXPECT_STREQ(systemInfo->mSystemID.CStr(), expectedSystemId.c_str());
-    EXPECT_STREQ(systemInfo->mUnitModel.CStr(), expectedUnitModel.c_str());
-    EXPECT_STREQ(systemInfo->mVersion.CStr(), expectedVersion.c_str());
+    EXPECT_STREQ(unitModelInfo.mUnitModel.CStr(), expectedUnitModel.c_str());
+    EXPECT_STREQ(unitModelInfo.mVersion.CStr(), expectedVersion.c_str());
 
     visIdentifier.Stop();
 }
