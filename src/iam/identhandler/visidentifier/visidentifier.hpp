@@ -90,12 +90,12 @@ public:
     Error Stop() override;
 
     /**
-     * Returns System info.
+     * Returns unit model info.
      *
-     * @param[out] info result system info.
+     * @param[out] info result unit model info.
      * @returns Error.
      */
-    Error GetSystemInfo(SystemInfo& info) override;
+    Error GetUnitModelInfo(UnitModelInfo& info) override;
 
     /**
      * Returns subjects.
@@ -113,7 +113,6 @@ protected:
     void           WaitUntilConnected();
 
 private:
-    static constexpr const char* cVinVISPath                    = "Attribute.Vehicle.VehicleIdentification.VIN";
     static constexpr const char* cUnitModelPath                 = "Attribute.Aos.UnitModel";
     static constexpr const char* cSubjectsVISPath               = "Attribute.Aos.Subjects";
     static const long            cWSClientReconnectMilliseconds = 2000;
@@ -126,13 +125,12 @@ private:
     void                     Subscribe(const std::string& path, VISSubscriptions::Handler&& callback);
     std::string              GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
     std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
-    void                     SetSystemID(SystemInfo& info);
-    void                     SetUnitModelAndVersion(SystemInfo& info);
+    void                     SetUnitModelAndVersion(UnitModelInfo& info);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
     crypto::UUIDItf*                                   mUUIDProvider {};
     VISSubscriptions                                   mSubscriptions;
-    std::optional<SystemInfo>                          mSystemInfo;
+    std::optional<UnitModelInfo>                       mUnitModelInfo;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
     std::thread                                        mHandleConnectionThread;
     Poco::Event                                        mWSClientIsConnected;

@@ -41,7 +41,6 @@
     "identifier": {
         "plugin": "fileidentifier",
         "params": {
-            "systemIDPath": "/etc/machine-id",
             "unitModelPath": "@CMAKE_INSTALL_PREFIX@/etc/aos/unit_model",
             "subjectsPath": "@CMAKE_INSTALL_PREFIX@/etc/aos/subjects"
         }
