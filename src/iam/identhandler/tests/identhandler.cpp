@@ -55,12 +55,6 @@ config::IdentifierConfig CreateFileIdentifierConfig()
 
     auto params = Poco::makeShared<Poco::JSON::Object>();
 
-    if (std::ofstream f(cFileIdentifierRoot / "systemIDPath"); f.is_open()) {
-        f << "SYSTEM-123456";
-
-        params->set("systemIDPath", (cFileIdentifierRoot / "systemIDPath").string());
-    }
-
     if (std::ofstream f(cFileIdentifierRoot / "unitModelPath"); f.is_open()) {
         f << "unitModel;1.0.0";
 
