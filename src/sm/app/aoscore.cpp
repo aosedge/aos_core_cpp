@@ -124,8 +124,8 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize images space allocator
 
-    err = mImagesSpaceAllocator.Init(
-        mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, mConfig.mImageManager.mPartLimit, &mImageManager);
+    err = mImagesSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS,
+        mConfig.mImageManager.mPartLimit, &mImageManager.GetItemRemover());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize images space allocator");
 
     // Initialize downloader
@@ -139,14 +139,14 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize image manager
 
-    err = mImageManager.Init(mAllocator, mConfig.mImageManager, mSMClient, mImagesSpaceAllocator, mDownloader,
-        mFileInfoProvider, mOCISpec, mImageHandler, mDatabase);
+    err = mImageManager.Init(mConfig.mImageManager, mSMClient, mDatabase, mImagesSpaceAllocator, mDownloader,
+        mImageHandler, mFileInfoProvider, mOCISpec, mPlatformFS, mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
     // Initialize launcher
 
-    err = mLauncher.Init(mAllocator, *runtimes, mImageManager, mSMClient, mDatabase, mOCISpec, mImageManager, mSMClient,
-        mNetworkManager, mInstanceIDProvider, mResourceManager);
+    err = mLauncher.Init(mAllocator, *runtimes, mImageManager, mImageManager, mSMClient, mDatabase, mOCISpec,
+        mImageManager, mSMClient, mNetworkManager, mInstanceIDProvider, mResourceManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     // Initialize node config handler
