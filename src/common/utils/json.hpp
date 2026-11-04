@@ -56,6 +56,17 @@ aos::RetWithError<Poco::Dynamic::Var> ParseJson(std::istream& in) noexcept;
 Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& path);
 
 /**
+ * Reads and parses json from file.
+ *
+ * The errors of the file open and read are returned as follows: EIO and EBADMSG as ErrorEnum::eIntegrity, ENOENT as
+ * ErrorEnum::eNotFound, any other errno as is.
+ *
+ * @param path path to the file.
+ * @return aos::RetWithError<Poco::Dynamic::Var>.
+ */
+aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path);
+
+/**
  * Finds value of the json by path
  *
  * @param object json object.
