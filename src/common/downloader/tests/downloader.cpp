@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <atomic>
 #include <filesystem>
 #include <future>
 #include <initializer_list>
@@ -25,6 +26,7 @@
 #include <core/iam/tests/mocks/certloadermock.hpp>
 
 #include <common/downloader/downloader.hpp>
+#include <common/utils/httpstatus.hpp>
 
 #include "stubs/httpserverstub.hpp"
 
@@ -546,4 +548,117 @@ TEST_F(DownloaderTest, DownloadFileSchemeEmptyFile)
     EXPECT_EQ(std::filesystem::file_size(mFilePath), 0);
 
     std::remove("empty_file.dat");
+}
+
+TEST_F(DownloaderTest, IntegrityErrorIsNotRetried)
+{
+    std::atomic<int>                          requestCount {0};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest&, Poco::Net::HTTPServerResponse& response) {
+            ++requestCount;
+
+            response.setStatusAndReason(
+                static_cast<Poco::Net::HTTPResponse::HTTPStatus>(aos::common::utils::cIntegrityHTTPStatus),
+                aos::common::utils::cIntegrityHTTPReason);
+            response.send();
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    auto url   = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto start = std::chrono::steady_clock::now();
+    auto err   = mDownloader.Download(mCancelCtx, "digest_integrity", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(500));
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eIntegrity));
+    EXPECT_EQ(requestCount, 1);
+    EXPECT_TRUE(!std::filesystem::exists(mFilePath) || std::filesystem::file_size(mFilePath) == 0);
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, TruncatedTransferRetriedThenIntegrityError)
+{
+    std::atomic<int>                          getCount {0};
+    std::atomic<bool>                         rangeRequested {false};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
+            if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
+                response.set("Accept-Ranges", "bytes");
+                response.setContentLength(1024 * 1024);
+                response.send();
+
+                return;
+            }
+
+            if (++getCount == 1) {
+                response.setKeepAlive(false);
+                response.setContentLength(1024 * 1024);
+                response.send() << "partial content";
+                response.send().flush();
+
+                return;
+            }
+
+            rangeRequested = request.has("Range");
+
+            response.setStatusAndReason(
+                static_cast<Poco::Net::HTTPResponse::HTTPStatus>(aos::common::utils::cIntegrityHTTPStatus),
+                aos::common::utils::cIntegrityHTTPReason);
+            response.send();
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto err = mDownloader.Download(mCancelCtx, "digest_truncated", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eIntegrity));
+    EXPECT_EQ(getCount, 2);
+    EXPECT_TRUE(rangeRequested);
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, IntegrityErrorFallsBackToNextURL)
+{
+    std::atomic<int>                          requestCount {0};
+    Poco::Net::ServerSocket                   integritySocket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr integrityFactory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest&, Poco::Net::HTTPServerResponse& response) {
+            ++requestCount;
+
+            response.setStatusAndReason(
+                static_cast<Poco::Net::HTTPResponse::HTTPStatus>(aos::common::utils::cIntegrityHTTPStatus),
+                aos::common::utils::cIntegrityHTTPReason);
+            response.send();
+        });
+    Poco::Net::HTTPServer integrityServer(integrityFactory, integritySocket, new Poco::Net::HTTPServerParams);
+
+    Poco::Net::ServerSocket                   fileSocket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr fileFactory = new FileRequestHandlerFactory("test_file.dat");
+    Poco::Net::HTTPServer                     fileServer(fileFactory, fileSocket, new Poco::Net::HTTPServerParams);
+
+    integrityServer.start();
+    fileServer.start();
+
+    auto integrityURL = "http://127.0.0.1:" + std::to_string(integritySocket.address().port()) + "/test_file.dat";
+    auto fileURL      = "http://127.0.0.1:" + std::to_string(fileSocket.address().port()) + "/test_file.dat";
+    auto err          = mDownloader.Download(
+        mCancelCtx, "digest_integrity_fallback", *CreateURLs({integrityURL, fileURL}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_EQ(requestCount, 1);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, "This is a test file");
+
+    integrityServer.stopAll(true);
+    fileServer.stopAll(true);
 }

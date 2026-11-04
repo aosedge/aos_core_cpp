@@ -62,8 +62,10 @@ public:
      * @param digest file digest.
      * @param urls file URLs.
      * @param path path to file.
-     * @return Error: eCanceled if the download is canceled by the cancel context, eInvalidArgument if urls is empty,
-     * eAlreadyExist if a download of the same digest is in progress, otherwise the error of the last attempt.
+     * @return Error: eCanceled if the download is canceled by the cancel context, eIntegrity if the last URL reports
+     * an integrity error for the file (an integrity error is not retried on the same URL, the next URLs are tried
+     * after it), eInvalidArgument if urls is empty, eAlreadyExist if a download of the same digest is in progress,
+     * otherwise the error of the last attempt.
      */
     Error Download(CancelContext& ctx, const String& digest, const Array<StaticString<cURLLen>>& urls,
         const String& path) override;
