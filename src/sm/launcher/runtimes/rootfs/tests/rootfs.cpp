@@ -30,10 +30,10 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
-#include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/launchermock.hpp>
 #include <core/sm/tests/mocks/rebootermock.hpp>
 #include <core/sm/tests/mocks/updatecheckermock.hpp>
@@ -603,15 +603,15 @@ protected:
         ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
     }
 
-    RuntimeConfig                          mConfig;
-    iamclient::CurrentNodeInfoProviderMock mCurrentNodeInfoProvider;
-    imagemanager::ItemInfoProviderMock     mItemInfoProvider;
-    oci::OCISpecMock                       mOCISpec;
-    InstanceStatusReceiverFailingStub      mStatusReceiver;
-    sm::utils::SystemdConnMock             mSystemdConn;
-    RuntimeStorageFake                     mStorage;
-    FileInfoProviderFake                   mFileInfoProvider;
-    RootfsRuntime                          mRootfsRuntime;
+    RuntimeConfig                              mConfig;
+    iamclient::CurrentNodeInfoProviderMock     mCurrentNodeInfoProvider;
+    common::imagemanager::ItemInfoProviderMock mItemInfoProvider;
+    oci::OCISpecMock                           mOCISpec;
+    InstanceStatusReceiverFailingStub          mStatusReceiver;
+    sm::utils::SystemdConnMock                 mSystemdConn;
+    RuntimeStorageFake                         mStorage;
+    FileInfoProviderFake                       mFileInfoProvider;
+    RootfsRuntime                              mRootfsRuntime;
 };
 
 /***********************************************************************************************************************

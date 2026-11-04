@@ -26,7 +26,8 @@ any moment. The main rules are:
 [RootfsRuntime](rootfs.hpp) implements [aos::sm::launcher::RuntimeItf][runtime-itf] and uses:
 
 - [aos::sm::launcher::runtimes::StorageItf](../itf/storage.hpp) - stores the current and the pending instances;
-- [aos::sm::imagemanager::ItemInfoProviderItf][item-info-provider-itf] - provides paths of the installed image blobs;
+- [aos::common::imagemanager::ItemInfoProviderItf][item-info-provider-itf] - provides paths of the installed image
+  blobs;
 - [aos::oci::OCISpecItf][oci-spec-itf] - loads the image manifest;
 - [aos::fs::FileInfoProviderItf][file-info-provider-itf] - calculates the size and the sha256 hash of the copied image;
 - [aos::sm::launcher::InstanceStatusReceiverItf][status-receiver-itf] - receives instance statuses and reboot requests;
@@ -37,7 +38,7 @@ any moment. The main rules are:
 - [SystemdRebooter](../utils/systemdrebooter.hpp) - reboots the node through systemd.
 
 [runtime-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/launcher/itf/runtime.hpp
-[item-info-provider-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/imagemanager/itf/iteminfoprovider.hpp
+[item-info-provider-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/common/imagemanager/itf/iteminfoprovider.hpp
 [oci-spec-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/common/ocispec/itf/ocispec.hpp
 [file-info-provider-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/common/tools/fs.hpp
 [status-receiver-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/develop/src/core/sm/launcher/itf/instancestatusreceiver.hpp
@@ -60,7 +61,7 @@ classDiagram
     class StorageItf ["aos::sm::launcher::runtimes::StorageItf"] {
         <<interface>>
     }
-    class ItemInfoProviderItf ["aos::sm::imagemanager::ItemInfoProviderItf"] {
+    class ItemInfoProviderItf ["aos::common::imagemanager::ItemInfoProviderItf"] {
         <<interface>>
     }
     class OCISpecItf ["aos::oci::OCISpecItf"] {

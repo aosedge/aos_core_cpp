@@ -23,12 +23,12 @@ namespace aos::sm::launcher {
  **********************************************************************************************************************/
 
 // Which parameters are used depends on which WITH_RUNTIME_* runtimes are compiled in below.
-Error Runtimes::Init(const Config&                             config,
-    [[maybe_unused]] iamclient::CurrentNodeInfoProviderItf&    currentNodeInfoProvider,
-    [[maybe_unused]] imagemanager::ItemInfoProviderItf&        itemInfoProvider,
-    [[maybe_unused]] networkmanager::NetworkManagerItf&        networkManager,
-    [[maybe_unused]] iamclient::PermHandlerItf&                permHandler,
-    [[maybe_unused]] resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
+Error Runtimes::Init(const Config&                              config,
+    [[maybe_unused]] iamclient::CurrentNodeInfoProviderItf&     currentNodeInfoProvider,
+    [[maybe_unused]] common::imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    [[maybe_unused]] networkmanager::NetworkManagerItf&         networkManager,
+    [[maybe_unused]] iamclient::PermHandlerItf&                 permHandler,
+    [[maybe_unused]] resourcemanager::ResourceInfoProviderItf&  resourceInfoProvider,
     [[maybe_unused]] oci::OCISpecItf& ociSpec, [[maybe_unused]] InstanceStatusReceiverItf& statusReceiver,
     [[maybe_unused]] sm::utils::SystemdConnItf&       systemdConn,
     [[maybe_unused]] launcher::InstanceIDProviderItf& instanceIDProvider,
