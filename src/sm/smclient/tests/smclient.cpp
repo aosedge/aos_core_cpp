@@ -780,7 +780,7 @@ TEST_F(SMClientTest, SendAlert)
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
 
-TEST_F(SMClientTest, GetBlobsInfo)
+TEST_F(SMClientTest, GetBlobInfo)
 {
     auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
     auto client = std::make_unique<sm::smclient::SMClient>();
@@ -828,18 +828,22 @@ TEST_F(SMClientTest, GetBlobsInfo)
     server->WaitSMInfo();
     server->WaitNodeInstancesStatus();
 
-    StaticArray<StaticString<oci::cDigestLen>, 2> digests;
-    digests.EmplaceBack("sha256:1234567890abcdef");
-    digests.EmplaceBack("sha256:fedcba0987654321");
+    auto blobInfo = std::make_unique<BlobInfo>();
 
-    StaticArray<StaticString<cURLLen>, 2> urls;
+    err = client->GetBlobInfo("sha256:1234567890abcdef", *blobInfo);
+    ASSERT_TRUE(err.IsNone()) << "GetBlobInfo failed";
 
-    err = client->GetBlobsInfo(digests, urls);
-    ASSERT_TRUE(err.IsNone()) << "GetBlobsInfo failed";
+    const uint8_t cSHA256[] = {1, 2, 3, 4};
 
-    ASSERT_EQ(urls.Size(), 2);
-    EXPECT_EQ(urls[0], "http://example.com/blobs/sha256:1234567890abcdef");
-    EXPECT_EQ(urls[1], "http://example.com/blobs/sha256:fedcba0987654321");
+    EXPECT_EQ(blobInfo->mDigest, "sha256:1234567890abcdef");
+    ASSERT_EQ(blobInfo->mURLs.Size(), 2);
+    EXPECT_EQ(blobInfo->mURLs[0], "http://example.com/blobs/sha256:1234567890abcdef");
+    EXPECT_EQ(blobInfo->mURLs[1], "http://mirror.example.com/blobs/sha256:1234567890abcdef");
+    EXPECT_EQ(blobInfo->mSHA256, Array<uint8_t>(cSHA256, sizeof(cSHA256)));
+    EXPECT_EQ(blobInfo->mSize, 1024);
+
+    err = client->GetBlobInfo(SMServiceStub::cMissingBlobDigest, *blobInfo);
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "GetBlobInfo should fail for missing blob";
 
     err = client->Stop();
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
