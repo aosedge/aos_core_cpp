@@ -4,6 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <sys/syscall.h>
+#include <unistd.h>
+
+#include <atomic>
+#include <cerrno>
+#include <functional>
+#include <memory>
+#include <vector>
+
 #include <Poco/JSON/Object.h>
 #include <gtest/gtest.h>
 
@@ -15,6 +24,25 @@
 #include <common/utils/json.hpp>
 
 using namespace testing;
+
+namespace {
+
+std::atomic<int> sReadErrno {0};
+
+} // namespace
+
+// File read is intercepted to inject the read errors of the integrity checked storage, which can't be reproduced with a
+// regular file.
+extern "C" ssize_t read(int fd, void* buf, size_t count)
+{
+    if (const auto readErrno = sReadErrno.load(); readErrno != 0) {
+        errno = readErrno;
+
+        return -1;
+    }
+
+    return static_cast<ssize_t>(syscall(SYS_read, fd, buf, count));
+}
 
 namespace aos::common::jsonprovider {
 
@@ -318,6 +346,29 @@ std::string MakeItemConfigWithPermissions(const std::string& permissions)
 )";
 }
 
+using LoadFunc = std::function<Error(oci::OCISpec&, const String&)>;
+
+template <typename T, typename Method>
+LoadFunc MakeLoadFunc(Method method)
+{
+    return [method](oci::OCISpec& ociSpec, const String& path) {
+        auto object = std::make_unique<T>();
+
+        return (ociSpec.*method)(path, *object);
+    };
+}
+
+std::vector<LoadFunc> GetLoadFuncs()
+{
+    return {
+        MakeLoadFunc<aos::oci::ImageIndex>(&oci::OCISpec::LoadImageIndex),
+        MakeLoadFunc<aos::oci::ImageManifest>(&oci::OCISpec::LoadImageManifest),
+        MakeLoadFunc<aos::oci::ImageConfig>(&oci::OCISpec::LoadImageConfig),
+        MakeLoadFunc<aos::oci::ItemConfig>(&oci::OCISpec::LoadItemConfig),
+        MakeLoadFunc<aos::oci::RuntimeConfig>(&oci::OCISpec::LoadRuntimeConfig),
+    };
+}
+
 class OCISpecTest : public Test {
 public:
     void SetUp() override
@@ -331,6 +382,8 @@ public:
         fs::WriteStringToFile(cImageConfigPath, cImageConfig, S_IRUSR | S_IWUSR);
         fs::WriteStringToFile(cItemConfigPath, cItemConfig, S_IRUSR | S_IWUSR);
     }
+
+    void TearDown() override { sReadErrno = 0; }
 
     oci::OCISpec mOCISpec;
 };
@@ -579,6 +632,56 @@ TEST_F(OCISpecTest, LoadItemConfigPermissionsExceedLimitsFails)
 
         EXPECT_TRUE(err.Is(ErrorEnum::eNoMemory)) << tests::utils::ErrorToStr(err);
         EXPECT_EQ(std::string(err.Message()), testCases[i].mErrMessage.substr(0, AOS_CONFIG_TOOLS_ERROR_MESSAGE_LEN));
+    }
+}
+
+TEST_F(OCISpecTest, LoadReadErrorIsIntegrity)
+{
+    for (const auto readErrno : {EIO, EBADMSG}) {
+        for (const auto& load : GetLoadFuncs()) {
+            sReadErrno     = readErrno;
+            const auto err = load(mOCISpec, cImageIndexPath);
+            sReadErrno     = 0;
+
+            EXPECT_TRUE(err.Is(ErrorEnum::eIntegrity))
+                << "errno: " << readErrno << ", error: " << tests::utils::ErrorToStr(err);
+        }
+    }
+}
+
+TEST_F(OCISpecTest, LoadOtherReadErrorIsReturnedAsIs)
+{
+    for (const auto& load : GetLoadFuncs()) {
+        sReadErrno     = EPERM;
+        const auto err = load(mOCISpec, cImageIndexPath);
+        sReadErrno     = 0;
+
+        EXPECT_EQ(err.Value(), ErrorEnum::eRuntime) << tests::utils::ErrorToStr(err);
+        EXPECT_EQ(err.Code(), EPERM) << tests::utils::ErrorToStr(err);
+    }
+}
+
+TEST_F(OCISpecTest, LoadMissingFileIsNotFound)
+{
+    const auto cMissingPath = fs::JoinPath(cTestBaseDir, "missing.json");
+
+    for (const auto& load : GetLoadFuncs()) {
+        const auto err = load(mOCISpec, cMissingPath);
+
+        EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << tests::utils::ErrorToStr(err);
+    }
+}
+
+TEST_F(OCISpecTest, LoadMalformedFileIsNotIntegrity)
+{
+    const auto cMalformedPath = fs::JoinPath(cTestBaseDir, "malformed.json");
+
+    ASSERT_TRUE(fs::WriteStringToFile(cMalformedPath, "{\"schemaVersion\": ", S_IRUSR | S_IWUSR).IsNone());
+
+    for (const auto& load : GetLoadFuncs()) {
+        const auto err = load(mOCISpec, cMalformedPath);
+
+        EXPECT_TRUE(err.Is(ErrorEnum::eInvalidArgument)) << tests::utils::ErrorToStr(err);
     }
 }
 

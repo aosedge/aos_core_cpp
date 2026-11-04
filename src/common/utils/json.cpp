@@ -6,11 +6,15 @@
  */
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <system_error>
 
 #include <Poco/JSON/JSONException.h>
 #include <Poco/JSON/Parser.h>
+
+#include <core/common/tools/fs.hpp>
 
 #include "exception.hpp"
 #include "json.hpp"
@@ -131,6 +135,25 @@ Error WriteJsonToFile(const Poco::JSON::Object::Ptr& json, const std::string& pa
     }
 
     return ErrorEnum::eNone;
+}
+
+aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path)
+{
+    std::error_code ec;
+
+    const auto size = std::filesystem::file_size(path, ec);
+
+    // The size error is not returned: if the file can't be accessed, ReadFile fails with the proper error.
+    std::string content(ec ? 0 : size, '\0');
+    auto        buffer = Array<uint8_t>(reinterpret_cast<const uint8_t*>(content.data()), content.size());
+
+    if (auto err = fs::ReadFile(path.c_str(), buffer); !err.IsNone()) {
+        return {{}, AOS_ERROR_WRAP(err)};
+    }
+
+    content.resize(buffer.Size());
+
+    return ParseJson(content);
 }
 
 Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& keys)
