@@ -12,11 +12,11 @@
 #include <gtest/gtest.h>
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
+#include <core/common/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
-#include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/rebootermock.hpp>
 #include <core/sm/tests/mocks/updatecheckermock.hpp>
 #include <core/sm/tests/stubs/instancestatusreceiver.hpp>
@@ -193,18 +193,18 @@ protected:
             .WillRepeatedly(DoAll(SetArgReferee<0>(mNodeInfo), Return(ErrorEnum::eNone)));
     }
 
-    PartInfo                               mBootAPartition;
-    PartInfo                               mBootBPartition;
-    NodeInfo                               mNodeInfo;
-    RuntimeConfig                          mConfig;
-    iamclient::CurrentNodeInfoProviderMock mCurrentNodeInfoProvider;
-    imagemanager::ItemInfoProviderMock     mItemInfoProvider;
-    oci::OCISpecMock                       mOCISpec;
-    InstanceStatusReceiverStub             mStatusReceiver;
-    sm::utils::SystemdConnMock             mSystemdConn;
-    std::shared_ptr<PartitionManagerMock>  mPartitionManager {std::make_shared<PartitionManagerMock>()};
-    std::shared_ptr<MockBootController>    mMockBootController {std::make_shared<MockBootController>()};
-    TestBootRuntime                        mBootRuntime {mPartitionManager, mMockBootController};
+    PartInfo                                   mBootAPartition;
+    PartInfo                                   mBootBPartition;
+    NodeInfo                                   mNodeInfo;
+    RuntimeConfig                              mConfig;
+    iamclient::CurrentNodeInfoProviderMock     mCurrentNodeInfoProvider;
+    common::imagemanager::ItemInfoProviderMock mItemInfoProvider;
+    oci::OCISpecMock                           mOCISpec;
+    InstanceStatusReceiverStub                 mStatusReceiver;
+    sm::utils::SystemdConnMock                 mSystemdConn;
+    std::shared_ptr<PartitionManagerMock>      mPartitionManager {std::make_shared<PartitionManagerMock>()};
+    std::shared_ptr<MockBootController>        mMockBootController {std::make_shared<MockBootController>()};
+    TestBootRuntime                            mBootRuntime {mPartitionManager, mMockBootController};
 };
 
 /***********************************************************************************************************************

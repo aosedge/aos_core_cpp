@@ -12,8 +12,8 @@
 #include <mutex>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/common/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
-#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 
@@ -49,7 +49,7 @@ public:
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
         InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn);
 
     /**
@@ -163,24 +163,24 @@ private:
     std::filesystem::path     GetPath(const std::string_view relativePath) const;
     size_t                    GetNextPartitionIndex(size_t currentPartition) const;
 
-    mutable std::mutex                     mMutex;
-    std::shared_ptr<PartitionManagerItf>   mPartitionManager;
-    std::shared_ptr<BootControllerItf>     mBootController;
-    iamclient::CurrentNodeInfoProviderItf* mCurrentNodeInfoProvider {};
-    imagemanager::ItemInfoProviderItf*     mItemInfoProvider {};
-    oci::OCISpecItf*                       mOCISpec {};
-    InstanceStatusReceiverItf*             mStatusReceiver {};
-    RuntimeConfig                          mConfig;
-    BootConfig                             mBootConfig;
-    InstanceIdent                          mDefaultInstanceIdent;
-    utils::SystemdRebooter                 mSystemdRebooter;
-    utils::SystemdUpdateChecker            mSystemdUpdateChecker;
-    RuntimeInfo                            mRuntimeInfo;
-    size_t                                 mMainPartition {};
-    size_t                                 mCurrentPartition {};
-    BootData                               mInstalled;
-    Optional<BootData>                     mPending;
-    std::vector<std::string>               mPartitionDevices;
+    mutable std::mutex                         mMutex;
+    std::shared_ptr<PartitionManagerItf>       mPartitionManager;
+    std::shared_ptr<BootControllerItf>         mBootController;
+    iamclient::CurrentNodeInfoProviderItf*     mCurrentNodeInfoProvider {};
+    common::imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
+    oci::OCISpecItf*                           mOCISpec {};
+    InstanceStatusReceiverItf*                 mStatusReceiver {};
+    RuntimeConfig                              mConfig;
+    BootConfig                                 mBootConfig;
+    InstanceIdent                              mDefaultInstanceIdent;
+    utils::SystemdRebooter                     mSystemdRebooter;
+    utils::SystemdUpdateChecker                mSystemdUpdateChecker;
+    RuntimeInfo                                mRuntimeInfo;
+    size_t                                     mMainPartition {};
+    size_t                                     mCurrentPartition {};
+    BootData                                   mInstalled;
+    Optional<BootData>                         mPending;
+    std::vector<std::string>                   mPartitionDevices;
 };
 
 } // namespace aos::sm::launcher
