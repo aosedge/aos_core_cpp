@@ -934,117 +934,8 @@ Error Database::SaveRunRequests(const Array<launcher::RunInstanceRequest>& reque
 }
 
 /***********************************************************************************************************************
- * imagemanager::StorageItf implementation
+ * updatemanager::StorageItf implementation
  **********************************************************************************************************************/
-
-Error Database::AddItem(const imagemanager::ItemInfo& item)
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        ImageManagerItemInfoRow row;
-
-        FromAos(item, row);
-        *mSession << "INSERT INTO imagemanager (itemID, type, version, indexDigest, state, timestamp) VALUES "
-                     "(?, ?, ?, ?, ?, ?);",
-            bind(row), now;
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::RemoveItem(const String& id, const String& version)
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "DELETE FROM imagemanager WHERE itemID = ? AND version = ?;", bind(id.CStr()),
-            bind(version.CStr());
-
-        if (statement.execute() != 1) {
-            return ErrorEnum::eNotFound;
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::UpdateItemState(const String& id, const String& version, ItemState state, Time timestamp)
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        Poco::Data::Statement statement {*mSession};
-
-        statement << "UPDATE imagemanager SET state = ?, timestamp = ? WHERE itemID = ? AND version = ?;",
-            bind(state.ToString().CStr()), bind(timestamp.UnixNano()), bind(id.CStr()), bind(version.CStr());
-
-        if (statement.execute() != 1) {
-            return ErrorEnum::eNotFound;
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetAllItemsInfos(Array<imagemanager::ItemInfo>& items)
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        std::vector<ImageManagerItemInfoRow> rows;
-
-        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager;", into(rows), now;
-
-        auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
-
-        items.Clear();
-
-        for (const auto& row : rows) {
-            ToAos(row, *itemInfo);
-            auto err = items.PushBack(*itemInfo);
-            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add item info");
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
-
-Error Database::GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& items)
-{
-    std::lock_guard lock {mMutex};
-
-    try {
-        std::vector<ImageManagerItemInfoRow> rows;
-
-        *mSession << "SELECT itemID, type, version, indexDigest, state, timestamp FROM imagemanager WHERE itemID = ?;",
-            bind(id.CStr()), into(rows), now;
-
-        auto itemInfo = std::make_unique<imagemanager::ItemInfo>();
-
-        items.Clear();
-
-        for (const auto& row : rows) {
-            ToAos(row, *itemInfo);
-            auto err = items.PushBack(*itemInfo);
-            AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "can't add item info");
-        }
-    } catch (const std::exception& e) {
-        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
-    }
-
-    return ErrorEnum::eNone;
-}
 
 Error Database::StoreDesiredStatus(const DesiredStatus& desiredStatus)
 {
@@ -1168,17 +1059,6 @@ void Database::CreateTables()
                  "stateQuota INTEGER,"
                  "stateChecksum BLOB,"
                  "PRIMARY KEY(itemID,subjectID,instance,type,preinstalled)"
-                 ");",
-        now;
-
-    *mSession << "CREATE TABLE IF NOT EXISTS imagemanager ("
-                 "itemID TEXT,"
-                 "type TEXT,"
-                 "version TEXT,"
-                 "indexDigest TEXT,"
-                 "state TEXT,"
-                 "timestamp INTEGER,"
-                 "PRIMARY KEY(itemID,version)"
                  ");",
         now;
 
@@ -1464,29 +1344,6 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
     DeserializeLabels(src.get<ToInt(LauncherInstanceInfoColumns::eLabels)>(), dst.mLabels);
     dst.mPriority           = src.get<ToInt(LauncherInstanceInfoColumns::ePriority)>();
     dst.mDisableRebalancing = src.get<ToInt(LauncherInstanceInfoColumns::eDisableRebalancing)>();
-}
-
-void Database::FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRow& dst)
-{
-    dst.set<ToInt(ImageManagerItemInfoColumns::eItemID)>(src.mItemID.CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eVersion)>(src.mVersion.CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eType)>(src.mType.ToString().CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>(src.mIndexDigest.CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eState)>(src.mState.ToString().CStr());
-    dst.set<ToInt(ImageManagerItemInfoColumns::eTimestamp)>(src.mTimestamp.UnixNano());
-}
-
-void Database::ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst)
-{
-    dst.mItemID = src.get<ToInt(ImageManagerItemInfoColumns::eItemID)>().c_str();
-    auto err    = dst.mType.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eType)>().c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item type");
-    dst.mVersion     = src.get<ToInt(ImageManagerItemInfoColumns::eVersion)>().c_str();
-    dst.mIndexDigest = src.get<ToInt(ImageManagerItemInfoColumns::eIndexDigest)>().c_str();
-    err              = dst.mState.FromString(src.get<ToInt(ImageManagerItemInfoColumns::eState)>().c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "failed to parse item state");
-    auto timestamp = src.get<ToInt(ImageManagerItemInfoColumns::eTimestamp)>();
-    dst.mTimestamp = Time::Unix(timestamp / Time::cSeconds.Nanoseconds(), timestamp % Time::cSeconds.Nanoseconds());
 }
 
 void Database::FromAos(const EnvVarsInstanceInfo& src, LauncherOverrideEnvVarsRow& dst)
