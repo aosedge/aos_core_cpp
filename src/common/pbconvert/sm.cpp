@@ -1309,4 +1309,42 @@ Error ConvertFromProto(const servicemanager::v5::InstanceNetworkStateInfo& src, 
     return ErrorEnum::eNone;
 }
 
+void ConvertToProto(const BlobInfo& src, servicemanager::v5::BlobInfo& dst)
+{
+    for (const auto& url : src.mURLs) {
+        dst.add_urls(url.CStr());
+    }
+
+    dst.set_sha256(std::string(reinterpret_cast<const char*>(src.mSHA256.Get()), src.mSHA256.Size()));
+    dst.set_size(src.mSize);
+}
+
+Error ConvertFromProto(const servicemanager::v5::BlobInfo& src, const String& digest, BlobInfo& dst)
+{
+    if (auto err = dst.mDigest.Assign(digest); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    // The proto doesn't carry the decrypt and sign info, so the fields of a reused blob info are reset.
+    dst.mURLs.Clear();
+    dst.mDecryptInfo.Reset();
+    dst.mSignInfo.Reset();
+
+    for (const auto& url : src.urls()) {
+        if (auto err = dst.mURLs.PushBack(url.c_str()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (auto err = dst.mSHA256.Assign(
+            Array<uint8_t>(reinterpret_cast<const uint8_t*>(src.sha256().data()), src.sha256().size()));
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    dst.mSize = src.size();
+
+    return ErrorEnum::eNone;
+}
+
 } // namespace aos::common::pbconvert
