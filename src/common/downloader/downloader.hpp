@@ -7,13 +7,11 @@
 #ifndef AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 #define AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 
-#include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <mutex>
+#include <set>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 #include <Poco/URI.h>
 #include <curl/curl.h>
@@ -58,28 +56,17 @@ public:
         aos::alerts::SenderItf* sender = nullptr, std::chrono::seconds progressInterval = std::chrono::seconds {30});
 
     /**
-     * Destructor.
-     */
-    ~Downloader();
-
-    /**
-     * Downloads file.
+     * Downloads file. Tries the URLs in order, each URL is retried with the downloader retry policy.
      *
-     * @param digest image digest.
-     * @param url URL.
+     * @param ctx cancel context.
+     * @param digest file digest.
+     * @param urls file URLs.
      * @param path path to file.
-     * @return Error.
+     * @return Error: eCanceled if the download is canceled by the cancel context, eInvalidArgument if urls is empty,
+     * eAlreadyExist if a download of the same digest is in progress, otherwise the error of the last attempt.
      */
-    Error Download(const String& digest, const String& url, const String& path) override;
-
-    /**
-     * Cancels ongoing download.
-     *
-     * @param digest image digest.
-     *
-     * @return Error.
-     */
-    Error Cancel(const String& digest) override;
+    Error Download(CancelContext& ctx, const String& digest, const Array<StaticString<cURLLen>>& urls,
+        const String& path) override;
 
 private:
     constexpr static std::chrono::milliseconds cDelay {1000};
@@ -89,7 +76,7 @@ private:
 
     struct ProgressContext {
         Downloader*                           mDownloader {};
-        std::atomic<bool>*                    mCancelFlag {};
+        CancelContext*                        mCancelContext {};
         std::string                           mDigest;
         std::string                           mURL;
         std::chrono::steady_clock::time_point mLastProgressTime;
@@ -101,21 +88,22 @@ private:
     Error           ConfigureTLS(CURL* curl);
     static CURLcode SSLContextCallback(CURL* curl, void* sslContext, void* userData);
 
-    bool  SupportsRangeRequests(const String& url);
-    Error DownloadImage(const String& url, const String& path, ProgressContext* context);
-    Error CopyFile(const Poco::URI& uri, const String& outfilename);
-    Error RetryDownload(const String& url, const String& path, ProgressContext* context);
+    RetWithError<bool> SupportsRangeRequests(const String& url, ProgressContext* context);
+    Error              DownloadImage(const String& url, const String& path, ProgressContext* context);
+    Error              CopyFile(const Poco::URI& uri, const String& outfilename);
+    Error RetryDownload(CancelContext& ctx, const String& url, const String& path, ProgressContext* context);
     void  SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
          const std::string& reason = "", const Error& error = ErrorEnum::eNone);
 
-    static int XferInfoCallback(
+    static bool IsCanceled(const ProgressContext* context);
+    static int  XferInfoCallback(
+         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
+    static int CancelXferInfoCallback(
         void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
     int OnProgress(
         ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
-    bool                    mShutdown {false};
-    std::mutex              mMutex;
-    std::condition_variable mCondVar;
+    std::mutex mMutex;
 
     std::chrono::seconds mProgressInterval {std::chrono::seconds {30}};
 
@@ -127,7 +115,7 @@ private:
     crypto::CertLoaderItf*           mCertLoader {};
     crypto::x509::ProviderItf*       mCryptoProvider {};
 
-    std::unordered_map<std::string, std::atomic<bool>> mCancelFlags;
+    std::set<std::string> mDigestsInProgress;
 };
 
 } // namespace aos::common::downloader

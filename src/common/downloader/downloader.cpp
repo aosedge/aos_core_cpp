@@ -5,10 +5,12 @@
  */
 
 #include <filesystem>
-#include <fstream>
 #include <thread>
 
+#include <Poco/String.h>
+
 #include <core/common/tools/logger.hpp>
+#include <core/common/tools/memory.hpp>
 #include <core/common/types/alerts.hpp>
 
 #include <common/utils/cryptohelper.hpp>
@@ -49,51 +51,50 @@ Error Downloader::Init(std::string_view certStorage, std::string_view caCert,
     return Init(sender, progressInterval);
 }
 
-Downloader::~Downloader()
+Error Downloader::Download(
+    CancelContext& ctx, const String& digest, const Array<StaticString<cURLLen>>& urls, const String& path)
 {
-    std::lock_guard lock {mMutex};
+    LOG_DBG() << "Start download" << Log::Field("digest", digest) << Log::Field("path", path)
+              << Log::Field("urls", urls.Size());
 
-    mShutdown = true;
-    mCondVar.notify_all();
-}
-
-Error Downloader::Download(const String& digest, const String& url, const String& path)
-{
-    if (mCertProvider) {
-        try {
-            if (Poco::URI(url.CStr()).getScheme() != "https") {
-                return Error(ErrorEnum::eInvalidArgument, "mutual TLS download requires HTTPS");
-            }
-        } catch (const std::exception& e) {
-            return utils::ToAosError(e);
-        }
+    if (urls.IsEmpty()) {
+        return Error(ErrorEnum::eInvalidArgument, "no download URLs");
     }
 
-    LOG_DBG() << "Start download" << Log::Field("url", url) << Log::Field("path", path) << Log::Field("digest", digest);
+    if (ctx.IsCanceled()) {
+        return Error(ErrorEnum::eCanceled, "download canceled");
+    }
 
     ProgressContext context;
 
-    context.mDownloader = this;
-    context.mDigest     = digest.CStr();
-    context.mURL        = url.CStr();
+    context.mDownloader    = this;
+    context.mDigest        = digest.CStr();
+    context.mCancelContext = &ctx;
 
     {
         std::lock_guard lock {mMutex};
 
-        auto it = mCancelFlags.find(digest.CStr());
-        if (it != mCancelFlags.end()) {
+        if (!mDigestsInProgress.insert(context.mDigest).second) {
             return Error(ErrorEnum::eAlreadyExist, "download already in progress");
         }
-
-        mCancelFlags[context.mDigest].store(false);
-        context.mCancelFlag = &mCancelFlags[context.mDigest];
     }
 
-    auto err = RetryDownload(url, path, &context);
-
-    {
+    auto releaseDigest = DeferRelease(&context.mDigest, [this](const std::string* digest) {
         std::lock_guard lock {mMutex};
-        mCancelFlags.erase(context.mDigest);
+
+        mDigestsInProgress.erase(*digest);
+    });
+
+    Error err;
+
+    for (const auto& url : urls) {
+        context.mURL = url.CStr();
+
+        if (err = RetryDownload(ctx, url, path, &context); err.IsNone() || err.Is(ErrorEnum::eCanceled)) {
+            break;
+        }
+
+        LOG_ERR() << "Failed to download from URL" << Log::Field("url", url) << Log::Field(err);
     }
 
     return err;
@@ -173,15 +174,15 @@ CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
     return CURLE_OK;
 }
 
-bool Downloader::SupportsRangeRequests(const String& url)
+RetWithError<bool> Downloader::SupportsRangeRequests(const String& url, ProgressContext* context)
 {
     std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
     if (!curl) {
-        return false;
+        return {false, Error(ErrorEnum::eFailed, "failed to init curl")};
     }
 
     if (auto err = ConfigureTLS(curl.get()); !err.IsNone()) {
-        return false;
+        return {false, err};
     }
 
     bool supportsRange = false;
@@ -190,8 +191,13 @@ bool Downloader::SupportsRangeRequests(const String& url)
         auto*       supports = static_cast<bool*>(userdata);
         std::string header(buffer, size * nitems);
 
-        if (header.find("Accept-Ranges: bytes") != std::string::npos) {
-            *supports = true;
+        if (auto pos = header.find(':'); pos != std::string::npos) {
+            auto name  = Poco::trim(header.substr(0, pos));
+            auto value = Poco::trim(header.substr(pos + 1));
+
+            if (Poco::icompare(name, "Accept-Ranges") == 0 && Poco::icompare(value, "bytes") == 0) {
+                *supports = true;
+            }
         }
 
         return size * nitems;
@@ -202,17 +208,37 @@ bool Downloader::SupportsRangeRequests(const String& url)
     curl_easy_setopt(curl.get(), CURLOPT_HEADERFUNCTION, static_cast<curl_write_callback>(headerCallback));
     curl_easy_setopt(curl.get(), CURLOPT_HEADERDATA, &supportsRange);
     curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
+    curl_easy_setopt(curl.get(), CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl.get(), CURLOPT_XFERINFOFUNCTION, &Downloader::CancelXferInfoCallback);
+    curl_easy_setopt(curl.get(), CURLOPT_XFERINFODATA, context);
 
-    if (curl_easy_perform(curl.get()) != CURLE_OK) {
-        return false;
+    if (auto res = curl_easy_perform(curl.get()); res != CURLE_OK) {
+        return {false, Error(ErrorEnum::eFailed, curl_easy_strerror(res))};
     }
 
-    return supportsRange;
+    long code = 0;
+
+    curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &code);
+
+    if (code >= 400) {
+        LOG_ERR() << "HEAD request failed" << Log::Field("HTTP_CODE", code);
+
+        return {false, Error(code, "HEAD request failed")};
+    }
+
+    return {supportsRange, ErrorEnum::eNone};
 }
 
 Error Downloader::DownloadImage(const String& url, const String& path, ProgressContext* context)
 {
-    Poco::URI uri(url.CStr());
+    Poco::URI uri;
+
+    try {
+        uri = Poco::URI(url.CStr());
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
+
     if (uri.getScheme() == "file") {
         return CopyFile(uri, path);
     }
@@ -228,14 +254,28 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
     curl_off_t existingSize = 0;
 
-    if (std::filesystem::exists(path.CStr())) {
-        existingSize = std::filesystem::file_size(path.CStr());
+    try {
+        if (std::filesystem::exists(path.CStr())) {
+            existingSize = std::filesystem::file_size(path.CStr());
+        }
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
     bool canResume = false;
 
     if (existingSize > 0) {
-        canResume = SupportsRangeRequests(url);
+        Error err;
+
+        Tie(canResume, err) = SupportsRangeRequests(url, context);
+
+        if (IsCanceled(context)) {
+            return Error(ErrorEnum::eCanceled, "download canceled");
+        }
+
+        if (!err.IsNone()) {
+            return err;
+        }
 
         if (!canResume) {
             LOG_DBG() << "Server does not support range requests, starting from beginning";
@@ -312,15 +352,12 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
         path = uri.getHost();
     }
 
-    if (!std::filesystem::exists(path)) {
-        return Error(ErrorEnum::eFailed, "file not found");
-    }
-
     try {
-        std::ifstream ifs(path, std::ios::binary);
-        std::ofstream ofs(outfilename.CStr(), std::ios::binary | std::ios::trunc);
+        if (!std::filesystem::exists(path)) {
+            return Error(ErrorEnum::eFailed, "file not found");
+        }
 
-        ofs << ifs.rdbuf();
+        std::filesystem::copy_file(path, outfilename.CStr(), std::filesystem::copy_options::overwrite_existing);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -328,14 +365,24 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
     }
 }
 
-Error Downloader::RetryDownload(const String& url, const String& path, ProgressContext* context)
+Error Downloader::RetryDownload(CancelContext& ctx, const String& url, const String& path, ProgressContext* context)
 {
+    if (mCertProvider) {
+        try {
+            if (Poco::URI(url.CStr()).getScheme() != "https") {
+                return Error(ErrorEnum::eInvalidArgument, "mutual TLS download requires HTTPS");
+            }
+        } catch (const std::exception& e) {
+            return AOS_ERROR_WRAP(utils::ToAosError(e));
+        }
+    }
+
     auto  delay = cDelay;
     Error err;
 
-    for (int retryCount = 0; (retryCount < cMaxRetryCount) && (!mShutdown); ++retryCount) {
-        if (context->mCancelFlag && context->mCancelFlag->load()) {
-            return Error(ErrorEnum::eRuntime, "download cancelled");
+    for (int retryCount = 0; retryCount < cMaxRetryCount; ++retryCount) {
+        if (IsCanceled(context)) {
+            return Error(ErrorEnum::eCanceled, "download canceled");
         }
 
         LOG_DBG() << "Downloading" << Log::Field("url", url) << Log::Field("retry", retryCount);
@@ -346,13 +393,18 @@ Error Downloader::RetryDownload(const String& url, const String& path, ProgressC
             return ErrorEnum::eNone;
         }
 
+        if (IsCanceled(context)) {
+            return Error(ErrorEnum::eCanceled, "download canceled");
+        }
+
         LOG_ERR() << "Failed to download" << Log::Field("retry", retryCount) << Log::Field(AOS_ERROR_WRAP(err));
 
-        {
-            std::unique_lock<std::mutex> lock {mMutex};
+        if (retryCount + 1 == cMaxRetryCount) {
+            break;
+        }
 
-            mCondVar.wait_for(lock, delay,
-                [this, context] { return mShutdown || (context->mCancelFlag && context->mCancelFlag->load()); });
+        if (auto waitErr = ctx.Wait(delay.count() * Time::cMilliseconds); !waitErr.Is(ErrorEnum::eTimeout)) {
+            return AOS_ERROR_WRAP(waitErr);
         }
 
         delay = std::min(delay * 2, cMaxDelay);
@@ -365,18 +417,28 @@ Error Downloader::RetryDownload(const String& url, const String& path, ProgressC
  * Progress callback
  **********************************************************************************************************************/
 
+bool Downloader::IsCanceled(const ProgressContext* context)
+{
+    return context->mCancelContext && context->mCancelContext->IsCanceled();
+}
+
 int Downloader::XferInfoCallback(
     void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
     auto* ctx = static_cast<ProgressContext*>(clientp);
 
-    if (ctx->mCancelFlag && ctx->mCancelFlag->load()) {
-        LOG_DBG() << "Download cancelled via progress callback";
+    if (IsCanceled(ctx)) {
+        LOG_DBG() << "Download canceled via progress callback";
 
         return 1;
     }
 
     return ctx->mDownloader->OnProgress(ctx, dltotal, dlnow, ultotal, ulnow);
+}
+
+int Downloader::CancelXferInfoCallback(void* clientp, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+{
+    return IsCanceled(static_cast<ProgressContext*>(clientp)) ? 1 : 0;
 }
 
 int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow,
@@ -431,21 +493,6 @@ void Downloader::SendAlert(ProgressContext* context, DownloadState state, size_t
     param.SetValue<DownloadAlert>(*alert);
 
     mSender->SendAlert(param);
-}
-
-Error Downloader::Cancel(const String& digest)
-{
-    std::lock_guard lock {mMutex};
-
-    if (auto it = mCancelFlags.find(digest.CStr()); it != mCancelFlags.end()) {
-        it->second.store(true);
-
-        LOG_DBG() << "Cancel requested for download:" << Log::Field("digest", digest);
-
-        return ErrorEnum::eNone;
-    }
-
-    return Error(ErrorEnum::eNotFound, "download not found");
 }
 
 } // namespace aos::common::downloader

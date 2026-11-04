@@ -6,6 +6,8 @@
 
 #include <filesystem>
 #include <future>
+#include <initializer_list>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 
@@ -27,6 +29,31 @@
 #include "stubs/httpserverstub.hpp"
 
 using namespace testing;
+
+namespace {
+
+/***********************************************************************************************************************
+ * Types
+ **********************************************************************************************************************/
+
+using URLArray = aos::StaticArray<aos::StaticString<aos::cURLLen>, 4>;
+
+/***********************************************************************************************************************
+ * Utils
+ **********************************************************************************************************************/
+
+std::unique_ptr<URLArray> CreateURLs(std::initializer_list<std::string> urls)
+{
+    auto result = std::make_unique<URLArray>();
+
+    for (const auto& url : urls) {
+        EXPECT_TRUE(result->EmplaceBack(url.c_str()).IsNone());
+    }
+
+    return result;
+}
+
+} // namespace
 
 /***********************************************************************************************************************
  * Suite
@@ -83,6 +110,7 @@ protected:
 
     std::optional<HTTPServer>           mServer;
     aos::common::downloader::Downloader mDownloader;
+    aos::CancelContext                  mCancelCtx;
     StrictMock<aos::alerts::SenderMock> mAlertSender;
     std::string                         mFilePath = "download/test_file.dat";
 };
@@ -95,7 +123,8 @@ TEST_F(DownloaderTest, Download)
 {
     StartServer();
 
-    auto err = mDownloader.Download("digest1", "http://localhost:8000/test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download(
+        mCancelCtx, "digest1", *CreateURLs({"http://localhost:8000/test_file.dat"}), mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -110,7 +139,7 @@ TEST_F(DownloaderTest, Download)
 
 TEST_F(DownloaderTest, DownloadFileScheme)
 {
-    auto err = mDownloader.Download("digest2", "file://test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download(mCancelCtx, "digest2", *CreateURLs({"file://test_file.dat"}), mFilePath.c_str());
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -133,7 +162,8 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
 
     EXPECT_CALL(mAlertSender, SendAlert(_)).WillRepeatedly(Return(aos::ErrorEnum::eNone));
 
-    auto err = mDownloader.Download("digest3", "http://localhost:8001/large_test_file.dat", mFilePath.c_str());
+    auto err = mDownloader.Download(
+        mCancelCtx, "digest3", *CreateURLs({"http://localhost:8001/large_test_file.dat"}), mFilePath.c_str());
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_TRUE(std::filesystem::exists(mFilePath));
@@ -146,39 +176,6 @@ TEST_F(DownloaderTest, DownloadLargeFileWithProgress)
     StopServer();
 }
 
-TEST_F(DownloaderTest, CancelDownload)
-{
-    const size_t fileSizeMB = 10;
-
-    CreateLargeFile("large_test_file.dat", fileSizeMB);
-
-    mDownloader.Init(&mAlertSender, std::chrono::seconds {1});
-
-    StartServer("large_test_file.dat", 8002, 100);
-
-    EXPECT_CALL(mAlertSender, SendAlert(_)).Times(AtLeast(1));
-
-    std::future<aos::Error> downloadFuture = std::async(std::launch::async, [this]() {
-        return mDownloader.Download("digest_cancel", "http://localhost:8002/large_test_file.dat", mFilePath.c_str());
-    });
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    auto cancelErr = mDownloader.Cancel("digest_cancel");
-    EXPECT_EQ(cancelErr, aos::ErrorEnum::eNone);
-
-    auto downloadErr = downloadFuture.get();
-    EXPECT_EQ(downloadErr, aos::ErrorEnum::eRuntime);
-
-    StopServer();
-}
-
-TEST_F(DownloaderTest, CancelNonExistentDownload)
-{
-    auto err = mDownloader.Cancel("non_existent_digest");
-    EXPECT_EQ(err, aos::ErrorEnum::eNotFound);
-}
-
 TEST_F(DownloaderTest, ParallelDownloads)
 {
     CreateLargeFile("large_test_file.dat", 2);
@@ -186,13 +183,13 @@ TEST_F(DownloaderTest, ParallelDownloads)
     StartServer("large_test_file.dat", 8003, 100);
 
     std::future<aos::Error> download1 = std::async(std::launch::async, [this]() {
-        return mDownloader.Download(
-            "digest_parallel_1", "http://localhost:8003/large_test_file.dat", "download/file1.dat");
+        return mDownloader.Download(mCancelCtx, "digest_parallel_1",
+            *CreateURLs({"http://localhost:8003/large_test_file.dat"}), "download/file1.dat");
     });
 
     std::future<aos::Error> download2 = std::async(std::launch::async, [this]() {
-        return mDownloader.Download(
-            "digest_parallel_2", "http://localhost:8003/large_test_file.dat", "download/file2.dat");
+        return mDownloader.Download(mCancelCtx, "digest_parallel_2",
+            *CreateURLs({"http://localhost:8003/large_test_file.dat"}), "download/file2.dat");
     });
 
     auto err1 = download1.get();
@@ -217,13 +214,14 @@ TEST_F(DownloaderTest, DuplicateDownload)
     StartServer("large_test_file.dat", 8004, 100);
 
     std::future<aos::Error> download1 = std::async(std::launch::async, [this]() {
-        return mDownloader.Download("digest_dup", "http://localhost:8004/large_test_file.dat", "download/file_dup.dat");
+        return mDownloader.Download(mCancelCtx, "digest_dup",
+            *CreateURLs({"http://localhost:8004/large_test_file.dat"}), "download/file_dup.dat");
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    auto err2
-        = mDownloader.Download("digest_dup", "http://localhost:8004/large_test_file.dat", "download/file_dup2.dat");
+    auto err2 = mDownloader.Download(
+        mCancelCtx, "digest_dup", *CreateURLs({"http://localhost:8004/large_test_file.dat"}), "download/file_dup2.dat");
     EXPECT_EQ(err2, aos::ErrorEnum::eAlreadyExist);
 
     auto err1 = download1.get();
@@ -242,10 +240,12 @@ TEST_F(DownloaderTest, MutualTLSRejectsUnencryptedURLs)
 
     ASSERT_TRUE(mDownloader.Init("sm", "ca.pem", certProvider, certLoader, cryptoProvider).IsNone());
 
-    EXPECT_TRUE(mDownloader.Download("http", "http://localhost:8000/test_file.dat", mFilePath.c_str())
-                    .Is(aos::ErrorEnum::eInvalidArgument));
     EXPECT_TRUE(
-        mDownloader.Download("file", "file://test_file.dat", mFilePath.c_str()).Is(aos::ErrorEnum::eInvalidArgument));
+        mDownloader
+            .Download(mCancelCtx, "http", *CreateURLs({"http://localhost:8000/test_file.dat"}), mFilePath.c_str())
+            .Is(aos::ErrorEnum::eInvalidArgument));
+    EXPECT_TRUE(mDownloader.Download(mCancelCtx, "file", *CreateURLs({"file://test_file.dat"}), mFilePath.c_str())
+                    .Is(aos::ErrorEnum::eInvalidArgument));
     EXPECT_FALSE(std::filesystem::exists(mFilePath));
 }
 
@@ -269,7 +269,8 @@ TEST_F(DownloaderTest, MutualTLSDoesNotChangeOtherDownloaders)
 
     aos::common::downloader::Downloader downloader;
     ASSERT_TRUE(downloader.Init().IsNone());
-    EXPECT_TRUE(downloader.Download("file", "file://test_file.dat", mFilePath.c_str()).IsNone());
+    EXPECT_TRUE(
+        downloader.Download(mCancelCtx, "file", *CreateURLs({"file://test_file.dat"}), mFilePath.c_str()).IsNone());
 }
 
 class DownloaderTLSFailureTest : public DownloaderTest, public ::testing::WithParamInterface<int> { };
@@ -292,7 +293,7 @@ TEST_P(DownloaderTLSFailureTest, CredentialFailureNeverDownloadsUnverifiedConten
 
     ASSERT_TRUE(mDownloader.Init("sm", ca, certProvider, certLoader, cryptoProvider).IsNone());
     EXPECT_CALL(certProvider, GetCert(_, _, _, _))
-        .Times(4) // One HEAD for the partial file, then three failed GET attempts.
+        .Times(3)
         .WillRepeatedly(Invoke([&](const aos::String& certType, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
                                    aos::CertInfo&) -> aos::Error {
             EXPECT_EQ(certType, "sm");
@@ -308,10 +309,13 @@ TEST_P(DownloaderTLSFailureTest, CredentialFailureNeverDownloadsUnverifiedConten
 
     std::ofstream(mFilePath) << "partial download";
     auto url = "https://localhost:" + std::to_string(socket.address().port()) + "/test_file.dat";
-    EXPECT_FALSE(mDownloader.Download("tls_failure", url.c_str(), mFilePath.c_str()).IsNone());
-    if (std::filesystem::exists(mFilePath)) {
-        EXPECT_EQ(std::filesystem::file_size(mFilePath), 0);
-    }
+    EXPECT_FALSE(mDownloader.Download(mCancelCtx, "tls_failure", *CreateURLs({url}), mFilePath.c_str()).IsNone());
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, "partial download");
+
     server.stopAll(true);
 }
 
@@ -323,6 +327,223 @@ TEST_F(DownloaderTest, MutualTLSRejectsMalformedURL)
     StrictMock<aos::crypto::CertLoaderMock>      certLoader;
     StrictMock<aos::crypto::x509::ProviderMock>  cryptoProvider;
     ASSERT_TRUE(mDownloader.Init("sm", "ca.pem", certProvider, certLoader, cryptoProvider).IsNone());
-    EXPECT_FALSE(mDownloader.Download("invalid", "https://[invalid", mFilePath.c_str()).IsNone());
+    EXPECT_FALSE(
+        mDownloader.Download(mCancelCtx, "invalid", *CreateURLs({"https://[invalid"}), mFilePath.c_str()).IsNone());
     EXPECT_FALSE(std::filesystem::exists(mFilePath));
+}
+
+TEST_F(DownloaderTest, FallbackToNextURL)
+{
+    StartServer("test_file.dat", 8005);
+
+    auto err = mDownloader.Download(mCancelCtx, "digest_fallback",
+        *CreateURLs({"http://127.0.0.1:1/test_file.dat", "http://localhost:8005/test_file.dat"}), mFilePath.c_str());
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, "This is a test file");
+
+    StopServer();
+}
+
+TEST_F(DownloaderTest, AllURLsFailReturnsLastError)
+{
+    StartServer("missing_file.dat", 8006);
+
+    auto err = mDownloader.Download(mCancelCtx, "digest_all_fail",
+        *CreateURLs({"file://missing_file.dat", "http://localhost:8006/missing_file.dat"}), mFilePath.c_str());
+    EXPECT_EQ(err.Code(), 404);
+
+    StopServer();
+}
+
+TEST_F(DownloaderTest, EmptyURLs)
+{
+    auto err = mDownloader.Download(mCancelCtx, "digest_empty", *CreateURLs({}), mFilePath.c_str());
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eInvalidArgument));
+}
+
+TEST_F(DownloaderTest, PreCanceledContext)
+{
+    ASSERT_TRUE(mCancelCtx.Cancel().IsNone());
+
+    auto err = mDownloader.Download(
+        mCancelCtx, "digest_precanceled", *CreateURLs({"file://test_file.dat"}), mFilePath.c_str());
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eCanceled));
+    EXPECT_FALSE(std::filesystem::exists(mFilePath));
+
+    aos::CancelContext ctx;
+
+    err = mDownloader.Download(ctx, "digest_precanceled", *CreateURLs({"file://test_file.dat"}), mFilePath.c_str());
+    EXPECT_TRUE(err.IsNone());
+}
+
+TEST_F(DownloaderTest, CancelDuringRetryDelay)
+{
+    auto downloadFuture = std::async(std::launch::async, [this]() {
+        return mDownloader.Download(mCancelCtx, "digest_cancel_delay",
+            *CreateURLs({"http://127.0.0.1:1/test_file.dat", "file://test_file.dat"}), mFilePath.c_str());
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    ASSERT_TRUE(mCancelCtx.Cancel().IsNone());
+    ASSERT_EQ(downloadFuture.wait_for(std::chrono::milliseconds(500)), std::future_status::ready);
+
+    EXPECT_TRUE(downloadFuture.get().Is(aos::ErrorEnum::eCanceled));
+    EXPECT_TRUE(!std::filesystem::exists(mFilePath) || std::filesystem::file_size(mFilePath) == 0);
+}
+
+TEST_F(DownloaderTest, CancelDuringTransfer)
+{
+    const size_t fileSizeMB = 10;
+
+    CreateLargeFile("large_test_file.dat", fileSizeMB);
+
+    StartServer("large_test_file.dat", 8007, 100);
+
+    auto downloadFuture = std::async(std::launch::async, [this]() {
+        return mDownloader.Download(mCancelCtx, "digest_cancel_transfer",
+            *CreateURLs({"http://localhost:8007/large_test_file.dat", "file://large_test_file.dat"}),
+            mFilePath.c_str());
+    });
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+    while (!std::filesystem::exists(mFilePath) || std::filesystem::file_size(mFilePath) == 0) {
+        ASSERT_LT(std::chrono::steady_clock::now(), deadline);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    ASSERT_TRUE(mCancelCtx.Cancel().IsNone());
+    ASSERT_EQ(downloadFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    EXPECT_TRUE(downloadFuture.get().Is(aos::ErrorEnum::eCanceled));
+
+    auto size = std::filesystem::file_size(mFilePath);
+
+    EXPECT_GT(size, 0);
+    EXPECT_LT(size, fileSizeMB * 1024 * 1024);
+
+    StopServer();
+}
+
+TEST_F(DownloaderTest, HeadFailureKeepsPartialFile)
+{
+    std::atomic<int>                          headCount {0};
+    std::atomic<int>                          getCount {0};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
+            if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
+                if (++headCount == 2) {
+                    EXPECT_TRUE(mCancelCtx.Cancel().IsNone());
+                }
+            } else {
+                ++getCount;
+            }
+
+            response.setStatus(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+            response.send();
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    std::ofstream(mFilePath, std::ios::binary) << "partial download";
+
+    auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto err = mDownloader.Download(mCancelCtx, "digest_head_failure", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.Is(aos::ErrorEnum::eCanceled));
+    EXPECT_EQ(headCount, 2);
+    EXPECT_EQ(getCount, 0);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, "partial download");
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, ResumesWithLowercaseAcceptRanges)
+{
+    const std::string                         fileContent = "This is a test file";
+    const size_t                              partialSize = 8;
+    std::atomic<bool>                         rangeRequested {false};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
+            if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
+                response.set("accept-ranges", "bytes");
+                response.setContentLength(fileContent.size());
+                response.send();
+
+                return;
+            }
+
+            if (request.get("Range", "") != "bytes=" + std::to_string(partialSize) + "-") {
+                response.setContentLength(fileContent.size());
+                response.send() << fileContent;
+
+                return;
+            }
+
+            rangeRequested = true;
+
+            response.setStatus(Poco::Net::HTTPResponse::HTTP_PARTIAL_CONTENT);
+            response.set("Content-Range",
+                "bytes " + std::to_string(partialSize) + "-" + std::to_string(fileContent.size() - 1) + "/"
+                    + std::to_string(fileContent.size()));
+            response.setContentLength(fileContent.size() - partialSize);
+            response.send() << fileContent.substr(partialSize);
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    std::ofstream(mFilePath, std::ios::binary) << fileContent.substr(0, partialSize);
+
+    auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto err = mDownloader.Download(mCancelCtx, "digest_lowercase_ranges", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_TRUE(rangeRequested);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, fileContent);
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, DownloadFileSchemeDirectoryFails)
+{
+    std::filesystem::create_directory("source_dir");
+
+    auto err = mDownloader.Download(mCancelCtx, "digest_dir", *CreateURLs({"file://source_dir"}), mFilePath.c_str());
+
+    EXPECT_FALSE(err.IsNone());
+
+    std::filesystem::remove_all("source_dir");
+}
+
+TEST_F(DownloaderTest, DownloadFileSchemeEmptyFile)
+{
+    std::ofstream("empty_file.dat", std::ios::binary);
+    std::ofstream(mFilePath, std::ios::binary) << "previous content";
+
+    auto err = mDownloader.Download(
+        mCancelCtx, "digest_empty_file", *CreateURLs({"file://empty_file.dat"}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_TRUE(std::filesystem::exists(mFilePath));
+    EXPECT_EQ(std::filesystem::file_size(mFilePath), 0);
+
+    std::remove("empty_file.dat");
 }
