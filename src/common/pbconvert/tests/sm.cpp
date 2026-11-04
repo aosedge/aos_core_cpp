@@ -805,4 +805,57 @@ TEST_F(PBConvertSMTest, ConvertInstanceNetworkParamsToAllocateInstanceNetworkRes
     EXPECT_EQ(result.dns_servers_size(), 0);
 }
 
+TEST_F(PBConvertSMTest, ConvertBlobInfoToProto)
+{
+    const uint8_t cSHA256[] = {0x01, 0x02, 0x03, 0x04};
+
+    auto blobInfo = std::make_unique<BlobInfo>();
+
+    blobInfo->mDigest = "sha256:blob";
+    blobInfo->mSize   = 1024;
+
+    ASSERT_TRUE(blobInfo->mURLs.PushBack("https://example.com/blob1").IsNone());
+    ASSERT_TRUE(blobInfo->mURLs.PushBack("https://example.com/blob2").IsNone());
+    ASSERT_TRUE(blobInfo->mSHA256.Assign(Array<uint8_t>(cSHA256, sizeof(cSHA256))).IsNone());
+
+    servicemanager::v5::BlobInfo result;
+
+    ConvertToProto(*blobInfo, result);
+
+    ASSERT_EQ(result.urls_size(), 2);
+    EXPECT_EQ(result.urls(0), "https://example.com/blob1");
+    EXPECT_EQ(result.urls(1), "https://example.com/blob2");
+    EXPECT_EQ(result.sha256(), std::string("\x01\x02\x03\x04"));
+    EXPECT_EQ(result.size(), 1024);
+    EXPECT_FALSE(result.has_error());
+}
+
+TEST_F(PBConvertSMTest, ConvertBlobInfoFromProto)
+{
+    const uint8_t cSHA256[] = {0x01, 0x02, 0x03, 0x04};
+
+    servicemanager::v5::BlobInfo grpcData;
+
+    grpcData.add_urls("https://example.com/blob1");
+    grpcData.add_urls("https://example.com/blob2");
+    grpcData.set_sha256(std::string("\x01\x02\x03\x04"));
+    grpcData.set_size(1024);
+
+    auto blobInfo = std::make_unique<BlobInfo>();
+
+    ASSERT_TRUE(blobInfo->mURLs.PushBack("https://example.com/stale").IsNone());
+
+    auto err = ConvertFromProto(grpcData, "sha256:blob", *blobInfo);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_EQ(blobInfo->mDigest, "sha256:blob");
+    ASSERT_EQ(blobInfo->mURLs.Size(), 2);
+    EXPECT_EQ(blobInfo->mURLs[0], "https://example.com/blob1");
+    EXPECT_EQ(blobInfo->mURLs[1], "https://example.com/blob2");
+    EXPECT_EQ(blobInfo->mSHA256, Array<uint8_t>(cSHA256, sizeof(cSHA256)));
+    EXPECT_EQ(blobInfo->mSize, 1024);
+    EXPECT_FALSE(blobInfo->mDecryptInfo.HasValue());
+    EXPECT_FALSE(blobInfo->mSignInfo.HasValue());
+}
+
 } // namespace aos::common::pbconvert
