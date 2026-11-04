@@ -15,6 +15,7 @@
 #include <core/common/monitoring/monitoring.hpp>
 #include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 #include <core/common/types/alerts.hpp>
+#include <core/common/types/blobs.hpp>
 #include <core/common/types/common.hpp>
 #include <core/common/types/envvars.hpp>
 #include <core/common/types/instance.hpp>
@@ -343,6 +344,24 @@ Error ConvertToProto(const InstanceNetworkStateInfo& src, servicemanager::v5::In
  * @return Error.
  */
 Error ConvertFromProto(const servicemanager::v5::InstanceNetworkStateInfo& src, InstanceNetworkStateInfo& dst);
+
+/**
+ * Converts Aos blob info to grpc BlobInfo.
+ *
+ * @param src Aos blob info.
+ * @param[out] dst grpc blob info.
+ */
+void ConvertToProto(const BlobInfo& src, servicemanager::v5::BlobInfo& dst);
+
+/**
+ * Converts grpc BlobInfo to Aos.
+ *
+ * @param src grpc blob info.
+ * @param digest blob digest.
+ * @param[out] dst Aos blob info.
+ * @return Error.
+ */
+Error ConvertFromProto(const servicemanager::v5::BlobInfo& src, const String& digest, BlobInfo& dst);
 
 } // namespace aos::common::pbconvert
 
