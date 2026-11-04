@@ -162,19 +162,59 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     return info;
 }
 
-imagemanager::ItemInfo CreateImageManagerItemInfo(
-    const char* itemID, const UpdateItemType& type, const char* version, const char* indexDigest, ItemState state)
+common::imagemanager::DeployableItemInfo CreateDeployableItem(const char* itemID, const char* version,
+    ItemState state = ItemStateEnum::eInstalled, UpdateItemType type = UpdateItemTypeEnum::eService,
+    const char* rootDigest = "sha256:root", bool preinstalled = false, const Error& error = ErrorEnum::eNone)
 {
-    imagemanager::ItemInfo info;
+    common::imagemanager::DeployableItemInfo item;
 
-    info.mItemID      = itemID;
-    info.mType        = type;
-    info.mVersion     = version;
-    info.mIndexDigest = indexDigest;
-    info.mState       = state;
-    info.mTimestamp   = Time::Now();
+    item.mItemID       = itemID;
+    item.mType         = type;
+    item.mVersion      = version;
+    item.mPreinstalled = preinstalled;
+    item.mState        = state;
+    item.mError        = error;
+    item.mRootDigest   = rootDigest;
+    item.mTimestamp    = Time::Now();
 
-    return info;
+    return item;
+}
+
+common::imagemanager::ItemBlobInfo CreateItemBlob(
+    const char* digest, bool isLayer = false, const char* diffID = "", uint64_t size = 1024)
+{
+    common::imagemanager::ItemBlobInfo blob;
+
+    blob.mMediaType
+        = isLayer ? "application/vnd.oci.image.layer.v1.tar+gzip" : "application/vnd.oci.image.manifest.v1+json";
+    blob.mDigest  = digest;
+    blob.mSize    = size;
+    blob.mIsLayer = isLayer;
+    blob.mDiffID  = diffID;
+
+    return blob;
+}
+
+size_t CountTables(const std::string& dbPath, const std::string& tableName)
+{
+    Poco::Data::Session session("SQLite", dbPath);
+    size_t              count = 0;
+
+    session << "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?;",
+        Poco::Data::Keywords::bind(tableName), Poco::Data::Keywords::into(count), Poco::Data::Keywords::now;
+
+    return count;
+}
+
+int GetSchemaVersion(const std::string& dbPath)
+{
+    Poco::Data::Session session("SQLite", dbPath);
+    int                 version = 0;
+
+    session << "SELECT version FROM SchemaVersion LIMIT 1;", Poco::Data::Keywords::into(version),
+        Poco::Data::Keywords::now;
+
+    return version;
 }
 
 EnvVarInfo CreateEnvVarInfo(const char* name, const char* value, const Optional<Time>& ttl = {})
@@ -261,7 +301,7 @@ public:
 private:
     int GetVersion() const override { return mVersion; }
 
-    int mVersion = 1;
+    int mVersion = 2;
 };
 
 } // namespace
@@ -852,151 +892,6 @@ TEST_F(CMDatabaseTest, LauncherSaveRunRequests)
 }
 
 /***********************************************************************************************************************
- * imagemanager::StorageItf tests
- **********************************************************************************************************************/
-
-TEST_F(CMDatabaseTest, ImageManagerAddItem)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto item1 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo(
-        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
-
-    auto duplicateItem = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:xyz999", ItemStateEnum::eInstalled);
-    ASSERT_FALSE(mDB.AddItem(duplicateItem).IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 3> items;
-
-    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
-
-    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
-}
-
-TEST_F(CMDatabaseTest, ImageManagerRemoveItem)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto item1 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo(
-        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
-
-    ASSERT_TRUE(mDB.RemoveItem("service1", "1.0.0").IsNone());
-
-    ASSERT_FALSE(mDB.RemoveItem("nonexistent", "1.0.0").IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 2> items;
-
-    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
-
-    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item2, item3));
-}
-
-TEST_F(CMDatabaseTest, ImageManagerUpdateItemState)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto item1 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::ePending);
-    auto item2 = CreateImageManagerItemInfo(
-        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:def456", ItemStateEnum::ePending);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-
-    auto newTimestamp = Time::Now();
-    ASSERT_TRUE(mDB.UpdateItemState("service1", "1.0.0", ItemStateEnum::eInstalled, newTimestamp).IsNone());
-
-    ASSERT_FALSE(mDB.UpdateItemState("nonexistent", "1.0.0", ItemStateEnum::eInstalled).IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 1> items;
-
-    ASSERT_TRUE(mDB.GetItemInfos("service1", items).IsNone());
-    ASSERT_EQ(items.Size(), 1);
-    EXPECT_EQ(items[0].mState, ItemStateEnum::eInstalled);
-    EXPECT_EQ(items[0].mTimestamp, newTimestamp);
-
-    StaticArray<imagemanager::ItemInfo, 1> items2;
-
-    ASSERT_TRUE(mDB.GetItemInfos("service2", items2).IsNone());
-    ASSERT_EQ(items2.Size(), 1);
-    EXPECT_EQ(items2[0].mState, ItemStateEnum::ePending);
-}
-
-TEST_F(CMDatabaseTest, ImageManagerGetItemsInfo)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 3> emptyItems;
-
-    ASSERT_TRUE(mDB.GetAllItemsInfos(emptyItems).IsNone());
-    EXPECT_EQ(emptyItems.Size(), 0);
-
-    auto item1 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo(
-        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 3> items;
-
-    ASSERT_TRUE(mDB.GetAllItemsInfos(items).IsNone());
-
-    EXPECT_THAT(ToVector(items), UnorderedElementsAre(item1, item2, item3));
-}
-
-TEST_F(CMDatabaseTest, ImageManagerGetItemsInfos)
-{
-    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
-
-    auto item1 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "1.0.0", "sha256:abc123", ItemStateEnum::eInstalled);
-    auto item2 = CreateImageManagerItemInfo(
-        "service1", UpdateItemTypeEnum::eService, "2.0.0", "sha256:def456", ItemStateEnum::eInstalled);
-    auto item3 = CreateImageManagerItemInfo(
-        "service2", UpdateItemTypeEnum::eService, "1.0.0", "sha256:ghi789", ItemStateEnum::ePending);
-
-    ASSERT_TRUE(mDB.AddItem(item1).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item2).IsNone());
-    ASSERT_TRUE(mDB.AddItem(item3).IsNone());
-
-    StaticArray<imagemanager::ItemInfo, 2> service1Items;
-
-    ASSERT_TRUE(mDB.GetItemInfos("service1", service1Items).IsNone());
-    EXPECT_THAT(ToVector(service1Items), UnorderedElementsAre(item1, item2));
-
-    StaticArray<imagemanager::ItemInfo, 1> service2Items;
-
-    ASSERT_TRUE(mDB.GetItemInfos("service2", service2Items).IsNone());
-    EXPECT_THAT(ToVector(service2Items), UnorderedElementsAre(item3));
-
-    StaticArray<imagemanager::ItemInfo, 1> nonExistentItems;
-
-    ASSERT_TRUE(mDB.GetItemInfos("nonexistent", nonExistentItems).IsNone());
-    EXPECT_EQ(nonExistentItems.Size(), 0);
-}
-
-/***********************************************************************************************************************
  * updatemanager::StorageItf tests
  **********************************************************************************************************************/
 
@@ -1282,6 +1177,75 @@ TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending
 
     ASSERT_EQ(connections.Size(), 1U);
     EXPECT_EQ(connections[0], pending);
+}
+
+TEST_F(CMDatabaseTest, MigratesImageManagerTablesUpAndDown)
+{
+    const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
+
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+    ASSERT_TRUE(mDB.AddDeployableItem(CreateDeployableItem("service1", "1.0.0")).IsNone());
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 1U);
+
+    {
+        TestDatabase downgraded;
+
+        downgraded.SetVersion(1);
+
+        ASSERT_TRUE(downgraded.Init(mDatabaseConfig).IsNone());
+    }
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 1);
+
+    EXPECT_EQ(CountTables(dbPath, "imagemanager"), 1U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 0U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 0U);
+
+    {
+        Poco::Data::Session legacy("SQLite", dbPath);
+
+        legacy << "INSERT INTO imagemanager (itemID, type, version, indexDigest, state, timestamp) VALUES "
+                  "('service1', 'service', '1.0.0', 'sha256:index', 'installed', 0);",
+            Poco::Data::Keywords::now;
+    }
+
+    Database upgraded;
+
+    ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 1U);
+
+    auto count = upgraded.GetDeployableItemsCount();
+
+    ASSERT_TRUE(count.mError.IsNone());
+    EXPECT_EQ(count.mValue, 0U);
+
+    ASSERT_TRUE(upgraded.AddDeployableItem(CreateDeployableItem("service1", "1.0.0")).IsNone());
+    ASSERT_TRUE(upgraded.AddItemBlob("service1", "1.0.0", CreateItemBlob("sha256:manifest")).IsNone());
+}
+
+TEST_F(CMDatabaseTest, LegacyImageManagerTableIsNotRecreated)
+{
+    const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
+
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+
+    EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
+
+    Database restarted;
+
+    ASSERT_TRUE(restarted.Init(mDatabaseConfig).IsNone());
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
+    EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
 }
 
 } // namespace aos::cm::database
