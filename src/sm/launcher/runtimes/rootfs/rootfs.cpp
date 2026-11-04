@@ -295,7 +295,7 @@ RetWithError<std::string> GetUpdateType(const oci::ImageManifest& manifest)
  **********************************************************************************************************************/
 
 Error RootfsRuntime::Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-    imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+    common::imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
     InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn, runtimes::StorageItf& storage,
     fs::FileInfoProviderItf& fileInfoProvider)
 {

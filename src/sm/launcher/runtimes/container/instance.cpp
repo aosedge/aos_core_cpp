@@ -35,7 +35,7 @@ static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
 
 Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
     FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
-    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
     oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider)
     : mInstanceInfo(instance)
@@ -64,7 +64,7 @@ Instance::Instance(const InstanceInfo& instance, const ContainerConfig& config, 
 
 Instance::Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
     FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
-    imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+    common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
     oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider)
     : mInstanceID(instanceID)
