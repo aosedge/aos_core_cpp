@@ -16,7 +16,9 @@ set(SOURCES database.cpp)
 # Libraries
 # ######################################################################################################################
 
-set(LIBRARIES aos::common::cloudprotocol aos::common::utils aos::common::migration Poco::DataSQLite Poco::JSON)
+set(LIBRARIES aos::common::cloudprotocol aos::common::database aos::common::utils aos::common::migration
+              Poco::DataSQLite Poco::JSON
+)
 
 # ######################################################################################################################
 # Target

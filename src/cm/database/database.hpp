@@ -17,6 +17,7 @@
 #include <Poco/JSON/Object.h>
 
 #include <cm/networkmanager/itf/storage.hpp>
+#include <common/database/database.hpp>
 #include <common/migration/migration.hpp>
 #include <core/cm/database/itf/database.hpp>
 
@@ -27,7 +28,7 @@ namespace aos::cm::database {
 /**
  * Database class.
  */
-class Database : public DatabaseItf, public networkmanager::StorageItf {
+class Database : public DatabaseItf, public common::database::Database, public networkmanager::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -296,53 +297,8 @@ public:
     Error SaveRunRequests(const Array<launcher::RunInstanceRequest>& requests) override;
 
     //
-    // imagemanager::StorageItf interface
+    // updatemanager::StorageItf interface
     //
-
-    /**
-     * Adds item.
-     *
-     * @param item Item info.
-     * @return Error.
-     */
-    Error AddItem(const imagemanager::ItemInfo& item) override;
-
-    /**
-     * Removes item.
-     *
-     * @param id ID.
-     * @param version Version.
-     * @return Error.
-     */
-    Error RemoveItem(const String& id, const String& version) override;
-
-    /**
-     * Updates item state.
-     *
-     * @param id ID.
-     * @param version Version.
-     * @param state Item state.
-     * @param timestamp Timestamp.
-     * @return Error.
-     */
-    Error UpdateItemState(const String& id, const String& version, ItemState state, Time timestamp = {}) override;
-
-    /**
-     * Gets all items info.
-     *
-     * @param items Items info.
-     * @return Error.
-     */
-    Error GetAllItemsInfos(Array<imagemanager::ItemInfo>& items) override;
-
-    /**
-     * Gets items info by ID.
-     *
-     * @param id Item ID.
-     * @param items Items info.
-     * @return Error.
-     */
-    Error GetItemInfos(const String& id, Array<imagemanager::ItemInfo>& items) override;
 
     /**
      * Stores desired status in storage.
@@ -351,10 +307,6 @@ public:
      * @return Error.
      */
     Error StoreDesiredStatus(const DesiredStatus& desiredStatus) override;
-
-    //
-    // updatemanager::StorageItf interface
-    //
 
     /**
      * Stores update state in storage.
@@ -380,7 +332,7 @@ public:
     RetWithError<updatemanager::UpdateState> GetUpdateState() override;
 
 private:
-    static constexpr int  cVersion    = 1;
+    static constexpr int  cVersion    = 2;
     static constexpr auto cDBFileName = "cm.db";
 
     enum class StorageStateInstanceInfoColumns : int {
@@ -461,17 +413,6 @@ private:
         std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool, std::string,
         std::string, std::string, std::string, size_t, bool>;
 
-    enum class ImageManagerItemInfoColumns : int {
-        eItemID = 0,
-        eType,
-        eVersion,
-        eIndexDigest,
-        eState,
-        eTimestamp,
-    };
-    using ImageManagerItemInfoRow
-        = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t>;
-
     enum class LauncherOverrideEnvVarsColumns : int { eItemID = 0, eSubjectID, eInstance, eVariables };
     using LauncherOverrideEnvVarsRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
 
@@ -512,18 +453,13 @@ private:
     static void FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRow& dst);
     static void ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo& dst);
 
-    static void FromAos(const imagemanager::ItemInfo& src, ImageManagerItemInfoRow& dst);
-    static void ToAos(const ImageManagerItemInfoRow& src, imagemanager::ItemInfo& dst);
-
     static void FromAos(const EnvVarsInstanceInfo& src, LauncherOverrideEnvVarsRow& dst);
     static void ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo& dst);
 
     static void FromAos(const launcher::RunInstanceRequest& src, LauncherRunRequestRow& dst);
     static void ToAos(const LauncherRunRequestRow& src, launcher::RunInstanceRequest& dst);
 
-    std::unique_ptr<Poco::Data::Session>        mSession;
     std::optional<common::migration::Migration> mDatabase;
-    mutable std::mutex                          mMutex;
 };
 
 } // namespace aos::cm::database

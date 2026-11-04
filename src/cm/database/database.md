@@ -8,7 +8,8 @@ storage interfaces using SQLite as the backend database.
 The `Database` class implements the following interfaces to persist data for different CM modules:
 
 - [aos::cm::storagestate::StorageItf][storagestate-storage-itf] - storage state interface;
-- [aos::cm::imagemanager::StorageItf][iamgemanager-storage-itf] - image manager interface;
+- [aos::common::imagemanager::StorageItf][imagemanager-storage-itf] - image manager interface, implemented by the
+  [common database](../../common/database/database.md) base class `aos::common::database::Database`;
 - [aos::cm::networkmanager::StorageItf](../networkmanager/itf/storage.hpp) - network manager interface;
 - [aos::cm::launcher::StorageItf][launcher-storage-itf] - launcher interface.
 
@@ -17,9 +18,13 @@ The `Database` class implements the following interfaces to persist data for dif
 ```mermaid
 classDiagram
     class Database {
-        -Session mSession
         -Migration mDatabase
         +Init(config) Error
+    }
+
+    class CommonDatabase["aos::common::database::Database"] {
+        #Session mSession
+        #mutex mMutex
     }
     
     class StorageStateItf {
@@ -33,11 +38,15 @@ classDiagram
     
     class ImageManagerStorageItf {
         <<interface>>
-        +AddItem()
-        +SetItemState()
-        +RemoveItem()
-        +GetItemsInfo()
-        +GetItemVersionsByID()
+        +AddDeployableItem()
+        +UpdateDeployableItem()
+        +RemoveDeployableItem()
+        +GetDeployableItem()
+        +GetAllDeployableItems()
+        +GetDeployableItemsCount()
+        +AddItemBlob()
+        +GetItemBlobs()
+        +IsBlobUsed()
     }
     
     class NetworkManagerStorageItf {
@@ -62,8 +71,9 @@ classDiagram
         +GetActiveInstances()
     }
     
+    Database --|> CommonDatabase
+    CommonDatabase ..|> ImageManagerStorageItf
     Database ..|> StorageStateItf
-    Database ..|> ImageManagerStorageItf
     Database ..|> NetworkManagerStorageItf
     Database ..|> LauncherStorageItf
 ```
@@ -87,25 +97,17 @@ Stores instance storage and state quota information.
 
 **Primary Key**: `(itemID, subjectID, instance)`
 
-#### 2. `imagemanager`
+#### 2. `imagemanager_items`
 
-Stores image manager item information and metadata.
+Stores image manager deployable items. See [common database](../../common/database/database.md) for the columns
+description.
 
-| Column      | Type    | Description                        |
-|-------------|---------|----------------------------------- |
-| id          | TEXT    | Item identifier                    |
-| type        | TEXT    | Item type (service/layer/component)|
-| version     | TEXT    | Item version                       |
-| state       | TEXT    | Item state                         |
-| path        | TEXT    | File system path                   |
-| totalSize   | INTEGER | Total size in bytes                |
-| gid         | INTEGER | Group ID                           |
-| timestamp   | INTEGER | Timestamp in nanoseconds           |
-| images      | TEXT    | JSON array of image metadata       |
+#### 3. `imagemanager_blobs`
 
-**Primary Key**: `(id, version)`
+Stores blobs referenced by deployable items. See [common database](../../common/database/database.md) for the columns
+description.
 
-#### 3. `networks`
+#### 4. `networks`
 
 Stores network definitions.
 
@@ -117,7 +119,7 @@ Stores network definitions.
 
 **Primary Key**: `(networkID)`
 
-#### 4. `hosts`
+#### 5. `hosts`
 
 Stores host information within networks.
 
@@ -129,7 +131,7 @@ Stores host information within networks.
 
 **Primary Key**: `(networkID, nodeID)`
 
-#### 5. `networkmanager_instances`
+#### 6. `networkmanager_instances`
 
 Stores network instance configurations.
 
@@ -146,7 +148,7 @@ Stores network instance configurations.
 
 **Primary Key**: `(itemID, subjectID, instance)`
 
-#### 6. `launcher_instances`
+#### 7. `launcher_instances`
 
 Stores launcher instance information.
 
@@ -216,6 +218,12 @@ Helper functions in the anonymous namespace handle serialization:
 The database uses the common migration framework to support schema evolution across versions. Migration files should be
 placed in the configured migration path.
 
+The current schema version is 2:
+
+- version 1 — adds `hostnames` column to `networkmanager_instances`;
+- version 2 — drops the `imagemanager` table, creates `imagemanager_items`, `imagemanager_blobs` and the
+  `imagemanager_blobs_digest` index on `imagemanager_blobs(digest)`.
+
 ## Configuration
 
 Database configuration is provided through `Config`:
@@ -229,5 +237,5 @@ struct Config {
 ```
 
 [storagestate-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/storagestate/itf/storage.hpp
-[iamgemanager-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/imagemanager/itf/storage.hpp
+[imagemanager-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/common/imagemanager/itf/storage.hpp
 [launcher-storage-itf]: https://github.com/aosedge/aos_core_lib_cpp/blob/main/src/core/cm/launcher/itf/storage.hpp
