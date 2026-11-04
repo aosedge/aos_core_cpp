@@ -403,6 +403,7 @@ private:
         eState,
         eIsUnitSubject,
         eVersion,
+        eIndexDigest,
         eOwnerID,
         eSubjectType,
         eLabels,
@@ -411,7 +412,7 @@ private:
     };
     using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
         std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool, std::string,
-        std::string, std::string, std::string, size_t, bool>;
+        std::string, std::string, std::string, std::string, size_t, bool>;
 
     enum class LauncherOverrideEnvVarsColumns : int { eItemID = 0, eSubjectID, eInstance, eVariables };
     using LauncherOverrideEnvVarsRow = Poco::Tuple<std::string, std::string, std::string, std::string>;
@@ -420,6 +421,7 @@ private:
         eItemID = 0,
         eType,
         eVersion,
+        eIndexDigest,
         eOwnerID,
         eSubjectID,
         eSubjectType,
@@ -429,7 +431,7 @@ private:
         eLabels
     };
     using LauncherRunRequestRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string,
-        std::string, bool, size_t, size_t, std::string>;
+        std::string, std::string, bool, size_t, size_t, std::string>;
 
     // make virtual for unit tests
     virtual int GetVersion() const;

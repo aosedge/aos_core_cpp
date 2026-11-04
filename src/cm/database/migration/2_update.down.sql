@@ -1,5 +1,8 @@
 BEGIN TRANSACTION;
 
+ALTER TABLE launcher_run_requests DROP COLUMN indexDigest;
+ALTER TABLE launcher_instances DROP COLUMN indexDigest;
+
 DROP TABLE IF EXISTS imagemanager_blobs;
 DROP TABLE IF EXISTS imagemanager_items;
 
@@ -12,5 +15,7 @@ CREATE TABLE IF NOT EXISTS imagemanager (
     timestamp INTEGER,
     PRIMARY KEY (itemID, version)
 );
+
+UPDATE SchemaVersion SET version = 1;
 
 COMMIT;
