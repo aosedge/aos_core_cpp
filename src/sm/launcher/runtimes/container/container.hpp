@@ -49,7 +49,7 @@ public:
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,
         launcher::InstanceIDProviderItf& instanceIDProvider);
@@ -149,13 +149,13 @@ private:
     std::shared_ptr<MonitoringItf>      mMonitoring;
     std::shared_ptr<ContainerRunnerItf> mContainerRunner;
 
-    imagemanager::ItemInfoProviderItf*        mItemInfoProvider {};
-    networkmanager::NetworkManagerItf*        mNetworkManager {};
-    aos::iamclient::PermHandlerItf*           mPermHandler {};
-    resourcemanager::ResourceInfoProviderItf* mResourceInfoProvider {};
-    oci::OCISpecItf*                          mOCISpec {};
-    InstanceStatusReceiverItf*                mInstanceStatusReceiver {};
-    launcher::InstanceIDProviderItf*          mInstanceIDProvider {};
+    common::imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
+    networkmanager::NetworkManagerItf*         mNetworkManager {};
+    aos::iamclient::PermHandlerItf*            mPermHandler {};
+    resourcemanager::ResourceInfoProviderItf*  mResourceInfoProvider {};
+    oci::OCISpecItf*                           mOCISpec {};
+    InstanceStatusReceiverItf*                 mInstanceStatusReceiver {};
+    launcher::InstanceIDProviderItf*           mInstanceIDProvider {};
 
     ContainerConfig                                              mConfig;
     NodeInfo                                                     mNodeInfo;

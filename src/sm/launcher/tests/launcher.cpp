@@ -8,13 +8,13 @@
 
 #include <core/common/tests/mocks/currentnodeinfoprovidermock.hpp>
 #include <core/common/tests/mocks/fileinfoprovidermock.hpp>
+#include <core/common/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/common/tests/mocks/ocispecmock.hpp>
 #include <core/common/tests/mocks/permhandlermock.hpp>
 #include <core/common/tests/utils/log.hpp>
 #include <core/common/tests/utils/utils.hpp>
 #include <core/sm/tests/mocks/instanceidprovidermock.hpp>
 #include <core/sm/tests/mocks/instancestatusreceivermock.hpp>
-#include <core/sm/tests/mocks/iteminfoprovidermock.hpp>
 #include <core/sm/tests/mocks/networkmanagermock.hpp>
 #include <core/sm/tests/mocks/resourcemanagermock.hpp>
 
@@ -66,17 +66,17 @@ protected:
 
     void TearDown() override { }
 
-    NiceMock<iamclient::CurrentNodeInfoProviderMock>    mCurrentNodeInfoProviderMock;
-    NiceMock<imagemanager::ItemInfoProviderMock>        mItemInfoProviderMock;
-    NiceMock<networkmanager::NetworkManagerMock>        mNetworkManagerMock;
-    NiceMock<iamclient::PermHandlerMock>                mPermHandlerMock;
-    NiceMock<resourcemanager::ResourceInfoProviderMock> mResourceInfoProviderMock;
-    NiceMock<oci::OCISpecMock>                          mOCISpecMock;
-    NiceMock<InstanceStatusReceiverMock>                mInstanceStatusReceiverMock;
-    NiceMock<sm::utils::SystemdConnMock>                mSystemdConnMock;
-    NiceMock<launcher::InstanceIDProviderMock>          mInstanceIDProviderMock;
-    NiceMock<runtimes::StorageMock>                     mRuntimeStorageMock;
-    NiceMock<fs::FileInfoProviderMock>                  mFileInfoProviderMock;
+    NiceMock<iamclient::CurrentNodeInfoProviderMock>     mCurrentNodeInfoProviderMock;
+    NiceMock<common::imagemanager::ItemInfoProviderMock> mItemInfoProviderMock;
+    NiceMock<networkmanager::NetworkManagerMock>         mNetworkManagerMock;
+    NiceMock<iamclient::PermHandlerMock>                 mPermHandlerMock;
+    NiceMock<resourcemanager::ResourceInfoProviderMock>  mResourceInfoProviderMock;
+    NiceMock<oci::OCISpecMock>                           mOCISpecMock;
+    NiceMock<InstanceStatusReceiverMock>                 mInstanceStatusReceiverMock;
+    NiceMock<sm::utils::SystemdConnMock>                 mSystemdConnMock;
+    NiceMock<launcher::InstanceIDProviderMock>           mInstanceIDProviderMock;
+    NiceMock<runtimes::StorageMock>                      mRuntimeStorageMock;
+    NiceMock<fs::FileInfoProviderMock>                   mFileInfoProviderMock;
 };
 
 /***********************************************************************************************************************
