@@ -146,17 +146,16 @@ public:
      */
     Error SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& statuses) override;
 
-    // aos::sm::imagemanager::BlobInfoProviderItf interface
+    // aos::common::imagemanager::BlobInfoProviderItf interface
 
     /**
-     * Gets blobs info.
+     * Gets blob info.
      *
-     * @param digests list of blob digests.
-     * @param[out] urls blobs URLs.
+     * @param digest blob digest.
+     * @param[out] blobInfo blob info.
      * @return Error.
      */
-    Error GetBlobsInfo(
-        const Array<StaticString<oci::cDigestLen>>& digests, Array<StaticString<cURLLen>>& urls) override;
+    Error GetBlobInfo(const String& digest, BlobInfo& blobInfo) override;
 
     // aos::cloudconnection::CloudConnectionItf interface
 
