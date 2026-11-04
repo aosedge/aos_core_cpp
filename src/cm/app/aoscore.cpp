@@ -80,11 +80,12 @@ void AosCore::Init(const std::string& configFile)
     err = mAlerts.Init(mAllocator, mConfig.mAlerts, mCommunication, mCommunication);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize alerts");
 
-    err = mDownloadSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mDownloadPath, mPlatformFS, 0, &mImageManager);
+    err = mDownloadSpaceAllocator.Init(
+        mAllocator, mConfig.mImageManager.mDownloadPath, mPlatformFS, 0, &mImageManager.GetDownloadItemRemover());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize download space allocator");
 
-    err = mInstallSpaceAllocator.Init(
-        mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS, mConfig.mImageManager.mPartLimit, &mImageManager);
+    err = mInstallSpaceAllocator.Init(mAllocator, mConfig.mImageManager.mImagePath, mPlatformFS,
+        mConfig.mImageManager.mPartLimit, &mImageManager.GetItemRemover());
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize install space allocator");
 
     err = mDownloader.Init(&mAlerts);
@@ -94,8 +95,9 @@ void AosCore::Init(const std::string& configFile)
         mIAMClient, mCertLoader, mCryptoProvider);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize file server");
 
-    err = mImageManager.Init(mAllocator, mConfig.mImageManager, mDatabase, mCommunication, mDownloadSpaceAllocator,
-        mInstallSpaceAllocator, mDownloader, mFileServer, mCryptoHelper, mFileInfoProvider, mOCISpec);
+    err = mImageManager.Init(mConfig.mImageManager, mCommunication, mDatabase, mInstallSpaceAllocator,
+        mDownloadSpaceAllocator, mDownloader, mCryptoHelper, mFileServer, mFileInfoProvider, mOCISpec, mPlatformFS,
+        mAllocator);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize image manager");
 
     err = mNodeInfoProvider.Init(mAllocator, mConfig.mNodeInfoProvider, mIAMClient);
@@ -114,7 +116,7 @@ void AosCore::Init(const std::string& configFile)
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize launcher");
 
     err = mUpdateManager.Init(mAllocator, {mConfig.mUnitStatusSendTimeout}, mIAMClient, mIAMClient, mUnitConfig,
-        mNodeInfoProvider, mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
+        mNodeInfoProvider, mImageManager, mImageManager, mLauncher, mCommunication, mCommunication, mDatabase);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize update manager");
 
     err = mRootCerts.Init(mAllocator, mIAMClient, mNodeInfoProvider, mCommunication, mCommunication);
