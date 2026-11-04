@@ -339,13 +339,13 @@ Error Communication::SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& sta
     return ErrorEnum::eNone;
 }
 
-Error Communication::GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo)
+Error Communication::GetBlobInfo(const String& digest, BlobInfo& blobInfo)
 {
-    LOG_DBG() << "Get blobs info" << Log::Field("count", digests.Size());
+    LOG_DBG() << "Get blob info" << Log::Field("digest", digest);
 
     auto request = std::make_unique<BlobURLsRequest>();
 
-    if (auto err = request->mDigests.Assign(digests); !err.IsNone()) {
+    if (auto err = request->mDigests.EmplaceBack(digest); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -373,9 +373,16 @@ Error Communication::GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& d
     }
 
     if (const auto blobURLsInfo = std::get_if<BlobURLsInfo>(response.get()); blobURLsInfo) {
-        LOG_DBG() << "Received blob URLs info response";
+        LOG_DBG() << "Received blob URLs info response" << Log::Field("count", blobURLsInfo->mItems.Size());
 
-        return blobsInfo.Assign(blobURLsInfo->mItems);
+        auto item = blobURLsInfo->mItems.FindIf([&digest](const BlobInfo& info) { return info.mDigest == digest; });
+        if (item == blobURLsInfo->mItems.end()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "blob info not found"));
+        }
+
+        blobInfo = *item;
+
+        return ErrorEnum::eNone;
     }
 
     return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "invalid response type"));

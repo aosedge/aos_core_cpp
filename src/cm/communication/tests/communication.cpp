@@ -767,7 +767,7 @@ TEST_F(CMCommunicationTest, HandleDeprovisioning)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
+TEST_F(CMCommunicationTest, GetBlobInfoTimeout)
 {
     mConfig.mCloudResponseWaitTimeout = Time::cMilliseconds;
 
@@ -775,12 +775,10 @@ TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
 
     mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
 
-    StaticArray<StaticString<oci::cDigestLen>, 1> digests;
-    digests.EmplaceBack("sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b");
+    auto blobInfo = std::make_unique<BlobInfo>();
 
-    auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
-
-    auto err = mCommunication.GetBlobsInfos(digests, *blobsInfo);
+    auto err = mCommunication.GetBlobInfo(
+        "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b", *blobInfo);
     EXPECT_TRUE(err.Is(ErrorEnum::eTimeout)) << tests::utils::ErrorToStr(err);
 
     // make sure get blobs info message is not sent one more time after timeout
@@ -794,7 +792,7 @@ TEST_F(CMCommunicationTest, GetBlobsInfosTimeout)
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
-TEST_F(CMCommunicationTest, GetBlobsInfos)
+TEST_F(CMCommunicationTest, GetBlobInfo)
 {
     constexpr auto cRequestCorrelationID = "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2";
     constexpr auto cRequestTxnID         = "fb6e8461-2601-4f9a-8957-7ab4e52f304c";
@@ -861,13 +859,10 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
     mUUIDProvider.SetUUID(cRequestCorrelationID);
     mUUIDProvider.SetUUID(cRequestTxnID);
 
-    StaticArray<StaticString<oci::cDigestLen>, 1> digests;
-    digests.EmplaceBack(cDigest);
+    auto blobInfo = std::make_unique<BlobInfo>();
 
-    auto blobsInfo = std::make_unique<StaticArray<BlobInfo, 1>>();
-
-    auto future = std::async(std::launch::async,
-        [this, &digests, &blobsInfo]() { return mCommunication.GetBlobsInfos(digests, *blobsInfo); });
+    auto future = std::async(
+        std::launch::async, [this, &blobInfo]() { return mCommunication.GetBlobInfo(cDigest, *blobInfo); });
 
     const auto cUrlsRequest = mCloudReceivedMessages.Pop().value_or("");
     EXPECT_TRUE(std::regex_match(cUrlsRequest, cExpectedMessage)) << "Received message: " << cUrlsRequest;
@@ -878,14 +873,73 @@ TEST_F(CMCommunicationTest, GetBlobsInfos)
     auto err = future.get();
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 
-    EXPECT_EQ(blobsInfo->Size(), 1);
-    const auto& blobInfo = (*blobsInfo)[0];
-
-    EXPECT_STREQ(blobInfo.mDigest.CStr(), cDigest);
-    EXPECT_EQ(blobInfo.mURLs.Size(), 2);
+    EXPECT_STREQ(blobInfo->mDigest.CStr(), cDigest);
+    EXPECT_EQ(blobInfo->mURLs.Size(), 2);
+    EXPECT_EQ(blobInfo->mSize, 1000);
 
     const auto cAck = mCloudReceivedMessages.Pop().value_or("");
     EXPECT_TRUE(std::regex_match(cAck, cExpectedAckMsg)) << "Received message: " << cAck;
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, GetBlobInfoNotFound)
+{
+    constexpr auto cRequestCorrelationID = "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2";
+    constexpr auto cRequestTxnID         = "fb6e8461-2601-4f9a-8957-7ab4e52f304c";
+    constexpr auto cDigest               = "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b";
+    constexpr auto cCloudAck             = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "txn": "fb6e8461-2601-4f9a-8957-7ab4e52f304c"
+        },
+        "data": {
+            "messageType": "ack"
+        }
+    })";
+    constexpr auto cResponse             = R"({
+        "header": {
+            "version": 7,
+            "systemId": "test_system_id",
+            "txn": "f2df3016-de31-46e6-9ce8-9cde4ed7849f"
+        },
+        "data": {
+            "messageType": "blobUrls",
+            "correlationId": "2a05b9cc-32fb-41b6-a099-0fca3bb39ce2",
+            "items": [
+                {
+                    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                    "urls": [
+                        "http://example.com/other.bin"
+                    ],
+                    "sha256": "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80",
+                    "size": 1000
+                }
+            ]
+        }
+    })";
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID(cRequestCorrelationID);
+    mUUIDProvider.SetUUID(cRequestTxnID);
+
+    auto blobInfo = std::make_unique<BlobInfo>();
+
+    auto future = std::async(
+        std::launch::async, [this, &blobInfo]() { return mCommunication.GetBlobInfo(cDigest, *blobInfo); });
+
+    EXPECT_TRUE(mCloudReceivedMessages.Pop().has_value()) << "Blob URLs request expected, but not received";
+
+    mCloudSendMessageQueue.Push(cCloudAck);
+    mCloudSendMessageQueue.Push(cResponse);
+
+    auto err = future.get();
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << tests::utils::ErrorToStr(err);
+
+    EXPECT_TRUE(mCloudReceivedMessages.Pop().has_value()) << "Ack message expected, but not received";
 
     err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
