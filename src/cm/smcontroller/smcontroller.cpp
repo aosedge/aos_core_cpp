@@ -28,7 +28,7 @@ namespace aos::cm::smcontroller {
 
 Error SMController::Init(const Config& config, cloudconnection::CloudConnectionItf& cloudConnection,
     iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-    crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+    crypto::x509::ProviderItf& cryptoProvider, common::imagemanager::BlobInfoProviderItf& blobInfoProvider,
     alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
     nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
@@ -41,7 +41,7 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     mCertProvider           = &certProvider;
     mCertLoader             = &certLoader;
     mCryptoProvider         = &cryptoProvider;
-    mItemInfoProvider       = &itemInfoProvider;
+    mBlobInfoProvider       = &blobInfoProvider;
     mAlertsReceiver         = &alertsReceiver;
     mLogSender              = &logSender;
     mEnvVarsStatusSender    = &envVarsStatusSender;
@@ -284,14 +284,18 @@ grpc::Status SMController::GetBlobsInfos(grpc::ServerContext*, const servicemana
 {
     LOG_DBG() << "Get blobs info request received" << Log::Field("digestsCount", request->digests_size());
 
-    for (int i = 0; i < request->digests_size(); ++i) {
-        StaticString<cURLLen> digestURL;
+    auto blobInfo = std::make_unique<BlobInfo>();
 
-        if (auto err = mItemInfoProvider->GetBlobURL(request->digests(i).c_str(), digestURL); !err.IsNone()) {
+    for (int i = 0; i < request->digests_size(); ++i) {
+        if (auto err = mBlobInfoProvider->GetBlobInfo(request->digests(i).c_str(), *blobInfo); !err.IsNone()) {
             return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
         }
 
-        response->add_urls(digestURL.CStr());
+        if (blobInfo->mURLs.IsEmpty()) {
+            return grpc::Status(grpc::StatusCode::INTERNAL, "blob has no URLs");
+        }
+
+        response->add_urls(blobInfo->mURLs[0].CStr());
     }
 
     return grpc::Status::OK;
