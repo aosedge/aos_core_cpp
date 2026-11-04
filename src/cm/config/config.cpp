@@ -30,7 +30,7 @@ constexpr auto cDefaultLauncherNodesConnectionTimeout     = "10m";
 constexpr auto cDefaultMonitoringSendPeriod               = "1m";
 constexpr auto cDefaultSMConnectionTimeout                = "1m";
 constexpr auto cDefaultUnitStatusSendTimeout              = "10s";
-constexpr auto cDefaultUpdateItemTTL                      = "30d";
+constexpr auto cDefaultItemCacheTTL                       = "30d";
 constexpr auto cDefaultRemoveOutdatedPeriod               = "24h";
 constexpr auto cDefaultMigrationPath                      = "/usr/share/aos/communicationmanager/migration";
 constexpr auto cDefaultCertStorage                        = "/var/aos/crypt/cm/";
@@ -83,9 +83,9 @@ void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
         object.GetValue<std::string>("downloadPath", std::filesystem::path(workingDir) / "download").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing downloadPath tag");
 
-    Tie(config.mUpdateItemTTL, err)
-        = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl", cDefaultUpdateItemTTL));
-    AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
+    Tie(config.mItemCacheTTL, err)
+        = common::utils::ParseDuration(object.GetValue<std::string>("itemCacheTtl", cDefaultItemCacheTTL));
+    AOS_ERROR_CHECK_AND_THROW(err, "error parsing itemCacheTtl tag");
 
     Tie(config.mRemoveOutdatedPeriod, err) = common::utils::ParseDuration(
         object.GetValue<std::string>("removeOutdatedPeriod", cDefaultRemoveOutdatedPeriod));

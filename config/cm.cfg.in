@@ -13,7 +13,7 @@
     "fileServerUrl": "localhost:8094",
     "imageManager": {
         "downloadPath": "/var/aos/workdirs/cm/imagemanager/downloads",
-        "updateItemTTL": "30d",
+        "itemCacheTtl": "30d",
         "removeOutdatedPeriod": "24h"
     },
     "migration": {
