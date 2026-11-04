@@ -4,9 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <fstream>
-#include <sstream>
-
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 #include <common/utils/time.hpp>
@@ -23,14 +20,8 @@ namespace aos::common::oci {
 Error OCISpec::LoadImageManifest(const String& path, aos::oci::ImageManifest& manifest)
 {
     try {
-        std::ifstream file(path.CStr());
-
-        if (!file.is_open()) {
-            AOS_ERROR_THROW(ErrorEnum::eNotFound, "failed to open file");
-        }
-
-        auto [var, err] = utils::ParseJson(file);
-        AOS_ERROR_CHECK_AND_THROW(err, "failed to parse json");
+        auto [var, err] = utils::ReadJsonFromFile(path.CStr());
+        AOS_ERROR_CHECK_AND_THROW(err, "failed to load json file");
 
         Poco::JSON::Object::Ptr             object = var.extract<Poco::JSON::Object::Ptr>();
         utils::CaseInsensitiveObjectWrapper wrapper(object);
