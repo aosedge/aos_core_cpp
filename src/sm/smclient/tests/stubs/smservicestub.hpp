@@ -110,17 +110,27 @@ public:
         return grpc::Status::OK;
     }
 
-    grpc::Status GetBlobsInfos(
-        grpc::ServerContext* context, const smproto::BlobsInfosRequest* request, smproto::BlobsInfos* response) override
+    grpc::Status GetBlobsInfo(
+        grpc::ServerContext* context, const smproto::BlobsInfoRequest* request, smproto::BlobInfo* response) override
     {
         (void)context;
 
-        for (const auto& digest : request->digests()) {
-            response->add_urls("http://example.com/blobs/" + digest);
+        if (request->digest() == cMissingBlobDigest) {
+            response->mutable_error()->set_aos_code(static_cast<int32_t>(aos::ErrorEnum::eNotFound));
+            response->mutable_error()->set_message("blob not found");
+
+            return grpc::Status::OK;
         }
+
+        response->add_urls("http://example.com/blobs/" + request->digest());
+        response->add_urls("http://mirror.example.com/blobs/" + request->digest());
+        response->set_sha256(std::string("\x01\x02\x03\x04", 4));
+        response->set_size(1024);
 
         return grpc::Status::OK;
     }
+
+    static constexpr auto cMissingBlobDigest = "sha256:missing";
 
     grpc::Status GetNodeNetworkParams(grpc::ServerContext*, const smproto::GetNodeNetworkParamsRequest* request,
         smproto::GetNodeNetworkParamsResponse* response) override

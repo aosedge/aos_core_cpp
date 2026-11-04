@@ -239,34 +239,34 @@ Error SMClient::SendUpdateInstancesStatuses(const Array<aos::InstanceStatus>& st
     return ErrorEnum::eNone;
 }
 
-Error SMClient::GetBlobsInfo(const Array<StaticString<oci::cDigestLen>>& digests, Array<StaticString<cURLLen>>& urls)
+Error SMClient::GetBlobInfo(const String& digest, BlobInfo& blobInfo)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Get blobs info" << Log::Field("count", digests.Size());
+    LOG_DBG() << "Get blob info" << Log::Field("digest", digest);
 
     if (!mStub) {
         return Error(ErrorEnum::eFailed, "stub not available");
     }
 
-    smproto::BlobsInfosRequest request;
+    smproto::BlobsInfoRequest request;
 
-    for (const auto& digest : digests) {
-        request.add_digests(digest.CStr());
-    }
+    request.set_digest(digest.CStr());
 
     grpc::ClientContext context;
-    smproto::BlobsInfos response;
+    smproto::BlobInfo   response;
 
-    auto status = mStub->GetBlobsInfos(&context, request, &response);
+    auto status = mStub->GetBlobsInfo(&context, request, &response);
     if (!status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
-    for (const auto& url : response.urls()) {
-        if (auto err = urls.PushBack(url.c_str()); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
+    if (response.has_error()) {
+        return common::pbconvert::ConvertFromProto(response.error());
+    }
+
+    if (auto err = common::pbconvert::ConvertFromProto(response, digest, blobInfo); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
