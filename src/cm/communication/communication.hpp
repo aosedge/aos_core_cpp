@@ -115,13 +115,13 @@ public:
     Error SendOverrideEnvsStatuses(const OverrideEnvVarsStatuses& statuses) override;
 
     /**
-     * Returns blobs info.
+     * Returns blob info.
      *
-     * @param digests list of blob digests.
-     * @param[out] blobsInfo blobs infos.
-     * @return Error.
+     * @param digest blob digest.
+     * @param[out] blobInfo blob info.
+     * @return Error: eNotFound if the cloud response doesn't contain the requested blob.
      */
-    Error GetBlobsInfos(const Array<StaticString<oci::cDigestLen>>& digests, Array<BlobInfo>& blobsInfo) override;
+    Error GetBlobInfo(const String& digest, BlobInfo& blobInfo) override;
 
     /**
      * Sends monitoring.
