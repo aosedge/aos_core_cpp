@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <unistd.h>
+
+#include <cerrno>
 #include <fstream>
 
 #include <Poco/JSON/Object.h>
@@ -282,6 +285,45 @@ TEST_F(JsonTest, WriteJsonToFileFails)
     std::string path = "/non/existent/path/test.json";
 
     EXPECT_EQ(WriteJsonToFile(object, path), aos::ErrorEnum::eFailed);
+}
+
+TEST_F(JsonTest, ReadJsonFromFileSucceeds)
+{
+    const std::string path = "read_json_from_file.json";
+
+    Poco::JSON::Object::Ptr object = new Poco::JSON::Object;
+    object->set("key", "value");
+
+    ASSERT_EQ(WriteJsonToFile(object, path), aos::ErrorEnum::eNone);
+
+    auto [var, err] = ReadJsonFromFile(path);
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNone);
+    EXPECT_EQ(var.extract<Poco::JSON::Object::Ptr>()->getValue<std::string>("key"), "value");
+
+    std::remove(path.c_str());
+}
+
+TEST_F(JsonTest, ReadJsonFromFileNotFound)
+{
+    auto [var, err] = ReadJsonFromFile("read_json_from_file_missing.json");
+
+    EXPECT_EQ(err, aos::ErrorEnum::eNotFound);
+}
+
+TEST_F(JsonTest, ReadJsonFromFileReturnsErrnoAsIs)
+{
+    const std::string path = "read_json_from_file_link_loop.json";
+
+    std::remove(path.c_str());
+
+    ASSERT_EQ(symlink(path.c_str(), path.c_str()), 0);
+
+    auto [var, err] = ReadJsonFromFile(path);
+
+    EXPECT_EQ(err.Code(), ELOOP);
+
+    std::remove(path.c_str());
 }
 
 TEST_F(JsonTest, ToJSONArray)
