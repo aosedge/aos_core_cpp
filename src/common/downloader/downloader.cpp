@@ -15,6 +15,7 @@
 
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/httpstatus.hpp>
 
 #include "downloader.hpp"
 
@@ -218,6 +219,10 @@ RetWithError<bool> Downloader::SupportsRangeRequests(const String& url, Progress
     if (code >= 400) {
         LOG_ERR() << "HEAD request failed" << Log::Field("HTTP_CODE", code);
 
+        if (code == utils::cIntegrityHTTPStatus) {
+            return {false, Error(ErrorEnum::eIntegrity, "blob integrity error")};
+        }
+
         return {false, Error(code, "HEAD request failed")};
     }
 
@@ -324,7 +329,11 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
             LOG_ERR() << "HTTP error: " << Log::Field("HTTP_CODE", code);
 
-            err = Error(code, curl_easy_strerror(res));
+            if (code == utils::cIntegrityHTTPStatus) {
+                err = Error(ErrorEnum::eIntegrity, "blob integrity error");
+            } else {
+                err = Error(code, curl_easy_strerror(res));
+            }
         } else {
             err = Error(ErrorEnum::eFailed, curl_easy_strerror(res));
         }
@@ -390,6 +399,10 @@ Error Downloader::RetryDownload(CancelContext& ctx, const String& url, const Str
 
         if (IsCanceled(context)) {
             return Error(ErrorEnum::eCanceled, "download canceled");
+        }
+
+        if (err.Is(ErrorEnum::eIntegrity)) {
+            return err;
         }
 
         LOG_ERR() << "Failed to download" << Log::Field("retry", retryCount) << Log::Field(AOS_ERROR_WRAP(err));
