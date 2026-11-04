@@ -156,7 +156,7 @@ TEST_F(ConfigTest, ParseConfig)
 
     EXPECT_EQ(config->mImageManager.mImagePath, "/path/to/images");
     EXPECT_EQ(config->mImageManager.mPartLimit, 50);
-    EXPECT_EQ(config->mImageManager.mUpdateItemTTL, 15 * 24 * aos::Time::cHours);
+    EXPECT_EQ(config->mImageManager.mItemCacheTTL, 15 * 24 * aos::Time::cHours);
     EXPECT_EQ(config->mImageManager.mRemoveOutdatedPeriod, 12 * aos::Time::cHours);
 
     EXPECT_EQ(config->mLauncher.mRuntimes.size(), 3);
