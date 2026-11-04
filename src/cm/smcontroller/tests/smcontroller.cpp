@@ -11,11 +11,11 @@
 #include <cm/smcontroller/smcontroller.hpp>
 
 #include "stubs/alertsreceiverstub.hpp"
+#include "stubs/blobinfoproviderstub.hpp"
 #include "stubs/certloaderstub.hpp"
 #include "stubs/certproviderstub.hpp"
 #include "stubs/cloudconnectionstub.hpp"
 #include "stubs/instancestatusreceiverstub.hpp"
-#include "stubs/iteminfoproviderstub.hpp"
 #include "stubs/launchersenderstub.hpp"
 #include "stubs/monitoringreceiverstub.hpp"
 #include "stubs/networkproviderstub.hpp"
@@ -44,7 +44,7 @@ protected:
         mConfig.mCMServerURL = "localhost:8094";
 
         auto err = mSMController.Init(mConfig, mCloudConnection, mCertProvider, mCertLoader, mX509Provider,
-            mItemInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
+            mBlobInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
             mInstanceStatusReceiver, mSMInfoReceiver, mNetworkProvider, true);
         ASSERT_TRUE(err.IsNone()) << err.Message();
 
@@ -95,7 +95,7 @@ protected:
     iamclient::CertProviderStub          mCertProvider;
     crypto::CertLoaderStub               mCertLoader;
     crypto::x509::ProviderStub           mX509Provider;
-    ItemInfoProviderStub                 mItemInfoProvider;
+    BlobInfoProviderStub                 mBlobInfoProvider;
     alerts::ReceiverStub                 mAlertsReceiver;
     SenderStub                           mSMControllerSender;
     launcher::SenderStub                 mLauncherSender;
@@ -844,11 +844,14 @@ TEST_F(SMControllerTest, OnCertChanged)
 
 TEST_F(SMControllerTest, GetBlobsInfos)
 {
-    const std::string digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-    const std::string url    = "https://example.com/blob.tar";
+    const std::string digest1 = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const std::string digest2 = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const std::string url1    = "https://example.com/blob1.tar";
+    const std::string url2    = "https://example.com/blob2.tar";
 
-    // 1) Setup blob URL in stub
-    mItemInfoProvider.SetBlobURL(digest, url);
+    // 1) Setup blob URLs in stub
+    mBlobInfoProvider.SetBlobURLs(digest1, {url1, "https://backup.example.com/blob1.tar"});
+    mBlobInfoProvider.SetBlobURLs(digest2, {url2});
 
     // 2) Start client
     SMClientStub client;
@@ -865,17 +868,55 @@ TEST_F(SMControllerTest, GetBlobsInfos)
 
     // 4) Call GetBlobsInfos
     servicemanager::v5::BlobsInfos responseBlobsInfos;
-    std::vector<std::string>       digests = {digest};
+    std::vector<std::string>       digests = {digest2, digest1};
     ASSERT_TRUE(client.GetBlobsInfos(digests, responseBlobsInfos).IsNone());
 
-    ASSERT_EQ(responseBlobsInfos.urls_size(), 1);
-    EXPECT_EQ(responseBlobsInfos.urls(0), url);
+    ASSERT_EQ(responseBlobsInfos.urls_size(), 2);
+    EXPECT_EQ(responseBlobsInfos.urls(0), url2);
+    EXPECT_EQ(responseBlobsInfos.urls(1), url1);
 
     // 5) Stop client
     err = client.Stop();
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
     // 6) Wait for disconnect
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, GetBlobsInfosFails)
+{
+    const std::string knownDigest   = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const std::string noURLsDigest  = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const std::string unknownDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+
+    mBlobInfoProvider.SetBlobURLs(knownDigest, {"https://example.com/blob.tar"});
+    mBlobInfoProvider.SetBlobURLs(noURLsDigest, {});
+
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    servicemanager::v5::BlobsInfos responseBlobsInfos;
+
+    EXPECT_FALSE(client.GetBlobsInfos({knownDigest, unknownDigest}, responseBlobsInfos).IsNone());
+
+    responseBlobsInfos.Clear();
+
+    err = client.GetBlobsInfos({noURLsDigest}, responseBlobsInfos);
+    EXPECT_FALSE(err.IsNone());
+    EXPECT_NE(std::string(err.Message()).find("blob has no URLs"), std::string::npos) << err.Message();
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
     err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
