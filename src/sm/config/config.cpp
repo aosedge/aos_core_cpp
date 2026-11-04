@@ -62,7 +62,7 @@ void ParseSMClientConfig(const common::utils::CaseInsensitiveObjectWrapper& obje
 };
 
 void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& object, const std::string& workingDir,
-    imagemanager::Config& config)
+    aos::common::imagemanager::Config& config)
 {
     Error err;
 
@@ -72,7 +72,7 @@ void ParseImageManagerConfig(const common::utils::CaseInsensitiveObjectWrapper& 
 
     config.mPartLimit = object.GetValue<size_t>("imagesPartLimit", 0);
 
-    Tie(config.mUpdateItemTTL, err)
+    Tie(config.mItemCacheTTL, err)
         = common::utils::ParseDuration(object.GetValue<std::string>("updateItemTtl", cDefaultUpdateItemTTL));
     AOS_ERROR_CHECK_AND_THROW(err, "error parsing updateItemTtl tag");
 
