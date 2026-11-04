@@ -12,9 +12,9 @@
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
 #include <core/common/iamclient/itf/permhandler.hpp>
+#include <core/common/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/common/tools/fs.hpp>
-#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
@@ -52,7 +52,7 @@ public:
      * @return Error.
      */
     Error Init(const Config& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& statusReceiver, utils::SystemdConnItf& systemdConn,
         launcher::InstanceIDProviderItf& instanceIDProvider, runtimes::StorageItf& runtimeStorage,

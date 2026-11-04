@@ -15,9 +15,9 @@
 #include <thread>
 
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
+#include <core/common/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/common/tools/fs.hpp>
-#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/launcher/itf/instancestatusreceiver.hpp>
 #include <core/sm/launcher/itf/runtime.hpp>
 
@@ -61,7 +61,7 @@ public:
      * @return Error.
      */
     Error Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
         InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn,
         runtimes::StorageItf& storage, fs::FileInfoProviderItf& fileInfoProvider);
 
@@ -226,18 +226,18 @@ private:
     Error              PrepareUpdate(const InstanceInfo& instance);
     std::filesystem::path GetPath(const std::string& fileName) const;
 
-    RuntimeConfig                          mRuntimeConfig;
-    RootfsConfig                           mRootfsConfig;
-    iamclient::CurrentNodeInfoProviderItf* mCurrentNodeInfoProvider {};
-    imagemanager::ItemInfoProviderItf*     mItemInfoProvider {};
-    oci::OCISpecItf*                       mOCISpec {};
-    InstanceStatusReceiverItf*             mStatusReceiver {};
-    runtimes::StorageItf*                  mStorage {};
-    fs::FileInfoProviderItf*               mFileInfoProvider {};
-    common::utils::FSPlatform              mFSPlatform;
-    utils::SystemdUpdateChecker            mUpdateChecker;
-    utils::SystemdRebooter                 mRebooter;
-    InstanceIdent                          mDefaultInstanceIdent;
+    RuntimeConfig                              mRuntimeConfig;
+    RootfsConfig                               mRootfsConfig;
+    iamclient::CurrentNodeInfoProviderItf*     mCurrentNodeInfoProvider {};
+    common::imagemanager::ItemInfoProviderItf* mItemInfoProvider {};
+    oci::OCISpecItf*                           mOCISpec {};
+    InstanceStatusReceiverItf*                 mStatusReceiver {};
+    runtimes::StorageItf*                      mStorage {};
+    fs::FileInfoProviderItf*                   mFileInfoProvider {};
+    common::utils::FSPlatform                  mFSPlatform;
+    utils::SystemdUpdateChecker                mUpdateChecker;
+    utils::SystemdRebooter                     mRebooter;
+    InstanceIdent                              mDefaultInstanceIdent;
 
     mutable std::mutex            mMutex;
     std::mutex                    mHealthCheckMutex;

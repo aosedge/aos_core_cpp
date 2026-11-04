@@ -28,7 +28,7 @@ namespace aos::sm::launcher {
  **********************************************************************************************************************/
 
 Error BootRuntime::Init(const RuntimeConfig& config, iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
-    imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
+    common::imagemanager::ItemInfoProviderItf& itemInfoProvider, oci::OCISpecItf& ociSpec,
     InstanceStatusReceiverItf& statusReceiver, sm::utils::SystemdConnItf& systemdConn)
 {
     LOG_DBG() << "Init runtime" << Log::Field("type", config.mType.c_str());

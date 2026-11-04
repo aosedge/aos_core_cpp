@@ -10,9 +10,9 @@
 #include <mutex>
 
 #include <core/common/iamclient/itf/permhandler.hpp>
+#include <core/common/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/common/ocispec/itf/ocispec.hpp>
 #include <core/common/types/instance.hpp>
-#include <core/sm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/sm/networkmanager/itf/networkmanager.hpp>
 #include <core/sm/resourcemanager/itf/resourceinfoprovider.hpp>
 #include <sm/launcher/instanceidprovider.hpp>
@@ -49,7 +49,7 @@ public:
      */
     Instance(const InstanceInfo& instance, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider);
 
@@ -71,7 +71,7 @@ public:
      */
     Instance(const std::string& instanceID, const ContainerConfig& config, const NodeInfo& nodeInfo,
         FileSystemItf& fileSystem, RunnerItf& runner, MonitoringItf& monitoring,
-        imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
+        common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceIDProviderItf& instanceIDProvider);
 
@@ -184,17 +184,17 @@ private:
     RunStatus         mRunStatus;
     EnvVarStatusArray mEnvVarsStatuses;
 
-    const ContainerConfig&                    mConfig;
-    const NodeInfo&                           mNodeInfo;
-    FileSystemItf&                            mFileSystem;
-    RunnerItf&                                mRunner;
-    MonitoringItf&                            mMonitoring;
-    imagemanager::ItemInfoProviderItf&        mItemInfoProvider;
-    networkmanager::NetworkManagerItf&        mNetworkManager;
-    aos::iamclient::PermHandlerItf&           mPermHandler;
-    resourcemanager::ResourceInfoProviderItf& mResourceInfoProvider;
-    oci::OCISpecItf&                          mOCISpec;
-    InstanceIDProviderItf&                    mInstanceIDProvider;
+    const ContainerConfig&                     mConfig;
+    const NodeInfo&                            mNodeInfo;
+    FileSystemItf&                             mFileSystem;
+    RunnerItf&                                 mRunner;
+    MonitoringItf&                             mMonitoring;
+    common::imagemanager::ItemInfoProviderItf& mItemInfoProvider;
+    networkmanager::NetworkManagerItf&         mNetworkManager;
+    aos::iamclient::PermHandlerItf&            mPermHandler;
+    resourcemanager::ResourceInfoProviderItf&  mResourceInfoProvider;
+    oci::OCISpecItf&                           mOCISpec;
+    InstanceIDProviderItf&                     mInstanceIDProvider;
 
     mutable std::mutex mMutex;
 
