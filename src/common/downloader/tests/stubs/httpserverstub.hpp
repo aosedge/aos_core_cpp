@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <thread>
 
@@ -110,6 +111,55 @@ public:
 private:
     std::string mFilePath;
     int         mDelayMs;
+};
+
+/**
+ * Function request handler factory.
+ */
+class FunctionRequestHandlerFactory : public Poco::Net::HTTPRequestHandlerFactory {
+public:
+    using HandlerFunc = std::function<void(Poco::Net::HTTPServerRequest&, Poco::Net::HTTPServerResponse&)>;
+
+    /**
+     * Constructor.
+     *
+     * @param handler request handler function.
+     */
+    explicit FunctionRequestHandlerFactory(HandlerFunc handler)
+        : mHandler(std::move(handler))
+    {
+    }
+
+    /**
+     * Create request handler.
+     *
+     * @param request request.
+     * @return Poco::Net::HTTPRequestHandler.
+     */
+    Poco::Net::HTTPRequestHandler* createRequestHandler(
+        [[maybe_unused]] const Poco::Net::HTTPServerRequest& request) override
+    {
+        return new Handler(mHandler);
+    }
+
+private:
+    class Handler : public Poco::Net::HTTPRequestHandler {
+    public:
+        explicit Handler(const HandlerFunc& handler)
+            : mHandler(handler)
+        {
+        }
+
+        void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override
+        {
+            mHandler(request, response);
+        }
+
+    private:
+        HandlerFunc mHandler;
+    };
+
+    HandlerFunc mHandler;
 };
 
 /**
