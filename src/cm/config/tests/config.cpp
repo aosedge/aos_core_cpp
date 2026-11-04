@@ -48,7 +48,7 @@ constexpr auto cFullTestConfigJSON = R"({
         "imagePath": "/path/to/images",
         "imagesPartLimit": 50,
         "downloadPath": "/path/to/download",
-        "updateItemTtl": "30d",
+        "itemCacheTtl": "15d",
         "removeOutdatedPeriod": "1h"
     },
     "launcher": {
@@ -135,7 +135,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_STREQ(config.mImageManager.mImagePath.CStr(), "/path/to/images");
     EXPECT_EQ(config.mImageManager.mPartLimit, 50);
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), "/path/to/download");
-    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
+    EXPECT_EQ(config.mImageManager.mItemCacheTTL, 15 * aos::Time::cDay);
     EXPECT_EQ(config.mImageManager.mRemoveOutdatedPeriod, aos::Time::cHours * 1);
 
     EXPECT_EQ(config.mLauncher.mNodesConnectionTimeout, aos::Time::cMinutes * 1);
@@ -201,7 +201,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
     EXPECT_STREQ(config.mImageManager.mImagePath.CStr(), (std::filesystem::path("workingDir") / "images").c_str());
     EXPECT_STREQ(config.mImageManager.mDownloadPath.CStr(), (std::filesystem::path("workingDir") / "download").c_str());
     EXPECT_EQ(config.mImageManager.mPartLimit, 0);
-    EXPECT_EQ(config.mImageManager.mUpdateItemTTL, aos::Time::cDay * 30);
+    EXPECT_EQ(config.mImageManager.mItemCacheTTL, aos::Time::cDay * 30);
 
     EXPECT_EQ(config.mMigration.mMigrationPath, "/usr/share/aos/communicationmanager/migration");
     EXPECT_EQ(config.mMigration.mMergedMigrationPath, (std::filesystem::path("workingDir") / "migration").string());
