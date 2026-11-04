@@ -17,7 +17,6 @@
 #include <servicemanager/v5/network.grpc.pb.h>
 #include <servicemanager/v5/servicemanager.grpc.pb.h>
 
-#include <core/cm/imagemanager/itf/iteminfoprovider.hpp>
 #include <core/cm/launcher/itf/envvarhandler.hpp>
 #include <core/cm/launcher/itf/instancerunner.hpp>
 #include <core/cm/launcher/itf/monitoringprovider.hpp>
@@ -28,6 +27,7 @@
 #include <core/common/cloudconnection/itf/cloudconnection.hpp>
 #include <core/common/crypto/itf/certloader.hpp>
 #include <core/common/iamclient/itf/certprovider.hpp>
+#include <core/common/imagemanager/itf/blobinfoprovider.hpp>
 #include <core/common/networkmanager/itf/networkprovider.hpp>
 #include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 #include <core/common/tools/timer.hpp>
@@ -56,7 +56,7 @@ public:
      * @param certProvider certificate provider.
      * @param certLoader certificate loader.
      * @param cryptoProvider crypto provider.
-     * @param itemInfoProvider item info provider.
+     * @param blobInfoProvider blob info provider.
      * @param alertsReceiver alerts receiver.
      * @param logSender log sender.
      * @param envVarsStatusSender env vars status sender.
@@ -68,7 +68,7 @@ public:
      */
     Error Init(const Config& config, cloudconnection::CloudConnectionItf& cloudConnection,
         aos::iamclient::CertProviderItf& certProvider, crypto::CertLoaderItf& certLoader,
-        crypto::x509::ProviderItf& cryptoProvider, imagemanager::ItemInfoProviderItf& itemInfoProvider,
+        crypto::x509::ProviderItf& cryptoProvider, common::imagemanager::BlobInfoProviderItf& blobInfoProvider,
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
         nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
@@ -241,20 +241,20 @@ private:
     void                      ScheduleRestart();
     void                      OnRestartTimer();
 
-    Config                                   mConfig {};
-    cloudconnection::CloudConnectionItf*     mCloudConnection {};
-    crypto::CertLoaderItf*                   mCertLoader {};
-    crypto::x509::ProviderItf*               mCryptoProvider {};
-    aos::iamclient::CertProviderItf*         mCertProvider {};
-    imagemanager::ItemInfoProviderItf*       mItemInfoProvider {};
-    alerts::ReceiverItf*                     mAlertsReceiver {};
-    SenderItf*                               mLogSender {};
-    launcher::SenderItf*                     mEnvVarsStatusSender {};
-    monitoring::ReceiverItf*                 mMonitoringReceiver {};
-    launcher::InstanceStatusReceiverItf*     mInstanceStatusReceiver {};
-    nodeinfoprovider::SMInfoReceiverItf*     mSMInfoReceiver {};
-    aos::networkmanager::NetworkProviderItf* mNetworkProvider {};
-    bool                                     mInsecureConn {};
+    Config                                     mConfig {};
+    cloudconnection::CloudConnectionItf*       mCloudConnection {};
+    crypto::CertLoaderItf*                     mCertLoader {};
+    crypto::x509::ProviderItf*                 mCryptoProvider {};
+    aos::iamclient::CertProviderItf*           mCertProvider {};
+    common::imagemanager::BlobInfoProviderItf* mBlobInfoProvider {};
+    alerts::ReceiverItf*                       mAlertsReceiver {};
+    SenderItf*                                 mLogSender {};
+    launcher::SenderItf*                       mEnvVarsStatusSender {};
+    monitoring::ReceiverItf*                   mMonitoringReceiver {};
+    launcher::InstanceStatusReceiverItf*       mInstanceStatusReceiver {};
+    nodeinfoprovider::SMInfoReceiverItf*       mSMInfoReceiver {};
+    aos::networkmanager::NetworkProviderItf*   mNetworkProvider {};
+    bool                                       mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
     std::mutex                               mMutex;
