@@ -165,8 +165,27 @@ Stores launcher instance information.
 | uid            | INTEGER | User ID                  |
 | timestamp      | INTEGER | Timestamp in nanoseconds |
 | cached         | INTEGER | Cached indicator (0/1)   |
+| indexDigest    | TEXT    | Item index digest        |
 
 **Primary Key**: `(itemID, subjectID, instance)`
+
+#### 8. `launcher_run_requests`
+
+Stores launcher run instance requests.
+
+| Column        | Type    | Description                  |
+|---------------|---------|------------------------------|
+| itemID        | TEXT    | Service/component ID         |
+| type          | TEXT    | Update item type             |
+| version       | TEXT    | Item version                 |
+| ownerID       | TEXT    | Owner identifier             |
+| subjectID     | TEXT    | Subject identifier           |
+| subjectType   | TEXT    | Subject type                 |
+| isUnitSubject | INTEGER | Unit subject indicator (0/1) |
+| priority      | INTEGER | Request priority             |
+| numInstances  | INTEGER | Number of instances          |
+| labels        | TEXT    | JSON array of labels         |
+| indexDigest   | TEXT    | Item index digest            |
 
 ## Data Conversion
 
@@ -222,7 +241,10 @@ The current schema version is 2:
 
 - version 1 — adds `hostnames` column to `networkmanager_instances`;
 - version 2 — drops the `imagemanager` table, creates `imagemanager_items`, `imagemanager_blobs` and the
-  `imagemanager_blobs_digest` index on `imagemanager_blobs(digest)`.
+  `imagemanager_blobs_digest` index on `imagemanager_blobs(digest)`, adds `indexDigest` column to `launcher_instances`
+  and `launcher_run_requests`. The script records the schema version in its own transaction, so an interrupted
+  migration is either fully applied or not applied at all and the non-repeatable `ALTER TABLE` statements never run
+  twice.
 
 ## Configuration
 

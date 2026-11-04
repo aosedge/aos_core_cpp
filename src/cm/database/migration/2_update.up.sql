@@ -29,4 +29,9 @@ CREATE TABLE IF NOT EXISTS imagemanager_blobs (
 
 CREATE INDEX IF NOT EXISTS imagemanager_blobs_digest ON imagemanager_blobs(digest);
 
+ALTER TABLE launcher_instances ADD COLUMN indexDigest TEXT NOT NULL DEFAULT '';
+ALTER TABLE launcher_run_requests ADD COLUMN indexDigest TEXT NOT NULL DEFAULT '';
+
+UPDATE SchemaVersion SET version = 2;
+
 COMMIT;

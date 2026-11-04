@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <fstream>
+
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
@@ -26,6 +28,11 @@ template <typename T>
 std::vector<T> ToVector(const Array<T>& src)
 {
     return std::vector<T>(src.begin(), src.end());
+}
+
+std::string CreateIndexDigest(const char* itemID, const char* version)
+{
+    return std::string("sha256:index-") + itemID + "-" + version;
 }
 
 InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
@@ -150,6 +157,7 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     info.mState          = state;
     info.mIsUnitSubject  = isUnitSubject;
     info.mVersion        = version;
+    info.mIndexDigest    = CreateIndexDigest(itemID, version).c_str();
     info.mOwnerID        = ownerID;
     info.mSubjectType    = subjectType;
     info.mLabels.Clear();
@@ -204,6 +212,17 @@ size_t CountTables(const std::string& dbPath, const std::string& tableName)
         Poco::Data::Keywords::bind(tableName), Poco::Data::Keywords::into(count), Poco::Data::Keywords::now;
 
     return count;
+}
+
+bool HasColumn(const std::string& dbPath, const std::string& tableName, const std::string& columnName)
+{
+    Poco::Data::Session session("SQLite", dbPath);
+    size_t              count = 0;
+
+    session << "SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?;", Poco::Data::Keywords::bind(tableName),
+        Poco::Data::Keywords::bind(columnName), Poco::Data::Keywords::into(count), Poco::Data::Keywords::now;
+
+    return count != 0;
 }
 
 int GetSchemaVersion(const std::string& dbPath)
@@ -271,6 +290,8 @@ launcher::RunInstanceRequest CreateRunInstanceRequest(const char* itemID, Update
     AOS_ERROR_CHECK_AND_THROW(request.mItemID.Assign(itemID), "can't assign itemID");
     request.mUpdateItemType = itemType;
     AOS_ERROR_CHECK_AND_THROW(request.mVersion.Assign(version), "can't assign version");
+    AOS_ERROR_CHECK_AND_THROW(
+        request.mIndexDigest.Assign(CreateIndexDigest(itemID, version).c_str()), "can't assign index digest");
     AOS_ERROR_CHECK_AND_THROW(request.mOwnerID.Assign(ownerID), "can't assign ownerID");
     AOS_ERROR_CHECK_AND_THROW(request.mSubjectInfo.mSubjectID.Assign(subjectID), "can't assign subjectID");
     request.mSubjectInfo.mSubjectType   = subjectType;
@@ -335,6 +356,13 @@ protected:
     }
 
     void TearDown() override { std::filesystem::remove_all(cWorkingDir); }
+
+    std::string ReadMigrationScript(const std::string& name) const
+    {
+        std::ifstream file(std::filesystem::path(mDatabaseConfig.mMigrationPath) / name);
+
+        return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    }
 
 protected:
     static constexpr auto cWorkingDir          = "cm_database_test";
@@ -678,6 +706,11 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
     auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
     ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
     EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance2, instance3, instance1v2));
+
+    for (const auto& instance : *instances) {
+        EXPECT_EQ(instance.mIndexDigest,
+            CreateIndexDigest(instance.mInstanceIdent.mItemID.CStr(), instance.mVersion.CStr()).c_str());
+    }
 }
 
 TEST_F(CMDatabaseTest, LauncherUpdateInstance)
@@ -707,7 +740,8 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     instance1.mLabels.Clear();
     AOS_ERROR_CHECK_AND_THROW(instance1.mLabels.EmplaceBack("label1"), "can't add label");
     AOS_ERROR_CHECK_AND_THROW(instance1.mLabels.EmplaceBack("label2"), "can't add label");
-    instance1.mPriority = 100;
+    instance1.mPriority    = 100;
+    instance1.mIndexDigest = "sha256:index-updated";
 
     ASSERT_TRUE(mDB.UpdateInstance(instance1).IsNone());
 
@@ -721,6 +755,16 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
     ASSERT_TRUE(mDB.LoadActiveInstances(*instances).IsNone());
     EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance1v1, instance2));
+
+    for (const auto& instance : *instances) {
+        if (instance.mInstanceIdent == instance1.mInstanceIdent && instance.mVersion == instance1.mVersion) {
+            EXPECT_EQ(instance.mIndexDigest, "sha256:index-updated");
+        } else if (instance.mInstanceIdent == instance1v1.mInstanceIdent && instance.mVersion == instance1v1.mVersion) {
+            EXPECT_EQ(instance.mIndexDigest, CreateIndexDigest("service1", "1.0.1").c_str());
+        } else {
+            EXPECT_EQ(instance.mIndexDigest, CreateIndexDigest("service2", "1.0.0").c_str());
+        }
+    }
 }
 
 TEST_F(CMDatabaseTest, LauncherGetActiveInstances)
@@ -889,6 +933,10 @@ TEST_F(CMDatabaseTest, LauncherSaveRunRequests)
 
     ASSERT_TRUE(mDB.LoadRunRequests(*loaded).IsNone());
     EXPECT_THAT(ToVector(*loaded), UnorderedElementsAre(request1, request2));
+
+    ASSERT_EQ(loaded->Size(), 2U);
+    EXPECT_EQ((*loaded)[0].mIndexDigest, CreateIndexDigest("service1", "1.0.0").c_str());
+    EXPECT_EQ((*loaded)[1].mIndexDigest, CreateIndexDigest("service2", "2.0.0").c_str());
 }
 
 /***********************************************************************************************************************
@@ -1179,7 +1227,7 @@ TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending
     EXPECT_EQ(connections[0], pending);
 }
 
-TEST_F(CMDatabaseTest, MigratesImageManagerTablesUpAndDown)
+TEST_F(CMDatabaseTest, MigratesSchemaVersion2UpAndDown)
 {
     const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
 
@@ -1190,6 +1238,8 @@ TEST_F(CMDatabaseTest, MigratesImageManagerTablesUpAndDown)
     EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 1U);
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_instances", "indexDigest"));
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_run_requests", "indexDigest"));
 
     {
         TestDatabase downgraded;
@@ -1204,6 +1254,8 @@ TEST_F(CMDatabaseTest, MigratesImageManagerTablesUpAndDown)
     EXPECT_EQ(CountTables(dbPath, "imagemanager"), 1U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 0U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 0U);
+    EXPECT_FALSE(HasColumn(dbPath, "launcher_instances", "indexDigest"));
+    EXPECT_FALSE(HasColumn(dbPath, "launcher_run_requests", "indexDigest"));
 
     {
         Poco::Data::Session legacy("SQLite", dbPath);
@@ -1221,6 +1273,8 @@ TEST_F(CMDatabaseTest, MigratesImageManagerTablesUpAndDown)
     EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_blobs"), 1U);
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_instances", "indexDigest"));
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_run_requests", "indexDigest"));
 
     auto count = upgraded.GetDeployableItemsCount();
 
@@ -1246,6 +1300,39 @@ TEST_F(CMDatabaseTest, LegacyImageManagerTableIsNotRecreated)
     EXPECT_EQ(GetSchemaVersion(dbPath), 2);
     EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
+}
+
+TEST_F(CMDatabaseTest, MigrationScriptsRecordSchemaVersion)
+{
+    const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
+
+    {
+        TestDatabase legacy;
+
+        legacy.SetVersion(1);
+
+        ASSERT_TRUE(legacy.Init(mDatabaseConfig).IsNone());
+    }
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 1);
+
+    Poco::Data::Session session("SQLite", dbPath);
+
+    session << ReadMigrationScript("2_update.up.sql"), Poco::Data::Keywords::now;
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_instances", "indexDigest"));
+
+    session << ReadMigrationScript("2_update.down.sql"), Poco::Data::Keywords::now;
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 1);
+    EXPECT_FALSE(HasColumn(dbPath, "launcher_instances", "indexDigest"));
+
+    Database upgraded;
+
+    ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
 }
 
 } // namespace aos::cm::database

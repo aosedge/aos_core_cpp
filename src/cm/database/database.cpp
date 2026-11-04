@@ -737,9 +737,9 @@ Error Database::AddInstance(const launcher::InstanceInfo& info)
 
         FromAos(info, row);
         *mSession << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, preinstalled, manifestDigest, "
-                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
-                     "subjectType, labels, priority, disableRebalancing) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, indexDigest, "
+                     "ownerID, subjectType, labels, priority, disableRebalancing) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             bind(row), now;
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -757,15 +757,15 @@ Error Database::UpdateInstance(const launcher::InstanceInfo& info)
 
         statement
             << "UPDATE launcher_instances SET manifestDigest = ?, nodeID = ?, prevNodeID = ?, runtimeID = ?, uid = ?, "
-               "gid = ?, timestamp = ?, state = ?, isUnitSubject = ?, ownerID = ?, subjectType = ?, labels = ?, "
-               "priority = ?, disableRebalancing = ? "
+               "gid = ?, timestamp = ?, state = ?, isUnitSubject = ?, indexDigest = ?, ownerID = ?, subjectType = ?, "
+               "labels = ?, priority = ?, disableRebalancing = ? "
                "WHERE itemID = ? AND subjectID = ? AND instance = ? "
                "AND type = ? AND preinstalled = ? AND version = ?;",
             bind(info.mManifestDigest.CStr()), bind(info.mNodeID.CStr()), bind(info.mPrevNodeID.CStr()),
             bind(info.mRuntimeID.CStr()), bind(info.mUID), bind(info.mGID), bind(info.mTimestamp.UnixNano()),
-            bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mOwnerID.CStr()),
-            bind(info.mSubjectType.ToString().CStr()), bind(SerializeLabels(info.mLabels)), bind(info.mPriority),
-            bind(info.mDisableRebalancing), bind(info.mInstanceIdent.mItemID.CStr()),
+            bind(info.mState.ToString().CStr()), bind(info.mIsUnitSubject), bind(info.mIndexDigest.CStr()),
+            bind(info.mOwnerID.CStr()), bind(info.mSubjectType.ToString().CStr()), bind(SerializeLabels(info.mLabels)),
+            bind(info.mPriority), bind(info.mDisableRebalancing), bind(info.mInstanceIdent.mItemID.CStr()),
             bind(info.mInstanceIdent.mSubjectID.CStr()), bind(info.mInstanceIdent.mInstance),
             bind(info.mInstanceIdent.mType.ToString().CStr()), bind(info.mInstanceIdent.mPreinstalled),
             bind(info.mVersion.CStr());
@@ -787,10 +787,11 @@ Error Database::LoadActiveInstances(Array<launcher::InstanceInfo>& instances) co
     try {
         std::vector<LauncherInstanceInfoRow> rows;
 
-        *mSession << "SELECT itemID, subjectID, instance, type, preinstalled, manifestDigest, nodeID, prevNodeID, "
-                     "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, subjectType, labels, "
-                     "priority, disableRebalancing "
-                     "FROM launcher_instances;",
+        *mSession
+            << "SELECT itemID, subjectID, instance, type, preinstalled, manifestDigest, nodeID, prevNodeID, "
+               "runtimeID, uid, gid, timestamp, state, isUnitSubject, version, indexDigest, ownerID, subjectType, "
+               "labels, priority, disableRebalancing "
+               "FROM launcher_instances;",
             into(rows), now;
 
         auto instanceInfo = std::make_unique<launcher::InstanceInfo>();
@@ -889,8 +890,8 @@ Error Database::LoadRunRequests(Array<launcher::RunInstanceRequest>& requests) c
     try {
         std::vector<LauncherRunRequestRow> rows;
 
-        *mSession << "SELECT itemID, type, version, ownerID, subjectID, subjectType, isUnitSubject, priority, "
-                     "numInstances, labels FROM launcher_run_requests ORDER BY rowid;",
+        *mSession << "SELECT itemID, type, version, indexDigest, ownerID, subjectID, subjectType, isUnitSubject, "
+                     "priority, numInstances, labels FROM launcher_run_requests ORDER BY rowid;",
             into(rows), now;
 
         requests.Clear();
@@ -921,8 +922,9 @@ Error Database::SaveRunRequests(const Array<launcher::RunInstanceRequest>& reque
             LauncherRunRequestRow row;
 
             FromAos(request, row);
-            *mSession << "INSERT INTO launcher_run_requests (itemID, type, version, ownerID, subjectID, subjectType, "
-                         "isUnitSubject, priority, numInstances, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            *mSession << "INSERT INTO launcher_run_requests (itemID, type, version, indexDigest, ownerID, subjectID, "
+                         "subjectType, isUnitSubject, priority, numInstances, labels) "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                 bind(row), now;
         }
         transaction.commit();
@@ -1300,6 +1302,7 @@ void Database::FromAos(const launcher::InstanceInfo& src, LauncherInstanceInfoRo
     dst.set<ToInt(LauncherInstanceInfoColumns::eState)>(src.mState.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>(src.mIsUnitSubject);
     dst.set<ToInt(LauncherInstanceInfoColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(LauncherInstanceInfoColumns::eIndexDigest)>(src.mIndexDigest.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eOwnerID)>(src.mOwnerID.CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eSubjectType)>(src.mSubjectType.ToString().CStr());
     dst.set<ToInt(LauncherInstanceInfoColumns::eLabels)>(SerializeLabels(src.mLabels));
@@ -1334,6 +1337,7 @@ void Database::ToAos(const LauncherInstanceInfoRow& src, launcher::InstanceInfo&
 
     dst.mIsUnitSubject = src.get<ToInt(LauncherInstanceInfoColumns::eIsUnitSubject)>();
     dst.mVersion       = src.get<ToInt(LauncherInstanceInfoColumns::eVersion)>().c_str();
+    dst.mIndexDigest   = src.get<ToInt(LauncherInstanceInfoColumns::eIndexDigest)>().c_str();
     dst.mOwnerID       = src.get<ToInt(LauncherInstanceInfoColumns::eOwnerID)>().c_str();
 
     const auto& subjectTypeStr = src.get<ToInt(LauncherInstanceInfoColumns::eSubjectType)>();
@@ -1408,6 +1412,7 @@ void Database::FromAos(const launcher::RunInstanceRequest& src, LauncherRunReque
     dst.set<ToInt(LauncherRunRequestColumns::eItemID)>(src.mItemID.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eType)>(src.mUpdateItemType.ToString().CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eVersion)>(src.mVersion.CStr());
+    dst.set<ToInt(LauncherRunRequestColumns::eIndexDigest)>(src.mIndexDigest.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eOwnerID)>(src.mOwnerID.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eSubjectID)>(src.mSubjectInfo.mSubjectID.CStr());
     dst.set<ToInt(LauncherRunRequestColumns::eSubjectType)>(src.mSubjectInfo.mSubjectType.ToString().CStr());
@@ -1421,6 +1426,7 @@ void Database::ToAos(const LauncherRunRequestRow& src, launcher::RunInstanceRequ
 {
     dst.mItemID       = src.get<ToInt(LauncherRunRequestColumns::eItemID)>().c_str();
     dst.mVersion      = src.get<ToInt(LauncherRunRequestColumns::eVersion)>().c_str();
+    dst.mIndexDigest  = src.get<ToInt(LauncherRunRequestColumns::eIndexDigest)>().c_str();
     dst.mOwnerID      = src.get<ToInt(LauncherRunRequestColumns::eOwnerID)>().c_str();
     dst.mPriority     = src.get<ToInt(LauncherRunRequestColumns::ePriority)>();
     dst.mNumInstances = src.get<ToInt(LauncherRunRequestColumns::eNumInstances)>();
