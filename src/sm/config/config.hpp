@@ -12,10 +12,10 @@
 
 #include <Poco/Dynamic/Var.h>
 
+#include <core/common/imagemanager/config.hpp>
 #include <core/common/logging/config.hpp>
 #include <core/common/monitoring/config.hpp>
 #include <core/common/tools/error.hpp>
-#include <core/sm/imagemanager/config.hpp>
 
 #include <common/config/config.hpp>
 #include <common/iamclient/config.hpp>
@@ -41,7 +41,7 @@ struct Config {
     common::config::JournalAlerts mJournalAlerts;
     common::config::Migration     mMigration;
     common::iamclient::Config     mIAMClientConfig;
-    imagemanager::Config          mImageManager;
+    common::imagemanager::Config  mImageManager;
     launcher::Config              mLauncher;
     logging::Config               mLogging;
     monitoring::Config            mMonitoring;
