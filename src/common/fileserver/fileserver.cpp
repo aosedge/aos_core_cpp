@@ -3,23 +3,29 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <cerrno>
 #include <filesystem>
 #include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <Poco/DateTimeFormat.h>
 #include <Poco/DateTimeFormatter.h>
-#include <Poco/File.h>
-#include <Poco/FileStream.h>
 #include <Poco/Net/Context.h>
 #include <Poco/Net/SecureServerSocket.h>
-#include <Poco/Path.h>
-#include <Poco/StreamCopier.h>
+#include <Poco/Timestamp.h>
 
 #include <core/common/tools/logger.hpp>
 #include <core/common/tools/memory.hpp>
 
 #include <common/utils/cryptohelper.hpp>
 #include <common/utils/exception.hpp>
+#include <common/utils/httpstatus.hpp>
 
 #include "fileserver.hpp"
 
@@ -39,6 +45,8 @@ const std::map<std::string, std::string> sMimeTypes = {{"html", "text/html"}, {"
     {"ico", "image/x-icon"}, {"pdf", "application/pdf"}, {".zip", "application/zip"}, {".tar", "application/x-tar"},
     {".gz", "application/gzip"}};
 
+constexpr size_t cReadChunkSize = 64 * 1024;
+
 /***********************************************************************************************************************
  * Static
  **********************************************************************************************************************/
@@ -53,7 +61,75 @@ std::string GetMimeType(const std::string& ext)
     return "application/octet-stream";
 }
 
+bool IsIntegrityError(int err)
+{
+    return err == EIO || err == EBADMSG || err == EUCLEAN || err == EILSEQ;
+}
+
+int StatusFromErrno(int err)
+{
+    if (IsIntegrityError(err)) {
+        return common::utils::cIntegrityHTTPStatus;
+    }
+
+    if (err == ENOENT || err == ENOTDIR) {
+        return Poco::Net::HTTPResponse::HTTP_NOT_FOUND;
+    }
+
+    return Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR;
+}
+
+ssize_t ReadChunk(const Fileserver::ReadFunction& readFunc, int fd, std::vector<char>& buffer)
+{
+    ssize_t size = 0;
+
+    do {
+        size = readFunc(fd, buffer.data(), buffer.size());
+    } while (size < 0 && errno == EINTR);
+
+    return size;
+}
+
+void SendStatus(Poco::Net::HTTPServerResponse& response, int status)
+{
+    if (status == common::utils::cIntegrityHTTPStatus) {
+        response.setStatus(std::to_string(status));
+        response.setReason(common::utils::cIntegrityHTTPReason);
+    } else {
+        response.setStatus(static_cast<Poco::Net::HTTPResponse::HTTPStatus>(status));
+    }
+
+    response.send();
+}
+
 } // namespace
+
+/***********************************************************************************************************************
+ * BrokenFiles
+ **********************************************************************************************************************/
+
+void BrokenFiles::Mark(const std::string& path, const struct timespec& mtime)
+{
+    std::lock_guard lock {mMutex};
+
+    mFiles[path] = mtime;
+}
+
+bool BrokenFiles::Take(const std::string& path, const struct stat& st)
+{
+    std::lock_guard lock {mMutex};
+
+    auto it = mFiles.find(path);
+    if (it == mFiles.end()) {
+        return false;
+    }
+
+    auto matched = st.st_mtim.tv_sec == it->second.tv_sec && st.st_mtim.tv_nsec == it->second.tv_nsec;
+
+    mFiles.erase(it);
+
+    return matched;
+}
 
 /***********************************************************************************************************************
  * Public
@@ -138,46 +214,171 @@ Error Fileserver::TranslateFilePathURL(const String& filePath, String& outURL)
  * FileRequestHandler
  **********************************************************************************************************************/
 
-Fileserver::FileRequestHandler::FileRequestHandler(const std::string& rootDir)
+Fileserver::FileRequestHandler::FileRequestHandler(
+    const std::string& rootDir, std::shared_ptr<BrokenFiles> brokenFiles, ReadFunction read)
     : mRootDir(rootDir)
+    , mBrokenFiles(std::move(brokenFiles))
+    , mRead(std::move(read))
 {
 }
 
 void Fileserver::FileRequestHandler::handleRequest(
-    [[maybe_unused]] Poco::Net::HTTPServerRequest& request, [[maybe_unused]] Poco::Net::HTTPServerResponse& response)
+    Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
 {
     try {
-        std::string path = request.getURI();
+        std::string target = request.getURI();
 
-        auto queryPos = path.find('?');
+        auto queryPos = target.find('?');
         if (queryPos != std::string::npos) {
-            path.resize(queryPos);
+            target.resize(queryPos);
         }
 
-        Poco::Path fullPath(mRootDir);
-        fullPath.append(path);
+        fs::path filePath;
 
-        Poco::File file(fullPath.toString());
-        if (!file.exists() || !file.isFile()) {
-            response.setStatus(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
-            response.send();
+        if (!ResolvePath(target, filePath)) {
+            LOG_ERR() << "Request target is outside root directory" << Log::Field("target", target.c_str());
+
+            SendStatus(response, Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
 
             return;
         }
 
-        response.setContentType(GetMimeType(fullPath.getExtension()));
-        response.setContentLength(file.getSize());
+        const auto  path = filePath.string();
+        struct stat st { };
 
-        response.set("Last-Modified",
-            Poco::DateTimeFormatter::format(file.getLastModified(), Poco::DateTimeFormat::HTTP_FORMAT));
+        auto fd = OpenFile(path, st, response);
+        if (!fd) {
+            return;
+        }
 
-        Poco::FileInputStream fis(fullPath.toString());
-        Poco::StreamCopier::copyStream(fis, response.send());
+        auto extension = filePath.extension().string();
+        if (!extension.empty()) {
+            extension.erase(0, 1);
+        }
+
+        SendFile(fd.get().mFD, path, st, extension, request, response);
     } catch (const std::exception& e) {
         LOG_ERR() << "Failed to handle request" << common::utils::ToAosError(e);
 
-        response.setStatus(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-        response.send();
+        if (!response.sent()) {
+            SendStatus(response, Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+}
+
+/***********************************************************************************************************************
+ * FileRequestHandler private
+ **********************************************************************************************************************/
+
+bool Fileserver::FileRequestHandler::ResolvePath(const std::string& target, fs::path& path) const
+{
+    auto root = fs::path(mRootDir).lexically_normal();
+    if (!root.has_filename()) {
+        root = root.parent_path();
+    }
+
+    path = (root / fs::path(target).relative_path()).lexically_normal();
+
+    auto relative = path.lexically_relative(root);
+
+    return !relative.empty() && *relative.begin() != "..";
+}
+
+Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
+    const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response)
+{
+    FDPtr fd(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK));
+    if (!fd) {
+        auto err = errno;
+
+        if (err != ENOENT) {
+            LOG_ERR() << "Failed to open file" << Log::Field("path", path.c_str())
+                      << Log::Field(Error(err, "can't open file"));
+        }
+
+        SendStatus(response, StatusFromErrno(err));
+
+        return {};
+    }
+
+    if (fstat(fd.get().mFD, &st) != 0) {
+        auto err = errno;
+
+        LOG_ERR() << "Failed to stat file" << Log::Field("path", path.c_str())
+                  << Log::Field(Error(err, "can't stat file"));
+
+        SendStatus(response, StatusFromErrno(err));
+
+        return {};
+    }
+
+    if (!S_ISREG(st.st_mode)) {
+        SendStatus(response, Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
+
+        return {};
+    }
+
+    if (mBrokenFiles->Take(path, st)) {
+        LOG_DBG() << "File is marked as broken" << Log::Field("path", path.c_str());
+
+        SendStatus(response, common::utils::cIntegrityHTTPStatus);
+
+        return {};
+    }
+
+    return fd;
+}
+
+void Fileserver::FileRequestHandler::HandleReadError(
+    const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response)
+{
+    LOG_ERR() << "Failed to read file" << Log::Field("path", path.c_str()) << Log::Field("sent", response.sent())
+              << Log::Field(Error(err, "can't read file"));
+
+    if (!response.sent()) {
+        SendStatus(response, StatusFromErrno(err));
+    } else if (IsIntegrityError(err)) {
+        mBrokenFiles->Mark(path, st.st_mtim);
+    }
+}
+
+void Fileserver::FileRequestHandler::SendFile(int fd, const std::string& path, const struct stat& st,
+    const std::string& extension, Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
+{
+    std::vector<char> buffer(cReadChunkSize);
+
+    auto size = ReadChunk(mRead, fd, buffer);
+    if (size < 0) {
+        HandleReadError(path, st, errno, response);
+
+        return;
+    }
+
+    response.setContentType(GetMimeType(extension));
+    response.setContentLength64(st.st_size);
+    response.set("Last-Modified",
+        Poco::DateTimeFormatter::format(
+            Poco::Timestamp::fromEpochTime(st.st_mtim.tv_sec), Poco::DateTimeFormat::HTTP_FORMAT));
+    response.setKeepAlive(false);
+
+    auto& out = response.send();
+
+    if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
+        return;
+    }
+
+    while (size > 0) {
+        if (!out.write(buffer.data(), size)) {
+            LOG_ERR() << "Failed to send file" << Log::Field("path", path.c_str());
+
+            return;
+        }
+
+        size = ReadChunk(mRead, fd, buffer);
+    }
+
+    if (size < 0) {
+        HandleReadError(path, st, errno, response);
     }
 }
 
@@ -185,15 +386,17 @@ void Fileserver::FileRequestHandler::handleRequest(
  * FileRequestHandlerFactory
  **********************************************************************************************************************/
 
-Fileserver::FileRequestHandlerFactory::FileRequestHandlerFactory(const std::string& rootDir)
+Fileserver::FileRequestHandlerFactory::FileRequestHandlerFactory(const std::string& rootDir, ReadFunction read)
     : mRootDir(rootDir)
+    , mRead(std::move(read))
+    , mBrokenFiles(std::make_shared<BrokenFiles>())
 {
 }
 
 Poco::Net::HTTPRequestHandler* Fileserver::FileRequestHandlerFactory::createRequestHandler(
     [[maybe_unused]] const Poco::Net::HTTPServerRequest& request)
 {
-    return new FileRequestHandler(mRootDir);
+    return new FileRequestHandler(mRootDir, mBrokenFiles, mRead);
 }
 
 Error Fileserver::Start()
