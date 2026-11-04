@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -11,13 +13,18 @@
 #include <sstream>
 #include <stdexcept>
 
+#include <unistd.h>
+
 #include <gtest/gtest.h>
 
+#include <Poco/Exception.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/SocketAddress.h>
+#include <Poco/Net/StreamSocket.h>
 #include <Poco/StreamCopier.h>
 #include <openssl/ssl.h>
 
@@ -28,6 +35,7 @@
 #include <core/iam/tests/mocks/certloadermock.hpp>
 
 #include <common/fileserver/fileserver.hpp>
+#include <common/utils/httpstatus.hpp>
 
 using namespace testing;
 
@@ -58,14 +66,21 @@ protected:
 // Exercise file response handling independently of the production mTLS listener.
 class FileRequestHandlerTest : public ::testing::Test {
 protected:
+    struct Result {
+        int         mStatus {};
+        std::string mReason;
+        std::string mBody;
+    };
+
     void SetUp() override
     {
         aos::tests::utils::InitLog();
         std::filesystem::create_directory("download");
         Poco::Net::ServerSocket socket(0);
-        mPort   = socket.address().port();
-        mServer = std::make_unique<Poco::Net::HTTPServer>(
-            new Fileserver::FileRequestHandlerFactory("download"), socket, new Poco::Net::HTTPServerParams);
+        mPort    = socket.address().port();
+        mFactory = new Fileserver::FileRequestHandlerFactory(
+            "download", [this](int fd, void* buf, size_t count) { return Read(fd, buf, count); });
+        mServer = std::make_unique<Poco::Net::HTTPServer>(mFactory, socket, new Poco::Net::HTTPServerParams);
         mServer->start();
     }
 
@@ -76,9 +91,87 @@ protected:
         std::filesystem::remove_all("download");
     }
 
+    ssize_t Read(int fd, void* buf, size_t count)
+    {
+        if (++mReadCalls == mFailCall) {
+            errno = mFailErrno;
+
+            return -1;
+        }
+
+        return ::read(fd, buf, count);
+    }
+
+    void FailRead(int call, int err)
+    {
+        mReadCalls = 0;
+        mFailErrno = err;
+        mFailCall  = call;
+    }
+
+    void ResetRead() { FailRead(0, 0); }
+
+    Result Get(const std::string& uri)
+    {
+        Poco::Net::HTTPClientSession session("localhost", mPort);
+        Poco::Net::HTTPRequest       request(Poco::Net::HTTPRequest::HTTP_GET, uri);
+        Poco::Net::HTTPResponse      response;
+
+        session.sendRequest(request);
+        auto& rs = session.receiveResponse(response);
+
+        std::stringstream ss;
+
+        try {
+            Poco::StreamCopier::copyStream(rs, ss);
+        } catch (const Poco::Exception&) {
+        }
+
+        return {static_cast<int>(response.getStatus()), response.getReason(), ss.str()};
+    }
+
+    std::string RawGet(const std::string& uri)
+    {
+        Poco::Net::StreamSocket socket(Poco::Net::SocketAddress("localhost", mPort));
+        const std::string       request = "GET " + uri + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+
+        socket.sendBytes(request.data(), static_cast<int>(request.size()));
+
+        std::string response;
+        char        buffer[1024];
+        int         size = 0;
+
+        while ((size = socket.receiveBytes(buffer, sizeof(buffer))) > 0) {
+            response.append(buffer, size);
+        }
+
+        return response;
+    }
+
     Poco::UInt16                           mPort {};
+    Fileserver::FileRequestHandlerFactory* mFactory {};
     std::unique_ptr<Poco::Net::HTTPServer> mServer;
+    std::atomic_int                        mReadCalls {0};
+    std::atomic_int                        mFailCall {0};
+    std::atomic_int                        mFailErrno {0};
 };
+
+void WriteFile(const std::string& path, const std::string& content)
+{
+    std::ofstream file(path, std::ios::trunc);
+    file << content;
+}
+
+std::string LargeContent()
+{
+    std::string content(200 * 1024 + 123, '\0');
+
+    for (size_t i = 0; i < content.size(); ++i) {
+        content[i] = static_cast<char>(i % 251);
+    }
+
+    return content;
+}
 
 /***********************************************************************************************************************
  * Tests
@@ -508,6 +601,7 @@ TEST_F(FileRequestHandlerTest, DownloadFileSuccess)
     EXPECT_EQ(response.getContentType(), "text/plain");
     EXPECT_EQ(response.getContentLength(), testContent.length());
     EXPECT_FALSE(response.get("Last-Modified").empty());
+    EXPECT_FALSE(response.getKeepAlive());
 
     std::stringstream ss;
     Poco::StreamCopier::copyStream(rs, ss);
@@ -573,6 +667,183 @@ TEST_F(FileRequestHandlerTest, DownloadFileWithDifferentMimeTypes)
         Poco::StreamCopier::copyStream(rs, ss);
         EXPECT_EQ(ss.str(), "{\"test\": \"value\"}");
     }
+}
+
+TEST_F(FileRequestHandlerTest, DownloadBrokenFileReturnsIntegrityError)
+{
+    WriteFile("download/blob.dat", "blob content");
+
+    FailRead(1, EBADMSG);
+
+    auto result = Get("/blob.dat");
+
+    EXPECT_EQ(result.mStatus, common::utils::cIntegrityHTTPStatus);
+    EXPECT_EQ(result.mReason, common::utils::cIntegrityHTTPReason);
+    EXPECT_TRUE(result.mBody.empty());
+}
+
+TEST_F(FileRequestHandlerTest, ReadErrorBeforeHeadersReturnsIntegrityStatus)
+{
+    const std::string content = "blob content";
+
+    WriteFile("download/blob.dat", content);
+
+    for (auto err : {EIO, EUCLEAN}) {
+        FailRead(1, err);
+
+        auto result = Get("/blob.dat");
+
+        EXPECT_EQ(result.mStatus, common::utils::cIntegrityHTTPStatus);
+        EXPECT_EQ(result.mReason, common::utils::cIntegrityHTTPReason);
+
+        ResetRead();
+
+        result = Get("/blob.dat");
+
+        EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_OK);
+        EXPECT_EQ(result.mBody, content);
+    }
+}
+
+TEST_F(FileRequestHandlerTest, ReadErrorBeforeHeadersReturnsInternalError)
+{
+    WriteFile("download/blob.dat", "blob content");
+
+    FailRead(1, EACCES);
+
+    auto result = Get("/blob.dat");
+
+    EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+}
+
+TEST_F(FileRequestHandlerTest, ReadErrorAfterHeadersMarksFile)
+{
+    const auto content = LargeContent();
+
+    WriteFile("download/large.dat", content);
+
+    FailRead(2, EIO);
+
+    auto result = Get("/large.dat");
+
+    EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_LT(result.mBody.size(), content.size());
+
+    ResetRead();
+
+    result = Get("/large.dat");
+
+    EXPECT_EQ(result.mStatus, common::utils::cIntegrityHTTPStatus);
+    EXPECT_EQ(result.mReason, common::utils::cIntegrityHTTPReason);
+    EXPECT_EQ(mReadCalls.load(), 0);
+
+    result = Get("/large.dat");
+
+    EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_EQ(result.mBody, content);
+    EXPECT_GT(mReadCalls.load(), 0);
+}
+
+TEST_F(FileRequestHandlerTest, ModifiedFileDropsMark)
+{
+    const auto content = LargeContent();
+
+    WriteFile("download/large.dat", content);
+
+    FailRead(2, EIO);
+
+    auto result = Get("/large.dat");
+
+    EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_LT(result.mBody.size(), content.size());
+
+    const std::string newContent = "new content";
+    auto              mtime      = std::filesystem::last_write_time("download/large.dat");
+
+    WriteFile("download/large.dat", newContent);
+    std::filesystem::last_write_time("download/large.dat", mtime + std::chrono::seconds(10));
+
+    ResetRead();
+
+    result = Get("/large.dat");
+
+    EXPECT_EQ(result.mStatus, Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_EQ(result.mBody, newContent);
+}
+
+TEST_F(FileRequestHandlerTest, PathTraversalReturnsNotFound)
+{
+    const std::string secret = "outside secret content";
+
+    WriteFile("outside_secret.txt", secret);
+
+    for (const auto& uri : {"../outside_secret.txt", "/../outside_secret.txt", "../../outside_secret.txt",
+             "/dir/../../outside_secret.txt"}) {
+        auto response = RawGet(uri);
+
+        EXPECT_NE(response.substr(0, response.find("\r\n")).find(" 404 "), std::string::npos) << uri;
+        EXPECT_EQ(response.find(secret), std::string::npos) << uri;
+    }
+
+    std::filesystem::remove("outside_secret.txt");
+}
+
+TEST_F(FileRequestHandlerTest, DownloadLargeFileSuccess)
+{
+    const auto content = LargeContent();
+
+    WriteFile("download/large.dat", content);
+
+    Poco::Net::HTTPClientSession session("localhost", mPort);
+    Poco::Net::HTTPRequest       request(Poco::Net::HTTPRequest::HTTP_GET, "/large.dat");
+    Poco::Net::HTTPResponse      response;
+
+    session.sendRequest(request);
+    auto& rs = session.receiveResponse(response);
+
+    EXPECT_EQ(response.getStatus(), Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_EQ(response.getContentType(), "application/octet-stream");
+    EXPECT_EQ(response.getContentLength(), content.length());
+    EXPECT_FALSE(response.getKeepAlive());
+
+    std::stringstream ss;
+    Poco::StreamCopier::copyStream(rs, ss);
+    EXPECT_EQ(ss.str(), content);
+}
+
+TEST_F(FileRequestHandlerTest, HeadFileReturnsHeadersOnly)
+{
+    const std::string content = "head content";
+
+    WriteFile("download/head.dat", content);
+
+    Poco::Net::HTTPClientSession session("localhost", mPort);
+    Poco::Net::HTTPRequest       request(Poco::Net::HTTPRequest::HTTP_HEAD, "/head.dat");
+    Poco::Net::HTTPResponse      response;
+
+    session.sendRequest(request);
+    auto& rs = session.receiveResponse(response);
+
+    EXPECT_EQ(response.getStatus(), Poco::Net::HTTPResponse::HTTP_OK);
+    EXPECT_EQ(response.getContentLength(), content.length());
+
+    std::stringstream ss;
+    Poco::StreamCopier::copyStream(rs, ss);
+    EXPECT_TRUE(ss.str().empty());
+}
+
+TEST_F(FileRequestHandlerTest, DownloadDirectoryReturnsNotFound)
+{
+    std::filesystem::create_directory("download/dir");
+
+    Poco::Net::HTTPClientSession session("localhost", mPort);
+    Poco::Net::HTTPRequest       request(Poco::Net::HTTPRequest::HTTP_GET, "/dir");
+    Poco::Net::HTTPResponse      response;
+
+    session.sendRequest(request);
+    session.receiveResponse(response);
+
+    EXPECT_EQ(response.getStatus(), Poco::Net::HTTPResponse::HTTP_NOT_FOUND);
 }
 
 } // namespace aos::common::fileserver::test
