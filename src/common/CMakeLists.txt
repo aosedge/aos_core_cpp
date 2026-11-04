@@ -46,6 +46,7 @@ endif()
 
 add_subdirectory(cloudprotocol)
 add_subdirectory(config)
+add_subdirectory(database)
 add_subdirectory(downloader)
 add_subdirectory(fileserver)
 add_subdirectory(iamclient)
