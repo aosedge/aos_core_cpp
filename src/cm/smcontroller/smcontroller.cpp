@@ -65,7 +65,8 @@ Error SMController::Start()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = mCertProvider->SubscribeListener(String(mConfig.mCertStorage.c_str()), *this); !err.IsNone()) {
+    if (auto err = mCertProvider->SubscribeCertKeyListener(String(mConfig.mCertStorage.c_str()), *this);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -381,7 +382,7 @@ grpc::Status SMController::ReleaseNodeNetwork(grpc::ServerContext*,
     return grpc::Status::OK;
 }
 
-void SMController::OnCertChanged(const CertInfo& info)
+void SMController::OnCertKeyChanged(const CertInfo& info)
 {
     (void)info;
 
@@ -430,7 +431,8 @@ Error SMController::CreateServerCredentials()
     if (!mInsecureConn) {
         auto certInfo = std::make_unique<CertInfo>();
 
-        if (auto err = mCertProvider->GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo); !err.IsNone()) {
+        if (auto err = mCertProvider->GetCertKey(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo);
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 

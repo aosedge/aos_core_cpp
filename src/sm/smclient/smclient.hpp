@@ -44,7 +44,7 @@ namespace aos::sm::smclient {
 /**
  * GRPC service manager client.
  */
-class SMClient : public SMClientItf, public aos::iamclient::CertListenerItf, private NonCopyable {
+class SMClient : public SMClientItf, public aos::iamclient::CertKeyListenerItf, private NonCopyable {
 public:
     /**
      * Initializes SM client instance.
@@ -89,14 +89,14 @@ public:
      */
     Error Stop();
 
-    // aos::iamclient::CertListenerItf interface
+    // aos::iamclient::CertKeyListenerItf interface
 
     /**
      * Processes certificate updates.
      *
      * @param info certificate info.
      */
-    void OnCertChanged(const CertInfo& info) override;
+    void OnCertKeyChanged(const CertInfo& info) override;
 
     // aos::alerts::SenderItf interface
 

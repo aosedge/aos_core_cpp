@@ -172,7 +172,7 @@ bool CommunicationManager::IsConnected() const
     return mIsConnected;
 }
 
-void CommunicationManager::OnCertChanged([[maybe_unused]] const CertInfo& info)
+void CommunicationManager::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
 {
     std::lock_guard lock {mMutex};
 
