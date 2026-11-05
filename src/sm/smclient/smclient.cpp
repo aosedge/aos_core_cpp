@@ -63,7 +63,7 @@ Error SMClient::Start()
     }
 
     if (mSecureConnection) {
-        if (auto err = mCertProvider->SubscribeListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
+        if (auto err = mCertProvider->SubscribeCertKeyListener(mConfig.mCertStorage.c_str(), *this); !err.IsNone()) {
             return AOS_ERROR_WRAP(Error(err, "can't subscribe to certificate changes"));
         }
     }
@@ -116,7 +116,7 @@ Error SMClient::Stop()
     return ErrorEnum::eNone;
 }
 
-void SMClient::OnCertChanged(const CertInfo& info)
+void SMClient::OnCertKeyChanged(const CertInfo& info)
 {
     (void)info;
 

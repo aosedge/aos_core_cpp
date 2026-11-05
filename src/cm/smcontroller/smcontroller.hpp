@@ -44,7 +44,7 @@ class SMController : public SMControllerItf,
                      public aos::networkmanager::PendingUpdateHandlerItf,
                      private cloudconnection::ConnectionListenerItf,
                      private NodeConnectionStatusListenerItf,
-                     private aos::iamclient::CertListenerItf,
+                     private aos::iamclient::CertKeyListenerItf,
                      private servicemanager::v5::SMService::Service,
                      private servicemanager::v5::NetworkService::Service {
 public:
@@ -221,8 +221,8 @@ private:
         const servicemanager::v5::SyncNetworkStateRequest* request,
         servicemanager::v5::SyncNetworkStateResponse*      response) override;
 
-    // iamclient::CertListenerItf interface
-    void OnCertChanged(const CertInfo& info) override;
+    // iamclient::CertKeyListenerItf interface
+    void OnCertKeyChanged(const CertInfo& info) override;
 
     // NodeConnectionStatusListenerItf interface
     void OnNodeConnected(const String& nodeID) override;

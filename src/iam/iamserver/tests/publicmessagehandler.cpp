@@ -226,7 +226,7 @@ TEST_F(PublicMessageHandlerTest, GetCertSucceeds)
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
-    EXPECT_CALL(mCertProvider, GetCert)
+    EXPECT_CALL(mCertProvider, GetCertKey)
         .WillOnce(Invoke([&certInfo](const String&, const Array<uint8_t>&, const Array<uint8_t>&, auto& out) {
             out = certInfo;
 
@@ -260,7 +260,7 @@ TEST_F(PublicMessageHandlerTest, GetCertFails)
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
-    EXPECT_CALL(mCertProvider, GetCert)
+    EXPECT_CALL(mCertProvider, GetCertKey)
         .WillOnce(Invoke([&certInfo](const String&, const Array<uint8_t>&, const Array<uint8_t>&, auto& out) {
             out = certInfo;
 
@@ -287,9 +287,9 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedSucceeds)
     certInfo.mKeyURL  = "test-key-url";
     certInfo.mCertURL = "test-cert-url";
 
-    EXPECT_CALL(mCertProvider, SubscribeListener)
-        .WillOnce(Invoke([&certInfo](const String&, iamclient::CertListenerItf& listener) {
-            listener.OnCertChanged(certInfo);
+    EXPECT_CALL(mCertProvider, SubscribeCertKeyListener)
+        .WillOnce(Invoke([&certInfo](const String&, iamclient::CertKeyListenerItf& listener) {
+            listener.OnCertKeyChanged(certInfo);
 
             return ErrorEnum::eNone;
         }));
@@ -321,9 +321,8 @@ TEST_F(PublicMessageHandlerTest, SubscribeCertChangedFailed)
 
     request.set_type("test-type");
 
-    EXPECT_CALL(mCertProvider, SubscribeListener).WillOnce(Invoke([](const String&, iamclient::CertListenerItf&) {
-        return ErrorEnum::eFailed;
-    }));
+    EXPECT_CALL(mCertProvider, SubscribeCertKeyListener)
+        .WillOnce(Invoke([](const String&, iamclient::CertKeyListenerItf&) { return ErrorEnum::eFailed; }));
 
     auto reader = clientStub->SubscribeCertChanged(&context, request);
 

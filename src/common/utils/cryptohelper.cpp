@@ -119,7 +119,7 @@ Error ConfigureSSLContext(const String& certType, const String& caCertPath,
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = certProvider.GetCert(certType, {}, {}, *certInfo); !err.IsNone()) {
+    if (auto err = certProvider.GetCertKey(certType, {}, {}, *certInfo); !err.IsNone()) {
         return err;
     }
 

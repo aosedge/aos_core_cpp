@@ -152,7 +152,7 @@ TEST_F(CommonFileserverTest, StartWithoutInit)
 
 TEST_F(CommonFileserverTest, StartReturnsCertificateErrorAndCanRetry)
 {
-    EXPECT_CALL(mCertProvider, GetCert(_, _, _, _))
+    EXPECT_CALL(mCertProvider, GetCertKey(_, _, _, _))
         .Times(2)
         .WillRepeatedly(
             Invoke([](const String& certType, const Array<uint8_t>&, const Array<uint8_t>&, CertInfo&) -> Error {
@@ -170,7 +170,7 @@ TEST_F(CommonFileserverTest, CertificateNotificationAfterStopIsIgnored)
     EXPECT_TRUE(mFileserver.Stop().IsNone());
 
     auto info = std::make_unique<CertInfo>();
-    mFileserver.OnCertChanged(*info);
+    mFileserver.OnCertKeyChanged(*info);
 
     EXPECT_TRUE(mFileserver.Stop().IsNone());
 }
@@ -204,7 +204,7 @@ protected:
                         ->Init("localhost:" + std::to_string(mPort), "download", "cm", "ca.pem", mCertProvider,
                             mCertLoader, mCryptoProvider)
                         .IsNone());
-        EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
+        EXPECT_CALL(mCertProvider, SubscribeCertKeyListener(_, Ref(*mServer))).WillOnce(Return(ErrorEnum::eNone));
         EXPECT_CALL(mCertProvider, UnsubscribeListener(Ref(*mServer)))
             .Times(AtLeast(1))
             .WillRepeatedly(Return(ErrorEnum::eNone));
@@ -241,7 +241,7 @@ protected:
     void Notify()
     {
         auto info = std::make_unique<CertInfo>();
-        mServer->OnCertChanged(*info);
+        mServer->OnCertKeyChanged(*info);
     }
 
     const std::string                            mCert = CERTIFICATES_DIR "/server.cer";
@@ -285,7 +285,7 @@ TEST_F(FileserverRotationTest, MutualTLSRejectsUntrustedClientCertificate)
 TEST_F(FileserverRotationTest, RestartAfterStopRestoresListenerAndSubscription)
 {
     Init();
-    EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer)))
+    EXPECT_CALL(mCertProvider, SubscribeCertKeyListener(_, Ref(*mServer)))
         .WillOnce(Return(ErrorEnum::eNone))
         .RetiresOnSaturation();
     ASSERT_TRUE(mServer->Start().IsNone());
@@ -333,7 +333,7 @@ TEST_F(FileserverRotationTest, SuccessfulRotationServesNewCertificate)
 TEST_F(FileserverRotationTest, SubscriptionFailureStopsListenerAndCanRetry)
 {
     Init();
-    EXPECT_CALL(mCertProvider, SubscribeListener(_, Ref(*mServer)))
+    EXPECT_CALL(mCertProvider, SubscribeCertKeyListener(_, Ref(*mServer)))
         .WillOnce(Return(ErrorEnum::eFailed))
         .RetiresOnSaturation();
     EXPECT_TRUE(mServer->Start().Is(ErrorEnum::eFailed));

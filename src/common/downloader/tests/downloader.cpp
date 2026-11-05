@@ -291,7 +291,7 @@ TEST_P(DownloaderTLSFailureTest, CredentialFailureNeverDownloadsUnverifiedConten
     server.start();
 
     ASSERT_TRUE(mDownloader.Init("sm", ca, certProvider, certLoader, cryptoProvider).IsNone());
-    EXPECT_CALL(certProvider, GetCert(_, _, _, _))
+    EXPECT_CALL(certProvider, GetCertKey(_, _, _, _))
         .Times(4) // One HEAD for the partial file, then three failed GET attempts.
         .WillRepeatedly(Invoke([&](const aos::String& certType, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&,
                                    aos::CertInfo&) -> aos::Error {

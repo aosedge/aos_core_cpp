@@ -791,7 +791,7 @@ TEST_F(SMControllerTest, AlertReceived)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(SMControllerTest, OnCertChanged)
+TEST_F(SMControllerTest, OnCertKeyChanged)
 {
     // 1) Start client
     SMClientStub client;
@@ -816,7 +816,7 @@ TEST_F(SMControllerTest, OnCertChanged)
     certInfo.mCertURL  = "file:///path/to/cert.pem";
     certInfo.mKeyURL   = "file:///path/to/key.pem";
 
-    listener->OnCertChanged(certInfo);
+    listener->OnCertKeyChanged(certInfo);
 
     // 5) Wait for reconnection - old client should disconnect
     err = mSMInfoReceiver.WaitDisconnect(cMainNodeID, std::chrono::seconds(11));

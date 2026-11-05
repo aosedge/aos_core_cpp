@@ -179,7 +179,7 @@ public:
             CERTIFICATES_CM_DIR "/server_int.cer", 0x3333333, mServerInfo);
 
         CertInfo certInfo;
-        mCertHandler.GetCert(cCertificate, {}, {}, certInfo);
+        mCertHandler.GetCertKey(cCertificate, {}, {}, certInfo);
         auto [keyURI, errPkcs] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, ErrorEnum::eNone);
 

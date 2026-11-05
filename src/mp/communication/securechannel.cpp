@@ -253,7 +253,7 @@ Error SecureChannel::ConfigureSSLContext(SSL_CTX* ctx)
 
     CertInfo certInfo;
 
-    if (auto err = mCertProvider->GetCert(mCertStorage.c_str(), {}, {}, certInfo); !err.IsNone()) {
+    if (auto err = mCertProvider->GetCertKey(mCertStorage.c_str(), {}, {}, certInfo); !err.IsNone()) {
         return err;
     }
 
