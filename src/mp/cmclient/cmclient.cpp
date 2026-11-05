@@ -71,7 +71,7 @@ void CMClient::OnDisconnected()
 }
 
 // cppcheck-suppress unusedFunction
-void CMClient::OnCertChanged([[maybe_unused]] const CertInfo& info)
+void CMClient::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
 {
     LOG_DBG() << "Certificate changed";
 

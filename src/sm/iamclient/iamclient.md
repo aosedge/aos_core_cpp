@@ -35,7 +35,7 @@ The Service Manager requires:
 
 `IAMClient` also directly implements:
 
-* [aos::iamclient::CertListenerItf][cert-listener-itf] - receives certificate change notifications
+* [aos::iamclient::CertKeyListenerItf][cert-listener-itf] - receives certificate change notifications
 
 ### TLS Credentials handling
 
@@ -49,7 +49,7 @@ connections to the IAM server.
 classDiagram
     class IAMClient ["aos::sm::iamclient::IAMClient"] {
         +Init()
-        +OnCertChanged()
+        +OnCertKeyChanged()
     }
 
     class PermHandlerItf ["aos::iamclient::PermHandlerItf"] {
@@ -60,7 +60,7 @@ classDiagram
 
     class CertProviderItf ["aos::iamclient::CertProviderItf"] {
         <<interface>>
-        +GetCert()
+        +GetCertKey()
         +SubscribeListener()
     }
 
@@ -69,9 +69,9 @@ classDiagram
         +GetCurrentNodeInfo()
     }
 
-    class CertListenerItf ["aos::iamclient::CertListenerItf"] {
+    class CertKeyListenerItf ["aos::iamclient::CertKeyListenerItf"] {
         <<interface>>
-        +OnCertChanged()
+        +OnCertKeyChanged()
     }
 
     class TLSCredentialsItf ["aos::common::iamclient::TLSCredentialsItf"] {
@@ -102,7 +102,7 @@ classDiagram
     IAMClient --|> PermissionsService
     IAMClient --|> PublicCertService
     IAMClient --|> PublicCurrentNodeService
-    IAMClient ..|> CertListenerItf
+    IAMClient ..|> CertKeyListenerItf
 
     %% TLSCredentials is passed as parameter (not inherited)
     IAMClient ..> TLSCredentialsItf : uses (passed in Init)
@@ -110,7 +110,7 @@ classDiagram
 
 ## Certificate change handling
 
-When a certificate changes, `IAMClient` receives notification via the `CertListenerItf::OnCertChanged()` callback
+When a certificate changes, `IAMClient` receives notification via the `CertKeyListenerItf::OnCertKeyChanged()` callback
 and automatically reconnects all gRPC services to the IAM server using the updated credentials:
 
 1. Certificate change notification received

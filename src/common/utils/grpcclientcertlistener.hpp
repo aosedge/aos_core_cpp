@@ -17,7 +17,7 @@ namespace aos::common::utils {
 /**
  * Certificate update handler for grpc clients.
  */
-class GRPCClientCertListener : public aos::iamclient::CertListenerItf {
+class GRPCClientCertListener : public aos::iamclient::CertKeyListenerItf {
 public:
     /**
      * Constructor.
@@ -31,7 +31,7 @@ public:
      *
      * @param info certificate info.
      */
-    void OnCertChanged(const CertInfo& info) override;
+    void OnCertKeyChanged(const CertInfo& info) override;
 
     /**
      * Reconnects client.

@@ -20,11 +20,12 @@ public:
     MOCK_METHOD(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetMTLSClientCredentials,
         (const aos::String&), (override));
     MOCK_METHOD(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>>, GetTLSClientCredentials, (), (override));
-    MOCK_METHOD(aos::Error, GetCert,
+    MOCK_METHOD(aos::Error, GetCertKey,
         (const aos::String&, const aos::Array<uint8_t>&, const aos::Array<uint8_t>&, aos::CertInfo&),
         (const, override));
-    MOCK_METHOD(aos::Error, SubscribeListener, (const aos::String&, aos::iamclient::CertListenerItf&), (override));
-    MOCK_METHOD(aos::Error, UnsubscribeListener, (aos::iamclient::CertListenerItf&), (override));
+    MOCK_METHOD(
+        aos::Error, SubscribeCertKeyListener, (const aos::String&, aos::iamclient::CertKeyListenerItf&), (override));
+    MOCK_METHOD(aos::Error, UnsubscribeListener, (aos::iamclient::CertKeyListenerItf&), (override));
 };
 
 } // namespace aos::common::iamclient
