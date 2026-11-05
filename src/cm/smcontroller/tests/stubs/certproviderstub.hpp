@@ -16,7 +16,7 @@ namespace aos::iamclient {
  */
 class CertProviderStub : public CertProviderItf {
 public:
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCertKey(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override
     {
         (void)certType;
@@ -27,7 +27,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error SubscribeListener(const String& certType, CertListenerItf& certListener) override
+    Error SubscribeCertKeyListener(const String& certType, CertKeyListenerItf& certListener) override
     {
         (void)certType;
 
@@ -36,7 +36,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error UnsubscribeListener(CertListenerItf& certListener) override
+    Error UnsubscribeListener(CertKeyListenerItf& certListener) override
     {
         if (mListener == &certListener) {
             mListener = nullptr;
@@ -47,10 +47,10 @@ public:
         return ErrorEnum::eNotFound;
     }
 
-    CertListenerItf* GetListener() const { return mListener; }
+    CertKeyListenerItf* GetListener() const { return mListener; }
 
 private:
-    CertListenerItf* mListener {};
+    CertKeyListenerItf* mListener {};
 };
 
 } // namespace aos::iamclient

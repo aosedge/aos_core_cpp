@@ -104,7 +104,7 @@ Error IAMServer::Init(const config::IAMServerConfig& config, certhandler::CertHa
         if (!mProvisioningMode) {
             auto certInfo = std::make_unique<CertInfo>();
 
-            err = certHandler.GetCert(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo);
+            err = certHandler.GetCertKey(String(mConfig.mCertStorage.c_str()), {}, {}, *certInfo);
             if (!err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
@@ -136,7 +136,7 @@ Error IAMServer::Start()
     LOG_DBG() << "Start IAM server";
 
     if (!mProvisioningMode) {
-        auto err = mCertHandler->SubscribeListener(String(mConfig.mCertStorage.c_str()), *this);
+        auto err = mCertHandler->SubscribeCertKeyListener(String(mConfig.mCertStorage.c_str()), *this);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -274,7 +274,7 @@ void IAMServer::SubjectsChanged(const Array<StaticString<cIDLen>>& subjects)
     mProtectedMessageHandler.SubjectsChanged(subjects);
 }
 
-void IAMServer::OnCertChanged(const CertInfo& info)
+void IAMServer::OnCertKeyChanged(const CertInfo& info)
 {
     mPublicCred = common::utils::GetTLSServerCredentials(info, *mCertLoader, *mCryptoProvider);
     mProtectedCred

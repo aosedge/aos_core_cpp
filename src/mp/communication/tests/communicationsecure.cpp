@@ -61,24 +61,24 @@ public:
         return {nullptr, ErrorEnum::eNone};
     }
 
-    Error GetCert(const String& certType, [[maybe_unused]] const Array<uint8_t>& issuer,
+    Error GetCertKey(const String& certType, [[maybe_unused]] const Array<uint8_t>& issuer,
         [[maybe_unused]] const Array<uint8_t>& serial, CertInfo& resCert) const
     {
         mCertCalled = true;
         mCondVar.notify_all();
 
-        mCertHandler.GetCert(certType, {}, {}, resCert);
+        mCertHandler.GetCertKey(certType, {}, {}, resCert);
 
         return ErrorEnum::eNone;
     }
 
     Error SubscribeListener(
-        [[maybe_unused]] const String& certType, [[maybe_unused]] iamclient::CertListenerItf& listener) override
+        [[maybe_unused]] const String& certType, [[maybe_unused]] iamclient::CertKeyListenerItf& listener) override
     {
         return ErrorEnum::eNone;
     }
 
-    Error UnsubscribeListener([[maybe_unused]] iamclient::CertListenerItf& listener) override
+    Error UnsubscribeListener([[maybe_unused]] iamclient::CertKeyListenerItf& listener) override
     {
         return ErrorEnum::eNone;
     }
@@ -149,7 +149,7 @@ protected:
         mClient.emplace("localhost", 30001);
 
         CertInfo certInfo;
-        mCertHandler.GetCert("client", {}, {}, certInfo);
+        mCertHandler.GetCertKey("client", {}, {}, certInfo);
         auto [keyURI, errPkcs] = common::utils::CreatePKCS11URL(certInfo.mKeyURL);
         EXPECT_EQ(errPkcs, ErrorEnum::eNone);
 
@@ -643,7 +643,7 @@ TEST_F(CommunicationSecureManagerTest, TestCertChange)
 
     EXPECT_TRUE(mCertProvider->IsCertCalled());
 
-    mCommManager->OnCertChanged(CertInfo {});
+    mCommManager->OnCertKeyChanged(CertInfo {});
     mIAMSecurePipe->Close();
     mCertProvider->ResetCertCalled();
 

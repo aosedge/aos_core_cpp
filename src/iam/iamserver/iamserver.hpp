@@ -37,7 +37,7 @@ namespace aos::iam::iamserver {
 class IAMServer : public aos::iamclient::NodeInfoListenerItf,
                   public aos::iamclient::SubjectsListenerItf,
                   public provisionmanager::ProvisionManagerCallbackItf,
-                  private aos::iamclient::CertListenerItf {
+                  private aos::iamclient::CertKeyListenerItf {
 public:
     /**
      * Constructor.
@@ -124,7 +124,7 @@ private:
     void SubjectsChanged(const Array<StaticString<cIDLen>>& subjects) override;
 
     // certhandler::CertReceiverItf interface
-    void OnCertChanged(const CertInfo& info) override;
+    void OnCertKeyChanged(const CertInfo& info) override;
 
     // creating routines
     void CreatePublicServer(const std::string& addr, const std::shared_ptr<grpc::ServerCredentials>& credentials);

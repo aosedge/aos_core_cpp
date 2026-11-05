@@ -37,7 +37,7 @@ namespace aos::common::fileserver {
 /**
  * Fileserver.
  */
-class Fileserver : public cm::fileserver::FileServerItf, public aos::iamclient::CertListenerItf {
+class Fileserver : public cm::fileserver::FileServerItf, public aos::iamclient::CertKeyListenerItf {
 public:
     using SSLContextConfigurator = std::function<Error(SSL_CTX*)>;
 
@@ -145,7 +145,7 @@ public:
      *
      * @param info updated certificate info.
      */
-    void OnCertChanged(const CertInfo& info) override;
+    void OnCertKeyChanged(const CertInfo& info) override;
 
 private:
     Error ReloadCertificate();

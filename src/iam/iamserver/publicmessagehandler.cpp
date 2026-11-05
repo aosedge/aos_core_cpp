@@ -207,7 +207,7 @@ grpc::Status PublicMessageHandler::GetCert([[maybe_unused]] grpc::ServerContext*
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    err = mCertProvider->GetCert(request->type().c_str(), issuer, serial, *certInfo);
+    err = mCertProvider->GetCertKey(request->type().c_str(), issuer, serial, *certInfo);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to get cert: " << err;
 
@@ -233,7 +233,7 @@ grpc::Status PublicMessageHandler::SubscribeCertChanged([[maybe_unused]] grpc::S
         mCertWriters.push_back(certWriter);
     }
 
-    auto err = mCertProvider->SubscribeListener(request->type().c_str(), *certWriter);
+    auto err = mCertProvider->SubscribeCertKeyListener(request->type().c_str(), *certWriter);
     if (!err.IsNone()) {
         LOG_ERR() << "Failed to subscribe cert changed, err=" << err;
 

@@ -63,7 +63,7 @@ TEST_F(PublicCertServiceTest, GetCert)
     aos::StaticArray<uint8_t, aos::crypto::cCertIssuerSize> issuer;
     aos::StaticArray<uint8_t, aos::crypto::cSerialNumSize>  serial;
 
-    auto err = mService->GetCert("online", issuer, serial, certInfo);
+    auto err = mService->GetCertKey("online", issuer, serial, certInfo);
 
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
     EXPECT_STREQ(certInfo.mCertURL.CStr(), "test_cert.pem");
@@ -75,12 +75,12 @@ TEST_F(PublicCertServiceTest, SubscribeCertChanged)
 {
     CertListenerMock listener;
 
-    auto err = mService->SubscribeListener("online", listener);
+    auto err = mService->SubscribeCertKeyListener("online", listener);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     ASSERT_TRUE(mStub->WaitForConnection("online"));
 
-    EXPECT_CALL(listener, OnCertChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
+    EXPECT_CALL(listener, OnCertKeyChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
         EXPECT_STREQ(certInfo.mCertURL.CStr(), "updated_cert.pem");
         EXPECT_STREQ(certInfo.mKeyURL.CStr(), "updated_key.pem");
     }));
@@ -100,16 +100,16 @@ TEST_F(PublicCertServiceTest, SubscribeMultipleListeners)
     CertListenerMock listener1;
     CertListenerMock listener2;
 
-    auto err = mService->SubscribeListener("online", listener1);
+    auto err = mService->SubscribeCertKeyListener("online", listener1);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mService->SubscribeListener("online", listener2);
+    err = mService->SubscribeCertKeyListener("online", listener2);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     ASSERT_TRUE(mStub->WaitForConnection("online"));
 
-    EXPECT_CALL(listener1, OnCertChanged(_)).Times(1);
-    EXPECT_CALL(listener2, OnCertChanged(_)).Times(1);
+    EXPECT_CALL(listener1, OnCertKeyChanged(_)).Times(1);
+    EXPECT_CALL(listener2, OnCertKeyChanged(_)).Times(1);
 
     ASSERT_TRUE(mStub->SendCertChanged("online", "cert.pem", "key.pem"));
 
@@ -118,8 +118,8 @@ TEST_F(PublicCertServiceTest, SubscribeMultipleListeners)
     err = mService->UnsubscribeListener(listener1);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    EXPECT_CALL(listener1, OnCertChanged(_)).Times(0);
-    EXPECT_CALL(listener2, OnCertChanged(_)).Times(1);
+    EXPECT_CALL(listener1, OnCertKeyChanged(_)).Times(0);
+    EXPECT_CALL(listener2, OnCertKeyChanged(_)).Times(1);
 
     ASSERT_TRUE(mStub->SendCertChanged("online", "cert2.pem", "key2.pem"));
 
@@ -134,17 +134,17 @@ TEST_F(PublicCertServiceTest, SubscribeDifferentCertTypes)
     CertListenerMock onlineListener;
     CertListenerMock offlineListener;
 
-    auto err = mService->SubscribeListener("online", onlineListener);
+    auto err = mService->SubscribeCertKeyListener("online", onlineListener);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
-    err = mService->SubscribeListener("offline", offlineListener);
+    err = mService->SubscribeCertKeyListener("offline", offlineListener);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     ASSERT_TRUE(mStub->WaitForConnection("online"));
     ASSERT_TRUE(mStub->WaitForConnection("offline"));
 
-    EXPECT_CALL(onlineListener, OnCertChanged(_)).Times(1);
-    EXPECT_CALL(offlineListener, OnCertChanged(_)).Times(0);
+    EXPECT_CALL(onlineListener, OnCertKeyChanged(_)).Times(1);
+    EXPECT_CALL(offlineListener, OnCertKeyChanged(_)).Times(0);
 
     ASSERT_TRUE(mStub->SendCertChanged("online", "online_cert.pem", "online_key.pem"));
 
@@ -161,12 +161,12 @@ TEST_F(PublicCertServiceTest, Reconnect)
 {
     CertListenerMock listener;
 
-    auto err = mService->SubscribeListener("online", listener);
+    auto err = mService->SubscribeCertKeyListener("online", listener);
     EXPECT_EQ(err, aos::ErrorEnum::eNone);
 
     ASSERT_TRUE(mStub->WaitForConnection("online"));
 
-    EXPECT_CALL(listener, OnCertChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
+    EXPECT_CALL(listener, OnCertKeyChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
         EXPECT_STREQ(certInfo.mCertURL.CStr(), "before_reconnect.pem");
         EXPECT_STREQ(certInfo.mKeyURL.CStr(), "before_key.pem");
     }));
@@ -182,7 +182,7 @@ TEST_F(PublicCertServiceTest, Reconnect)
 
     ASSERT_TRUE(mStub->WaitForConnection("online"));
 
-    EXPECT_CALL(listener, OnCertChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
+    EXPECT_CALL(listener, OnCertKeyChanged(_)).WillOnce(Invoke([](const aos::CertInfo& certInfo) {
         EXPECT_STREQ(certInfo.mCertURL.CStr(), "after_reconnect.pem");
         EXPECT_STREQ(certInfo.mKeyURL.CStr(), "after_key.pem");
     }));

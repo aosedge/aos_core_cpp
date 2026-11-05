@@ -25,7 +25,7 @@ namespace aos::common::iamclient {
 
 // Type alias for CertInfo subscription manager
 using CertSubscriptionManager = utils::GRPCSubscriptionManager<iamanager::v6::IAMPublicCertService::Stub,
-    aos::iamclient::CertListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
+    aos::iamclient::CertKeyListenerItf, iamanager::v6::CertInfo, CertInfo, iamanager::v6::SubscribeCertChangedRequest>;
 
 /**
  * Public cert service.
@@ -55,7 +55,7 @@ public:
      * @param[out] resCert result certificate.
      * @returns Error.
      */
-    Error GetCert(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
+    Error GetCertKey(const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial,
         CertInfo& resCert) const override;
 
     /**
@@ -65,7 +65,7 @@ public:
      * @param certReceiver certificate receiver.
      * @returns Error.
      */
-    Error SubscribeListener(const String& certType, ::aos::iamclient::CertListenerItf& certListener) override;
+    Error SubscribeCertKeyListener(const String& certType, ::aos::iamclient::CertKeyListenerItf& certListener) override;
 
     /**
      * Unsubscribes certificate receiver.
@@ -73,7 +73,7 @@ public:
      * @param certReceiver certificate receiver.
      * @returns Error.
      */
-    Error UnsubscribeListener(::aos::iamclient::CertListenerItf& certListener) override;
+    Error UnsubscribeListener(::aos::iamclient::CertKeyListenerItf& certListener) override;
 
     /**
      * Reconnects to the server.
