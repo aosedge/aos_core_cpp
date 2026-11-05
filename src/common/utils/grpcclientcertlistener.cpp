@@ -15,7 +15,7 @@ GRPCClientCertListener::GRPCClientCertListener(const std::string& clientName)
 {
 }
 
-void GRPCClientCertListener::OnCertChanged([[maybe_unused]] const CertInfo& info)
+void GRPCClientCertListener::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
 {
     LOG_INF() << "Certificate changed, schedule reconnects" << Log::Field("client", mClientName.c_str());
 

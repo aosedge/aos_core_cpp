@@ -229,7 +229,7 @@ Error Fileserver::Start()
         return err;
     }
 
-    if (auto err = mCertProvider->SubscribeListener(mCertStorage.c_str(), *this); !err.IsNone()) {
+    if (auto err = mCertProvider->SubscribeCertKeyListener(mCertStorage.c_str(), *this); !err.IsNone()) {
         return err;
     }
 
@@ -269,7 +269,7 @@ Error Fileserver::Stop()
     return err;
 }
 
-void Fileserver::OnCertChanged([[maybe_unused]] const CertInfo& info)
+void Fileserver::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
 {
     {
         std::lock_guard lock {mMutex};

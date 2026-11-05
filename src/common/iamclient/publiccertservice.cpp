@@ -83,7 +83,8 @@ Error PublicCertService::Reconnect()
     return ErrorEnum::eNone;
 }
 
-Error PublicCertService::SubscribeListener(const String& certType, aos::iamclient::CertListenerItf& certListener)
+Error PublicCertService::SubscribeCertKeyListener(
+    const String& certType, aos::iamclient::CertKeyListenerItf& certListener)
 {
     std::lock_guard lock {mMutex};
 
@@ -98,8 +99,8 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
             return pbconvert::ConvertToAos(proto, aos);
         };
 
-        auto notifyFunc = [](aos::iamclient::CertListenerItf& listener, const CertInfo& certInfo) {
-            listener.OnCertChanged(certInfo);
+        auto notifyFunc = [](aos::iamclient::CertKeyListenerItf& listener, const CertInfo& certInfo) {
+            listener.OnCertKeyChanged(certInfo);
         };
 
         manager = std::make_unique<CertSubscriptionManager>(mStub.get(), request,
@@ -110,7 +111,7 @@ Error PublicCertService::SubscribeListener(const String& certType, aos::iamclien
     return manager->Subscribe(certListener);
 }
 
-Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& certListener)
+Error PublicCertService::UnsubscribeListener(aos::iamclient::CertKeyListenerItf& certListener)
 {
     std::lock_guard lock {mMutex};
 
@@ -131,7 +132,7 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertListenerItf& ce
     return ErrorEnum::eNone;
 }
 
-Error PublicCertService::GetCert(
+Error PublicCertService::GetCertKey(
     const String& certType, const Array<uint8_t>& issuer, const Array<uint8_t>& serial, CertInfo& resCert) const
 {
     std::lock_guard lock {mMutex};

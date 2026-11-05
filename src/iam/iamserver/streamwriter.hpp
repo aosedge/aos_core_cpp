@@ -111,7 +111,7 @@ private:
 /**
  * Sends certificate updates to GRPC streams.
  */
-class CertWriter : public StreamWriter<iamanager::v6::CertInfo>, public aos::iamclient::CertListenerItf {
+class CertWriter : public StreamWriter<iamanager::v6::CertInfo>, public aos::iamclient::CertKeyListenerItf {
 public:
     /**
      * CertWriter constructor.
@@ -124,7 +124,7 @@ public:
     }
 
 private:
-    void OnCertChanged(const CertInfo& info) override
+    void OnCertKeyChanged(const CertInfo& info) override
     {
         iamanager::v6::CertInfo grpcCertInfo;
 

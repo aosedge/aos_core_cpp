@@ -240,7 +240,7 @@ TEST_F(IamClientTest, CertChanged)
     EXPECT_CALL(tlsCredentials, GetMTLSClientCredentials(_))
         .Times(2)
         .WillRepeatedly(testing::Return(std::shared_ptr<grpc::ChannelCredentials>(grpc::InsecureChannelCredentials())));
-    EXPECT_CALL(certProvider, SubscribeListener(_, _)).WillOnce(testing::Return(ErrorEnum::eNone));
+    EXPECT_CALL(certProvider, SubscribeCertKeyListener(_, _)).WillOnce(testing::Return(ErrorEnum::eNone));
     EXPECT_CALL(certProvider, UnsubscribeListener(_)).WillOnce(testing::Return(ErrorEnum::eNone));
 
     mConfig.mIAMConfig.mCertStorage = "iam";

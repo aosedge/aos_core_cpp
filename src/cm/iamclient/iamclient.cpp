@@ -48,7 +48,7 @@ Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::strin
         return err;
     }
 
-    err = PublicCertService::SubscribeListener(certType, *this);
+    err = PublicCertService::SubscribeCertKeyListener(certType, *this);
     if (!err.IsNone()) {
         return err;
     }

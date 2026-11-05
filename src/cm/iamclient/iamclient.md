@@ -39,7 +39,7 @@ The `IAMClientItf` interface requires:
 
 `IAMClient` also directly implements:
 
-* [aos::iamclient::CertListenerItf][cert-listener-itf] - receives certificate change notifications
+* [aos::iamclient::CertKeyListenerItf][cert-listener-itf] - receives certificate change notifications
 
 ## Class diagram
 
@@ -47,7 +47,7 @@ The `IAMClientItf` interface requires:
 classDiagram
     class IAMClient ["aos::cm::iamclient::IAMClient"] {
         +Init()
-        +OnCertChanged()
+        +OnCertKeyChanged()
     }
 
     class IAMClientItf ["aos::cm::iamclient::IAMClientItf"] {
@@ -62,7 +62,7 @@ classDiagram
 
     class CertProviderItf ["aos::iamclient::CertProviderItf"] {
         <<interface>>
-        +GetCert()
+        +GetCertKey()
         +SubscribeListener()
     }
 
@@ -86,9 +86,9 @@ classDiagram
         +Deprovision()
     }
 
-    class CertListenerItf ["aos::iamclient::CertListenerItf"] {
+    class CertKeyListenerItf ["aos::iamclient::CertKeyListenerItf"] {
         <<interface>>
-        +OnCertChanged()
+        +OnCertKeyChanged()
     }
 
     class CertificateService ["aos::common::iamclient::CertificateService"] {
@@ -126,7 +126,7 @@ classDiagram
     IAMClient --|> NodesService
     IAMClient --|> PublicNodesService
     IAMClient --|> ProvisioningService
-    IAMClient ..|> CertListenerItf
+    IAMClient ..|> CertKeyListenerItf
 
     %% IAMClient indirectly implements IAMClientItf
     IAMClient ..|> IAMClientItf : indirectly through services
@@ -134,7 +134,7 @@ classDiagram
 
 ## Certificate change handling
 
-When a certificate changes, `IAMClient` receives notification via the `CertListenerItf::OnCertChanged()` callback
+When a certificate changes, `IAMClient` receives notification via the `CertKeyListenerItf::OnCertKeyChanged()` callback
 and automatically reconnects all gRPC services to the IAM server using the updated credentials:
 
 1. Certificate change notification received
