@@ -27,7 +27,7 @@ namespace aos::common::utils {
  * Generic subscription manager template that handles gRPC stream subscriptions.
  *
  * @tparam TStub gRPC stub type (e.g., IAMPublicCertService::Stub).
- * @tparam TListener Listener interface type (e.g., CertListenerItf).
+ * @tparam TListener Listener interface type (e.g., CertKeyListenerItf).
  * @tparam TProtoMsg Protobuf message type (e.g., iamanager::v6::CertInfo).
  * @tparam TAosType AOS native type (e.g., CertInfo).
  * @tparam TRequest Protobuf request type (e.g., SubscribeCertChangedRequest).

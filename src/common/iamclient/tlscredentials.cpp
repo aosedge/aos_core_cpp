@@ -34,7 +34,7 @@ RetWithError<std::shared_ptr<grpc::ChannelCredentials>> TLSCredentials::GetMTLSC
 
     auto certInfo = std::make_unique<CertInfo>();
 
-    if (auto err = mCertProvider->GetCert(certStorage, {}, {}, *certInfo); !err.IsNone()) {
+    if (auto err = mCertProvider->GetCertKey(certStorage, {}, {}, *certInfo); !err.IsNone()) {
         return {nullptr, err};
     }
 
