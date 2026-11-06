@@ -17,6 +17,7 @@
 
 #include <core/sm/database/itf/database.hpp>
 
+#include <common/database/database.hpp>
 #include <common/migration/migration.hpp>
 #include <sm/alerts/itf/storage.hpp>
 #include <sm/config/config.hpp>
@@ -24,7 +25,10 @@
 
 namespace aos::sm::database {
 
-class Database : public DatabaseItf, public sm::alerts::StorageItf, public sm::launcher::runtimes::StorageItf {
+class Database : public DatabaseItf,
+                 public common::database::Database,
+                 public sm::alerts::StorageItf,
+                 public sm::launcher::runtimes::StorageItf {
 public:
     /**
      * Creates database instance.
@@ -34,7 +38,7 @@ public:
     /**
      * Destructor.
      */
-    ~Database();
+    ~Database() override;
 
     /**
      * Initializes certificate info storage.
@@ -48,53 +52,13 @@ public:
     // sm::imagemanager::StorageItf interface
 
     /**
-     * Adds update item to storage.
+     * Checks if layer is referenced by any existing deployable item, regardless of the item state. Blob references
+     * left without an item are ignored.
      *
-     * @param updateItem update item to add.
-     * @return Error.
+     * @param diffID layer diff ID.
+     * @return RetWithError<bool>.
      */
-    Error AddUpdateItem(const imagemanager::UpdateItemData& updateItem) override;
-
-    /**
-     * Updates update item in storage.
-     *
-     * @param updateItem update item to update.
-     * @return Error.
-     */
-    Error UpdateUpdateItem(const imagemanager::UpdateItemData& updateItem) override;
-
-    /**
-     * Removes previously stored update item.
-     *
-     * @param itemID update item ID to remove.
-     * @param version update item version.
-     * @return Error.
-     */
-    Error RemoveUpdateItem(const String& itemID, const String& version) override;
-
-    /**
-     * Returns update item versions by item ID.
-     *
-     * @param itemID update item ID.
-     * @param[out] itemData array to store update item data.
-     * @return Error.
-     */
-    Error GetUpdateItem(const String& itemID, Array<imagemanager::UpdateItemData>& itemData) override;
-
-    /**
-     * Returns all update items.
-     *
-     * @param itemsData[out] array to store update items data.
-     * @return Error.
-     */
-    Error GetAllUpdateItems(Array<imagemanager::UpdateItemData>& itemsData) override;
-
-    /**
-     * Returns count of stored update items.
-     *
-     * @return RetWithError<size_t>.
-     */
-    RetWithError<size_t> GetUpdateItemsCount() override;
+    RetWithError<bool> IsLayerUsed(const String& diffID) override;
 
     // sm::launcher::StorageItf interface
 
@@ -288,20 +252,8 @@ public:
         const String& runtimeID, Array<sm::launcher::runtimes::RuntimeInstanceData>& instances) const override;
 
 private:
-    static constexpr int  sVersion    = 6;
+    static constexpr int  sVersion    = 7;
     static constexpr auto cDBFileName = "servicemanager.db";
-
-    // Item data columns
-    enum class ItemDataColumns : int {
-        eItemID = 0,
-        eType,
-        eVersion,
-        eManifestDigest,
-        eState,
-        eTimestamp,
-    };
-
-    using ItemDataRow = Poco::Tuple<std::string, std::string, std::string, std::string, std::string, uint64_t>;
 
     // Instance info columns
     enum class InstanceInfoColumns : int {
@@ -376,9 +328,6 @@ private:
 
     // FromAos/ToAos conversion methods
 
-    static void FromAos(const imagemanager::UpdateItemData& src, ItemDataRow& dst);
-    static void ToAos(const ItemDataRow& src, imagemanager::UpdateItemData& dst);
-
     static void FromAos(const InstanceInfo& src, InstanceInfoRow& dst);
     static void ToAos(const InstanceInfoRow& src, InstanceInfo& dst);
 
@@ -391,9 +340,7 @@ private:
     static void FromAos(const sm::launcher::runtimes::RuntimeInstanceData& src, RuntimeInstanceRow& dst);
     static void ToAos(const RuntimeInstanceRow& src, sm::launcher::runtimes::RuntimeInstanceData& dst);
 
-    mutable std::unique_ptr<Poco::Data::Session> mSession;
-    std::optional<common::migration::Migration>  mMigration;
-    mutable std::mutex                           mMutex;
+    std::optional<common::migration::Migration> mMigration;
 };
 
 } // namespace aos::sm::database
