@@ -9,6 +9,7 @@
 #include <core/common/tests/utils/log.hpp>
 
 #include <cm/smcontroller/smcontroller.hpp>
+#include <common/pbconvert/sm.hpp>
 
 #include "stubs/alertsreceiverstub.hpp"
 #include "stubs/blobinfoproviderstub.hpp"
@@ -842,7 +843,7 @@ TEST_F(SMControllerTest, OnCertKeyChanged)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(SMControllerTest, GetBlobsInfos)
+TEST_F(SMControllerTest, GetBlobsInfo)
 {
     const std::string digest1 = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
     const std::string digest2 = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
@@ -866,14 +867,23 @@ TEST_F(SMControllerTest, GetBlobsInfos)
     err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    // 4) Call GetBlobsInfos
-    servicemanager::v5::BlobsInfos responseBlobsInfos;
-    std::vector<std::string>       digests = {digest2, digest1};
-    ASSERT_TRUE(client.GetBlobsInfos(digests, responseBlobsInfos).IsNone());
+    // 4) Call GetBlobsInfo
+    servicemanager::v5::BlobInfo blobInfo;
 
-    ASSERT_EQ(responseBlobsInfos.urls_size(), 2);
-    EXPECT_EQ(responseBlobsInfos.urls(0), url2);
-    EXPECT_EQ(responseBlobsInfos.urls(1), url1);
+    ASSERT_TRUE(client.GetBlobsInfo(digest1, blobInfo).IsNone());
+
+    EXPECT_FALSE(blobInfo.has_error());
+    ASSERT_EQ(blobInfo.urls_size(), 2);
+    EXPECT_EQ(blobInfo.urls(0), url1);
+    EXPECT_EQ(blobInfo.urls(1), "https://backup.example.com/blob1.tar");
+
+    blobInfo.Clear();
+
+    ASSERT_TRUE(client.GetBlobsInfo(digest2, blobInfo).IsNone());
+
+    EXPECT_FALSE(blobInfo.has_error());
+    ASSERT_EQ(blobInfo.urls_size(), 1);
+    EXPECT_EQ(blobInfo.urls(0), url2);
 
     // 5) Stop client
     err = client.Stop();
@@ -884,7 +894,7 @@ TEST_F(SMControllerTest, GetBlobsInfos)
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
-TEST_F(SMControllerTest, GetBlobsInfosFails)
+TEST_F(SMControllerTest, GetBlobsInfoFails)
 {
     const std::string knownDigest   = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
     const std::string noURLsDigest  = "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
@@ -904,15 +914,28 @@ TEST_F(SMControllerTest, GetBlobsInfosFails)
     err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
     ASSERT_TRUE(err.IsNone()) << err.Message();
 
-    servicemanager::v5::BlobsInfos responseBlobsInfos;
+    // The provider error is returned in the response with its code.
+    servicemanager::v5::BlobInfo blobInfo;
 
-    EXPECT_FALSE(client.GetBlobsInfos({knownDigest, unknownDigest}, responseBlobsInfos).IsNone());
+    ASSERT_TRUE(client.GetBlobsInfo(unknownDigest, blobInfo).IsNone());
 
-    responseBlobsInfos.Clear();
+    ASSERT_TRUE(blobInfo.has_error());
+    EXPECT_TRUE(common::pbconvert::ConvertFromProto(blobInfo.error()).Is(ErrorEnum::eNotFound));
+    EXPECT_EQ(blobInfo.urls_size(), 0);
 
-    err = client.GetBlobsInfos({noURLsDigest}, responseBlobsInfos);
-    EXPECT_FALSE(err.IsNone());
-    EXPECT_NE(std::string(err.Message()).find("blob has no URLs"), std::string::npos) << err.Message();
+    blobInfo.Clear();
+
+    ASSERT_TRUE(client.GetBlobsInfo(noURLsDigest, blobInfo).IsNone());
+
+    ASSERT_TRUE(blobInfo.has_error());
+    EXPECT_NE(blobInfo.error().message().find("blob has no URLs"), std::string::npos) << blobInfo.error().message();
+
+    blobInfo.Clear();
+
+    ASSERT_TRUE(client.GetBlobsInfo(knownDigest, blobInfo).IsNone());
+
+    EXPECT_FALSE(blobInfo.has_error());
+    EXPECT_EQ(blobInfo.urls_size(), 1);
 
     err = client.Stop();
     ASSERT_TRUE(err.IsNone()) << err.Message();
