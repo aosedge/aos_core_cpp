@@ -173,8 +173,10 @@ public:
         struct FDHandle {
             int mFD = -1;
 
+            // Implicit conversion from nullptr is required by unique_ptr pointer type.
+            // cppcheck-suppress noExplicitConstructor
             FDHandle(std::nullptr_t = nullptr) { }
-            FDHandle(int fd)
+            explicit FDHandle(int fd)
                 : mFD(fd)
             {
             }
