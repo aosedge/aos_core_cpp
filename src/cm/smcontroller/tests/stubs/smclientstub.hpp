@@ -371,7 +371,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error GetBlobsInfos(const std::vector<std::string>& digests, servicemanager::v5::BlobsInfos& blobsInfos)
+    Error GetBlobsInfo(const std::string& digest, servicemanager::v5::BlobInfo& blobInfo)
     {
         std::lock_guard lock {mMutex};
 
@@ -379,13 +379,12 @@ public:
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "stub not available"));
         }
 
-        servicemanager::v5::BlobsInfosRequest request;
-        for (const auto& digest : digests) {
-            request.add_digests(digest);
-        }
+        servicemanager::v5::BlobsInfoRequest request;
+
+        request.set_digest(digest);
 
         grpc::ClientContext context;
-        auto                status = mStub->GetBlobsInfos(&context, request, &blobsInfos);
+        auto                status = mStub->GetBlobsInfo(&context, request, &blobInfo);
 
         if (!status.ok()) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
