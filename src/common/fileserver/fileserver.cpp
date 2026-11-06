@@ -287,7 +287,7 @@ bool Fileserver::FileRequestHandler::ResolvePath(const std::string& target, fs::
 Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
     const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response)
 {
-    FDPtr fd(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK));
+    FDPtr fd(FDHandle(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK)));
     if (!fd) {
         auto err = errno;
 
