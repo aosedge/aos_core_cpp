@@ -190,8 +190,8 @@ private:
         grpc::ServerReaderWriter<servicemanager::v5::SMIncomingMessages, servicemanager::v5::SMOutgoingMessages>*
             stream) override;
 
-    grpc::Status GetBlobsInfos(grpc::ServerContext* context, const servicemanager::v5::BlobsInfosRequest* request,
-        servicemanager::v5::BlobsInfos* response) override;
+    grpc::Status GetBlobsInfo(grpc::ServerContext* context, const servicemanager::v5::BlobsInfoRequest* request,
+        servicemanager::v5::BlobInfo* response) override;
 
     //
     // NetworkService::Service GRPC service methods
