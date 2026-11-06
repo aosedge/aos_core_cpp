@@ -38,7 +38,7 @@ public:
     /**
      * Destructor.
      */
-    ~Database();
+    ~Database() override;
 
     /**
      * Initializes database.
