@@ -279,24 +279,28 @@ grpc::Status SMController::RegisterSM(grpc::ServerContext*                      
     return grpc::Status::OK;
 }
 
-grpc::Status SMController::GetBlobsInfos(grpc::ServerContext*, const servicemanager::v5::BlobsInfosRequest* request,
-    servicemanager::v5::BlobsInfos* response)
+grpc::Status SMController::GetBlobsInfo(
+    grpc::ServerContext*, const servicemanager::v5::BlobsInfoRequest* request, servicemanager::v5::BlobInfo* response)
 {
-    LOG_DBG() << "Get blobs info request received" << Log::Field("digestsCount", request->digests_size());
+    LOG_DBG() << "Get blob info request received" << Log::Field("digest", request->digest().c_str());
 
     auto blobInfo = std::make_unique<BlobInfo>();
 
-    for (int i = 0; i < request->digests_size(); ++i) {
-        if (auto err = mBlobInfoProvider->GetBlobInfo(request->digests(i).c_str(), *blobInfo); !err.IsNone()) {
-            return grpc::Status(grpc::StatusCode::INTERNAL, err.Message());
-        }
-
-        if (blobInfo->mURLs.IsEmpty()) {
-            return grpc::Status(grpc::StatusCode::INTERNAL, "blob has no URLs");
-        }
-
-        response->add_urls(blobInfo->mURLs[0].CStr());
+    auto err = mBlobInfoProvider->GetBlobInfo(request->digest().c_str(), *blobInfo);
+    if (err.IsNone() && blobInfo->mURLs.IsEmpty()) {
+        err = Error(ErrorEnum::eNotFound, "blob has no URLs");
     }
+
+    // The error is returned in the response, so SM gets its code, e.g. integrity error of the CM copy.
+    if (!err.IsNone()) {
+        LOG_ERR() << "Failed to get blob info" << Log::Field("digest", request->digest().c_str()) << Log::Field(err);
+
+        common::pbconvert::SetErrorInfo(err, *response);
+
+        return grpc::Status::OK;
+    }
+
+    common::pbconvert::ConvertToProto(*blobInfo, *response);
 
     return grpc::Status::OK;
 }
