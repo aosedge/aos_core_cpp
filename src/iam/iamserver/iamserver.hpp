@@ -145,6 +145,8 @@ private:
     std::future<void> mCertChangedResult;
 
     bool mProvisioningMode {};
+
+    std::atomic_bool mIsProvisioningInProgress {false};
 };
 
 } // namespace aos::iam::iamserver

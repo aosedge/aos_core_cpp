@@ -193,11 +193,17 @@ Error IAMServer::OnStartProvisioning(const String& password)
 {
     (void)password;
 
+    if (mIsProvisioningInProgress.exchange(true)) {
+        return AOS_ERROR_WRAP(
+            Error(ErrorEnum::eFailed, "incomplete provisioning detected, restart aos.target to recover"));
+    }
+
     if (!mConfig.mStartProvisioningCmdArgs.empty()) {
         LOG_INF() << "Process on start provisioning";
 
         auto [_, err] = common::utils::ExecCommand(mConfig.mStartProvisioningCmdArgs);
         if (!err.IsNone()) {
+            mIsProvisioningInProgress.store(false);
             return AOS_ERROR_WRAP(err);
         }
     }
@@ -218,6 +224,9 @@ Error IAMServer::OnFinishProvisioning(const String& password)
         }
     }
 
+    // Clear only after provisioning finish hooks succeeded.
+    mIsProvisioningInProgress.store(false);
+
     return ErrorEnum::eNone;
 }
 
@@ -233,6 +242,9 @@ Error IAMServer::OnDeprovision(const String& password)
             return AOS_ERROR_WRAP(err);
         }
     }
+
+    // Clear only after deprovision hooks succeeded.
+    mIsProvisioningInProgress.store(false);
 
     return ErrorEnum::eNone;
 }
