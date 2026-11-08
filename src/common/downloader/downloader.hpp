@@ -75,6 +75,8 @@ private:
     constexpr static std::chrono::milliseconds cMaxDelay {5000};
     constexpr static int                       cMaxRetryCount {3};
     constexpr static int                       cTimeoutSec {10};
+    constexpr static long                      cPartialContentHTTPStatus {206};
+    constexpr static long                      cRangeNotSatisfiableHTTPStatus {416};
 
     struct ProgressContext {
         Downloader*                           mDownloader {};
@@ -87,21 +89,27 @@ private:
         curl_off_t                            mDownloadedSize {0};
     };
 
+    struct WriteContext {
+        CURL*            mCurl {};
+        FILE*            mFile {};
+        ProgressContext* mProgressContext {};
+        bool             mRangeChecked {false};
+    };
+
     Error           ConfigureTLS(CURL* curl);
     static CURLcode SSLContextCallback(CURL* curl, void* sslContext, void* userData);
 
-    RetWithError<bool> SupportsRangeRequests(const String& url, ProgressContext* context);
-    Error              DownloadImage(const String& url, const String& path, ProgressContext* context);
-    Error              CopyFile(const Poco::URI& uri, const String& outfilename);
-    Error RetryDownload(CancelContext& ctx, const String& url, const String& path, ProgressContext* context);
-    void  SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
-         const std::string& reason = "", const Error& error = ErrorEnum::eNone);
+    Error         DownloadImage(const String& url, const String& path, ProgressContext* context);
+    Error         CopyFile(const Poco::URI& uri, const String& outfilename);
+    static bool   CheckRangeResponse(WriteContext* writeContext);
+    static size_t WriteCallback(char* data, size_t size, size_t nmemb, void* userData);
+    Error         RetryDownload(CancelContext& ctx, const String& url, const String& path, ProgressContext* context);
+    void          SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
+                 const std::string& reason = "", const Error& error = ErrorEnum::eNone);
 
     static bool IsCanceled(const ProgressContext* context);
     static int  XferInfoCallback(
          void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-    static int CancelXferInfoCallback(
-        void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
     int OnProgress(
         ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
