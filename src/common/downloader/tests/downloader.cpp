@@ -423,7 +423,7 @@ TEST_F(DownloaderTest, CancelDuringTransfer)
     StopServer();
 }
 
-TEST_F(DownloaderTest, HeadFailureKeepsPartialFile)
+TEST_F(DownloaderTest, ResumeFailureKeepsPartialFile)
 {
     std::atomic<int>                          headCount {0};
     std::atomic<int>                          getCount {0};
@@ -431,11 +431,9 @@ TEST_F(DownloaderTest, HeadFailureKeepsPartialFile)
     Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
         [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
             if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
-                if (++headCount == 2) {
-                    EXPECT_TRUE(mCancelCtx.Cancel().IsNone());
-                }
-            } else {
-                ++getCount;
+                ++headCount;
+            } else if (++getCount == 2) {
+                EXPECT_TRUE(mCancelCtx.Cancel().IsNone());
             }
 
             response.setStatus(Poco::Net::HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
@@ -448,11 +446,11 @@ TEST_F(DownloaderTest, HeadFailureKeepsPartialFile)
     std::ofstream(mFilePath, std::ios::binary) << "partial download";
 
     auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
-    auto err = mDownloader.Download(mCancelCtx, "digest_head_failure", *CreateURLs({url}), mFilePath.c_str());
+    auto err = mDownloader.Download(mCancelCtx, "digest_resume_failure", *CreateURLs({url}), mFilePath.c_str());
 
     EXPECT_TRUE(err.Is(aos::ErrorEnum::eCanceled));
-    EXPECT_EQ(headCount, 2);
-    EXPECT_EQ(getCount, 0);
+    EXPECT_EQ(headCount, 0);
+    EXPECT_EQ(getCount, 2);
 
     std::ifstream ifs(mFilePath, std::ios::binary);
     std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
@@ -462,17 +460,20 @@ TEST_F(DownloaderTest, HeadFailureKeepsPartialFile)
     server.stopAll(true);
 }
 
-TEST_F(DownloaderTest, ResumesWithLowercaseAcceptRanges)
+TEST_F(DownloaderTest, ResumesWithRangedGetWhenHeadIsForbidden)
 {
+    // Mimics a presigned S3 URL signed for GET only: HEAD requests are rejected with 403.
     const std::string                         fileContent = "This is a test file";
     const size_t                              partialSize = 8;
+    std::atomic<int>                          headCount {0};
     std::atomic<bool>                         rangeRequested {false};
     Poco::Net::ServerSocket                   socket(0);
     Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
         [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
             if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
-                response.set("accept-ranges", "bytes");
-                response.setContentLength(fileContent.size());
+                ++headCount;
+
+                response.setStatus(Poco::Net::HTTPResponse::HTTP_FORBIDDEN);
                 response.send();
 
                 return;
@@ -501,10 +502,83 @@ TEST_F(DownloaderTest, ResumesWithLowercaseAcceptRanges)
     std::ofstream(mFilePath, std::ios::binary) << fileContent.substr(0, partialSize);
 
     auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
-    auto err = mDownloader.Download(mCancelCtx, "digest_lowercase_ranges", *CreateURLs({url}), mFilePath.c_str());
+    auto err = mDownloader.Download(mCancelCtx, "digest_ranged_get", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_EQ(headCount, 0);
+    EXPECT_TRUE(rangeRequested);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, fileContent);
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, ResumeRestartsWhenServerIgnoresRange)
+{
+    const std::string                         fileContent = "This is a test file";
+    std::atomic<bool>                         rangeRequested {false};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
+            rangeRequested = request.has("Range");
+
+            response.setContentLength(fileContent.size());
+            response.send() << fileContent;
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    std::ofstream(mFilePath, std::ios::binary) << "stale partial";
+
+    auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto err = mDownloader.Download(mCancelCtx, "digest_ignore_range", *CreateURLs({url}), mFilePath.c_str());
 
     EXPECT_TRUE(err.IsNone());
     EXPECT_TRUE(rangeRequested);
+
+    std::ifstream ifs(mFilePath, std::ios::binary);
+    std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+    EXPECT_EQ(content, fileContent);
+
+    server.stopAll(true);
+}
+
+TEST_F(DownloaderTest, ResumeRestartsWhenRangeNotSatisfiable)
+{
+    const std::string                         fileContent = "This is a test file";
+    std::atomic<int>                          getCount {0};
+    Poco::Net::ServerSocket                   socket(0);
+    Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
+        [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
+            ++getCount;
+
+            if (request.has("Range")) {
+                response.setStatus(Poco::Net::HTTPResponse::HTTP_REQUESTED_RANGE_NOT_SATISFIABLE);
+                response.set("Content-Range", "bytes */" + std::to_string(fileContent.size()));
+                response.send();
+
+                return;
+            }
+
+            response.setContentLength(fileContent.size());
+            response.send() << fileContent;
+        });
+    Poco::Net::HTTPServer server(factory, socket, new Poco::Net::HTTPServerParams);
+
+    server.start();
+
+    std::ofstream(mFilePath, std::ios::binary) << "partial file bigger than the remote one";
+
+    auto url = "http://127.0.0.1:" + std::to_string(socket.address().port()) + "/test_file.dat";
+    auto err = mDownloader.Download(mCancelCtx, "digest_range_416", *CreateURLs({url}), mFilePath.c_str());
+
+    EXPECT_TRUE(err.IsNone());
+    EXPECT_EQ(getCount, 2);
 
     std::ifstream ifs(mFilePath, std::ios::binary);
     std::string   content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
@@ -576,14 +650,6 @@ TEST_F(DownloaderTest, TruncatedTransferRetriedThenIntegrityError)
     Poco::Net::ServerSocket                   socket(0);
     Poco::Net::HTTPRequestHandlerFactory::Ptr factory = new FunctionRequestHandlerFactory(
         [&](Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) {
-            if (request.getMethod() == Poco::Net::HTTPRequest::HTTP_HEAD) {
-                response.set("Accept-Ranges", "bytes");
-                response.setContentLength(1024 * 1024);
-                response.send();
-
-                return;
-            }
-
             if (++getCount == 1) {
                 response.setKeepAlive(false);
                 response.setContentLength(1024 * 1024);
