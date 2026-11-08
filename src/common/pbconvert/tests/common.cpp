@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <cerrno>
+
 #include <gmock/gmock.h>
 
 #include <core/common/tests/utils/log.hpp>
@@ -38,22 +40,30 @@ public:
 
 TEST_F(PBConvertCommon, ConvertAosErrorToProto)
 {
-    aos::Error params[] = {
-        {aos::ErrorEnum::eFailed, "failed error"},
-        {aos::ErrorEnum::eRuntime, "runtime error"},
-        {aos::ErrorEnum::eNone},
+    struct TestParams {
+        aos::Error  mError;
+        std::string mExpectedMessage;
+    };
+
+    const TestParams params[] = {
+        {{aos::ErrorEnum::eFailed, "failed error"}, "failed error"},
+        {{aos::ErrorEnum::eRuntime, "runtime error"}, "runtime error"},
+        // The error without a message is sent with its string value.
+        {{aos::ErrorEnum::eNotFound}, "not found"},
+        {aos::Error(aos::ErrorEnum::eIntegrity, EIO), "integrity error"},
+        {{aos::ErrorEnum::eNone}, ""},
     };
 
     size_t iteration = 0;
 
-    for (const auto& err : params) {
+    for (const auto& param : params) {
         LOG_INF() << "Test iteration: " << iteration++;
 
-        auto result = aos::common::pbconvert::ConvertAosErrorToProto(err);
+        auto result = aos::common::pbconvert::ConvertAosErrorToProto(param.mError);
 
-        EXPECT_EQ(result.aos_code(), static_cast<int32_t>(err.Value()));
-        EXPECT_EQ(result.exit_code(), err.Code());
-        EXPECT_EQ(aos::String(result.message().c_str()), err.Message()) << err.Message();
+        EXPECT_EQ(result.aos_code(), static_cast<int32_t>(param.mError.Value()));
+        EXPECT_EQ(result.exit_code(), param.mError.Code());
+        EXPECT_EQ(result.message(), param.mExpectedMessage);
     }
 }
 
