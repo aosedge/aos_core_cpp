@@ -8,6 +8,7 @@
 
 #include <core/common/tests/utils/log.hpp>
 
+#include <common/pbconvert/common.hpp>
 #include <common/pbconvert/sm.hpp>
 
 using namespace testing;
@@ -133,6 +134,34 @@ TEST_F(PBConvertSMTest, ConvertErrorInfoFromProto)
 
     EXPECT_EQ(result.Value(), ErrorEnum::eFailed);
     EXPECT_EQ(String(result.Message()), String("test error message"));
+}
+
+TEST_F(PBConvertSMTest, ConvertErrorInfoRoundTrip)
+{
+    struct TestParams {
+        Error       mError;
+        std::string mExpected;
+    };
+
+    const TestParams params[] = {
+        {AOS_ERROR_WRAP(Error(ENOENT, "blob file not found")), "blob file not found [code: 2]"},
+        {AOS_ERROR_WRAP(Error(ENOENT)), std::string(Error(ENOENT).StrValue()) + " [code: 2]"},
+        {AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "not found")), "not found"},
+    };
+
+    for (const auto& param : params) {
+        auto result = ConvertFromProto(ConvertAosErrorToProto(param.mError));
+
+        EXPECT_EQ(result.Value(), param.mError.Value());
+        EXPECT_EQ(result.Code(), param.mError.Code());
+
+        StaticString<cErrorMessageLen> message;
+
+        ASSERT_TRUE(message.Convert(result).IsNone());
+
+        // Only the message is sent: the code is formatted once and the sender location is not passed.
+        EXPECT_EQ(std::string(message.CStr()), param.mExpected);
+    }
 }
 
 TEST_F(PBConvertSMTest, ConvertErrorInfoFromProtoWithoutAosCode)
