@@ -15,8 +15,11 @@ namespace aos::common::pbconvert {
     result.set_aos_code(static_cast<int32_t>(error.Value()));
     result.set_exit_code(error.Code());
 
-    if (auto message = error.Message(); message) {
-        result.set_message(message);
+    if (!error.IsNone()) {
+        // The error without a message is sent with its string value, so the receiver gets a readable message.
+        const auto* message = error.Message();
+
+        result.set_message((message && *message) ? message : error.StrValue());
     }
 
     return result;
