@@ -15,12 +15,8 @@ namespace aos::common::pbconvert {
     result.set_aos_code(static_cast<int32_t>(error.Value()));
     result.set_exit_code(error.Code());
 
-    if (!error.IsNone()) {
-        StaticString<cErrorMessageLen> message;
-
-        auto err = message.Convert(error);
-
-        result.set_message(err.IsNone() ? message.CStr() : error.Message());
+    if (auto message = error.Message(); message) {
+        result.set_message(message);
     }
 
     return result;
