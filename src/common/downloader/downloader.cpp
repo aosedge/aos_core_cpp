@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <thread>
 
+#include <unistd.h>
+
 #include <Poco/String.h>
 
 #include <core/common/tools/logger.hpp>
@@ -170,65 +172,6 @@ CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
     return CURLE_OK;
 }
 
-RetWithError<bool> Downloader::SupportsRangeRequests(const String& url, ProgressContext* context)
-{
-    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
-    if (!curl) {
-        return {false, Error(ErrorEnum::eFailed, "failed to init curl")};
-    }
-
-    if (auto err = ConfigureTLS(curl.get()); !err.IsNone()) {
-        return {false, err};
-    }
-
-    bool supportsRange = false;
-
-    auto headerCallback = [](char* buffer, size_t size, size_t nitems, void* userdata) -> size_t {
-        auto*       supports = static_cast<bool*>(userdata);
-        std::string header(buffer, size * nitems);
-
-        if (auto pos = header.find(':'); pos != std::string::npos) {
-            auto name  = Poco::trim(header.substr(0, pos));
-            auto value = Poco::trim(header.substr(pos + 1));
-
-            if (Poco::icompare(name, "Accept-Ranges") == 0 && Poco::icompare(value, "bytes") == 0) {
-                *supports = true;
-            }
-        }
-
-        return size * nitems;
-    };
-
-    curl_easy_setopt(curl.get(), CURLOPT_URL, url.CStr());
-    curl_easy_setopt(curl.get(), CURLOPT_NOBODY, 1L);
-    curl_easy_setopt(curl.get(), CURLOPT_HEADERFUNCTION, static_cast<curl_write_callback>(headerCallback));
-    curl_easy_setopt(curl.get(), CURLOPT_HEADERDATA, &supportsRange);
-    curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
-    curl_easy_setopt(curl.get(), CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl.get(), CURLOPT_XFERINFOFUNCTION, &Downloader::CancelXferInfoCallback);
-    curl_easy_setopt(curl.get(), CURLOPT_XFERINFODATA, context);
-
-    if (auto res = curl_easy_perform(curl.get()); res != CURLE_OK) {
-        return {false, Error(ErrorEnum::eFailed, curl_easy_strerror(res))};
-    }
-
-    long code = 0;
-
-    curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &code);
-
-    if (code >= 400) {
-        LOG_ERR() << "HEAD request failed" << Log::Field("HTTP_CODE", code);
-
-        if (code == utils::cIntegrityHTTPStatus) {
-            return {false, Error(ErrorEnum::eIntegrity, "blob integrity error")};
-        }
-
-        return {false, Error(code, "HEAD request failed")};
-    }
-
-    return {supportsRange, ErrorEnum::eNone};
-}
-
 Error Downloader::DownloadImage(const String& url, const String& path, ProgressContext* context)
 {
     Poco::URI uri;
@@ -262,28 +205,6 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
-    bool canResume = false;
-
-    if (existingSize > 0) {
-        Error err;
-
-        Tie(canResume, err) = SupportsRangeRequests(url, context);
-
-        if (IsCanceled(context)) {
-            return Error(ErrorEnum::eCanceled, "download canceled");
-        }
-
-        if (!err.IsNone()) {
-            return err;
-        }
-
-        if (!canResume) {
-            LOG_DBG() << "Server does not support range requests, starting from beginning";
-        }
-    }
-
-    const char* fileMode = (canResume) ? "ab" : "wb";
-
     auto fileCloser = [](FILE* fp) {
         if (fp) {
             if (auto res = fclose(fp); res != 0) {
@@ -292,12 +213,14 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         }
     };
 
-    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), fileMode), fileCloser);
+    // Open in append mode when resuming: if the server ignores the range, the file is truncated before the first
+    // write (see CheckRangeResponse), and append mode makes the writes continue from the new end of the file.
+    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), existingSize > 0 ? "ab" : "wb"), fileCloser);
     if (!fp) {
         return Error(ErrorEnum::eFailed, "failed to open file");
     }
 
-    context->mExistingOffset = canResume ? existingSize : 0;
+    context->mExistingOffset = existingSize;
 
     if (uri.getScheme() == "http" || uri.getScheme() == "https") {
         curl_easy_setopt(curl.get(), CURLOPT_FAILONERROR, 1L);
@@ -305,12 +228,21 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
     curl_easy_setopt(curl.get(), CURLOPT_URL, url.CStr());
 
-    if (canResume) {
-        curl_easy_setopt(curl.get(), CURLOPT_RESUME_FROM_LARGE, context->mExistingOffset);
+    // Resume with a ranged GET instead of probing range support with a HEAD request: presigned URLs (e.g. S3) are
+    // signed for a single HTTP method, so a HEAD request to a URL signed for GET is rejected with 403.
+    if (existingSize > 0) {
+        LOG_DBG() << "Resume download" << Log::Field("offset", static_cast<uint64_t>(existingSize));
+
+        // libcurl copies the range string, so it doesn't need to outlive this scope.
+        const auto range = std::to_string(existingSize) + "-";
+
+        curl_easy_setopt(curl.get(), CURLOPT_RANGE, range.c_str());
     }
 
-    curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, fwrite);
-    curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, fp.get());
+    WriteContext writeContext {curl.get(), fp.get(), context};
+
+    curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, &Downloader::WriteCallback);
+    curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, &writeContext);
     curl_easy_setopt(curl.get(), CURLOPT_CONNECTTIMEOUT, cTimeoutSec);
 
     context->mLastProgressTime = steady_clock::now();
@@ -329,6 +261,22 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
             LOG_ERR() << "HTTP error: " << Log::Field("HTTP_CODE", code);
 
+            if (code == cRangeNotSatisfiableHTTPStatus && existingSize > 0) {
+                // The partial file doesn't match the remote one (e.g. it is already complete or bigger): drop it
+                // and download the whole file.
+                LOG_WRN() << "Range not satisfiable, restart download from beginning";
+
+                fp.reset();
+
+                try {
+                    std::filesystem::remove(path.CStr());
+                } catch (const std::exception& e) {
+                    return AOS_ERROR_WRAP(utils::ToAosError(e));
+                }
+
+                return DownloadImage(url, path, context);
+            }
+
             if (code == utils::cIntegrityHTTPStatus) {
                 err = Error(ErrorEnum::eIntegrity, "blob integrity error");
             } else {
@@ -344,9 +292,61 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return err;
     }
 
+    // Response without body: the write callback was not called, check the range response here.
+    if (!CheckRangeResponse(&writeContext)) {
+        return Error(ErrorEnum::eFailed, "failed to truncate file");
+    }
+
     SendAlert(context, DownloadStateEnum::eFinished, context->mDownloadedSize, context->mTotalSize);
 
     return ErrorEnum::eNone;
+}
+
+bool Downloader::CheckRangeResponse(WriteContext* writeContext)
+{
+    if (writeContext->mRangeChecked) {
+        return true;
+    }
+
+    writeContext->mRangeChecked = true;
+
+    if (writeContext->mProgressContext->mExistingOffset == 0) {
+        return true;
+    }
+
+    long code = 0;
+
+    curl_easy_getinfo(writeContext->mCurl, CURLINFO_RESPONSE_CODE, &code);
+
+    if (code == cPartialContentHTTPStatus) {
+        return true;
+    }
+
+    // The server ignored the range and sends the whole file: start from the beginning.
+    LOG_DBG() << "Server does not support range requests, starting from beginning" << Log::Field("HTTP_CODE", code);
+
+    if (fflush(writeContext->mFile) != 0 || ftruncate(fileno(writeContext->mFile), 0) != 0) {
+        LOG_ERR() << "Failed to truncate file" << Log::Field(Error(errno));
+
+        return false;
+    }
+
+    writeContext->mProgressContext->mExistingOffset = 0;
+
+    return true;
+}
+
+// cppcheck-suppress constParameterCallback
+size_t Downloader::WriteCallback(char* data, size_t size, size_t nmemb, void* userData)
+{
+    auto* writeContext = static_cast<WriteContext*>(userData);
+
+    if (!CheckRangeResponse(writeContext)) {
+        // Returning a size different from the passed one aborts the transfer.
+        return 0;
+    }
+
+    return fwrite(data, size, nmemb, writeContext->mFile);
 }
 
 Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
@@ -442,11 +442,6 @@ int Downloader::XferInfoCallback(
     }
 
     return ctx->mDownloader->OnProgress(ctx, dltotal, dlnow, ultotal, ulnow);
-}
-
-int Downloader::CancelXferInfoCallback(void* clientp, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
-{
-    return IsCanceled(static_cast<ProgressContext*>(clientp)) ? 1 : 0;
 }
 
 int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_off_t dlnow,
