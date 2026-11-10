@@ -935,7 +935,7 @@ void Communication::HandleSendQueue()
         }
 
         try {
-            const auto data = it->Payload();
+            const auto data = CreateMessagePayload(*it);
 
             WriteToMessageLog("TX", data);
 
@@ -1079,6 +1079,13 @@ Poco::JSON::Object::Ptr Communication::CreateMessageHeader(const std::string& tx
     header->set("txn", txn);
 
     return header;
+}
+
+std::string Communication::CreateMessagePayload(Message& msg) const
+{
+    msg.SetHeader(CreateMessageHeader(msg.Txn()));
+
+    return msg.Payload();
 }
 
 Error Communication::GenerateUUID(std::string& uuid) const

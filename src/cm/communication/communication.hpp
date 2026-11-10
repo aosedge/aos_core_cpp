@@ -233,6 +233,7 @@ private:
         void               ResetTimestamp(const Time& time) { mTimestamp = time; }
         bool               RetryAllowed() const { return mTries < cMaxTries; }
         void               IncrementTries() { ++mTries; }
+        void               SetHeader(Poco::JSON::Object::Ptr header) { mPayload->set("header", std::move(header)); }
 
     private:
         static constexpr auto cMaxTries = 3;
@@ -268,6 +269,7 @@ private:
     void        HandleReceivedMessage();
     Error       HandleMessage(const std::string& message);
     Poco::JSON::Object::Ptr CreateMessageHeader(const std::string& txn) const;
+    std::string             CreateMessagePayload(Message& msg) const;
 
     Error GenerateUUID(std::string& uuid) const;
     Error GenerateUUID(String& uuid) const;
