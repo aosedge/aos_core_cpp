@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <unordered_map>
 
 #include <common/utils/retry.hpp>
