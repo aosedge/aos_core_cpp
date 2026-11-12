@@ -68,7 +68,7 @@ RetWithError<size_t> EFIBootController::GetCurrentBoot() const
     LOG_DBG() << "Get EFI current boot" << Log::Field("bootID", efiCurrentBoot);
 
     auto itBootItem = std::find_if(mBootItems.begin(), mBootItems.end(),
-        [efiCurrentBoot](const BootItem& item) { return item.mID == efiCurrentBoot; });
+        [bootID = efiCurrentBoot](const BootItem& item) { return item.mID == bootID; });
 
     if (itBootItem == mBootItems.end()) {
         LOG_WRN() << "Boot from an unknown partition" << Log::Field("bootID", efiCurrentBoot);
