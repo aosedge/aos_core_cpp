@@ -276,9 +276,14 @@ For each allowed connection network manager looks up the allocated instances of 
 
 - if the target instance is in the same subnet as the requester, no rule is needed: instances on the same network
   communicate without restrictions;
-- if the target instance exposes every requested port with the matching protocol, a `FirewallRule` (destination IP and
-  port, protocol, source IP) is added;
+- if the target instance exposes at least one requested port with the matching protocol, only the exposed requested
+  ports are allowed: a `FirewallRule` (destination IP and port, protocol, source IP) is added for each contiguous range
+  of them, e.g. `8080:8084` with exposed `8080`, `8082` and `8083` gives the rules `8080` and `8082:8083`;
 - otherwise no rule is added for this connection.
+
+Requested ports the target does not expose are skipped with a warning logged when the requester network is allocated
+(on pushed updates the same message is logged at debug level, so re-resolving does not repeat the warning). No warning
+is logged while the target is not allocated yet or when it is in the requester's subnet.
 
 A rule set is limited to `cMaxNumFirewallRules` rules. Rules are taken in the order of the allowed connections; the
 rest are dropped with a warning, identically on allocation and on pushed updates.
