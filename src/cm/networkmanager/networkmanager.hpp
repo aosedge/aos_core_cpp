@@ -8,7 +8,6 @@
 #define AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
 #include <mutex>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,6 +18,8 @@
 #include <core/common/networkmanager/itf/networkprovider.hpp>
 #include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 #include <core/common/tools/array.hpp>
+
+#include <common/utils/parser.hpp>
 
 #include "ipsubnet.hpp"
 #include "itf/dnsserver.hpp"
@@ -119,9 +120,21 @@ private:
     using FirewallUpdates
         = std::unordered_map<InstanceIdent, std::pair<std::string, aos::networkmanager::PendingFirewallUpdate>>;
 
-    std::optional<FirewallRule> GetInstanceRule(const std::string& target, const std::string& port,
-        const std::string& protocol, const std::string& subnet, const String& ip, bool& instanceFound);
-    bool  RuleExists(const Instance& instance, const std::string& port, const std::string& protocol);
+    struct ConnectionRules {
+        bool                                  mTargetFound {};
+        std::vector<FirewallRule>             mRules;
+        std::vector<common::utils::PortRange> mNotExposedPorts;
+    };
+
+    static void MatchExposedPorts(const Instance& instance, const common::utils::PortRange& requested,
+        const std::string& protocol, std::vector<common::utils::PortRange>& exposed,
+        std::vector<common::utils::PortRange>& notExposed);
+
+    ConnectionRules GetConnectionRules(const std::string& target, const std::string& port, const std::string& protocol,
+        const std::string& subnet, const String& ip) const;
+    void AddConnectionRules(const InstanceIdent& requesterIdent, const std::string& target, const std::string& protocol,
+        const ConnectionRules& connectionRules, bool warnNotExposed, Array<FirewallRule>& rules) const;
+
     void  ParseAllowConnection(const String& connection, std::string& target, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
