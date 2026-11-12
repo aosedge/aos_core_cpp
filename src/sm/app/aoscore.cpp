@@ -174,7 +174,7 @@ void AosCore::Init(const std::string& configFile)
 
     // Initialize journalalerts
 
-    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mDatabase, mSMClient);
+    err = mJournalAlerts.Init(mConfig.mJournalAlerts, mRuntimes.GetContainerRuntime(), mDatabase, mSMClient);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize journalalerts");
 }
 

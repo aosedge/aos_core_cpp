@@ -9,10 +9,23 @@
 #include <core/common/tools/logger.hpp>
 
 #include <common/utils/exception.hpp>
+#include <sm/launcher/runtimes/container/itf/consts.hpp>
 
 #include "journalalerts.hpp"
 
 namespace aos::sm::alerts {
+
+namespace {
+
+/***********************************************************************************************************************
+ * Consts
+ **********************************************************************************************************************/
+
+// Instance logs don't contain _SYSTEMD_UNIT, instance ID is taken from _SYSTEMD_CGROUP.
+// Format: <cCgroupsPath>/<instanceID>[/<subgroup>...]
+const Poco::RegularExpression cInstanceCgroupRegex(std::string("^\\Q") + launcher::cCgroupsPath + "\\E/([^/]+)");
+
+} // namespace
 
 /***********************************************************************************************************************
  * Statics
@@ -28,14 +41,15 @@ const std::unordered_map<std::string, CoreComponentType::Enum> JournalAlerts::cC
  * Public
  **********************************************************************************************************************/
 
-Error JournalAlerts::Init(
-    const common::config::JournalAlerts& config, StorageItf& storage, aos::alerts::SenderItf& sender)
+Error JournalAlerts::Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf* instanceInfoProvider,
+    StorageItf& storage, aos::alerts::SenderItf& sender)
 {
     LOG_DBG() << "Init journal alerts";
 
-    mConfig  = config;
-    mStorage = &storage;
-    mSender  = &sender;
+    mConfig               = config;
+    mInstanceInfoProvider = instanceInfoProvider;
+    mStorage              = &storage;
+    mSender               = &sender;
 
     for (const auto& filter : config.mFilter) {
         if (filter.empty()) {
@@ -219,19 +233,16 @@ void JournalAlerts::ProcessJournal()
             unit = entry.mUnit.value_or("");
         }
 
-        // with cgroup v2 logs from container do not contains _SYSTEMD_UNIT due to restrictions
-        // that's why id should be extracted from _SYSTEMD_CGROUP
-        // format: /system.slice/system-aos@service.slice/AOS_INSTANCE_ID
         if (unit.empty()) {
-
-            // add prefix 'aos-service@' and postfix '.service'
-            // to service uuid and get proper service object from DB
             unit = entry.mSystemdCGroup;
         }
 
         AlertVariant item;
 
-        if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
+        if (auto instanceAlert = GetInstanceAlert(entry); instanceAlert.has_value()) {
+            item.SetValue<InstanceAlert>(*instanceAlert);
+            mSender->SendAlert(item);
+        } else if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
             item.SetValue<CoreAlert>(*compAlert);
             mSender->SendAlert(item);
         } else if (auto systemAlert = GetSystemAlert(entry); systemAlert.has_value()) {
@@ -262,6 +273,39 @@ bool JournalAlerts::ShouldFilterOutAlert(const std::string& msg) const
 
         return regex.match(msg, match);
     });
+}
+
+std::optional<InstanceAlert> JournalAlerts::GetInstanceAlert(const utils::JournalEntry& entry)
+{
+    if (mInstanceInfoProvider == nullptr) {
+        return std::nullopt;
+    }
+
+    std::vector<std::string> matches;
+
+    if (cInstanceCgroupRegex.split(entry.mSystemdCGroup, matches) < 2) {
+        return std::nullopt;
+    }
+
+    const auto& instanceID = matches[1];
+
+    InstanceInfo instanceInfo;
+
+    if (auto err = mInstanceInfoProvider->GetInstanceInfoByID(instanceID.c_str(), instanceInfo); !err.IsNone()) {
+        LOG_WRN() << "Can't get instance info" << Log::Field("instanceID", instanceID.c_str()) << Log::Field(err);
+
+        return std::nullopt;
+    }
+
+    InstanceAlert alert;
+
+    alert.mTimestamp                   = entry.mRealTime;
+    static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
+    alert.mVersion                     = instanceInfo.mVersion;
+
+    WriteAlertMsg(entry.mMessage, alert.mMessage);
+
+    return alert;
 }
 
 std::optional<CoreAlert> JournalAlerts::GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit)
