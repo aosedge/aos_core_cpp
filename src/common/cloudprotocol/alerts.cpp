@@ -108,6 +108,10 @@ Poco::JSON::Object::Ptr InstanceAlertToJSON(const InstanceAlert& alert)
     auto err = ToJSON(static_cast<const InstanceIdent&>(alert), *json);
     AOS_ERROR_CHECK_AND_THROW(err, "failed to convert instanceIdent to JSON");
 
+    // TODO: cloud protocol v7 schema requires subjectId instead of subject for updateItemInstanceAlert.
+    json->set("subjectId", json->get("subject"));
+    json->remove("subject");
+
     json->set("version", alert.mVersion.CStr());
     json->set("message", alert.mMessage.CStr());
 

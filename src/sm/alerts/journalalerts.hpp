@@ -20,6 +20,7 @@
 #include <sm/config/config.hpp>
 #include <sm/utils/journal.hpp>
 
+#include "itf/instanceinfoprovider.hpp"
 #include "itf/storage.hpp"
 
 namespace aos::sm::alerts {
@@ -33,11 +34,13 @@ public:
      * Initializes object instance.
      *
      * @param config alerts config.
+     * @param instanceInfoProvider instance info provider (optional).
      * @param storage alerts storage.
      * @param sender alerts sender.
      * @return Error.
      */
-    Error Init(const common::config::JournalAlerts& config, StorageItf& storage, aos::alerts::SenderItf& sender);
+    Error Init(const common::config::JournalAlerts& config, InstanceInfoProviderItf* instanceInfoProvider,
+        StorageItf& storage, aos::alerts::SenderItf& sender);
 
     /**
      * Starts journal monitoring thread.
@@ -66,13 +69,15 @@ private:
     void RecoverJournalError();
     bool ShouldFilterOutAlert(const std::string& msg) const;
 
-    std::optional<CoreAlert>   GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit);
-    std::optional<SystemAlert> GetSystemAlert(const utils::JournalEntry& entry);
-    void                       WriteAlertMsg(const std::string& src, String& dst);
+    std::optional<InstanceAlert> GetInstanceAlert(const utils::JournalEntry& entry);
+    std::optional<CoreAlert>     GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit);
+    std::optional<SystemAlert>   GetSystemAlert(const utils::JournalEntry& entry);
+    void                         WriteAlertMsg(const std::string& src, String& dst);
 
-    common::config::JournalAlerts mConfig  = {};
-    StorageItf*                   mStorage = nullptr;
-    aos::alerts::SenderItf*       mSender  = nullptr;
+    common::config::JournalAlerts mConfig               = {};
+    InstanceInfoProviderItf*      mInstanceInfoProvider = nullptr;
+    StorageItf*                   mStorage              = nullptr;
+    aos::alerts::SenderItf*       mSender               = nullptr;
 
     std::vector<std::string> mAlertFilters;
     Poco::Timer              mCursorSaveTimer;
