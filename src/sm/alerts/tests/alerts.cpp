@@ -10,6 +10,7 @@
 #include <core/common/tests/utils/log.hpp>
 
 #include <sm/alerts/journalalerts.hpp>
+#include <sm/launcher/runtimes/container/itf/consts.hpp>
 #include <sm/tests/mocks/journalmock.hpp>
 
 using namespace testing;
@@ -81,6 +82,11 @@ public:
     MOCK_METHOD(Error, GetJournalCursor, (String&), (const, override));
 };
 
+class InstanceInfoProviderMock : public InstanceInfoProviderItf {
+public:
+    MOCK_METHOD(Error, GetInstanceInfoByID, (const String&, InstanceInfo&), (override));
+};
+
 /***********************************************************************************************************************
  * Suite
  **********************************************************************************************************************/
@@ -105,8 +111,10 @@ public:
     std::mutex              mAlertMutex;
     std::condition_variable mAlertCV;
     bool                    mAlertSent = false;
+    std::atomic_bool        mStopping  = false;
 
     common::config::JournalAlerts mConfig;
+    InstanceInfoProviderMock      mInstanceInfoProvider;
     SenderMock                    mSender;
     StorageMock                   mStorage;
     std::string                   mCursor = "cursor";
@@ -116,7 +124,11 @@ public:
 
 void JournalAlertsTest::Init()
 {
-    ASSERT_TRUE(mJournalAlerts.Init(mConfig, mStorage, mSender).IsNone());
+    // Expectations must not be changed while the monitor thread calls the mock, so set the default one here.
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
+    EXPECT_CALL(mStorage, SetJournalCursor(String("cursor"))).WillRepeatedly(Return(ErrorEnum::eNone));
+
+    ASSERT_TRUE(mJournalAlerts.Init(mConfig, &mInstanceInfoProvider, mStorage, mSender).IsNone());
 }
 
 void JournalAlertsTest::Start()
@@ -138,8 +150,7 @@ void JournalAlertsTest::Start()
 
 void JournalAlertsTest::Stop()
 {
-    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
-    EXPECT_CALL(mStorage, SetJournalCursor(String("cursor")));
+    mStopping = true;
 
     EXPECT_TRUE(mJournalAlerts.Stop().IsNone());
 }
@@ -182,13 +193,79 @@ TEST_F(JournalAlertsTest, FailSaveCursor)
 
     EXPECT_CALL(mJournalAlerts.mJournal, Wait(_)).WillRepeatedly(Return(std::chrono::microseconds::zero()));
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).Times(AnyNumber());
+    EXPECT_CALL(mStorage, SetJournalCursor(String("cursor"))).WillOnce(Return(Error(ErrorEnum::eFailed)));
 
     Start();
 
-    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
-    EXPECT_CALL(mStorage, SetJournalCursor(String("cursor"))).WillOnce(Return(Error(ErrorEnum::eFailed)));
-
     EXPECT_FALSE(mJournalAlerts.Stop().IsNone());
+}
+
+TEST_F(JournalAlertsTest, SendInstanceAlert)
+{
+    Init();
+
+    EXPECT_CALL(mJournalAlerts.mJournal, Wait(_)).WillRepeatedly(Return(std::chrono::microseconds::zero()));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next())
+        .WillOnce(Return(false))
+        .WillOnce(Return(true))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
+
+    utils::JournalEntry entry = {};
+
+    entry.mSystemdCGroup = std::string(launcher::cCgroupsPath) + "/instance0";
+    entry.mMessage       = "Hello World";
+
+    InstanceInfo instanceInfo {InstanceIdent {"service0", "subject0", 0, UpdateItemTypeEnum::eService}, "1.0.0"};
+
+    InstanceAlert alert;
+
+    static_cast<InstanceIdent&>(alert) = instanceInfo.mInstanceIdent;
+    alert.mVersion                     = instanceInfo.mVersion;
+    alert.mMessage                     = entry.mMessage.c_str();
+
+    EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
+    EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("instance0"), _))
+        .WillOnce(DoAll(SetArgReferee<1>(instanceInfo), Return(Error())));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
+
+    Start();
+
+    WaitForAlert();
+    Stop();
+}
+
+TEST_F(JournalAlertsTest, SendSystemAlertForUnknownInstance)
+{
+    Init();
+
+    EXPECT_CALL(mJournalAlerts.mJournal, Wait(_)).WillRepeatedly(Return(std::chrono::microseconds::zero()));
+    EXPECT_CALL(mJournalAlerts.mJournal, Next())
+        .WillOnce(Return(false))
+        .WillOnce(Return(true))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Return("cursor"));
+
+    utils::JournalEntry entry = {};
+
+    entry.mSystemdCGroup = std::string(launcher::cCgroupsPath) + "/instance0";
+    entry.mMessage       = "Hello World";
+
+    SystemAlert alert;
+
+    alert.mMessage = entry.mMessage.c_str();
+
+    EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
+    EXPECT_CALL(mInstanceInfoProvider, GetInstanceInfoByID(String("instance0"), _))
+        .WillOnce(Return(Error(ErrorEnum::eNotFound)));
+    EXPECT_CALL(mSender, SendAlert(MatchVariant(alert)))
+        .WillOnce(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent));
+
+    Start();
+
+    WaitForAlert();
+    Stop();
 }
 
 TEST_F(JournalAlertsTest, SendCoreAlert)
@@ -237,13 +314,13 @@ TEST_F(JournalAlertsTest, SendSystemAlertFiltered)
     entry.mSystemdUnit = "init.service";
     entry.mMessage     = "getty@tty1.service started";
 
-    EXPECT_CALL(mJournalAlerts.mJournal, GetEntry()).WillOnce(Return(entry));
+    EXPECT_CALL(mJournalAlerts.mJournal, GetEntry())
+        .WillOnce(DoAll(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent), Return(entry)));
     EXPECT_CALL(mSender, SendAlert(_)).Times(0);
 
     Start();
 
-    sleep(0);
-
+    WaitForAlert();
     Stop();
 }
 
@@ -351,12 +428,12 @@ TEST_F(JournalAlertsTest, RecoverJournalErrorOk)
         .WillRepeatedly(Return(std::string("cursor")));
 
     // Restore journal
-    EXPECT_CALL(mStorage, SetJournalCursor(String(""))).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mStorage, SetJournalCursor(String("")))
+        .WillOnce(DoAll(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent), Return(ErrorEnum::eNone)));
 
     Start();
 
-    sleep(0);
-
+    WaitForAlert();
     Stop();
 }
 
@@ -367,16 +444,23 @@ TEST_F(JournalAlertsTest, RecoverJournalErrorFailed)
     EXPECT_CALL(mJournalAlerts.mJournal, Wait(_)).WillRepeatedly(Return(std::chrono::microseconds::zero()));
     EXPECT_CALL(mJournalAlerts.mJournal, Next()).WillRepeatedly(Return(false));
 
-    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor())
-        .WillRepeatedly(Throw(std::runtime_error("can't get journal cursor [Bad message]")));
+    // GetCursor fails until stop is requested
+    EXPECT_CALL(mJournalAlerts.mJournal, GetCursor()).WillRepeatedly(Invoke([this]() -> std::string {
+        if (!mStopping) {
+            throw std::runtime_error("can't get journal cursor [Bad message]");
+        }
+
+        return "cursor";
+    }));
 
     // Restore journal
-    EXPECT_CALL(mStorage, SetJournalCursor(String(""))).WillRepeatedly(Return(ErrorEnum::eNone));
+    EXPECT_CALL(mStorage, SetJournalCursor(String("")))
+        .WillOnce(DoAll(InvokeWithoutArgs(this, &JournalAlertsTest::NotifyAlertSent), Return(ErrorEnum::eNone)))
+        .WillRepeatedly(Return(ErrorEnum::eNone));
 
     Start();
 
-    sleep(0);
-
+    WaitForAlert();
     Stop();
 }
 
