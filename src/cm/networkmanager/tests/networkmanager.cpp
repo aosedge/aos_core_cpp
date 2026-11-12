@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <string>
+#include <tuple>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -617,9 +619,6 @@ TEST_F(CMNetworkManagerTest, AllocateInstanceNetwork_CrossNetworkPortRange_Succe
     instanceData1.mExposedPorts.PushBack("7401/udp");
 
     UpdateItemNetworkParams instanceData2;
-    // A range resolves only when every port of it is exposed with the same
-    // protocol: a fully covered range and a subset of it match, a range
-    // reaching past the exposed ports and a protocol mismatch do not.
     instanceData2.mAllowedConnections.PushBack("service1/8080:8082/tcp");
     instanceData2.mAllowedConnections.PushBack("service1/8081:8082/tcp");
     instanceData2.mAllowedConnections.PushBack("service1/8080:8083/tcp");
@@ -2037,7 +2036,7 @@ TEST_F(CMHostnameConnectionTest, MissingExposedPortOrProtocolDoesNotCreateRule)
 {
     ASSERT_TRUE(AllocateTarget().IsNone());
 
-    for (const auto* connection : {"hostname-service/8080:8082/tcp", "hostname-service/8080/udp"}) {
+    for (const auto* connection : {"hostname-service/8082:8090/tcp", "hostname-service/8080/udp"}) {
         mRequesterData.mAllowedConnections.Clear();
         mRequesterData.mAllowedConnections.PushBack(connection);
         ASSERT_TRUE(AllocateRequester().IsNone());
@@ -2046,6 +2045,56 @@ TEST_F(CMHostnameConnectionTest, MissingExposedPortOrProtocolDoesNotCreateRule)
         ASSERT_EQ(mSavedPending.size(), 1U);
         EXPECT_EQ(mSavedPending[0].mTarget, "hostname-service");
     }
+}
+
+TEST_F(CMHostnameConnectionTest, PartiallyExposedRangeAllowsExposedPortsOnly)
+{
+    mTargetData.mExposedPorts.Clear();
+
+    for (const auto* port : {"8096/tcp", "9000/tcp", "9001/tcp", "9002/tcp", "7400/udp", "7402/udp"}) {
+        ASSERT_TRUE(mTargetData.mExposedPorts.PushBack(port).IsNone());
+    }
+
+    ASSERT_TRUE(AllocateTarget().IsNone());
+
+    const std::vector<std::tuple<const char*, const char*, std::vector<const char*>>> testCases = {
+        {"hostname-service/8096:8100/tcp", "tcp", {"8096"}},
+        {"hostname-service/8090:8096/tcp", "tcp", {"8096"}},
+        {"hostname-service/8999:9001/tcp", "tcp", {"9000:9001"}},
+        {"hostname-service/9001:9005/tcp", "tcp", {"9001:9002"}},
+        {"hostname-service/7400:7402/udp", "udp", {"7400", "7402"}},
+    };
+
+    for (const auto& [connection, protocol, ports] : testCases) {
+        SCOPED_TRACE(connection);
+
+        mRequesterData.mAllowedConnections.Clear();
+        ASSERT_TRUE(mRequesterData.mAllowedConnections.PushBack(connection).IsNone());
+        ASSERT_TRUE(AllocateRequester().IsNone());
+
+        ASSERT_EQ(mRequesterResult.mFirewallRules.Size(), ports.size());
+
+        for (size_t i = 0; i < ports.size(); ++i) {
+            EXPECT_EQ(mRequesterResult.mFirewallRules[i].mDstIP, mTargetResult.mIP);
+            EXPECT_EQ(mRequesterResult.mFirewallRules[i].mSrcIP, mRequesterResult.mIP);
+            EXPECT_EQ(mRequesterResult.mFirewallRules[i].mProto, protocol);
+            EXPECT_EQ(mRequesterResult.mFirewallRules[i].mDstPort, ports[i]);
+        }
+
+        ASSERT_EQ(mSavedPending.size(), 1U);
+    }
+}
+
+TEST_F(CMHostnameConnectionTest, PendingPartiallyExposedRangeResolvesWhenTargetStarts)
+{
+    mRequesterData.mAllowedConnections.Clear();
+    mRequesterData.mAllowedConnections.PushBack("hostname-service/8079:8085/tcp");
+
+    ASSERT_TRUE(AllocateRequester().IsNone());
+    EXPECT_TRUE(mRequesterResult.mFirewallRules.IsEmpty());
+
+    ExpectPendingUpdate();
+    ASSERT_TRUE(AllocateTarget().IsNone());
 }
 
 TEST_F(CMHostnameConnectionTest, SameSubnetNeedsNoRule)

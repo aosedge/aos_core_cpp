@@ -27,6 +27,47 @@ namespace {
 constexpr int cAllowedConnectionsExpectedLen = 3;
 constexpr int cExposedPortConfigExpectedLen  = 2;
 
+/***********************************************************************************************************************
+ * Static
+ **********************************************************************************************************************/
+
+void AppendPort(std::vector<common::utils::PortRange>& ranges, uint16_t port)
+{
+    if (!ranges.empty() && ranges.back().mLast + 1 == port) {
+        ranges.back().mLast = port;
+
+        return;
+    }
+
+    ranges.push_back({port, port});
+}
+
+std::string PortRangeToString(const common::utils::PortRange& range)
+{
+    auto result = std::to_string(range.mFirst);
+
+    if (range.mLast != range.mFirst) {
+        result += ":" + std::to_string(range.mLast);
+    }
+
+    return result;
+}
+
+std::string PortRangesToString(const std::vector<common::utils::PortRange>& ranges)
+{
+    std::string result;
+
+    for (const auto& range : ranges) {
+        if (!result.empty()) {
+            result += ",";
+        }
+
+        result += PortRangeToString(range);
+    }
+
+    return result;
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -550,79 +591,136 @@ void NetworkManager::ParseAllowConnection(
     }
 }
 
-bool NetworkManager::RuleExists(const Instance& instance, const std::string& port, const std::string& protocol)
+void NetworkManager::MatchExposedPorts(const Instance& instance, const common::utils::PortRange& requested,
+    const std::string& protocol, std::vector<common::utils::PortRange>& exposed,
+    std::vector<common::utils::PortRange>& notExposed)
 {
-    const auto requested = common::utils::ParsePortRange(port);
+    exposed.clear();
+    notExposed.clear();
 
-    if (!requested.has_value()) {
-        return false;
-    }
-
-    for (uint32_t checkedPort = requested->mFirst; checkedPort <= requested->mLast; ++checkedPort) {
+    for (uint32_t checkedPort = requested.mFirst; checkedPort <= requested.mLast; ++checkedPort) {
         const auto exposedFound
             = std::any_of(instance.mExposedPorts.begin(), instance.mExposedPorts.end(), [&](const auto& exposedPort) {
                   if (exposedPort.mProtocol != String(protocol.c_str())) {
                       return false;
                   }
 
-                  const auto exposed = common::utils::ParsePortRange(exposedPort.mPort.CStr());
+                  const auto exposedRange = common::utils::ParsePortRange(exposedPort.mPort.CStr());
 
-                  return exposed.has_value() && exposed->mFirst <= checkedPort && checkedPort <= exposed->mLast;
+                  return exposedRange.has_value() && exposedRange->mFirst <= checkedPort
+                      && checkedPort <= exposedRange->mLast;
               });
 
-        if (!exposedFound) {
-            return false;
-        }
+        AppendPort(exposedFound ? exposed : notExposed, static_cast<uint16_t>(checkedPort));
     }
-
-    return true;
 }
 
-std::optional<FirewallRule> NetworkManager::GetInstanceRule(const std::string& target, const std::string& port,
-    const std::string& protocol, const std::string& subnet, const String& ip, bool& instanceFound)
+NetworkManager::ConnectionRules NetworkManager::GetConnectionRules(const std::string& target, const std::string& port,
+    const std::string& protocol, const std::string& subnet, const String& ip) const
 {
-    instanceFound = false;
+    ConnectionRules result;
 
-    // A matching item ID takes precedence even when it does not expose the requested port.
-    for (const bool byItemID : {true, false}) {
-        for (auto& [_, networkState] : mNetworkStates) {
-            for (auto& [nodeID, hostInstances] : networkState.mHostInstances) {
-                for (auto& [instanceID, instance] : hostInstances.mInstances) {
-                    const bool matches = byItemID ? instance.mInstanceIdent.mItemID == target.c_str()
-                                                  : std::any_of(instance.mHosts.begin(), instance.mHosts.end(),
-                                                      [&](const auto& host) { return host == target.c_str(); });
+    const auto requested = common::utils::ParsePortRange(port);
 
-                    if (!matches) {
-                        continue;
-                    }
+    if (!requested.has_value()) {
+        return result;
+    }
 
-                    instanceFound = true;
+    const auto instances = FindTargetInstances(target);
 
-                    // instance is in the same subnet could be connected without firewall rules
-                    if (common::network::NetworkContainsIP(subnet, instance.mIP.CStr())) {
-                        return std::nullopt;
-                    }
+    result.mTargetFound = !instances.empty();
 
-                    if (RuleExists(instance, port, protocol)) {
-                        FirewallRule rule;
+    for (const auto* instance : instances) {
+        // instance is in the same subnet could be connected without firewall rules
+        if (common::network::NetworkContainsIP(subnet, instance->mIP.CStr())) {
+            result.mNotExposedPorts.clear();
 
-                        rule.mDstIP   = instance.mIP;
-                        rule.mSrcIP   = ip;
-                        rule.mProto   = protocol.c_str();
-                        rule.mDstPort = port.c_str();
-
-                        return rule;
-                    }
-                }
-            }
+            return result;
         }
 
-        if (instanceFound) {
-            break;
+        std::vector<common::utils::PortRange> exposed;
+
+        MatchExposedPorts(*instance, *requested, protocol, exposed, result.mNotExposedPorts);
+
+        if (exposed.empty()) {
+            continue;
+        }
+
+        for (const auto& range : exposed) {
+            FirewallRule rule;
+
+            rule.mDstIP   = instance->mIP;
+            rule.mSrcIP   = ip;
+            rule.mProto   = protocol.c_str();
+            rule.mDstPort = PortRangeToString(range).c_str();
+
+            result.mRules.push_back(rule);
+        }
+
+        return result;
+    }
+
+    return result;
+}
+
+std::vector<const Instance*> NetworkManager::FindTargetInstances(const std::string& target) const
+{
+    std::vector<const Instance*> instances;
+
+    for (const auto& [_, networkState] : mNetworkStates) {
+        for (const auto& [nodeID, hostInstances] : networkState.mHostInstances) {
+            for (const auto& [instanceID, instance] : hostInstances.mInstances) {
+                instances.push_back(&instance);
+            }
         }
     }
 
-    return std::nullopt;
+    std::vector<const Instance*> result;
+
+    // A matching item ID takes precedence even when it does not expose the requested port.
+    (void)std::copy_if(instances.begin(), instances.end(), std::back_inserter(result),
+        [&target](const Instance* instance) { return instance->mInstanceIdent.mItemID == target.c_str(); });
+
+    if (!result.empty()) {
+        return result;
+    }
+
+    (void)std::copy_if(
+        instances.begin(), instances.end(), std::back_inserter(result), [&target](const Instance* instance) {
+            return std::any_of(instance->mHosts.begin(), instance->mHosts.end(),
+                [&target](const auto& host) { return host == target.c_str(); });
+        });
+
+    return result;
+}
+
+void NetworkManager::AddConnectionRules(const InstanceIdent& requesterIdent, const std::string& target,
+    const std::string& protocol, const ConnectionRules& connectionRules, bool warnNotExposed,
+    Array<FirewallRule>& rules) const
+{
+    for (const auto& rule : connectionRules.mRules) {
+        AddFirewallRule(requesterIdent, target, rule, rules);
+    }
+
+    if (connectionRules.mNotExposedPorts.empty()) {
+        return;
+    }
+
+    const char* message = "Allowed connection ports are partially exposed by target, not exposed ports skipped";
+
+    if (connectionRules.mRules.empty()) {
+        message = "Allowed connection ports are not exposed by target, no rule created";
+    }
+
+    const auto notExposedPorts = PortRangesToString(connectionRules.mNotExposedPorts);
+
+    if (warnNotExposed) {
+        LOG_WRN() << message << Log::Field("instanceIdent", requesterIdent) << Log::Field("target", target.c_str())
+                  << Log::Field("ports", notExposedPorts.c_str()) << Log::Field("protocol", protocol.c_str());
+    } else {
+        LOG_DBG() << message << Log::Field("instanceIdent", requesterIdent) << Log::Field("target", target.c_str())
+                  << Log::Field("ports", notExposedPorts.c_str()) << Log::Field("protocol", protocol.c_str());
+    }
 }
 
 Error NetworkManager::PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet,
@@ -639,11 +737,8 @@ Error NetworkManager::PrepareFirewallRules(const InstanceIdent& instanceIdent, c
 
             ParseAllowConnection(connection, target, port, protocol);
 
-            bool instanceFound = false;
-
-            if (auto rule = GetInstanceRule(target, port, protocol, subnet, ip, instanceFound); rule) {
-                AddFirewallRule(instanceIdent, target, *rule, result.mFirewallRules);
-            }
+            AddConnectionRules(instanceIdent, target, protocol, GetConnectionRules(target, port, protocol, subnet, ip),
+                true, result.mFirewallRules);
 
             (void)connections.emplace_back(target, port, protocol);
         }
@@ -944,13 +1039,11 @@ void NetworkManager::GetRequesterRules(const InstanceIdent& requesterIdent, Arra
     }
 
     for (const auto& connection : it->second) {
-        bool instanceFound = false;
+        const auto connectionRules = GetConnectionRules(connection.mTarget.CStr(), connection.mPort.CStr(),
+            connection.mProtocol.CStr(), connection.mRequesterSubnet.CStr(), connection.mRequesterIP);
 
-        if (auto rule = GetInstanceRule(connection.mTarget.CStr(), connection.mPort.CStr(), connection.mProtocol.CStr(),
-                connection.mRequesterSubnet.CStr(), connection.mRequesterIP, instanceFound);
-            rule) {
-            AddFirewallRule(requesterIdent, connection.mTarget.CStr(), *rule, rules);
-        }
+        AddConnectionRules(
+            requesterIdent, connection.mTarget.CStr(), connection.mProtocol.CStr(), connectionRules, false, rules);
     }
 }
 
