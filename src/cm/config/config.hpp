@@ -53,6 +53,7 @@ struct Config {
     std::string               mUnitConfigFile;
     Duration                  mUnitStatusSendTimeout;
     Duration                  mCloudResponseWaitTimeout;
+    Duration                  mNetworkRemoveTimeout;
 };
 
 /*******************************************************************************

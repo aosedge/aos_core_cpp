@@ -35,6 +35,7 @@ constexpr auto cFullTestConfigJSON = R"({
     "workingDir": "workingDir",
     "unitConfigFile": "/var/aos/aos_unit.cfg",
     "cloudResponseWaitTimeout": "3d",
+    "networkRemoveTimeout": "5m",
     "monitoring": {
         "sendPeriod": "5m"
     },
@@ -127,6 +128,7 @@ TEST_F(CMConfigTest, ParseFullConfig)
     EXPECT_EQ(config.mCertStorage, "/var/aos/crypt/cm/");
 
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cDay * 3);
+    EXPECT_EQ(config.mNetworkRemoveTimeout, aos::Time::cMinutes * 5);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 5);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 10);
@@ -193,6 +195,7 @@ TEST_F(CMConfigTest, ParseMinimalConfigWithDefaults)
 
     EXPECT_EQ(config.mUnitStatusSendTimeout, aos::Time::cSeconds * 10);
     EXPECT_EQ(config.mCloudResponseWaitTimeout, aos::Time::cSeconds * 10);
+    EXPECT_EQ(config.mNetworkRemoveTimeout, aos::Time::cMinutes * 2);
 
     EXPECT_EQ(config.mMonitoring.mSendPeriod, aos::Time::cMinutes * 1);
     EXPECT_EQ(config.mNodeInfoProvider.mSMConnectionTimeout, aos::Time::cMinutes * 1);
