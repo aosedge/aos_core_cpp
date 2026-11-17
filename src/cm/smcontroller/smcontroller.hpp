@@ -32,6 +32,8 @@
 #include <core/common/networkmanager/itf/pendingupdatehandler.hpp>
 #include <core/common/tools/timer.hpp>
 
+#include <cm/networkmanager/itf/updatesubscriptionlistener.hpp>
+
 #include "config.hpp"
 #include "smhandler.hpp"
 
@@ -63,6 +65,8 @@ public:
      * @param monitoringReceiver monitoring receiver.
      * @param instanceStatusReceiver instance status receiver.
      * @param smInfoReceiver SM info receiver.
+     * @param networkProvider network provider.
+     * @param updateSubscriptionListener network update subscription listener.
      * @param insecureConn true if insecure connection is used.
      * @return Error.
      */
@@ -72,7 +76,7 @@ public:
         alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
         monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
         nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
-        bool insecureConn = false);
+        cm::networkmanager::UpdateSubscriptionListenerItf& updateSubscriptionListener, bool insecureConn = false);
 
     /**
      * Starts the SM controller.
@@ -249,20 +253,21 @@ private:
     void                      ScheduleRestart();
     void                      OnRestartTimer();
 
-    Config                                     mConfig {};
-    cloudconnection::CloudConnectionItf*       mCloudConnection {};
-    crypto::CertLoaderItf*                     mCertLoader {};
-    crypto::x509::ProviderItf*                 mCryptoProvider {};
-    aos::iamclient::CertProviderItf*           mCertProvider {};
-    common::imagemanager::BlobInfoProviderItf* mBlobInfoProvider {};
-    alerts::ReceiverItf*                       mAlertsReceiver {};
-    SenderItf*                                 mLogSender {};
-    launcher::SenderItf*                       mEnvVarsStatusSender {};
-    monitoring::ReceiverItf*                   mMonitoringReceiver {};
-    launcher::InstanceStatusReceiverItf*       mInstanceStatusReceiver {};
-    nodeinfoprovider::SMInfoReceiverItf*       mSMInfoReceiver {};
-    aos::networkmanager::NetworkProviderItf*   mNetworkProvider {};
-    bool                                       mInsecureConn {};
+    Config                                             mConfig {};
+    cloudconnection::CloudConnectionItf*               mCloudConnection {};
+    crypto::CertLoaderItf*                             mCertLoader {};
+    crypto::x509::ProviderItf*                         mCryptoProvider {};
+    aos::iamclient::CertProviderItf*                   mCertProvider {};
+    common::imagemanager::BlobInfoProviderItf*         mBlobInfoProvider {};
+    alerts::ReceiverItf*                               mAlertsReceiver {};
+    SenderItf*                                         mLogSender {};
+    launcher::SenderItf*                               mEnvVarsStatusSender {};
+    monitoring::ReceiverItf*                           mMonitoringReceiver {};
+    launcher::InstanceStatusReceiverItf*               mInstanceStatusReceiver {};
+    nodeinfoprovider::SMInfoReceiverItf*               mSMInfoReceiver {};
+    aos::networkmanager::NetworkProviderItf*           mNetworkProvider {};
+    cm::networkmanager::UpdateSubscriptionListenerItf* mUpdateSubscriptionListener {};
+    bool                                               mInsecureConn {};
 
     std::unique_ptr<grpc::Server>            mServer;
     std::mutex                               mMutex;
@@ -279,6 +284,7 @@ private:
         grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>* mWriter {};
     };
 
+    std::mutex                                           mSubscriptionMutex;
     std::mutex                                           mStreamMutex;
     std::condition_variable                              mStreamCV;
     std::unordered_map<std::string, NetworkUpdateStream> mNetworkUpdateStreams;

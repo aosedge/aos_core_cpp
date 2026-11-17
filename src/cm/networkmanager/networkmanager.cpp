@@ -126,6 +126,8 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
 
     RemoveExistedNetworks();
 
+    mUnitNetworks = GetUnitNetworks();
+
     // Restore pending connections from DB
     auto pendingConnections = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
 
@@ -226,6 +228,8 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
 Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent, const String& networkID,
     const String& nodeID, const UpdateItemNetworkParams& serviceData, InstanceNetworkAllocation& result)
 {
+    auto syncUnitNetworks = DeferRelease([this]() { SyncUnitNetworks(); });
+
     std::unique_lock lock {mMutex};
 
     LOG_DBG() << "Allocating instance network" << Log::Field("instanceIdent", instanceIdent)
@@ -418,6 +422,8 @@ Error NetworkManager::ReleaseInstanceNetwork(const InstanceIdent& instanceIdent,
 
     auto err = RemoveInstance(instanceIdent, nodeID, targets);
 
+    SyncUnitNetworks();
+
     if (err.IsNone() && targets.empty()) {
         LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent);
 
@@ -438,6 +444,8 @@ Error NetworkManager::ReleaseNodeNetwork(const String& networkID, const String& 
     std::vector<std::string> targets;
 
     auto err = RemoveNode(networkID, nodeID, targets);
+
+    SyncUnitNetworks();
 
     if (!targets.empty()) {
         UpdateRequesters(targets, {});
@@ -521,6 +529,28 @@ Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<Instanc
     PushFirewallUpdates(updates);
 
     return ErrorEnum::eNone;
+}
+
+void NetworkManager::OnNodeSubscribed(const String& nodeID)
+{
+    LOG_DBG() << "Node subscribed to network updates" << Log::Field("nodeID", nodeID);
+
+    std::lock_guard updateLock {mUpdateMutex};
+
+    (void)mSubscribedNodes.insert(nodeID.CStr());
+
+    if (!PushUnitNetworksIfChanged()) {
+        PushUnitNetworks({nodeID.CStr()});
+    }
+}
+
+void NetworkManager::OnNodeUnsubscribed(const String& nodeID)
+{
+    LOG_DBG() << "Node unsubscribed from network updates" << Log::Field("nodeID", nodeID);
+
+    std::lock_guard updateLock {mUpdateMutex};
+
+    (void)mSubscribedNodes.erase(nodeID.CStr());
 }
 
 /***********************************************************************************************************************
@@ -1097,6 +1127,87 @@ void NetworkManager::PushFirewallUpdates(const FirewallUpdates& updates)
 
         mPendingUpdateHandler->OnPendingFirewallUpdate(nodeID.c_str(), update);
         (void)mPushedRequesters.insert(update.mInstanceIdent);
+    }
+}
+
+bool NetworkManager::IsUnitNetwork(const NetworkState& networkState)
+{
+    return std::any_of(networkState.mHostInstances.begin(), networkState.mHostInstances.end(),
+        [](const auto& hostInstances) { return !hostInstances.second.mInstances.empty(); });
+}
+
+std::vector<std::string> NetworkManager::GetUnitNetworks() const
+{
+    std::vector<std::string> unitNetworks;
+
+    for (const auto& [networkID, networkState] : mNetworkStates) {
+        if (IsUnitNetwork(networkState)) {
+            unitNetworks.push_back(networkID);
+        }
+    }
+
+    std::sort(unitNetworks.begin(), unitNetworks.end());
+
+    return unitNetworks;
+}
+
+void NetworkManager::SyncUnitNetworks()
+{
+    std::lock_guard updateLock {mUpdateMutex};
+
+    (void)PushUnitNetworksIfChanged();
+}
+
+bool NetworkManager::PushUnitNetworksIfChanged()
+{
+    std::vector<std::string> unitNetworks;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        unitNetworks = GetUnitNetworks();
+    }
+
+    if (unitNetworks == mUnitNetworks) {
+        return false;
+    }
+
+    mUnitNetworks = std::move(unitNetworks);
+
+    PushUnitNetworks(mSubscribedNodes);
+
+    return true;
+}
+
+void NetworkManager::PushUnitNetworks(const std::set<std::string>& nodeIDs)
+{
+    if (!mPendingUpdateHandler) {
+        return;
+    }
+
+    auto networkIDs = std::make_unique<StaticArray<StaticString<cIDLen>, cMaxNumOwners>>();
+
+    for (const auto& networkID : mUnitNetworks) {
+        StaticString<cIDLen> id;
+
+        auto err = id.Assign(networkID.c_str());
+        if (err.IsNone()) {
+            err = networkIDs->PushBack(id);
+        }
+
+        if (!err.IsNone()) {
+            LOG_ERR() << "Failed to prepare unit networks update" << Log::Field("networksCount", mUnitNetworks.size())
+                      << Log::Field(err);
+
+            return;
+        }
+    }
+
+    for (const auto& nodeID : nodeIDs) {
+        LOG_DBG() << "Pushing unit networks update" << Log::Field("nodeID", nodeID.c_str())
+                  << Log::Field("networksCount", networkIDs->Size());
+
+        mPendingUpdateHandler->OnUnitNetworksUpdate(nodeID.c_str(), *networkIDs);
     }
 }
 
