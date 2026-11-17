@@ -195,6 +195,17 @@ public:
         }
     }
 
+    void SendUnitNetworksUpdate(const smproto::UnitNetworksUpdate& update)
+    {
+        std::lock_guard lock {mLock};
+
+        if (mNetworkUpdateWriter) {
+            smproto::InstanceNetworkUpdateNotification notification;
+            *notification.mutable_unit_networks_update() = update;
+            mNetworkUpdateWriter->Write(notification);
+        }
+    }
+
     bool WaitNetworkUpdateSubscribed(std::chrono::seconds timeout = std::chrono::seconds(5))
     {
         std::unique_lock lock {mLock};

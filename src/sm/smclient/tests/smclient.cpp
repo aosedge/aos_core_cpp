@@ -1489,6 +1489,155 @@ TEST_F(SMClientTest, SubscribeInstanceNetworkUpdates_ReceivesUpdate)
     ASSERT_TRUE(err.IsNone()) << "Stop failed";
 }
 
+TEST_F(SMClientTest, SubscribeInstanceNetworkUpdates_ReceivesUnitNetworksUpdate)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mInstanceStatusProvider,
+        mJSONProvider, mPendingUpdateHandler, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    ASSERT_TRUE(server->WaitNetworkUpdateSubscribed());
+
+    smproto::UnitNetworksUpdate protoUpdate;
+    protoUpdate.add_network_ids("network1");
+    protoUpdate.add_network_ids("network2");
+
+    std::promise<void> handlerCalled;
+
+    EXPECT_CALL(mPendingUpdateHandler, OnUnitNetworksUpdate(_, _))
+        .WillOnce(Invoke([&](const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs) {
+            EXPECT_EQ(nodeID, "test-node");
+            ASSERT_EQ(networkIDs.Size(), 2);
+            EXPECT_EQ(networkIDs[0], "network1");
+            EXPECT_EQ(networkIDs[1], "network2");
+            handlerCalled.set_value();
+        }));
+
+    server->SendUnitNetworksUpdate(protoUpdate);
+
+    ASSERT_EQ(handlerCalled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
+TEST_F(SMClientTest, SubscribeInstanceNetworkUpdates_SkipsInvalidUnitNetworksUpdate)
+{
+    auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
+    auto client = std::make_unique<sm::smclient::SMClient>();
+
+    auto runtimes  = CreateRuntimeInfos();
+    auto resources = CreateResourceInfos();
+    auto statuses  = CreateInstanceStatuses();
+
+    EXPECT_CALL(mTLSCredentials, GetTLSClientCredentials())
+        .WillRepeatedly(Return(aos::RetWithError<std::shared_ptr<grpc::ChannelCredentials>> {
+            grpc::InsecureChannelCredentials(), aos::ErrorEnum::eNone}));
+    EXPECT_CALL(mRuntimeInfoProvider, GetRuntimesInfos(_)).WillRepeatedly(Invoke([&runtimes](Array<RuntimeInfo>& out) {
+        for (const auto& item : *runtimes) {
+            out.PushBack(item);
+        }
+        return ErrorEnum::eNone;
+    }));
+    EXPECT_CALL(mResourceInfoProvider, GetResourcesInfos(_))
+        .WillRepeatedly(Invoke([&resources](Array<ResourceInfo>& out) {
+            for (const auto& item : *resources) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+    EXPECT_CALL(mInstanceStatusProvider, GetInstancesStatuses(_))
+        .WillRepeatedly(Invoke([&statuses](Array<InstanceStatus>& out) {
+            for (const auto& item : *statuses) {
+                out.PushBack(item);
+            }
+            return ErrorEnum::eNone;
+        }));
+
+    EXPECT_CALL(*server, OnSMInfo(_)).Times(1);
+    EXPECT_CALL(*server, OnNodeInstancesStatus(_)).Times(1);
+
+    auto err = client->Init(GetConfig(), "test-node", mTLSCredentials, mCertProvider, mRuntimeInfoProvider,
+        mResourceInfoProvider, mNodeConfigHandler, mLauncher, mLogProvider, mMonitoring, mInstanceStatusProvider,
+        mJSONProvider, mPendingUpdateHandler, false);
+    ASSERT_TRUE(err.IsNone()) << "Init failed";
+
+    err = client->Start();
+    ASSERT_TRUE(err.IsNone()) << "Start failed";
+
+    server->WaitRegistered();
+    server->WaitSMInfo();
+    server->WaitNodeInstancesStatus();
+
+    ASSERT_TRUE(server->WaitNetworkUpdateSubscribed());
+
+    smproto::UnitNetworksUpdate invalidUpdate;
+    invalidUpdate.add_network_ids("network1");
+    invalidUpdate.add_network_ids(std::string(cIDLen + 1, 'a'));
+
+    smproto::UnitNetworksUpdate validUpdate;
+    validUpdate.add_network_ids("network3");
+
+    std::promise<void> handlerCalled;
+
+    EXPECT_CALL(mPendingUpdateHandler, OnUnitNetworksUpdate(_, _))
+        .WillOnce(Invoke([&](const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs) {
+            EXPECT_EQ(nodeID, "test-node");
+            ASSERT_EQ(networkIDs.Size(), 1);
+            EXPECT_EQ(networkIDs[0], "network3");
+            handlerCalled.set_value();
+        }));
+
+    server->SendUnitNetworksUpdate(invalidUpdate);
+    server->SendUnitNetworksUpdate(validUpdate);
+
+    ASSERT_EQ(handlerCalled.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    err = client->Stop();
+    ASSERT_TRUE(err.IsNone()) << "Stop failed";
+}
+
 TEST_F(SMClientTest, SyncNetworkState_SendsStateToServer)
 {
     auto server = std::make_unique<SMServiceStub>(GetConfig().mCMServerURL);
