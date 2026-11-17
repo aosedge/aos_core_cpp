@@ -676,4 +676,26 @@ void SMController::OnPendingFirewallUpdate(
     }
 }
 
+void SMController::OnUnitNetworksUpdate(const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs)
+{
+    std::lock_guard lock {mStreamMutex};
+
+    auto it = mNetworkUpdateStreams.find(nodeID.CStr());
+    if (it == mNetworkUpdateStreams.end()) {
+        LOG_WRN() << "No stream writer for node" << Log::Field("nodeID", nodeID);
+        return;
+    }
+
+    servicemanager::v5::InstanceNetworkUpdateNotification notification;
+    auto*                                                 unitUpdate = notification.mutable_unit_networks_update();
+
+    for (const auto& networkID : networkIDs) {
+        unitUpdate->add_network_ids(networkID.CStr());
+    }
+
+    if (!it->second.mWriter->Write(notification)) {
+        LOG_ERR() << "Failed to write unit networks update to stream" << Log::Field("nodeID", nodeID);
+    }
+}
+
 } // namespace aos::cm::smcontroller

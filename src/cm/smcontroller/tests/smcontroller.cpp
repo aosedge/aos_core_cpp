@@ -997,4 +997,46 @@ TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesPendingFirewall
     EXPECT_TRUE(err.IsNone()) << err.Message();
 }
 
+TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesUnitNetworksUpdate)
+{
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SubscribeInstanceNetworkUpdates();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    StaticArray<StaticString<cIDLen>, 2> networkIDs;
+    networkIDs.PushBack("network1");
+    networkIDs.PushBack("network2");
+
+    mSMController.OnUnitNetworksUpdate(cMainNodeID, networkIDs);
+
+    err = client.WaitUnitNetworksUpdate();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    EXPECT_TRUE(client.GetReceivedUpdates().empty());
+
+    auto& received = client.GetReceivedUnitNetworksUpdates();
+    ASSERT_EQ(received.size(), 1);
+    ASSERT_EQ(received[0].network_ids_size(), 2);
+    EXPECT_EQ(received[0].network_ids(0), "network1");
+    EXPECT_EQ(received[0].network_ids(1), "network2");
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
 } // namespace aos::cm::smcontroller

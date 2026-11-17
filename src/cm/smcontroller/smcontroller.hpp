@@ -172,6 +172,14 @@ public:
     void OnPendingFirewallUpdate(
         const String& nodeID, const aos::networkmanager::PendingFirewallUpdate& update) override;
 
+    /**
+     * Called when the set of networks of the unit changes and the node must be notified.
+     *
+     * @param nodeID node ID to notify.
+     * @param networkIDs IDs of the unit networks.
+     */
+    void OnUnitNetworksUpdate(const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs) override;
+
 private:
     static constexpr Duration cReconnectRetryTimeout = Time::cSeconds * 10;
 
