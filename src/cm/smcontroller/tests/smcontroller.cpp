@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <future>
+
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <core/common/tests/utils/log.hpp>
 
+#include <cm/networkmanager/tests/mocks/updatesubscriptionlistenermock.hpp>
 #include <cm/smcontroller/smcontroller.hpp>
 #include <common/pbconvert/sm.hpp>
 
@@ -46,7 +50,7 @@ protected:
 
         auto err = mSMController.Init(mConfig, mCloudConnection, mCertProvider, mCertLoader, mX509Provider,
             mBlobInfoProvider, mAlertsReceiver, mSMControllerSender, mLauncherSender, mMonitoringReceiver,
-            mInstanceStatusReceiver, mSMInfoReceiver, mNetworkProvider, true);
+            mInstanceStatusReceiver, mSMInfoReceiver, mNetworkProvider, mUpdateSubscriptionListener, true);
         ASSERT_TRUE(err.IsNone()) << err.Message();
 
         err = mSMController.Start();
@@ -104,6 +108,8 @@ protected:
     launcher::InstanceStatusReceiverStub mInstanceStatusReceiver;
     nodeinfoprovider::SMInfoReceiverStub mSMInfoReceiver;
     NetworkProviderStub                  mNetworkProvider;
+
+    NiceMock<networkmanager::MockUpdateSubscriptionListener> mUpdateSubscriptionListener;
 };
 
 /***********************************************************************************************************************
@@ -1031,6 +1037,81 @@ TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ReceivesUnitNetworksUpd
     ASSERT_EQ(received[0].network_ids_size(), 2);
     EXPECT_EQ(received[0].network_ids(0), "network1");
     EXPECT_EQ(received[0].network_ids(1), "network2");
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_NotifiesSubscriptionListener)
+{
+    std::promise<void> subscribed;
+    std::promise<void> unsubscribed;
+
+    EXPECT_CALL(mUpdateSubscriptionListener, OnNodeSubscribed(String(cMainNodeID))).WillOnce(Invoke([&](const String&) {
+        subscribed.set_value();
+    }));
+    EXPECT_CALL(mUpdateSubscriptionListener, OnNodeUnsubscribed(String(cMainNodeID)))
+        .WillOnce(Invoke([&](const String&) { unsubscribed.set_value(); }));
+
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SubscribeInstanceNetworkUpdates();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    ASSERT_EQ(subscribed.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    err = client.Stop();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    ASSERT_EQ(unsubscribed.get_future().wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    err = mSMInfoReceiver.WaitDisconnect(cMainNodeID);
+    EXPECT_TRUE(err.IsNone()) << err.Message();
+}
+
+TEST_F(SMControllerTest, SubscribeInstanceNetworkUpdates_ListenerPushesUnitNetworksOnSubscribe)
+{
+    EXPECT_CALL(mUpdateSubscriptionListener, OnNodeSubscribed(String(cMainNodeID)))
+        .WillOnce(Invoke([this](const String& nodeID) {
+            StaticArray<StaticString<cIDLen>, 1> networkIDs;
+            networkIDs.PushBack("network1");
+
+            mSMController.OnUnitNetworksUpdate(nodeID, networkIDs);
+        }));
+
+    SMClientStub client;
+
+    auto err = client.Init(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.Start(mConfig.mCMServerURL);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = mSMInfoReceiver.WaitSMInfo(cMainNodeID);
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.SubscribeInstanceNetworkUpdates();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    err = client.WaitUnitNetworksUpdate();
+    ASSERT_TRUE(err.IsNone()) << err.Message();
+
+    auto& received = client.GetReceivedUnitNetworksUpdates();
+    ASSERT_EQ(received.size(), 1);
+    ASSERT_EQ(received[0].network_ids_size(), 1);
+    EXPECT_EQ(received[0].network_ids(0), "network1");
 
     err = client.Stop();
     ASSERT_TRUE(err.IsNone()) << err.Message();

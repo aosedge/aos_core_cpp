@@ -9,6 +9,7 @@
 
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -23,10 +24,11 @@
 #include "ipsubnet.hpp"
 #include "itf/dnsserver.hpp"
 #include "itf/storage.hpp"
+#include "itf/updatesubscriptionlistener.hpp"
 
 namespace aos::cm::networkmanager {
 
-class NetworkManager : public aos::networkmanager::NetworkProviderItf {
+class NetworkManager : public aos::networkmanager::NetworkProviderItf, public UpdateSubscriptionListenerItf {
 public:
     /**
      * Constructor.
@@ -95,6 +97,20 @@ public:
      */
     Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override;
 
+    /**
+     * Called when node subscribes to network updates.
+     *
+     * @param nodeID Node ID.
+     */
+    void OnNodeSubscribed(const String& nodeID) override;
+
+    /**
+     * Called when node unsubscribes from network updates.
+     *
+     * @param nodeID Node ID.
+     */
+    void OnNodeUnsubscribed(const String& nodeID) override;
+
 private:
     static constexpr uint64_t cMaxVlanID           = 4096;
     static constexpr int      cVlanGenerateRetries = 4;
@@ -147,6 +163,12 @@ private:
 
     Error RestartDNS();
 
+    static bool              IsUnitNetwork(const NetworkState& networkState);
+    std::vector<std::string> GetUnitNetworks() const;
+    void                     SyncUnitNetworks();
+    bool                     PushUnitNetworksIfChanged();
+    void                     PushUnitNetworks(const std::set<std::string>& nodeIDs);
+
     StorageItf*        mStorage {};
     crypto::RandomItf* mRandom {};
     DNSServerItf*      mDNSServer {};
@@ -159,6 +181,8 @@ private:
     std::unordered_map<InstanceIdent, std::vector<PendingConnection>> mPendingConnections;
     std::unordered_set<InstanceIdent>                                 mPushedRequesters;
     aos::networkmanager::PendingUpdateHandlerItf*                     mPendingUpdateHandler {};
+    std::vector<std::string>                                          mUnitNetworks;
+    std::set<std::string>                                             mSubscribedNodes;
 };
 
 } // namespace aos::cm::networkmanager

@@ -309,7 +309,8 @@ void AosCore::InitSMController()
     config.mCMServerURL = mConfig.mCMServerURL;
 
     auto err = mSMController.Init(config, mCommunication, mIAMClient, mCertLoader, mCryptoProvider, mImageManager,
-        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider, mNetworkManager);
+        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider, mNetworkManager,
+        mNetworkManager);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM controller");
 }
 
