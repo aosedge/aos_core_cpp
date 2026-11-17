@@ -2500,4 +2500,134 @@ TEST_F(CMHostnameConnectionTest, FailedReleaseUpdatesRequesterOnlyAfterRemoval)
     EXPECT_TRUE(mUpdates[0].mFirewallRules.IsEmpty());
 }
 
+class CMUnitNetworksTest : public CMHostnameConnectionTest {
+protected:
+    using UnitNetworksUpdates = std::vector<std::pair<std::string, std::vector<std::string>>>;
+
+    void SetUp() override
+    {
+        CMHostnameConnectionTest::SetUp();
+
+        EXPECT_CALL(mHandler, OnUnitNetworksUpdate(_, _))
+            .WillRepeatedly(Invoke([this](const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs) {
+                std::vector<std::string> ids;
+
+                for (const auto& networkID : networkIDs) {
+                    ids.emplace_back(networkID.CStr());
+                }
+
+                mUnitUpdates.emplace_back(nodeID.CStr(), std::move(ids));
+            }));
+    }
+
+    Error Allocate(const char* itemID, const char* networkID)
+    {
+        InstanceIdent             ident;
+        InstanceNetworkAllocation result;
+
+        ident.mItemID    = itemID;
+        ident.mSubjectID = "subject";
+
+        return mNetworkManager->AllocateInstanceNetwork(ident, networkID, "node", {}, result);
+    }
+
+    Error Release(const char* itemID)
+    {
+        InstanceIdent ident;
+
+        ident.mItemID    = itemID;
+        ident.mSubjectID = "subject";
+
+        return mNetworkManager->ReleaseInstanceNetwork(ident, "node");
+    }
+
+    UnitNetworksUpdates mUnitUpdates;
+};
+
+TEST_F(CMUnitNetworksTest, SubscribeWithoutNetworksPushesEmptySet)
+{
+    mNetworkManager->OnNodeSubscribed("node");
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {}}}));
+}
+
+TEST_F(CMUnitNetworksTest, SubscribePushesRestoredNetworksWithInstances)
+{
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+
+    mNetworkManager = std::make_unique<NetworkManager>();
+    ASSERT_TRUE(mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer, &mHandler).IsNone());
+
+    mNetworkManager->OnNodeSubscribed("node");
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"target-net"}}}));
+}
+
+TEST_F(CMUnitNetworksTest, FirstInstanceInNetworkPushesToSubscribedNodes)
+{
+    mNetworkManager->OnNodeSubscribed("node");
+    mNetworkManager->OnNodeSubscribed("node2");
+    mUnitUpdates.clear();
+
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+    ASSERT_TRUE(Allocate("b", "target-net").IsNone());
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"target-net"}}, {"node2", {"target-net"}}}));
+}
+
+TEST_F(CMUnitNetworksTest, ReleasingLastInstancePushesSetWithoutNetwork)
+{
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+    ASSERT_TRUE(Allocate("b", "target-net").IsNone());
+    ASSERT_TRUE(Allocate("c", "requester-net").IsNone());
+
+    mNetworkManager->OnNodeSubscribed("node");
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"requester-net", "target-net"}}}));
+    mUnitUpdates.clear();
+
+    ASSERT_TRUE(Release("a").IsNone());
+    EXPECT_TRUE(mUnitUpdates.empty());
+
+    ASSERT_TRUE(Release("b").IsNone());
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"requester-net"}}}));
+}
+
+TEST_F(CMUnitNetworksTest, ReleaseNodeNetworkPushesSetWithoutNetwork)
+{
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+    ASSERT_TRUE(Allocate("c", "requester-net").IsNone());
+
+    mNetworkManager->OnNodeSubscribed("node");
+    mUnitUpdates.clear();
+
+    ASSERT_TRUE(mNetworkManager->ReleaseNodeNetwork("target-net", "node").IsNone());
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"requester-net"}}}));
+}
+
+TEST_F(CMUnitNetworksTest, SyncNetworkStatePushesSetWithoutStaleNetwork)
+{
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+
+    mNetworkManager->OnNodeSubscribed("node");
+    mUnitUpdates.clear();
+
+    ASSERT_TRUE(mNetworkManager->SyncNetworkState("node", StaticArray<InstanceNetworkStateInfo, 1>()).IsNone());
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {}}}));
+}
+
+TEST_F(CMUnitNetworksTest, UnsubscribedNodeGetsNoPushes)
+{
+    mNetworkManager->OnNodeSubscribed("node");
+    mNetworkManager->OnNodeSubscribed("node2");
+    mNetworkManager->OnNodeUnsubscribed("node2");
+    mUnitUpdates.clear();
+
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+
+    EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"target-net"}}}));
+}
+
 } // namespace aos::cm::networkmanager
