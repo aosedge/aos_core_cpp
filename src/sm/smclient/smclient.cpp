@@ -933,6 +933,25 @@ Error SMClient::UnsubscribeListener(ConnectListenerItf& listener)
     return ErrorEnum::eNone;
 }
 
+void SMClient::HandleUnitNetworksUpdate(const smproto::UnitNetworksUpdate& update)
+{
+    StaticArray<StaticString<cIDLen>, cMaxNumOwners> networkIDs;
+
+    for (const auto& networkID : update.network_ids()) {
+        if (auto err = networkIDs.EmplaceBack(); !err.IsNone()) {
+            LOG_ERR() << "Failed to convert unit networks update" << Log::Field(err);
+            return;
+        }
+
+        if (auto err = networkIDs.Back().Assign(networkID.c_str()); !err.IsNone()) {
+            LOG_ERR() << "Failed to convert unit networks update" << Log::Field(err);
+            return;
+        }
+    }
+
+    mNetworkUpdateHandler->OnUnitNetworksUpdate(mNodeID.c_str(), networkIDs);
+}
+
 void SMClient::StartNetworkUpdateSubscription()
 {
     mNetworkUpdateThread = std::thread([this]() {
@@ -971,6 +990,8 @@ void SMClient::StartNetworkUpdateSubscription()
                         }
 
                         mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
+                    } else if (notification.has_unit_networks_update()) {
+                        HandleUnitNetworksUpdate(notification.unit_networks_update());
                     }
                 }
 

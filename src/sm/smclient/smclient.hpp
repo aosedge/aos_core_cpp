@@ -271,6 +271,7 @@ private:
     void ConnectionLoop() noexcept;
     void HandleIncomingMessages();
     void StartNetworkUpdateSubscription();
+    void HandleUnitNetworksUpdate(const smproto::UnitNetworksUpdate& update);
 
     Error ProcessGetNodeConfigStatus();
     Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);
