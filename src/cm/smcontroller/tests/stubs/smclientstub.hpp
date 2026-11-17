@@ -142,6 +142,12 @@ public:
                     mReceivedUpdates.push_back(notification.pending_firewall_update());
                     mNetworkUpdateCV.notify_all();
                 }
+
+                if (notification.has_unit_networks_update()) {
+                    std::lock_guard lock {mMutex};
+                    mReceivedUnitNetworksUpdates.push_back(notification.unit_networks_update());
+                    mNetworkUpdateCV.notify_all();
+                }
             }
         });
 
@@ -162,6 +168,22 @@ public:
     const std::vector<servicemanager::v5::PendingFirewallUpdate>& GetReceivedUpdates() const
     {
         return mReceivedUpdates;
+    }
+
+    Error WaitUnitNetworksUpdate(std::chrono::seconds timeout = std::chrono::seconds(5))
+    {
+        std::unique_lock lock {mMutex};
+
+        if (!mNetworkUpdateCV.wait_for(lock, timeout, [this]() { return !mReceivedUnitNetworksUpdates.empty(); })) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eTimeout, "timeout waiting for unit networks update"));
+        }
+
+        return ErrorEnum::eNone;
+    }
+
+    const std::vector<servicemanager::v5::UnitNetworksUpdate>& GetReceivedUnitNetworksUpdates() const
+    {
+        return mReceivedUnitNetworksUpdates;
     }
 
     void SendOutgoingMessage(const servicemanager::v5::SMOutgoingMessages& msg)
@@ -637,6 +659,7 @@ private:
     std::condition_variable                                mCloudConnectionCV;
     std::condition_variable                                mNetworkUpdateCV;
     std::vector<servicemanager::v5::PendingFirewallUpdate> mReceivedUpdates;
+    std::vector<servicemanager::v5::UnitNetworksUpdate>    mReceivedUnitNetworksUpdates;
 };
 
 } // namespace aos::cm::smcontroller
