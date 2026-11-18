@@ -7,10 +7,14 @@
 #ifndef AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 #define AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
+#include <chrono>
+#include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -43,10 +47,26 @@ public:
      * @param random Random interface.
      * @param dnsServer DNS server interface.
      * @param pendingUpdateHandler Pending firewall update handler (optional).
+     * @param networkRemoveTimeout Time a network without instances stays in the unit networks (0 - no delay).
      * @return Error.
      */
     Error Init(StorageItf& storage, crypto::RandomItf& random, DNSServerItf& dnsServer,
-        aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler = nullptr);
+        aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler = nullptr,
+        Duration                                      networkRemoveTimeout = 0);
+
+    /**
+     * Starts network manager.
+     *
+     * @return Error.
+     */
+    Error Start();
+
+    /**
+     * Stops network manager.
+     *
+     * @return Error.
+     */
+    Error Stop();
 
     /**
      * Gets node network parameters.
@@ -177,11 +197,21 @@ private:
 
     Error RestartDNS();
 
-    static bool              IsUnitNetwork(const NetworkState& networkState);
+    using Clock = std::chrono::steady_clock;
+
+    static bool              HasInstances(const NetworkState& networkState);
+    bool                     IsUnitNetwork(const std::string& networkID, const NetworkState& networkState) const;
     std::vector<std::string> GetUnitNetworks() const;
     void                     SyncUnitNetworks();
     bool                     PushUnitNetworksIfChanged();
     void                     PushUnitNetworks(const std::set<std::string>& nodeIDs);
+
+    void                             ScheduleNetworkRemoval(const std::string& networkID);
+    std::optional<Clock::time_point> GetNextRemovalDeadline() const;
+    void                             EraseExpiredDeadlines();
+    void                             HandleRemovalTimeout();
+    void                             NotifyRemovalThread();
+    void                             RunRemovalThread();
 
     StorageItf*        mStorage {};
     crypto::RandomItf* mRandom {};
@@ -197,6 +227,13 @@ private:
     aos::networkmanager::PendingUpdateHandlerItf*                     mPendingUpdateHandler {};
     std::vector<std::string>                                          mUnitNetworks;
     std::set<std::string>                                             mSubscribedNodes;
+    std::chrono::nanoseconds                                          mNetworkRemoveTimeout {};
+    std::unordered_map<std::string, Clock::time_point>                mRemovalDeadlines;
+    std::mutex                                                        mRemovalMutex;
+    std::condition_variable                                           mRemovalCondVar;
+    std::thread                                                       mRemovalThread;
+    bool                                                              mRemovalStopped {};
+    bool                                                              mRemovalDeadlinesChanged {};
 };
 
 } // namespace aos::cm::networkmanager
