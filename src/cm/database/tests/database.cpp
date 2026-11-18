@@ -36,15 +36,15 @@ std::string CreateIndexDigest(const char* itemID, const char* version)
 }
 
 InstanceIdent CreateInstanceIdent(const char* itemID, const char* subjectID, uint64_t instance,
-    UpdateItemType itemType = UpdateItemTypeEnum::eService, bool preinstalled = true)
+    UpdateItemType itemType = UpdateItemTypeEnum::eService, const char* version = "1.0.0")
 {
     InstanceIdent ident;
 
-    ident.mItemID       = itemID;
-    ident.mSubjectID    = subjectID;
-    ident.mInstance     = instance;
-    ident.mType         = itemType;
-    ident.mPreinstalled = preinstalled;
+    ident.mItemID    = itemID;
+    ident.mSubjectID = subjectID;
+    ident.mInstance  = instance;
+    ident.mType      = itemType;
+    ident.mVersion   = version;
 
     return ident;
 }
@@ -146,7 +146,7 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
 {
     launcher::InstanceInfo info;
 
-    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance, itemType);
+    info.mInstanceIdent  = CreateInstanceIdent(itemID, subjectID, instance, itemType, version);
     info.mManifestDigest = manifestDigest;
     info.mNodeID         = nodeID;
     info.mPrevNodeID     = "prevNode";
@@ -156,7 +156,6 @@ launcher::InstanceInfo CreateLauncherInstanceInfo(const char* itemID, const char
     info.mTimestamp      = Time::Now();
     info.mState          = state;
     info.mIsUnitSubject  = isUnitSubject;
-    info.mVersion        = version;
     info.mIndexDigest    = CreateIndexDigest(itemID, version).c_str();
     info.mOwnerID        = ownerID;
     info.mSubjectType    = subjectType;
@@ -322,7 +321,7 @@ public:
 private:
     int GetVersion() const override { return mVersion; }
 
-    int mVersion = 2;
+    int mVersion = 3;
 };
 
 } // namespace
@@ -709,7 +708,7 @@ TEST_F(CMDatabaseTest, LauncherAddInstance)
 
     for (const auto& instance : *instances) {
         EXPECT_EQ(instance.mIndexDigest,
-            CreateIndexDigest(instance.mInstanceIdent.mItemID.CStr(), instance.mVersion.CStr()).c_str());
+            CreateIndexDigest(instance.mInstanceIdent.mItemID.CStr(), instance.mInstanceIdent.mVersion.CStr()).c_str());
     }
 }
 
@@ -757,9 +756,9 @@ TEST_F(CMDatabaseTest, LauncherUpdateInstance)
     EXPECT_THAT(ToVector(*instances), UnorderedElementsAre(instance1, instance1v1, instance2));
 
     for (const auto& instance : *instances) {
-        if (instance.mInstanceIdent == instance1.mInstanceIdent && instance.mVersion == instance1.mVersion) {
+        if (instance.mInstanceIdent == instance1.mInstanceIdent) {
             EXPECT_EQ(instance.mIndexDigest, "sha256:index-updated");
-        } else if (instance.mInstanceIdent == instance1v1.mInstanceIdent && instance.mVersion == instance1v1.mVersion) {
+        } else if (instance.mInstanceIdent == instance1v1.mInstanceIdent) {
             EXPECT_EQ(instance.mIndexDigest, CreateIndexDigest("service1", "1.0.1").c_str());
         } else {
             EXPECT_EQ(instance.mIndexDigest, CreateIndexDigest("service2", "1.0.0").c_str());
@@ -817,11 +816,11 @@ TEST_F(CMDatabaseTest, LauncherRemoveInstance)
     ASSERT_TRUE(mDB.AddInstance(instance2).IsNone());
 
     // Remove instance
-    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent, instance1.mVersion).IsNone());
+    ASSERT_TRUE(mDB.RemoveInstance(instance1.mInstanceIdent).IsNone());
 
     // Remove non-existent instance
     auto nonExistentIdent = CreateInstanceIdent("nonexistent", "subject", 99);
-    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent, "1.0.0").IsNone());
+    ASSERT_FALSE(mDB.RemoveInstance(nonExistentIdent).IsNone());
 
     // Verify remaining instances
     auto instances = std::make_unique<StaticArray<launcher::InstanceInfo, 4>>();
@@ -1193,7 +1192,8 @@ TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending
     auto pending = CreatePendingConnection(
         "requester", "subject1", 0, "node1", "network1", "172.17.0.11", "172.17.0.0/16", "service1", "8080", "tcp");
 
-    ASSERT_TRUE(mDB.AddPendingConnection(pending).IsNone());
+    // Legacy instances have no version: it is taken from the launcher instance with the same ident on migration.
+    pending.mRequesterIdent.mVersion = "";
 
     {
         Poco::Data::Session legacy("SQLite", (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string());
@@ -1201,6 +1201,11 @@ TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending
                   "networkID, nodeID, ip, exposedPorts, dnsServers) VALUES "
                   "('service1', 'subject1', 0, 'service', 0, 'network1', 'node1', '172.17.0.10', "
                   "'[{\"port\":\"8080\",\"protocol\":\"tcp\"}]', '[\"8.8.8.8\"]');",
+            Poco::Data::Keywords::now;
+        legacy << "INSERT INTO pending_connections (requesterItemID, requesterSubjectID, requesterInstance, "
+                  "requesterType, requesterPreinstalled, nodeID, networkID, requesterIP, requesterSubnet, "
+                  "targetItemID, port, protocol) VALUES ('requester', 'subject1', 0, 'service', 0, 'node1', "
+                  "'network1', '172.17.0.11', '172.17.0.0/16', 'service1', '8080', 'tcp');",
             Poco::Data::Keywords::now;
     }
 
@@ -1230,6 +1235,8 @@ TEST_F(CMDatabaseTest, MigratesLegacyNetworkInstanceWithoutLosingItemIDOrPending
 TEST_F(CMDatabaseTest, MigratesSchemaVersion2UpAndDown)
 {
     const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
+
+    mDB.SetVersion(2);
 
     ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
     ASSERT_TRUE(mDB.AddDeployableItem(CreateDeployableItem("service1", "1.0.0")).IsNone());
@@ -1265,7 +1272,9 @@ TEST_F(CMDatabaseTest, MigratesSchemaVersion2UpAndDown)
             Poco::Data::Keywords::now;
     }
 
-    Database upgraded;
+    TestDatabase upgraded;
+
+    upgraded.SetVersion(2);
 
     ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
 
@@ -1297,7 +1306,7 @@ TEST_F(CMDatabaseTest, LegacyImageManagerTableIsNotRecreated)
 
     ASSERT_TRUE(restarted.Init(mDatabaseConfig).IsNone());
 
-    EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_EQ(GetSchemaVersion(dbPath), 3);
     EXPECT_EQ(CountTables(dbPath, "imagemanager"), 0U);
     EXPECT_EQ(CountTables(dbPath, "imagemanager_items"), 1U);
 }
@@ -1332,7 +1341,95 @@ TEST_F(CMDatabaseTest, MigrationScriptsRecordSchemaVersion)
 
     ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
 
+    EXPECT_EQ(GetSchemaVersion(dbPath), 3);
+}
+
+TEST_F(CMDatabaseTest, MigratesSchemaVersion3UpAndDown)
+{
+    const auto dbPath = (std::filesystem::path(mDatabaseConfig.mWorkingDir) / "cm.db").string();
+
+    mDB.SetVersion(2);
+
+    ASSERT_TRUE(mDB.Init(mDatabaseConfig).IsNone());
+    ASSERT_TRUE(mDB.AddNetwork(CreateNetwork("network1", "172.17.0.0/16", 1000)).IsNone());
+    ASSERT_TRUE(mDB.AddHost("network1", CreateHost("node1", "172.17.0.1")).IsNone());
+
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_instances", "preinstalled"));
+
+    {
+        Poco::Data::Session legacy("SQLite", dbPath);
+
+        legacy << "INSERT INTO launcher_instances (itemID, subjectID, instance, type, preinstalled, manifestDigest, "
+                  "nodeID, prevNodeID, runtimeID, uid, gid, timestamp, state, isUnitSubject, version, ownerID, "
+                  "subjectType, labels, priority, disableRebalancing, indexDigest) VALUES "
+                  "('service1', 'subject1', 0, 'service', 0, 'manifest1', 'node1', '', 'runc', 5000, 5000, 1, "
+                  "'active', 0, '1.0.0', 'owner1', 'group', '[]', 0, 0, 'index1'), "
+                  "('service1', 'subject1', 0, 'service', 0, 'manifest2', 'node1', '', 'runc', 5000, 5000, 2, "
+                  "'active', 0, '2.0.0', 'owner1', 'group', '[]', 0, 0, 'index2');",
+            Poco::Data::Keywords::now;
+        legacy << "INSERT INTO storagestate (itemID, subjectID, instance, type, preinstalled, storageQuota, "
+                  "stateQuota, stateChecksum) VALUES ('service1', 'subject1', 0, 'service', 0, 1024, 512, NULL), "
+                  "('service2', 'subject1', 0, 'service', 0, 2048, 1024, NULL);",
+            Poco::Data::Keywords::now;
+        legacy << "INSERT INTO networkmanager_instances (itemID, subjectID, instance, type, preinstalled, "
+                  "networkID, nodeID, ip, exposedPorts, dnsServers) VALUES ('service1', 'subject1', 0, 'service', "
+                  "0, 'network1', 'node1', '172.17.0.10', '[]', '[]');",
+            Poco::Data::Keywords::now;
+    }
+
+    Database upgraded;
+
+    ASSERT_TRUE(upgraded.Init(mDatabaseConfig).IsNone());
+
+    EXPECT_EQ(GetSchemaVersion(dbPath), 3);
+    EXPECT_FALSE(HasColumn(dbPath, "launcher_instances", "preinstalled"));
+    EXPECT_FALSE(HasColumn(dbPath, "storagestate", "preinstalled"));
+    EXPECT_FALSE(HasColumn(dbPath, "networkmanager_instances", "preinstalled"));
+    EXPECT_FALSE(HasColumn(dbPath, "pending_connections", "requesterPreinstalled"));
+
+    // Both versions of the same instance are kept.
+    StaticArray<launcher::InstanceInfo, 2> instances;
+
+    ASSERT_TRUE(upgraded.LoadActiveInstances(instances).IsNone());
+    ASSERT_EQ(instances.Size(), 2U);
+
+    // Existing storage state and network instance get the version of the latest launcher instance.
+    storagestate::InstanceInfo storageInfo;
+
+    ASSERT_TRUE(
+        upgraded
+            .GetStorageStateInfo(
+                CreateInstanceIdent("service1", "subject1", 0, UpdateItemTypeEnum::eService, "2.0.0"), storageInfo)
+            .IsNone());
+    EXPECT_EQ(storageInfo.mStorageQuota, 1024U);
+
+    // Storage state without launcher instance gets empty version.
+    ASSERT_TRUE(upgraded
+                    .GetStorageStateInfo(
+                        CreateInstanceIdent("service2", "subject1", 0, UpdateItemTypeEnum::eService, ""), storageInfo)
+                    .IsNone());
+
+    StaticArray<networkmanager::Instance, 1> networkInstances;
+
+    ASSERT_TRUE(upgraded.GetInstances("network1", "node1", networkInstances).IsNone());
+    ASSERT_EQ(networkInstances.Size(), 1U);
+    EXPECT_EQ(networkInstances[0].mInstanceIdent.mVersion, "2.0.0");
+
+    {
+        TestDatabase downgraded;
+
+        downgraded.SetVersion(2);
+
+        ASSERT_TRUE(downgraded.Init(mDatabaseConfig).IsNone());
+    }
+
     EXPECT_EQ(GetSchemaVersion(dbPath), 2);
+    EXPECT_TRUE(HasColumn(dbPath, "launcher_instances", "preinstalled"));
+    EXPECT_TRUE(HasColumn(dbPath, "storagestate", "preinstalled"));
+    EXPECT_TRUE(HasColumn(dbPath, "networkmanager_instances", "preinstalled"));
+    EXPECT_TRUE(HasColumn(dbPath, "pending_connections", "requesterPreinstalled"));
+    EXPECT_FALSE(HasColumn(dbPath, "storagestate", "version"));
+    EXPECT_FALSE(HasColumn(dbPath, "pending_connections", "requesterVersion"));
 }
 
 } // namespace aos::cm::database

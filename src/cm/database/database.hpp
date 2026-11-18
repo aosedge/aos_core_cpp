@@ -259,10 +259,9 @@ public:
      * Removes launcher instance.
      *
      * @param instanceIdent Instance identifier.
-     * @param version Version.
      * @return Error.
      */
-    Error RemoveInstance(const InstanceIdent& instanceIdent, const String& version) override;
+    Error RemoveInstance(const InstanceIdent& instanceIdent) override;
 
     /**
      * Saves override environment variables.
@@ -332,7 +331,7 @@ public:
     RetWithError<updatemanager::UpdateState> GetUpdateState() override;
 
 private:
-    static constexpr int  cVersion    = 2;
+    static constexpr int  cVersion    = 3;
     static constexpr auto cDBFileName = "cm.db";
 
     enum class StorageStateInstanceInfoColumns : int {
@@ -340,13 +339,13 @@ private:
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
+        eVersion,
         eStorageQuota,
         eStateQuota,
         eStateChecksum
     };
     using StorageStateInstanceInfoRow
-        = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, size_t, size_t, Poco::Data::BLOB>;
+        = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string, size_t, size_t, Poco::Data::BLOB>;
 
     enum class NetworkManagerNetworkColumns : int { eNetworkID = 0, eSubnet, eVlanID };
     using NetworkManagerNetworkRow = Poco::Tuple<std::string, std::string, uint64_t>;
@@ -359,7 +358,7 @@ private:
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
+        eVersion,
         eNetworkID,
         eNodeID,
         eIP,
@@ -367,15 +366,15 @@ private:
         eDNSServers,
         eHosts
     };
-    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
-        std::string, std::string, std::string, std::string, std::string>;
+    using NetworkManagerInstanceRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
+        std::string, std::string, std::string, std::string, std::string, std::string>;
 
     enum class PendingConnectionColumns : int {
         eRequesterItemID = 0,
         eRequesterSubjectID,
         eRequesterInstance,
         eRequesterType,
-        eRequesterPreinstalled,
+        eRequesterVersion,
         eNodeID,
         eNetworkID,
         eRequesterIP,
@@ -384,7 +383,7 @@ private:
         ePort,
         eProtocol
     };
-    using PendingConnectionRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
+    using PendingConnectionRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string, std::string,
         std::string, std::string, std::string, std::string, std::string, std::string>;
 
     enum class LauncherInstanceInfoColumns : int {
@@ -392,7 +391,6 @@ private:
         eSubjectID,
         eInstance,
         eType,
-        ePreinstalled,
         eManifestDigest,
         eNodeID,
         ePrevNodeID,
@@ -410,7 +408,7 @@ private:
         ePriority,
         eDisableRebalancing
     };
-    using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, bool, std::string,
+    using LauncherInstanceInfoRow = Poco::Tuple<std::string, std::string, uint64_t, std::string, std::string,
         std::string, std::string, std::string, uint32_t, uint32_t, uint64_t, std::string, bool, std::string,
         std::string, std::string, std::string, std::string, size_t, bool>;
 
