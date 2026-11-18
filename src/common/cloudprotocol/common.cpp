@@ -80,13 +80,13 @@ Error ParseAosIdentity(const common::utils::CaseInsensitiveObjectWrapper& json, 
     return ErrorEnum::eNone;
 }
 
-Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
+Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json, bool preinstalled)
 {
     try {
         {
             AosIdentity identity;
 
-            if (instanceIdent.mPreinstalled) {
+            if (preinstalled) {
                 identity.mCodename = instanceIdent.mItemID.CStr();
             } else {
                 identity.mID = instanceIdent.mItemID.CStr();
@@ -98,7 +98,7 @@ Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json)
         {
             AosIdentity identity;
 
-            if (instanceIdent.mPreinstalled) {
+            if (preinstalled) {
                 identity.mCodename = instanceIdent.mSubjectID.CStr();
             } else {
                 identity.mID = instanceIdent.mSubjectID.CStr();
