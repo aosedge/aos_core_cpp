@@ -321,6 +321,6 @@ corresponding chain is switched to a drop rule until the next period starts.
 
 - Linux with network namespaces, nftables and tc support;
 - `libnftables` and `libnl` (route, tc) at runtime;
-- a dnsmasq binary at `/usr/sbin/dnsmasq`;
+- a `dnsmasq` binary available in `PATH`;
 - a writable DNS storage directory (`<workingDir>/dns`);
 - `CAP_NET_ADMIN` for links, nftables and tc, `CAP_SYS_ADMIN` for network namespaces.
