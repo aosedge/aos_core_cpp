@@ -141,9 +141,10 @@ Error ParseAosIdentity(const common::utils::CaseInsensitiveObjectWrapper& json, 
  *
  * @param instanceIdent InstanceIdent object to convert.
  * @param[out] json JSON object to fill.
+ * @param preinstalled preinstalled flag: item and subject are identified by codename instead of ID.
  * @return Error.
  */
-Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json);
+Error ToJSON(const InstanceIdent& instanceIdent, Poco::JSON::Object& json, bool preinstalled = false);
 
 /**
  * Converts JSON object to InstanceIdent.

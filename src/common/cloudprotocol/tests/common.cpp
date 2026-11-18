@@ -124,13 +124,12 @@ TEST_F(CloudProtocolCommon, PreinstalledInstanceIdent)
     constexpr auto cJSON = R"({"item":{"codename":"item-id"},"subject":{"codename":"subject-id"},"instance":42})";
 
     InstanceIdent instanceIdent;
-    instanceIdent.mItemID       = "item-id";
-    instanceIdent.mSubjectID    = "subject-id";
-    instanceIdent.mInstance     = 42;
-    instanceIdent.mPreinstalled = true;
+    instanceIdent.mItemID    = "item-id";
+    instanceIdent.mSubjectID = "subject-id";
+    instanceIdent.mInstance  = 42;
 
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-    ASSERT_EQ(ToJSON(instanceIdent, *json), ErrorEnum::eNone);
+    ASSERT_EQ(ToJSON(instanceIdent, *json, true), ErrorEnum::eNone);
 
     EXPECT_EQ(common::utils::Stringify(json), cJSON);
 }
