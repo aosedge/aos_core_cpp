@@ -746,7 +746,7 @@ TEST_F(DatabaseTest, RemoveRuntimeInstance)
     ASSERT_TRUE(mDB.AddRuntimeInstance(current).IsNone());
     ASSERT_TRUE(mDB.AddRuntimeInstance(pending).IsNone());
 
-    ASSERT_TRUE(mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mVersion).IsNone());
+    ASSERT_TRUE(mDB.RemoveRuntimeInstance(current.mRuntimeID, current).IsNone());
 
     aos::StaticArray<aos::sm::launcher::runtimes::RuntimeInstanceData, 2> result;
 
@@ -755,7 +755,7 @@ TEST_F(DatabaseTest, RemoveRuntimeInstance)
     ASSERT_EQ(result.Size(), 1);
     EXPECT_EQ(result[0], pending);
 
-    auto err = mDB.RemoveRuntimeInstance(current.mRuntimeID, current, current.mVersion);
+    auto err = mDB.RemoveRuntimeInstance(current.mRuntimeID, current);
     EXPECT_TRUE(err.Is(aos::ErrorEnum::eNotFound)) << aos::tests::utils::ErrorToStr(err);
 }
 

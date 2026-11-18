@@ -423,8 +423,7 @@ Error RootfsRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
 Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& status)
 {
     LOG_DBG() << "Start instance" << Log::Field("ident", static_cast<const InstanceIdent&>(instance))
-              << Log::Field("version", instance.mVersion) << Log::Field("manifestDigest", instance.mManifestDigest)
-              << Log::Field("type", instance.mType);
+              << Log::Field("manifestDigest", instance.mManifestDigest) << Log::Field("type", instance.mType);
 
     // Status receiver is notified after runtime lock is released: the launcher calls the runtime under its own lock.
     auto notify = DeferRelease(&status, [this](const InstanceStatus* status) {
@@ -443,8 +442,8 @@ Error RootfsRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus&
 
         if (!found) {
             static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
-            status.mVersion                     = instance.mVersion;
             status.mManifestDigest              = instance.mManifestDigest;
+            status.mPreinstalled                = instance.mPreinstalled;
             status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
             status.mState                       = InstanceStateEnum::eActivating;
             status.mError                       = ErrorEnum::eNone;
@@ -606,11 +605,10 @@ Error RootfsRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
-    mDefaultInstanceIdent.mInstance     = 0;
-    mDefaultInstanceIdent.mItemID       = mRuntimeInfo.mRuntimeType;
-    mDefaultInstanceIdent.mSubjectID    = nodeInfo->mNodeType;
-    mDefaultInstanceIdent.mPreinstalled = true;
+    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance  = 0;
+    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
@@ -656,7 +654,7 @@ Error RootfsRuntime::LoadInstances()
                 continue;
             }
 
-            if (auto err = mStorage->RemoveRuntimeInstance(instance.mRuntimeID, instance, instance.mVersion);
+            if (auto err = mStorage->RemoveRuntimeInstance(instance.mRuntimeID, instance);
                 !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
                 LOG_ERR() << "Can't remove pending instance" << Log::Field(AOS_ERROR_WRAP(err));
             }
@@ -1037,8 +1035,7 @@ Error RootfsRuntime::RejectTrialBoot(Array<InstanceStatus>& statuses, const Erro
 Error RootfsRuntime::PromotePending()
 {
     if (!mCurrent.mItemID.IsEmpty()) {
-        if (auto err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent, mCurrent.mVersion);
-            !err.IsNone()) {
+        if (auto err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
@@ -1076,9 +1073,10 @@ Error RootfsRuntime::RestoreDefaultCurrent()
     instance.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     instance.mVersion                     = version;
     instance.mState                       = InstanceStateEnum::eActive;
+    instance.mPreinstalled                = true;
 
     if (!mCurrent.mItemID.IsEmpty()) {
-        err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent, mCurrent.mVersion);
+        err = mStorage->RemoveRuntimeInstance(mCurrent.mRuntimeID, mCurrent);
         if (!err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -1119,7 +1117,7 @@ Error RootfsRuntime::RemoveFailedPending(const Error& err)
     mPending.mState = InstanceStateEnum::eFailed;
     mPending.mError = err.Message() ? Error(err, ErrorToString(err).c_str()) : err;
 
-    if (auto storageErr = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending, mPending.mVersion);
+    if (auto storageErr = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending);
         !storageErr.IsNone() && !storageErr.Is(ErrorEnum::eNotFound)) {
         LOG_ERR() << "Can't remove failed rootfs update" << Log::Field(AOS_ERROR_WRAP(storageErr));
 
@@ -1257,10 +1255,10 @@ void RootfsRuntime::FillInstanceStatus(const runtimes::RuntimeInstanceData& inst
     static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(instance);
     status.mState                       = instance.mState;
     status.mError                       = instance.mError;
-    status.mVersion                     = instance.mVersion;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mManifestDigest              = instance.mManifestDigest;
     status.mType                        = UpdateItemTypeEnum::eComponent;
+    status.mPreinstalled                = instance.mPreinstalled;
 }
 
 Error RootfsRuntime::GetImageManifest(const String& digest, oci::ImageManifest& manifest) const
@@ -1402,7 +1400,7 @@ Error RootfsRuntime::RemovePending()
         return ErrorEnum::eNone;
     }
 
-    if (auto err = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending, mPending.mVersion);
+    if (auto err = mStorage->RemoveRuntimeInstance(mPending.mRuntimeID, mPending);
         !err.IsNone() && !err.Is(ErrorEnum::eNotFound)) {
         return AOS_ERROR_WRAP(err);
     }
@@ -1425,9 +1423,7 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
 {
     LOG_DBG() << "Preparing update" << Log::Field("ident", static_cast<const InstanceIdent&>(instance));
 
-    if (instance.mItemID == mCurrent.mItemID && instance.mSubjectID == mCurrent.mSubjectID
-        && instance.mInstance == mCurrent.mInstance && instance.mType == mCurrent.mType
-        && instance.mVersion == mCurrent.mVersion) {
+    if (static_cast<const InstanceIdent&>(instance) == static_cast<const InstanceIdent&>(mCurrent)) {
         // The current instance restored from the version file has no manifest digest: the instance is the installed
         // rootfs, the launcher treats this error as an active instance.
         if (mCurrent.mManifestDigest.IsEmpty()) {
@@ -1472,8 +1468,8 @@ Error RootfsRuntime::PrepareUpdate(const InstanceInfo& instance)
         static_cast<InstanceIdent&>(pending) = static_cast<const InstanceIdent&>(instance);
         pending.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
         pending.mManifestDigest              = instance.mManifestDigest;
-        pending.mVersion                     = instance.mVersion;
         pending.mState                       = InstanceStateEnum::eActivating;
+        pending.mPreinstalled                = instance.mPreinstalled;
 
         err = mStorage->AddRuntimeInstance(pending);
         if (err.IsNone()) {

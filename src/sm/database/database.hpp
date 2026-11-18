@@ -236,10 +236,9 @@ public:
      *
      * @param runtimeID runtime ID.
      * @param ident instance ident.
-     * @param version instance version.
      * @return Error.
      */
-    Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version) override;
+    Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident) override;
 
     /**
      * Returns all instances of the runtime.

@@ -942,12 +942,11 @@ Error Database::UpdateRuntimeInstance(const sm::launcher::runtimes::RuntimeInsta
     return ErrorEnum::eNone;
 }
 
-Error Database::RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version)
+Error Database::RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident)
 {
     std::lock_guard lock {mMutex};
 
-    LOG_DBG() << "Remove runtime instance" << Log::Field("runtimeID", runtimeID) << Log::Field("instance", ident)
-              << Log::Field("version", version);
+    LOG_DBG() << "Remove runtime instance" << Log::Field("runtimeID", runtimeID) << Log::Field("instance", ident);
 
     try {
         Poco::Data::Statement statement {*mSession};
@@ -955,7 +954,7 @@ Error Database::RemoveRuntimeInstance(const String& runtimeID, const InstanceIde
         statement << "DELETE FROM runtimeInstances WHERE runtimeID = ? AND itemID = ? AND subjectID = ? AND "
                      "instance = ? AND type = ? AND version = ?;",
             bind(runtimeID.CStr()), bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
-            bind(ident.mType.ToString().CStr()), bind(version.CStr());
+            bind(ident.mType.ToString().CStr()), bind(ident.mVersion.CStr());
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
