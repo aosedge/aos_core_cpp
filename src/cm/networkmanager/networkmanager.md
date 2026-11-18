@@ -2,8 +2,9 @@
 
 Network manager is the CM side of the AosCore networking. It is the allocator: it hands out subnets, VLAN IDs and IP
 addresses to nodes and instances, resolves per-instance firewall rules from allowed connections and exposed ports,
-maintains the unit-level DNS hosts and keeps the allocation consistent across the unit. The node side (namespaces,
-bridges, firewall, bandwidth, DNS on the node) is built by the SM network manager.
+maintains the unit-level DNS hosts, announces the set of unit networks to the nodes and keeps the allocation
+consistent across the unit. The node side (namespaces, bridges, firewall, bandwidth, DNS on the node) is built by the
+SM network manager.
 
 The overall networking architecture is described in the public documentation:
 
@@ -21,7 +22,9 @@ It implements the following interfaces:
 
 - [aos::networkmanager::NetworkProviderItf][networkprovider-itf] - serves node/instance network allocation, release
   and state synchronization requests coming from SM. SM controller exposes it to the nodes over the gRPC network
-  service.
+  service;
+- [aos::cm::networkmanager::UpdateSubscriptionListenerItf](itf/updatesubscriptionlistener.hpp) - notified by SM
+  controller when a node opens or closes the instance network update stream.
 
 It requires the following interfaces:
 
@@ -31,7 +34,7 @@ It requires the following interfaces:
   DNS IP);
 - [aos::common::crypto::RandomItf][random-itf] - generates VLAN IDs;
 - [aos::networkmanager::PendingUpdateHandlerItf][pendingupdatehandler-itf] - optional; receives resolved pending
-  firewall rules to push them to the node. In CM it is implemented by SM controller.
+  firewall rules and the set of unit networks to push them to the node. In CM it is implemented by SM controller.
 
 It uses the following internal components:
 
@@ -68,6 +71,9 @@ classDiagram
     class PendingUpdateHandlerItf ["aos::networkmanager::PendingUpdateHandlerItf"] {
         <<interface>>
     }
+    class UpdateSubscriptionListenerItf ["aos::cm::networkmanager::UpdateSubscriptionListenerItf"] {
+        <<interface>>
+    }
     class IpSubnet ["aos::cm::networkmanager::IpSubnet"] {
     }
 
@@ -76,7 +82,9 @@ classDiagram
 
     %% SM controller serves the gRPC network service and forwards it to network manager
     SMController ..> NetworkProviderItf
+    SMController ..> UpdateSubscriptionListenerItf
     NetworkProviderItf <|.. NetworkManager
+    UpdateSubscriptionListenerItf <|.. NetworkManager
 
     %% network manager dependencies
     NetworkManager ..> StorageItf
@@ -106,7 +114,8 @@ Network manager keeps its state in memory and mirrors it to the storage:
 - **hosts** - in-memory map instance IP to DNS names, written to the DNS server hosts file.
 
 In memory the data is organized as network state per network ID: the network, and per node ID the host and its
-instances.
+instances. Besides that, network manager keeps the set of unit networks, the nodes subscribed to the network updates
+and the scheduled network removal times (see [Unit networks](#unit-networks)).
 
 ## Initialization
 
@@ -117,6 +126,14 @@ instances.
    network states;
 3. marks the loaded subnets and IPs as used in the subnet allocator, so they are not allocated again;
 4. loads pending connection records from the storage.
+
+`Init` also takes the network remove timeout (`networkRemoveTimeout` in the CM config). A stored network without
+instances gets its removal scheduled, so it stays in the set of unit networks for the timeout. The initial set of unit
+networks is built from the restored state.
+
+`Start` runs the thread that handles the network removal timeouts and `Stop` stops it; with zero timeout `Start` does
+nothing. In the CM application they are called around the SM controller start, so SM controller is stopped first on
+shutdown.
 
 Database migration 1 adds an empty hostname list to existing instance records; those lists are populated when SM next
 supplies the instance network parameters.
@@ -133,7 +150,10 @@ Returns node network parameters (network ID, subnet, node IP, VLAN ID) for the g
 - if the network exists but the node is not on it yet, allocates a node IP from the network subnet and stores the
   host;
 - if the network does not exist, generates a unique VLAN ID, allocates a free subnet from the pools, allocates a node
-  IP and stores the network and the host.
+  IP, stores the network and the host and schedules the network removal. The new network is in the set of unit
+  networks and is announced to all subscribed nodes before its first instance is allocated.
+
+If the set of unit networks changed, it is pushed to the subscribed nodes (see [Unit networks](#unit-networks)).
 
 ```mermaid
 sequenceDiagram
@@ -185,6 +205,8 @@ the new service data. A renamed hostname updates the rules of requesters that re
 
 On any failure the allocated IP, the instance record and the hosts map are rolled back.
 
+A successful allocation cancels the scheduled removal of the network.
+
 ```mermaid
 sequenceDiagram
     participant smcontroller
@@ -222,20 +244,24 @@ sequenceDiagram
 Releases the instance on the given node: returns the IP to the subnet, removes the instance hosts from the DNS hosts
 map, removes the instance and its pending connection records (where it is the requester) from the storage and reloads
 the DNS server. Requesters that reference the released instance's item ID or hostnames are re-resolved and their rule
-sets are pushed, so rules to the released address disappear. Unknown instances are ignored.
+sets are pushed, so rules to the released address disappear. Unknown instances are ignored. If it was the last
+instance on the network, the network removal is scheduled: the network stays in the set of unit networks until the
+timeout expires.
 
 ### ReleaseNodeNetwork
 
 Releases the node from the network: releases all instances of the node on that network the same way as
 `ReleaseInstanceNetwork`, removes the host from the storage and, if it was the last node on the network, returns the
 subnet to the pool and removes the network from the storage. The DNS server is reloaded and the requesters referencing
-the released instances are updated afterwards.
+the released instances are updated afterwards. If the node's instances were the last ones on the network but other
+nodes remain on it, the network removal is scheduled.
 
 ### SyncNetworkState
 
 Reconciles the CM view with the running instances reported by SM on (re)connect:
 
-1. instances that CM has allocated on the node but SM does not report are released (`ReleaseInstanceNetwork`);
+1. instances that CM has allocated on the node but SM does not report are released (`ReleaseInstanceNetwork`), so the
+   set of unit networks is updated the same way;
 2. for every reported instance that has pending connection records, the current rule set is resolved and compared
    with the rules reported by SM. If a resolved rule is missing on SM, or SM holds a rule to an address that is no
    longer allocated to any instance, the whole rule set is pushed to the node.
@@ -259,6 +285,86 @@ sequenceDiagram
             networkmanager ->> pendinghandler: OnPendingFirewallUpdate(nodeID, whole rule set)
         end
     end
+```
+
+## Unit networks
+
+Network manager owns the set of unit networks. A network is in the set if it has at least one allocated instance on any
+node, or if it has no instances but its removal is still pending. Every node creates the bridge and VLAN of every
+network of the set (see the [SM network manager][sm-networkmanager]), so instances of different providers on different
+nodes can communicate and a network keeps its VLAN ID and subnet while an instance migrates.
+
+[sm-networkmanager]: ../../sm/networkmanager/networkmanager.md
+
+SM stays the initiator of the node network allocation:
+
+- for a network of the set that it does not have, SM calls `GetNodeNetworkParams`;
+- for a network that left the set and has no local instances, SM calls `ReleaseNodeNetwork`. CM frees the VLAN ID and
+  the subnet of the network when its last host is released.
+
+### Announcing
+
+The full set (network IDs, sorted) is pushed with `PendingUpdateHandlerItf::OnUnitNetworksUpdate(nodeID, networkIDs)`.
+SM controller writes it to the node's network update stream as a `unit_networks_update` notification. The set is
+pushed:
+
+- to a node when it subscribes to the network update stream, also when the set is empty. SM controller reports it via
+  `UpdateSubscriptionListenerItf::OnNodeSubscribed`, and `OnNodeUnsubscribed` when the stream of the node is closed,
+  unless a newer stream of the same node has replaced it;
+- to all subscribed nodes when the set changes, after `GetNodeNetworkParams`, `AllocateInstanceNetwork`,
+  `ReleaseInstanceNetwork`, `ReleaseNodeNetwork`, `SyncNetworkState` and when a removal timeout expires.
+
+Nothing is pushed if the set did not change. If the set does not fit `cMaxNumOwners` IDs, an error is logged and
+nothing is pushed: a truncated set is never sent. SM ignores an update that cannot be converted completely.
+
+Pushes are serialized by an update mutex. The handler is never called with the state mutex held.
+
+### Delayed removal
+
+A network without instances stays in the set for the network remove timeout (`networkRemoveTimeout` in the CM config,
+`2m` by default, `0` disables the delay). This keeps the VLAN ID and subnet of a network when its only instance is
+moved to another node or restarted on update: the instance is released on the old node before it is allocated on the
+new one.
+
+The removal is scheduled:
+
+- when the network is created by `GetNodeNetworkParams`;
+- when the last instance of the network is released (`ReleaseInstanceNetwork`, `ReleaseNodeNetwork`, stale instances
+  in `SyncNetworkState`);
+- on `Init` for stored networks without instances.
+
+`GetNodeNetworkParams` for an existing network does not set or extend it. The removal is cancelled when an instance is
+allocated in the network. When the timeout expires, the network leaves the set and the new set is pushed. CM does not
+delete the network itself: SMs release it and CM removes it with its last host. The removal time is kept in memory
+only, so after a CM restart the full timeout starts again.
+
+```mermaid
+sequenceDiagram
+    participant nodeA as SM (node A)
+    participant nodeB as SM (node B)
+    participant networkmanager
+    participant smcontroller
+
+    nodeA ->> networkmanager: GetNodeNetworkParams(network1, nodeA)
+    Note over networkmanager: network created, removal scheduled
+    networkmanager ->> smcontroller: OnUnitNetworksUpdate(nodeA, [network1])
+    networkmanager ->> smcontroller: OnUnitNetworksUpdate(nodeB, [network1])
+    smcontroller -->> nodeA: unit_networks_update([network1])
+    smcontroller -->> nodeB: unit_networks_update([network1])
+    nodeB ->> networkmanager: GetNodeNetworkParams(network1, nodeB)
+    nodeA ->> networkmanager: AllocateInstanceNetwork(instance, network1, nodeA)
+    Note over networkmanager: removal cancelled
+
+    nodeA ->> networkmanager: ReleaseInstanceNetwork(instance, nodeA)
+    Note over networkmanager: last instance released, removal scheduled
+    Note over networkmanager: removal timeout expires
+    networkmanager ->> smcontroller: OnUnitNetworksUpdate(nodeA, [])
+    networkmanager ->> smcontroller: OnUnitNetworksUpdate(nodeB, [])
+    smcontroller -->> nodeA: unit_networks_update([])
+    smcontroller -->> nodeB: unit_networks_update([])
+    nodeA ->> networkmanager: ReleaseNodeNetwork(network1, nodeA)
+    nodeB ->> networkmanager: ReleaseNodeNetwork(network1, nodeB)
+    Note over networkmanager: last host released, network removed
 ```
 
 ## Firewall rules
