@@ -63,7 +63,7 @@ public:
     Error RemoveServer(const String& networkID) override;
 
 private:
-    static constexpr auto cDnsmasqBinary = "/usr/sbin/dnsmasq";
+    static constexpr auto cDnsmasqBinary = "dnsmasq";
     static constexpr auto cPidFileName   = "pidfile";
     static constexpr auto cHostsFileName = "addnhosts";
 

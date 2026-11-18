@@ -28,7 +28,7 @@ using namespace testing;
 
 namespace {
 
-constexpr auto cDnsmasqBinary = "/usr/sbin/dnsmasq";
+constexpr auto cDnsmasqBinary = "dnsmasq";
 
 constexpr Poco::Process::PID cSpawnedPID = 12345;
 constexpr Poco::Process::PID cAdoptPID   = 4242;
@@ -128,7 +128,7 @@ TEST_F(DNSNameTest, CreateServerAdoptsAlivePidFile)
 
     WritePidFile(storageDir, cAdoptPID);
 
-    const std::string cmdline = "/usr/sbin/dnsmasq --pid-file=" + storageDir.string() + "/pidfile";
+    const std::string cmdline = "dnsmasq --pid-file=" + storageDir.string() + "/pidfile";
 
     EXPECT_CALL(mSpawner, IsAlive(cAdoptPID)).WillOnce(Return(true));
     EXPECT_CALL(mSpawner, GetCmdLine(cAdoptPID))
