@@ -124,7 +124,7 @@ void AosCore::Init(const std::string& configFile)
 
     mDNSServer.Init(mConfig.mDNSStoragePath, mConfig.mDNSPidFile, mConfig.mDNSIP);
 
-    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer, &mSMController);
+    err = mNetworkManager.Init(mDatabase, mCryptoProvider, mDNSServer, &mSMController, mConfig.mNetworkRemoveTimeout);
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize network manager");
 
     InitSMController();
@@ -212,6 +212,15 @@ void AosCore::Start()
     mCleanupManager.AddCleanup([this]() {
         if (auto err = mLauncher.Stop(); !err.IsNone()) {
             LOG_ERR() << "Can't stop launcher" << Log::Field(err);
+        }
+    });
+
+    err = mNetworkManager.Start();
+    AOS_ERROR_CHECK_AND_THROW(err, "can't start network manager");
+
+    mCleanupManager.AddCleanup([this]() {
+        if (auto err = mNetworkManager.Stop(); !err.IsNone()) {
+            LOG_ERR() << "Can't stop network manager" << Log::Field(err);
         }
     });
 

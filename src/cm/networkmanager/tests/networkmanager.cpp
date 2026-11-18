@@ -5,7 +5,12 @@
  */
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -2579,6 +2584,178 @@ TEST_F(CMUnitNetworksTest, UnsubscribedNodeGetsNoPushes)
     ASSERT_TRUE(Allocate("a", "target-net").IsNone());
 
     EXPECT_EQ(mUnitUpdates, UnitNetworksUpdates({{"node", {"target-net"}}}));
+}
+
+class CMUnitNetworksRemoveTimeoutTest : public CMUnitNetworksTest {
+protected:
+    static constexpr auto cRemoveTimeout = std::chrono::milliseconds(400);
+    static constexpr auto cWaitTimeout   = std::chrono::seconds(10);
+
+    void SetUp() override
+    {
+        CMUnitNetworksTest::SetUp();
+
+        EXPECT_CALL(*mRandom, RandInt(_)).WillRepeatedly(Return(RetWithError<uint64_t>(2000u, ErrorEnum::eNone)));
+        EXPECT_CALL(*mStorage, AddNetwork(_)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(*mStorage, AddHost(_, _)).WillRepeatedly(Return(ErrorEnum::eNone));
+        EXPECT_CALL(mHandler, OnUnitNetworksUpdate(_, _))
+            .WillRepeatedly(Invoke([this](const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs) {
+                std::vector<std::string> ids;
+
+                for (const auto& networkID : networkIDs) {
+                    ids.emplace_back(networkID.CStr());
+                }
+
+                std::lock_guard lock {mUpdatesMutex};
+
+                mUnitUpdates.emplace_back(nodeID.CStr(), std::move(ids));
+                mUpdatesCondVar.notify_all();
+            }));
+
+        InitManager();
+    }
+
+    void TearDown() override { EXPECT_TRUE(mNetworkManager->Stop().IsNone()); }
+
+    void InitManager()
+    {
+        mNetworkManager = std::make_unique<NetworkManager>();
+
+        ASSERT_TRUE(
+            mNetworkManager
+                ->Init(*mStorage, *mRandom, *mDNSServer, &mHandler, std::chrono::nanoseconds(cRemoveTimeout).count())
+                .IsNone());
+    }
+
+    bool WaitUpdates(size_t count, std::chrono::milliseconds timeout = cWaitTimeout)
+    {
+        std::unique_lock lock {mUpdatesMutex};
+
+        return mUpdatesCondVar.wait_for(lock, timeout, [&]() { return mUnitUpdates.size() >= count; });
+    }
+
+    UnitNetworksUpdates TakeUpdates()
+    {
+        std::lock_guard lock {mUpdatesMutex};
+
+        return std::exchange(mUnitUpdates, {});
+    }
+
+    void ExpireRestoredNetworks()
+    {
+        mNetworkManager->OnNodeSubscribed("node");
+
+        ASSERT_TRUE(mNetworkManager->Start().IsNone());
+        ASSERT_TRUE(WaitUpdates(2));
+        EXPECT_EQ(TakeUpdates(),
+            UnitNetworksUpdates({{"node", {"requester-net", "target-net", "target-net-2"}}, {"node", {}}}));
+    }
+
+    std::mutex              mUpdatesMutex;
+    std::condition_variable mUpdatesCondVar;
+};
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, NewNetworkIsAnnouncedAndRemovedAfterTimeout)
+{
+    ExpireRestoredNetworks();
+
+    NetworkParams params;
+
+    const auto start = std::chrono::steady_clock::now();
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node", params).IsNone());
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"new-net"}}}));
+
+    ASSERT_TRUE(WaitUpdates(1));
+    EXPECT_GE(std::chrono::steady_clock::now() - start, cRemoveTimeout);
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {}}}));
+}
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, ReleasingLastInstanceRemovesNetworkAfterTimeout)
+{
+    ExpireRestoredNetworks();
+
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"target-net"}}}));
+
+    const auto start = std::chrono::steady_clock::now();
+
+    ASSERT_TRUE(Release("a").IsNone());
+    EXPECT_TRUE(TakeUpdates().empty());
+
+    ASSERT_TRUE(WaitUpdates(1));
+    EXPECT_GE(std::chrono::steady_clock::now() - start, cRemoveTimeout);
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {}}}));
+}
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, AllocatingInstanceCancelsRemoval)
+{
+    ExpireRestoredNetworks();
+
+    NetworkParams params;
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node", params).IsNone());
+    ASSERT_TRUE(Allocate("a", "new-net").IsNone());
+    ASSERT_TRUE(Release("a").IsNone());
+    ASSERT_TRUE(Allocate("b", "new-net").IsNone());
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"new-net"}}}));
+
+    EXPECT_FALSE(WaitUpdates(1, 3 * cRemoveTimeout));
+
+    NetworkParams sameParams;
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node", sameParams).IsNone());
+    EXPECT_EQ(sameParams.mVlanID, params.mVlanID);
+    EXPECT_EQ(sameParams.mSubnet, params.mSubnet);
+}
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, RestoredNetworkWithoutInstancesRemovedAfterTimeout)
+{
+    ASSERT_TRUE(Allocate("a", "target-net").IsNone());
+
+    InitManager();
+
+    mNetworkManager->OnNodeSubscribed("node");
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"requester-net", "target-net", "target-net-2"}}}));
+
+    ASSERT_TRUE(mNetworkManager->Start().IsNone());
+    ASSERT_TRUE(WaitUpdates(1));
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"target-net"}}}));
+}
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, OtherNodeJoiningDoesNotExtendRemoval)
+{
+    ExpireRestoredNetworks();
+
+    NetworkParams params;
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node", params).IsNone());
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"new-net"}}}));
+
+    std::this_thread::sleep_for(cRemoveTimeout / 2);
+
+    const auto joined = std::chrono::steady_clock::now();
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node2", params).IsNone());
+    EXPECT_TRUE(TakeUpdates().empty());
+
+    ASSERT_TRUE(WaitUpdates(1));
+    EXPECT_LT(std::chrono::steady_clock::now() - joined, cRemoveTimeout);
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {}}}));
+}
+
+TEST_F(CMUnitNetworksRemoveTimeoutTest, NoPushAfterStop)
+{
+    ExpireRestoredNetworks();
+
+    NetworkParams params;
+
+    ASSERT_TRUE(mNetworkManager->GetNodeNetworkParams("new-net", "node", params).IsNone());
+    EXPECT_EQ(TakeUpdates(), UnitNetworksUpdates({{"node", {"new-net"}}}));
+
+    ASSERT_TRUE(mNetworkManager->Stop().IsNone());
+
+    EXPECT_FALSE(WaitUpdates(1, 3 * cRemoveTimeout));
 }
 
 } // namespace aos::cm::networkmanager
