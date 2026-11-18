@@ -151,9 +151,11 @@ sequenceDiagram
     participant BW as Bandwidth
     participant TM as TrafficMonitor
 
-    Note over NM: StartInstanceNetwork, first instance on network
+    Note over NM: Network is created: it is a unit network or gets its first instance
     NM ->> IF: CreateBridge / CreateVlan
     NM ->> FW: AddMasquerade(subnet, uplink)
+
+    Note over NM: StartInstanceNetwork, first instance on network
     NM ->> DNS: CreateServer(networkID)
 
     Note over NM: StartInstanceNetwork, every instance
@@ -175,6 +177,8 @@ sequenceDiagram
 
     Note over NM: StopInstanceNetwork, last instance on network
     NM ->> DNS: RemoveServer(networkID)
+
+    Note over NM: Network is removed: it has no instances and is not a unit network
     NM ->> FW: RemoveMasquerade(subnet, uplink)
     NM ->> IF: DeleteLink(bridge), DeleteLink(vlan)
 ```
