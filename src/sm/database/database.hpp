@@ -251,7 +251,7 @@ public:
         const String& runtimeID, Array<sm::launcher::runtimes::RuntimeInstanceData>& instances) const override;
 
 private:
-    static constexpr int  sVersion    = 7;
+    static constexpr int  sVersion    = 8;
     static constexpr auto cDBFileName = "servicemanager.db";
 
     // Instance info columns

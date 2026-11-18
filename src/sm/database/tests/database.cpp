@@ -22,7 +22,7 @@ using namespace testing;
 namespace {
 
 aos::InstanceIdent CreateInstanceIdent(const std::string& itemID, const std::string& subjectID, uint32_t instance,
-    aos::UpdateItemType type = aos::UpdateItemTypeEnum::eService)
+    aos::UpdateItemType type = aos::UpdateItemTypeEnum::eService, const std::string& version = "1.0.0")
 {
     aos::InstanceIdent ident;
 
@@ -30,6 +30,7 @@ aos::InstanceIdent CreateInstanceIdent(const std::string& itemID, const std::str
     ident.mSubjectID = subjectID.c_str();
     ident.mInstance  = instance;
     ident.mType      = type;
+    ident.mVersion   = version.c_str();
 
     return ident;
 }

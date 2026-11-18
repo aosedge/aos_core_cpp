@@ -535,10 +535,10 @@ Error Database::RemoveInstanceInfo(const InstanceIdent& ident)
     try {
         Poco::Data::Statement statement {*mSession};
 
-        statement << "DELETE FROM instances WHERE itemID = ? AND subjectID = ? AND instance = ? AND type = ? "
-                     "AND preinstalled = ?;",
-            bind(ident.mItemID.CStr()), bind(ident.mSubjectID.CStr()), bind(ident.mInstance),
-            bind(ident.mType.ToString().CStr()), bind(ident.mPreinstalled);
+        statement << "DELETE FROM instances WHERE itemID = ? AND version = ? AND subjectID = ? AND instance = ? "
+                     "AND type = ?;",
+            bind(ident.mItemID.CStr()), bind(ident.mVersion.CStr()), bind(ident.mSubjectID.CStr()),
+            bind(ident.mInstance), bind(ident.mType.ToString().CStr());
 
         if (statement.execute() == 0) {
             return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
