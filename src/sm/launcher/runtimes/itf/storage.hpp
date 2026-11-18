@@ -24,9 +24,9 @@ namespace aos::sm::launcher::runtimes {
 struct RuntimeInstanceData : public InstanceIdent {
     StaticString<cIDLen>          mRuntimeID;
     StaticString<oci::cDigestLen> mManifestDigest;
-    StaticString<cVersionLen>     mVersion;
     InstanceState                 mState;
     Error                         mError;
+    bool                          mPreinstalled {};
 
     /**
      * Compares runtime instance data.
@@ -39,7 +39,7 @@ struct RuntimeInstanceData : public InstanceIdent {
     {
         return static_cast<const InstanceIdent&>(lhs) == static_cast<const InstanceIdent&>(rhs)
             && lhs.mRuntimeID == rhs.mRuntimeID && lhs.mManifestDigest == rhs.mManifestDigest
-            && lhs.mVersion == rhs.mVersion && lhs.mState == rhs.mState && lhs.mError == rhs.mError
+            && lhs.mState == rhs.mState && lhs.mError == rhs.mError && lhs.mPreinstalled == rhs.mPreinstalled
             && String(lhs.mError.Message()) == rhs.mError.Message();
     }
 
@@ -86,10 +86,9 @@ public:
      *
      * @param runtimeID runtime ID.
      * @param ident instance ident.
-     * @param version instance version.
      * @return Error.
      */
-    virtual Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version) = 0;
+    virtual Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident) = 0;
 
     /**
      * Returns all instances of the runtime.

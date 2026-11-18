@@ -131,11 +131,11 @@ private:
     static constexpr auto cMaxNumInstances   = 1;
 
     struct BootData : public InstanceIdent {
-        StaticString<cVersionLen>     mVersion;
         InstanceState                 mState {InstanceStateEnum::eActive};
         StaticString<oci::cDigestLen> mManifestDigest;
         Error                         mError;
         Optional<size_t>              mPartitionIndex;
+        bool                          mPreinstalled {};
     };
 
     virtual std::shared_ptr<PartitionManagerItf> CreatePartitionManager() const;

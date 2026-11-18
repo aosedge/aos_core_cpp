@@ -243,7 +243,7 @@ public:
             return ErrorEnum::eFailed;
         }
 
-        if (Find(instance.mRuntimeID, instance, instance.mVersion) != mInstances.end()) {
+        if (Find(instance.mRuntimeID, instance) != mInstances.end()) {
             return ErrorEnum::eAlreadyExist;
         }
 
@@ -260,7 +260,7 @@ public:
             return ErrorEnum::eFailed;
         }
 
-        auto it = Find(instance.mRuntimeID, instance, instance.mVersion);
+        auto it = Find(instance.mRuntimeID, instance);
         if (it == mInstances.end()) {
             return ErrorEnum::eNotFound;
         }
@@ -270,7 +270,7 @@ public:
         return ErrorEnum::eNone;
     }
 
-    Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident, const String& version) override
+    Error RemoveRuntimeInstance(const String& runtimeID, const InstanceIdent& ident) override
     {
         std::lock_guard lock {mMutex};
 
@@ -278,7 +278,7 @@ public:
             return ErrorEnum::eFailed;
         }
 
-        auto it = Find(runtimeID, ident, version);
+        auto it = Find(runtimeID, ident);
         if (it == mInstances.end()) {
             return ErrorEnum::eNotFound;
         }
@@ -343,13 +343,10 @@ public:
 
 private:
     // Matches the database primary key: the preinstalled flag is not part of it.
-    std::vector<runtimes::RuntimeInstanceData>::iterator Find(
-        const String& runtimeID, const InstanceIdent& ident, const String& version)
+    std::vector<runtimes::RuntimeInstanceData>::iterator Find(const String& runtimeID, const InstanceIdent& ident)
     {
         return std::find_if(mInstances.begin(), mInstances.end(), [&](const auto& instance) {
-            return instance.mRuntimeID == runtimeID && instance.mItemID == ident.mItemID
-                && instance.mSubjectID == ident.mSubjectID && instance.mInstance == ident.mInstance
-                && instance.mType == ident.mType && instance.mVersion == version;
+            return instance.mRuntimeID == runtimeID && static_cast<const InstanceIdent&>(instance) == ident;
         });
     }
 

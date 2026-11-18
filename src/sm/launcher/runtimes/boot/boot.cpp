@@ -170,7 +170,7 @@ Error BootRuntime::StartInstance(const InstanceInfo& instance, InstanceStatus& s
     mPending->mManifestDigest              = instance.mManifestDigest;
     mPending->mState                       = InstanceStateEnum::eActivating;
     mPending->mPartitionIndex              = GetNextPartitionIndex(mInstalled.mPartitionIndex.GetValue());
-    mPending->mVersion                     = instance.mVersion;
+    mPending->mPreinstalled                = instance.mPreinstalled;
 
     if (auto err = StoreData(cPendingInstance, *mPending); !err.IsNone()) {
         mPending->mError = AOS_ERROR_WRAP(err);
@@ -272,6 +272,7 @@ Error BootRuntime::InitInstalledData()
     if (!std::filesystem::exists(GetPath(cInstalledInstance))) {
         mInstalled.mPartitionIndex.SetValue(mCurrentPartition);
         static_cast<InstanceIdent&>(mInstalled) = mDefaultInstanceIdent;
+        mInstalled.mPreinstalled                = true;
 
         auto [version, err] = GetPartitionVersion(mCurrentPartition);
         if (!err.IsNone()) {
@@ -323,11 +324,10 @@ Error BootRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    mDefaultInstanceIdent.mType         = UpdateItemTypeEnum::eComponent;
-    mDefaultInstanceIdent.mInstance     = 0;
-    mDefaultInstanceIdent.mItemID       = mRuntimeInfo.mRuntimeType;
-    mDefaultInstanceIdent.mSubjectID    = nodeInfo->mNodeType;
-    mDefaultInstanceIdent.mPreinstalled = true;
+    mDefaultInstanceIdent.mType      = UpdateItemTypeEnum::eComponent;
+    mDefaultInstanceIdent.mInstance  = 0;
+    mDefaultInstanceIdent.mItemID    = mRuntimeInfo.mRuntimeType;
+    mDefaultInstanceIdent.mSubjectID = nodeInfo->mNodeType;
 
     LOG_INF() << "Runtime info" << Log::Field("runtimeID", mRuntimeInfo.mRuntimeID)
               << Log::Field("runtimeType", mRuntimeInfo.mRuntimeType)
@@ -494,7 +494,6 @@ void BootRuntime::ToInstanceStatus(const BootData& data, InstanceStatus& status)
     static_cast<InstanceIdent&>(status) = static_cast<const InstanceIdent&>(data);
     status.mManifestDigest              = data.mManifestDigest;
     status.mState                       = data.mState;
-    status.mVersion                     = data.mVersion;
     status.mRuntimeID                   = mRuntimeInfo.mRuntimeID;
     status.mType                        = UpdateItemTypeEnum::eComponent;
     status.mPreinstalled                = data.mPreinstalled;
