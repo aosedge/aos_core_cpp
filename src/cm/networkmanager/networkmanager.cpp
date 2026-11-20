@@ -34,12 +34,13 @@ constexpr int cExposedPortConfigExpectedLen  = 2;
  **********************************************************************************************************************/
 
 Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSServerItf& dnsServer,
-    aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler)
+    aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler, Duration networkRemoveTimeout)
 {
     mStorage              = &storage;
     mRandom               = &random;
     mDNSServer            = &dnsServer;
     mPendingUpdateHandler = pendingUpdateHandler;
+    mNetworkRemoveTimeout = std::chrono::nanoseconds(networkRemoveTimeout.Nanoseconds());
 
     mIpSubnet.Init();
 
@@ -80,10 +81,16 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
             networkState.mHostInstances.emplace(host.mNodeID.CStr(), std::move(hostInstances));
         }
 
+        if (!HasInstances(networkState)) {
+            ScheduleNetworkRemoval(network.mNetworkID.CStr());
+        }
+
         mNetworkStates.emplace(network.mNetworkID.CStr(), std::move(networkState));
     }
 
     RemoveExistedNetworks();
+
+    mUnitNetworks = GetUnitNetworks();
 
     // Restore pending connections from DB
     auto pendingConnections = std::make_unique<StaticArray<PendingConnection, cMaxNumInstances * cMaxNumConnections>>();
@@ -99,8 +106,51 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
     return ErrorEnum::eNone;
 }
 
+Error NetworkManager::Start()
+{
+    if (mNetworkRemoveTimeout.count() == 0) {
+        return ErrorEnum::eNone;
+    }
+
+    LOG_DBG() << "Start network manager";
+
+    if (mRemovalThread.joinable()) {
+        return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+    }
+
+    try {
+        mRemovalStopped = false;
+        mRemovalThread  = std::thread(&NetworkManager::RunRemovalThread, this);
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(common::utils::ToAosError(e));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::Stop()
+{
+    LOG_DBG() << "Stop network manager";
+
+    {
+        std::lock_guard lock {mRemovalMutex};
+
+        mRemovalStopped = true;
+    }
+
+    mRemovalCondVar.notify_all();
+
+    if (mRemovalThread.joinable()) {
+        mRemovalThread.join();
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String& nodeID, NetworkParams& result)
 {
+    auto syncUnitNetworks = DeferRelease([this]() { SyncUnitNetworks(); });
+
     std::lock_guard lock {mMutex};
 
     LOG_DBG() << "Getting node network params" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
@@ -167,6 +217,8 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
 
         mNetworkStates.emplace(networkID.CStr(), std::move(networkState));
 
+        ScheduleNetworkRemoval(networkID.CStr());
+
         auto err = mStorage->AddNetwork(network);
         AOS_ERROR_CHECK_AND_THROW(err, "error adding network");
 
@@ -185,6 +237,8 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
 Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent, const String& networkID,
     const String& nodeID, const UpdateItemNetworkParams& serviceData, InstanceNetworkAllocation& result)
 {
+    auto syncUnitNetworks = DeferRelease([this]() { SyncUnitNetworks(); });
+
     std::unique_lock lock {mMutex};
 
     LOG_DBG() << "Allocating instance network" << Log::Field("instanceIdent", instanceIdent)
@@ -352,6 +406,8 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             return AOS_ERROR_WRAP(err);
         }
 
+        (void)mRemovalDeadlines.erase(networkID.CStr());
+
         StorePendingConnections(
             instanceIdent, nodeID, networkID, result.mIP, it->second.mNetwork.mSubnet.CStr(), connections);
 
@@ -377,6 +433,8 @@ Error NetworkManager::ReleaseInstanceNetwork(const InstanceIdent& instanceIdent,
 
     auto err = RemoveInstance(instanceIdent, nodeID, targets);
 
+    SyncUnitNetworks();
+
     if (err.IsNone() && targets.empty()) {
         LOG_WRN() << "Instance network parameters not found" << Log::Field("instanceIdent", instanceIdent);
 
@@ -397,6 +455,8 @@ Error NetworkManager::ReleaseNodeNetwork(const String& networkID, const String& 
     std::vector<std::string> targets;
 
     auto err = RemoveNode(networkID, nodeID, targets);
+
+    SyncUnitNetworks();
 
     if (!targets.empty()) {
         UpdateRequesters(targets, {});
@@ -480,6 +540,28 @@ Error NetworkManager::SyncNetworkState(const String& nodeID, const Array<Instanc
     PushFirewallUpdates(updates);
 
     return ErrorEnum::eNone;
+}
+
+void NetworkManager::OnNodeSubscribed(const String& nodeID)
+{
+    LOG_DBG() << "Node subscribed to network updates" << Log::Field("nodeID", nodeID);
+
+    std::lock_guard updateLock {mUpdateMutex};
+
+    (void)mSubscribedNodes.insert(nodeID.CStr());
+
+    if (!PushUnitNetworksIfChanged()) {
+        PushUnitNetworks({nodeID.CStr()});
+    }
+}
+
+void NetworkManager::OnNodeUnsubscribed(const String& nodeID)
+{
+    LOG_DBG() << "Node unsubscribed from network updates" << Log::Field("nodeID", nodeID);
+
+    std::lock_guard updateLock {mUpdateMutex};
+
+    (void)mSubscribedNodes.erase(nodeID.CStr());
 }
 
 /***********************************************************************************************************************
@@ -810,6 +892,10 @@ Error NetworkManager::RemoveInstance(
 
             (void)itHost->second.mInstances.erase(itInstance);
 
+            if (!HasInstances(networkState)) {
+                ScheduleNetworkRemoval(networkID);
+            }
+
             targets = std::move(instanceTargets);
 
             (void)mPendingConnections.erase(instanceIdent);
@@ -851,6 +937,8 @@ Error NetworkManager::RemoveNode(const String& networkID, const String& nodeID, 
 
         std::vector<std::string> nodeTargets;
 
+        const auto hadInstances = !itHost->second.mInstances.empty();
+
         for (auto& [_, instance] : itHost->second.mInstances) {
             const auto instanceTargets = GetInstanceTargets(instance.mInstanceIdent);
 
@@ -882,6 +970,9 @@ Error NetworkManager::RemoveNode(const String& networkID, const String& nodeID, 
             AOS_ERROR_CHECK_AND_THROW(err, "error removing network");
 
             (void)mNetworkStates.erase(it);
+            (void)mRemovalDeadlines.erase(networkID.CStr());
+        } else if (hadInstances && !HasInstances(it->second)) {
+            ScheduleNetworkRemoval(networkID.CStr());
         }
 
         targets = std::move(nodeTargets);
@@ -1004,6 +1095,184 @@ void NetworkManager::PushFirewallUpdates(const FirewallUpdates& updates)
 
         mPendingUpdateHandler->OnPendingFirewallUpdate(nodeID.c_str(), update);
         (void)mPushedRequesters.insert(update.mInstanceIdent);
+    }
+}
+
+bool NetworkManager::HasInstances(const NetworkState& networkState)
+{
+    return std::any_of(networkState.mHostInstances.begin(), networkState.mHostInstances.end(),
+        [](const auto& hostInstances) { return !hostInstances.second.mInstances.empty(); });
+}
+
+bool NetworkManager::IsUnitNetwork(const std::string& networkID, const NetworkState& networkState) const
+{
+    return HasInstances(networkState) || mRemovalDeadlines.count(networkID) != 0;
+}
+
+std::vector<std::string> NetworkManager::GetUnitNetworks() const
+{
+    std::vector<std::string> unitNetworks;
+
+    for (const auto& [networkID, networkState] : mNetworkStates) {
+        if (IsUnitNetwork(networkID, networkState)) {
+            unitNetworks.push_back(networkID);
+        }
+    }
+
+    std::sort(unitNetworks.begin(), unitNetworks.end());
+
+    return unitNetworks;
+}
+
+void NetworkManager::SyncUnitNetworks()
+{
+    {
+        std::lock_guard updateLock {mUpdateMutex};
+
+        (void)PushUnitNetworksIfChanged();
+    }
+
+    NotifyRemovalThread();
+}
+
+bool NetworkManager::PushUnitNetworksIfChanged()
+{
+    std::vector<std::string> unitNetworks;
+
+    {
+        std::lock_guard lock {mMutex};
+
+        unitNetworks = GetUnitNetworks();
+    }
+
+    if (unitNetworks == mUnitNetworks) {
+        return false;
+    }
+
+    mUnitNetworks = std::move(unitNetworks);
+
+    PushUnitNetworks(mSubscribedNodes);
+
+    return true;
+}
+
+void NetworkManager::PushUnitNetworks(const std::set<std::string>& nodeIDs)
+{
+    if (!mPendingUpdateHandler) {
+        return;
+    }
+
+    auto networkIDs = std::make_unique<StaticArray<StaticString<cIDLen>, cMaxNumOwners>>();
+
+    for (const auto& networkID : mUnitNetworks) {
+        StaticString<cIDLen> id;
+
+        auto err = id.Assign(networkID.c_str());
+        if (err.IsNone()) {
+            err = networkIDs->PushBack(id);
+        }
+
+        if (!err.IsNone()) {
+            LOG_ERR() << "Failed to prepare unit networks update" << Log::Field("networksCount", mUnitNetworks.size())
+                      << Log::Field(err);
+
+            return;
+        }
+    }
+
+    for (const auto& nodeID : nodeIDs) {
+        LOG_DBG() << "Pushing unit networks update" << Log::Field("nodeID", nodeID.c_str())
+                  << Log::Field("networksCount", networkIDs->Size());
+
+        mPendingUpdateHandler->OnUnitNetworksUpdate(nodeID.c_str(), *networkIDs);
+    }
+}
+
+void NetworkManager::ScheduleNetworkRemoval(const std::string& networkID)
+{
+    if (mNetworkRemoveTimeout.count() == 0) {
+        return;
+    }
+
+    LOG_DBG() << "Schedule network removal" << Log::Field("networkID", networkID.c_str());
+
+    mRemovalDeadlines[networkID] = Clock::now() + mNetworkRemoveTimeout;
+}
+
+std::optional<NetworkManager::Clock::time_point> NetworkManager::GetNextRemovalDeadline() const
+{
+    std::lock_guard lock {mMutex};
+
+    auto it = std::min_element(mRemovalDeadlines.begin(), mRemovalDeadlines.end(),
+        [](const auto& left, const auto& right) { return left.second < right.second; });
+    if (it == mRemovalDeadlines.end()) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+void NetworkManager::EraseExpiredDeadlines()
+{
+    std::lock_guard lock {mMutex};
+
+    const auto now = Clock::now();
+
+    for (auto it = mRemovalDeadlines.begin(); it != mRemovalDeadlines.end();) {
+        if (it->second > now) {
+            ++it;
+            continue;
+        }
+
+        LOG_DBG() << "Network removal timeout expired" << Log::Field("networkID", it->first.c_str());
+
+        it = mRemovalDeadlines.erase(it);
+    }
+}
+
+void NetworkManager::HandleRemovalTimeout()
+{
+    std::lock_guard updateLock {mUpdateMutex};
+
+    EraseExpiredDeadlines();
+
+    (void)PushUnitNetworksIfChanged();
+}
+
+void NetworkManager::NotifyRemovalThread()
+{
+    {
+        std::lock_guard lock {mRemovalMutex};
+
+        mRemovalDeadlinesChanged = true;
+    }
+
+    mRemovalCondVar.notify_one();
+}
+
+void NetworkManager::RunRemovalThread()
+{
+    std::unique_lock lock {mRemovalMutex};
+
+    const auto wakeUp = [this]() { return mRemovalStopped || mRemovalDeadlinesChanged; };
+
+    while (!mRemovalStopped) {
+        mRemovalDeadlinesChanged = false;
+
+        const auto deadline = GetNextRemovalDeadline();
+
+        if (!deadline) {
+            mRemovalCondVar.wait(lock, wakeUp);
+            continue;
+        }
+
+        if (mRemovalCondVar.wait_until(lock, *deadline, wakeUp)) {
+            continue;
+        }
+
+        lock.unlock();
+        HandleRemovalTimeout();
+        lock.lock();
     }
 }
 

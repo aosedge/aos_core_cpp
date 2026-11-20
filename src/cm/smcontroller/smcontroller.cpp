@@ -32,24 +32,25 @@ Error SMController::Init(const Config& config, cloudconnection::CloudConnectionI
     alerts::ReceiverItf& alertsReceiver, SenderItf& logSender, launcher::SenderItf& envVarsStatusSender,
     monitoring::ReceiverItf& monitoringReceiver, launcher::InstanceStatusReceiverItf& instanceStatusReceiver,
     nodeinfoprovider::SMInfoReceiverItf& smInfoReceiver, aos::networkmanager::NetworkProviderItf& networkProvider,
-    bool insecureConn)
+    cm::networkmanager::UpdateSubscriptionListenerItf& updateSubscriptionListener, bool insecureConn)
 {
     LOG_DBG() << "Init SM controller";
 
-    mConfig                 = config;
-    mCloudConnection        = &cloudConnection;
-    mCertProvider           = &certProvider;
-    mCertLoader             = &certLoader;
-    mCryptoProvider         = &cryptoProvider;
-    mBlobInfoProvider       = &blobInfoProvider;
-    mAlertsReceiver         = &alertsReceiver;
-    mLogSender              = &logSender;
-    mEnvVarsStatusSender    = &envVarsStatusSender;
-    mMonitoringReceiver     = &monitoringReceiver;
-    mInstanceStatusReceiver = &instanceStatusReceiver;
-    mSMInfoReceiver         = &smInfoReceiver;
-    mNetworkProvider        = &networkProvider;
-    mInsecureConn           = insecureConn;
+    mConfig                     = config;
+    mCloudConnection            = &cloudConnection;
+    mCertProvider               = &certProvider;
+    mCertLoader                 = &certLoader;
+    mCryptoProvider             = &cryptoProvider;
+    mBlobInfoProvider           = &blobInfoProvider;
+    mAlertsReceiver             = &alertsReceiver;
+    mLogSender                  = &logSender;
+    mEnvVarsStatusSender        = &envVarsStatusSender;
+    mMonitoringReceiver         = &monitoringReceiver;
+    mInstanceStatusReceiver     = &instanceStatusReceiver;
+    mSMInfoReceiver             = &smInfoReceiver;
+    mNetworkProvider            = &networkProvider;
+    mUpdateSubscriptionListener = &updateSubscriptionListener;
+    mInsecureConn               = insecureConn;
 
     return ErrorEnum::eNone;
 }
@@ -594,8 +595,14 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
     LOG_DBG() << "SubscribeInstanceNetworkUpdates" << Log::Field("nodeID", nodeID.c_str());
 
     {
-        std::lock_guard lock {mStreamMutex};
-        mNetworkUpdateStreams[nodeID] = {context, writer};
+        std::lock_guard subscriptionLock {mSubscriptionMutex};
+
+        {
+            std::lock_guard lock {mStreamMutex};
+            mNetworkUpdateStreams[nodeID] = {context, writer};
+        }
+
+        mUpdateSubscriptionListener->OnNodeSubscribed(nodeID.c_str());
     }
 
     {
@@ -606,6 +613,10 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         }
     }
 
+    std::lock_guard subscriptionLock {mSubscriptionMutex};
+
+    auto active = false;
+
     {
         std::lock_guard lock {mStreamMutex};
 
@@ -613,7 +624,13 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         auto it = mNetworkUpdateStreams.find(nodeID);
         if (it != mNetworkUpdateStreams.end() && it->second.mWriter == writer) {
             mNetworkUpdateStreams.erase(it);
+
+            active = true;
         }
+    }
+
+    if (active) {
+        mUpdateSubscriptionListener->OnNodeUnsubscribed(nodeID.c_str());
     }
 
     LOG_DBG() << "SubscribeInstanceNetworkUpdates disconnected" << Log::Field("nodeID", nodeID.c_str());
@@ -673,6 +690,28 @@ void SMController::OnPendingFirewallUpdate(
 
     if (!it->second.mWriter->Write(notification)) {
         LOG_ERR() << "Failed to write pending firewall update to stream" << Log::Field("nodeID", nodeID);
+    }
+}
+
+void SMController::OnUnitNetworksUpdate(const String& nodeID, const Array<StaticString<cIDLen>>& networkIDs)
+{
+    std::lock_guard lock {mStreamMutex};
+
+    auto it = mNetworkUpdateStreams.find(nodeID.CStr());
+    if (it == mNetworkUpdateStreams.end()) {
+        LOG_WRN() << "No stream writer for node" << Log::Field("nodeID", nodeID);
+        return;
+    }
+
+    servicemanager::v5::InstanceNetworkUpdateNotification notification;
+    auto*                                                 unitUpdate = notification.mutable_unit_networks_update();
+
+    for (const auto& networkID : networkIDs) {
+        unitUpdate->add_network_ids(networkID.CStr());
+    }
+
+    if (!it->second.mWriter->Write(notification)) {
+        LOG_ERR() << "Failed to write unit networks update to stream" << Log::Field("nodeID", nodeID);
     }
 }
 

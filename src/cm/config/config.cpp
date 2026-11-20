@@ -28,6 +28,7 @@ constexpr auto cDefaultLauncherInstanceTTL                = "30d";
 constexpr auto cDefaultLauncherCheckOverrideEnvVarsPeriod = "1m";
 constexpr auto cDefaultLauncherNodesConnectionTimeout     = "10m";
 constexpr auto cDefaultMonitoringSendPeriod               = "1m";
+constexpr auto cDefaultNetworkRemoveTimeout               = "2m";
 constexpr auto cDefaultSMConnectionTimeout                = "1m";
 constexpr auto cDefaultUnitStatusSendTimeout              = "10s";
 constexpr auto cDefaultItemCacheTTL                       = "30d";
@@ -174,6 +175,10 @@ Error ParseConfig(const std::string& filename, Config& config)
         Tie(config.mCloudResponseWaitTimeout, err) = common::utils::ParseDuration(
             object.GetValue<std::string>("cloudResponseWaitTimeout", cDefaultCloudResponseWaitTimeout));
         AOS_ERROR_CHECK_AND_THROW(err, "error parsing cloudResponseWaitTimeout tag");
+
+        Tie(config.mNetworkRemoveTimeout, err) = common::utils::ParseDuration(
+            object.GetValue<std::string>("networkRemoveTimeout", cDefaultNetworkRemoveTimeout));
+        AOS_ERROR_CHECK_AND_THROW(err, "error parsing networkRemoveTimeout tag");
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

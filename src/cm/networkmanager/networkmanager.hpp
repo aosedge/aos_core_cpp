@@ -7,10 +7,14 @@
 #ifndef AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 #define AOS_CM_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
+#include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -23,10 +27,11 @@
 #include "ipsubnet.hpp"
 #include "itf/dnsserver.hpp"
 #include "itf/storage.hpp"
+#include "itf/updatesubscriptionlistener.hpp"
 
 namespace aos::cm::networkmanager {
 
-class NetworkManager : public aos::networkmanager::NetworkProviderItf {
+class NetworkManager : public aos::networkmanager::NetworkProviderItf, public UpdateSubscriptionListenerItf {
 public:
     /**
      * Constructor.
@@ -40,10 +45,26 @@ public:
      * @param random Random interface.
      * @param dnsServer DNS server interface.
      * @param pendingUpdateHandler Pending firewall update handler (optional).
+     * @param networkRemoveTimeout Time a network without instances stays in the unit networks (0 - no delay).
      * @return Error.
      */
     Error Init(StorageItf& storage, crypto::RandomItf& random, DNSServerItf& dnsServer,
-        aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler = nullptr);
+        aos::networkmanager::PendingUpdateHandlerItf* pendingUpdateHandler = nullptr,
+        Duration                                      networkRemoveTimeout = 0);
+
+    /**
+     * Starts network manager.
+     *
+     * @return Error.
+     */
+    Error Start();
+
+    /**
+     * Stops network manager.
+     *
+     * @return Error.
+     */
+    Error Stop();
 
     /**
      * Gets node network parameters.
@@ -94,6 +115,20 @@ public:
      * @return Error.
      */
     Error SyncNetworkState(const String& nodeID, const Array<InstanceNetworkStateInfo>& instances) override;
+
+    /**
+     * Called when node subscribes to network updates.
+     *
+     * @param nodeID Node ID.
+     */
+    void OnNodeSubscribed(const String& nodeID) override;
+
+    /**
+     * Called when node unsubscribes from network updates.
+     *
+     * @param nodeID Node ID.
+     */
+    void OnNodeUnsubscribed(const String& nodeID) override;
 
 private:
     static constexpr uint64_t cMaxVlanID           = 4096;
@@ -147,6 +182,22 @@ private:
 
     Error RestartDNS();
 
+    using Clock = std::chrono::steady_clock;
+
+    static bool              HasInstances(const NetworkState& networkState);
+    bool                     IsUnitNetwork(const std::string& networkID, const NetworkState& networkState) const;
+    std::vector<std::string> GetUnitNetworks() const;
+    void                     SyncUnitNetworks();
+    bool                     PushUnitNetworksIfChanged();
+    void                     PushUnitNetworks(const std::set<std::string>& nodeIDs);
+
+    void                             ScheduleNetworkRemoval(const std::string& networkID);
+    std::optional<Clock::time_point> GetNextRemovalDeadline() const;
+    void                             EraseExpiredDeadlines();
+    void                             HandleRemovalTimeout();
+    void                             NotifyRemovalThread();
+    void                             RunRemovalThread();
+
     StorageItf*        mStorage {};
     crypto::RandomItf* mRandom {};
     DNSServerItf*      mDNSServer {};
@@ -159,6 +210,15 @@ private:
     std::unordered_map<InstanceIdent, std::vector<PendingConnection>> mPendingConnections;
     std::unordered_set<InstanceIdent>                                 mPushedRequesters;
     aos::networkmanager::PendingUpdateHandlerItf*                     mPendingUpdateHandler {};
+    std::vector<std::string>                                          mUnitNetworks;
+    std::set<std::string>                                             mSubscribedNodes;
+    std::chrono::nanoseconds                                          mNetworkRemoveTimeout {};
+    std::unordered_map<std::string, Clock::time_point>                mRemovalDeadlines;
+    std::mutex                                                        mRemovalMutex;
+    std::condition_variable                                           mRemovalCondVar;
+    std::thread                                                       mRemovalThread;
+    bool                                                              mRemovalStopped {};
+    bool                                                              mRemovalDeadlinesChanged {};
 };
 
 } // namespace aos::cm::networkmanager
