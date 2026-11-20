@@ -95,6 +95,12 @@ if(WITH_AOS_INSTALL)
         install(CODE "execute_process(COMMAND \${PATCHELF_EXECUTABLE} --set-rpath \"${AOS_CRUN_RPATH}\"
              \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/crun\")"
         )
+
+        # conmon is the container monitor that launches crun and records container exit status. It's statically
+        # linked against its conan dependencies, so only the binary itself has to be installed.
+        find_package(conmon REQUIRED)
+
+        install(PROGRAMS ${conmon_PACKAGE_FOLDER_${AOS_CONAN_CONFIG}}/bin/conmon DESTINATION bin)
     endif()
 
     configure_file(${PROJECT_SOURCE_DIR}/systemd/aos-sm.service.in ${CMAKE_CURRENT_BINARY_DIR}/aos-sm.service @ONLY)

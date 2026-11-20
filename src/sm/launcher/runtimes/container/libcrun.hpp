@@ -107,6 +107,8 @@ LIBCRUN_PUBLIC void                 libcrun_container_free(libcrun_container_t* 
 LIBCRUN_PUBLIC int libcrun_container_run(
     libcrun_context_t* context, libcrun_container_t* container, unsigned int options, libcrun_error_t* error);
 
+LIBCRUN_PUBLIC int libcrun_container_start(libcrun_context_t* context, const char* id, libcrun_error_t* err);
+
 LIBCRUN_PUBLIC int libcrun_container_delete(libcrun_context_t* context, runtime_spec_schema_config_schema* def,
     const char* id, bool force, libcrun_error_t* err);
 

@@ -77,15 +77,6 @@ Error SpawnProcess(const std::vector<std::string>& args, const posix_spawn_file_
     return ErrorEnum::eNone;
 }
 
-int WaitForExitCode(pid_t pid)
-{
-    int status = 0;
-
-    waitpid(pid, &status, 0);
-
-    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-}
-
 Error CheckExitCode(int rc, const std::string& output, const std::initializer_list<int>& expectedExitCodes)
 {
     if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), rc) != expectedExitCodes.end()) {
@@ -182,21 +173,6 @@ RetWithError<std::string> ExecCommand(
     const int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 
     return {outStr, CheckExitCode(rc, outStr, expectedExitCodes)};
-}
-
-Error ExecDetachedCommand(const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes)
-{
-    // No pipe/file actions here: the spawned process inherits this process's actual stdout/stderr. This is
-    // for commands that daemonize a long-running process expected to keep producing output for its whole
-    // lifetime, which a pipe capturing just the launcher command's own short-lived setup output isn't
-    // suited for.
-    pid_t pid = -1;
-
-    if (auto err = SpawnProcess(args, nullptr, pid); !err.IsNone()) {
-        return err;
-    }
-
-    return CheckExitCode(WaitForExitCode(pid), "", expectedExitCodes);
 }
 
 } // namespace aos::common::utils
