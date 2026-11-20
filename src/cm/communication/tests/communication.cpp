@@ -483,6 +483,165 @@ TEST_F(CMCommunicationTest, ReconnectOnSendFailure)
     EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
+TEST_F(CMCommunicationTest, DisconnectNotificationDoesNotBlockSending)
+{
+    // Subscriber that takes its own mutex in OnDisconnect(). Another thread holds the same mutex while sending to the
+    // cloud, the same way alerts are sent. If OnDisconnect() is called with the Communication mutex held, sending
+    // waits for the Communication mutex and OnDisconnect() waits for the subscriber mutex: deadlock.
+    class LockingSubscriber : public cloudconnection::ConnectionListenerItf {
+    public:
+        void OnConnect() override { }
+
+        void OnDisconnect() override
+        {
+            if (!mDisconnectCalled.exchange(true)) {
+                mDisconnectEntered.set_value();
+            }
+
+            std::lock_guard lock {mMutex};
+        }
+
+        std::mutex         mMutex;
+        std::atomic_bool   mDisconnectCalled {};
+        std::promise<void> mDisconnectEntered;
+    } lockingSubscriber;
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto err = mCommunication.SubscribeListener(lockingSubscriber);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    // Unsubscribe on every exit path: lockingSubscriber is a local object.
+    struct Unsubscribe {
+        Communication&                          communication;
+        cloudconnection::ConnectionListenerItf& listener;
+
+        ~Unsubscribe() { communication.UnsubscribeListener(listener); }
+    } unsubscribe {mCommunication, lockingSubscriber};
+
+    std::unique_lock subscriberLock {lockingSubscriber.mMutex};
+
+    StopHTTPServer();
+
+    EXPECT_EQ(lockingSubscriber.mDisconnectEntered.get_future().wait_for(std::chrono::seconds(15)),
+        std::future_status::ready);
+
+    auto send = std::async(std::launch::async, [this] {
+        auto alerts = std::make_unique<Alerts>();
+
+        return mCommunication.SendAlerts(*alerts);
+    });
+
+    const auto status = send.wait_for(std::chrono::seconds(5));
+
+    subscriberLock.unlock();
+
+    EXPECT_EQ(status, std::future_status::ready) << "Sending is blocked while OnDisconnect() is in progress";
+
+    err = send.get();
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    StartHTTPServer();
+
+    err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent, std::chrono::seconds(30));
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, SendFromSubscriberDuringConnectionLossDoesNotDeadlock)
+{
+    // Same pattern as the alerts module: a sender thread holds the subscriber mutex while sending to the cloud, and
+    // the subscriber takes this mutex in OnDisconnect(). A send failure while the sender is active must not deadlock.
+    // OnDisconnect() waits for the mutex with a timeout to report the deadlock instead of hanging the test.
+    class SendingSubscriber : public cloudconnection::ConnectionListenerItf {
+    public:
+        void OnConnect() override { }
+
+        void OnDisconnect() override
+        {
+            std::unique_lock lock {mMutex, std::defer_lock};
+
+            if (!lock.try_lock_for(std::chrono::seconds(5))) {
+                mDeadlock = true;
+            }
+        }
+
+        std::timed_mutex mMutex;
+        std::atomic_bool mDeadlock {};
+    } sendingSubscriber;
+
+    SubscribeAndWaitConnected();
+
+    mUUIDProvider.SetUUID("fb6e8461-2601-4f9a-8957-7ab4e52f304c");
+
+    auto err = mCommunication.SubscribeListener(sendingSubscriber);
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    std::atomic_bool sending {true};
+
+    std::thread sender([this, &sending, &sendingSubscriber] {
+        auto alerts = std::make_unique<Alerts>();
+
+        while (sending) {
+            {
+                std::lock_guard lock {sendingSubscriber.mMutex};
+
+                mCommunication.SendAlerts(*alerts);
+            }
+
+            mCloudReceivedMessages.Pop(std::chrono::milliseconds(20));
+        }
+    });
+
+    // Stop the sender and unsubscribe on every exit path: both refer to local objects.
+    struct Cleanup {
+        Communication&                          communication;
+        cloudconnection::ConnectionListenerItf& listener;
+        std::atomic_bool&                       sending;
+        std::thread&                            thread;
+
+        ~Cleanup()
+        {
+            sending = false;
+
+            if (thread.joinable()) {
+                thread.join();
+            }
+
+            communication.UnsubscribeListener(listener);
+        }
+    } cleanup {mCommunication, sendingSubscriber, sending, sender};
+
+    StopHTTPServer();
+
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    StartHTTPServer();
+
+    err = mConnectionSubscriberStub.WaitEvent(cConnectedEvent, std::chrono::seconds(30));
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    // The lost connection is reported only once: no disconnect must follow the reconnect.
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(2));
+    EXPECT_FALSE(err.IsNone()) << "Unexpected disconnect after reconnect";
+
+    EXPECT_FALSE(sendingSubscriber.mDeadlock) << "OnDisconnect() is called while sending is blocked";
+
+    sending = false;
+    sender.join();
+
+    err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
 TEST_F(CMCommunicationTest, SubscribeUnsubscribe)
 {
     SubscribeAndWaitConnected();
