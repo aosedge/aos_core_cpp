@@ -201,6 +201,7 @@ private:
     static constexpr auto cOnlineCertificate       = "online";
     static constexpr auto cMaxServiceDiscoveryURLs = 1;
     static constexpr auto cSendTimeoutSec          = 30;
+    static constexpr auto cCloseFrameTimeoutSec    = 5;
 
     using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
     using ResponseMessageVariant    = std::variant<BlobURLsInfo>;
@@ -258,6 +259,7 @@ private:
     Error       ConnectToCloud();
     Error       CloseConnection();
     Error       Disconnect();
+    void        ShutdownSocket();
     Error       ReceiveFrames();
     Error       CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message, ResponseInfo& info) const;
     void        NotifyConnectionEstablished();
