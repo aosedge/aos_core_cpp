@@ -202,8 +202,8 @@ public:
     {
         ASSERT_NO_THROW(mDiscoverySendMessages.Push(CreateDiscoveryResponse()));
 
-        mCloudServer.emplace(
-            cCloudServerPort, cServerKey, cServerCert, cCA, mCloudReceivedMessages, mCloudSendMessageQueue);
+        mCloudServer.emplace(cCloudServerPort, cServerKey, cServerCert, cCA, mCloudReceivedMessages,
+            mCloudSendMessageQueue, &mCloudIgnoreCloseFrame);
         mCloudServer->Start();
 
         mDiscoveryServer.emplace(
@@ -338,8 +338,9 @@ protected:
     MessageQueue mDiscoveryReceivedMessages;
     MessageQueue mDiscoverySendMessages;
 
-    MessageQueue mCloudReceivedMessages;
-    MessageQueue mCloudSendMessageQueue;
+    MessageQueue     mCloudReceivedMessages;
+    MessageQueue     mCloudSendMessageQueue;
+    std::atomic_bool mCloudIgnoreCloseFrame {};
 
     StaticString<cIDLen>                   mSystemID = "test_system_id";
     StaticString<cIDLen>                   mNodeID   = "node0";
@@ -1397,6 +1398,31 @@ TEST_F(CMCommunicationTest, ReceivedAckIsNotRecent)
 
     auto err = mCommunication.Stop();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, StopDoesNotWaitForUnansweredCloseFrame)
+{
+    SubscribeAndWaitConnected();
+
+    mCloudIgnoreCloseFrame = true;
+
+    auto stop = std::async(std::launch::async, [this] { return mCommunication.Stop(); });
+
+    // Stop() waits for the close frame answer for Communication::cCloseFrameTimeoutSec, then shuts down the socket.
+    const auto status = stop.wait_for(std::chrono::seconds(15));
+
+    if (status != std::future_status::ready) {
+        // Unblock Stop() by closing the server side, so the test fails instead of hanging.
+        StopHTTPServer();
+    }
+
+    ASSERT_EQ(status, std::future_status::ready) << "Stop() hangs waiting for the close frame answer";
+
+    auto err = stop.get();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 
 } // namespace aos::cm::communication

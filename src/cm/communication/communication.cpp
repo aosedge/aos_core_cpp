@@ -282,7 +282,7 @@ Error Communication::Start()
 Error Communication::Stop()
 {
     {
-        std::lock_guard lock {mMutex};
+        std::unique_lock lock {mMutex};
 
         LOG_DBG() << "Stop communication";
 
@@ -295,6 +295,15 @@ Error Communication::Stop()
         CloseConnection();
 
         mCondVar.notify_all();
+
+        // The connection handler thread is blocked in ReceiveFrames() until the cloud answers the close frame. Do not
+        // wait for the answer forever: if it doesn't come in time, shut down the socket to unblock the thread.
+        if (!mCondVar.wait_for(
+                lock, std::chrono::seconds(cCloseFrameTimeoutSec), [this] { return !mWebSocket.has_value(); })) {
+            LOG_WRN() << "Close frame is not answered, shut down web socket";
+
+            ShutdownSocket();
+        }
     }
 
     for (auto& thread : mThreadPool) {
@@ -668,6 +677,12 @@ Error Communication::ConnectToCloud()
     {
         std::lock_guard lock {mMutex};
 
+        // Stop() may be called while the connection handler thread is retrying to connect. Don't open a new
+        // connection after that: nobody would close it, and Stop() would wait for the thread forever.
+        if (!mIsRunning) {
+            return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+        }
+
         LOG_DBG() << "Connect to cloud web socket server";
 
         if (!ConnectionInfoIsSet()) {
@@ -756,7 +771,26 @@ Error Communication::Disconnect()
     mWebSocket.reset();
     mClientSession.reset();
 
+    mCondVar.notify_all();
+
     return err;
+}
+
+void Communication::ShutdownSocket()
+{
+    if (!mWebSocket) {
+        return;
+    }
+
+    try {
+        // Shut down the underlying TCP socket rather than the TLS session: it is the only way to wake up a thread
+        // blocked in receiveFrame(). WebSocketImpl shares the socket descriptor with the TLS socket, so the
+        // non-virtual SocketImpl::shutdown() shuts down the TCP connection without touching the TLS session, which
+        // is in use by the receiving thread.
+        mWebSocket->impl()->Poco::Net::SocketImpl::shutdown();
+    } catch (const Poco::Exception& e) {
+        LOG_ERR() << "Failed to shut down web socket" << Log::Field(common::utils::ToAosError(e));
+    }
 }
 
 void Communication::NotifyConnectionEstablished()
