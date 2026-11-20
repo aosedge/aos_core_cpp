@@ -739,10 +739,10 @@ Error Communication::CloseConnection()
         err = common::utils::ToAosError(e);
     }
 
-    // Notify subscribers regardless of whether the graceful shutdown above succeeded: the connection is being
-    // torn down either way (e.g. shutdown() throws if the peer already reset the socket), and subscribers must
-    // not silently miss an OnDisconnect() callback.
-    NotifyConnectionLost();
+    // Subscribers are not notified here: CloseConnection() is called with mMutex held, and subscriber callbacks may
+    // call back into Communication (e.g. SendAlerts()), which takes mMutex and leads to a lock order inversion with
+    // the subscriber's own mutex. The connection handler thread notifies them after releasing mMutex, once
+    // ReceiveFrames() returns.
 
     return err;
 }
@@ -776,13 +776,6 @@ void Communication::NotifyConnectionLost()
 {
     std::lock_guard lock {mSubscribersMutex};
 
-    // CloseConnection() can be invoked more than once for the same disconnect (e.g. once from HandleSendQueue on
-    // a send failure, and again from HandleConnection's Disconnect() once ReceiveFrames() unblocks). Only notify
-    // on the connected -> disconnected transition so subscribers do not get duplicate OnDisconnect() calls.
-    if (!mIsConnected) {
-        return;
-    }
-
     mIsConnected = false;
 
     LOG_INF() << "Connection lost";
@@ -811,11 +804,15 @@ void Communication::HandleConnection()
             LOG_ERR() << "Failed to receive frames" << Log::Field(err);
         }
 
-        std::lock_guard lock {mMutex};
+        {
+            std::lock_guard lock {mMutex};
 
-        if (auto err = Disconnect(); !err.IsNone()) {
-            LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
+            if (auto err = Disconnect(); !err.IsNone()) {
+                LOG_ERR() << "Failed to disconnect from cloud web socket server" << Log::Field(err);
+            }
         }
+
+        NotifyConnectionLost();
     }
 
     LOG_DBG() << "Stop connection handler thread";
