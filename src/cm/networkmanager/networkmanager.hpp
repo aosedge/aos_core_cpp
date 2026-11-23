@@ -137,6 +137,11 @@ private:
     static constexpr int      cVlanGenerateRetries = 4;
 
     void     RemoveExistedNetworks();
+    Error    LoadNetworkHosts(const Network& network, NetworkState& networkState);
+    Error    UpdateInstanceNetwork(const InstanceIdent& instanceIdent, const String& networkID, const String& nodeID,
+           const UpdateItemNetworkParams& serviceData, const std::vector<std::string>& hosts,
+           const NetworkState& networkState, Instance& instance, InstanceNetworkAllocation& result);
+    Error    AddInstanceHosts(const std::string& ip, const std::vector<std::string>& hosts);
     uint64_t GenerateVlanID();
     bool     IsHostExist(const std::string& hostName) const;
 

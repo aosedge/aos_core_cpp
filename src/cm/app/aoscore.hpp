@@ -86,6 +86,8 @@ private:
     void InitDatabase();
     void InitStorageState();
     void InitSMController();
+    void StartBaseServices();
+    void StartManagers();
 
     aos::HeapAllocator mAllocator;
 

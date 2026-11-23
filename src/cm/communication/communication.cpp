@@ -1493,40 +1493,8 @@ void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCert
     // IAM cert type of secondary nodes should be sent the latest among certificates for that node.
     // And IAM certificate for the main node should be send in the end. Otherwise IAM client/server
     // restart will fail the following certificates to apply.
-    std::stable_sort(issuedCerts.begin(), issuedCerts.end(), [this](const IssuedCertData& a, const IssuedCertData& b) {
-        // IAM cert for main node should go last
-        if (a.mNodeID == mMainNodeID && a.mType == CertTypeEnum::eIAM) {
-            return false;
-        }
-
-        if (b.mNodeID == mMainNodeID && b.mType == CertTypeEnum::eIAM) {
-            return true;
-        }
-
-        // Main node certs should go last
-        if (a.mNodeID == mMainNodeID) {
-            return false;
-        }
-
-        if (b.mNodeID == mMainNodeID) {
-            return true;
-        }
-
-        if (a.mNodeID == b.mNodeID) {
-            // IAM cert should be last for the node
-            if (a.mType == CertTypeEnum::eIAM) {
-                return false;
-            }
-
-            if (b.mType == CertTypeEnum::eIAM) {
-                return true;
-            }
-
-            return false;
-        }
-
-        return a.mNodeID < b.mNodeID;
-    });
+    std::stable_sort(issuedCerts.begin(), issuedCerts.end(),
+        [this](const IssuedCertData& a, const IssuedCertData& b) { return IsIssuedCertInstalledBefore(a, b); });
 
     for (const auto& cert : issuedCerts) {
         LOG_DBG() << "Install certificate" << Log::Field("nodeID", cert.mNodeID) << Log::Field("type", cert.mType);
@@ -1557,6 +1525,42 @@ void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCert
     if (auto err = SendInstallUnitCertsConfirmation(*confirmation); !err.IsNone()) {
         LOG_ERR() << "Send install unit certs confirmation failed" << Log::Field(err);
     }
+}
+
+bool Communication::IsIssuedCertInstalledBefore(const IssuedCertData& a, const IssuedCertData& b) const
+{
+    // IAM cert for main node should go last
+    if (a.mNodeID == mMainNodeID && a.mType == CertTypeEnum::eIAM) {
+        return false;
+    }
+
+    if (b.mNodeID == mMainNodeID && b.mType == CertTypeEnum::eIAM) {
+        return true;
+    }
+
+    // Main node certs should go last
+    if (a.mNodeID == mMainNodeID) {
+        return false;
+    }
+
+    if (b.mNodeID == mMainNodeID) {
+        return true;
+    }
+
+    if (a.mNodeID == b.mNodeID) {
+        // IAM cert should be last for the node
+        if (a.mType == CertTypeEnum::eIAM) {
+            return false;
+        }
+
+        if (b.mType == CertTypeEnum::eIAM) {
+            return true;
+        }
+
+        return false;
+    }
+
+    return a.mNodeID < b.mNodeID;
 }
 
 Error Communication::SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response)

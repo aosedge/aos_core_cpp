@@ -291,6 +291,7 @@ private:
     void  HandleMessage(const ResponseInfo& info, const DesiredUnitRootCertificates& desiredRootCerts);
     void  HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification);
     void  HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs);
+    bool  IsIssuedCertInstalledBefore(const IssuedCertData& a, const IssuedCertData& b) const;
     Error SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response);
     Error SendAck(const std::string& correlationId);
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);

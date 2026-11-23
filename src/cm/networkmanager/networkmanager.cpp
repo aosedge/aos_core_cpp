@@ -95,31 +95,8 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
         NetworkState networkState;
         networkState.mNetwork = network;
 
-        auto hosts = std::make_unique<StaticArray<Host, cMaxNumNodes * cMaxNumOwners>>();
-
-        if (auto err = mStorage->GetHosts(network.mNetworkID, *hosts); !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        for (const auto& host : *hosts) {
-            HostInstances hostInstances;
-            hostInstances.mHostInfo = host;
-
-            auto instances = std::make_unique<StaticArray<Instance, cMaxNumInstances>>();
-
-            if (auto err = mStorage->GetInstances(network.mNetworkID, host.mNodeID, *instances); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            for (const auto& instance : *instances) {
-                hostInstances.mInstances.try_emplace(instance.mInstanceIdent, instance);
-
-                for (const auto& hostname : instance.mHosts) {
-                    mHosts[instance.mIP.CStr()].emplace_back(hostname.CStr());
-                }
-            }
-
-            networkState.mHostInstances.try_emplace(host.mNodeID.CStr(), std::move(hostInstances));
+        if (auto err = LoadNetworkHosts(network, networkState); !err.IsNone()) {
+            return err;
         }
 
         if (!HasInstances(networkState)) {
@@ -310,64 +287,12 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
 
         if (auto itInstance = itHost->second.mInstances.find(instanceIdent);
             itInstance != itHost->second.mInstances.end()) {
-            result.mIP         = itInstance->second.mIP;
-            result.mDNSServers = itInstance->second.mDNSServers;
-
-            if (auto err = PrepareFirewallRules(instanceIdent, it->second.mNetwork.mSubnet.CStr(),
-                    itInstance->second.mIP, serviceData.mAllowedConnections, result, connections);
+            if (auto err = UpdateInstanceNetwork(
+                    instanceIdent, networkID, nodeID, serviceData, hosts, it->second, itInstance->second, result);
                 !err.IsNone()) {
                 return err;
             }
 
-            (void)mPendingConnections.erase(instanceIdent);
-
-            mStorage->RemovePendingConnections(instanceIdent);
-
-            StorePendingConnections(instanceIdent, nodeID, networkID, itInstance->second.mIP,
-                it->second.mNetwork.mSubnet.CStr(), connections);
-
-            Error err;
-
-            auto savedHosts = mHosts[itInstance->second.mIP.CStr()];
-
-            auto rollbackHosts = DeferRelease(&err, [this, &itInstance, &savedHosts](const Error* err) {
-                if (!err->IsNone()) {
-                    mHosts[itInstance->second.mIP.CStr()] = savedHosts;
-                }
-            });
-
-            mHosts.erase(itInstance->second.mIP.CStr());
-
-            for (const auto& host : hosts) {
-                if (IsHostExist(host)) {
-                    err = Error(ErrorEnum::eAlreadyExist, "host already exists");
-
-                    return err;
-                }
-
-                mHosts[itInstance->second.mIP.CStr()].push_back(host);
-            }
-
-            if (err = RestartDNS(); !err.IsNone()) {
-                return err;
-            }
-
-            if (itInstance->second.mHosts != serviceData.mHosts) {
-                if (err = mStorage->UpdateInstanceHosts(instanceIdent, serviceData.mHosts); !err.IsNone()) {
-                    mHosts[itInstance->second.mIP.CStr()] = savedHosts;
-
-                    if (auto dnsErr = RestartDNS(); !dnsErr.IsNone()) {
-                        LOG_ERR() << "Failed to restore DNS after hostname update" << Log::Field(dnsErr);
-                    }
-
-                    return AOS_ERROR_WRAP(err);
-                }
-
-                itInstance->second.mHosts = serviceData.mHosts;
-            }
-
-            // Finish the rollback guard before releasing the mutex.
-            rollbackHosts.Release();
             lock.unlock();
             UpdateRequesters(targets, instanceIdent);
 
@@ -429,13 +354,8 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             return err;
         }
 
-        for (const auto& host : hosts) {
-            if (IsHostExist(host)) {
-                err = Error(ErrorEnum::eAlreadyExist, "host already exists");
-                return err;
-            }
-
-            mHosts[IP].push_back(host);
+        if (err = AddInstanceHosts(IP, hosts); !err.IsNone()) {
+            return err;
         }
 
         if (err = RestartDNS(); !err.IsNone()) {
@@ -607,6 +527,113 @@ void NetworkManager::OnNodeUnsubscribed(const String& nodeID)
 /***********************************************************************************************************************
  * Private
  **********************************************************************************************************************/
+
+Error NetworkManager::LoadNetworkHosts(const Network& network, NetworkState& networkState)
+{
+    auto hosts = std::make_unique<StaticArray<Host, cMaxNumNodes * cMaxNumOwners>>();
+
+    if (auto err = mStorage->GetHosts(network.mNetworkID, *hosts); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    for (const auto& host : *hosts) {
+        HostInstances hostInstances;
+        hostInstances.mHostInfo = host;
+
+        auto instances = std::make_unique<StaticArray<Instance, cMaxNumInstances>>();
+
+        if (auto err = mStorage->GetInstances(network.mNetworkID, host.mNodeID, *instances); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        for (const auto& instance : *instances) {
+            hostInstances.mInstances.try_emplace(instance.mInstanceIdent, instance);
+
+            for (const auto& hostname : instance.mHosts) {
+                mHosts[instance.mIP.CStr()].emplace_back(hostname.CStr());
+            }
+        }
+
+        networkState.mHostInstances.try_emplace(host.mNodeID.CStr(), std::move(hostInstances));
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::UpdateInstanceNetwork(const InstanceIdent& instanceIdent, const String& networkID,
+    const String& nodeID, const UpdateItemNetworkParams& serviceData, const std::vector<std::string>& hosts,
+    const NetworkState& networkState, Instance& instance, InstanceNetworkAllocation& result)
+{
+    std::vector<Connection> connections;
+
+    result.mIP         = instance.mIP;
+    result.mDNSServers = instance.mDNSServers;
+
+    if (auto err = PrepareFirewallRules(instanceIdent, networkState.mNetwork.mSubnet.CStr(), instance.mIP,
+            serviceData.mAllowedConnections, result, connections);
+        !err.IsNone()) {
+        return err;
+    }
+
+    (void)mPendingConnections.erase(instanceIdent);
+
+    mStorage->RemovePendingConnections(instanceIdent);
+
+    StorePendingConnections(
+        instanceIdent, nodeID, networkID, instance.mIP, networkState.mNetwork.mSubnet.CStr(), connections);
+
+    Error err;
+
+    auto savedHosts = mHosts[instance.mIP.CStr()];
+
+    auto rollbackHosts = DeferRelease(&err, [this, &instance, &savedHosts](const Error* resultErr) {
+        if (!resultErr->IsNone()) {
+            mHosts[instance.mIP.CStr()] = savedHosts;
+        }
+    });
+
+    mHosts.erase(instance.mIP.CStr());
+
+    if (err = AddInstanceHosts(instance.mIP.CStr(), hosts); !err.IsNone()) {
+        return err;
+    }
+
+    if (err = RestartDNS(); !err.IsNone()) {
+        return err;
+    }
+
+    if (instance.mHosts != serviceData.mHosts) {
+        if (err = mStorage->UpdateInstanceHosts(instanceIdent, serviceData.mHosts); !err.IsNone()) {
+            mHosts[instance.mIP.CStr()] = savedHosts;
+
+            if (auto dnsErr = RestartDNS(); !dnsErr.IsNone()) {
+                LOG_ERR() << "Failed to restore DNS after hostname update" << Log::Field(dnsErr);
+            }
+
+            return AOS_ERROR_WRAP(err);
+        }
+
+        instance.mHosts = serviceData.mHosts;
+    }
+
+    // Finish the rollback guard before releasing the mutex.
+    rollbackHosts.Release();
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::AddInstanceHosts(const std::string& ip, const std::vector<std::string>& hosts)
+{
+    for (const auto& host : hosts) {
+        if (IsHostExist(host)) {
+            return Error(ErrorEnum::eAlreadyExist, "host already exists");
+        }
+
+        mHosts[ip].push_back(host);
+    }
+
+    return ErrorEnum::eNone;
+}
 
 Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance)
 {
