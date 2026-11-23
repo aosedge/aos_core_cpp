@@ -32,8 +32,8 @@ void ParseMount(const common::utils::CaseInsensitiveObjectWrapper& object, Mount
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse mount source");
 
     common::utils::ForEach(object, "options", [&](const Poco::Dynamic::Var& optionVar) {
-        auto err = mount.mOptions.EmplaceBack(optionVar.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse mount option");
+        auto optionErr = mount.mOptions.EmplaceBack(optionVar.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(optionErr, "can't parse mount option");
     });
 }
 
@@ -54,32 +54,32 @@ void ParseResourceInfo(const common::utils::CaseInsensitiveObjectWrapper& object
     resource.mSharedCount = object.GetValue<size_t>("sharedCount", 0);
 
     common::utils::ForEach(object, "groups", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mGroups.EmplaceBack(var.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse group name");
+        auto groupErr = resource.mGroups.EmplaceBack(var.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(groupErr, "can't parse group name");
     });
 
     common::utils::ForEach(object, "mounts", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mMounts.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse mount info");
+        auto mountErr = resource.mMounts.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(mountErr, "can't parse mount info");
 
         ParseMount(common::utils::CaseInsensitiveObjectWrapper(var), resource.mMounts.Back());
     });
 
     common::utils::ForEach(object, "envs", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mEnv.EmplaceBack(var.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse env variable");
+        auto envErr = resource.mEnv.EmplaceBack(var.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(envErr, "can't parse env variable");
     });
 
     common::utils::ForEach(object, "hosts", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mHosts.EmplaceBack();
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse host info");
+        auto hostErr = resource.mHosts.EmplaceBack();
+        AOS_ERROR_CHECK_AND_THROW(hostErr, "can't parse host info");
 
         ParseHost(common::utils::CaseInsensitiveObjectWrapper(var), resource.mHosts.Back());
     });
 
     common::utils::ForEach(object, "devices", [&](const Poco::Dynamic::Var& var) {
-        auto err = resource.mDevices.EmplaceBack(var.convert<std::string>().c_str());
-        AOS_ERROR_CHECK_AND_THROW(err, "can't parse host device name");
+        auto deviceErr = resource.mDevices.EmplaceBack(var.convert<std::string>().c_str());
+        AOS_ERROR_CHECK_AND_THROW(deviceErr, "can't parse host device name");
     });
 }
 

@@ -118,9 +118,8 @@ Error PublicCurrentNodeService::SubscribeListener(aos::iamclient::CurrentNodeInf
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
-            return pbconvert::ConvertToAos(proto, aos);
-        };
+        auto convertFunc
+            = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) { return pbconvert::ConvertToAos(proto, aos); };
 
         auto notifyFunc = [](aos::iamclient::CurrentNodeInfoListenerItf& listener, const NodeInfo& nodeInfo) {
             listener.OnCurrentNodeInfoChanged(nodeInfo);

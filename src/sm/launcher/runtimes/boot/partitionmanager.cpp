@@ -138,10 +138,8 @@ Error PartitionManager::Unmount(const std::string& mountPoint) const
         },
         {}, cUmountRetries, cUmountDelay, cUmountMaxDelay);
 
-    if (!err.IsNone()) {
-        if (umount2(mountPoint.c_str(), MNT_FORCE) != 0) {
-            return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
-        }
+    if (!err.IsNone() && umount2(mountPoint.c_str(), MNT_FORCE) != 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
     return ErrorEnum::eNone;

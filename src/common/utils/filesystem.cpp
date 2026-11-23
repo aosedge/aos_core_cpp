@@ -105,7 +105,7 @@ RetWithError<std::string> GetMountPoint(const std::string& dir)
         return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), &endmntent);
     if (!mtab) {
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
@@ -144,7 +144,7 @@ RetWithError<std::string> GetBlockDevice(const std::string& path)
         return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), &endmntent);
     if (!mtab) {
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }

@@ -435,7 +435,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
             Error(ErrorEnum::eNotFound, ("failed to get interface " + std::string(ifname.CStr())).c_str()));
     }
 
-    int ifindex = static_cast<int>(ifindexU);
+    auto ifindex = static_cast<int>(ifindexU);
 
     rtnl_addr_set_ifindex(addrObj.Get(), ifindex);
 

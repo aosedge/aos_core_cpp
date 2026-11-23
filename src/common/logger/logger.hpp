@@ -29,6 +29,11 @@ public:
     };
 
     /**
+     * Destructor.
+     */
+    virtual ~Logger() = default;
+
+    /**
      * Initializes logging system.
      *
      * @return aos::Error.

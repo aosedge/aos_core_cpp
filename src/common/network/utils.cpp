@@ -27,7 +27,7 @@ std::string ExtractIPFromCIDR(const std::string& cidr)
 
 } // namespace
 
-void NLToAosException(int nlError, const std::string& message)
+[[noreturn]] void NLToAosException(int nlError, const std::string& message)
 {
     auto errMsg = message + ": " + nl_geterror(nlError);
     throw common::utils::AosException(Error(ErrorEnum::eFailed, errMsg.c_str()));

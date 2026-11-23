@@ -101,8 +101,8 @@ void MountDir(const fs::path& source, const fs::path& mountPoint, const std::str
 
     auto err = common::utils::Retry(
         [&]() { return mount(source.c_str(), mountPoint.c_str(), fsType.c_str(), flags, opts.c_str()); },
-        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
-            LOG_WRN() << "Mount error, try remount" << Log::Field(err);
+        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& retryErr) {
+            LOG_WRN() << "Mount error, try remount" << Log::Field(retryErr);
 
             sync();
             umount2(mountPoint.c_str(), MNT_FORCE);
@@ -145,8 +145,8 @@ void UmountDir(const fs::path& mountPoint)
     LOG_DBG() << "Umount dir" << Log::Field("mountPoint", mountPoint.c_str());
 
     auto err = common::utils::Retry([&]() { return umount(mountPoint.c_str()); },
-        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& err) {
-            LOG_WRN() << "Umount error, retry" << Log::Field(err);
+        [&]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& retryErr) {
+            LOG_WRN() << "Umount error, retry" << Log::Field(retryErr);
 
             umount2(mountPoint.c_str(), MNT_FORCE);
         },

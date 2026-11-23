@@ -135,8 +135,8 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cUpdateStateFileName = "update_state";
-    static constexpr auto cMaxNumInstances     = 1;
+    static constexpr auto cUpdateStateFileName   = "update_state";
+    static constexpr auto cMaxNumRootfsInstances = 1;
     // Current and pending instances, and stale pending instances left by failed storage cleanup.
     static constexpr auto cMaxNumStoredInstances = 4;
 

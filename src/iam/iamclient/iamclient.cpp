@@ -342,8 +342,8 @@ Error IAMClient::ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request
 
     LOG_DBG() << "Process apply cert request: type=" << storageID;
 
-    auto  certInfo = std::make_unique<CertInfo>();
-    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
+    auto certInfo = std::make_unique<CertInfo>();
+    auto err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
 
     return SendApplyCertResponse(nodeID, storageID, certInfo->mCertURL, certInfo->mSerial, err);
 }

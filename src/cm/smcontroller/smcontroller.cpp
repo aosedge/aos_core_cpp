@@ -589,7 +589,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
     const servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest*           request,
     grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>*  writer)
 {
-    auto nodeID = request->node_id();
+    const auto& nodeID = request->node_id();
 
     LOG_DBG() << "SubscribeInstanceNetworkUpdates" << Log::Field("nodeID", nodeID.c_str());
 

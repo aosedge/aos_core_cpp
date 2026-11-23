@@ -140,7 +140,11 @@ RetWithError<double> NodeMonitoringProvider::GetSystemCPUUsage()
 
     std::vector<size_t> stats;
 
-    for (size_t entry = 0; file >> entry; stats.push_back(entry)) { }
+    size_t entry = 0;
+
+    while (file >> entry) {
+        stats.push_back(entry);
+    }
 
     if (stats.size() < cCPUUsageMinEntries) {
         return {0, AOS_ERROR_WRAP(ErrorEnum::eFailed)};

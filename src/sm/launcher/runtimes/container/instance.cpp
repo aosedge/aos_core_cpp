@@ -25,7 +25,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
+const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
 
 } // namespace
 
@@ -89,10 +89,10 @@ Error Instance::Start()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
-        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+    auto updateRunStatus = DeferRelease(&err, [&](const Error* resultErr) {
+        if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
-            mRunStatus.mError = *err;
+            mRunStatus.mError = *resultErr;
         }
     });
 
@@ -129,10 +129,10 @@ Error Instance::Activate()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
-        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+    auto updateRunStatus = DeferRelease(&err, [&](const Error* resultErr) {
+        if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
-            mRunStatus.mError = *err;
+            mRunStatus.mError = *resultErr;
         }
     });
 

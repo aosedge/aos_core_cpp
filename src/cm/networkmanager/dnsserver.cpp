@@ -100,7 +100,7 @@ Poco::Process::PID DNSServer::FindServerProcess()
 
     try {
         pid = Poco::NumberParser::parse(pidContent);
-    } catch (const Poco::Exception& e) {
+    } catch (const Poco::Exception&) {
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "invalid PID format: " + pidContent);
     }
 

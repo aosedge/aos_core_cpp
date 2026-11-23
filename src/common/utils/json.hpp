@@ -163,7 +163,7 @@ public:
      *
      * @return Poco::JSON::Object::Ptr.
      */
-    operator Poco::JSON::Object::Ptr() const;
+    explicit operator Poco::JSON::Object::Ptr() const;
 
     /**
      * Gets object by key.

@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include <core/common/tools/error.hpp>
 
@@ -66,7 +67,7 @@ std::string JoinPath(const std::string& base, const std::string& entry, Args&&..
     std::filesystem::path path(base);
 
     append(path, entry);
-    (append(path, std::string(entries)), ...);
+    (append(path, std::string(std::forward<Args>(entries))), ...);
 
     return path.string();
 }

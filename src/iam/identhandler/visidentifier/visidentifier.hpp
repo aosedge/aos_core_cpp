@@ -64,7 +64,7 @@ public:
     /**
      * Creates a new object instance.
      */
-    VISIdentifier();
+    VISIdentifier() = default;
 
     /**
      * Initializes vis identifier.
@@ -134,8 +134,8 @@ private:
     std::optional<UnitModelInfo>                       mUnitModelInfo;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
     std::thread                                        mHandleConnectionThread;
-    Poco::Event                                        mWSClientIsConnected;
-    Poco::Event                                        mStopHandleSubjectsChangedThread;
+    Poco::Event                                        mWSClientIsConnected {Poco::Event::EVENT_MANUALRESET};
+    Poco::Event                                        mStopHandleSubjectsChangedThread {Poco::Event::EVENT_AUTORESET};
     std::mutex                                         mMutex;
     config::IdentifierConfig                           mConfig;
 };

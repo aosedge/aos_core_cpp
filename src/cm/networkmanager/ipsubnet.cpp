@@ -76,14 +76,14 @@ void IpSubnet::RemoveAllocatedSubnet(
         mPredefinedPrivateNetworks.erase(it);
     }
 
-    for (auto it = IPs.begin(); it != IPs.end(); ++it) {
+    for (const auto& ip : IPs) {
         auto it2 = mUsedIPSubnets.find(networkID);
         if (it2 == mUsedIPSubnets.end()) {
             continue;
         }
 
         auto& ips = it2->second.mIPs;
-        ips.erase(std::remove(ips.begin(), ips.end(), *it), ips.end());
+        ips.erase(std::remove(ips.begin(), ips.end(), ip), ips.end());
     }
 }
 

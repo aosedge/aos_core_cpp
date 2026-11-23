@@ -141,9 +141,8 @@ Error PublicNodesService::SubscribeListener(aos::iamclient::NodeInfoListenerItf&
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
-            return pbconvert::ConvertToAos(proto, aos);
-        };
+        auto convertFunc
+            = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) { return pbconvert::ConvertToAos(proto, aos); };
 
         auto notifyFunc = [](aos::iamclient::NodeInfoListenerItf& listener, const NodeInfo& nodeInfo) {
             listener.OnNodeInfoChanged(nodeInfo);
@@ -341,10 +340,12 @@ Error PublicNodesService::ReceiveMessage([[maybe_unused]] const iamanager::v7::I
 
 void PublicNodesService::OnConnected()
 {
+    // Default implementation does nothing: derived classes override it to handle connection.
 }
 
 void PublicNodesService::OnDisconnected()
 {
+    // Default implementation does nothing: derived classes override it to handle disconnection.
 }
 
 Error PublicNodesService::HandleIncomingMessage()

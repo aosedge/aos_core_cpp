@@ -320,7 +320,8 @@ Error BootRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = utils::CreateRuntimeInfo(mConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo); !err.IsNone()) {
+    if (auto err = utils::CreateRuntimeInfo(mConfig.mType, *nodeInfo, cMaxNumBootInstances, mRuntimeInfo);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

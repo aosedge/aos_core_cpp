@@ -127,11 +127,6 @@ void App::uninitialize()
     mAosCore->Stop();
 }
 
-void App::reinitialize(Application& self)
-{
-    Application::reinitialize(self);
-}
-
 int App::main(const ArgVec& args)
 {
     (void)args;

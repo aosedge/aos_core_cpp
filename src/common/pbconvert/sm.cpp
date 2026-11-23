@@ -881,7 +881,7 @@ Error ConvertFromProto(const servicemanager::v5::InstanceStatus& src, const Stri
         return AOS_ERROR_WRAP(err);
     }
 
-    for (auto protoEnvVarStatus : src.env_vars()) {
+    for (const auto& protoEnvVarStatus : src.env_vars()) {
         if (auto err = dst.mEnvVarsStatuses.EmplaceBack(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -1121,7 +1121,10 @@ public:
         resourceAlert->set_message(val.mMessage.CStr());
     }
 
-    void Visit([[maybe_unused]] const aos::DownloadAlert& val) const { }
+    void Visit([[maybe_unused]] const aos::DownloadAlert& val) const
+    {
+        // Download alert has no counterpart in the SM proto alert, nothing to convert.
+    }
 
     void Visit(const aos::InstanceAlert& val) const
     {

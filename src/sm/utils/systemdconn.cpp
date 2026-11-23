@@ -86,7 +86,7 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
 
     std::vector<UnitStatus> units;
 
-    while ((rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0) {
+    while (sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso") > 0) {
         const char* name        = nullptr;
         const char* activeState = nullptr;
         const char* objectPath  = nullptr;

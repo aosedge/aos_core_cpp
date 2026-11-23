@@ -205,9 +205,6 @@ private:
     nodeinfoprovider::SMInfoReceiverItf* mSMInfoReceiver {};
     NodeConnectionStatusListenerItf*     mConnStatusListener {};
 
-    bool                 mCredentialListUpdated {};
-    grpc::ServerContext* mCtx {};
-
     std::mutex                                         mMutex;
     std::mutex                                         mWriteMutex;
     std::condition_variable                            mCondVar;

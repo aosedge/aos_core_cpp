@@ -122,13 +122,13 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cNumBootPartitions = 2;
-    static constexpr auto cInstalledInstance = "installed.json";
-    static constexpr auto cPendingInstance   = "pending.json";
-    static constexpr auto cImagesDir         = "images";
-    static constexpr auto cMountDirName      = "mnt";
-    static constexpr auto cUpdateStateFile   = "update.state";
-    static constexpr auto cMaxNumInstances   = 1;
+    static constexpr auto cNumBootPartitions   = 2;
+    static constexpr auto cInstalledInstance   = "installed.json";
+    static constexpr auto cPendingInstance     = "pending.json";
+    static constexpr auto cImagesDir           = "images";
+    static constexpr auto cMountDirName        = "mnt";
+    static constexpr auto cUpdateStateFile     = "update.state";
+    static constexpr auto cMaxNumBootInstances = 1;
 
     struct BootData : public InstanceIdent {
         InstanceState                 mState {InstanceStateEnum::eActive};

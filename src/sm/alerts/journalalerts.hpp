@@ -30,6 +30,11 @@ namespace aos::sm::alerts {
 class JournalAlerts {
 public:
     /**
+     * Destructor.
+     */
+    virtual ~JournalAlerts() = default;
+
+    /**
      * Initializes object instance.
      *
      * @param config alerts config.

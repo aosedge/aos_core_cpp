@@ -56,7 +56,7 @@ Error EFIVar::WriteGlobalGuidVariable(const std::string& name, const std::vector
         char*    message   = nullptr;
         int      error_num = 0;
 
-        Error err = Error(ErrorEnum::eFailed, "can't write EFI variable");
+        auto err = Error(ErrorEnum::eFailed, "can't write EFI variable");
 
         while (efi_error_get(idx++, &file, &func, &line, &message, &error_num) == 1) {
             LOG_DBG() << "Fetched EFI error" << Log::Field("file", file) << Log::Field("function", func)

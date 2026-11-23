@@ -23,11 +23,6 @@ namespace aos::sm::launcher {
  * Public
  **********************************************************************************************************************/
 
-Monitoring::Monitoring()
-    : mCPUCount(std::thread::hardware_concurrency())
-{
-}
-
 Error Monitoring::Init(const NodeInfo& nodeInfo, networkmanager::InstanceTrafficProviderItf& trafficProvider)
 {
     mNodeInfo        = nodeInfo;
@@ -135,10 +130,8 @@ size_t Monitoring::GetInstanceCPUUSec(const std::string& instanceID)
         std::string key;
         size_t      value = 0;
 
-        if (lineStream >> key >> value) {
-            if (key == "usage_usec") {
-                return value;
-            }
+        if (lineStream >> key >> value && key == "usage_usec") {
+            return value;
         }
     }
 

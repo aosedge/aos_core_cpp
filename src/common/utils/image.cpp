@@ -39,6 +39,19 @@ namespace aos::common::utils {
  * Static
  **********************************************************************************************************************/
 
+static size_t GetDigestSize(const std::string& algorithm)
+{
+    if (algorithm == "sha256") {
+        return 32;
+    }
+
+    if (algorithm == "sha384") {
+        return 48;
+    }
+
+    return 64;
+}
+
 static void ValidateEncoded(const std::string& algorithm, const std::string& encoded)
 {
     auto it = cAnchoredEncodedRegexps.find(algorithm);
@@ -48,7 +61,7 @@ static void ValidateEncoded(const std::string& algorithm, const std::string& enc
 
     const std::regex& r = it->second;
 
-    if (encoded.length() != 2 * (algorithm == "sha256" ? 32 : algorithm == "sha384" ? 48 : 64)) {
+    if (encoded.length() != 2 * GetDigestSize(algorithm)) {
         throw std::runtime_error("Invalid encoded length");
     }
 

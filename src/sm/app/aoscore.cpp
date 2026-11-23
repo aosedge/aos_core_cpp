@@ -57,7 +57,6 @@ void AosCore::Init(const std::string& configFile)
         mConfig.mCertStorage, mTLSCredentials, "sm");
     AOS_ERROR_CHECK_AND_THROW(err, "can't initialize IAM client");
 
-    // NodeInfo nodeInfo;
     auto nodeInfo = std::make_unique<NodeInfo>();
 
     err = mIAMClient.GetCurrentNodeInfo(*nodeInfo);

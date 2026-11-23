@@ -388,7 +388,6 @@ void Fileserver::FileRequestHandler::SendFile(int fd, const std::string& path, c
 Fileserver::FileRequestHandlerFactory::FileRequestHandlerFactory(const std::string& rootDir, ReadFunction read)
     : mRootDir(rootDir)
     , mRead(std::move(read))
-    , mBrokenFiles(std::make_shared<BrokenFiles>())
 {
 }
 

@@ -58,12 +58,6 @@ Error VISSubscriptions::ProcessSubscription(const std::string& subscriptionId, c
  * Public
  **********************************************************************************************************************/
 
-VISIdentifier::VISIdentifier()
-    : mWSClientIsConnected {Poco::Event::EventType::EVENT_MANUALRESET}
-    , mStopHandleSubjectsChangedThread {Poco::Event::EventType::EVENT_AUTORESET}
-{
-}
-
 Error VISIdentifier::Init(const config::IdentifierConfig& config, crypto::UUIDItf& uuidProvider)
 {
     LOG_DBG() << "Init VIS identifier";
@@ -305,7 +299,7 @@ void VISIdentifier::HandleConnection()
             mWSClientIsConnected.reset();
             mWsClientPtr->Disconnect();
 
-        } catch (const WSException& e) {
+        } catch (const WSException&) {
             mWSClientIsConnected.reset();
             mWsClientPtr->Disconnect();
         } catch (...) {

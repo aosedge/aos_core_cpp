@@ -141,7 +141,7 @@ public:
     private:
         std::string                  mRootDir;
         ReadFunction                 mRead;
-        std::shared_ptr<BrokenFiles> mBrokenFiles;
+        std::shared_ptr<BrokenFiles> mBrokenFiles {std::make_shared<BrokenFiles>()};
     };
 
     /**

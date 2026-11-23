@@ -465,7 +465,7 @@ NodeStreamHandler::Ptr NodeController::GetNodeStreamHandler(const std::string& n
     LOG_DBG() << "Get node controller stream handler: nodeID=" << nodeID.c_str();
 
     if (auto it = std::find_if(
-            mHandlers.begin(), mHandlers.end(), [nodeID](const auto& pair) { return pair.second == nodeID; });
+            mHandlers.begin(), mHandlers.end(), [&nodeID](const auto& pair) { return pair.second == nodeID; });
         it != mHandlers.end()) {
         return it->first;
     }

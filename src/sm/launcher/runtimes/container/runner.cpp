@@ -137,18 +137,15 @@ Error Runner::StopInstance(const std::string& instanceID)
     }
 
     auto err = mContainerRunner->StopContainer(instanceID);
-    if (!err.IsNone()) {
-        if (err.Is(ErrorEnum::eNotFound)) {
-            LOG_DBG() << "Process not found" << Log::Field("instanceID", instanceID.c_str());
+    if (err.Is(ErrorEnum::eNotFound)) {
+        LOG_DBG() << "Process not found" << Log::Field("instanceID", instanceID.c_str());
 
-            err = ErrorEnum::eNone;
-        }
+        err = ErrorEnum::eNone;
     }
 
-    if (auto removeErr = mContainerRunner->RemoveContainer(instanceID); !removeErr.IsNone()) {
-        if (!removeErr.Is(ErrorEnum::eNotFound) && err.IsNone()) {
-            err = removeErr;
-        }
+    if (auto removeErr = mContainerRunner->RemoveContainer(instanceID);
+        !removeErr.IsNone() && !removeErr.Is(ErrorEnum::eNotFound) && err.IsNone()) {
+        err = removeErr;
     }
 
     return err;

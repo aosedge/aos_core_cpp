@@ -294,7 +294,7 @@ void FSWatcher::Run()
         std::vector<std::pair<int, std::vector<fs::FSEvent>>> notifications;
 
         while (i < length) {
-            struct inotify_event* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
+            auto* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
 
             i += sizeof(struct inotify_event) + event->len;
 

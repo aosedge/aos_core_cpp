@@ -123,7 +123,6 @@ private:
     common::logger::Logger                                      mLogger;
     aos::common::utils::CleanupManager                          mCleanupManager;
 
-private:
     static constexpr auto cDefaultConfigFile = "aos_cm.cfg";
 };
 

@@ -191,7 +191,7 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return CopyFile(uri, path);
     }
 
-    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
+    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), &curl_easy_cleanup);
     if (!curl) {
         return Error(ErrorEnum::eFailed, "failed to init curl");
     }

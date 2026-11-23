@@ -833,13 +833,9 @@ Error NetworkManager::PrepareFirewallRules(const InstanceIdent& instanceIdent, c
 
 bool NetworkManager::IsHostExist(const std::string& hostName) const
 {
-    for (const auto& [_, hosts] : mHosts) {
-        if (std::find(hosts.begin(), hosts.end(), hostName) != hosts.end()) {
-            return true;
-        }
-    }
-
-    return false;
+    return std::any_of(mHosts.begin(), mHosts.end(), [&hostName](const auto& entry) {
+        return std::find(entry.second.begin(), entry.second.end(), hostName) != entry.second.end();
+    });
 }
 
 uint64_t NetworkManager::GenerateVlanID()

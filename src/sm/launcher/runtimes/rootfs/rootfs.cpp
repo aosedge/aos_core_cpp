@@ -600,7 +600,7 @@ Error RootfsRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = utils::CreateRuntimeInfo(mRuntimeConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo);
+    if (auto err = utils::CreateRuntimeInfo(mRuntimeConfig.mType, *nodeInfo, cMaxNumRootfsInstances, mRuntimeInfo);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }

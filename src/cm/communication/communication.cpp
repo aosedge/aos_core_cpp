@@ -1062,7 +1062,8 @@ Error Communication::HandleMessage(const std::string& message)
     try {
         auto messageVariant = ParseMessage(object.GetObject("data"));
 
-        std::visit([this, &info](auto&& arg) { HandleMessage(info, arg); }, *messageVariant);
+        std::visit(
+            [this, &info](auto&& arg) { HandleMessage(info, std::forward<decltype(arg)>(arg)); }, *messageVariant);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
