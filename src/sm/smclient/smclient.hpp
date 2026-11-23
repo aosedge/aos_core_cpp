@@ -270,7 +270,10 @@ private:
     bool RegisterSM(const std::string& url);
     void ConnectionLoop() noexcept;
     void HandleIncomingMessages();
+    void NotifyConnectListeners();
     void StartNetworkUpdateSubscription();
+    bool SubscribeNetworkUpdates();
+    void ReadNetworkUpdates();
     void HandleUnitNetworksUpdate(const smproto::UnitNetworksUpdate& update);
     bool WaitNetworkUpdateReconnect();
 

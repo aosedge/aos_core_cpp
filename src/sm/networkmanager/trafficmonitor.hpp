@@ -168,6 +168,7 @@ private:
     static Error AppendChainCounterRules(
         nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, std::string_view address, bool disabled);
     Error       UpdateTrafficData();
+    Error       ReadTrafficChainBytes(const std::string& chain, uint64_t& bytes);
     Error       GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
     bool        IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;
     Error       CheckTrafficLimit(const std::string& chain, TrafficData& trafficData);

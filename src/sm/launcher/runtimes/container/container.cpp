@@ -170,15 +170,12 @@ Error ContainerRuntime::InitInstances(const Array<InstanceInfo>& instancesInfo)
             }
         }
 
-        if (instanceInfo) {
-            if (auto runStatus = mRunner->GetInstanceStatus(instanceID);
-                runStatus.mState == InstanceStateEnum::eActive) {
-                if (err = InitInstance(instanceID, *instanceInfo); !err.IsNone()) {
-                    LOG_ERR() << "Failed to init instance" << Log::Field("instanceID", instanceID.c_str())
-                              << Log::Field(err);
-                } else {
-                    continue;
-                }
+        if (instanceInfo && mRunner->GetInstanceStatus(instanceID).mState == InstanceStateEnum::eActive) {
+            if (err = InitInstance(instanceID, *instanceInfo); !err.IsNone()) {
+                LOG_ERR() << "Failed to init instance" << Log::Field("instanceID", instanceID.c_str())
+                          << Log::Field(err);
+            } else {
+                continue;
             }
         }
 

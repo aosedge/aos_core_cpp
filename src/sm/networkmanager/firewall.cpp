@@ -69,6 +69,106 @@ std::string ProtoOrDefault(const String& proto, const common::utils::PortRange& 
     return proto.CStr();
 }
 
+Error AppendInputRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
+    const InstanceFirewallParams& params, const std::string& instanceIP)
+{
+    for (const auto& in : params.mInput) {
+        common::utils::PortRange range {};
+        Error                    err;
+
+        Tie(range, err) = ParsePortRange(in.mPort);
+
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        // An input entry requires a port and only tcp/udp are supported (an
+        // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
+
+        if (err = CheckPortProto(range, in.mProtocol); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        nftables::FWRule r {};
+
+        r.mDstAddr = instanceIP;
+        r.mProto   = ProtoOrDefault(in.mProtocol, range);
+        r.mAction  = nftables::FWActionEnum::eReturn;
+
+        SetDstPort(r, range);
+
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error AppendOutputRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
+    const InstanceFirewallParams& params, const std::string& instanceIP)
+{
+    for (const auto& out : params.mOutput) {
+        common::utils::PortRange range {};
+        Error                    err;
+
+        Tie(range, err) = ParsePortRange(out.mDstPort);
+
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        // An output entry must name a destination; an empty one collapses to a
+        // bare source match that bypasses destination checks and
+        // the AllowPublic terminal verdict. It is validated as strictly as an
+        // input entry: a destination IP and port, with tcp/udp (empty -> tcp).
+
+        if (out.mDstIP.IsEmpty()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
+        }
+
+        if (err = CheckPortProto(range, out.mProto); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (!out.mSrcIP.IsEmpty() && std::string {out.mSrcIP.CStr()} != instanceIP) {
+            LOG_WRN() << "Output rule mSrcIP overridden by instance IP" << Log::Field("srcIP", out.mSrcIP)
+                      << Log::Field("instanceIP", params.mIP);
+        }
+
+        nftables::FWRule r {};
+
+        r.mSrcAddr = instanceIP;
+        r.mDstAddr = out.mDstIP.CStr();
+        r.mProto   = ProtoOrDefault(out.mProto, range);
+        r.mAction  = nftables::FWActionEnum::eReturn;
+
+        SetDstPort(r, range);
+
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error AppendDenyNetworkRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain)
+{
+    for (const auto& pool : common::network::cNetworkPools) {
+        nftables::FWRule denyNetwork {};
+
+        denyNetwork.mDstAddr = pool.mSubnet;
+        denyNetwork.mAction  = nftables::FWActionEnum::eDrop;
+
+        if (auto err = txn.AddRule(table, chain, denyNetwork); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error AppendInstanceRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
     const InstanceFirewallParams& params, bool output)
 {
@@ -89,90 +189,18 @@ Error AppendInstanceRules(nftables::FWTxnItf& txn, const std::string& table, con
     }
 
     if (!output) {
-        for (const auto& in : params.mInput) {
-            common::utils::PortRange range {};
-            Error                    err;
-
-            Tie(range, err) = ParsePortRange(in.mPort);
-
-            if (!err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            // An input entry requires a port and only tcp/udp are supported (an
-            // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
-
-            if (err = CheckPortProto(range, in.mProtocol); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            nftables::FWRule r {};
-
-            r.mDstAddr = instanceIP;
-            r.mProto   = ProtoOrDefault(in.mProtocol, range);
-            r.mAction  = nftables::FWActionEnum::eReturn;
-
-            SetDstPort(r, range);
-
-            if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendInputRules(txn, table, chain, params, instanceIP); !err.IsNone()) {
+            return err;
         }
-
     } else {
-        for (const auto& out : params.mOutput) {
-            common::utils::PortRange range {};
-            Error                    err;
-
-            Tie(range, err) = ParsePortRange(out.mDstPort);
-
-            if (!err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            // An output entry must name a destination; an empty one collapses to a
-            // bare source match that bypasses destination checks and
-            // the AllowPublic terminal verdict. It is validated as strictly as an
-            // input entry: a destination IP and port, with tcp/udp (empty -> tcp).
-
-            if (out.mDstIP.IsEmpty()) {
-                return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
-            }
-
-            if (err = CheckPortProto(range, out.mProto); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            if (!out.mSrcIP.IsEmpty() && std::string {out.mSrcIP.CStr()} != instanceIP) {
-                LOG_WRN() << "Output rule mSrcIP overridden by instance IP" << Log::Field("srcIP", out.mSrcIP)
-                          << Log::Field("instanceIP", params.mIP);
-            }
-
-            nftables::FWRule r {};
-
-            r.mSrcAddr = instanceIP;
-            r.mDstAddr = out.mDstIP.CStr();
-            r.mProto   = ProtoOrDefault(out.mProto, range);
-            r.mAction  = nftables::FWActionEnum::eReturn;
-
-            SetDstPort(r, range);
-
-            if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendOutputRules(txn, table, chain, params, instanceIP); !err.IsNone()) {
+            return err;
         }
 
         // Public access never authorizes another AoS network, including remote nodes.
 
-        for (const auto& pool : common::network::cNetworkPools) {
-            nftables::FWRule denyNetwork {};
-
-            denyNetwork.mDstAddr = pool.mSubnet;
-            denyNetwork.mAction  = nftables::FWActionEnum::eDrop;
-
-            if (auto err = txn.AddRule(table, chain, denyNetwork); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendDenyNetworkRules(txn, table, chain); !err.IsNone()) {
+            return err;
         }
     }
 

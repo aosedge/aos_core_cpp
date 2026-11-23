@@ -871,17 +871,7 @@ void SMClient::ConnectionLoop() noexcept
             } else if (!SendNodeInstancesStatus()) {
                 LOG_ERR() << "Can't send node instances status";
             } else {
-                std::vector<aos::sm::smclient::ConnectListenerItf*> listeners;
-
-                {
-                    std::lock_guard lock {mMutex};
-                    listeners = mConnectListeners;
-                }
-
-                for (auto* listener : listeners) {
-                    listener->OnConnect();
-                }
-
+                NotifyConnectListeners();
                 HandleIncomingMessages();
             }
 
@@ -952,52 +942,12 @@ void SMClient::StartNetworkUpdateSubscription()
         LOG_DBG() << "Network update subscription thread started";
 
         do {
-            {
-                std::unique_lock lock {mMutex};
-
-                mNetworkUpdateCV.wait(lock, [this]() { return mNetworkStub != nullptr || mStopped; });
-
-                if (mStopped) {
-                    break;
-                }
-
-                mNetworkUpdateCtx = CreateClientContext();
-
-                smproto::SubscribeInstanceNetworkUpdatesRequest request;
-                request.set_node_id(mNodeID);
-
-                mNetworkUpdateReader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
+            if (!SubscribeNetworkUpdates()) {
+                break;
             }
 
             if (mNetworkUpdateReader) {
-                smproto::InstanceNetworkUpdateNotification notification;
-
-                while (mNetworkUpdateReader->Read(&notification)) {
-                    if (notification.has_pending_firewall_update()) {
-                        aos::networkmanager::PendingFirewallUpdate update;
-
-                        if (auto err
-                            = common::pbconvert::ConvertFromProto(notification.pending_firewall_update(), update);
-                            !err.IsNone()) {
-                            LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
-                            continue;
-                        }
-
-                        mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
-                    } else if (notification.has_unit_networks_update()) {
-                        HandleUnitNetworksUpdate(notification.unit_networks_update());
-                    }
-                }
-
-                std::lock_guard lock {mMutex};
-
-                if (auto status = mNetworkUpdateReader->Finish(); !status.ok() && !mStopped) {
-                    LOG_WRN() << "Network update stream disconnected"
-                              << Log::Field("error", status.error_message().c_str());
-                }
-
-                mNetworkUpdateReader.reset();
-                mNetworkUpdateCtx.reset();
+                ReadNetworkUpdates();
             } else {
                 LOG_ERR() << "Failed to subscribe to instance network updates";
             }
@@ -1005,6 +955,70 @@ void SMClient::StartNetworkUpdateSubscription()
 
         LOG_DBG() << "Network update subscription thread stopped";
     });
+}
+
+void SMClient::NotifyConnectListeners()
+{
+    std::vector<aos::sm::smclient::ConnectListenerItf*> listeners;
+
+    {
+        std::lock_guard lock {mMutex};
+        listeners = mConnectListeners;
+    }
+
+    for (auto* listener : listeners) {
+        listener->OnConnect();
+    }
+}
+
+bool SMClient::SubscribeNetworkUpdates()
+{
+    std::unique_lock lock {mMutex};
+
+    mNetworkUpdateCV.wait(lock, [this]() { return mNetworkStub != nullptr || mStopped; });
+
+    if (mStopped) {
+        return false;
+    }
+
+    mNetworkUpdateCtx = CreateClientContext();
+
+    smproto::SubscribeInstanceNetworkUpdatesRequest request;
+    request.set_node_id(mNodeID);
+
+    mNetworkUpdateReader = mNetworkStub->SubscribeInstanceNetworkUpdates(mNetworkUpdateCtx.get(), request);
+
+    return true;
+}
+
+void SMClient::ReadNetworkUpdates()
+{
+    smproto::InstanceNetworkUpdateNotification notification;
+
+    while (mNetworkUpdateReader->Read(&notification)) {
+        if (notification.has_pending_firewall_update()) {
+            aos::networkmanager::PendingFirewallUpdate update;
+
+            if (auto err = common::pbconvert::ConvertFromProto(notification.pending_firewall_update(), update);
+                !err.IsNone()) {
+                LOG_ERR() << "Failed to convert pending firewall update" << Log::Field(err);
+                continue;
+            }
+
+            mNetworkUpdateHandler->OnPendingFirewallUpdate(mNodeID.c_str(), update);
+        } else if (notification.has_unit_networks_update()) {
+            HandleUnitNetworksUpdate(notification.unit_networks_update());
+        }
+    }
+
+    std::lock_guard lock {mMutex};
+
+    if (auto status = mNetworkUpdateReader->Finish(); !status.ok() && !mStopped) {
+        LOG_WRN() << "Network update stream disconnected" << Log::Field("error", status.error_message().c_str());
+    }
+
+    mNetworkUpdateReader.reset();
+    mNetworkUpdateCtx.reset();
 }
 
 bool SMClient::WaitNetworkUpdateReconnect()

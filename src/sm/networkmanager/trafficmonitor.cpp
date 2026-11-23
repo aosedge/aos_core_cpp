@@ -673,6 +673,17 @@ Error TrafficMonitor::AppendChainCounterRules(
     return txn.AddRule(cTable, chain, counter);
 }
 
+Error TrafficMonitor::ReadTrafficChainBytes(const std::string& chain, uint64_t& bytes)
+{
+    if (auto chainErr = GetTrafficChainBytes(chain, bytes); !chainErr.IsNone() && !chainErr.Is(ErrorEnum::eNotFound)) {
+        LOG_ERR() << "Can't get traffic chain bytes" << Log::Field("chain", chain.c_str()) << Log::Field(chainErr);
+
+        return chainErr;
+    }
+
+    return ErrorEnum::eNone;
+}
+
 Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& bytes)
 {
     std::vector<nftables::FWListedRule> rules;
@@ -730,14 +741,8 @@ Error TrafficMonitor::UpdateTrafficData()
         uint64_t value {};
 
         if (!traffic.mDisabled) {
-            if (auto chainErr = GetTrafficChainBytes(chain, value);
-                !chainErr.IsNone() && !chainErr.Is(ErrorEnum::eNotFound)) {
-                LOG_ERR() << "Can't get traffic chain bytes" << Log::Field("chain", chain.c_str())
-                          << Log::Field(chainErr);
-
-                if (err.IsNone()) {
-                    err = chainErr;
-                }
+            if (auto chainErr = ReadTrafficChainBytes(chain, value); !chainErr.IsNone() && err.IsNone()) {
+                err = chainErr;
             }
         }
 
