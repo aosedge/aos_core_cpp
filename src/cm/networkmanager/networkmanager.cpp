@@ -848,10 +848,9 @@ uint64_t NetworkManager::GenerateVlanID()
         auto [vlanID, err] = mRandom->RandInt(cMaxVlanID);
         AOS_ERROR_CHECK_AND_THROW(err, "error generating vlan id");
 
-        for (auto& [_, networkState] : mNetworkStates) {
-            if (networkState.mNetwork.mVlanID == vlanID) {
-                continue;
-            }
+        if (std::any_of(mNetworkStates.begin(), mNetworkStates.end(),
+                [id = vlanID](const auto& item) { return item.second.mNetwork.mVlanID == id; })) {
+            continue;
         }
 
         LOG_DBG() << "Generate vlan ID" << Log::Field("vlanID", vlanID);

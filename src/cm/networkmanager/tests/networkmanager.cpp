@@ -216,6 +216,68 @@ TEST_F(CMNetworkManagerTest, GetNodeNetworkParams_RandomError)
     EXPECT_FALSE(err.IsNone());
 }
 
+TEST_F(CMNetworkManagerTest, GetNodeNetworkParams_UsedVlanIDIsGeneratedAgain)
+{
+    String networkID = "network2";
+    String nodeID    = "node1";
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network network;
+        network.mNetworkID = "network1";
+        network.mSubnet    = "172.17.0.0/16";
+        network.mVlanID    = 1000;
+        networks.PushBack(network);
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network1"), _)).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*mRandom, RandInt(_))
+        .WillOnce(Return(RetWithError<uint64_t>(1000u, ErrorEnum::eNone)))
+        .WillOnce(Return(RetWithError<uint64_t>(1001u, ErrorEnum::eNone)));
+
+    EXPECT_CALL(*mStorage, AddNetwork(_)).WillOnce(Return(ErrorEnum::eNone));
+    EXPECT_CALL(*mStorage, AddHost(_, _)).WillOnce(Return(ErrorEnum::eNone));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer);
+    ASSERT_TRUE(err.IsNone());
+
+    NetworkParams result;
+
+    err = mNetworkManager->GetNodeNetworkParams(networkID, nodeID, result);
+    EXPECT_TRUE(err.IsNone());
+
+    EXPECT_EQ(result.mNetworkID, "network2");
+    EXPECT_EQ(result.mVlanID, 1001);
+}
+
+TEST_F(CMNetworkManagerTest, GetNodeNetworkParams_FailsIfAllGeneratedVlanIDsAreUsed)
+{
+    String networkID = "network2";
+    String nodeID    = "node1";
+
+    EXPECT_CALL(*mStorage, GetNetworks(_)).WillOnce(Invoke([](Array<Network>& networks) -> Error {
+        Network network;
+        network.mNetworkID = "network1";
+        network.mSubnet    = "172.17.0.0/16";
+        network.mVlanID    = 1000;
+        networks.PushBack(network);
+        return ErrorEnum::eNone;
+    }));
+
+    EXPECT_CALL(*mStorage, GetHosts(String("network1"), _)).WillOnce(Return(ErrorEnum::eNone));
+
+    EXPECT_CALL(*mRandom, RandInt(_)).Times(4).WillRepeatedly(Return(RetWithError<uint64_t>(1000u, ErrorEnum::eNone)));
+
+    auto err = mNetworkManager->Init(*mStorage, *mRandom, *mDNSServer);
+    ASSERT_TRUE(err.IsNone());
+
+    NetworkParams result;
+
+    err = mNetworkManager->GetNodeNetworkParams(networkID, nodeID, result);
+    EXPECT_FALSE(err.IsNone());
+}
+
 TEST_F(CMNetworkManagerTest, AllocateInstanceNetwork_NewInstance_Success)
 {
     InstanceIdent instanceIdent;
