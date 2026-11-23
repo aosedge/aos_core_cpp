@@ -679,17 +679,17 @@ void NetworkManager::MatchExposedPorts(const Instance& instance, const common::u
     notExposed.clear();
 
     for (uint32_t checkedPort = requested.mFirst; checkedPort <= requested.mLast; ++checkedPort) {
-        const auto exposedFound
-            = std::any_of(instance.mExposedPorts.begin(), instance.mExposedPorts.end(), [&](const auto& exposedPort) {
-                  if (exposedPort.mProtocol != String(protocol.c_str())) {
-                      return false;
-                  }
+        const auto exposedFound = std::any_of(instance.mExposedPorts.begin(), instance.mExposedPorts.end(),
+            [&protocol, &checkedPort](const auto& exposedPort) {
+                if (exposedPort.mProtocol != String(protocol.c_str())) {
+                    return false;
+                }
 
-                  const auto exposedRange = common::utils::ParsePortRange(exposedPort.mPort.CStr());
+                const auto exposedRange = common::utils::ParsePortRange(exposedPort.mPort.CStr());
 
-                  return exposedRange.has_value() && exposedRange->mFirst <= checkedPort
-                      && checkedPort <= exposedRange->mLast;
-              });
+                return exposedRange.has_value() && exposedRange->mFirst <= checkedPort
+                    && checkedPort <= exposedRange->mLast;
+            });
 
         AppendPort(exposedFound ? exposed : notExposed, static_cast<uint16_t>(checkedPort));
     }

@@ -31,7 +31,7 @@ void ParseMount(const common::utils::CaseInsensitiveObjectWrapper& object, Mount
     err = mount.mSource.Assign(object.GetValue<std::string>("source").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse mount source");
 
-    common::utils::ForEach(object, "options", [&](const Poco::Dynamic::Var& optionVar) {
+    common::utils::ForEach(object, "options", [&mount](const Poco::Dynamic::Var& optionVar) {
         auto optionErr = mount.mOptions.EmplaceBack(optionVar.convert<std::string>().c_str());
         AOS_ERROR_CHECK_AND_THROW(optionErr, "can't parse mount option");
     });
@@ -53,31 +53,31 @@ void ParseResourceInfo(const common::utils::CaseInsensitiveObjectWrapper& object
 
     resource.mSharedCount = object.GetValue<size_t>("sharedCount", 0);
 
-    common::utils::ForEach(object, "groups", [&](const Poco::Dynamic::Var& var) {
+    common::utils::ForEach(object, "groups", [&resource](const Poco::Dynamic::Var& var) {
         auto groupErr = resource.mGroups.EmplaceBack(var.convert<std::string>().c_str());
         AOS_ERROR_CHECK_AND_THROW(groupErr, "can't parse group name");
     });
 
-    common::utils::ForEach(object, "mounts", [&](const Poco::Dynamic::Var& var) {
+    common::utils::ForEach(object, "mounts", [&resource](const Poco::Dynamic::Var& var) {
         auto mountErr = resource.mMounts.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW(mountErr, "can't parse mount info");
 
         ParseMount(common::utils::CaseInsensitiveObjectWrapper(var), resource.mMounts.Back());
     });
 
-    common::utils::ForEach(object, "envs", [&](const Poco::Dynamic::Var& var) {
+    common::utils::ForEach(object, "envs", [&resource](const Poco::Dynamic::Var& var) {
         auto envErr = resource.mEnv.EmplaceBack(var.convert<std::string>().c_str());
         AOS_ERROR_CHECK_AND_THROW(envErr, "can't parse env variable");
     });
 
-    common::utils::ForEach(object, "hosts", [&](const Poco::Dynamic::Var& var) {
+    common::utils::ForEach(object, "hosts", [&resource](const Poco::Dynamic::Var& var) {
         auto hostErr = resource.mHosts.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW(hostErr, "can't parse host info");
 
         ParseHost(common::utils::CaseInsensitiveObjectWrapper(var), resource.mHosts.Back());
     });
 
-    common::utils::ForEach(object, "devices", [&](const Poco::Dynamic::Var& var) {
+    common::utils::ForEach(object, "devices", [&resource](const Poco::Dynamic::Var& var) {
         auto deviceErr = resource.mDevices.EmplaceBack(var.convert<std::string>().c_str());
         AOS_ERROR_CHECK_AND_THROW(deviceErr, "can't parse host device name");
     });
@@ -119,7 +119,7 @@ Error ResourceManager::GetResourceInfo(const String& name, ResourceInfo& resourc
     LOG_DBG() << "Get resource info" << Log::Field("name", name.CStr());
 
     auto it = std::find_if(
-        mResources.begin(), mResources.end(), [&](const ResourceInfo& resource) { return resource.mName == name; });
+        mResources.begin(), mResources.end(), [&name](const ResourceInfo& resource) { return resource.mName == name; });
     if (it == mResources.end()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "resource not found"));
     }

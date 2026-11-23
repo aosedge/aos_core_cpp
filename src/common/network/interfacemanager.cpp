@@ -268,7 +268,7 @@ Error InterfaceManager::SetupLink(const String& ifname, const String& netNSPath)
 {
     LOG_DBG() << "Bring up interface: ifname=" << ifname;
 
-    auto doSetupLink = [&]() -> Error {
+    auto doSetupLink = [this, &ifname]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;
@@ -783,7 +783,7 @@ Error InterfaceManager::ConfigureInstanceInterface(
     // All three steps run inside the instance netns in a single namespace entry
     // (one setns pair) instead of one per operation. Each callee is invoked with
     // an empty netNSPath so it operates in the already-entered namespace.
-    auto doConfigure = [&]() -> Error {
+    auto doConfigure = [this, &ifname, &addr, &gateway]() -> Error {
         if (auto err = SetupLink(ifname); !err.IsNone()) {
             return err;
         }
@@ -851,7 +851,7 @@ Error InterfaceManager::RenameLink(const String& ifname, const String& newName, 
 {
     LOG_DBG() << "Rename link" << Log::Field("ifname", ifname) << Log::Field("newName", newName);
 
-    auto doRename = [&]() -> Error {
+    auto doRename = [&ifname, &newName]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;
@@ -919,7 +919,7 @@ Error InterfaceManager::AddRoute(const String& destination, const String& gatewa
 {
     LOG_DBG() << "Add route" << Log::Field("dst", destination) << Log::Field("gw", gateway);
 
-    auto doAddRoute = [&]() -> Error {
+    auto doAddRoute = [&destination, &gateway]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;

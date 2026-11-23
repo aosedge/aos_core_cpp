@@ -68,7 +68,7 @@ void BlobInfoFromJSON(const common::utils::CaseInsensitiveObjectWrapper& json, B
     auto err = blobURLInfo.mDigest.Assign(json.GetValue<std::string>("digest").c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't parse digest");
 
-    common::utils::ForEach(json, "urls", [&](const Poco::Dynamic::Var& value) {
+    common::utils::ForEach(json, "urls", [&err, &blobURLInfo](const Poco::Dynamic::Var& value) {
         err = blobURLInfo.mURLs.EmplaceBack();
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse url");
 

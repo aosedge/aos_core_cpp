@@ -66,13 +66,13 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &error, &reply] {
                 auto rv
                     = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return {{}, err};
     }
@@ -140,13 +140,13 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     sd_bus_message* reply = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &reply, &name] {
                 auto rv = sd_bus_call_method(
                     mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return {{}, err};
     }
@@ -218,12 +218,12 @@ Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, c
     sd_bus_slot* slot = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &slot] {
                 auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }
@@ -255,11 +255,11 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
     sd_bus_slot* slot = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &slot] {
                 auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }
@@ -299,7 +299,7 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     if (auto err = common::utils::Retry(
-            [&]() -> Error {
+            [this, &error, &reply, &name]() -> Error {
                 if (auto rv = sd_bus_call_method(
                         mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
                     rv < 0) {
@@ -312,7 +312,7 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
 
                 return ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }

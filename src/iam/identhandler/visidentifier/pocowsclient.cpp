@@ -130,7 +130,8 @@ PocoWSClient::ByteArray PocoWSClient::SendRequest(const std::string& requestId, 
     auto requestParams = std::make_shared<RequestParams>(requestId);
     mPendingRequests.Add(requestParams);
 
-    auto cleanupRequest = DeferRelease(requestParams.get(), [&](void*) { mPendingRequests.Remove(requestParams); });
+    auto cleanupRequest
+        = DeferRelease(requestParams.get(), [this, &requestParams](void*) { mPendingRequests.Remove(requestParams); });
 
     AsyncSendMessage(message);
 

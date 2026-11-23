@@ -263,7 +263,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
         instance->GetStatus(status);
         SendInstanceStatus(status);
 
-        auto sendStatus = DeferRelease(instance.get(), [&](void*) {
+        auto sendStatus = DeferRelease(instance.get(), [this, &instance, &status](void*) {
             instance->GetStatus(status);
             SendInstanceStatus(status);
         });
@@ -297,7 +297,7 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
             mCurrentInstances.erase(it);
         }
 
-        auto sendStatus = DeferRelease(instance.get(), [&](void*) {
+        auto sendStatus = DeferRelease(instance.get(), [this, &instance, &status](void*) {
             instance->GetStatus(status);
             SendInstanceStatus(status);
         });

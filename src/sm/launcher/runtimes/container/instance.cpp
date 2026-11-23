@@ -89,7 +89,7 @@ Error Instance::Start()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* resultErr) {
+    auto updateRunStatus = DeferRelease(&err, [this](const Error* resultErr) {
         if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
             mRunStatus.mError = *resultErr;
@@ -129,7 +129,7 @@ Error Instance::Activate()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* resultErr) {
+    auto updateRunStatus = DeferRelease(&err, [this](const Error* resultErr) {
         if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
             mRunStatus.mError = *resultErr;
@@ -165,7 +165,7 @@ Error Instance::Stop()
 
     Error stopErr;
 
-    auto updateRunStatus = DeferRelease(&stopErr, [&](const Error* err) {
+    auto updateRunStatus = DeferRelease(&stopErr, [this](const Error* err) {
         mRunStatus.mInstanceID = mInstanceID;
         mRunStatus.mState      = err->IsNone() ? InstanceStateEnum::eInactive : InstanceStateEnum::eFailed;
         mRunStatus.mError      = *err;

@@ -1493,7 +1493,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCert
     // IAM cert type of secondary nodes should be sent the latest among certificates for that node.
     // And IAM certificate for the main node should be send in the end. Otherwise IAM client/server
     // restart will fail the following certificates to apply.
-    std::stable_sort(issuedCerts.begin(), issuedCerts.end(), [&](const IssuedCertData& a, const IssuedCertData& b) {
+    std::stable_sort(issuedCerts.begin(), issuedCerts.end(), [this](const IssuedCertData& a, const IssuedCertData& b) {
         // IAM cert for main node should go last
         if (a.mNodeID == mMainNodeID && a.mType == CertTypeEnum::eIAM) {
             return false;
