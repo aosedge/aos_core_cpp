@@ -6,6 +6,7 @@
  */
 
 #include <array>
+#include <functional>
 #include <map>
 #include <regex>
 #include <sstream>
@@ -24,9 +25,9 @@ namespace {
 
 RetWithError<Duration> ParseStringDuration(const std::string& durationStr)
 {
-    static const std::map<std::string, Duration> units = {{"ns", Time::cNanoseconds}, {"us", Time::cMicroseconds},
-        {"µs", Time::cMicroseconds}, {"ms", Time::cMilliseconds}, {"s", Time::cSeconds}, {"m", Time::cMinutes},
-        {"h", Time::cHours}, {"d", Time::cDay}, {"w", Time::cWeek}, {"y", Time::cYear}};
+    static const std::map<std::string, Duration, std::less<>> units = {{"ns", Time::cNanoseconds},
+        {"us", Time::cMicroseconds}, {"µs", Time::cMicroseconds}, {"ms", Time::cMilliseconds}, {"s", Time::cSeconds},
+        {"m", Time::cMinutes}, {"h", Time::cHours}, {"d", Time::cDay}, {"w", Time::cWeek}, {"y", Time::cYear}};
 
     Duration totalDuration {};
 

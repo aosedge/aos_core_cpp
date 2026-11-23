@@ -332,7 +332,7 @@ Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
         std::lock_guard lock(mMutex);
 
         if (mSubjects != *newSubjects) {
-            mSubjects = std::move(*newSubjects);
+            mSubjects = *newSubjects;
 
             NotifySubjectsChanged(mSubjects);
         }

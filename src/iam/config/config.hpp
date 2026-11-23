@@ -8,6 +8,7 @@
 #ifndef AOS_IAM_CONFIG_CONFIG_HPP_
 #define AOS_IAM_CONFIG_CONFIG_HPP_
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -113,10 +114,10 @@ struct NodeInfoConfig {
  * Database configuration.
  */
 struct DatabaseConfig {
-    std::string                        mWorkingDir;
-    std::string                        mMigrationPath;
-    std::string                        mMergedMigrationPath;
-    std::map<std::string, std::string> mPathToPin;
+    std::string                                     mWorkingDir;
+    std::string                                     mMigrationPath;
+    std::string                                     mMergedMigrationPath;
+    std::map<std::string, std::string, std::less<>> mPathToPin;
 };
 
 /**

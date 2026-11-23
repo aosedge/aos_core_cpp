@@ -112,21 +112,21 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
             }
 
             for (const auto& instance : *instances) {
-                hostInstances.mInstances.emplace(instance.mInstanceIdent, instance);
+                hostInstances.mInstances.try_emplace(instance.mInstanceIdent, instance);
 
                 for (const auto& hostname : instance.mHosts) {
-                    mHosts[instance.mIP.CStr()].push_back(hostname.CStr());
+                    mHosts[instance.mIP.CStr()].emplace_back(hostname.CStr());
                 }
             }
 
-            networkState.mHostInstances.emplace(host.mNodeID.CStr(), std::move(hostInstances));
+            networkState.mHostInstances.try_emplace(host.mNodeID.CStr(), std::move(hostInstances));
         }
 
         if (!HasInstances(networkState)) {
             ScheduleNetworkRemoval(network.mNetworkID.CStr());
         }
 
-        mNetworkStates.emplace(network.mNetworkID.CStr(), std::move(networkState));
+        mNetworkStates.try_emplace(network.mNetworkID.CStr(), std::move(networkState));
     }
 
     RemoveExistedNetworks();
@@ -222,7 +222,7 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
             HostInstances hostInstances;
             hostInstances.mHostInfo = host;
 
-            it->second.mHostInstances.emplace(nodeID.CStr(), std::move(hostInstances));
+            it->second.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
 
             auto err = mStorage->AddHost(networkID, host);
             AOS_ERROR_CHECK_AND_THROW(err, "error adding host");
@@ -253,9 +253,9 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
 
         NetworkState networkState;
         networkState.mNetwork = network;
-        networkState.mHostInstances.emplace(nodeID.CStr(), std::move(hostInstances));
+        networkState.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
 
-        mNetworkStates.emplace(networkID.CStr(), std::move(networkState));
+        mNetworkStates.try_emplace(networkID.CStr(), std::move(networkState));
 
         ScheduleNetworkRemoval(networkID.CStr());
 
@@ -414,7 +414,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             return err;
         }
 
-        itHost->second.mInstances.emplace(instanceIdent, *instance);
+        itHost->second.mInstances.try_emplace(instanceIdent, *instance);
 
         auto rollbackInstance = DeferRelease(&instanceIdent, [this, &itHost, &IP, &err](const InstanceIdent* ident) {
             if (!err.IsNone()) {
@@ -617,7 +617,7 @@ Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen
             return AOS_ERROR_WRAP(err);
         }
 
-        if (portConfig.Size() == 0) {
+        if (portConfig.IsEmpty()) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "unsupported ExposedPorts format"));
         }
 
@@ -908,10 +908,10 @@ void NetworkManager::RemoveExistedNetworks()
 
     for (auto& [networkID, networkState] : mNetworkStates) {
         for (auto& [nodeID, hostInstances] : networkState.mHostInstances) {
-            IPs.push_back(hostInstances.mHostInfo.mIP.CStr());
+            IPs.emplace_back(hostInstances.mHostInfo.mIP.CStr());
 
             for (auto& [_, instance] : hostInstances.mInstances) {
-                IPs.push_back(instance.mIP.CStr());
+                IPs.emplace_back(instance.mIP.CStr());
             }
         }
 

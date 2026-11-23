@@ -7,6 +7,7 @@
 #ifndef AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 #define AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -168,7 +169,7 @@ private:
     std::mutex                          mBatchMutex;
     bool                                mBatchMode {false};
     std::unique_ptr<nftables::FWTxnItf> mBatchTxn;
-    std::set<std::string>               mBatchChains;
+    std::set<std::string, std::less<>>  mBatchChains;
     std::set<nftables::FWRuleHandle>    mAppliedHandles;
 
     std::unordered_map<std::string, std::vector<nftables::FWRuleHandle>> mInstanceJumps;

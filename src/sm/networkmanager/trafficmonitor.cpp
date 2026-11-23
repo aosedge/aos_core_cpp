@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <functional>
 #include <mutex>
 
 #include <core/common/tools/logger.hpp>
@@ -24,7 +25,7 @@ namespace {
 const std::array<const char*, 10> cSkipNetworks {"127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12",
     "172.17.0.0/16", "172.18.0.0/16", "172.19.0.0/16", "172.20.0.0/14", "172.24.0.0/14", "172.28.0.0/14"};
 
-bool HasPrefix(const std::string& s, const std::string& p)
+bool HasPrefix(std::string_view s, std::string_view p)
 {
     return s.size() >= p.size() && s.compare(0, p.size(), p) == 0;
 }
@@ -433,7 +434,7 @@ Error TrafficMonitor::Revert()
         return AOS_ERROR_WRAP(err);
     }
 
-    std::set<std::string> chainNames;
+    std::set<std::string, std::less<>> chainNames;
 
     for (const auto& [instanceID, chains] : reverted) {
         chainNames.insert(chains.mInChain);
@@ -633,7 +634,7 @@ void TrafficMonitor::PublishTrafficData(StagedTrafficData& staged)
 }
 
 Error TrafficMonitor::AppendChainCounterRules(
-    nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled)
+    nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, std::string_view address, bool disabled)
 {
     if (disabled) {
         nftables::FWRule drop {};

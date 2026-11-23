@@ -8,6 +8,7 @@
 #ifndef AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
 #define AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
 
+#include <functional>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -51,8 +52,8 @@ public:
     Error ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var value);
 
 private:
-    std::mutex                     mMutex;
-    std::map<std::string, Handler> mSubscriptionMap;
+    std::mutex                                  mMutex;
+    std::map<std::string, Handler, std::less<>> mSubscriptionMap;
 };
 
 /**

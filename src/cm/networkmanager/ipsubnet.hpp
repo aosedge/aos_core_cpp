@@ -8,6 +8,7 @@
 #define AOS_CM_NETWORKMANAGER_IPSUBNET_HPP_
 
 #include <deque>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -83,8 +84,8 @@ private:
     std::string RequestIPNetPool(const std::string& networkID);
     std::string FindUnusedIPSubnet();
 
-    std::vector<std::string>          mPredefinedPrivateNetworks;
-    std::map<std::string, Subnetwork> mUsedIPSubnets;
+    std::vector<std::string>                       mPredefinedPrivateNetworks;
+    std::map<std::string, Subnetwork, std::less<>> mUsedIPSubnets;
 };
 
 } // namespace aos::cm::networkmanager

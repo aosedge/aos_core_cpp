@@ -57,7 +57,7 @@ Poco::JSON::Object ResourceToJSON(const aos::oci::ResourceInfo& resource)
 
 void RunParametersFromJSON(const utils::CaseInsensitiveObjectWrapper& object, RunParameters& params)
 {
-    if (const auto startBurst = object.GetOptionalValue<long>("startBurst")) {
+    if (const auto startBurst = object.GetOptionalValue<long>("startBurst"); startBurst.has_value()) {
         params.mStartBurst.SetValue(*startBurst);
     }
 
@@ -123,47 +123,47 @@ Poco::JSON::Object SysctlToJSON(const decltype(aos::oci::ItemConfig::mSysctl)& s
 
 void ServiceQuotasFromJSON(const utils::CaseInsensitiveObjectWrapper& object, aos::oci::ServiceQuotas& quotas)
 {
-    if (const auto cpuDMIPSLimit = object.GetOptionalValue<uint64_t>("cpuDMIPSLimit")) {
+    if (const auto cpuDMIPSLimit = object.GetOptionalValue<uint64_t>("cpuDMIPSLimit"); cpuDMIPSLimit.has_value()) {
         quotas.mCPUDMIPSLimit.SetValue(*cpuDMIPSLimit);
     }
 
-    if (const auto ramLimit = object.GetOptionalValue<uint64_t>("ramLimit")) {
+    if (const auto ramLimit = object.GetOptionalValue<uint64_t>("ramLimit"); ramLimit.has_value()) {
         quotas.mRAMLimit.SetValue(*ramLimit);
     }
 
-    if (const auto pidsLimit = object.GetOptionalValue<uint64_t>("pidsLimit")) {
+    if (const auto pidsLimit = object.GetOptionalValue<uint64_t>("pidsLimit"); pidsLimit.has_value()) {
         quotas.mPIDsLimit.SetValue(*pidsLimit);
     }
 
-    if (const auto noFileLimit = object.GetOptionalValue<uint64_t>("noFileLimit")) {
+    if (const auto noFileLimit = object.GetOptionalValue<uint64_t>("noFileLimit"); noFileLimit.has_value()) {
         quotas.mNoFileLimit.SetValue(*noFileLimit);
     }
 
-    if (const auto tmpLimit = object.GetOptionalValue<uint64_t>("tmpLimit")) {
+    if (const auto tmpLimit = object.GetOptionalValue<uint64_t>("tmpLimit"); tmpLimit.has_value()) {
         quotas.mTmpLimit.SetValue(*tmpLimit);
     }
 
-    if (const auto stateLimit = object.GetOptionalValue<uint64_t>("stateLimit")) {
+    if (const auto stateLimit = object.GetOptionalValue<uint64_t>("stateLimit"); stateLimit.has_value()) {
         quotas.mStateLimit.SetValue(*stateLimit);
     }
 
-    if (const auto storageLimit = object.GetOptionalValue<uint64_t>("storageLimit")) {
+    if (const auto storageLimit = object.GetOptionalValue<uint64_t>("storageLimit"); storageLimit.has_value()) {
         quotas.mStorageLimit.SetValue(*storageLimit);
     }
 
-    if (const auto uploadSpeed = object.GetOptionalValue<uint64_t>("uploadSpeed")) {
+    if (const auto uploadSpeed = object.GetOptionalValue<uint64_t>("uploadSpeed"); uploadSpeed.has_value()) {
         quotas.mUploadSpeed.SetValue(*uploadSpeed);
     }
 
-    if (const auto downloadSpeed = object.GetOptionalValue<uint64_t>("downloadSpeed")) {
+    if (const auto downloadSpeed = object.GetOptionalValue<uint64_t>("downloadSpeed"); downloadSpeed.has_value()) {
         quotas.mDownloadSpeed.SetValue(*downloadSpeed);
     }
 
-    if (const auto uploadLimit = object.GetOptionalValue<uint64_t>("uploadLimit")) {
+    if (const auto uploadLimit = object.GetOptionalValue<uint64_t>("uploadLimit"); uploadLimit.has_value()) {
         quotas.mUploadLimit.SetValue(*uploadLimit);
     }
 
-    if (const auto downloadLimit = object.GetOptionalValue<uint64_t>("downloadLimit")) {
+    if (const auto downloadLimit = object.GetOptionalValue<uint64_t>("downloadLimit"); downloadLimit.has_value()) {
         quotas.mDownloadLimit.SetValue(*downloadLimit);
     }
 }
@@ -223,19 +223,19 @@ aos::oci::RequestedResources RequestedResourcesFromJSON(const utils::CaseInsensi
 {
     aos::oci::RequestedResources resources = {};
 
-    if (const auto cpu = object.GetOptionalValue<uint64_t>("cpu")) {
+    if (const auto cpu = object.GetOptionalValue<uint64_t>("cpu"); cpu.has_value()) {
         resources.mCPU.SetValue(*cpu);
     }
 
-    if (const auto ram = object.GetOptionalValue<uint64_t>("ram")) {
+    if (const auto ram = object.GetOptionalValue<uint64_t>("ram"); ram.has_value()) {
         resources.mRAM.SetValue(*ram);
     }
 
-    if (const auto storage = object.GetOptionalValue<uint64_t>("storage")) {
+    if (const auto storage = object.GetOptionalValue<uint64_t>("storage"); storage.has_value()) {
         resources.mStorage.SetValue(*storage);
     }
 
-    if (const auto state = object.GetOptionalValue<uint64_t>("state")) {
+    if (const auto state = object.GetOptionalValue<uint64_t>("state"); state.has_value()) {
         resources.mState.SetValue(*state);
     }
 
@@ -327,7 +327,7 @@ AlertRulePercents AlertRulePercentsFromJSON(const utils::CaseInsensitiveObjectWr
         Error err;
 
         // cppcheck-suppress unusedScopedObject
-        Tie(percents.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        Tie(percents.mMinTimeout, err) = utils::ParseDuration(*minTimeout);
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
 
@@ -345,7 +345,7 @@ AlertRulePoints AlertRulePointsFromJSON(const utils::CaseInsensitiveObjectWrappe
         Error err;
 
         // cppcheck-suppress unusedScopedObject
-        Tie(points.mMinTimeout, err) = utils::ParseDuration(minTimeout->c_str());
+        Tie(points.mMinTimeout, err) = utils::ParseDuration(*minTimeout);
         AOS_ERROR_CHECK_AND_THROW(err, "min timeout parsing error");
     }
 

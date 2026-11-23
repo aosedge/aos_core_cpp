@@ -13,6 +13,7 @@
 #include <set>
 #include <shared_mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -165,7 +166,7 @@ private:
     void  DropBatchInstanceState(const std::vector<std::string>& instanceIDs);
     void  PublishTrafficData(StagedTrafficData& staged);
     Error AppendChainCounterRules(
-        nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled);
+        nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, std::string_view address, bool disabled);
     Error UpdateTrafficData();
     Error GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
     bool  IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;

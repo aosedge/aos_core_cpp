@@ -8,6 +8,7 @@
 #define AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>
@@ -124,7 +125,7 @@ private:
     crypto::CertLoaderItf*           mCertLoader {};
     crypto::x509::ProviderItf*       mCryptoProvider {};
 
-    std::set<std::string> mDigestsInProgress;
+    std::set<std::string, std::less<>> mDigestsInProgress;
 };
 
 } // namespace aos::common::downloader

@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include <functional>
 #include <numeric>
 #include <regex>
 #include <thread>
@@ -25,7 +26,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-const auto cUnitMapping = std::map<std::string, size_t> {
+const auto cUnitMapping = std::map<std::string, size_t, std::less<>> {
     {"B", 1},
     {"KB", cKilobyte},
     {"MB", cKilobyte* cKilobyte},

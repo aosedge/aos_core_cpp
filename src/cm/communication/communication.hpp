@@ -10,6 +10,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -334,10 +335,10 @@ private:
     std::vector<Message>    mSendQueue;
     std::queue<std::string> mReceiveQueue;
 
-    std::map<std::string, Message>                mSentMessages;
-    std::map<std::string, OnResponseReceivedFunc> mResponseHandlers;
-    std::vector<std::thread>                      mThreadPool;
-    std::ofstream                                 mMessageLogFile;
+    std::map<std::string, Message, std::less<>>                mSentMessages;
+    std::map<std::string, OnResponseReceivedFunc, std::less<>> mResponseHandlers;
+    std::vector<std::thread>                                   mThreadPool;
+    std::ofstream                                              mMessageLogFile;
 };
 
 } // namespace aos::cm::communication

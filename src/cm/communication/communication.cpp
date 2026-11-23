@@ -372,7 +372,7 @@ Error Communication::GetBlobInfo(const String& digest, BlobInfo& blobInfo)
     auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     payload->set("header", CreateMessageHeader(txn));
-    payload->set("data", std::move(CreateMessageData(*request)));
+    payload->set("data", CreateMessageData(*request));
 
     ResponseMessageVariantPtr response;
 
@@ -945,7 +945,7 @@ void Communication::HandleSendQueue()
             LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
 
             if (it->Pollicy() == SendPollicy::eExpectAck) {
-                mSentMessages.emplace(it->Txn(), *it);
+                mSentMessages.try_emplace(it->Txn(), *it);
             }
 
             mSendQueue.erase(it);
@@ -1120,7 +1120,7 @@ Error Communication::EnqueueMessage(
 
     auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
     payload->set("header", CreateMessageHeader(txn));
-    payload->set("data", std::move(data));
+    payload->set("data", data);
 
     return EnqueueMessage(Message(txn, std::move(payload)), onResponseReceived);
 }
@@ -1133,7 +1133,7 @@ Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc o
               << Log::Field("correlationId", msg.CorrelationID().c_str());
 
     if (onResponseReceived) {
-        mResponseHandlers.emplace(msg.CorrelationID(), onResponseReceived);
+        mResponseHandlers.try_emplace(msg.CorrelationID(), onResponseReceived);
     }
 
     mSendQueue.push_back(msg);
@@ -1591,7 +1591,7 @@ Error Communication::SendAck(const std::string& txn)
 
     try {
         msg->set("header", CreateMessageHeader(txn));
-        msg->set("data", std::move(CreateMessageData(common::cloudprotocol::Ack())));
+        msg->set("data", CreateMessageData(common::cloudprotocol::Ack()));
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }

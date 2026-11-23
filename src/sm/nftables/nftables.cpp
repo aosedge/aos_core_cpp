@@ -10,6 +10,7 @@ extern "C" {
 
 #include <regex>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
 #include <core/common/tools/logger.hpp>
@@ -62,14 +63,14 @@ private:
     nft_ctx* mCtx;
 };
 
-bool IsNotFoundError(const std::string& err)
+bool IsNotFoundError(std::string_view err)
 {
-    return err.find("No such file or directory") != std::string::npos;
+    return err.find("No such file or directory") != std::string_view::npos;
 }
 
-bool HasUnsafeToken(const std::string& value)
+bool HasUnsafeToken(std::string_view value)
 {
-    return value.find_first_of(" \t\n\r;\"{}\\") != std::string::npos;
+    return value.find_first_of(" \t\n\r;\"{}\\") != std::string_view::npos;
 }
 
 bool RuleHasUnsafeToken(const FWRule& rule)

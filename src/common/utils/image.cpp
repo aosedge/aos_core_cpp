@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <string_view>
 #include <unordered_map>
 
 #include <Poco/DigestEngine.h>
@@ -160,7 +161,7 @@ RetWithError<Digest> CalculateDirDigest(const std::string& dir)
 {
     std::vector<std::string> files = CollectFiles(dir);
 
-    std::sort(files.begin(), files.end(), [](const std::string& a, const std::string& b) { return a < b; });
+    std::sort(files.begin(), files.end(), [](std::string_view a, std::string_view b) { return a < b; });
 
     Poco::SHA2Engine h;
 

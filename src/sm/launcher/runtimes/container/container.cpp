@@ -61,7 +61,7 @@ Error ContainerRuntime::Init(const RuntimeConfig& config,
 
         if (mConfig.mHostBinds.empty()) {
             for (const auto& bind : cDefaultHostFSBinds) {
-                mConfig.mHostBinds.push_back(bind);
+                mConfig.mHostBinds.emplace_back(bind);
             }
         }
 
@@ -214,7 +214,7 @@ Error ContainerRuntime::InitInstance(const std::string& instanceID, const Instan
 
     std::lock_guard lock {mMutex};
 
-    mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
+    mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
 
     return ErrorEnum::eNone;
 }
@@ -256,7 +256,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
                 *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
                 *mInstanceIDProvider);
 
-            mCurrentInstances.insert({static_cast<const InstanceIdent&>(instanceInfo), instance});
+            mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
         }
 
         instance->UpdateRunStatus(RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});

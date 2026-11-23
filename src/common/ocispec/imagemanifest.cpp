@@ -78,7 +78,7 @@ Error OCISpec::SaveImageManifest(const String& path, const aos::oci::ImageManife
                 layers.add(ContentDescriptorToJSONObject(layer));
             }
 
-            object->set("layers", std::move(layers));
+            object->set("layers", layers);
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());

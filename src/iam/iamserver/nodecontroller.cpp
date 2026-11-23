@@ -422,9 +422,9 @@ void NodeController::Close()
 
     // Call Close method explicitly to avoid hanging on shutdown.
     // HandleRegisterNodeStream method references handler so destructor is not called here.
-    for (auto& it : mHandlers) {
-        if (it.first != nullptr) {
-            it.first->Close();
+    for (auto& [handler, _] : mHandlers) {
+        if (handler != nullptr) {
+            handler->Close();
         }
     }
 
@@ -485,9 +485,9 @@ void NodeController::LinkNodeIDToHandler(const std::string& nodeID, NodeStreamHa
 
     LOG_DBG() << "Link node id with stream handler: nodeID=" << nodeID.c_str();
 
-    for (auto& it : mHandlers) {
-        if (it.second == nodeID) {
-            it.second.clear();
+    for (auto& [_, handlerNodeID] : mHandlers) {
+        if (handlerNodeID == nodeID) {
+            handlerNodeID.clear();
         }
     }
 

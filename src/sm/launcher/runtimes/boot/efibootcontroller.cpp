@@ -226,7 +226,7 @@ RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBo
     return bootItems;
 }
 
-RetWithError<uint16_t> EFIBootController::ConvertHex(const std::string& hexStr) const
+RetWithError<uint16_t> EFIBootController::ConvertHex(std::string_view hexStr) const
 {
     uint16_t result = 0;
 

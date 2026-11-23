@@ -5,6 +5,7 @@
  */
 #include <cerrno>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -39,11 +40,11 @@ namespace {
  * Constants
  **********************************************************************************************************************/
 
-const std::map<std::string, std::string> sMimeTypes = {{"html", "text/html"}, {"htm", "text/html"}, {"css", "text/css"},
-    {"js", "application/javascript"}, {"json", "application/json"}, {"xml", "application/xml"}, {"txt", "text/plain"},
-    {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"gif", "image/gif"}, {"svg", "image/svg+xml"},
-    {"ico", "image/x-icon"}, {"pdf", "application/pdf"}, {".zip", "application/zip"}, {".tar", "application/x-tar"},
-    {".gz", "application/gzip"}};
+const std::map<std::string, std::string, std::less<>> sMimeTypes = {{"html", "text/html"}, {"htm", "text/html"},
+    {"css", "text/css"}, {"js", "application/javascript"}, {"json", "application/json"}, {"xml", "application/xml"},
+    {"txt", "text/plain"}, {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"gif", "image/gif"},
+    {"svg", "image/svg+xml"}, {"ico", "image/x-icon"}, {"pdf", "application/pdf"}, {".zip", "application/zip"},
+    {".tar", "application/x-tar"}, {".gz", "application/gzip"}};
 
 constexpr size_t cReadChunkSize = 64 * 1024;
 

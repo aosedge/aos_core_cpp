@@ -42,7 +42,7 @@ Error DNSName::RemoveOrphans(const Array<StaticString<cIDLen>>& knownNetworkIDs)
         return ErrorEnum::eNone;
     }
 
-    std::set<std::string> known;
+    std::set<std::string, std::less<>> known;
 
     for (const auto& id : knownNetworkIDs) {
         known.emplace(id.CStr());
@@ -142,7 +142,7 @@ RetWithError<DNSServerItf*> DNSName::CreateServer(const String& networkID, const
 
     DNSServerItf* handle = entry.mServer.get();
 
-    mServers.emplace(nidStr, std::move(entry));
+    mServers.try_emplace(nidStr, std::move(entry));
 
     return {handle, ErrorEnum::eNone};
 }

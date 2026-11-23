@@ -103,7 +103,7 @@ NodeInfoConfig ParseNodeInfoConfig(const common::utils::CaseInsensitiveObjectWra
 
     if (object.Has("attrs")) {
         for (const auto& [key, value] : *object.Get("attrs").extract<Poco::JSON::Object::Ptr>()) {
-            nodeInfoConfig.mAttrs.emplace(key, value.extract<std::string>());
+            nodeInfoConfig.mAttrs.try_emplace(key, value.extract<std::string>());
         }
     }
 

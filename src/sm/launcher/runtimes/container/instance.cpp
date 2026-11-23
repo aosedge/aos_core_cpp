@@ -731,11 +731,11 @@ Error Instance::PrepareRootFS(
             return AOS_ERROR_WRAP(err);
         }
 
-        layers.push_back(path->CStr());
+        layers.emplace_back(path->CStr());
     }
 
     layers.push_back(mConfig.mHostWhiteoutsDir);
-    layers.push_back("/");
+    layers.emplace_back("/");
 
     if (auto err = mFileSystem.MountServiceRootFS(common::utils::JoinPath(runtimeDir, cRootFSDir), layers);
         !err.IsNone()) {

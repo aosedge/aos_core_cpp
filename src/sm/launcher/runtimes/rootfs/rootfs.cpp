@@ -1273,7 +1273,7 @@ Error RootfsRuntime::GetImageManifest(const String& digest, oci::ImageManifest& 
         return AOS_ERROR_WRAP(err);
     }
 
-    if (manifest.mLayers.Size() == 0) {
+    if (manifest.mLayers.IsEmpty()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "image manifest has no layers"));
     }
 

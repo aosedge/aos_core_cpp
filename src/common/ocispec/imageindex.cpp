@@ -110,7 +110,7 @@ Error OCISpec::SaveImageIndex(const String& path, const aos::oci::ImageIndex& in
                 manifests.add(IndexContentDescriptorToJSONObject(manifest));
             }
 
-            object->set("manifests", std::move(manifests));
+            object->set("manifests", manifests);
         }
 
         auto err = utils::WriteJsonToFile(object, path.CStr());

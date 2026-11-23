@@ -45,7 +45,7 @@ VISMessage::VISMessage(const std::string& jsonStr)
         aos::Tie(objectVar, err) = aos::common::utils::ParseJson(jsonStr);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse as json");
 
-        mJsonObject = std::move(*objectVar.extract<JsonObject::Ptr>());
+        mJsonObject = *objectVar.extract<JsonObject::Ptr>();
 
         mAction.FromString(mJsonObject.getValue<std::string>(cActionTagName).c_str());
     } catch (const Poco::Exception& e) {

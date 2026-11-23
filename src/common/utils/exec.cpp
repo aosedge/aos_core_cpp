@@ -85,7 +85,7 @@ int WaitForExitCode(pid_t pid)
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
-Error CheckExitCode(int rc, const std::string& output, const std::initializer_list<int>& expectedExitCodes)
+Error CheckExitCode(int rc, std::string_view output, const std::initializer_list<int>& expectedExitCodes)
 {
     if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), rc) != expectedExitCodes.end()) {
         return ErrorEnum::eNone;

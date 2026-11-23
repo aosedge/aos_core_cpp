@@ -7,6 +7,7 @@
 #ifndef AOS_SM_NETWORKMANAGER_DNSSERVER_HPP_
 #define AOS_SM_NETWORKMANAGER_DNSSERVER_HPP_
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -83,12 +84,12 @@ private:
     Error WriteHostsFile() const;
     Error Reload() const;
 
-    std::string                              mNetworkID;
-    std::string                              mStorageDir;
-    aos::common::process::ProcessSpawnerItf* mSpawner {};
-    Poco::Process::PID                       mPID {};
-    std::map<std::string, HostRecord>        mHosts;
-    mutable Mutex                            mMutex;
+    std::string                                    mNetworkID;
+    std::string                                    mStorageDir;
+    aos::common::process::ProcessSpawnerItf*       mSpawner {};
+    Poco::Process::PID                             mPID {};
+    std::map<std::string, HostRecord, std::less<>> mHosts;
+    mutable Mutex                                  mMutex;
 };
 
 } // namespace aos::sm::networkmanager

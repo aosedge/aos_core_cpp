@@ -545,7 +545,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
 {
     LOG_DBG() << "Install image on partition" << Log::Field("partitionIndex", partitionIndex);
 
-    if (manifest.mLayers.Size() == 0) {
+    if (manifest.mLayers.IsEmpty()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "image manifest has no layers"));
     }
 

@@ -43,11 +43,11 @@ public:
             }
 
             if (mCPUInfos.empty()) {
-                mCPUInfos.insert({0, CreateDefaultCPUInfo()});
+                mCPUInfos.try_emplace(0, CreateDefaultCPUInfo());
             }
 
-            for (const auto& item : mCPUInfos) {
-                if (const auto err = cpuInfoArray.PushBack(item.second); !err.IsNone()) {
+            for (const auto& [_, cpuInfo] : mCPUInfos) {
+                if (const auto err = cpuInfoArray.PushBack(cpuInfo); !err.IsNone()) {
                     return err;
                 }
             }
@@ -90,7 +90,7 @@ private:
         }
 
         // only the first entry for the CPU is stored in the map.
-        mCPUInfos.insert({physicalId, cpuInfo});
+        mCPUInfos.try_emplace(physicalId, cpuInfo);
 
         mCurrentEntryKeyValues.clear();
     }

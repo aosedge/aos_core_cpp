@@ -9,6 +9,7 @@
 
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <core/common/types/common.hpp>
@@ -98,7 +99,7 @@ private:
     virtual std::shared_ptr<EFIVarItf>           CreateEFIVar() const;
     virtual std::shared_ptr<PartitionManagerItf> CreatePartitionManager() const;
     RetWithError<std::vector<BootItem>>          ReadBootEntries();
-    RetWithError<uint16_t>                       ConvertHex(const std::string& hexStr) const;
+    RetWithError<uint16_t>                       ConvertHex(std::string_view hexStr) const;
     Error                                        InitBootPartitions(const BootConfig& config);
     Error                                        SetPartitionIDs();
     RetWithError<std::string>                    GetPartitionPrefix() const;

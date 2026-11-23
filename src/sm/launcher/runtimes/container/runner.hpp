@@ -8,6 +8,7 @@
 #define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_RUNNER_HPP_
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -114,7 +115,7 @@ private:
     std::condition_variable mCondVar;
 
     std::unordered_map<std::string, RunningUnitData> mRunningContainers;
-    std::set<std::string>                            mInstancesToRestart;
+    std::set<std::string, std::less<>>               mInstancesToRestart;
     mutable std::vector<RunStatus>                   mRunningInstances;
 
     bool mClosed = false;

@@ -508,7 +508,7 @@ void FSBufferedWatcher::NotifySubscribers(const std::vector<fs::FSEventSubscribe
         context.mEvents.insert(context.mEvents.end(), events.begin(), events.end());
         context.mSubscribers = subscribers;
     } else {
-        mNotifyContexts.emplace(path, NotifyContext {subscribers, events, Time::Now()});
+        mNotifyContexts.try_emplace(path, NotifyContext {subscribers, events, Time::Now()});
     }
 
     mCondVar.notify_all();

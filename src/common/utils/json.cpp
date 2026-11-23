@@ -29,9 +29,9 @@ std::string ToStdString(const String& str)
 CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
     : mObject(object)
 {
-    for (const auto& pair : *object) {
-        if (!pair.second.isEmpty()) {
-            mKeyMap.emplace(ToLowercase(pair.first), pair.first);
+    for (const auto& [key, value] : *object) {
+        if (!value.isEmpty()) {
+            mKeyMap.try_emplace(ToLowercase(key), key);
         }
     }
 }

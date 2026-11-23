@@ -254,13 +254,13 @@ Error Firewall::RemoveOrphans(
         return ErrorEnum::eNone;
     }
 
-    std::set<std::string> knownChains;
+    std::set<std::string, std::less<>> knownChains;
 
     for (const auto& instanceID : knownInstanceIDs) {
         knownChains.emplace(ChainName(instanceID));
     }
 
-    std::set<std::string> orphanChains;
+    std::set<std::string, std::less<>> orphanChains;
 
     for (const auto& r : forwardRules) {
         if (r.mRule.mAction != nftables::FWActionEnum::eJump || r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) != 0
@@ -411,7 +411,7 @@ Error Firewall::CreateSkeleton()
 Error Firewall::ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules)
 {
     // Ingress jumps identify the instance chains to remove.
-    std::set<std::string> instanceChains;
+    std::set<std::string, std::less<>> instanceChains;
 
     for (const auto& r : forwardRules) {
         if (r.mRule.mAction == nftables::FWActionEnum::eJump
@@ -778,8 +778,8 @@ Error Firewall::Revert()
 {
     LOG_DBG() << "Revert firewall batch";
 
-    std::set<std::string>            chains;
-    std::set<nftables::FWRuleHandle> handles;
+    std::set<std::string, std::less<>> chains;
+    std::set<nftables::FWRuleHandle>   handles;
 
     {
         std::lock_guard lock {mBatchMutex};

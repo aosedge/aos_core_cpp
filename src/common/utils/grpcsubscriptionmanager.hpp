@@ -58,7 +58,7 @@ public:
         , mReaderFunc(readerFunc)
         , mConvertFunc(std::move(convertFunc))
         , mNotifyFunc(notifyFunc)
-        , mLogContext(std::move(logContext))
+        , mLogContext(logContext)
     {
     }
 
