@@ -90,7 +90,7 @@ void SMHandler::Stop()
 
 String SMHandler::GetNodeID() const
 {
-    return mNodeID;
+    return mNodeID; // NOSONAR cpp:S5912
 }
 
 Error SMHandler::GetNodeConfigStatus(NodeConfigStatus& status)
