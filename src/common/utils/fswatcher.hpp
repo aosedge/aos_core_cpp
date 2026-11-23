@@ -136,6 +136,8 @@ private:
         Time                                   mLastEventTime;
     };
 
+    static void NotifyContextSubscribers(const std::string& path, NotifyContext& context);
+
     std::atomic_bool                               mRunning {};
     std::mutex                                     mMutex;
     std::thread                                    mNotifyThread;

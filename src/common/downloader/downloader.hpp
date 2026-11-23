@@ -101,6 +101,7 @@ private:
     static CURLcode SSLContextCallback(CURL* curl, void* sslContext, void* userData);
 
     Error         DownloadImage(const String& url, const String& path, ProgressContext* context);
+    Error         RestartDownload(const String& url, const String& path, ProgressContext* context);
     static Error  CopyFile(const Poco::URI& uri, const String& outfilename);
     static bool   CheckRangeResponse(WriteContext* writeContext);
     static size_t WriteCallback(char* data, size_t size, size_t nmemb, void* userData);

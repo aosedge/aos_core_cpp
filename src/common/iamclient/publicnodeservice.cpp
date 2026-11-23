@@ -249,13 +249,7 @@ void PublicNodesService::ConnectionLoop()
 
             std::lock_guard lock {mMutex};
 
-            if (mCredentials.size() > 1) {
-                AdvanceCredential();
-
-                if (auto rebuildErr = RebuildStub(); !rebuildErr.IsNone()) {
-                    LOG_ERR() << "Failed to rebuild stub" << Log::Field(rebuildErr);
-                }
-            }
+            SwitchCredential();
         }
 
         std::unique_lock lock {mMutex};
@@ -405,6 +399,17 @@ Error PublicNodesService::RebuildStub()
     }
 
     return ErrorEnum::eNone;
+}
+
+void PublicNodesService::SwitchCredential()
+{
+    if (mCredentials.size() > 1) {
+        AdvanceCredential();
+
+        if (auto rebuildErr = RebuildStub(); !rebuildErr.IsNone()) {
+            LOG_ERR() << "Failed to rebuild stub" << Log::Field(rebuildErr);
+        }
+    }
 }
 
 void PublicNodesService::AdvanceCredential()

@@ -25,6 +25,28 @@ namespace aos::common::downloader {
 
 using namespace std::chrono;
 
+namespace {
+
+void CloseFile(FILE* fp)
+{
+    if (fp) {
+        if (auto res = fclose(fp); res != 0) {
+            LOG_ERR() << "failed to close file: res=" << res;
+        }
+    }
+}
+
+Error HTTPCodeToError(long code, CURLcode res)
+{
+    if (code == utils::cIntegrityHTTPStatus) {
+        return Error(ErrorEnum::eIntegrity, "blob integrity error");
+    }
+
+    return Error(static_cast<int32_t>(code), curl_easy_strerror(res));
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -210,17 +232,9 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
-    auto fileCloser = [](FILE* fp) {
-        if (fp) {
-            if (auto res = fclose(fp); res != 0) {
-                LOG_ERR() << "failed to close file: res=" << res;
-            }
-        }
-    };
-
     // Open in append mode when resuming: if the server ignores the range, the file is truncated before the first
     // write (see CheckRangeResponse), and append mode makes the writes continue from the new end of the file.
-    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), existingSize > 0 ? "ab" : "wb"), fileCloser);
+    std::unique_ptr<FILE, decltype(&CloseFile)> fp(fopen(path.CStr(), existingSize > 0 ? "ab" : "wb"), &CloseFile);
     if (!fp) {
         return Error(ErrorEnum::eFailed, "failed to open file");
     }
@@ -273,20 +287,10 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
                 fp.reset();
 
-                try {
-                    std::filesystem::remove(path.CStr());
-                } catch (const std::exception& e) {
-                    return AOS_ERROR_WRAP(utils::ToAosError(e));
-                }
-
-                return DownloadImage(url, path, context);
+                return RestartDownload(url, path, context);
             }
 
-            if (code == utils::cIntegrityHTTPStatus) {
-                err = Error(ErrorEnum::eIntegrity, "blob integrity error");
-            } else {
-                err = Error(static_cast<int32_t>(code), curl_easy_strerror(res));
-            }
+            err = HTTPCodeToError(code, res);
         } else {
             err = Error(ErrorEnum::eFailed, curl_easy_strerror(res));
         }
@@ -305,6 +309,17 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
     SendAlert(context, DownloadStateEnum::eFinished, context->mDownloadedSize, context->mTotalSize);
 
     return ErrorEnum::eNone;
+}
+
+Error Downloader::RestartDownload(const String& url, const String& path, ProgressContext* context)
+{
+    try {
+        std::filesystem::remove(path.CStr());
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
+
+    return DownloadImage(url, path, context);
 }
 
 bool Downloader::CheckRangeResponse(WriteContext* writeContext)

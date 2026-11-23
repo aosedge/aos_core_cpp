@@ -328,39 +328,41 @@ Error ConvertToProto(const PartitionAlertRule& src, servicemanager::v5::Partitio
 
 Error ConvertToProto(const InstanceMonitoringParams& src, servicemanager::v5::MonitoringParameters& dst)
 {
-    if (src.mAlertRules.HasValue()) {
-        auto* alertRules = dst.mutable_alert_rules();
+    if (!src.mAlertRules.HasValue()) {
+        return ErrorEnum::eNone;
+    }
 
-        const auto& rules = src.mAlertRules.GetValue();
+    auto* alertRules = dst.mutable_alert_rules();
 
-        if (rules.mRAM.HasValue()) {
-            if (auto err = ConvertToProto(rules.mRAM.GetValue(), *alertRules->mutable_ram()); !err.IsNone()) {
-                return err;
-            }
+    const auto& rules = src.mAlertRules.GetValue();
+
+    if (rules.mRAM.HasValue()) {
+        if (auto err = ConvertToProto(rules.mRAM.GetValue(), *alertRules->mutable_ram()); !err.IsNone()) {
+            return err;
         }
+    }
 
-        if (rules.mCPU.HasValue()) {
-            if (auto err = ConvertToProto(rules.mCPU.GetValue(), *alertRules->mutable_cpu()); !err.IsNone()) {
-                return err;
-            }
+    if (rules.mCPU.HasValue()) {
+        if (auto err = ConvertToProto(rules.mCPU.GetValue(), *alertRules->mutable_cpu()); !err.IsNone()) {
+            return err;
         }
+    }
 
-        if (rules.mDownload.HasValue()) {
-            if (auto err = ConvertToProto(rules.mDownload.GetValue(), *alertRules->mutable_download()); !err.IsNone()) {
-                return err;
-            }
+    if (rules.mDownload.HasValue()) {
+        if (auto err = ConvertToProto(rules.mDownload.GetValue(), *alertRules->mutable_download()); !err.IsNone()) {
+            return err;
         }
+    }
 
-        if (rules.mUpload.HasValue()) {
-            if (auto err = ConvertToProto(rules.mUpload.GetValue(), *alertRules->mutable_upload()); !err.IsNone()) {
-                return err;
-            }
+    if (rules.mUpload.HasValue()) {
+        if (auto err = ConvertToProto(rules.mUpload.GetValue(), *alertRules->mutable_upload()); !err.IsNone()) {
+            return err;
         }
+    }
 
-        for (const auto& partition : rules.mPartitions) {
-            if (auto err = ConvertToProto(partition, *alertRules->add_partitions()); !err.IsNone()) {
-                return err;
-            }
+    for (const auto& partition : rules.mPartitions) {
+        if (auto err = ConvertToProto(partition, *alertRules->add_partitions()); !err.IsNone()) {
+            return err;
         }
     }
 
@@ -442,49 +444,51 @@ Error ConvertFromProto(const servicemanager::v5::PartitionAlertRule& src, Partit
 
 Error ConvertFromProto(const servicemanager::v5::MonitoringParameters& src, InstanceMonitoringParams& dst)
 {
-    if (src.has_alert_rules()) {
-        dst.mAlertRules.EmplaceValue();
+    if (!src.has_alert_rules()) {
+        return ErrorEnum::eNone;
+    }
 
-        if (src.alert_rules().has_ram()) {
-            dst.mAlertRules->mRAM.EmplaceValue();
+    dst.mAlertRules.EmplaceValue();
 
-            if (auto err = ConvertFromProto(src.alert_rules().ram(), *dst.mAlertRules->mRAM); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+    if (src.alert_rules().has_ram()) {
+        dst.mAlertRules->mRAM.EmplaceValue();
+
+        if (auto err = ConvertFromProto(src.alert_rules().ram(), *dst.mAlertRules->mRAM); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    if (src.alert_rules().has_cpu()) {
+        dst.mAlertRules->mCPU.EmplaceValue();
+
+        if (auto err = ConvertFromProto(src.alert_rules().cpu(), *dst.mAlertRules->mCPU); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    for (const auto& partitionRule : src.alert_rules().partitions()) {
+        if (auto err = dst.mAlertRules->mPartitions.EmplaceBack(); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
 
-        if (src.alert_rules().has_cpu()) {
-            dst.mAlertRules->mCPU.EmplaceValue();
-
-            if (auto err = ConvertFromProto(src.alert_rules().cpu(), *dst.mAlertRules->mCPU); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = ConvertFromProto(partitionRule, dst.mAlertRules->mPartitions.Back()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
+    }
 
-        for (const auto& partitionRule : src.alert_rules().partitions()) {
-            if (auto err = dst.mAlertRules->mPartitions.EmplaceBack(); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+    if (src.alert_rules().has_download()) {
+        dst.mAlertRules->mDownload.EmplaceValue();
 
-            if (auto err = ConvertFromProto(partitionRule, dst.mAlertRules->mPartitions.Back()); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = ConvertFromProto(src.alert_rules().download(), *dst.mAlertRules->mDownload); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
+    }
 
-        if (src.alert_rules().has_download()) {
-            dst.mAlertRules->mDownload.EmplaceValue();
+    if (src.alert_rules().has_upload()) {
+        dst.mAlertRules->mUpload.EmplaceValue();
 
-            if (auto err = ConvertFromProto(src.alert_rules().download(), *dst.mAlertRules->mDownload); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-        }
-
-        if (src.alert_rules().has_upload()) {
-            dst.mAlertRules->mUpload.EmplaceValue();
-
-            if (auto err = ConvertFromProto(src.alert_rules().upload(), *dst.mAlertRules->mUpload); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = ConvertFromProto(src.alert_rules().upload(), *dst.mAlertRules->mUpload); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
     }
 

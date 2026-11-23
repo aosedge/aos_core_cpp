@@ -514,6 +514,17 @@ void FSBufferedWatcher::NotifySubscribers(const std::vector<fs::FSEventSubscribe
     mCondVar.notify_all();
 }
 
+void FSBufferedWatcher::NotifyContextSubscribers(const std::string& path, NotifyContext& context)
+{
+    for (auto* subscriber : context.mSubscribers) {
+        if (!subscriber) {
+            continue;
+        }
+
+        subscriber->OnFSEvent(path.c_str(), Array<fs::FSEvent>(context.mEvents.data(), context.mEvents.size()));
+    }
+}
+
 void FSBufferedWatcher::Run()
 {
     while (true) {
@@ -535,13 +546,7 @@ void FSBufferedWatcher::Run()
                 continue;
             }
 
-            for (auto* subscriber : context.mSubscribers) {
-                if (!subscriber) {
-                    continue;
-                }
-
-                subscriber->OnFSEvent(path.c_str(), Array<fs::FSEvent>(context.mEvents.data(), context.mEvents.size()));
-            }
+            NotifyContextSubscribers(path, context);
 
             notified.push_back(path);
         }
