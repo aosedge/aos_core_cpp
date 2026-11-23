@@ -114,20 +114,20 @@ private:
     void SendErrorResponse(const String& correlationId, const std::string& errorMsg);
     void SendEmptyResponse(const String& correlationId, const std::string& errorMsg);
 
-    void AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
-    void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
-    void AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
+    static void AddServiceCgroupFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
+    static void SeekToTime(utils::JournalItf& journal, const Optional<Time>& from);
+    static void AddUnitFilter(utils::JournalItf& journal, const std::vector<std::string>& instanceIDs);
 
     void ProcessJournalLogs(
         utils::JournalItf& journal, Optional<Time> till, bool needUnitField, common::logging::Archiver& archiver);
     void ProcessJournalCrashLogs(utils::JournalItf& journal, Time crashTime,
         const std::vector<std::string>& instanceIDs, common::logging::Archiver& archiver);
 
-    std::string FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit);
+    static std::string FormatLogEntry(const utils::JournalEntry& journalEntry, bool addUnit);
 
-    Time        GetCrashTime(utils::JournalItf& journal, const Optional<Time>& from);
-    std::string GetUnitNameFromLog(const utils::JournalEntry& entry);
-    std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
+    static Time        GetCrashTime(utils::JournalItf& journal, const Optional<Time>& from);
+    static std::string GetUnitNameFromLog(const utils::JournalEntry& entry);
+    static std::string MakeUnitNameFromInstanceID(const std::string& instanceID);
 
     InstanceIDProviderItf*   mInstanceProvider = nullptr;
     aos::logging::Config     mConfig           = {};

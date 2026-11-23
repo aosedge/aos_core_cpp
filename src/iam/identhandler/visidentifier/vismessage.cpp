@@ -18,13 +18,13 @@ namespace aos::iam::visidentifier {
  * Public
  **********************************************************************************************************************/
 
-VISMessage::VISMessage(const VISAction action)
+VISMessage::VISMessage(const VISAction& action)
     : mAction(action)
 {
     mJsonObject.set(cActionTagName, mAction.ToString().CStr());
 }
 
-VISMessage::VISMessage(const VISAction action, const std::string& requestId, const std::string& path)
+VISMessage::VISMessage(const VISAction& action, const std::string& requestId, const std::string& path)
     : VISMessage(action)
 {
     if (!requestId.empty()) {
@@ -53,7 +53,7 @@ VISMessage::VISMessage(const std::string& jsonStr)
     }
 }
 
-bool VISMessage::Is(const VISAction actionType) const
+bool VISMessage::Is(const VISAction& actionType) const
 {
     return mAction == actionType;
 }

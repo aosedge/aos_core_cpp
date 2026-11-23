@@ -57,7 +57,7 @@ public:
      *
      * @param level log level.
      */
-    void SetLogLevel(aos::LogLevel level)
+    void SetLogLevel(const aos::LogLevel& level)
     {
         std::lock_guard lock(sMutex);
 
@@ -81,11 +81,11 @@ private:
     static void JournaldCallback(const String& moduleName, aos::LogLevel level, const aos::String& message);
 
     static void        SetColored(bool colored) { sColored = colored; }
-    static int         GetSyslogPriority(aos::LogLevel level);
+    static int         GetSyslogPriority(const aos::LogLevel& level);
     static std::string GetModule(const String& moduleName);
 
     virtual std::string GetCurrentTime();
-    virtual std::string GetLogLevel(aos::LogLevel level);
+    virtual std::string GetLogLevel(const aos::LogLevel& level);
 
     static std::mutex    sMutex;
     static Backend       sBackend;

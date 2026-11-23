@@ -180,7 +180,7 @@ std::shared_ptr<PartitionManagerItf> EFIBootController::CreatePartitionManager()
     return std::make_shared<PartitionManager>();
 }
 
-RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBootEntries()
+RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBootEntries() const
 {
     LOG_DBG() << "Read EFI boot entries";
 
@@ -399,7 +399,7 @@ std::vector<uint8_t> EFIBootController::ToUint8(const std::vector<uint16_t>& dat
         reinterpret_cast<const uint8_t*>(data.data()) + data.size() * sizeof(uint16_t)};
 }
 
-Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs)
+Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs) const
 {
     if (newBootIDs.empty()) {
         return ErrorEnum::eNone;
@@ -414,7 +414,7 @@ Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs
 }
 
 Error EFIBootController::UpdateBootOrder(
-    const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder)
+    const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder) const
 {
     std::vector<uint16_t> newBootOrder = newBootIDs;
 

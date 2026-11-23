@@ -273,8 +273,8 @@ private:
     Error GenerateUUID(std::string& uuid) const;
     Error GenerateUUID(String& uuid) const;
     Error EnqueueMessage(
-        Poco::JSON::Object::Ptr data, bool important = false, OnResponseReceivedFunc onResponseReceived = {});
-    Error EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived = {});
+        Poco::JSON::Object::Ptr data, bool important = false, const OnResponseReceivedFunc& onResponseReceived = {});
+    Error EnqueueMessage(const Message& msg, const OnResponseReceivedFunc& onResponseReceived = {});
     Error DequeueMessage(const Message& msg);
 
     void  HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Ack& ack);

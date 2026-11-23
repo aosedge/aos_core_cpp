@@ -230,7 +230,7 @@ void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
     mLogger.SetBackend(backend);
 }
 
-void AosCore::SetLogLevel(LogLevel level)
+void AosCore::SetLogLevel(const LogLevel& level)
 {
     mLogger.SetLogLevel(level);
 }

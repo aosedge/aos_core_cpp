@@ -35,7 +35,7 @@ void VISSubscriptions::RegisterSubscription(const std::string& subscriptionId, H
     mSubscriptionMap[subscriptionId] = std::move(subscriptionHandler);
 }
 
-Error VISSubscriptions::ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var value)
+Error VISSubscriptions::ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var& value)
 {
     std::lock_guard lock(mMutex);
 
@@ -199,7 +199,7 @@ void VISIdentifier::SetWSClient(WSClientItfPtr wsClient)
     mWsClientPtr = std::move(wsClient);
 }
 
-WSClientItfPtr VISIdentifier::GetWSClient()
+WSClientItfPtr VISIdentifier::GetWSClient() const
 {
     return mWsClientPtr;
 }
@@ -310,7 +310,7 @@ void VISIdentifier::HandleConnection()
     } while (!mStopHandleSubjectsChangedThread.tryWait(cWSClientReconnectMilliseconds));
 }
 
-Error VISIdentifier::HandleSubjectsSubscription(Poco::Dynamic::Var value)
+Error VISIdentifier::HandleSubjectsSubscription(const Poco::Dynamic::Var& value)
 {
     try {
         auto newSubjects = std::make_unique<SubjectArray>();
@@ -351,7 +351,7 @@ std::string VISIdentifier::SendGetRequest(const std::string& path)
     return {response.cbegin(), response.cend()};
 }
 
-void VISIdentifier::SendUnsubscribeAllRequest()
+void VISIdentifier::SendUnsubscribeAllRequest() const
 {
     try {
         const VISMessage request(VISActionEnum::eUnsubscribeAll, mWsClientPtr->GenerateRequestID(), "");
@@ -375,7 +375,7 @@ void VISIdentifier::Subscribe(const std::string& path, VISSubscriptions::Handler
         responseVISMessage.GetValue<std::string>(VISMessage::cSubscriptionIdTagName), std::move(callback));
 }
 
-std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName)
+std::string VISIdentifier::GetValueByPath(const Poco::Dynamic::Var& object, const std::string& valueChildTagName)
 {
     auto var = common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
@@ -389,11 +389,11 @@ std::string VISIdentifier::GetValueByPath(Poco::Dynamic::Var object, const std::
 }
 
 std::vector<std::string> VISIdentifier::GetValueArrayByPath(
-    Poco::Dynamic::Var object, const std::string& valueChildTagName)
+    const Poco::Dynamic::Var& object, const std::string& valueChildTagName)
 {
     auto var = common::utils::FindByPath(object, {VISMessage::cValueTagName});
 
-    const auto isArray = [](const Poco::Dynamic::Var var) {
+    const auto isArray = [](const Poco::Dynamic::Var& var) {
         return var.type() == typeid(Poco::JSON::Array) || var.type() == typeid(Poco::JSON::Array::Ptr);
     };
 

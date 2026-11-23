@@ -102,7 +102,7 @@ private:
     void     ReceiveFrames() noexcept;
     void     StartReceiveFramesThread();
     void     StopReceiveFramesThread();
-    Duration GetWebSocketTimeout();
+    Duration GetWebSocketTimeout() const;
 
     config::VISIdentifierModuleParams              mConfig;
     crypto::UUIDItf*                               mUUIDProvider {};

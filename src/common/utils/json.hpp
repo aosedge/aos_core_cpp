@@ -73,7 +73,7 @@ aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path);
  * @param path json path.
  * @return Poco::Dynamic::Var.
  */
-Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& path);
+Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var& object, const std::vector<std::string>& path);
 
 /**
  * Wrapper for Poco::JSON::Object::Ptr with case-insensitive keys.

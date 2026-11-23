@@ -98,7 +98,7 @@ int Migration::GetCurrentVersion()
     return version;
 }
 
-void Migration::MergeMigrationFiles(const std::string& migrationDir)
+void Migration::MergeMigrationFiles(const std::string& migrationDir) const
 {
     if (!std::filesystem::exists(migrationDir)) {
         AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "migration path doesn't exist (" + migrationDir + ")");

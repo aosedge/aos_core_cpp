@@ -237,7 +237,7 @@ RetWithError<Config> ParseConfig(const std::string& filename)
     return config;
 }
 
-RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params)
+RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(const Poco::Dynamic::Var& params)
 {
     PKCS11ModuleParams moduleParams;
 
@@ -260,7 +260,7 @@ RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var para
     return moduleParams;
 }
 
-RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params)
+RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(const Poco::Dynamic::Var& params)
 {
     VISIdentifierModuleParams moduleParams;
 
@@ -283,7 +283,7 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
     return moduleParams;
 }
 
-Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config)
+Error ParseFileIdentifierModuleParams(const Poco::Dynamic::Var& params, iam::identhandler::FileIdentifierConfig& config)
 {
     try {
         common::utils::CaseInsensitiveObjectWrapper object(params.extract<Poco::JSON::Object::Ptr>());
@@ -300,7 +300,8 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
     return ErrorEnum::eNone;
 }
 
-Error ParseFileHWInfoProviderParams(Poco::Dynamic::Var params, iam::currentnode::FileHWInfoProviderConfig& config)
+Error ParseFileHWInfoProviderParams(
+    const Poco::Dynamic::Var& params, iam::currentnode::FileHWInfoProviderConfig& config)
 {
     try {
         auto hwIDPath = std::string(cDefaultHWIDPath);

@@ -902,11 +902,11 @@ void NetworkManager::RemoveExistedNetworks()
 {
     std::vector<std::string> IPs;
 
-    for (auto& [networkID, networkState] : mNetworkStates) {
-        for (auto& [nodeID, hostInstances] : networkState.mHostInstances) {
+    for (const auto& [networkID, networkState] : mNetworkStates) {
+        for (const auto& [nodeID, hostInstances] : networkState.mHostInstances) {
             IPs.emplace_back(hostInstances.mHostInfo.mIP.CStr());
 
-            for (auto& [_, instance] : hostInstances.mInstances) {
+            for (const auto& [_, instance] : hostInstances.mInstances) {
                 IPs.emplace_back(instance.mIP.CStr());
             }
         }
@@ -1029,7 +1029,7 @@ Error NetworkManager::RemoveNode(const String& networkID, const String& nodeID, 
 
         const auto hadInstances = !itHost->second.mInstances.empty();
 
-        for (auto& [_, instance] : itHost->second.mInstances) {
+        for (const auto& [_, instance] : itHost->second.mInstances) {
             const auto instanceTargets = GetInstanceTargets(instance.mInstanceIdent);
 
             (void)nodeTargets.insert(nodeTargets.end(), instanceTargets.begin(), instanceTargets.end());

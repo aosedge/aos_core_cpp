@@ -215,7 +215,7 @@ public:
          * @param response response.
          * @return opened file descriptor or null if a response was sent.
          */
-        FDPtr OpenFile(const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response);
+        FDPtr OpenFile(const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response) const;
 
         /**
          * Handles file read error: logs it, sends the error response if the response headers are not sent yet,
@@ -227,7 +227,7 @@ public:
          * @param response response.
          */
         void HandleReadError(
-            const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response);
+            const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response) const;
 
         /**
          * Sends the file content.
@@ -240,7 +240,7 @@ public:
          * @param response response.
          */
         void SendFile(int fd, const std::string& path, const struct stat& st, const std::string& extension,
-            Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response);
+            const Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response);
 
         std::string                  mRootDir;
         std::shared_ptr<BrokenFiles> mBrokenFiles;

@@ -55,7 +55,7 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
         return Error(ErrorEnum::eFailed, strerror(errno));
     }
 
-    auto closeFd         = [](int* fd) { close(*fd); };
+    auto closeFd         = [](const int* fd) { close(*fd); };
     auto originalNsFdPtr = std::unique_ptr<int, decltype(closeFd)>(&originalNsFd, closeFd);
 
     // Unshare to create the new network namespace
@@ -70,7 +70,7 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
 
     close(nsFd);
 
-    auto autoSwitchToOriginNs = DeferRelease(&originalNsFd, [&path, &err](int* fd) {
+    auto autoSwitchToOriginNs = DeferRelease(&originalNsFd, [&path, &err](const int* fd) {
         if (setns(*fd, CLONE_NEWNET) != 0) {
             LOG_ERR() << "Failed to return to original namespace: " << strerror(errno);
 

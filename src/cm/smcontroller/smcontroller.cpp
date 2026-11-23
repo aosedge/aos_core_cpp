@@ -228,7 +228,7 @@ void SMController::OnConnect()
 
     std::lock_guard lock {mMutex};
 
-    for (auto& handler : mSMHandlers) {
+    for (const auto& handler : mSMHandlers) {
         handler->OnConnect();
     }
 }
@@ -239,7 +239,7 @@ void SMController::OnDisconnect()
 
     std::lock_guard lock {mMutex};
 
-    for (auto& handler : mSMHandlers) {
+    for (const auto& handler : mSMHandlers) {
         handler->OnDisconnect();
     }
 }
@@ -504,13 +504,13 @@ Error SMController::StopServer()
     {
         std::lock_guard lock {mMutex};
 
-        for (auto& handler : mSMHandlers) {
+        for (const auto& handler : mSMHandlers) {
             if (handler) {
                 handler->Stop();
             }
         }
 
-        for (auto& [_, stream] : mNetworkUpdateStreams) {
+        for (const auto& [_, stream] : mNetworkUpdateStreams) {
             stream.mContext->TryCancel();
         }
 

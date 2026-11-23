@@ -24,7 +24,7 @@ namespace aos::common::iamclient {
 
 PublicCertService::~PublicCertService()
 {
-    for (auto& [storageID, manager] : mCertKeySubscriptions) {
+    for (const auto& [storageID, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Close();
         }
@@ -84,7 +84,7 @@ Error PublicCertService::Reconnect()
     mStub = iamanager::v7::IAMPublicCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
-    for (auto& [storageID, manager] : mCertKeySubscriptions) {
+    for (const auto& [storageID, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Reconnect(mStub.get());
         }
@@ -143,7 +143,7 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertKeyListenerItf&
     LOG_DBG() << "Unsubscribe from certificate changed";
 
     for (auto it = mCertKeySubscriptions.begin(); it != mCertKeySubscriptions.end();) {
-        auto& manager = it->second;
+        const auto& manager = it->second;
 
         if (manager->Unsubscribe(certListener)) {
             LOG_DBG() << "Unsubscribe from certificate changed" << Log::Field("storageID", it->first.c_str());

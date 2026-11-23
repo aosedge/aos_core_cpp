@@ -281,7 +281,7 @@ void PocoWSClient::StopReceiveFramesThread()
     }
 }
 
-Duration PocoWSClient::GetWebSocketTimeout()
+Duration PocoWSClient::GetWebSocketTimeout() const
 {
     if (mConfig.mWebSocketTimeout > 0) {
         return mConfig.mWebSocketTimeout;

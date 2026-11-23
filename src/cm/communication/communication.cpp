@@ -1107,7 +1107,7 @@ Error Communication::GenerateUUID(String& uuid) const
 }
 
 Error Communication::EnqueueMessage(
-    Poco::JSON::Object::Ptr data, bool important, OnResponseReceivedFunc onResponseReceived)
+    Poco::JSON::Object::Ptr data, bool important, const OnResponseReceivedFunc& onResponseReceived)
 {
     if (!important && !mIsRunning) {
         return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
@@ -1126,7 +1126,7 @@ Error Communication::EnqueueMessage(
     return EnqueueMessage(Message(txn, std::move(payload)), onResponseReceived);
 }
 
-Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived)
+Error Communication::EnqueueMessage(const Message& msg, const OnResponseReceivedFunc& onResponseReceived)
 {
     std::unique_lock lock {mMutex};
 
@@ -1295,7 +1295,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const StartProvision
         return;
     }
 
-    auto sendResponse = DeferRelease(response.get(), [this, &info](StartProvisioningResponse* response) {
+    auto sendResponse = DeferRelease(response.get(), [this, &info](const StartProvisioningResponse* response) {
         if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
             LOG_ERR() << "Send start provisioning failed" << Log::Field(err);
         }
@@ -1361,7 +1361,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const FinishProvisio
         return;
     }
 
-    auto sendResponse = DeferRelease(response.get(), [this, &info](FinishProvisioningResponse* response) {
+    auto sendResponse = DeferRelease(response.get(), [this, &info](const FinishProvisioningResponse* response) {
         if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
             LOG_ERR() << "Send finish provisioning failed" << Log::Field(err);
         }

@@ -103,7 +103,7 @@ Error SMHandler::GetNodeConfigStatus(NodeConfigStatus& status)
     // Create a get_node_config_status request in the incoming message
     inMsg.mutable_get_node_config_status();
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -128,7 +128,7 @@ Error SMHandler::CheckNodeConfig(const NodeConfig& config)
         return err;
     }
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -149,7 +149,7 @@ Error SMHandler::UpdateNodeConfig(const NodeConfig& config)
         return err;
     }
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -443,7 +443,7 @@ Error SMHandler::GetAverageMonitoring(aos::monitoring::NodeMonitoringData& monit
     servicemanager::v5::SMOutgoingMessages outMsg;
 
     inMsg.mutable_get_average_monitoring();
-    auto* averageMonitoring = outMsg.mutable_average_monitoring();
+    const auto* averageMonitoring = outMsg.mutable_average_monitoring();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;

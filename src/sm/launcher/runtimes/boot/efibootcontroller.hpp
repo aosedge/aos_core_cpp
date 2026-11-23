@@ -98,7 +98,7 @@ private:
 
     virtual std::shared_ptr<EFIVarItf>           CreateEFIVar() const;
     virtual std::shared_ptr<PartitionManagerItf> CreatePartitionManager() const;
-    RetWithError<std::vector<BootItem>>          ReadBootEntries();
+    RetWithError<std::vector<BootItem>>          ReadBootEntries() const;
     RetWithError<uint16_t>                       ConvertHex(std::string_view hexStr) const;
     Error                                        InitBootPartitions(const BootConfig& config);
     Error                                        SetPartitionIDs();
@@ -109,8 +109,8 @@ private:
     RetWithError<std::vector<uint16_t>>          ReadVariable(const std::string& name) const;
     std::vector<uint16_t>                        ToUint16(const std::vector<uint8_t>& data) const;
     std::vector<uint8_t>                         ToUint8(const std::vector<uint16_t>& data) const;
-    Error                                        UpdateBootOrder(const std::vector<uint16_t>& newBootIDs);
-    Error UpdateBootOrder(const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder);
+    Error                                        UpdateBootOrder(const std::vector<uint16_t>& newBootIDs) const;
+    Error UpdateBootOrder(const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder) const;
 
     mutable std::mutex                   mMutex;
     std::shared_ptr<PartitionManagerItf> mPartitionManager;

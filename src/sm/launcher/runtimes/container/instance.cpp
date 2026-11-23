@@ -357,7 +357,7 @@ Error Instance::BindHostDirs(oci::RuntimeConfig& runtimeConfig)
     return ErrorEnum::eNone;
 }
 
-Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig)
+Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig) const
 {
     auto                     envVars = std::make_unique<StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>>();
     StaticString<cEnvVarLen> envVar;

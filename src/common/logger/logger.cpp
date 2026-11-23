@@ -102,7 +102,7 @@ std::string Logger::GetCurrentTime()
     return ss.str();
 }
 
-std::string Logger::GetLogLevel(aos::LogLevel level)
+std::string Logger::GetLogLevel(const aos::LogLevel& level)
 {
     std::stringstream ss;
 
@@ -141,7 +141,7 @@ std::string Logger::GetModule(const String& moduleName)
     return ss.str();
 }
 
-int Logger::GetSyslogPriority(aos::LogLevel level)
+int Logger::GetSyslogPriority(const aos::LogLevel& level)
 {
     switch (static_cast<aos::LogLevelEnum>(level)) {
     case aos::LogLevelEnum::eDebug:

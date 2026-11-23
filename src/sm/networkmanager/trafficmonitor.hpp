@@ -161,20 +161,20 @@ private:
         const std::string& address, const std::string& parentBaseChain, uint64_t limit, StagedTrafficData& staged);
     Error BuildInstanceMonitoring(nftables::FWTxnItf& txn, const InstanceChains& chains, StagedTrafficData& staged,
         uint64_t downloadLimit, uint64_t uploadLimit);
-    void  DeleteInstanceMonitoring(
-         nftables::FWTxnItf& txn, const InstanceChains& chains, const std::vector<nftables::FWRuleHandle>& jumpHandles);
-    void  DropBatchInstanceState(const std::vector<std::string>& instanceIDs);
-    void  PublishTrafficData(StagedTrafficData& staged);
-    Error AppendChainCounterRules(
+    static void DeleteInstanceMonitoring(
+        nftables::FWTxnItf& txn, const InstanceChains& chains, const std::vector<nftables::FWRuleHandle>& jumpHandles);
+    void         DropBatchInstanceState(const std::vector<std::string>& instanceIDs);
+    void         PublishTrafficData(StagedTrafficData& staged);
+    static Error AppendChainCounterRules(
         nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, std::string_view address, bool disabled);
-    Error UpdateTrafficData();
-    Error GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
-    bool  IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;
-    Error CheckTrafficLimit(const std::string& chain, TrafficData& trafficData);
-    void  ResetTrafficData(TrafficData& trafficData, bool disable);
-    Error SetChainState(const std::string& chain, const std::string& address, bool enable);
-    Error GetTrafficData(
-        const std::string& inChain, const std::string& outChain, uint64_t& inputTraffic, uint64_t& outputTraffic) const;
+    Error       UpdateTrafficData();
+    Error       GetTrafficChainBytes(const std::string& chain, uint64_t& bytes);
+    bool        IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const;
+    Error       CheckTrafficLimit(const std::string& chain, TrafficData& trafficData);
+    static void ResetTrafficData(TrafficData& trafficData, bool disable);
+    Error       SetChainState(const std::string& chain, const std::string& address, bool enable);
+    Error       GetTrafficData(
+              const std::string& inChain, const std::string& outChain, uint64_t& inputTraffic, uint64_t& outputTraffic) const;
 
     StorageItf*                                     mStorage {};
     nftables::FWBackendItf*                         mBackend {};

@@ -52,7 +52,7 @@ Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
-    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](const int* fd) { close(*fd); });
 
     int targetNsFd = open(netNSPath.c_str(), O_RDONLY | O_CLOEXEC);
     if (targetNsFd < 0) {
@@ -60,14 +60,14 @@ Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
             Error(ErrorEnum::eFailed, ("failed to open netns " + netNSPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](const int* fd) { close(*fd); });
 
     if (setns(targetNsFd, CLONE_NEWNET) != 0) {
         return AOS_ERROR_WRAP(
             Error(ErrorEnum::eFailed, ("failed to enter netns " + netNSPath + ": " + strerror(errno)).c_str()));
     }
 
-    auto restoreNs = DeferRelease(&savedNsFd, [](int* fd) {
+    auto restoreNs = DeferRelease(&savedNsFd, [](const int* fd) {
         if (setns(*fd, CLONE_NEWNET) != 0) {
             LOG_ERR() << "Failed to restore original netns: " << strerror(errno);
         }
@@ -296,7 +296,7 @@ Error InterfaceManager::SetupLink(const String& ifname, const String& netNSPath)
     return WithNetNS(std::string(netNSPath.CStr()), doSetupLink);
 }
 
-Error InterfaceManager::AddLink(const LinkItf* link)
+Error InterfaceManager::AddLink(const LinkItf* link) const
 {
     const auto& attrs = link->GetAttrs();
 
@@ -414,7 +414,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
+Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr) const
 {
     LOG_DBG() << "Add address to interface: ifname=" << ifname.CStr() << ", IP=" << addr.mIP.c_str();
 
@@ -494,7 +494,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
+Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr) const
 {
     LOG_DBG() << "Delete address from interface: ifname=" << ifname.CStr() << ", IP=" << addr.mIP.c_str();
 
@@ -717,7 +717,7 @@ Error InterfaceManager::CreateVethToNamespace(
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { close(*fd); });
 
     auto host = DeferRelease(rtnl_link_veth_alloc(), rtnl_link_put);
     if (!host) {
@@ -812,7 +812,7 @@ Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& 
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { close(*fd); });
 
     auto [sock, err] = CreateNetlinkSocket();
     if (!err.IsNone()) {
@@ -992,7 +992,7 @@ Error InterfaceManager::SetHairpin(const String& ifname, bool enable)
             Error(ErrorEnum::eFailed, ("failed to open " + sysfsPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](int* f) { close(*f); });
+    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](const int* f) { close(*f); });
 
     if (const char value = enable ? '1' : '0'; write(fd, &value, 1) != 1) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,

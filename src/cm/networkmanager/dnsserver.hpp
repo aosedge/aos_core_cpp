@@ -63,8 +63,8 @@ private:
     static constexpr auto cHostFileName = "addnhosts";
     static constexpr auto cPidFileName  = "pidfile";
 
-    Poco::Process::PID FindServerProcess();
-    void               RestartProcess(Poco::Process::PID pid);
+    Poco::Process::PID FindServerProcess() const;
+    static void        RestartProcess(Poco::Process::PID pid);
 
     std::string mDNSStoragePath;
     std::string mIP;

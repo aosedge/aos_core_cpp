@@ -73,7 +73,7 @@ private:
 
     std::optional<CoreAlert>   GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit);
     std::optional<SystemAlert> GetSystemAlert(const utils::JournalEntry& entry);
-    void                       WriteAlertMsg(const std::string& src, String& dst);
+    static void                WriteAlertMsg(const std::string& src, String& dst);
 
     common::config::JournalAlerts mConfig  = {};
     StorageItf*                   mStorage = nullptr;

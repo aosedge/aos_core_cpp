@@ -79,7 +79,7 @@ public:
      * @param writer server writer.
      * @return grpc::Status.
      */
-    grpc::Status HandleStream(grpc::ServerContext* context, grpc::ServerWriter<T>* writer)
+    grpc::Status HandleStream(const grpc::ServerContext* context, grpc::ServerWriter<T>* writer)
     {
         uint32_t lastNotificationID = 0;
 

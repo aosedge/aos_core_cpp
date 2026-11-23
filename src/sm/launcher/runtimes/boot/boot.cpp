@@ -613,7 +613,7 @@ Error BootRuntime::SyncPartition(size_t from, size_t to)
     return ErrorEnum::eNone;
 }
 
-Error BootRuntime::StoreData(const std::string_view filename, const BootData& data)
+Error BootRuntime::StoreData(const std::string_view filename, const BootData& data) const
 {
     const auto path = GetPath(filename);
 
@@ -650,7 +650,7 @@ Error BootRuntime::StoreData(const std::string_view filename, const BootData& da
     return ErrorEnum::eNone;
 }
 
-Error BootRuntime::LoadData(const std::string_view filename, BootData& data)
+Error BootRuntime::LoadData(const std::string_view filename, BootData& data) const
 {
     const auto path = GetPath(filename);
 

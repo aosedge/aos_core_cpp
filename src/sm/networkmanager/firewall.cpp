@@ -508,7 +508,7 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
 }
 
 Error Firewall::AppendInstanceChain(
-    nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params)
+    nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params) const
 {
     const auto outputChain = chain + "_out";
 
@@ -617,7 +617,7 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
 }
 
 void Firewall::DeleteInstanceChain(
-    nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& handles)
+    nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& handles) const
 {
     txn.DeleteRuleByHandle(mTable, cIngressChain, handles[cIngressHandleIndex]);
     txn.DeleteRuleByHandle(mTable, cEgressChain, handles[cEgressHandleIndex]);

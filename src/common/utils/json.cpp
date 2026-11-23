@@ -156,7 +156,7 @@ aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path)
     return ParseJson(content);
 }
 
-Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& keys)
+Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var& object, const std::vector<std::string>& keys)
 {
     if (keys.empty()) {
         return object;

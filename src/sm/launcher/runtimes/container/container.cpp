@@ -37,7 +37,7 @@ const char* const cDefaultHostFSBinds[] = {"bin", "sbin", "lib", "lib64", "usr"}
  **********************************************************************************************************************/
 
 Error ContainerRuntime::Init(const RuntimeConfig& config,
-    iamclient::CurrentNodeInfoProviderItf&        currentNodeInfoProvider, // cppcheck-suppress constParameterReference
+    const iamclient::CurrentNodeInfoProviderItf&  currentNodeInfoProvider,
     common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
     iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
     oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,

@@ -172,7 +172,8 @@ private:
     void AddConnectionRules(const InstanceIdent& requesterIdent, const std::string& target, const std::string& protocol,
         const ConnectionRules& connectionRules, bool warnNotExposed, Array<FirewallRule>& rules) const;
 
-    void  ParseAllowConnection(const String& connection, std::string& target, std::string& port, std::string& protocol);
+    static void ParseAllowConnection(
+        const String& connection, std::string& target, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
         std::vector<Connection>& connections);
@@ -190,10 +191,10 @@ private:
 
     std::vector<std::string> GetInstanceTargets(const InstanceIdent& instanceIdent) const;
 
-    bool  MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
-         const std::string& currentNodeID, StaticString<cIPLen>& ip,
-         StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers);
-    Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
+    bool         MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
+                const std::string& currentNodeID, StaticString<cIPLen>& ip,
+                StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers);
+    static Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
 
     Error RestartDNS();
 

@@ -475,8 +475,8 @@ int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_of
     return 0;
 }
 
-void Downloader::SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
-    const std::string& reason, const Error& error)
+void Downloader::SendAlert(const ProgressContext* context, const DownloadState& state, size_t downloadedBytes,
+    size_t totalBytes, const std::string& reason, const Error& error)
 {
     if (!mSender) {
         return;

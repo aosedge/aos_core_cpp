@@ -174,7 +174,7 @@ Error CurrentNodeHandler::ReadNodeState()
     return ErrorEnum::eNone;
 }
 
-Error CurrentNodeHandler::UpdateProvisionFile(NodeState state)
+Error CurrentNodeHandler::UpdateProvisionFile(const NodeState& state) const
 {
     if (state == NodeStateEnum::eUnprovisioned) {
         std::filesystem::remove(mProvisioningStatusPath);
@@ -287,7 +287,7 @@ Error CurrentNodeHandler::InitPartitionInfo(const iam::config::NodeInfoConfig& c
     return ErrorEnum::eNone;
 }
 
-void CurrentNodeHandler::NotifyNodeInfoChanged()
+void CurrentNodeHandler::NotifyNodeInfoChanged() const
 {
     for (auto listener : mListeners) {
         LOG_DBG() << "Notify node info changed listeners" << Log::Field("nodeID", mNodeInfo.mNodeID)

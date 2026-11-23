@@ -49,7 +49,7 @@ private:
     void UpgradeDatabase(int targetVersion, int currentVersion);
     void DowngradeDatabase(int targetVersion, int currentVersion);
 
-    void MergeMigrationFiles(const std::string& migrationDir);
+    void MergeMigrationFiles(const std::string& migrationDir) const;
 
     Poco::Data::Session&  mSession;
     std::filesystem::path mMergedMigrationDir;

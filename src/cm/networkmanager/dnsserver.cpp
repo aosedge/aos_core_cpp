@@ -80,7 +80,7 @@ Error DNSServer::Restart()
  * Private
  **********************************************************************************************************************/
 
-Poco::Process::PID DNSServer::FindServerProcess()
+Poco::Process::PID DNSServer::FindServerProcess() const
 {
     std::ifstream file(mDNSPidFile);
     if (!file.is_open()) {

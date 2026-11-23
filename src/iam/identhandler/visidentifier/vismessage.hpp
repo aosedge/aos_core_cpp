@@ -31,7 +31,7 @@ public:
         eNumActions,
     };
 
-    static const aos::Array<const char* const> GetStrings()
+    static aos::Array<const char* const> GetStrings()
     {
         static const char* const sVISActionTypeStrings[] = {
             "get",
@@ -65,7 +65,7 @@ public:
      *
      * @param action The type of action requested by the client or delivered by the server.
      */
-    explicit VISMessage(const VISAction action);
+    explicit VISMessage(const VISAction& action);
 
     /**
      * Creates Vehicle Information Service message.
@@ -74,7 +74,7 @@ public:
      * @param requestId request id.
      * @param path path.
      */
-    VISMessage(const VISAction action, const std::string& requestId, const std::string& path);
+    VISMessage(const VISAction& action, const std::string& requestId, const std::string& path);
 
     /**
      * Creates Vehicle Information Service message.
@@ -89,7 +89,7 @@ public:
      * @param actionType action type to check.
      * @return bool result
      */
-    bool Is(const VISAction actionType) const;
+    bool Is(const VISAction& actionType) const;
 
     /**
      * Return const Vehicle Information Service message json object

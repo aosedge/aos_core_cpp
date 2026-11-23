@@ -284,7 +284,7 @@ bool Fileserver::FileRequestHandler::ResolvePath(const std::string& target, fs::
 }
 
 Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
-    const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response)
+    const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response) const
 {
     FDPtr fd(FDHandle(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK)));
     if (!fd) {
@@ -329,7 +329,7 @@ Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
 }
 
 void Fileserver::FileRequestHandler::HandleReadError(
-    const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response)
+    const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response) const
 {
     LOG_ERR() << "Failed to read file" << Log::Field("path", path.c_str()) << Log::Field("sent", response.sent())
               << Log::Field(Error(err, "can't read file"));
@@ -342,7 +342,7 @@ void Fileserver::FileRequestHandler::HandleReadError(
 }
 
 void Fileserver::FileRequestHandler::SendFile(int fd, const std::string& path, const struct stat& st,
-    const std::string& extension, Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
+    const std::string& extension, const Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
 {
     std::vector<char> buffer(cReadChunkSize);
 

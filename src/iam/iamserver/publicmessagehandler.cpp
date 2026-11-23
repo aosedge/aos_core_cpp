@@ -105,11 +105,11 @@ void PublicMessageHandler::Close()
     {
         std::lock_guard certWritersLock {mCertWritersLock};
 
-        for (auto& certWriter : mCertWriters) {
+        for (const auto& certWriter : mCertWriters) {
             certWriter->Close();
         }
 
-        for (auto& certWriter : mRootCertWriters) {
+        for (const auto& certWriter : mRootCertWriters) {
             certWriter->Close();
         }
 

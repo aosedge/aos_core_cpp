@@ -53,7 +53,7 @@ RetWithError<std::string> MkTmpDir(const std::string& dir, const std::string& pa
     std::vector<char> mutablePath(fullPath.begin(), fullPath.end());
     mutablePath.push_back('\0');
 
-    char* result = mkdtemp(mutablePath.data());
+    const char* result = mkdtemp(mutablePath.data());
 
     if (result == nullptr) {
         return {"", Error(ErrorEnum::eFailed, strerror(errno))};
@@ -110,8 +110,8 @@ RetWithError<std::string> GetMountPoint(const std::string& dir)
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry = nullptr;
-    std::string    bestMountPoint;
+    const struct mntent* entry = nullptr;
+    std::string          bestMountPoint;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
         struct stat mountStat;
@@ -149,7 +149,7 @@ RetWithError<std::string> GetBlockDevice(const std::string& path)
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry = nullptr;
+    const struct mntent* entry = nullptr;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
         struct stat mountStat;

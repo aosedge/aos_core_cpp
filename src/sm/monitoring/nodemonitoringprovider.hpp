@@ -60,9 +60,9 @@ private:
         Time   mTimestamp {Time::Now()};
     };
 
-    RetWithError<double>   GetSystemCPUUsage();
-    RetWithError<size_t>   GetSystemRAMUsage();
-    RetWithError<uint64_t> GetSystemDiskUsage(const String& path);
+    RetWithError<double>          GetSystemCPUUsage();
+    static RetWithError<size_t>   GetSystemRAMUsage();
+    static RetWithError<uint64_t> GetSystemDiskUsage(const String& path);
 
     aos::iamclient::CurrentNodeInfoProviderItf* mNodeInfoProvider {};
     networkmanager::SystemTrafficProviderItf*   mTrafficProvider {};

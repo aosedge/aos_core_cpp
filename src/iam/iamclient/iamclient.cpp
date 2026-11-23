@@ -396,7 +396,7 @@ Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCer
     return SendGetRootCertsFingerprintsResponse(nodeID, *fingerprints, err);
 }
 
-Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
+Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates) const
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
@@ -409,7 +409,7 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
     }
 
     const bool isAllowed = std::any_of(allowedStates->begin(), allowedStates->end(),
-        [currentState = nodeInfo->mState](const NodeState state) { return currentState == state; });
+        [currentState = nodeInfo->mState](const NodeState& state) { return currentState == state; });
 
     return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }

@@ -158,9 +158,10 @@ private:
     Error CreateSkeleton();
     Error FindInstanceRules(const std::string& chain, std::vector<nftables::FWRuleHandle>& handles);
     Error ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules);
-    Error AppendInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params);
-    void  DeleteInstanceChain(
-         nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& jumpHandles);
+    Error AppendInstanceChain(
+        nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params) const;
+    void DeleteInstanceChain(nftables::FWTxnItf& txn, const std::string& chain,
+        const std::vector<nftables::FWRuleHandle>& jumpHandles) const;
 
     const std::string                             mTable {cTableName};
     nftables::FWBackendItf*                       mBackend {};
