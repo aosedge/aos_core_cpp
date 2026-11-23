@@ -208,11 +208,6 @@ Error IAMClient::ProcessFinishProvisioning(const iamanager::v7::FinishProvisioni
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
-    if (!err.IsNone()) {
-        common::pbconvert::SetErrorInfo(err, response);
-
-        return SendMessage(outgoingMsg);
-    }
 
     common::pbconvert::SetErrorInfo(err, response);
 
@@ -243,11 +238,6 @@ Error IAMClient::ProcessDeprovision(const iamanager::v7::DeprovisionRequest& req
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eUnprovisioned);
-    if (!err.IsNone()) {
-        common::pbconvert::SetErrorInfo(err, response);
-
-        return SendMessage(outgoingMsg);
-    }
 
     common::pbconvert::SetErrorInfo(err, response);
 
