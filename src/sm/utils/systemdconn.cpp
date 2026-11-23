@@ -355,8 +355,6 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
             }
         }
     }
-
-    return ErrorEnum::eFailed;
 }
 
 std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const char* jobPath)
