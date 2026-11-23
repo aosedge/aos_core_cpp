@@ -60,12 +60,12 @@ RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
         return {nullptr, encodeErr};
     }
 
-    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
+    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), static_cast<int>(pem.length())), BIO_free);
     if (!bio) {
         return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
     }
 
-    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
+    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), nullptr, nullptr, nullptr);
     if (!pkey) {
         return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
     }
@@ -130,10 +130,10 @@ RetWithError<std::string> LoadRootCertificates(const ::aos::iamclient::CertProvi
 std::string GetOpensslErrorString()
 {
     std::ostringstream oss;
-    unsigned long      errCode;
+    unsigned long      errCode = 0;
 
     while ((errCode = ERR_get_error()) != 0) {
-        char buf[256];
+        char buf[256] = {};
 
         ERR_error_string_n(errCode, buf, sizeof(buf));
         oss << buf << std::endl;

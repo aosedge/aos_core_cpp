@@ -32,7 +32,7 @@ Error Archiver::AddLog(const std::string& message)
             return err;
         }
 
-        LOG_DBG() << "Max part size reached: partCount=" << mPartCount;
+        LOG_DBG() << "Max part size reached: partCount=" << static_cast<int32_t>(mPartCount);
     }
 
     *mCompressionStream << message;
@@ -71,7 +71,7 @@ Error Archiver::SendLog(const String& correlationId)
         auto data = mLogStreams[i].str();
         auto part = i + 1;
 
-        LOG_DBG() << "Push log: part=" << part << ", size=" << data.size();
+        LOG_DBG() << "Push log: part=" << static_cast<int32_t>(part) << ", size=" << static_cast<int32_t>(data.size());
 
         auto logPart = std::make_unique<PushLog>();
 

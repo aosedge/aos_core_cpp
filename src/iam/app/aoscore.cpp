@@ -241,7 +241,7 @@ void AosCore::SetLogLevel(LogLevel level)
 
 Error AosCore::InitCertModules(const config::Config& config)
 {
-    LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
+    LOG_DBG() << "Init cert modules: " << static_cast<int32_t>(config.mCertModules.size());
 
     size_t rootCertsModulesCount = 0;
 

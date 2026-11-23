@@ -64,7 +64,7 @@ unsigned GetMountPermissions(const Mount& mount)
             continue;
         }
 
-        return std::stoul(nameValue.substr(pos + 1, std::string::npos), nullptr, 8);
+        return static_cast<unsigned>(std::stoul(nameValue.substr(pos + 1, std::string::npos), nullptr, 8));
     }
 
     return 0;
@@ -89,7 +89,7 @@ void CreateMountPoint(const std::string& path, const Mount& mount, bool isDir)
 
     auto permissions = GetMountPermissions(mount);
     if (permissions != 0) {
-        fs::permissions(mountPoint, fs::perms(permissions));
+        fs::permissions(mountPoint, static_cast<fs::perms>(permissions));
     }
 }
 

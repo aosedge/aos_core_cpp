@@ -84,7 +84,7 @@ Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscri
     LOG_DBG() << "Start watching" << Log::Field("path", path);
 
     if (mWatchContexts.find(path.CStr()) == mWatchContexts.end()) {
-        int wd = inotify_add_watch(mInotifyFd, path.CStr(), mFlags);
+        int wd = inotify_add_watch(mInotifyFd, path.CStr(), static_cast<uint32_t>(mFlags));
         if (wd < 0) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
         }

@@ -314,7 +314,8 @@ void Database::CreateMigrationData()
 
     *mSession << "CREATE TABLE IF NOT EXISTS pins (path TEXT NOT NULL, value TEXT NOT NULL);", now;
 
-    std::string           pin, path;
+    std::string           pin;
+    std::string           path;
     Poco::Data::Statement insert(*mSession);
 
     insert << "INSERT INTO pins (path, value) VALUES(?, ?);", use(path), use(pin);

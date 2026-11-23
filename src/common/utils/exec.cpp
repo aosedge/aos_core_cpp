@@ -117,7 +117,7 @@ Error CheckExitCode(int rc, const std::string& output, const std::initializer_li
 RetWithError<std::string> ExecCommand(
     const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes)
 {
-    int pipeFDs[2];
+    int pipeFDs[2] = {};
 
     if (pipe(pipeFDs) != 0) {
         return {"", Error(ErrorEnum::eRuntime, "can't create pipe")};
@@ -153,14 +153,14 @@ RetWithError<std::string> ExecCommand(
     constexpr int cPollTimeoutMs = 20;
 
     std::string outStr;
-    char        buffer[1024];
-    int         status = 0;
-    bool        exited = false;
+    char        buffer[1024] = {};
+    int         status       = 0;
+    bool        exited       = false;
 
     for (;;) {
         if (pollfd pfd {pipeFDs[0], POLLIN, 0};
             poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
-            const int n = read(pipeFDs[0], buffer, sizeof(buffer));
+            const int n = static_cast<int>(read(pipeFDs[0], buffer, sizeof(buffer)));
             if (n > 0) {
                 outStr.append(buffer, n);
                 continue;

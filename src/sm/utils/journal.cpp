@@ -144,7 +144,8 @@ bool Journal::Previous()
 
 JournalEntry Journal::GetEntry()
 {
-    Error        err, ignore;
+    Error        err;
+    Error        ignore;
     JournalEntry entry;
 
     Tie(entry.mMessage, err) = ExtractJournalField(mJournal, "MESSAGE");
@@ -166,7 +167,7 @@ JournalEntry Journal::GetEntry()
 
     uint64_t   monotonicTime = 0;
     uint64_t   realTime      = 0;
-    sd_id128_t bootId;
+    sd_id128_t bootId        = {};
 
     auto ret = sd_id128_get_boot(&bootId);
     if (ret < 0) {

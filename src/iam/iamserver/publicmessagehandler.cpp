@@ -438,7 +438,7 @@ grpc::Status PublicMessageHandler::GetAllNodeIDs([[maybe_unused]] grpc::ServerCo
         return common::pbconvert::ConvertAosErrorToGrpcStatus(err);
     }
 
-    LOG_DBG() << "Found node IDs: count=" << nodeIDs.Size();
+    LOG_DBG() << "Found node IDs: count=" << static_cast<int32_t>(nodeIDs.Size());
 
     for (const auto& id : nodeIDs) {
         LOG_DBG() << "Found node ID: " << id.CStr();

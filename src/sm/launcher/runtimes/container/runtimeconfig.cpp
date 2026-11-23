@@ -20,7 +20,7 @@ RetWithError<StaticString<cEnvVarNameLen>> GetEnvVarName(const String& envVar)
 
     if (auto result = tmpStr.FindSubstr(0, "="); result.mError.IsNone()) {
         if (auto err = tmpStr.Resize(result.mValue); !err.IsNone()) {
-            return {0, AOS_ERROR_WRAP(err)};
+            return {{}, AOS_ERROR_WRAP(err)};
         }
     }
 

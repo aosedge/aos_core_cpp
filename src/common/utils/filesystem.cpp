@@ -110,7 +110,7 @@ RetWithError<std::string> GetMountPoint(const std::string& dir)
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry;
+    struct mntent* entry = nullptr;
     std::string    bestMountPoint;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
@@ -149,7 +149,7 @@ RetWithError<std::string> GetBlockDevice(const std::string& path)
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry;
+    struct mntent* entry = nullptr;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
         struct stat mountStat;

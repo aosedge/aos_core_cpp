@@ -159,7 +159,7 @@ double Monitoring::GetInstanceCPUUsage(const std::string& instanceID)
     double     result = 0.0;
 
     if (delta > 0 && mCPUCount > 0) {
-        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * mNodeInfo.mMaxDMIPS / delta
+        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * static_cast<double>(mNodeInfo.mMaxDMIPS) / delta
             / static_cast<double>(mCPUCount);
     }
 

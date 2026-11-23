@@ -88,7 +88,8 @@ private:
     struct GetLogRequest {
         std::vector<std::string>     mInstanceIDs;
         StaticString<uuid::cUUIDLen> mCorrelationID;
-        Optional<Time>               mFrom, mTill;
+        Optional<Time>               mFrom;
+        Optional<Time>               mTill;
         bool                         mCrashLog = false;
     };
 

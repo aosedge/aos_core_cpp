@@ -31,8 +31,7 @@ void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
-    void*  array[cBacktraceSize];
-    size_t size;
+    void* array[cBacktraceSize] = {};
 
     switch (sig) {
     case SIGILL:
@@ -56,9 +55,9 @@ void ErrorHandler(int sig)
         break;
     }
 
-    size = backtrace(array, cBacktraceSize);
+    size_t size = backtrace(array, cBacktraceSize);
 
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    backtrace_symbols_fd(array, static_cast<int>(size), STDERR_FILENO);
 
     raise(sig);
 }

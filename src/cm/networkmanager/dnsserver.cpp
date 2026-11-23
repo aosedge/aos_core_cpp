@@ -96,7 +96,7 @@ Poco::Process::PID DNSServer::FindServerProcess()
 
     Poco::trimInPlace(pidContent);
 
-    Poco::Process::PID pid;
+    Poco::Process::PID pid = 0;
 
     try {
         pid = Poco::NumberParser::parse(pidContent);

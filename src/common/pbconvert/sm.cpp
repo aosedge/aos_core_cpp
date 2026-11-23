@@ -290,7 +290,7 @@ Error ConvertToProto(const AlertRulePercents& src, servicemanager::v5::AlertRule
 
     if (src.mMinTimeout > Duration()) {
         auto* duration = dst.mutable_duration();
-        duration->set_seconds(src.mMinTimeout.Seconds());
+        duration->set_seconds(static_cast<int64_t>(src.mMinTimeout.Seconds()));
         duration->set_nanos(static_cast<int32_t>(src.mMinTimeout.Nanoseconds() % 1000000000));
     }
 
@@ -304,7 +304,7 @@ Error ConvertToProto(const AlertRulePoints& src, servicemanager::v5::AlertRulePo
 
     if (src.mMinTimeout > Duration()) {
         auto* duration = dst.mutable_duration();
-        duration->set_seconds(src.mMinTimeout.Seconds());
+        duration->set_seconds(static_cast<int64_t>(src.mMinTimeout.Seconds()));
         duration->set_nanos(static_cast<int32_t>(src.mMinTimeout.Nanoseconds() % 1000000000));
     }
 
@@ -319,7 +319,7 @@ Error ConvertToProto(const PartitionAlertRule& src, servicemanager::v5::Partitio
 
     if (src.mMinTimeout > Duration()) {
         auto* duration = dst.mutable_duration();
-        duration->set_seconds(src.mMinTimeout.Seconds());
+        duration->set_seconds(static_cast<int64_t>(src.mMinTimeout.Seconds()));
         duration->set_nanos(static_cast<int32_t>(src.mMinTimeout.Nanoseconds() % 1000000000));
     }
 
@@ -1015,7 +1015,7 @@ void ConvertToProto(const MonitoringData& src, servicemanager::v5::MonitoringDat
 {
     dst.mutable_timestamp()->CopyFrom(TimestampToPB(src.mTimestamp));
     dst.set_ram(src.mRAM);
-    dst.set_cpu(src.mCPU);
+    dst.set_cpu(static_cast<uint64_t>(src.mCPU));
     dst.set_download(src.mDownload);
     dst.set_upload(src.mUpload);
 

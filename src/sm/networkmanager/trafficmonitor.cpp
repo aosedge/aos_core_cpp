@@ -811,7 +811,11 @@ void TrafficMonitor::ResetTrafficData(TrafficData& trafficData, bool disable)
 
 bool TrafficMonitor::IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const
 {
-    int y1 = 0, m1 = 0, d1 = 0, h1 = 0, min1 = 0;
+    int y1   = 0;
+    int m1   = 0;
+    int d1   = 0;
+    int h1   = 0;
+    int min1 = 0;
 
     if (auto err = t1.GetDate(&d1, &m1, &y1); !err.IsNone()) {
         LOG_ERR() << "Can't get date" << Log::Field(err);
@@ -825,7 +829,11 @@ bool TrafficMonitor::IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Ti
         return false;
     }
 
-    int y2 = 0, m2 = 0, d2 = 0, h2 = 0, min2 = 0;
+    int y2   = 0;
+    int m2   = 0;
+    int d2   = 0;
+    int h2   = 0;
+    int min2 = 0;
 
     if (auto err = t2.GetDate(&d2, &m2, &y2); !err.IsNone()) {
         LOG_ERR() << "Can't get date" << Log::Field(err);

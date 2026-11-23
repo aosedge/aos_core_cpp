@@ -813,7 +813,9 @@ Error NetworkManager::PrepareFirewallRules(const InstanceIdent& instanceIdent, c
 
     try {
         for (const auto& connection : allowedConnections) {
-            std::string target, port, protocol;
+            std::string target;
+            std::string port;
+            std::string protocol;
 
             ParseAllowConnection(connection, target, port, protocol);
 

@@ -263,7 +263,7 @@ Error EFIBootController::InitBootPartitions(const BootConfig& config)
         BootItem item;
         item.mDevice          = device;
         item.mParentDevice    = partInfo.mParentDevice;
-        item.mPartitionNumber = partInfo.mPartitionNumber;
+        item.mPartitionNumber = static_cast<int>(partInfo.mPartitionNumber);
         item.mPartitionUUID   = partInfo.mPartUUID;
 
         mBootItems.push_back(std::move(item));
@@ -297,7 +297,7 @@ Error EFIBootController::SetPartitionIDs()
             continue;
         }
 
-        bootItem.mID = nextAvailableID++;
+        bootItem.mID = static_cast<uint16_t>(nextAvailableID++);
 
         err = mEFIVar->CreateBootEntry(
             bootItem.mParentDevice, bootItem.mPartitionNumber, GetLoaderPath(), bootItem.mID);

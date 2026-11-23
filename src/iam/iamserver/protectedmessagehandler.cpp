@@ -493,7 +493,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     const auto aosInstance = common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process register instance: itemID=" << aosInstance.mItemID << ", subjectID=" << aosInstance.mSubjectID
-              << ", instance=" << aosInstance.mInstance;
+              << ", instance=" << static_cast<int32_t>(aosInstance.mInstance);
 
     // Convert permissions
     auto aosPermissions = std::make_unique<StaticArray<FunctionServicePermissions, cMaxNumUpdateItems>>();
@@ -537,7 +537,7 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
     const auto instance = common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process unregister instance: serviceID=" << instance.mItemID << ", subjectID=" << instance.mSubjectID
-              << ", instance=" << instance.mInstance;
+              << ", instance=" << static_cast<int32_t>(instance.mInstance);
 
     if (auto err = GetPermHandler()->UnregisterInstance(instance); !err.IsNone()) {
         LOG_ERR() << "Unregister instance failed: error=" << err;

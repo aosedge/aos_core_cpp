@@ -150,7 +150,8 @@ RetWithError<double> NodeMonitoringProvider::GetSystemCPUUsage()
 
     const auto   idleTimeDelta  = static_cast<double>(currentCPUUsage.mIdle - mPrevSysCPUUsage.mIdle);
     const auto   totalTimeDelta = static_cast<double>(currentCPUUsage.mTotal - mPrevSysCPUUsage.mTotal);
-    const double utilization    = mNodeInfo.mMaxDMIPS * double(1.0 - idleTimeDelta / totalTimeDelta);
+    const double utilization
+        = static_cast<double>(mNodeInfo.mMaxDMIPS) * static_cast<double>(1.0 - idleTimeDelta / totalTimeDelta);
 
     mPrevSysCPUUsage = currentCPUUsage;
 

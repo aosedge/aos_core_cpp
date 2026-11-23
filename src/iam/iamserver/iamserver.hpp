@@ -141,8 +141,10 @@ private:
     NodeController                           mNodeController;
     PublicMessageHandler                     mPublicMessageHandler;
     ProtectedMessageHandler                  mProtectedMessageHandler;
-    std::unique_ptr<grpc::Server>            mPublicServer, mProtectedServer;
-    std::shared_ptr<grpc::ServerCredentials> mPublicCred, mProtectedCred;
+    std::unique_ptr<grpc::Server>            mPublicServer;
+    std::unique_ptr<grpc::Server>            mProtectedServer;
+    std::shared_ptr<grpc::ServerCredentials> mPublicCred;
+    std::shared_ptr<grpc::ServerCredentials> mProtectedCred;
 
     std::atomic<bool> mIsStarted = false;
     std::future<void> mCertChangedResult;

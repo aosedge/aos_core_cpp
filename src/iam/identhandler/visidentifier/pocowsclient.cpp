@@ -164,9 +164,10 @@ void PocoWSClient::AsyncSendMessage(const ByteArray& message)
     try {
         mWebSocket->setSendTimeout(GetWebSocketTimeout().Microseconds());
 
-        const int len = mWebSocket->sendFrame(&message.front(), message.size(), Poco::Net::WebSocket::FRAME_TEXT);
+        const int len = mWebSocket->sendFrame(
+            &message.front(), static_cast<int>(message.size()), Poco::Net::WebSocket::FRAME_TEXT);
 
-        LOG_DBG() << "Sent " << len << "/" << message.size() << " bytes.";
+        LOG_DBG() << "Sent " << len << "/" << static_cast<int32_t>(message.size()) << " bytes.";
     } catch (const std::exception& e) {
         mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, e.what());
 
@@ -227,8 +228,8 @@ void PocoWSClient::ReceiveFrames() noexcept
     LOG_DBG() << "Start receiving frames.";
 
     try {
-        int                flags;
-        int                n;
+        int                flags = 0;
+        int                n     = 0;
         Poco::Buffer<char> buffer(0);
 
         do {

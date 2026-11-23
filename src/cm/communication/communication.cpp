@@ -939,7 +939,8 @@ void Communication::HandleSendQueue()
 
             WriteToMessageLog("TX", data);
 
-            const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_BINARY);
+            const auto sentBytes
+                = mWebSocket->sendFrame(data.data(), static_cast<int>(data.size()), Poco::Net::WebSocket::FRAME_BINARY);
 
             LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
 

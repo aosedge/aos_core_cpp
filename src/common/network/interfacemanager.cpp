@@ -44,7 +44,7 @@ namespace {
 // Linux >= 3.8.
 Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
 {
-    char savedNsPath[64];
+    char savedNsPath[64] = {};
     snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
 
     int savedNsFd = open(savedNsPath, O_RDONLY | O_CLOEXEC);
@@ -164,7 +164,7 @@ Error InterfaceManager::GetLink(const String& ifname, sm::networkmanager::LinkIn
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto ret = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); ret < 0) {
         return NLToAosErr(ret, "failed to allocate link cache");
@@ -321,7 +321,7 @@ Error InterfaceManager::AddLink(const LinkItf* link)
     rtnl_link_set_type(linkObj.get(), link->GetType());
 
     if (auto* vlan = dynamic_cast<const Vlan*>(link)) {
-        rtnl_link_vlan_set_id(linkObj.get(), vlan->GetVlanId());
+        rtnl_link_vlan_set_id(linkObj.get(), static_cast<uint16_t>(vlan->GetVlanId()));
     }
 
     if (attrs.mParentIndex > 0) {
@@ -370,7 +370,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto errAddrCache = rtnl_addr_alloc_cache(sock.get(), &cacheRaw); errAddrCache < 0) {
         return NLToAosErr(errAddrCache, "failed to allocate address cache");
@@ -395,7 +395,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
             ipAddr.mFamily = rtnl_addr_get_family(addr);
 
             if (const auto* local = rtnl_addr_get_local(addr); local) {
-                char buf[INET6_ADDRSTRLEN];
+                char buf[INET6_ADDRSTRLEN] = {};
 
                 nl_addr2str(local, buf, sizeof(buf));
                 ipAddr.mIP = buf;
@@ -439,7 +439,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
 
     rtnl_addr_set_ifindex(addrObj.Get(), ifindex);
 
-    struct nl_addr* local;
+    struct nl_addr* local = nullptr;
 
     if (auto errLocal = nl_addr_parse(addr.mIP.c_str(), addr.mFamily, &local); errLocal < 0) {
         return NLToAosErr(errLocal, ("failed to parse IP address " + std::string(addr.mIP)));
@@ -450,7 +450,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
     rtnl_addr_set_local(addrObj.Get(), local);
 
     if (!addr.mSubnet.empty()) {
-        struct nl_addr* subnet;
+        struct nl_addr* subnet = nullptr;
 
         if (auto errSubnet = nl_addr_parse(addr.mSubnet.c_str(), addr.mFamily, &subnet); errSubnet < 0) {
             return NLToAosErr(errSubnet, ("failed to parse subnet CIDR " + std::string(addr.mSubnet)));
@@ -461,19 +461,21 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
 
         rtnl_addr_set_prefixlen(addrObj.Get(), prefixlen);
 
-        struct in_addr ipAddr, netmask, broadcast;
+        struct in_addr ipAddr;
+        struct in_addr netmask;
+        struct in_addr broadcast;
         inet_pton(AF_INET, addr.mIP.c_str(), &ipAddr);
 
-        netmask.s_addr = htonl(~((1UL << (32 - prefixlen)) - 1));
+        netmask.s_addr = htonl(static_cast<uint32_t>(~((1UL << (32 - prefixlen)) - 1)));
 
         // Calculate broadcast: broadcast = ip | ~netmask
         broadcast.s_addr = (ipAddr.s_addr & netmask.s_addr) | ~netmask.s_addr;
 
-        char brdStr[INET_ADDRSTRLEN];
+        char brdStr[INET_ADDRSTRLEN] = {};
 
         inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
 
-        struct nl_addr* brd;
+        struct nl_addr* brd = nullptr;
 
         if (nl_addr_parse(brdStr, addr.mFamily, &brd) >= 0) {
             [[maybe_unused]] auto cleanupBrd = DeferRelease(brd, [](nl_addr* addr) { nl_addr_put(addr); });
@@ -514,7 +516,7 @@ Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
     rtnl_link_set_name(link.get(), ifname.CStr());
     rtnl_addr_set_ifindex(addrObj.Get(), rtnl_link_get_ifindex(link.get()));
 
-    struct nl_addr* local;
+    struct nl_addr* local = nullptr;
 
     if (auto errLocal = nl_addr_parse(addr.mIP.c_str(), addr.mFamily, &local); errLocal < 0) {
         return Error(errLocal, ("failed to parse IP address " + std::string(addr.mIP)).c_str());
@@ -611,7 +613,7 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId, const St
         return Error(ErrorEnum::eFailed, "random generator is not initialized");
     }
 
-    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId << ", master=" << master;
+    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << static_cast<int32_t>(vlanId) << ", master=" << master;
 
     auto [parentIndex, err] = GetMasterInterfaceIndex();
     if (!err.IsNone()) {
@@ -639,7 +641,7 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId, const St
         return err;
     }
 
-    Vlan vlan(vlanAttrs, vlanId);
+    Vlan vlan(vlanAttrs, static_cast<int>(vlanId));
 
     // AddLink brings the vlan up as part of creation.
     if (err = AddLink(&vlan); !err.IsNone()) {
@@ -817,7 +819,7 @@ Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& 
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto errCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errCache < 0) {
         return NLToAosErr(errCache, "failed to allocate link cache");
@@ -855,7 +857,7 @@ Error InterfaceManager::RenameLink(const String& ifname, const String& newName, 
             return err;
         }
 
-        nl_cache* cacheRaw;
+        nl_cache* cacheRaw = nullptr;
 
         if (auto errCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errCache < 0) {
             return NLToAosErr(errCache, "failed to allocate link cache");

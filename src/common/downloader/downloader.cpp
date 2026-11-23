@@ -285,7 +285,7 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
             if (code == utils::cIntegrityHTTPStatus) {
                 err = Error(ErrorEnum::eIntegrity, "blob integrity error");
             } else {
-                err = Error(code, curl_easy_strerror(res));
+                err = Error(static_cast<int32_t>(code), curl_easy_strerror(res));
             }
         } else {
             err = Error(ErrorEnum::eFailed, curl_easy_strerror(res));

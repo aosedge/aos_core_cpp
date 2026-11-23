@@ -27,7 +27,7 @@ namespace {
 
 std::pair<uint32_t, int> ParseCIDRWithNetlink(const std::string& cidr)
 {
-    struct nl_addr* subnet;
+    struct nl_addr* subnet = nullptr;
 
     if (auto errSubnet = nl_addr_parse(cidr.c_str(), AF_INET, &subnet); errSubnet < 0) {
         common::network::NLToAosException(errSubnet, "failed to parse subnet CIDR " + cidr);
@@ -58,7 +58,7 @@ std::string UINT32ToIP(uint32_t ip)
 std::vector<std::string> MakeNetPool(int targetPrefix, uint32_t baseIP, int basePrefix)
 {
     std::vector<std::string> result;
-    uint32_t                 mask         = (0xFFFFFFFF << (32 - basePrefix));
+    uint32_t                 mask         = (0xFFFFFFFFU << (32 - basePrefix));
     uint32_t                 maskedBaseIP = baseIP & mask;
     int                      subnetCount  = 1 << (targetPrefix - basePrefix);
     uint32_t                 subnetSize   = 1 << (32 - targetPrefix);
@@ -102,7 +102,7 @@ std::deque<std::string> GenerateSubnetIPs(const std::string& cidr)
 {
     std::deque<std::string> result;
 
-    nl_addr* subnet;
+    nl_addr* subnet = nullptr;
     if (auto errSubnet = nl_addr_parse(cidr.c_str(), AF_INET, &subnet); errSubnet < 0) {
         common::network::NLToAosException(errSubnet, "failed to parse subnet CIDR " + cidr);
     }
@@ -116,7 +116,7 @@ std::deque<std::string> GenerateSubnetIPs(const std::string& cidr)
 
     uint32_t base      = ntohl(*reinterpret_cast<uint32_t*>(addrData));
     int      prefixLen = nl_addr_get_prefixlen(subnet);
-    uint32_t mask      = prefixLen == 0 ? 0 : 0xFFFFFFFF << (32 - prefixLen);
+    uint32_t mask      = prefixLen == 0 ? 0 : 0xFFFFFFFFU << (32 - prefixLen);
     uint32_t network   = base & mask;
     uint32_t broadcast = network | (~mask);
 
