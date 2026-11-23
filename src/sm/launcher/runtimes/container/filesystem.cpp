@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -15,6 +16,7 @@
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <unistd.h>
+#include <vector>
 
 #include <core/common/tools/logger.hpp>
 
@@ -41,6 +43,8 @@ constexpr auto cStatePermissions = fs::perms::owner_read | fs::perms::owner_writ
 
 constexpr auto cMountRetryCount = 3;
 constexpr auto cMountRetryDelay = Time::cSeconds;
+
+constexpr size_t cGroupBufferSize = 1024;
 
 /***********************************************************************************************************************
  * Static
@@ -376,12 +380,27 @@ RetWithError<std::string> FileSystem::GetAbsPath(const std::string& path)
 
 RetWithError<gid_t> FileSystem::GetGIDByName(const std::string& groupName)
 {
-    auto group = getgrnam(groupName.c_str());
-    if (group == nullptr) {
-        return {0, Error(errno, "can't get group by name")};
+    struct group      entry  = {};
+    struct group*     result = nullptr;
+    std::vector<char> buffer(cGroupBufferSize);
+
+    auto ret = getgrnam_r(groupName.c_str(), &entry, buffer.data(), buffer.size(), &result);
+
+    while (ret == ERANGE) {
+        buffer.resize(buffer.size() * 2);
+
+        ret = getgrnam_r(groupName.c_str(), &entry, buffer.data(), buffer.size(), &result);
     }
 
-    return group->gr_gid;
+    if (ret != 0) {
+        return {0, Error(ret, "can't get group by name")};
+    }
+
+    if (result == nullptr) {
+        return {0, Error(ErrorEnum::eNotFound, "can't get group by name")};
+    }
+
+    return result->gr_gid;
 }
 
 Error FileSystem::PopulateHostDevices(const std::string& devicePath, std::vector<oci::LinuxDevice>& devices)

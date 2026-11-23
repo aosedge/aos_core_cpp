@@ -175,6 +175,14 @@ TEST_F(ContainerFileSystemTest, GetGIDByName)
     EXPECT_EQ(gid, grp->gr_gid) << "GID mismatch";
 }
 
+TEST_F(ContainerFileSystemTest, GetGIDByNameFailsOnUnknownGroup)
+{
+    auto [gid, err] = mFileSystem.GetGIDByName("aos-unknown-test-group");
+
+    EXPECT_TRUE(err.Is(ErrorEnum::eNotFound)) << "Unexpected error: " << tests::utils::ErrorToStr(err);
+    EXPECT_EQ(gid, 0);
+}
+
 TEST_F(ContainerFileSystemTest, DISABLED_PopulateHostDevices)
 {
     const auto cRootDevicePath     = fs::path(cTestDirRoot) / "dev";

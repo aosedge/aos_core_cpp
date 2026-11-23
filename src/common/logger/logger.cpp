@@ -91,8 +91,10 @@ std::string Logger::GetCurrentTime()
     auto              now       = std::chrono::system_clock::now();
     auto              ms        = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
     auto              time      = std::chrono::system_clock::to_time_t(now);
-    auto              localTime = *std::localtime(&time);
+    std::tm           localTime = {};
     std::stringstream ss;
+
+    (void)localtime_r(&time, &localTime);
 
     ss << (sColored ? cColorTime : "") << std::put_time(&localTime, "%d.%m.%y %H:%M:%S") << "." << std::setfill('0')
        << std::setw(3) << ms.count() << (sColored ? cColorNone : "");
