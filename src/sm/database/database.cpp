@@ -422,8 +422,7 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
     }
 
     try {
-        auto dirPath = std::filesystem::path(workDir);
-        if (!std::filesystem::exists(dirPath)) {
+        if (auto dirPath = std::filesystem::path(workDir); !std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 

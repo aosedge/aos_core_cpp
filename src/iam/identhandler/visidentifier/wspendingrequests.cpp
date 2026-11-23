@@ -46,11 +46,6 @@ bool RequestParams::TryWaitForResponse(std::string& result, const Duration timeo
     return false;
 }
 
-bool RequestParams::operator<(const RequestParams& rhs) const
-{
-    return mRequestId < rhs.mRequestId;
-}
-
 /***********************************************************************************************************************
  * PendingRequests
  **********************************************************************************************************************/

@@ -256,8 +256,7 @@ Error SMClient::GetBlobInfo(const String& digest, BlobInfo& blobInfo)
     grpc::ClientContext context;
     smproto::BlobInfo   response;
 
-    auto status = mStub->GetBlobsInfo(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mStub->GetBlobsInfo(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -276,8 +275,8 @@ Error SMClient::SubscribeListener(aos::cloudconnection::ConnectionListenerItf& l
 {
     std::lock_guard lock {mMutex};
 
-    auto it = std::find(mConnectionListeners.begin(), mConnectionListeners.end(), &listener);
-    if (it != mConnectionListeners.end()) {
+    if (auto it = std::find(mConnectionListeners.begin(), mConnectionListeners.end(), &listener);
+        it != mConnectionListeners.end()) {
         return Error(ErrorEnum::eAlreadyExist, "listener already subscribed");
     }
 
@@ -324,8 +323,7 @@ Error SMClient::GetNodeNetworkParams(const String& networkID, const String& node
     grpc::ClientContext                   context;
     smproto::GetNodeNetworkParamsResponse response;
 
-    auto status = mNetworkStub->GetNodeNetworkParams(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mNetworkStub->GetNodeNetworkParams(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -372,8 +370,7 @@ Error SMClient::AllocateInstanceNetwork(const InstanceIdent& instance, const Str
     grpc::ClientContext                      context;
     smproto::AllocateInstanceNetworkResponse response;
 
-    auto status = mNetworkStub->AllocateInstanceNetwork(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mNetworkStub->AllocateInstanceNetwork(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -405,8 +402,7 @@ Error SMClient::ReleaseInstanceNetwork(const InstanceIdent& instance, const Stri
     grpc::ClientContext                     context;
     smproto::ReleaseInstanceNetworkResponse response;
 
-    auto status = mNetworkStub->ReleaseInstanceNetwork(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mNetworkStub->ReleaseInstanceNetwork(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -434,8 +430,7 @@ Error SMClient::ReleaseNodeNetwork(const String& networkID, const String& nodeID
     grpc::ClientContext                 context;
     smproto::ReleaseNodeNetworkResponse response;
 
-    auto status = mNetworkStub->ReleaseNodeNetwork(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mNetworkStub->ReleaseNodeNetwork(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -468,8 +463,7 @@ Error SMClient::SyncNetworkState(const String& nodeID, const Array<InstanceNetwo
     grpc::ClientContext               context;
     smproto::SyncNetworkStateResponse response;
 
-    auto status = mNetworkStub->SyncNetworkState(&context, request, &response);
-    if (!status.ok()) {
+    if (auto status = mNetworkStub->SyncNetworkState(&context, request, &response); !status.ok()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, status.error_message().c_str()));
     }
 
@@ -911,8 +905,8 @@ Error SMClient::SubscribeListener(ConnectListenerItf& listener)
 {
     std::lock_guard lock {mMutex};
 
-    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
-    if (it != mConnectListeners.end()) {
+    if (auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+        it != mConnectListeners.end()) {
         return Error(ErrorEnum::eAlreadyExist, "listener already subscribed");
     }
 
@@ -925,8 +919,8 @@ Error SMClient::UnsubscribeListener(ConnectListenerItf& listener)
 {
     std::lock_guard lock {mMutex};
 
-    auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
-    if (it != mConnectListeners.end()) {
+    if (auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
+        it != mConnectListeners.end()) {
         mConnectListeners.erase(it);
     }
 
@@ -957,7 +951,7 @@ void SMClient::StartNetworkUpdateSubscription()
     mNetworkUpdateThread = std::thread([this]() {
         LOG_DBG() << "Network update subscription thread started";
 
-        for (;;) {
+        do {
             {
                 std::unique_lock lock {mMutex};
 
@@ -997,8 +991,7 @@ void SMClient::StartNetworkUpdateSubscription()
 
                 std::lock_guard lock {mMutex};
 
-                auto status = mNetworkUpdateReader->Finish();
-                if (!status.ok() && !mStopped) {
+                if (auto status = mNetworkUpdateReader->Finish(); !status.ok() && !mStopped) {
                     LOG_WRN() << "Network update stream disconnected"
                               << Log::Field("error", status.error_message().c_str());
                 }
@@ -1008,21 +1001,20 @@ void SMClient::StartNetworkUpdateSubscription()
             } else {
                 LOG_ERR() << "Failed to subscribe to instance network updates";
             }
-
-            {
-                std::unique_lock lock {mMutex};
-
-                mNetworkUpdateCV.wait_for(lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()),
-                    [this] { return mStopped; });
-
-                if (mStopped) {
-                    break;
-                }
-            }
-        }
+        } while (WaitNetworkUpdateReconnect());
 
         LOG_DBG() << "Network update subscription thread stopped";
     });
+}
+
+bool SMClient::WaitNetworkUpdateReconnect()
+{
+    std::unique_lock lock {mMutex};
+
+    mNetworkUpdateCV.wait_for(
+        lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()), [this] { return mStopped; });
+
+    return !mStopped;
 }
 
 } // namespace aos::sm::smclient

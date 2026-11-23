@@ -230,8 +230,8 @@ RetWithError<uint16_t> EFIBootController::ConvertHex(const std::string& hexStr) 
 {
     uint16_t result = 0;
 
-    const auto res = std::from_chars(hexStr.data(), hexStr.data() + hexStr.size(), result, 16);
-    if (res.ec != std::errc()) {
+    if (const auto res = std::from_chars(hexStr.data(), hexStr.data() + hexStr.size(), result, 16);
+        res.ec != std::errc()) {
         return {0, Error(ErrorEnum::eInvalidArgument, "invalid hex string")};
     }
 

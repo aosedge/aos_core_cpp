@@ -401,8 +401,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
                 ipAddr.mIP = buf;
             }
 
-            const char* label = rtnl_addr_get_label(addr);
-            if (label) {
+            if (const char* label = rtnl_addr_get_label(addr); label) {
                 ipAddr.mLabel = label;
             }
 
@@ -993,9 +992,7 @@ Error InterfaceManager::SetHairpin(const String& ifname, bool enable)
 
     [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](int* f) { close(*f); });
 
-    const char value = enable ? '1' : '0';
-
-    if (write(fd, &value, 1) != 1) {
+    if (const char value = enable ? '1' : '0'; write(fd, &value, 1) != 1) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,
             ("failed to write hairpin_mode for " + std::string(ifname.CStr()) + ": " + strerror(errno)).c_str()));
     }
@@ -1017,10 +1014,9 @@ RetWithError<int> InterfaceManager::GetMasterInterfaceIndex() const
         return {-1, err};
     }
 
-    auto it = std::find_if(
-        routes.begin(), routes.end(), [](const RouteInfo& route) { return !route.mDestination.has_value(); });
-
-    if (it != routes.end()) {
+    if (auto it = std::find_if(
+            routes.begin(), routes.end(), [](const RouteInfo& route) { return !route.mDestination.has_value(); });
+        it != routes.end()) {
         return it->mLinkIndex;
     }
 

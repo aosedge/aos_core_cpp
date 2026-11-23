@@ -80,8 +80,8 @@ Error Archiver::SendLog(const String& correlationId)
         logPart->mPart          = part;
         logPart->mStatus        = LogStatusEnum::eOK;
 
-        auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
-        if (!err.IsNone()) {
+        if (auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 

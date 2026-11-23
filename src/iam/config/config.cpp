@@ -181,8 +181,7 @@ DatabaseConfig ParseDatabaseConfig(
         std::string                   pinPath = params.GetValue<std::string>("userPinPath");
         StaticString<pkcs11::cPINLen> userPIN;
 
-        auto err = fs::ReadFileToString(pinPath.c_str(), userPIN);
-        if (!err.IsNone()) {
+        if (auto err = fs::ReadFileToString(pinPath.c_str(), userPIN); !err.IsNone()) {
             continue;
         }
 

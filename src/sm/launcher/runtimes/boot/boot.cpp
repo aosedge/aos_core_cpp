@@ -477,10 +477,9 @@ RetWithError<std::string> BootRuntime::GetPartitionVersion(size_t partitionIndex
 
     LOG_DBG() << "Version file content" << Log::Field("line", line.c_str());
 
-    std::regex  versionRegex(R"(VERSION\s*=\s*\"(.+)\")");
-    std::smatch match;
+    std::regex versionRegex(R"(VERSION\s*=\s*\"(.+)\")");
 
-    if (std::regex_search(line, match, versionRegex) && match.size() == 2) {
+    if (std::smatch match; std::regex_search(line, match, versionRegex) && match.size() == 2) {
         version = match[1];
     } else {
         return {version, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "invalid version file format"))};

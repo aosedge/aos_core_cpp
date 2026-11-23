@@ -53,8 +53,7 @@ constexpr size_t cReadChunkSize = 64 * 1024;
 
 std::string GetMimeType(const std::string& ext)
 {
-    auto it = sMimeTypes.find(ext);
-    if (it != sMimeTypes.end()) {
+    if (auto it = sMimeTypes.find(ext); it != sMimeTypes.end()) {
         return it->second;
     }
 
@@ -228,8 +227,7 @@ void Fileserver::FileRequestHandler::handleRequest(
     try {
         std::string target = request.getURI();
 
-        auto queryPos = target.find('?');
-        if (queryPos != std::string::npos) {
+        if (auto queryPos = target.find('?'); queryPos != std::string::npos) {
             target.resize(queryPos);
         }
 

@@ -59,9 +59,9 @@ Error AddMount(const Mount& mount, oci::RuntimeConfig& runtimeConfig)
 // cppcheck-suppress constParameterReference
 Error AddNamespace(const oci::LinuxNamespace& ns, oci::RuntimeConfig& runtimeConfig)
 {
-    auto existNS = runtimeConfig.mLinux->mNamespaces.FindIf(
-        [&nsType = ns.mType](const oci::LinuxNamespace& ns) { return ns.mType == nsType; });
-    if (existNS == runtimeConfig.mLinux->mNamespaces.end()) {
+    if (auto existNS = runtimeConfig.mLinux->mNamespaces.FindIf(
+            [&nsType = ns.mType](const oci::LinuxNamespace& ns) { return ns.mType == nsType; });
+        existNS == runtimeConfig.mLinux->mNamespaces.end()) {
         if (auto err = runtimeConfig.mLinux->mNamespaces.PushBack(ns); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -152,9 +152,9 @@ Error SetPIDLimit(int64_t limit, oci::RuntimeConfig& runtimeConfig)
 // cppcheck-suppress constParameterReference
 Error AddRLimit(const oci::POSIXRlimit& rlimit, oci::RuntimeConfig& runtimeConfig)
 {
-    auto existRlimit = runtimeConfig.mProcess->mRlimits.FindIf(
-        [&type = rlimit.mType](const oci::POSIXRlimit& rlimit) { return rlimit.mType == type; });
-    if (existRlimit == runtimeConfig.mProcess->mRlimits.end()) {
+    if (auto existRlimit = runtimeConfig.mProcess->mRlimits.FindIf(
+            [&type = rlimit.mType](const oci::POSIXRlimit& rlimit) { return rlimit.mType == type; });
+        existRlimit == runtimeConfig.mProcess->mRlimits.end()) {
         if (auto err = runtimeConfig.mProcess->mRlimits.PushBack(rlimit); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -183,9 +183,9 @@ Error AddAdditionalGID(uint32_t gid, oci::RuntimeConfig& runtimeConfig)
 Error AddDevice(const oci::LinuxDevice& device, const StaticString<cPermissionsLen>& permissions,
     oci::RuntimeConfig& runtimeConfig) // cppcheck-suppress constParameterReference
 {
-    auto existDevice = runtimeConfig.mLinux->mDevices.FindIf(
-        [&path = device.mPath](const oci::LinuxDevice& device) { return device.mPath == path; });
-    if (existDevice == runtimeConfig.mLinux->mDevices.end()) {
+    if (auto existDevice = runtimeConfig.mLinux->mDevices.FindIf(
+            [&path = device.mPath](const oci::LinuxDevice& device) { return device.mPath == path; });
+        existDevice == runtimeConfig.mLinux->mDevices.end()) {
         if (auto err = runtimeConfig.mLinux->mDevices.PushBack(device); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -193,12 +193,12 @@ Error AddDevice(const oci::LinuxDevice& device, const StaticString<cPermissionsL
         *existDevice = device;
     }
 
-    auto existCgroup
+    if (auto existCgroup
         = runtimeConfig.mLinux->mResources->mDevices.FindIf([&device](const oci::LinuxDeviceCgroup& cgroupDevice) {
               return cgroupDevice.mType == device.mType && cgroupDevice.mMajor == device.mMajor
                   && cgroupDevice.mMinor == device.mMinor;
           });
-    if (existCgroup == runtimeConfig.mLinux->mResources->mDevices.end()) {
+        existCgroup == runtimeConfig.mLinux->mResources->mDevices.end()) {
         if (auto err = runtimeConfig.mLinux->mResources->mDevices.EmplaceBack(
                 device.mType, permissions, true, device.mMajor, device.mMinor);
             !err.IsNone()) {

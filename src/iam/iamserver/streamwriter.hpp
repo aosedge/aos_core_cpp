@@ -90,16 +90,12 @@ public:
                 return (mNotificationID != lastNotificationID && mLastMessage.has_value()) || !mIsRunning;
             });
 
-            if (!mIsRunning) {
-                break;
-            }
-
-            if (timedOut) {
+            if (mIsRunning && timedOut) {
                 continue;
             }
 
             // got notification, send it to the client
-            if (!writer->Write(*mLastMessage)) {
+            if (!mIsRunning || !writer->Write(*mLastMessage)) {
                 break;
             }
 

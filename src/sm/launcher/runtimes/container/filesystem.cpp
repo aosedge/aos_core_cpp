@@ -406,9 +406,7 @@ RetWithError<gid_t> FileSystem::GetGIDByName(const std::string& groupName)
 Error FileSystem::PopulateHostDevices(const std::string& devicePath, std::vector<oci::LinuxDevice>& devices)
 {
     try {
-        auto devPath = fs::path(devicePath);
-
-        if (!fs::is_directory(devPath)) {
+        if (auto devPath = fs::path(devicePath); !fs::is_directory(devPath)) {
             devices.push_back(DeviceFromPath(devPath));
         } else {
             for (const auto& entry : fs::recursive_directory_iterator(devPath,

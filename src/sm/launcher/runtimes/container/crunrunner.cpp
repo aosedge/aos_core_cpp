@@ -126,10 +126,10 @@ Error CRunRunner::StopContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Stop crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+    libcrun_error_t err = nullptr;
 
-    if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
+    if (libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+        libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
     }
 
@@ -140,10 +140,10 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Remove crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+    libcrun_error_t err = nullptr;
 
-    if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
+    if (libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+        libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
     }
 

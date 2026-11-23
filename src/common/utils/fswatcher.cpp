@@ -273,7 +273,9 @@ void FSWatcher::Run()
             }
 
             continue;
-        } else if (waitResult == 0) {
+        }
+
+        if (waitResult == 0) {
             continue;
         }
 
@@ -478,8 +480,8 @@ Error FSBufferedWatcher::UnsubscribeImpl(const String& path, fs::FSEventSubscrib
         return ErrorEnum::eNone;
     }
 
-    auto itSubscribers = std::find(it->second.mSubscribers.begin(), it->second.mSubscribers.end(), &subscriber);
-    if (itSubscribers != it->second.mSubscribers.end()) {
+    if (auto itSubscribers = std::find(it->second.mSubscribers.begin(), it->second.mSubscribers.end(), &subscriber);
+        itSubscribers != it->second.mSubscribers.end()) {
         it->second.mSubscribers.erase(itSubscribers);
     }
 

@@ -122,8 +122,7 @@ Error PublicNodesService::GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) 
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    auto err = pbconvert::ConvertToAos(response, nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -246,8 +245,7 @@ void PublicNodesService::ConnectionLoop()
     LOG_DBG() << "Connection loop started";
 
     while (!mStop) {
-        const auto err = RegisterNode();
-        if (!err.IsNone()) {
+        if (const auto err = RegisterNode(); !err.IsNone()) {
             LOG_ERR() << "Failed to register node" << Log::Field(err);
 
             std::lock_guard lock {mMutex};

@@ -295,9 +295,8 @@ void VISIdentifier::HandleConnection()
             mWSClientIsConnected.set();
 
             // block on Wait
-            const auto wsClientEvent = mWsClientPtr->WaitForEvent();
-
-            if (wsClientEvent.mCode == WSClientEvent::EventEnum::CLOSED) {
+            if (const auto wsClientEvent = mWsClientPtr->WaitForEvent();
+                wsClientEvent.mCode == WSClientEvent::EventEnum::CLOSED) {
                 LOG_INF() << "WS Client connection has been closed. Stopping Vis Identifier Handle Connection thread";
 
                 return;

@@ -255,9 +255,8 @@ void Runner::MonitorContainers()
                 return;
             }
 
-            const auto stateChanged = SyncStates();
-
-            if (stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
+            if (const auto stateChanged = SyncStates();
+                stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
                 runStatusUpdate = GetRunningInstances();
             }
 

@@ -165,8 +165,7 @@ Error TC::DelRootTBFQDisc(const String& ifName)
 
     // Only remove the root qdisc when it is the TBF installed by Apply; the
     // default qdisc or any other shaping is left untouched.
-    const char* kind = rtnl_tc_get_kind(AsTC(root.get()));
-    if (kind == nullptr || std::strcmp(kind, "tbf") != 0) {
+    if (const char* kind = rtnl_tc_get_kind(AsTC(root.get())); kind == nullptr || std::strcmp(kind, "tbf") != 0) {
         return ErrorEnum::eNone;
     }
 

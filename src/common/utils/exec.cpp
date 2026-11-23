@@ -68,9 +68,8 @@ Error SpawnProcess(const std::vector<std::string>& args, const posix_spawn_file_
         return Error(ErrorEnum::eInvalidArgument, "exec command requires at least one argument");
     }
 
-    SpawnArgs spawnArgs(args);
-
-    if (posix_spawnp(&pid, args[0].c_str(), fileActions, nullptr, spawnArgs.Argv(), spawnArgs.Envp()) != 0) {
+    if (SpawnArgs spawnArgs(args);
+        posix_spawnp(&pid, args[0].c_str(), fileActions, nullptr, spawnArgs.Argv(), spawnArgs.Envp()) != 0) {
         return Error(ErrorEnum::eRuntime, "can't spawn process");
     }
 
@@ -142,8 +141,7 @@ RetWithError<std::string> ExecCommand(
 
     pid_t pid = -1;
 
-    Error err = SpawnProcess(args, &actions, pid);
-    if (!err.IsNone()) {
+    if (Error err = SpawnProcess(args, &actions, pid); !err.IsNone()) {
         return {"", err};
     }
 
@@ -160,9 +158,8 @@ RetWithError<std::string> ExecCommand(
     bool        exited = false;
 
     for (;;) {
-        pollfd pfd {pipeFDs[0], POLLIN, 0};
-
-        if (poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
+        if (pollfd pfd {pipeFDs[0], POLLIN, 0};
+            poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
             const int n = read(pipeFDs[0], buffer, sizeof(buffer));
             if (n > 0) {
                 outStr.append(buffer, n);

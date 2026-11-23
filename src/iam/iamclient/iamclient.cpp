@@ -149,8 +149,7 @@ Error IAMClient::SendNodeInfo()
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
-    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -401,8 +400,7 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
-    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

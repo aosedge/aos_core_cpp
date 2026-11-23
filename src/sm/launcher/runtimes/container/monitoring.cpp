@@ -84,8 +84,7 @@ Error Monitoring::GetInstanceMonitoringData(
         const auto& cachedData = mInstanceMonitoringCache.at(instanceID);
 
         for (const auto& partition : cachedData.mPartInfos) {
-            auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack();
-            if (!err.IsNone()) {
+            if (auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack(); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 

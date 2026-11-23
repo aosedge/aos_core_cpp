@@ -1305,9 +1305,7 @@ Error RootfsRuntime::CopyImage(const oci::ImageManifest& manifest) const
     const auto imagePath = GetPath(cImageFileName);
     const auto tmpPath   = GetTmpPath(imagePath);
 
-    std::error_code ec;
-
-    if (!std::filesystem::copy_file(
+    if (std::error_code ec; !std::filesystem::copy_file(
             imageArchivePath.CStr(), tmpPath, std::filesystem::copy_options::overwrite_existing, ec)) { // NOSONAR
         (void)RemoveFile(tmpPath);
 

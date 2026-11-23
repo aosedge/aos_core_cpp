@@ -32,18 +32,23 @@ struct PortRange {
     /**
      * Compares port ranges.
      *
+     * @param lhs Port range.
      * @param rhs Other port range.
      * @return bool.
      */
-    bool operator==(const PortRange& rhs) const { return mFirst == rhs.mFirst && mLast == rhs.mLast; }
+    friend bool operator==(const PortRange& lhs, const PortRange& rhs)
+    {
+        return lhs.mFirst == rhs.mFirst && lhs.mLast == rhs.mLast;
+    }
 
     /**
      * Compares port ranges.
      *
+     * @param lhs Port range.
      * @param rhs Other port range.
      * @return bool.
      */
-    bool operator!=(const PortRange& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const PortRange& lhs, const PortRange& rhs) { return !(lhs == rhs); }
 };
 
 /**

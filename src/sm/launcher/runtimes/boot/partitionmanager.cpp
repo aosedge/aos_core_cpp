@@ -153,8 +153,7 @@ Error PartitionManager::CopyDevice(const std::string& src, const std::string& ds
         return ErrorEnum::eNone;
     }
 
-    auto result = common::utils::ExecCommand({"dd", "if=" + src, "of=" + dst, "bs=1M"});
-    if (!result.mError.IsNone()) {
+    if (auto result = common::utils::ExecCommand({"dd", "if=" + src, "of=" + dst, "bs=1M"}); !result.mError.IsNone()) {
         return AOS_ERROR_WRAP(result.mError);
     }
 
@@ -163,8 +162,8 @@ Error PartitionManager::CopyDevice(const std::string& src, const std::string& ds
 
 Error PartitionManager::InstallImage(const std::string& image, const std::string& device) const
 {
-    auto result = common::utils::ExecCommand({"dd", "if=" + image, "of=" + device, "bs=1M"});
-    if (!result.mError.IsNone()) {
+    if (auto result = common::utils::ExecCommand({"dd", "if=" + image, "of=" + device, "bs=1M"});
+        !result.mError.IsNone()) {
         return AOS_ERROR_WRAP(result.mError);
     }
 

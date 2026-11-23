@@ -47,9 +47,8 @@ Error EFIVar::ReadVariable(const std::string& name, std::vector<uint8_t>& data, 
 
 Error EFIVar::WriteGlobalGuidVariable(const std::string& name, const std::vector<uint8_t>& data)
 {
-    auto out = data;
-
-    if (efi_set_variable(EFI_GLOBAL_GUID, name.c_str(), out.data(), out.size(), cEFIVarAttributes, cWriteMode) < 0) {
+    if (auto out = data;
+        efi_set_variable(EFI_GLOBAL_GUID, name.c_str(), out.data(), out.size(), cEFIVarAttributes, cWriteMode) < 0) {
         uint32_t idx       = 0;
         char*    file      = nullptr;
         char*    func      = nullptr;
@@ -99,9 +98,8 @@ RetWithError<std::string> EFIVar::GetPartUUID(const std::string& efiVarName) con
     for (const_efidp next = dpData; next != nullptr;) {
         const auto type    = next->type;
         const auto subType = next->subtype;
-        const auto length  = next->length;
 
-        if (length < sizeof(efidp_header)) {
+        if (const auto length = next->length; length < sizeof(efidp_header)) {
             return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)))};
         }
 
@@ -116,10 +114,10 @@ RetWithError<std::string> EFIVar::GetPartUUID(const std::string& efiVarName) con
                 continue;
             }
 
-            char*      uuidStr = nullptr;
-            const auto guid    = reinterpret_cast<const efi_guid_t*>(&dpHD->signature[0]);
+            char* uuidStr = nullptr;
 
-            if (!efi_guid_to_str(guid, &uuidStr)) {
+            if (const auto guid = reinterpret_cast<const efi_guid_t*>(&dpHD->signature[0]);
+                !efi_guid_to_str(guid, &uuidStr)) {
                 return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)))};
             }
 

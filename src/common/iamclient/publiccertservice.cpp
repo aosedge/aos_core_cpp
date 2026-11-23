@@ -181,8 +181,7 @@ Error PublicCertService::GetCertKey(
 
     aos::StaticString<aos::crypto::cSerialNumStrLen> serialStr;
 
-    auto err = serialStr.ByteArrayToHex(serial);
-    if (!err.IsNone()) {
+    if (auto err = serialStr.ByteArrayToHex(serial); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

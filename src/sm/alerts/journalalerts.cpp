@@ -178,8 +178,7 @@ void JournalAlerts::MonitorJournal()
             const auto waitTimeout = std::chrono::duration_cast<std::chrono::microseconds>(journalWaitTimeout);
             const auto remaining   = mJournal->Wait(waitTimeout);
 
-            auto stopped = mCondVar.wait_for(lock, remaining, [this] { return mStopped; });
-            if (stopped) {
+            if (auto stopped = mCondVar.wait_for(lock, remaining, [this] { return mStopped; }); stopped) {
                 return;
             }
 

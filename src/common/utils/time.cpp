@@ -55,9 +55,9 @@ RetWithError<Duration> ParseISO8601DurationPeriod(const std::string& period)
     }
 
     std::smatch match;
-    std::regex  iso8601DurationPattern(R"(-?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)");
 
-    if (!std::regex_match(period, match, iso8601DurationPattern) || match.size() != 5) {
+    if (std::regex iso8601DurationPattern(R"(-?P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)");
+        !std::regex_match(period, match, iso8601DurationPattern) || match.size() != 5) {
         return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
@@ -89,9 +89,9 @@ RetWithError<Duration> ParseISO8601DurationTime(const std::string& time)
     }
 
     std::smatch match;
-    std::regex  iso8601DurationPattern(R"(T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)");
 
-    if (!std::regex_match(time, match, iso8601DurationPattern) || match.size() != 4) {
+    if (std::regex iso8601DurationPattern(R"(T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)");
+        !std::regex_match(time, match, iso8601DurationPattern) || match.size() != 4) {
         return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
@@ -114,9 +114,10 @@ RetWithError<Duration> ParseISO8601Duration(const std::string& duration)
 {
     Duration    totalDuration {};
     std::smatch match;
-    std::regex iso8601DurationPattern(R"(^(-?P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
 
-    if (!std::regex_match(duration, match, iso8601DurationPattern) || match.size() != 3) {
+    if (std::regex iso8601DurationPattern(
+            R"(^(-?P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?)?(T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$)");
+        !std::regex_match(duration, match, iso8601DurationPattern) || match.size() != 3) {
         return {{}, Error(ErrorEnum::eInvalidArgument, "invalid ISO8601 duration format")};
     }
 
@@ -158,15 +159,12 @@ RetWithError<Duration> ParseDuration(const std::string& durationStr)
         return ParseISO8601Duration(durationStr);
     }
 
-    const std::regex floatPattern(R"(^-?\d*(\.\d+)?$)");
-
-    if (std::regex_match(durationStr, floatPattern)) {
+    if (const std::regex floatPattern(R"(^-?\d*(\.\d+)?$)"); std::regex_match(durationStr, floatPattern)) {
         return Time::cSeconds * static_cast<int>(std::stod(durationStr) + 0.5);
     }
 
-    const std::regex durationStringPattern(R"((\d+(ns|us|µs|ms|s|m|h|d|w|y))+$)");
-
-    if (std::regex_match(durationStr, durationStringPattern)) {
+    if (const std::regex durationStringPattern(R"((\d+(ns|us|µs|ms|s|m|h|d|w|y))+$)");
+        std::regex_match(durationStr, durationStringPattern)) {
         return ParseStringDuration(durationStr);
     }
 

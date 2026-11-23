@@ -197,10 +197,9 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
     LOG_DBG() << "Getting node network params" << Log::Field("networkID", networkID) << Log::Field("nodeID", nodeID);
 
     try {
-        auto it = mNetworkStates.find(networkID.CStr());
-        if (it != mNetworkStates.end()) {
-            auto itHost = it->second.mHostInstances.find(nodeID.CStr());
-            if (itHost != it->second.mHostInstances.end()) {
+        if (auto it = mNetworkStates.find(networkID.CStr()); it != mNetworkStates.end()) {
+            if (auto itHost = it->second.mHostInstances.find(nodeID.CStr());
+                itHost != it->second.mHostInstances.end()) {
                 result.mNetworkID = networkID;
                 result.mSubnet    = it->second.mNetwork.mSubnet;
                 result.mIP        = itHost->second.mHostInfo.mIP;
@@ -622,9 +621,8 @@ Error NetworkManager::ParseExposedPorts(const Array<StaticString<cExposedPortLen
             return AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, "unsupported ExposedPorts format"));
         }
 
-        const auto exposedPortRange = common::utils::ParsePortRange(portConfig[0].CStr());
-
-        if (!exposedPortRange.has_value() || exposedPortRange->mFirst != exposedPortRange->mLast) {
+        if (const auto exposedPortRange = common::utils::ParsePortRange(portConfig[0].CStr());
+            !exposedPortRange.has_value() || exposedPortRange->mFirst != exposedPortRange->mLast) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "invalid exposed port"));
         }
 

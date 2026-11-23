@@ -61,7 +61,7 @@ Error NodeStreamHandler::HandleStream()
     Error                         err = ErrorEnum::eNone;
     iamproto::IAMOutgoingMessages outgoing;
 
-    while (mStream->Read(&outgoing)) {
+    while (err.IsNone() && mStream->Read(&outgoing)) {
         LOG_DBG() << "Receive message: type=" << outgoing.IAMOutgoingMessage_case();
 
         const auto messageCase = outgoing.IAMOutgoingMessage_case();
@@ -72,8 +72,6 @@ Error NodeStreamHandler::HandleStream()
         if (outgoing.has_node_info()) {
             if (err = HandleNodeInfo(outgoing.node_info()); !err.IsNone()) {
                 err = AOS_ERROR_WRAP(err);
-
-                break;
             }
 
             continue;
@@ -87,8 +85,6 @@ Error NodeStreamHandler::HandleStream()
             }
         } catch (const std::exception& e) {
             err = AOS_ERROR_WRAP(common::utils::ToAosError(e));
-
-            break;
         }
     }
 

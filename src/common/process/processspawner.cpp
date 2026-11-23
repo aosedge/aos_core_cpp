@@ -52,9 +52,7 @@ Error PocoProcessSpawner::Kill(Poco::Process::PID pid)
         return err;
     }
 
-    int status = 0;
-
-    if (::waitpid(pid, &status, 0) < 0 && errno != ECHILD) {
+    if (int status = 0; ::waitpid(pid, &status, 0) < 0 && errno != ECHILD) {
         return Error(ErrorEnum::eRuntime, std::strerror(errno));
     }
 

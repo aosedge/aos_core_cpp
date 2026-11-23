@@ -272,6 +272,7 @@ private:
     void HandleIncomingMessages();
     void StartNetworkUpdateSubscription();
     void HandleUnitNetworksUpdate(const smproto::UnitNetworksUpdate& update);
+    bool WaitNetworkUpdateReconnect();
 
     Error ProcessGetNodeConfigStatus();
     Error ProcessCheckNodeConfig(const smproto::CheckNodeConfig& checkConfig);

@@ -572,8 +572,7 @@ void SMController::ScheduleRestart()
 
 void SMController::OnRestartTimer()
 {
-    auto err = RestartServer();
-    if (!err.IsNone()) {
+    if (auto err = RestartServer(); !err.IsNone()) {
         LOG_ERR() << "SM controller restart failed, retrying" << Log::Field(err);
 
         return;

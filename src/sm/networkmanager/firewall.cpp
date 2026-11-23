@@ -49,9 +49,7 @@ Error CheckPortProto(const common::utils::PortRange& range, const String& proto)
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "access rule requires a port"));
     }
 
-    const std::string value {proto.CStr()};
-
-    if (!value.empty() && value != "tcp" && value != "udp") {
+    if (const std::string value {proto.CStr()}; !value.empty() && value != "tcp" && value != "udp") {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "unsupported protocol"));
     }
 
@@ -221,15 +219,14 @@ Error Firewall::Start()
 {
     LOG_DBG() << "Start firewall";
 
-    std::vector<nftables::FWListedRule> forwardRules;
-
     // The table is provisioned ahead of SM and outlives it, so a listable
     // forward chain means it already exists: adopt it as is. Rules left by a
     // crashed SM still protect the instances that kept running, so they are
     // reaped later by RemoveOrphans rather than dropped here. If the table is
     // absent, build a fail-closed skeleton ourselves.
 
-    if (!mBackend->ListChainRules(mTable, cForwardChain, forwardRules).IsNone()) {
+    if (std::vector<nftables::FWListedRule> forwardRules;
+        !mBackend->ListChainRules(mTable, cForwardChain, forwardRules).IsNone()) {
         if (auto err = CreateSkeleton(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -295,9 +292,8 @@ Error Firewall::RemoveOrphans(
             continue;
         }
 
-        std::pair<std::string, std::string> key {r.mRule.mSrcAddr, r.mRule.mOIFName};
-
-        if (!r.mRule.mOIFNeg && known.count(key) != 0 && mMasqueradeRules.insert(key).second) {
+        if (std::pair<std::string, std::string> key {r.mRule.mSrcAddr, r.mRule.mOIFName};
+            !r.mRule.mOIFNeg && known.count(key) != 0 && mMasqueradeRules.insert(key).second) {
             continue;
         }
 
@@ -584,11 +580,12 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto outgoing = std::find_if(egress.begin(), egress.end(), [&chain](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eJump && entry.mRule.mJumpTarget == chain + "_out";
-    });
-
-    if (outgoing != egress.end()) {
+    if (const auto outgoing = std::find_if(egress.begin(), egress.end(),
+            [&chain](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eJump
+                    && entry.mRule.mJumpTarget == chain + "_out";
+            });
+        outgoing != egress.end()) {
         handles.push_back(outgoing->mHandle);
     }
 
@@ -598,21 +595,21 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto acceptIn = std::find_if(accepted.begin(), accepted.end(), [&incoming](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eAccept
-            && entry.mRule.mDstAddr == incoming->mRule.mDstAddr;
-    });
-
-    if (acceptIn != accepted.end()) {
+    if (const auto acceptIn = std::find_if(accepted.begin(), accepted.end(),
+            [&incoming](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eAccept
+                    && entry.mRule.mDstAddr == incoming->mRule.mDstAddr;
+            });
+        acceptIn != accepted.end()) {
         handles.push_back(acceptIn->mHandle);
     }
 
-    const auto acceptOut = std::find_if(accepted.begin(), accepted.end(), [&incoming](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eAccept
-            && entry.mRule.mSrcAddr == incoming->mRule.mDstAddr;
-    });
-
-    if (acceptOut != accepted.end()) {
+    if (const auto acceptOut = std::find_if(accepted.begin(), accepted.end(),
+            [&incoming](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eAccept
+                    && entry.mRule.mSrcAddr == incoming->mRule.mDstAddr;
+            });
+        acceptOut != accepted.end()) {
         handles.push_back(acceptOut->mHandle);
     }
 

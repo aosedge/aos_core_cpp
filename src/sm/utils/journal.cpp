@@ -46,8 +46,7 @@ RetWithError<std::string> ExtractJournalField(sd_journal* journal, const char* f
     void*  rawField    = nullptr;
     size_t rawFieldLen = 0;
 
-    auto ret = sd_journal_get_data(journal, field, const_cast<const void**>(&rawField), &rawFieldLen);
-    if (ret < 0) {
+    if (auto ret = sd_journal_get_data(journal, field, const_cast<const void**>(&rawField), &rawFieldLen); ret < 0) {
         return {"", ret};
     }
 
@@ -125,24 +124,22 @@ void Journal::AddMatch(const std::string& match)
 
 bool Journal::Next()
 {
-    if (auto ret = sd_journal_next(mJournal); ret < 0) {
+    const auto ret = sd_journal_next(mJournal);
+    if (ret < 0) {
         AOS_ERROR_THROW(ret, "can't get journal next");
-    } else if (ret > 0) {
-        return true;
     }
 
-    return false;
+    return ret > 0;
 }
 
 bool Journal::Previous()
 {
-    if (auto ret = sd_journal_previous(mJournal); ret < 0) {
+    const auto ret = sd_journal_previous(mJournal);
+    if (ret < 0) {
         AOS_ERROR_THROW(ret, "can't get journal previous");
-    } else if (ret > 0) {
-        return true;
     }
 
-    return false;
+    return ret > 0;
 }
 
 JournalEntry Journal::GetEntry()

@@ -200,8 +200,7 @@ void App::HandleLogLevel(const std::string& name, const std::string& value)
 
     LogLevel level;
 
-    auto err = level.FromString(String(value.c_str()));
-    if (!err.IsNone()) {
+    if (auto err = level.FromString(String(value.c_str())); !err.IsNone()) {
         throw Poco::Exception("unsupported log level", value);
     }
 

@@ -300,10 +300,9 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
 
     if (auto err = common::utils::Retry(
             [&]() -> Error {
-                auto rv = sd_bus_call_method(
-                    mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
-
-                if (rv < 0) {
+                if (auto rv = sd_bus_call_method(
+                        mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
+                    rv < 0) {
                     if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
                         return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
                     }
@@ -341,7 +340,9 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
             rv = sd_bus_wait(mBus, endTime.Sub(now).Microseconds());
             if (rv < 0) {
                 return AOS_ERROR_WRAP(-rv);
-            } else if (rv == 0) {
+            }
+
+            if (rv == 0) {
                 return AOS_ERROR_WRAP(ErrorEnum::eTimeout);
             }
         } else if (rv < 0) {
@@ -359,10 +360,10 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
 
 std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const char* jobPath)
 {
-    const char* member    = sd_bus_message_get_member(msg);
-    const char* interface = sd_bus_message_get_interface(msg);
+    const char* member = sd_bus_message_get_member(msg);
 
-    if (!member || !interface || String(member) != "JobRemoved" || std::string(interface) != cInterface) {
+    if (const char* interface = sd_bus_message_get_interface(msg);
+        !member || !interface || String(member) != "JobRemoved" || std::string(interface) != cInterface) {
         return {false, ErrorEnum::eFailed};
     }
 
@@ -371,8 +372,7 @@ std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const c
     const char* unitName   = nullptr;
     const char* result     = nullptr;
 
-    int rv = sd_bus_message_read(msg, "uoss", &jobId, &jobCurPath, &unitName, &result);
-    if (rv < 0) {
+    if (int rv = sd_bus_message_read(msg, "uoss", &jobId, &jobCurPath, &unitName, &result); rv < 0) {
         return {true, AOS_ERROR_WRAP(rv)};
     }
 

@@ -82,8 +82,7 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
 
     std::vector<std::string> instanceIDs;
 
-    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
-    if (!err.IsNone()) {
+    if (auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs); !err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
         return err;
@@ -112,8 +111,7 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 
     std::vector<std::string> instanceIDs;
 
-    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
-    if (!err.IsNone()) {
+    if (auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs); !err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
         return AOS_ERROR_WRAP(err);
@@ -396,20 +394,15 @@ Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>&
     while (journal.Previous()) {
         auto entry = journal.GetEntry();
 
-        if (from.HasValue() && entry.mRealTime.UnixNano() <= from.GetValue().UnixNano()) {
+        if ((from.HasValue() && entry.mRealTime.UnixNano() <= from.GetValue().UnixNano())
+            || (!crashTime.IsZero() && entry.mMessage.rfind("Started", 0) == 0)) {
             break;
         }
 
-        if (crashTime.IsZero()) {
-            if (entry.mMessage.find("process exited") != std::string::npos) {
-                crashTime = entry.mMonotonicTime;
+        if (crashTime.IsZero() && entry.mMessage.find("process exited") != std::string::npos) {
+            crashTime = entry.mMonotonicTime;
 
-                LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
-            }
-        } else {
-            if (entry.mMessage.rfind("Started", 0) == 0) {
-                break;
-            }
+            LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
         }
     }
 

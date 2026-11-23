@@ -99,8 +99,7 @@ Error PublicCurrentNodeService::GetCurrentNodeInfo(NodeInfo& nodeInfo) const
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    auto err = pbconvert::ConvertToAos(response, nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
