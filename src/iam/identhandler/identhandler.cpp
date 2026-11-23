@@ -53,12 +53,12 @@ std::unique_ptr<IdentModuleItf> InitializeIdentModule(
 {
     const std::string& plugin = config.mPlugin.empty() ? "none" : config.mPlugin;
 
-    IdentifierModule module;
+    IdentifierModule identModule;
 
-    auto err = module.FromString(plugin.c_str());
+    auto err = identModule.FromString(plugin.c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "unknown identifier module plugin");
 
-    switch (module.GetValue()) {
+    switch (identModule.GetValue()) {
     case IdentifierModuleEnum::eFileIdentifier: {
         auto identifier = std::make_unique<FileIdentifier>();
 
