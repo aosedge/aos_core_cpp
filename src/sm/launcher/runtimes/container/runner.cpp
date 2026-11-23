@@ -249,7 +249,7 @@ void Runner::MonitorContainers()
         std::optional<std::vector<RunStatus>> runStatusUpdate;
 
         {
-            std::unique_lock<std::mutex> lock {mMutex};
+            std::unique_lock lock {mMutex};
 
             if (mCondVar.wait_for(lock, cStatusPollPeriod, [this]() { return mClosed; })) {
                 return;

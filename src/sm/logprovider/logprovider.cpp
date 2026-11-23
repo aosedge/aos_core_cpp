@@ -48,7 +48,7 @@ Error LogProvider::Start()
 Error LogProvider::Stop()
 {
     {
-        std::unique_lock<std::mutex> lock {mMutex};
+        std::unique_lock lock {mMutex};
 
         if (mStopped) {
             return ErrorEnum::eNone;
@@ -156,7 +156,7 @@ std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
 void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
     const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
-    std::unique_lock<std::mutex> lock {mMutex};
+    std::unique_lock lock {mMutex};
 
     mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
 
@@ -166,7 +166,7 @@ void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
 void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
     const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
-    std::unique_lock<std::mutex> lock {mMutex};
+    std::unique_lock lock {mMutex};
 
     mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
 
@@ -179,7 +179,7 @@ void LogProvider::ProcessLogs()
         GetLogRequest logRequest;
 
         {
-            std::unique_lock<std::mutex> lock {mMutex};
+            std::unique_lock lock {mMutex};
 
             mCondVar.wait(lock, [this] { return mStopped || !mLogRequests.empty(); });
 

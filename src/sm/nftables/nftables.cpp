@@ -370,7 +370,7 @@ Error NFTables::ListChainRules(const std::string& table, const std::string& chai
 
 Error NFTables::RunBuffer(const std::string& cmd)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -394,7 +394,7 @@ Error NFTables::RunBuffer(const std::string& cmd)
 
 Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -420,7 +420,7 @@ Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
 
 Error NFTables::RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>& handles)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -459,7 +459,7 @@ Error NFTables::RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>&
 
 Error NFTables::RunBufferEchoRules(const std::string& cmd, std::vector<FWListedRule>& rules)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {

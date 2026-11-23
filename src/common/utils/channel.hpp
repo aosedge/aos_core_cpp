@@ -42,7 +42,7 @@ public:
      */
     Error Send(T value)
     {
-        std::unique_lock<std::mutex> lock(mMutex);
+        std::unique_lock lock(mMutex);
 
         mCond.wait(lock, [this] { return mQueue.size() < mCapacity || mExit; });
         if (mExit) {
@@ -62,7 +62,7 @@ public:
      */
     RetWithError<T> Receive()
     {
-        std::unique_lock<std::mutex> lock(mMutex);
+        std::unique_lock lock(mMutex);
 
         mCond.wait(lock, [this] { return !mQueue.empty() || mExit; });
         if (mExit) {
@@ -82,7 +82,7 @@ public:
      */
     void Close()
     {
-        std::unique_lock<std::mutex> lock(mMutex);
+        std::unique_lock lock(mMutex);
 
         mExit = true;
         mCond.notify_all();

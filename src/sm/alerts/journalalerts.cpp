@@ -65,7 +65,7 @@ Error JournalAlerts::Start()
     mMonitorThread = std::thread(&JournalAlerts::MonitorJournal, this);
 
     // Start cursor persist thread.
-    Poco::TimerCallback<JournalAlerts> callback(*this, &JournalAlerts::OnTimer);
+    Poco::TimerCallback callback(*this, &JournalAlerts::OnTimer);
 
     mCursorSaveTimer.setStartInterval(cCursorSavePeriod);
     mCursorSaveTimer.setPeriodicInterval(cCursorSavePeriod);
