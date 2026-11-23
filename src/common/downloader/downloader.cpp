@@ -104,6 +104,11 @@ Error Downloader::Download(
 
 Error Downloader::ConfigureTLS(CURL* curl)
 {
+    if (auto result = curl_easy_setopt(curl, CURLOPT_SSLVERSION, static_cast<long>(CURL_SSLVERSION_TLSv1_2));
+        result != CURLE_OK) {
+        return Error(ErrorEnum::eFailed, curl_easy_strerror(result));
+    }
+
     if (!mCertProvider) {
         return ErrorEnum::eNone;
     }
