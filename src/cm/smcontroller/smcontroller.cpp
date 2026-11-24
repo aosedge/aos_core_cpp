@@ -272,7 +272,7 @@ grpc::Status SMController::RegisterSM(grpc::ServerContext*                      
     {
         std::lock_guard lock {mMutex};
 
-        mSMHandlers.erase(std::remove(mSMHandlers.begin(), mSMHandlers.end(), handler), mSMHandlers.end());
+        (void)mSMHandlers.erase(std::remove(mSMHandlers.begin(), mSMHandlers.end(), handler), mSMHandlers.end());
 
         mAllNodesDisconnectedCV.notify_one();
     }
@@ -419,7 +419,7 @@ void SMController::OnNodeDisconnected(const String& nodeID)
             [&nodeID](const std::shared_ptr<SMHandler>& handler) { return handler->GetNodeID() == nodeID; });
 
         if (it != mSMHandlers.end()) {
-            mSMHandlers.erase(it);
+            (void)mSMHandlers.erase(it);
         }
     }
 
@@ -485,9 +485,9 @@ Error SMController::StartServer()
 
     common::utils::SetGRPCServerOptions(builder);
 
-    builder.AddListeningPort(correctedAddress, mCredentials);
-    builder.RegisterService(static_cast<servicemanager::v5::SMService::Service*>(this));
-    builder.RegisterService(static_cast<servicemanager::v5::NetworkService::Service*>(this));
+    (void)builder.AddListeningPort(correctedAddress, mCredentials);
+    (void)builder.RegisterService(static_cast<servicemanager::v5::SMService::Service*>(this));
+    (void)builder.RegisterService(static_cast<servicemanager::v5::NetworkService::Service*>(this));
 
     mServer = builder.BuildAndStart();
     if (!mServer) {
@@ -608,7 +608,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         std::unique_lock lock {mStreamMutex};
 
         while (!context->IsCancelled()) {
-            mStreamCV.wait_for(lock, cStreamPollInterval);
+            (void)mStreamCV.wait_for(lock, cStreamPollInterval);
         }
     }
 
@@ -622,7 +622,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         // Only erase if this is still the active stream (not replaced by a newer subscription)
         auto it = mNetworkUpdateStreams.find(nodeID);
         if (it != mNetworkUpdateStreams.end() && it->second.mWriter == writer) {
-            mNetworkUpdateStreams.erase(it);
+            (void)mNetworkUpdateStreams.erase(it);
 
             active = true;
         }

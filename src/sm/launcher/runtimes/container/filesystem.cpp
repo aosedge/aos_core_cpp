@@ -75,12 +75,12 @@ void CreateMountPoint(const std::string& path, const Mount& mount, bool isDir)
     auto mountPoint = fs::path(path).concat(mount.mDestination.CStr());
 
     if (isDir) {
-        fs::create_directories(mountPoint);
+        (void)fs::create_directories(mountPoint);
         fs::permissions(mountPoint, cDirPermissions);
     } else {
         auto dirPath = mountPoint.parent_path();
 
-        fs::create_directories(dirPath);
+        (void)fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
 
         std::ofstream file(mountPoint);
@@ -107,7 +107,7 @@ void MountDir(const fs::path& source, const fs::path& mountPoint, const std::str
             LOG_WRN() << "Mount error, try remount" << Log::Field(retryErr);
 
             sync();
-            umount2(mountPoint.c_str(), MNT_FORCE);
+            (void)umount2(mountPoint.c_str(), MNT_FORCE);
         },
         cMountRetryCount, cMountRetryDelay, Duration(0));
     AOS_ERROR_CHECK_AND_THROW(err, "can't mount dir");
@@ -131,8 +131,8 @@ void MountOverlay(const fs::path& mountPoint, const std::vector<fs::path>& lower
             AOS_ERROR_THROW(ErrorEnum::eRuntime, "working dir path should be set");
         }
 
-        fs::remove_all(workDir);
-        fs::create_directories(workDir);
+        (void)fs::remove_all(workDir);
+        (void)fs::create_directories(workDir);
         fs::permissions(workDir, cDirPermissions);
 
         opts += ",workdir=" + workDir.string();
@@ -150,7 +150,7 @@ void UmountDir(const fs::path& mountPoint)
         [&mountPoint]([[maybe_unused]] int retryCount, [[maybe_unused]] Duration delay, const aos::Error& retryErr) {
             LOG_WRN() << "Umount error, retry" << Log::Field(retryErr);
 
-            umount2(mountPoint.c_str(), MNT_FORCE);
+            (void)umount2(mountPoint.c_str(), MNT_FORCE);
         },
         cMountRetryCount, cMountRetryDelay, Duration(0));
     AOS_ERROR_CHECK_AND_THROW(err, "can't umount dir");
@@ -208,7 +208,7 @@ Error FileSystem::CreateHostFSWhiteouts(const std::string& path, const std::vect
     try {
         auto destPath = fs::path(path);
 
-        fs::create_directories(destPath);
+        (void)fs::create_directories(destPath);
         fs::permissions(destPath, cDirPermissions);
 
         for (const auto& entry : fs::directory_iterator("/")) {
@@ -258,12 +258,12 @@ Error FileSystem::MountServiceRootFS(const std::string& rootfsPath, const std::v
     try {
         auto mountPoint = fs::path(rootfsPath);
 
-        fs::create_directories(mountPoint);
+        (void)fs::create_directories(mountPoint);
         fs::permissions(mountPoint, cDirPermissions);
 
         std::vector<fs::path> lowerDirs;
 
-        std::transform(
+        (void)std::transform(
             layers.begin(), layers.end(), std::back_inserter(lowerDirs), [](const auto& layer) { return layer; });
 
         MountOverlay(mountPoint, lowerDirs, "", "");
@@ -284,7 +284,7 @@ Error FileSystem::UmountServiceRootFS(const std::string& rootfsPath)
         }
 
         UmountDir(mountPoint);
-        fs::remove_all(mountPoint);
+        (void)fs::remove_all(mountPoint);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -301,7 +301,7 @@ Error FileSystem::PrepareServiceStorage(const std::string& path, uid_t uid, gid_
             return ErrorEnum::eNone;
         }
 
-        fs::create_directories(storagePath);
+        (void)fs::create_directories(storagePath);
         fs::permissions(storagePath, cDirPermissions);
 
         auto ret = chown(storagePath.c_str(), uid, gid);
@@ -324,7 +324,7 @@ Error FileSystem::PrepareServiceState(const std::string& path, uid_t uid, gid_t 
 
         auto dirPath = statePath.parent_path();
 
-        fs::create_directories(dirPath);
+        (void)fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
 
         std::ofstream file(statePath);
@@ -344,7 +344,7 @@ Error FileSystem::PrepareNetworkDir(const std::string& path)
     try {
         auto dirPath = fs::path(path) / "etc";
 
-        fs::create_directories(dirPath);
+        (void)fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
 
         return ErrorEnum::eNone;
@@ -433,7 +433,7 @@ Error FileSystem::MakeDirAll(const std::string& path)
     try {
         auto dirPath = fs::path(path);
 
-        fs::create_directories(dirPath);
+        (void)fs::create_directories(dirPath);
         fs::permissions(dirPath, cDirPermissions);
 
         return ErrorEnum::eNone;
@@ -447,7 +447,7 @@ Error FileSystem::ClearDir(const std::string& path)
     try {
         auto dirPath = fs::path(path);
 
-        fs::remove_all(dirPath);
+        (void)fs::remove_all(dirPath);
         MakeDirAll(dirPath.string());
 
         return ErrorEnum::eNone;
@@ -461,7 +461,7 @@ Error FileSystem::RemoveAll(const std::string& path)
     try {
         auto dirPath = fs::path(path);
 
-        fs::remove_all(dirPath);
+        (void)fs::remove_all(dirPath);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {

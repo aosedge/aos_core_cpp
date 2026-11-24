@@ -69,7 +69,7 @@ Error LogProvider::Stop()
 
 LogProvider::~LogProvider()
 {
-    Stop();
+    (void)Stop();
 }
 
 Error LogProvider::GetInstanceLog(const RequestLog& request)
@@ -158,7 +158,7 @@ void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
 {
     std::unique_lock lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
+    (void)mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
 
     mCondVar.notify_one();
 }
@@ -168,7 +168,7 @@ void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceID
 {
     std::unique_lock lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
+    (void)mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
 
     mCondVar.notify_one();
 }

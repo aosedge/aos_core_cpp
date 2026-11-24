@@ -53,7 +53,7 @@ void PocoWSClient::Connect()
 
         // HTTPSClientSession is not copyable or movable.
         mClientSession = std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
-        mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mHttpRequest, mHttpResponse));
+        (void)mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mHttpRequest, mHttpResponse));
         mWebSocket->setKeepAlive(true);
         mWebSocket->setReceiveTimeout(0);
 

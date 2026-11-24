@@ -111,7 +111,7 @@ public:
 
             LOG_DBG() << "Remove subscriber" << Log::Field("context", mLogContext.c_str());
 
-            mSubscribers.erase(&listener);
+            (void)mSubscribers.erase(&listener);
 
             shouldStop = mSubscribers.empty() && mThread.joinable();
         }
@@ -250,7 +250,7 @@ private:
     {
         std::unique_lock lock {mMutex};
 
-        mCV.wait_for(lock, cReconnectInterval, [this]() { return mClose; });
+        (void)mCV.wait_for(lock, cReconnectInterval, [this]() { return mClose; });
 
         return !mClose;
     }

@@ -28,7 +28,7 @@ Error NamespaceManager::Init(sm::networkmanager::InterfaceManagerItf& netIf)
 
     mNetIf = &netIf;
 
-    std::filesystem::create_directory(cPathToNetNs);
+    (void)std::filesystem::create_directory(cPathToNetNs);
 
     return ErrorEnum::eNone;
 }
@@ -55,7 +55,7 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
         return Error(ErrorEnum::eFailed, strerror(errno));
     }
 
-    auto closeFd         = [](const int* fd) { close(*fd); };
+    auto closeFd         = [](const int* fd) { (void)close(*fd); };
     auto originalNsFdPtr = std::unique_ptr<int, decltype(closeFd)>(&originalNsFd, closeFd);
 
     // Unshare to create the new network namespace
@@ -68,7 +68,7 @@ Error NamespaceManager::CreateNetworkNamespace(const String& ns)
         return Error(ErrorEnum::eFailed, strerror(errno));
     }
 
-    close(nsFd);
+    (void)close(nsFd);
 
     auto autoSwitchToOriginNs = DeferRelease(&originalNsFd, [&path, &err](const int* fd) {
         if (setns(*fd, CLONE_NEWNET) != 0) {

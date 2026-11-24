@@ -33,7 +33,7 @@ NodeStreamHandler::Ptr NodeStreamHandler::Create(NodeServerReaderWriter* stream,
 NodeStreamHandler::~NodeStreamHandler()
 {
     if (mNodeID) {
-        mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
+        (void)mNodeManager->SetNodeConnected(mNodeID->c_str(), false);
     }
 
     Close();
@@ -99,7 +99,7 @@ grpc::Status NodeStreamHandler::GetCertKeyStorageIDs(const iamproto::GetCertKeyS
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_cert_key_storage_ids_response();
+    (void)outgoing.mutable_cert_key_storage_ids_response();
     incoming.mutable_get_cert_key_storage_ids_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -121,7 +121,7 @@ grpc::Status NodeStreamHandler::StartProvisioning(const iamproto::StartProvision
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_start_provisioning_response();
+    (void)outgoing.mutable_start_provisioning_response();
     incoming.mutable_start_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -143,7 +143,7 @@ grpc::Status NodeStreamHandler::FinishProvisioning(const iamproto::FinishProvisi
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_finish_provisioning_response();
+    (void)outgoing.mutable_finish_provisioning_response();
     incoming.mutable_finish_provisioning_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -165,7 +165,7 @@ grpc::Status NodeStreamHandler::Deprovision(const iamproto::DeprovisionRequest* 
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_deprovision_response();
+    (void)outgoing.mutable_deprovision_response();
     incoming.mutable_deprovision_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -187,7 +187,7 @@ grpc::Status NodeStreamHandler::PauseNode(const iamproto::PauseNodeRequest* requ
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_pause_node_response();
+    (void)outgoing.mutable_pause_node_response();
     incoming.mutable_pause_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -209,7 +209,7 @@ grpc::Status NodeStreamHandler::ResumeNode(const iamproto::ResumeNodeRequest* re
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_resume_node_response();
+    (void)outgoing.mutable_resume_node_response();
     incoming.mutable_resume_node_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -231,7 +231,7 @@ grpc::Status NodeStreamHandler::CreateKey(const iamproto::CreateKeyRequest* requ
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_create_key_response();
+    (void)outgoing.mutable_create_key_response();
     incoming.mutable_create_key_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -253,7 +253,7 @@ grpc::Status NodeStreamHandler::ApplyCert(const iamproto::ApplyCertRequest* requ
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_apply_cert_response();
+    (void)outgoing.mutable_apply_cert_response();
     incoming.mutable_apply_cert_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -275,7 +275,7 @@ grpc::Status NodeStreamHandler::UpdateRootCerts(const iamproto::UpdateRootCertsR
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_update_root_certs_response();
+    (void)outgoing.mutable_update_root_certs_response();
     incoming.mutable_update_root_certs_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -297,7 +297,7 @@ grpc::Status NodeStreamHandler::GetRootCertsFingerprints(const iamproto::GetRoot
     iamproto::IAMIncomingMessages incoming;
     iamproto::IAMOutgoingMessages outgoing;
 
-    outgoing.mutable_get_root_certs_fingerprints_response();
+    (void)outgoing.mutable_get_root_certs_fingerprints_response();
     incoming.mutable_get_root_certs_fingerprints_request()->CopyFrom(*request);
 
     if (auto err = SendMessage(incoming, outgoing, responseTimeout); !err.IsNone()) {
@@ -523,7 +523,7 @@ void NodeController::Remove(NodeStreamHandler::Ptr handler)
 
     LOG_DBG() << "Remove node stream handler";
 
-    mHandlers.erase(handler);
+    (void)mHandlers.erase(handler);
 }
 
 } // namespace aos::iam::iamserver

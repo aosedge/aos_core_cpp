@@ -104,7 +104,7 @@ void Migration::MergeMigrationFiles(const std::string& migrationDir) const
         AOS_ERROR_THROW(ErrorEnum::eInvalidArgument, "migration path doesn't exist (" + migrationDir + ")");
     }
 
-    std::filesystem::create_directories(mMergedMigrationDir);
+    (void)std::filesystem::create_directories(mMergedMigrationDir);
 
     std::filesystem::copy(migrationDir, mMergedMigrationDir,
         std::filesystem::copy_options::skip_existing | std::filesystem::copy_options::recursive);

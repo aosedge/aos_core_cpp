@@ -193,7 +193,7 @@ public:
         struct FDCloser {
             using pointer = FDHandle;
 
-            void operator()(FDHandle handle) const { close(handle.mFD); }
+            void operator()(FDHandle handle) const { (void)close(handle.mFD); }
         };
 
         using FDPtr = std::unique_ptr<int, FDCloser>;

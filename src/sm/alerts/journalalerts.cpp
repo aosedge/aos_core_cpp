@@ -45,7 +45,7 @@ Error JournalAlerts::Init(
 
         // Keep strings instead of precompiled regex because,
         // Poco::RegularExpression suppresses copy/move semantic, consequently they are not supported by stl containers.
-        mAlertFilters.emplace_back(filter);
+        (void)mAlertFilters.emplace_back(filter);
     }
 
     return ErrorEnum::eNone;
@@ -131,7 +131,7 @@ void JournalAlerts::SetupJournal()
 
     if (!cursor.IsEmpty()) {
         mJournal->SeekCursor(cursor.CStr());
-        mJournal->Next();
+        (void)mJournal->Next();
     }
 }
 

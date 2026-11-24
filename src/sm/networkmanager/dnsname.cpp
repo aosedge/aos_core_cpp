@@ -45,7 +45,7 @@ Error DNSName::RemoveOrphans(const Array<StaticString<cIDLen>>& knownNetworkIDs)
     std::set<std::string, std::less<>> known;
 
     for (const auto& id : knownNetworkIDs) {
-        known.emplace(id.CStr());
+        (void)known.emplace(id.CStr());
     }
 
     std::error_code ec;
@@ -142,7 +142,7 @@ RetWithError<DNSServerItf*> DNSName::CreateServer(const String& networkID, const
 
     DNSServerItf* handle = entry.mServer.get();
 
-    mServers.try_emplace(nidStr, std::move(entry));
+    (void)mServers.try_emplace(nidStr, std::move(entry));
 
     return {handle, ErrorEnum::eNone};
 }
@@ -159,7 +159,7 @@ Error DNSName::RemoveServer(const String& networkID)
     const auto pid        = it->second.mPID;
     const auto storageDir = StorageDirFor(networkID.CStr());
 
-    mServers.erase(it);
+    (void)mServers.erase(it);
 
     Error err;
 
@@ -186,7 +186,7 @@ Error DNSName::EnsureStorageDir(const std::string& dir) const
 {
     std::error_code ec;
 
-    std::filesystem::create_directories(dir, ec);
+    (void)std::filesystem::create_directories(dir, ec);
     if (ec) {
         return Error(ErrorEnum::eRuntime, ec.message().c_str());
     }
@@ -198,7 +198,7 @@ void DNSName::WipeStorageDir(const std::string& dir) const
 {
     std::error_code ec;
 
-    std::filesystem::remove_all(dir, ec);
+    (void)std::filesystem::remove_all(dir, ec);
     if (ec) {
         LOG_ERR() << "Failed to wipe DNS storage dir" << Log::Field("dir", dir.c_str())
                   << Log::Field("err", ec.message().c_str());
@@ -243,8 +243,8 @@ RetWithError<Poco::Process::PID> DNSName::ReadPidFile(const std::string& storage
     }
 
     std::string content;
-    std::getline(file, content);
-    Poco::trimInPlace(content);
+    (void)std::getline(file, content);
+    (void)Poco::trimInPlace(content);
 
     if (content.empty()) {
         return {0, Error(ErrorEnum::eNotFound, "pidfile is empty")};

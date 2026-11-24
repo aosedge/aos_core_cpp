@@ -66,7 +66,7 @@ std::vector<std::string> MakeNetPool(int targetPrefix, uint32_t baseIP, int base
     for (int i = 0; i < subnetCount; i++) {
         uint32_t subnetIP = maskedBaseIP + (i * subnetSize);
 
-        result.emplace_back(UINT32ToIP(subnetIP) + "/" + std::to_string(targetPrefix));
+        (void)result.emplace_back(UINT32ToIP(subnetIP) + "/" + std::to_string(targetPrefix));
     }
 
     return result;
@@ -92,7 +92,7 @@ std::vector<std::string> GetNetPools()
 
         auto subnets = MakeNetPool(size, baseIP, basePrefix);
 
-        pools.insert(pools.end(), subnets.begin(), subnets.end());
+        (void)pools.insert(pools.end(), subnets.begin(), subnets.end());
     }
 
     return pools;

@@ -133,7 +133,7 @@ Error Runner::StopInstance(const std::string& instanceID)
             return mClosed || mInstancesToRestart.find(instanceID) == mInstancesToRestart.end();
         });
 
-        mRunningContainers.erase(instanceID);
+        (void)mRunningContainers.erase(instanceID);
     }
 
     auto err = mContainerRunner->StopContainer(instanceID);
@@ -236,7 +236,7 @@ void Runner::SetInstancesToRestart()
             ++runningState.mRestartCount;
         }
 
-        mInstancesToRestart.insert(instanceID);
+        (void)mInstancesToRestart.insert(instanceID);
     }
 }
 
@@ -272,7 +272,7 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
 {
     mRunningInstances.clear();
 
-    std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
+    (void)std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
         [](const auto& unit) {
             return RunStatus {unit.first, unit.second.mRunState, {}};
         });

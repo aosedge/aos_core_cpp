@@ -165,7 +165,7 @@ RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& i
     libcrun_container_status_t crunStatus = {};
 
     if (libcrun_read_container_status(&crunStatus, mStateRoot.c_str(), instanceID.c_str(), &err) < 0) {
-        libcrun_error_release(&err);
+        (void)libcrun_error_release(&err);
         status.mState = InstanceStateEnum::eFailed;
 
         return {status, ErrorEnum::eNone};
@@ -176,7 +176,7 @@ RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& i
     libcrun_free_container_status(&crunStatus);
 
     if (running <= 0) {
-        libcrun_error_release(&err);
+        (void)libcrun_error_release(&err);
 
         status.mState = InstanceStateEnum::eFailed;
     }

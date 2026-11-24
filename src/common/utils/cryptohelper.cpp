@@ -170,7 +170,7 @@ Error GetRootCertsFingerprints(const ::aos::iamclient::CertProviderItf& certProv
             return AOS_ERROR_WRAP(resizeErr);
         }
 
-        SHA256(raw.Get(), raw.Size(), hash.Get());
+        (void)SHA256(raw.Get(), raw.Size(), hash.Get());
 
         if (auto pushErr = fingerprints.EmplaceBack(); !pushErr.IsNone()) {
             return AOS_ERROR_WRAP(pushErr);

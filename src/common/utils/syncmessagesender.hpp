@@ -98,7 +98,7 @@ public:
             std::unique_lock lock {mMutex};
 
             // Receiving the message.
-            mCondVar.wait_for(lock, mTimeout, [&msg] { return msg.mResponseReceived; });
+            (void)mCondVar.wait_for(lock, mTimeout, [&msg] { return msg.mResponseReceived; });
 
             EraseMessage(&msg);
 
@@ -122,7 +122,7 @@ public:
     {
         std::lock_guard lock {mMutex};
 
-        mResponseHandlers.emplace_back(ResponseHandler {std::move(checkFunc), std::move(copyFunc)});
+        (void)mResponseHandlers.emplace_back(ResponseHandler {std::move(checkFunc), std::move(copyFunc)});
     }
 
     /**
@@ -174,7 +174,7 @@ private:
     {
         auto it = std::find(mMessages.begin(), mMessages.end(), msg);
         if (it != mMessages.end()) {
-            mMessages.erase(it);
+            (void)mMessages.erase(it);
         }
     }
 

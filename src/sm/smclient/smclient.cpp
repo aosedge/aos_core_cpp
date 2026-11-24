@@ -93,7 +93,7 @@ Error SMClient::Stop()
         mStoppedCV.notify_all();
 
         if (mSecureConnection) {
-            mCertProvider->UnsubscribeListener(*this);
+            (void)mCertProvider->UnsubscribeListener(*this);
         }
 
         if (mCtx) {
@@ -294,7 +294,7 @@ Error SMClient::UnsubscribeListener(aos::cloudconnection::ConnectionListenerItf&
         return Error(ErrorEnum::eNotFound, "listener not found");
     }
 
-    mConnectionListeners.erase(it);
+    (void)mConnectionListeners.erase(it);
 
     return ErrorEnum::eNone;
 }
@@ -880,7 +880,7 @@ void SMClient::ConnectionLoop() noexcept
 
         std::unique_lock lock {mMutex};
 
-        mStoppedCV.wait_for(
+        (void)mStoppedCV.wait_for(
             lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()), [this] { return mStopped; });
 
         if (mStopped) {
@@ -911,7 +911,7 @@ Error SMClient::UnsubscribeListener(ConnectListenerItf& listener)
 
     if (auto it = std::find(mConnectListeners.begin(), mConnectListeners.end(), &listener);
         it != mConnectListeners.end()) {
-        mConnectListeners.erase(it);
+        (void)mConnectListeners.erase(it);
     }
 
     return ErrorEnum::eNone;
@@ -1025,7 +1025,7 @@ bool SMClient::WaitNetworkUpdateReconnect()
 {
     std::unique_lock lock {mMutex};
 
-    mNetworkUpdateCV.wait_for(
+    (void)mNetworkUpdateCV.wait_for(
         lock, std::chrono::nanoseconds(mConfig.mCMReconnectTimeout.Nanoseconds()), [this] { return mStopped; });
 
     return !mStopped;

@@ -162,7 +162,7 @@ RetWithError<StaticString<cVersionLen>> GetCurrentVersion(const std::string& ver
     }
 
     std::string versionFileContent;
-    std::getline(versionFile, versionFileContent);
+    (void)std::getline(versionFile, versionFileContent);
 
     Poco::StringTokenizer tokenizer(versionFileContent, "=", Poco::StringTokenizer::TOK_TRIM);
 
@@ -171,7 +171,7 @@ RetWithError<StaticString<cVersionLen>> GetCurrentVersion(const std::string& ver
     }
 
     std::string version = tokenizer[1].c_str();
-    Poco::removeInPlace(version, '"');
+    (void)Poco::removeInPlace(version, '"');
 
     StaticString<cVersionLen> versionStr;
 

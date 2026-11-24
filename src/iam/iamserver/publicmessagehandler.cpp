@@ -45,22 +45,22 @@ void PublicMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
 {
     LOG_DBG() << "Register services" << Log::Field("handler", "public");
 
-    builder.RegisterService(static_cast<iamanager::IAMVersionService::Service*>(this));
-    builder.RegisterService(static_cast<iamproto::IAMPublicCurrentNodeService::Service*>(this));
-    builder.RegisterService(static_cast<iamproto::IAMPublicCertificateService::Service*>(this));
+    (void)builder.RegisterService(static_cast<iamanager::IAMVersionService::Service*>(this));
+    (void)builder.RegisterService(static_cast<iamproto::IAMPublicCurrentNodeService::Service*>(this));
+    (void)builder.RegisterService(static_cast<iamproto::IAMPublicCertificateService::Service*>(this));
 
     if (GetPermHandler() != nullptr) {
-        builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMPublicPermissionsService::Service*>(this));
     }
 
     if (mNodeInfo.IsMainNode()) {
         LOG_DBG() << "Register services on main node";
 
         if (GetIdentProvider() != nullptr) {
-            builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
+            (void)builder.RegisterService(static_cast<iamproto::IAMPublicIdentityService::Service*>(this));
         }
 
-        builder.RegisterService(static_cast<iamproto::IAMPublicNodesService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMPublicNodesService::Service*>(this));
     }
 }
 
@@ -279,7 +279,7 @@ grpc::Status PublicMessageHandler::SubscribeCertKeyChanged([[maybe_unused]] grpc
         std::lock_guard lock {mCertWritersLock};
 
         auto iter = std::remove(mCertWriters.begin(), mCertWriters.end(), certWriter);
-        mCertWriters.erase(iter, mCertWriters.end());
+        (void)mCertWriters.erase(iter, mCertWriters.end());
     }
 
     return status;
@@ -318,7 +318,7 @@ grpc::Status PublicMessageHandler::SubscribeRootCertsChanged([[maybe_unused]] gr
         std::lock_guard lock {mCertWritersLock};
 
         auto iter = std::remove(mRootCertWriters.begin(), mRootCertWriters.end(), certWriter);
-        mRootCertWriters.erase(iter, mRootCertWriters.end());
+        (void)mRootCertWriters.erase(iter, mRootCertWriters.end());
     }
 
     return status;

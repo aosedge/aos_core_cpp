@@ -24,7 +24,7 @@ RetWithError<StaticString<cEnvVarNameLen>> GetEnvVarName(const String& envVar)
         }
     }
 
-    tmpStr.Trim(" ");
+    (void)tmpStr.Trim(" ");
 
     return StaticString<cEnvVarNameLen>(tmpStr);
 }

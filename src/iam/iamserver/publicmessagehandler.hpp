@@ -121,7 +121,7 @@ protected:
                 return status;
             }
 
-            mRetryCondVar.wait_for(lock, cRequestRetryTimeout, [this] { return mClose; });
+            (void)mRetryCondVar.wait_for(lock, cRequestRetryTimeout, [this] { return mClose; });
         }
 
         return status;

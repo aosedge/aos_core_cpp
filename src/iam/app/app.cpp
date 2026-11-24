@@ -61,7 +61,7 @@ void ErrorHandler(int sig)
 
     backtrace_symbols_fd(array, static_cast<int>(size), STDERR_FILENO);
 
-    raise(sig);
+    (void)raise(sig);
 }
 
 void RegisterErrorSignals()
@@ -71,10 +71,10 @@ void RegisterErrorSignals()
     act.sa_handler = ErrorHandler;
     act.sa_flags   = SA_RESETHAND;
 
-    sigaction(SIGILL, &act, nullptr);
-    sigaction(SIGABRT, &act, nullptr);
-    sigaction(SIGFPE, &act, nullptr);
-    sigaction(SIGSEGV, &act, nullptr);
+    (void)sigaction(SIGILL, &act, nullptr);
+    (void)sigaction(SIGABRT, &act, nullptr);
+    (void)sigaction(SIGFPE, &act, nullptr);
+    (void)sigaction(SIGSEGV, &act, nullptr);
 }
 
 } // namespace

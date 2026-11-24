@@ -144,7 +144,7 @@ RetWithError<std::vector<std::string>> EFIVar::GetAllVariables() const
             return {{}, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to get EFI variable name"))};
         }
 
-        result.emplace_back(name);
+        (void)result.emplace_back(name);
     }
 
     return result;

@@ -88,13 +88,13 @@ Poco::Process::PID DNSServer::FindServerProcess() const
     }
 
     std::string pidContent;
-    std::getline(file, pidContent);
+    (void)std::getline(file, pidContent);
 
     if (pidContent.empty()) {
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "process not exist - PID file is empty");
     }
 
-    Poco::trimInPlace(pidContent);
+    (void)Poco::trimInPlace(pidContent);
 
     Poco::Process::PID pid = 0;
 

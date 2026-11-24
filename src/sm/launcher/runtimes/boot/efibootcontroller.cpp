@@ -50,7 +50,7 @@ Error EFIBootController::GetPartitionDevices(std::vector<std::string>& devices) 
 
     LOG_DBG() << "Get boot partition devices" << Log::Field("count", mBootItems.size());
 
-    std::transform(mBootItems.begin(), mBootItems.end(), std::back_inserter(devices),
+    (void)std::transform(mBootItems.begin(), mBootItems.end(), std::back_inserter(devices),
         [](const BootItem& item) { return item.mDevice; });
 
     return ErrorEnum::eNone;
@@ -352,7 +352,7 @@ RetWithError<std::string> EFIBootController::GetPartitionPrefix() const
     }
 
     std::string cmdline;
-    std::getline(file, cmdline);
+    (void)std::getline(file, cmdline);
 
     std::regex  rootRegex(R"(root=([^ \t]+))");
     std::smatch match;
@@ -418,7 +418,7 @@ Error EFIBootController::UpdateBootOrder(
 {
     std::vector<uint16_t> newBootOrder = newBootIDs;
 
-    std::copy_if(oldBootOrder.begin(), oldBootOrder.end(), std::back_inserter(newBootOrder),
+    (void)std::copy_if(oldBootOrder.begin(), oldBootOrder.end(), std::back_inserter(newBootOrder),
         [&newBootIDs](uint16_t id) { return std::find(newBootIDs.begin(), newBootIDs.end(), id) == newBootIDs.end(); });
 
     if (newBootOrder == oldBootOrder) {

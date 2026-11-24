@@ -125,7 +125,7 @@ Error FSPlatform::Sync(const String& path, bool syncFS) const
         }
     }
 
-    close(fd);
+    (void)close(fd);
 
     return err;
 }

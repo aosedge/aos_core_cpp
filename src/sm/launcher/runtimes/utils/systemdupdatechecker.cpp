@@ -22,7 +22,7 @@ Error SystemdUpdateChecker::Init(const std::vector<std::string>& units, aos::sm:
 {
     LOG_DBG() << "Initialize systemd update checker";
 
-    std::transform(units.begin(), units.end(), std::inserter(mUnits, mUnits.end()),
+    (void)std::transform(units.begin(), units.end(), std::inserter(mUnits, mUnits.end()),
         [](const auto& unit) { return std::make_pair(unit, aos::sm::utils::UnitStateEnum::eInactive); });
 
     mSystemdConn = &systemdConn;

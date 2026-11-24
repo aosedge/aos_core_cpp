@@ -49,7 +49,7 @@ void OCIWhiteoutsToOverlay(const String& path)
                 AOS_ERROR_THROW(errno, "can't set opaque xattr");
             }
 
-            std::filesystem::remove(entry.path());
+            (void)std::filesystem::remove(entry.path());
 
             continue;
         }
@@ -61,7 +61,7 @@ void OCIWhiteoutsToOverlay(const String& path)
                 AOS_ERROR_THROW(errno, "can't create whiteout node");
             }
 
-            std::filesystem::remove(entry.path());
+            (void)std::filesystem::remove(entry.path());
 
             continue;
         }
@@ -85,7 +85,7 @@ Error ImageHandler::UnpackLayer(const String& src, const String& dst, const Stri
             return err;
         }
 
-        std::filesystem::create_directory(dst.CStr());
+        (void)std::filesystem::create_directory(dst.CStr());
 
         if (auto err = common::utils::UnpackTarImage(src.CStr(), dst.CStr()); !err.IsNone()) {
             LOG_ERR() << "Failed to unpack tar image" << Log::Field("src", src) << Log::Field("dst", dst)

@@ -155,7 +155,7 @@ Error ValidateDigest(const Digest& digest)
 {
     auto [algorithm, hex] = ParseDigest(digest);
 
-    std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
+    (void)std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
     if (cAnchoredEncodedRegexps.find(algorithm) == cAnchoredEncodedRegexps.end()) {
         return Error(ErrorEnum::eInvalidArgument, "unsupported algorithm");
@@ -190,7 +190,7 @@ RetWithError<Digest> CalculateDirDigest(const std::string& dir)
 
         Poco::SHA2Engine         hf;
         Poco::DigestOutputStream dos(hf);
-        Poco::StreamCopier::copyStream(fileStream, dos);
+        (void)Poco::StreamCopier::copyStream(fileStream, dos);
 
         std::string hash = Poco::DigestEngine::digestToHex(hf.digest()) + "  " + fs::relative(file, dir).string();
 

@@ -99,7 +99,7 @@ void SendStatus(Poco::Net::HTTPServerResponse& response, int status)
         response.setStatus(static_cast<Poco::Net::HTTPResponse::HTTPStatus>(status));
     }
 
-    response.send();
+    (void)response.send();
 }
 
 } // namespace
@@ -126,7 +126,7 @@ bool BrokenFiles::Take(const std::string& path, const struct stat& st)
 
     auto matched = st.st_mtim.tv_sec == it->second.tv_sec && st.st_mtim.tv_nsec == it->second.tv_nsec;
 
-    mFiles.erase(it);
+    (void)mFiles.erase(it);
 
     return matched;
 }
@@ -252,7 +252,7 @@ void Fileserver::FileRequestHandler::handleRequest(
 
         auto extension = filePath.extension().string();
         if (!extension.empty()) {
-            extension.erase(0, 1);
+            (void)extension.erase(0, 1);
         }
 
         SendFile(fd.get().mFD, path, st, extension, request, response);

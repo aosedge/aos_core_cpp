@@ -43,7 +43,7 @@ Error Archiver::AddLog(const std::string& message)
 
 Error Archiver::SendLog(const String& correlationId)
 {
-    mCompressionStream->close();
+    (void)mCompressionStream->close();
 
     if (mPartSize > 0) {
         mPartCount++;
@@ -95,7 +95,7 @@ void Archiver::CreateCompressionStream()
     auto& stream = mLogStreams.emplace_back();
 
     if (mCompressionStream) {
-        mCompressionStream->close();
+        (void)mCompressionStream->close();
     }
 
     mCompressionStream = std::make_unique<Poco::DeflatingOutputStream>(
@@ -105,7 +105,7 @@ void Archiver::CreateCompressionStream()
 Error Archiver::AddLogPart()
 {
     try {
-        mCompressionStream->close();
+        (void)mCompressionStream->close();
 
         mPartCount++;
         mPartSize = 0;

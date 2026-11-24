@@ -31,7 +31,7 @@ CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Obj
 {
     for (const auto& [key, value] : *object) {
         if (!value.isEmpty()) {
-            mKeyMap.try_emplace(ToLowercase(key), key);
+            (void)mKeyMap.try_emplace(ToLowercase(key), key);
         }
     }
 }
@@ -90,7 +90,7 @@ std::string CaseInsensitiveObjectWrapper::ToLowercase(const std::string& str) co
 {
     std::string lowerStr = str;
 
-    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+    (void)std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
 
     return lowerStr;
 }

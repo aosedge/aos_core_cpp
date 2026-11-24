@@ -299,7 +299,7 @@ Error AosCore::InitCertModules(const config::Config& config)
             return AOS_ERROR_WRAP(err);
         }
 
-        mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
+        (void)mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
     }
 
     if (rootCertsModulesCount != 1) {

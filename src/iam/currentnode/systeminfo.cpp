@@ -43,7 +43,7 @@ public:
             }
 
             if (mCPUInfos.empty()) {
-                mCPUInfos.try_emplace(0, CreateDefaultCPUInfo());
+                (void)mCPUInfos.try_emplace(0, CreateDefaultCPUInfo());
             }
 
             for (const auto& [_, cpuInfo] : mCPUInfos) {
@@ -90,7 +90,7 @@ private:
         }
 
         // only the first entry for the CPU is stored in the map.
-        mCPUInfos.try_emplace(physicalId, cpuInfo);
+        (void)mCPUInfos.try_emplace(physicalId, cpuInfo);
 
         mCurrentEntryKeyValues.clear();
     }

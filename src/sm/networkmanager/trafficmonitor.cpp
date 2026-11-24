@@ -166,7 +166,7 @@ Error TrafficMonitor::StartInstanceMonitoring(
                 return AOS_ERROR_WRAP(err);
             }
 
-            mBatchInstances.emplace_back(instanceID.CStr());
+            (void)mBatchInstances.emplace_back(instanceID.CStr());
 
             batched = true;
         }
@@ -269,11 +269,11 @@ Error TrafficMonitor::StopInstanceMonitoring(const String& instanceID)
                               << Log::Field(err);
                 }
 
-                mTrafficData.erase(it);
+                (void)mTrafficData.erase(it);
             }
         }
 
-        mInstanceChains.erase(instanceID.CStr());
+        (void)mInstanceChains.erase(instanceID.CStr());
     }
 
     return ErrorEnum::eNone;
@@ -336,7 +336,7 @@ Error TrafficMonitor::FlushBatch()
             mBatchInstances.clear();
         } else {
             for (const auto& r : added) {
-                mAppliedHandles.insert(r.mHandle);
+                (void)mAppliedHandles.insert(r.mHandle);
             }
 
             committedInstances = mBatchInstances;
@@ -419,7 +419,7 @@ Error TrafficMonitor::Revert()
 
         for (const auto& instanceID : instances) {
             if (auto it = mInstanceChains.find(instanceID); it != mInstanceChains.end()) {
-                reverted.emplace_back(instanceID, it->second);
+                (void)reverted.emplace_back(instanceID, it->second);
             }
         }
     }
@@ -437,8 +437,8 @@ Error TrafficMonitor::Revert()
     std::set<std::string, std::less<>> chainNames;
 
     for (const auto& [instanceID, chains] : reverted) {
-        chainNames.insert(chains.mInChain);
-        chainNames.insert(chains.mOutChain);
+        (void)chainNames.insert(chains.mInChain);
+        (void)chainNames.insert(chains.mOutChain);
     }
 
     auto txn = mBackend->NewTxn();
@@ -573,7 +573,7 @@ Error TrafficMonitor::CreateInstanceChain(nftables::FWTxnItf& txn, const std::st
         return AOS_ERROR_WRAP(err);
     }
 
-    staged.emplace_back(chain, std::move(traffic));
+    (void)staged.emplace_back(chain, std::move(traffic));
 
     return ErrorEnum::eNone;
 }
@@ -617,10 +617,10 @@ void TrafficMonitor::DropBatchInstanceState(const std::vector<std::string>& inst
             continue;
         }
 
-        mTrafficData.erase(it->second.mInChain);
-        mTrafficData.erase(it->second.mOutChain);
+        (void)mTrafficData.erase(it->second.mInChain);
+        (void)mTrafficData.erase(it->second.mOutChain);
 
-        mInstanceChains.erase(it);
+        (void)mInstanceChains.erase(it);
     }
 }
 

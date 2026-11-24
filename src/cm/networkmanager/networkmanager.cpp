@@ -103,7 +103,7 @@ Error NetworkManager::Init(StorageItf& storage, crypto::RandomItf& random, DNSSe
             ScheduleNetworkRemoval(network.mNetworkID.CStr());
         }
 
-        mNetworkStates.try_emplace(network.mNetworkID.CStr(), std::move(networkState));
+        (void)mNetworkStates.try_emplace(network.mNetworkID.CStr(), std::move(networkState));
     }
 
     RemoveExistedNetworks();
@@ -199,7 +199,7 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
             HostInstances hostInstances;
             hostInstances.mHostInfo = host;
 
-            it->second.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
+            (void)it->second.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
 
             auto err = mStorage->AddHost(networkID, host);
             AOS_ERROR_CHECK_AND_THROW(err, "error adding host");
@@ -230,9 +230,9 @@ Error NetworkManager::GetNodeNetworkParams(const String& networkID, const String
 
         NetworkState networkState;
         networkState.mNetwork = network;
-        networkState.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
+        (void)networkState.mHostInstances.try_emplace(nodeID.CStr(), std::move(hostInstances));
 
-        mNetworkStates.try_emplace(networkID.CStr(), std::move(networkState));
+        (void)mNetworkStates.try_emplace(networkID.CStr(), std::move(networkState));
 
         ScheduleNetworkRemoval(networkID.CStr());
 
@@ -263,7 +263,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
 
     std::vector<std::string> hosts;
 
-    std::transform(serviceData.mHosts.begin(), serviceData.mHosts.end(), std::back_inserter(hosts),
+    (void)std::transform(serviceData.mHosts.begin(), serviceData.mHosts.end(), std::back_inserter(hosts),
         [](const auto& host) { return host.CStr(); });
 
     auto targets = GetInstanceTargets(instanceIdent);
@@ -339,12 +339,12 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
             return err;
         }
 
-        itHost->second.mInstances.try_emplace(instanceIdent, *instance);
+        (void)itHost->second.mInstances.try_emplace(instanceIdent, *instance);
 
         auto rollbackInstance = DeferRelease(&instanceIdent, [this, &itHost, &IP, &err](const InstanceIdent* ident) {
             if (!err.IsNone()) {
-                itHost->second.mInstances.erase(*ident);
-                mHosts.erase(IP);
+                (void)itHost->second.mInstances.erase(*ident);
+                (void)mHosts.erase(IP);
             }
         });
 
@@ -547,14 +547,14 @@ Error NetworkManager::LoadNetworkHosts(const Network& network, NetworkState& net
         }
 
         for (const auto& instance : *instances) {
-            hostInstances.mInstances.try_emplace(instance.mInstanceIdent, instance);
+            (void)hostInstances.mInstances.try_emplace(instance.mInstanceIdent, instance);
 
             for (const auto& hostname : instance.mHosts) {
                 mHosts[instance.mIP.CStr()].emplace_back(hostname.CStr());
             }
         }
 
-        networkState.mHostInstances.try_emplace(host.mNodeID.CStr(), std::move(hostInstances));
+        (void)networkState.mHostInstances.try_emplace(host.mNodeID.CStr(), std::move(hostInstances));
     }
 
     return ErrorEnum::eNone;
@@ -592,7 +592,7 @@ Error NetworkManager::UpdateInstanceNetwork(const InstanceIdent& instanceIdent, 
         }
     });
 
-    mHosts.erase(instance.mIP.CStr());
+    (void)mHosts.erase(instance.mIP.CStr());
 
     if (err = AddInstanceHosts(instance.mIP.CStr(), hosts); !err.IsNone()) {
         return err;
@@ -617,7 +617,7 @@ Error NetworkManager::UpdateInstanceNetwork(const InstanceIdent& instanceIdent, 
     }
 
     // Finish the rollback guard before releasing the mutex.
-    rollbackHosts.Release();
+    (void)rollbackHosts.Release();
 
     return ErrorEnum::eNone;
 }
@@ -905,12 +905,12 @@ bool NetworkManager::MigrateInstanceFromOtherNode(const InstanceIdent& instanceI
         dnsServers = itInstance->second.mDNSServers;
 
         mIpSubnet.ReleaseIPToSubnet(networkState.mNetwork.mNetworkID.CStr(), IP.CStr());
-        mHosts.erase(IP.CStr());
+        (void)mHosts.erase(IP.CStr());
 
         auto err = mStorage->RemoveNetworkInstance(instanceIdent);
         AOS_ERROR_CHECK_AND_THROW(err, "error removing instance");
 
-        otherHostInstances.mInstances.erase(itInstance);
+        (void)otherHostInstances.mInstances.erase(itInstance);
 
         (void)mPendingConnections.erase(instanceIdent);
 
@@ -1107,7 +1107,7 @@ std::vector<std::string> NetworkManager::GetInstanceTargets(const InstanceIdent&
     for (const auto& [_, network] : mNetworkStates) {
         for (const auto& [nodeID, host] : network.mHostInstances) {
             if (const auto instance = host.mInstances.find(instanceIdent); instance != host.mInstances.end()) {
-                std::transform(instance->second.mHosts.begin(), instance->second.mHosts.end(),
+                (void)std::transform(instance->second.mHosts.begin(), instance->second.mHosts.end(),
                     std::back_inserter(targets), [](const auto& hostname) { return hostname.CStr(); });
             }
         }

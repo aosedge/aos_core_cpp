@@ -285,7 +285,7 @@ Error Firewall::RemoveOrphans(
     std::set<std::string, std::less<>> knownChains;
 
     for (const auto& instanceID : knownInstanceIDs) {
-        knownChains.emplace(ChainName(instanceID));
+        (void)knownChains.emplace(ChainName(instanceID));
     }
 
     std::set<std::string, std::less<>> orphanChains;
@@ -296,7 +296,7 @@ Error Firewall::RemoveOrphans(
             continue;
         }
 
-        orphanChains.insert(r.mRule.mJumpTarget);
+        (void)orphanChains.insert(r.mRule.mJumpTarget);
     }
 
     std::vector<nftables::FWListedRule> postRules;
@@ -308,7 +308,7 @@ Error Firewall::RemoveOrphans(
     std::set<std::pair<std::string, std::string>> known;
 
     for (const auto& masquerade : knownMasquerades) {
-        known.emplace(masquerade.mSubnet.CStr(), masquerade.mOutIfName.CStr());
+        (void)known.emplace(masquerade.mSubnet.CStr(), masquerade.mOutIfName.CStr());
     }
 
     std::vector<nftables::FWRuleHandle> masqueradeHandles;
@@ -444,7 +444,7 @@ Error Firewall::ReconcileArtifacts(const std::vector<nftables::FWListedRule>& fo
     for (const auto& r : forwardRules) {
         if (r.mRule.mAction == nftables::FWActionEnum::eJump
             && r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) == 0) {
-            instanceChains.insert(r.mRule.mJumpTarget);
+            (void)instanceChains.insert(r.mRule.mJumpTarget);
         }
     }
 
@@ -508,7 +508,7 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
                 return AOS_ERROR_WRAP(err);
             }
 
-            mBatchChains.insert(chain);
+            (void)mBatchChains.insert(chain);
 
             return ErrorEnum::eNone;
         }
@@ -672,7 +672,7 @@ Error Firewall::RemoveInstance(const String& instanceID)
         if (auto it = mInstanceJumps.find(chain); it != mInstanceJumps.end()) {
             jumpHandles = it->second;
 
-            mInstanceJumps.erase(it);
+            (void)mInstanceJumps.erase(it);
         }
     }
 
@@ -755,7 +755,7 @@ Error Firewall::FlushBatch()
     std::unordered_map<std::string, std::string> chainsByIP;
 
     for (const auto& entry : added) {
-        mAppliedHandles.insert(entry.mHandle);
+        (void)mAppliedHandles.insert(entry.mHandle);
 
         if (entry.mRule.mAction == nftables::FWActionEnum::eJump && !entry.mRule.mDstAddr.empty()) {
             chainsByIP[entry.mRule.mDstAddr]        = entry.mRule.mJumpTarget;
@@ -819,7 +819,7 @@ Error Firewall::Revert()
         mAppliedHandles.clear();
 
         for (const auto& chain : chains) {
-            mInstanceJumps.erase(chain);
+            (void)mInstanceJumps.erase(chain);
         }
     }
 
@@ -937,7 +937,7 @@ Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
         return AOS_ERROR_WRAP(err);
     }
 
-    mMasqueradeRules.insert(std::move(key));
+    (void)mMasqueradeRules.insert(std::move(key));
 
     return ErrorEnum::eNone;
 }
@@ -960,7 +960,7 @@ Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
     });
 
     if (it == postRules.end()) {
-        mMasqueradeRules.erase(key);
+        (void)mMasqueradeRules.erase(key);
 
         return ErrorEnum::eNone;
     }
@@ -973,7 +973,7 @@ Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
         return AOS_ERROR_WRAP(err);
     }
 
-    mMasqueradeRules.erase(key);
+    (void)mMasqueradeRules.erase(key);
 
     return ErrorEnum::eNone;
 }

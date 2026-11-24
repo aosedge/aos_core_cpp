@@ -155,7 +155,7 @@ Error ResourceManager::ParseResourceInfos()
     mResources.reserve(items->size());
 
     for (const auto& item : *items) {
-        mResources.emplace_back();
+        (void)mResources.emplace_back();
 
         try {
             ParseResourceInfo(common::utils::CaseInsensitiveObjectWrapper(item), mResources.back());

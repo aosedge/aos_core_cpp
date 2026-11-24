@@ -54,7 +54,7 @@ SystemdConn::SystemdConn()
 
 SystemdConn::~SystemdConn()
 {
-    sd_bus_unref(mBus);
+    (void)sd_bus_unref(mBus);
 }
 
 RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
@@ -201,7 +201,7 @@ void SystemdConn::Reconnect()
 {
     LOG_WRN() << "D-Bus connection lost, reconnecting";
 
-    sd_bus_unref(mBus);
+    (void)sd_bus_unref(mBus);
     mBus = nullptr;
 
     auto rv = sd_bus_open_system(&mBus);

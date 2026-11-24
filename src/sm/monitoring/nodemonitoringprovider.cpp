@@ -136,7 +136,7 @@ RetWithError<double> NodeMonitoringProvider::GetSystemCPUUsage()
     }
 
     // Skip the 'cpu' prefix.
-    file.ignore(cCPUTag.length(), cCPUUsageDelimiter);
+    (void)file.ignore(cCPUTag.length(), cCPUUsageDelimiter);
 
     std::vector<size_t> stats;
 
@@ -187,7 +187,7 @@ RetWithError<size_t> NodeMonitoringProvider::GetSystemRAMUsage()
             size_t      value = std::stoull(match[2]);
 
             std::string unit = match[3];
-            std::transform(unit.begin(), unit.end(), unit.begin(), ::toupper);
+            (void)std::transform(unit.begin(), unit.end(), unit.begin(), ::toupper);
 
             if (auto it = cUnitMapping.find(unit); it != cUnitMapping.end()) {
                 value *= it->second;

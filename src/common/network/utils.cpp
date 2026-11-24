@@ -99,7 +99,7 @@ Error GetRouteList(std::vector<RouteInfo>& routes)
             if (const auto* dst = rtnl_route_get_dst(route); dst && nl_addr_get_prefixlen(dst) > 0) {
                 char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(dst, buf, sizeof(buf));
+                (void)nl_addr2str(dst, buf, sizeof(buf));
                 info.mDestination = buf;
             }
 
@@ -107,7 +107,7 @@ Error GetRouteList(std::vector<RouteInfo>& routes)
             if (const auto* gw = rtnl_route_nh_get_gateway(nh); gw) {
                 char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(gw, buf, sizeof(buf));
+                (void)nl_addr2str(gw, buf, sizeof(buf));
                 info.mGateway = buf;
             }
         }

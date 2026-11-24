@@ -38,7 +38,7 @@ public:
     {
         mArgv.reserve(args.size() + 1);
 
-        std::transform(args.begin(), args.end(), std::back_inserter(mArgv),
+        (void)std::transform(args.begin(), args.end(), std::back_inserter(mArgv),
             [](const std::string& arg) { return const_cast<char*>(arg.c_str()); });
 
         mArgv.push_back(nullptr);
@@ -124,20 +124,20 @@ RetWithError<std::string> ExecCommand(
     }
 
     auto closePipe = DeferRelease(&pipeFDs, [](int(*fds)[2]) {
-        close((*fds)[0]);
-        close((*fds)[1]);
+        (void)close((*fds)[0]);
+        (void)close((*fds)[1]);
     });
 
     posix_spawn_file_actions_t actions;
 
-    posix_spawn_file_actions_init(&actions);
+    (void)posix_spawn_file_actions_init(&actions);
 
     auto destroyActions = DeferRelease(&actions, posix_spawn_file_actions_destroy);
 
-    posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDOUT_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDERR_FILENO);
-    posix_spawn_file_actions_addclose(&actions, pipeFDs[0]);
-    posix_spawn_file_actions_addclose(&actions, pipeFDs[1]);
+    (void)posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDOUT_FILENO);
+    (void)posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDERR_FILENO);
+    (void)posix_spawn_file_actions_addclose(&actions, pipeFDs[0]);
+    (void)posix_spawn_file_actions_addclose(&actions, pipeFDs[1]);
 
     pid_t pid = -1;
 
@@ -162,7 +162,7 @@ RetWithError<std::string> ExecCommand(
             poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
             const int n = static_cast<int>(read(pipeFDs[0], buffer, sizeof(buffer)));
             if (n > 0) {
-                outStr.append(buffer, n);
+                (void)outStr.append(buffer, n);
                 continue;
             }
         }

@@ -211,7 +211,7 @@ Error ContainerRuntime::InitInstance(const std::string& instanceID, const Instan
 
     std::lock_guard lock {mMutex};
 
-    mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
+    (void)mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
 
     return ErrorEnum::eNone;
 }
@@ -253,7 +253,7 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
                 *mMonitoring, *mItemInfoProvider, *mNetworkManager, *mPermHandler, *mResourceInfoProvider, *mOCISpec,
                 *mInstanceIDProvider);
 
-            mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
+            (void)mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
         }
 
         instance->UpdateRunStatus(RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});
@@ -291,7 +291,7 @@ Error ContainerRuntime::StopInstance(const InstanceIdent& instanceIdent, Instanc
             }
 
             instance = it->second;
-            mCurrentInstances.erase(it);
+            (void)mCurrentInstances.erase(it);
         }
 
         auto sendStatus = DeferRelease(instance.get(), [this, &instance, &status](void*) {
@@ -344,7 +344,7 @@ Error ContainerRuntime::GetInstanceIDs(const LogFilter& filter, std::vector<std:
 
     LOG_DBG() << "Get instance IDs" << Log::Field("filter", filter);
 
-    std::for_each(mCurrentInstances.begin(), mCurrentInstances.end(), [&instanceIDs, &filter](const auto& pair) {
+    (void)std::for_each(mCurrentInstances.begin(), mCurrentInstances.end(), [&instanceIDs, &filter](const auto& pair) {
         if (filter.Match(static_cast<const InstanceIdent&>(pair.first))) {
             instanceIDs.push_back(pair.second->InstanceID());
         }
@@ -417,7 +417,7 @@ Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
                       << Log::Field("state", runStatus.mState) << Log::Field(runStatus.mError);
 
             if (it->second->UpdateRunStatus(runStatus)) {
-                instancesStatuses.emplace_back();
+                (void)instancesStatuses.emplace_back();
                 it->second->GetStatus(instancesStatuses.back());
             }
         }

@@ -56,13 +56,13 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     PublicMessageHandler::RegisterServices(builder);
 
     if (GetPermHandler() != nullptr) {
-        builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
     }
 
     if (GetNodeInfo().IsMainNode()) {
-        builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
-        builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
-        builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
     }
 }
 

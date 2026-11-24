@@ -445,7 +445,7 @@ RetWithError<std::string> BootRuntime::GetPartitionVersion(size_t partitionIndex
         return {version, AOS_ERROR_WRAP(err)};
     }
 
-    auto cleanup = DeferRelease(&mountDst, [](const auto* path) { fs::RemoveAll(path->c_str()); });
+    auto cleanup = DeferRelease(&mountDst, [](const auto* path) { (void)fs::RemoveAll(path->c_str()); });
 
     PartInfo partInfo;
 
@@ -474,7 +474,7 @@ RetWithError<std::string> BootRuntime::GetPartitionVersion(size_t partitionIndex
 
     std::string line;
 
-    std::getline(versionFile, line);
+    (void)std::getline(versionFile, line);
 
     LOG_DBG() << "Version file content" << Log::Field("line", line.c_str());
 
@@ -565,7 +565,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
     }
 
     std::error_code ec;
-    std::filesystem::copy_file(imageArchivePath.CStr(), packedImagePath, ec);
+    (void)std::filesystem::copy_file(imageArchivePath.CStr(), packedImagePath, ec);
 
     if (ec) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, ec.message().c_str()));
@@ -575,7 +575,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
         return AOS_ERROR_WRAP(res.mError);
     }
 
-    auto cleanup = DeferRelease(&imagesDir, [](const auto* path) { fs::RemoveAll(path->c_str()); });
+    auto cleanup = DeferRelease(&imagesDir, [](const auto* path) { (void)fs::RemoveAll(path->c_str()); });
 
     try {
         const auto& toDevice = mPartitionDevices.at(partitionIndex);
@@ -629,17 +629,17 @@ Error BootRuntime::StoreData(const std::string_view filename, const BootData& da
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     try {
-        json->set("itemId", data.mItemID.CStr());
-        json->set("subjectId", data.mSubjectID.CStr());
-        json->set("instance", data.mInstance);
-        json->set("manifestDigest", data.mManifestDigest.CStr());
-        json->set("state", data.mState.ToString().CStr());
-        json->set("type", data.mType.ToString().CStr());
-        json->set("version", data.mVersion.CStr());
-        json->set("preinstalled", data.mPreinstalled);
+        (void)json->set("itemId", data.mItemID.CStr());
+        (void)json->set("subjectId", data.mSubjectID.CStr());
+        (void)json->set("instance", data.mInstance);
+        (void)json->set("manifestDigest", data.mManifestDigest.CStr());
+        (void)json->set("state", data.mState.ToString().CStr());
+        (void)json->set("type", data.mType.ToString().CStr());
+        (void)json->set("version", data.mVersion.CStr());
+        (void)json->set("preinstalled", data.mPreinstalled);
 
         if (data.mPartitionIndex.HasValue()) {
-            json->set("partitionIndex", data.mPartitionIndex.GetValue());
+            (void)json->set("partitionIndex", data.mPartitionIndex.GetValue());
         }
 
         json->stringify(file);

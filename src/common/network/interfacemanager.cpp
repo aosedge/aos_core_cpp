@@ -45,14 +45,14 @@ namespace {
 Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
 {
     char savedNsPath[64] = {};
-    snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
+    (void)snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
 
     int savedNsFd = open(savedNsPath, O_RDONLY | O_CLOEXEC);
     if (savedNsFd < 0) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
-    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](const int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](const int* fd) { (void)close(*fd); });
 
     int targetNsFd = open(netNSPath.c_str(), O_RDONLY | O_CLOEXEC);
     if (targetNsFd < 0) {
@@ -60,7 +60,7 @@ Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
             Error(ErrorEnum::eFailed, ("failed to open netns " + netNSPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](const int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](const int* fd) { (void)close(*fd); });
 
     if (setns(targetNsFd, CLONE_NEWNET) != 0) {
         return AOS_ERROR_WRAP(
@@ -397,7 +397,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
             if (const auto* local = rtnl_addr_get_local(addr); local) {
                 char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(local, buf, sizeof(buf));
+                (void)nl_addr2str(local, buf, sizeof(buf));
                 ipAddr.mIP = buf;
             }
 
@@ -473,7 +473,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr) const
 
         char brdStr[INET_ADDRSTRLEN] = {};
 
-        inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
+        (void)inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
 
         struct nl_addr* brd = nullptr;
 
@@ -717,7 +717,7 @@ Error InterfaceManager::CreateVethToNamespace(
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { (void)close(*fd); });
 
     auto host = DeferRelease(rtnl_link_veth_alloc(), rtnl_link_put);
     if (!host) {
@@ -812,7 +812,7 @@ Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& 
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { (void)close(*fd); });
 
     auto [sock, err] = CreateNetlinkSocket();
     if (!err.IsNone()) {
@@ -992,7 +992,7 @@ Error InterfaceManager::SetHairpin(const String& ifname, bool enable)
             Error(ErrorEnum::eFailed, ("failed to open " + sysfsPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](const int* f) { close(*f); });
+    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](const int* f) { (void)close(*f); });
 
     if (const char value = enable ? '1' : '0'; write(fd, &value, 1) != 1) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,

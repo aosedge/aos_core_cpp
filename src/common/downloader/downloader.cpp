@@ -102,7 +102,7 @@ Error Downloader::Download(
     auto releaseDigest = DeferRelease(&context.mDigest, [this](const std::string* digest) {
         std::lock_guard lock {mMutex};
 
-        mDigestsInProgress.erase(*digest);
+        (void)mDigestsInProgress.erase(*digest);
     });
 
     Error err;
@@ -314,7 +314,7 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 Error Downloader::RestartDownload(const String& url, const String& path, ProgressContext* context)
 {
     try {
-        std::filesystem::remove(path.CStr());
+        (void)std::filesystem::remove(path.CStr());
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
@@ -381,7 +381,7 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
             return Error(ErrorEnum::eFailed, "file not found");
         }
 
-        std::filesystem::copy_file(path, outfilename.CStr(), std::filesystem::copy_options::overwrite_existing);
+        (void)std::filesystem::copy_file(path, outfilename.CStr(), std::filesystem::copy_options::overwrite_existing);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {

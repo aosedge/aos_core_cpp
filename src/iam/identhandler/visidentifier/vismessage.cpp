@@ -21,18 +21,18 @@ namespace aos::iam::visidentifier {
 VISMessage::VISMessage(const VISAction& action)
     : mAction(action)
 {
-    mJsonObject.set(cActionTagName, mAction.ToString().CStr());
+    (void)mJsonObject.set(cActionTagName, mAction.ToString().CStr());
 }
 
 VISMessage::VISMessage(const VISAction& action, const std::string& requestId, const std::string& path)
     : VISMessage(action)
 {
     if (!requestId.empty()) {
-        mJsonObject.set(cRequestIdTagName, requestId);
+        (void)mJsonObject.set(cRequestIdTagName, requestId);
     }
 
     if (!path.empty()) {
-        mJsonObject.set(cPathTagName, path);
+        (void)mJsonObject.set(cPathTagName, path);
     }
 }
 

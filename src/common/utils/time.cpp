@@ -39,7 +39,7 @@ RetWithError<Duration> ParseStringDuration(const std::string& durationStr)
         std::smatch match = *i;
         std::string unit  = match[2].str();
 
-        std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
+        (void)std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
 
         totalDuration += units.at(unit) * std::stoll(match[1].str());
     }

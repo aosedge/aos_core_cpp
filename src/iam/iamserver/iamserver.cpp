@@ -294,7 +294,7 @@ void IAMServer::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
     // Postpone the restart so certificate updates are not blocked, and reload the service certificate
     // after the cert handler releases its lock. Root-certificate notifications do not carry that certificate.
     mCertChangedResult = std::async(std::launch::async, [this]() {
-        sleep(1);
+        (void)sleep(1);
 
         auto certInfo = std::make_unique<CertInfo>();
 
@@ -336,7 +336,7 @@ void IAMServer::CreatePublicServer(const std::string& addr, const std::shared_pt
 
     common::utils::SetGRPCServerOptions(builder);
 
-    builder.AddListeningPort(addr, credentials);
+    (void)builder.AddListeningPort(addr, credentials);
 
     mPublicMessageHandler.RegisterServices(builder);
 
@@ -352,7 +352,7 @@ void IAMServer::CreateProtectedServer(
 
     common::utils::SetGRPCServerOptions(builder);
 
-    builder.AddListeningPort(addr, credentials);
+    (void)builder.AddListeningPort(addr, credentials);
 
     mProtectedMessageHandler.RegisterServices(builder);
 

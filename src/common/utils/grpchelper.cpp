@@ -217,7 +217,7 @@ bool WaitForChannelReady(const std::shared_ptr<grpc::Channel>& channel, std::chr
 
         const auto pollDeadline = std::min(now + cPollInterval, deadline);
 
-        channel->WaitForStateChange(state, pollDeadline);
+        (void)channel->WaitForStateChange(state, pollDeadline);
     }
 }
 

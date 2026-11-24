@@ -256,7 +256,7 @@ void PublicNodesService::ConnectionLoop()
 
         LOG_WRN() << "Connection failed" << Log::Field("retryingInSec", cReconnectInterval.count());
 
-        mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
+        (void)mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
     }
 
     LOG_DBG() << "Connection loop stopped";

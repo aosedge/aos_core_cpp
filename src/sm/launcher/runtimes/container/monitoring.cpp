@@ -39,7 +39,7 @@ Error Monitoring::StartInstanceMonitoring(
     try {
         LOG_DBG() << "Start instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
-        mInstanceMonitoringCache.insert_or_assign(instanceID, MonitoringData {{}, partInfos, uid});
+        (void)mInstanceMonitoringCache.insert_or_assign(instanceID, MonitoringData {{}, partInfos, uid});
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -54,7 +54,7 @@ Error Monitoring::StopInstanceMonitoring(const std::string& instanceID)
     try {
         LOG_DBG() << "Stop instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
-        mInstanceMonitoringCache.erase(instanceID);
+        (void)mInstanceMonitoringCache.erase(instanceID);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
