@@ -162,7 +162,7 @@ RetWithError<StaticString<cVersionLen>> GetCurrentVersion(const std::string& ver
     }
 
     std::string versionFileContent;
-    std::getline(versionFile, versionFileContent);
+    (void)std::getline(versionFile, versionFileContent);
 
     Poco::StringTokenizer tokenizer(versionFileContent, "=", Poco::StringTokenizer::TOK_TRIM);
 
@@ -171,7 +171,7 @@ RetWithError<StaticString<cVersionLen>> GetCurrentVersion(const std::string& ver
     }
 
     std::string version = tokenizer[1].c_str();
-    Poco::removeInPlace(version, '"');
+    (void)Poco::removeInPlace(version, '"');
 
     StaticString<cVersionLen> versionStr;
 
@@ -380,7 +380,9 @@ Error RootfsRuntime::Start()
         }
     }
 
-    mStatusReceiver->OnInstancesStatusesReceived(*statuses);
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(*statuses); !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instances statuses" << Log::Field(sendErr);
+    }
 
     // Health check is started after start statuses are sent, so its result is always received after them.
     if (runHealthCheck) {
@@ -501,7 +503,10 @@ Error RootfsRuntime::StopInstance(const InstanceIdent& instance, InstanceStatus&
         }
     }
 
-    mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+        !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instance status" << Log::Field(sendErr);
+    }
 
     return err;
 }
@@ -578,7 +583,10 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
     // Status receiver is called outside of runtime lock: the launcher calls the runtime under its own lock.
     KeepFirstError(status->mError, SendRebootRequest());
 
-    mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
+        !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instance status" << Log::Field(sendErr);
+    }
 }
 
 void RootfsRuntime::JoinHealthCheck()
@@ -600,7 +608,7 @@ Error RootfsRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = utils::CreateRuntimeInfo(mRuntimeConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo);
+    if (auto err = utils::CreateRuntimeInfo(mRuntimeConfig.mType, *nodeInfo, cMaxNumRootfsInstances, mRuntimeInfo);
         !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
@@ -1273,7 +1281,7 @@ Error RootfsRuntime::GetImageManifest(const String& digest, oci::ImageManifest& 
         return AOS_ERROR_WRAP(err);
     }
 
-    if (manifest.mLayers.Size() == 0) {
+    if (manifest.mLayers.IsEmpty()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "image manifest has no layers"));
     }
 
@@ -1305,9 +1313,7 @@ Error RootfsRuntime::CopyImage(const oci::ImageManifest& manifest) const
     const auto imagePath = GetPath(cImageFileName);
     const auto tmpPath   = GetTmpPath(imagePath);
 
-    std::error_code ec;
-
-    if (!std::filesystem::copy_file(
+    if (std::error_code ec; !std::filesystem::copy_file(
             imageArchivePath.CStr(), tmpPath, std::filesystem::copy_options::overwrite_existing, ec)) { // NOSONAR
         (void)RemoveFile(tmpPath);
 

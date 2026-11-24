@@ -73,7 +73,7 @@ aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path);
  * @param path json path.
  * @return Poco::Dynamic::Var.
  */
-Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& path);
+Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var& object, const std::vector<std::string>& path);
 
 /**
  * Wrapper for Poco::JSON::Object::Ptr with case-insensitive keys.
@@ -163,7 +163,7 @@ public:
      *
      * @return Poco::JSON::Object::Ptr.
      */
-    operator Poco::JSON::Object::Ptr() const;
+    explicit operator Poco::JSON::Object::Ptr() const;
 
     /**
      * Gets object by key.
@@ -197,7 +197,7 @@ void ForEach(const CaseInsensitiveObjectWrapper& object, const std::string& key,
 
     Poco::JSON::Array::Ptr array = object.GetArray(key);
 
-    std::for_each(array->begin(), array->end(), f);
+    (void)std::for_each(array->begin(), array->end(), f);
 }
 
 /**
@@ -219,7 +219,7 @@ std::vector<T> GetArrayValue(const CaseInsensitiveObjectWrapper& object, const s
 
     Poco::JSON::Array::Ptr array = object.GetArray(key);
 
-    std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
+    (void)std::transform(array->begin(), array->end(), std::back_inserter(result), parserFunc);
 
     return result;
 }
@@ -250,7 +250,7 @@ Poco::JSON::Array::Ptr ToJsonArray(const Container& container, ConverterFunc con
     auto jsonArr = Poco::makeShared<Poco::JSON::Array>();
 
     for (const auto& elem : container) {
-        jsonArr->add(converterFunc(elem));
+        (void)jsonArr->add(converterFunc(elem));
     }
 
     return jsonArr;

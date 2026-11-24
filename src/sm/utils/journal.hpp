@@ -27,6 +27,16 @@ public:
     ~Journal();
 
     /**
+     * Copy constructor is deleted.
+     */
+    Journal(const Journal&) = delete;
+
+    /**
+     * Copy assignment is deleted.
+     */
+    Journal& operator=(const Journal&) = delete;
+
+    /**
      * Seeks to a specific realtime timestamp.
      *
      * @param time realtime timestamp.

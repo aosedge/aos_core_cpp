@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <string_view>
 #include <unordered_map>
 
 #include <Poco/DigestEngine.h>
@@ -38,6 +39,19 @@ namespace aos::common::utils {
  * Static
  **********************************************************************************************************************/
 
+static size_t GetDigestSize(const std::string& algorithm)
+{
+    if (algorithm == "sha256") {
+        return 32;
+    }
+
+    if (algorithm == "sha384") {
+        return 48;
+    }
+
+    return 64;
+}
+
 static void ValidateEncoded(const std::string& algorithm, const std::string& encoded)
 {
     auto it = cAnchoredEncodedRegexps.find(algorithm);
@@ -47,7 +61,7 @@ static void ValidateEncoded(const std::string& algorithm, const std::string& enc
 
     const std::regex& r = it->second;
 
-    if (encoded.length() != 2 * (algorithm == "sha256" ? 32 : algorithm == "sha384" ? 48 : 64)) {
+    if (encoded.length() != 2 * GetDigestSize(algorithm)) {
         throw std::runtime_error("Invalid encoded length");
     }
 
@@ -141,7 +155,7 @@ Error ValidateDigest(const Digest& digest)
 {
     auto [algorithm, hex] = ParseDigest(digest);
 
-    std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
+    (void)std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
     if (cAnchoredEncodedRegexps.find(algorithm) == cAnchoredEncodedRegexps.end()) {
         return Error(ErrorEnum::eInvalidArgument, "unsupported algorithm");
@@ -160,7 +174,7 @@ RetWithError<Digest> CalculateDirDigest(const std::string& dir)
 {
     std::vector<std::string> files = CollectFiles(dir);
 
-    std::sort(files.begin(), files.end(), [](const std::string& a, const std::string& b) { return a < b; });
+    std::sort(files.begin(), files.end(), [](std::string_view a, std::string_view b) { return a < b; });
 
     Poco::SHA2Engine h;
 
@@ -176,7 +190,7 @@ RetWithError<Digest> CalculateDirDigest(const std::string& dir)
 
         Poco::SHA2Engine         hf;
         Poco::DigestOutputStream dos(hf);
-        Poco::StreamCopier::copyStream(fileStream, dos);
+        (void)Poco::StreamCopier::copyStream(fileStream, dos);
 
         std::string hash = Poco::DigestEngine::digestToHex(hf.digest()) + "  " + fs::relative(file, dir).string();
 

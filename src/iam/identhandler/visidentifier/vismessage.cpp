@@ -7,6 +7,8 @@
 
 #include <Poco/JSON/Stringifier.h>
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 
@@ -18,21 +20,21 @@ namespace aos::iam::visidentifier {
  * Public
  **********************************************************************************************************************/
 
-VISMessage::VISMessage(const VISAction action)
+VISMessage::VISMessage(const VISAction& action)
     : mAction(action)
 {
-    mJsonObject.set(cActionTagName, mAction.ToString().CStr());
+    (void)mJsonObject.set(cActionTagName, mAction.ToString().CStr());
 }
 
-VISMessage::VISMessage(const VISAction action, const std::string& requestId, const std::string& path)
+VISMessage::VISMessage(const VISAction& action, const std::string& requestId, const std::string& path)
     : VISMessage(action)
 {
     if (!requestId.empty()) {
-        mJsonObject.set(cRequestIdTagName, requestId);
+        (void)mJsonObject.set(cRequestIdTagName, requestId);
     }
 
     if (!path.empty()) {
-        mJsonObject.set(cPathTagName, path);
+        (void)mJsonObject.set(cPathTagName, path);
     }
 }
 
@@ -45,15 +47,19 @@ VISMessage::VISMessage(const std::string& jsonStr)
         aos::Tie(objectVar, err) = aos::common::utils::ParseJson(jsonStr);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse as json");
 
-        mJsonObject = std::move(*objectVar.extract<JsonObject::Ptr>());
+        mJsonObject = *objectVar.extract<JsonObject::Ptr>();
 
-        mAction.FromString(mJsonObject.getValue<std::string>(cActionTagName).c_str());
+        const auto action = mJsonObject.getValue<std::string>(cActionTagName);
+
+        if (auto actionErr = mAction.FromString(action.c_str()); !actionErr.IsNone()) {
+            LOG_WRN() << "Unknown VIS action" << aos::Log::Field("action", action.c_str());
+        }
     } catch (const Poco::Exception& e) {
         AOS_ERROR_THROW(AOS_ERROR_WRAP(aos::ErrorEnum::eFailed), e.message());
     }
 }
 
-bool VISMessage::Is(const VISAction actionType) const
+bool VISMessage::Is(const VISAction& actionType) const
 {
     return mAction == actionType;
 }

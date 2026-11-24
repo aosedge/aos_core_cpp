@@ -228,7 +228,7 @@ void SMController::OnConnect()
 
     std::lock_guard lock {mMutex};
 
-    for (auto& handler : mSMHandlers) {
+    for (const auto& handler : mSMHandlers) {
         handler->OnConnect();
     }
 }
@@ -239,7 +239,7 @@ void SMController::OnDisconnect()
 
     std::lock_guard lock {mMutex};
 
-    for (auto& handler : mSMHandlers) {
+    for (const auto& handler : mSMHandlers) {
         handler->OnDisconnect();
     }
 }
@@ -272,7 +272,7 @@ grpc::Status SMController::RegisterSM(grpc::ServerContext*                      
     {
         std::lock_guard lock {mMutex};
 
-        mSMHandlers.erase(std::remove(mSMHandlers.begin(), mSMHandlers.end(), handler), mSMHandlers.end());
+        (void)mSMHandlers.erase(std::remove(mSMHandlers.begin(), mSMHandlers.end(), handler), mSMHandlers.end());
 
         mAllNodesDisconnectedCV.notify_one();
     }
@@ -419,7 +419,7 @@ void SMController::OnNodeDisconnected(const String& nodeID)
             [&nodeID](const std::shared_ptr<SMHandler>& handler) { return handler->GetNodeID() == nodeID; });
 
         if (it != mSMHandlers.end()) {
-            mSMHandlers.erase(it);
+            (void)mSMHandlers.erase(it);
         }
     }
 
@@ -485,9 +485,9 @@ Error SMController::StartServer()
 
     common::utils::SetGRPCServerOptions(builder);
 
-    builder.AddListeningPort(correctedAddress, mCredentials);
-    builder.RegisterService(static_cast<servicemanager::v5::SMService::Service*>(this));
-    builder.RegisterService(static_cast<servicemanager::v5::NetworkService::Service*>(this));
+    (void)builder.AddListeningPort(correctedAddress, mCredentials);
+    (void)builder.RegisterService(static_cast<servicemanager::v5::SMService::Service*>(this));
+    (void)builder.RegisterService(static_cast<servicemanager::v5::NetworkService::Service*>(this));
 
     mServer = builder.BuildAndStart();
     if (!mServer) {
@@ -504,13 +504,13 @@ Error SMController::StopServer()
     {
         std::lock_guard lock {mMutex};
 
-        for (auto& handler : mSMHandlers) {
+        for (const auto& handler : mSMHandlers) {
             if (handler) {
                 handler->Stop();
             }
         }
 
-        for (auto& [_, stream] : mNetworkUpdateStreams) {
+        for (const auto& [_, stream] : mNetworkUpdateStreams) {
             stream.mContext->TryCancel();
         }
 
@@ -572,8 +572,7 @@ void SMController::ScheduleRestart()
 
 void SMController::OnRestartTimer()
 {
-    auto err = RestartServer();
-    if (!err.IsNone()) {
+    if (auto err = RestartServer(); !err.IsNone()) {
         LOG_ERR() << "SM controller restart failed, retrying" << Log::Field(err);
 
         return;
@@ -590,7 +589,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
     const servicemanager::v5::SubscribeInstanceNetworkUpdatesRequest*           request,
     grpc::ServerWriter<servicemanager::v5::InstanceNetworkUpdateNotification>*  writer)
 {
-    auto nodeID = request->node_id();
+    const auto& nodeID = request->node_id();
 
     LOG_DBG() << "SubscribeInstanceNetworkUpdates" << Log::Field("nodeID", nodeID.c_str());
 
@@ -609,7 +608,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         std::unique_lock lock {mStreamMutex};
 
         while (!context->IsCancelled()) {
-            mStreamCV.wait_for(lock, cStreamPollInterval);
+            (void)mStreamCV.wait_for(lock, cStreamPollInterval);
         }
     }
 
@@ -623,7 +622,7 @@ grpc::Status SMController::SubscribeInstanceNetworkUpdates(grpc::ServerContext* 
         // Only erase if this is still the active stream (not replaced by a newer subscription)
         auto it = mNetworkUpdateStreams.find(nodeID);
         if (it != mNetworkUpdateStreams.end() && it->second.mWriter == writer) {
-            mNetworkUpdateStreams.erase(it);
+            (void)mNetworkUpdateStreams.erase(it);
 
             active = true;
         }

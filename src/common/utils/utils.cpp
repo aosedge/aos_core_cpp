@@ -41,7 +41,7 @@ std::string Base64Encode(std::string_view decoded)
     Poco::Base64Encoder encoder(encodedStream);
 
     encoder << decoded;
-    encoder.close();
+    (void)encoder.close();
 
     return encodedStream.str();
 }

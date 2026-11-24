@@ -27,18 +27,23 @@ struct ExposedPort {
     /**
      * Compares exposed ports.
      *
+     * @param lhs exposed port.
      * @param rhs other exposed port.
      * @return bool.
      */
-    bool operator==(const ExposedPort& rhs) const { return mProtocol == rhs.mProtocol && mPort == rhs.mPort; }
+    friend bool operator==(const ExposedPort& lhs, const ExposedPort& rhs)
+    {
+        return lhs.mProtocol == rhs.mProtocol && lhs.mPort == rhs.mPort;
+    }
 
     /**
      * Compares exposed ports.
      *
+     * @param lhs exposed port.
      * @param rhs other exposed port.
      * @return bool.
      */
-    bool operator!=(const ExposedPort& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const ExposedPort& lhs, const ExposedPort& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -56,23 +61,25 @@ struct Instance {
     /**
      * Compares instances.
      *
+     * @param lhs instance.
      * @param rhs other instance.
      * @return bool.
      */
-    bool operator==(const Instance& rhs) const
+    friend bool operator==(const Instance& lhs, const Instance& rhs)
     {
-        return mNetworkID == rhs.mNetworkID && mNodeID == rhs.mNodeID && mInstanceIdent == rhs.mInstanceIdent
-            && mIP == rhs.mIP && mExposedPorts == rhs.mExposedPorts && mDNSServers == rhs.mDNSServers
-            && mHosts == rhs.mHosts;
+        return lhs.mNetworkID == rhs.mNetworkID && lhs.mNodeID == rhs.mNodeID
+            && lhs.mInstanceIdent == rhs.mInstanceIdent && lhs.mIP == rhs.mIP && lhs.mExposedPorts == rhs.mExposedPorts
+            && lhs.mDNSServers == rhs.mDNSServers && lhs.mHosts == rhs.mHosts;
     }
 
     /**
      * Compares instances.
      *
+     * @param lhs instance.
      * @param rhs other instance.
      * @return bool.
      */
-    bool operator!=(const Instance& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const Instance& lhs, const Instance& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -85,18 +92,23 @@ struct Host {
     /**
      * Compares hosts.
      *
+     * @param lhs host.
      * @param rhs other host.
      * @return bool.
      */
-    bool operator==(const Host& rhs) const { return mNodeID == rhs.mNodeID && mIP == rhs.mIP; }
+    friend bool operator==(const Host& lhs, const Host& rhs)
+    {
+        return lhs.mNodeID == rhs.mNodeID && lhs.mIP == rhs.mIP;
+    }
 
     /**
      * Compares hosts.
      *
+     * @param lhs host.
      * @param rhs other host.
      * @return bool.
      */
-    bool operator!=(const Host& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const Host& lhs, const Host& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -109,21 +121,23 @@ struct HostInstances {
     /**
      * Compares host instances.
      *
+     * @param lhs host instances.
      * @param rhs other host instances.
      * @return bool.
      */
-    bool operator==(const HostInstances& rhs) const
+    friend bool operator==(const HostInstances& lhs, const HostInstances& rhs)
     {
-        return mHostInfo == rhs.mHostInfo && mInstances == rhs.mInstances;
+        return lhs.mHostInfo == rhs.mHostInfo && lhs.mInstances == rhs.mInstances;
     }
 
     /**
      * Compares host instances.
      *
+     * @param lhs host instances.
      * @param rhs other host instances.
      * @return bool.
      */
-    bool operator!=(const HostInstances& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const HostInstances& lhs, const HostInstances& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -137,21 +151,23 @@ struct Network {
     /**
      * Compares networks.
      *
+     * @param lhs network.
      * @param rhs other network.
      * @return bool.
      */
-    bool operator==(const Network& rhs) const
+    friend bool operator==(const Network& lhs, const Network& rhs)
     {
-        return mNetworkID == rhs.mNetworkID && mSubnet == rhs.mSubnet && mVlanID == rhs.mVlanID;
+        return lhs.mNetworkID == rhs.mNetworkID && lhs.mSubnet == rhs.mSubnet && lhs.mVlanID == rhs.mVlanID;
     }
 
     /**
      * Compares networks.
      *
+     * @param lhs network.
      * @param rhs other network.
      * @return bool.
      */
-    bool operator!=(const Network& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const Network& lhs, const Network& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -170,23 +186,26 @@ struct PendingConnection {
     /**
      * Compares pending connections.
      *
+     * @param lhs pending connection.
      * @param rhs other pending connection.
      * @return bool.
      */
-    bool operator==(const PendingConnection& rhs) const
+    friend bool operator==(const PendingConnection& lhs, const PendingConnection& rhs)
     {
-        return mRequesterIdent == rhs.mRequesterIdent && mNodeID == rhs.mNodeID && mNetworkID == rhs.mNetworkID
-            && mRequesterIP == rhs.mRequesterIP && mRequesterSubnet == rhs.mRequesterSubnet && mTarget == rhs.mTarget
-            && mPort == rhs.mPort && mProtocol == rhs.mProtocol;
+        return lhs.mRequesterIdent == rhs.mRequesterIdent && lhs.mNodeID == rhs.mNodeID
+            && lhs.mNetworkID == rhs.mNetworkID && lhs.mRequesterIP == rhs.mRequesterIP
+            && lhs.mRequesterSubnet == rhs.mRequesterSubnet && lhs.mTarget == rhs.mTarget && lhs.mPort == rhs.mPort
+            && lhs.mProtocol == rhs.mProtocol;
     }
 
     /**
      * Compares pending connections.
      *
+     * @param lhs pending connection.
      * @param rhs other pending connection.
      * @return bool.
      */
-    bool operator!=(const PendingConnection& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const PendingConnection& lhs, const PendingConnection& rhs) { return !(lhs == rhs); }
 };
 
 /**
@@ -199,21 +218,23 @@ struct NetworkState {
     /**
      * Compares network states.
      *
+     * @param lhs network state.
      * @param rhs other network state.
      * @return bool.
      */
-    bool operator==(const NetworkState& rhs) const
+    friend bool operator==(const NetworkState& lhs, const NetworkState& rhs)
     {
-        return mNetwork == rhs.mNetwork && mHostInstances == rhs.mHostInstances;
+        return lhs.mNetwork == rhs.mNetwork && lhs.mHostInstances == rhs.mHostInstances;
     }
 
     /**
      * Compares network states.
      *
+     * @param lhs network state.
      * @param rhs other network state.
      * @return bool.
      */
-    bool operator!=(const NetworkState& rhs) const { return !(*this == rhs); }
+    friend bool operator!=(const NetworkState& lhs, const NetworkState& rhs) { return !(lhs == rhs); }
 };
 
 /**

@@ -254,7 +254,7 @@ Poco::JSON::Object::Ptr CertificateInfoToJSON(const crypto::CertificateInfo& cer
 {
     auto object = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    const auto certificate = common::utils::Base64Encode(std::string(
+    const auto certificate = common::utils::Base64Encode(std::string_view(
         reinterpret_cast<const char*>(certificateInfo.mCertificate.Get()), certificateInfo.mCertificate.Size()));
 
     object->set("certificate", certificate);

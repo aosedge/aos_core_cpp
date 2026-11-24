@@ -44,15 +44,15 @@ namespace {
 // Linux >= 3.8.
 Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
 {
-    char savedNsPath[64];
-    snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
+    char savedNsPath[64] = {};
+    (void)snprintf(savedNsPath, sizeof(savedNsPath), "/proc/%d/task/%d/ns/net", getpid(), gettid());
 
     int savedNsFd = open(savedNsPath, O_RDONLY | O_CLOEXEC);
     if (savedNsFd < 0) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
-    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeSaved = DeferRelease(&savedNsFd, [](const int* fd) { (void)close(*fd); });
 
     int targetNsFd = open(netNSPath.c_str(), O_RDONLY | O_CLOEXEC);
     if (targetNsFd < 0) {
@@ -60,14 +60,14 @@ Error WithNetNS(const std::string& netNSPath, const std::function<Error()>& fn)
             Error(ErrorEnum::eFailed, ("failed to open netns " + netNSPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeTarget = DeferRelease(&targetNsFd, [](const int* fd) { (void)close(*fd); });
 
     if (setns(targetNsFd, CLONE_NEWNET) != 0) {
         return AOS_ERROR_WRAP(
             Error(ErrorEnum::eFailed, ("failed to enter netns " + netNSPath + ": " + strerror(errno)).c_str()));
     }
 
-    auto restoreNs = DeferRelease(&savedNsFd, [](int* fd) {
+    auto restoreNs = DeferRelease(&savedNsFd, [](const int* fd) {
         if (setns(*fd, CLONE_NEWNET) != 0) {
             LOG_ERR() << "Failed to restore original netns: " << strerror(errno);
         }
@@ -98,6 +98,40 @@ RetWithError<std::string> GenerateMACAddress(crypto::RandomItf& random)
     }
 
     return ss.str();
+}
+
+// Broadcast address is set for IPv4 addresses only.
+void SetBroadcast(rtnl_addr* addrObj, const IPAddr& addr, int prefixlen)
+{
+    struct in_addr ipAddr;
+
+    if (inet_pton(AF_INET, addr.mIP.c_str(), &ipAddr) != 1) {
+        return;
+    }
+
+    struct in_addr netmask;
+    struct in_addr broadcast;
+
+    netmask.s_addr = htonl(static_cast<uint32_t>(~((1UL << (32 - prefixlen)) - 1)));
+
+    // Calculate broadcast: broadcast = ip | ~netmask
+    broadcast.s_addr = (ipAddr.s_addr & netmask.s_addr) | ~netmask.s_addr;
+
+    char brdStr[INET_ADDRSTRLEN] = {};
+
+    (void)inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
+
+    struct nl_addr* brd = nullptr;
+
+    if (nl_addr_parse(brdStr, addr.mFamily, &brd) < 0) {
+        return;
+    }
+
+    [[maybe_unused]] auto cleanupBrd = DeferRelease(brd, [](nl_addr* nlAddr) { nl_addr_put(nlAddr); });
+
+    if (auto errBrd = rtnl_addr_set_broadcast(addrObj, brd); errBrd < 0) {
+        LOG_WRN() << "Can't set broadcast address" << Log::Field(NLToAosErr(errBrd, "failed to set broadcast"));
+    }
 }
 
 } // namespace
@@ -164,7 +198,7 @@ Error InterfaceManager::GetLink(const String& ifname, sm::networkmanager::LinkIn
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto ret = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); ret < 0) {
         return NLToAosErr(ret, "failed to allocate link cache");
@@ -268,7 +302,7 @@ Error InterfaceManager::SetupLink(const String& ifname, const String& netNSPath)
 {
     LOG_DBG() << "Bring up interface: ifname=" << ifname;
 
-    auto doSetupLink = [&]() -> Error {
+    auto doSetupLink = [this, &ifname]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;
@@ -296,7 +330,7 @@ Error InterfaceManager::SetupLink(const String& ifname, const String& netNSPath)
     return WithNetNS(std::string(netNSPath.CStr()), doSetupLink);
 }
 
-Error InterfaceManager::AddLink(const LinkItf* link)
+Error InterfaceManager::AddLink(const LinkItf* link) const
 {
     const auto& attrs = link->GetAttrs();
 
@@ -318,10 +352,13 @@ Error InterfaceManager::AddLink(const LinkItf* link)
         rtnl_link_set_txqlen(linkObj.get(), attrs.mTxQLen);
     }
 
-    rtnl_link_set_type(linkObj.get(), link->GetType());
+    if (auto errType = rtnl_link_set_type(linkObj.get(), link->GetType()); errType < 0) {
+        return NLToAosErr(errType, "failed to set link type");
+    }
 
-    if (auto* vlan = dynamic_cast<const Vlan*>(link)) {
-        rtnl_link_vlan_set_id(linkObj.get(), vlan->GetVlanId());
+    if (const auto* vlan = dynamic_cast<const Vlan*>(link);
+        vlan && rtnl_link_vlan_set_id(linkObj.get(), static_cast<uint16_t>(vlan->GetVlanId())) < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to set VLAN ID"));
     }
 
     if (attrs.mParentIndex > 0) {
@@ -370,7 +407,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto errAddrCache = rtnl_addr_alloc_cache(sock.get(), &cacheRaw); errAddrCache < 0) {
         return NLToAosErr(errAddrCache, "failed to allocate address cache");
@@ -395,14 +432,13 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
             ipAddr.mFamily = rtnl_addr_get_family(addr);
 
             if (const auto* local = rtnl_addr_get_local(addr); local) {
-                char buf[INET6_ADDRSTRLEN];
+                char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(local, buf, sizeof(buf));
+                (void)nl_addr2str(local, buf, sizeof(buf));
                 ipAddr.mIP = buf;
             }
 
-            const char* label = rtnl_addr_get_label(addr);
-            if (label) {
+            if (const char* label = rtnl_addr_get_label(addr); label) {
                 ipAddr.mLabel = label;
             }
 
@@ -415,7 +451,7 @@ Error InterfaceManager::GetAddrList(const String& ifname, int family, Array<IPAd
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
+Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr) const
 {
     LOG_DBG() << "Add address to interface: ifname=" << ifname.CStr() << ", IP=" << addr.mIP.c_str();
 
@@ -436,11 +472,11 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
             Error(ErrorEnum::eNotFound, ("failed to get interface " + std::string(ifname.CStr())).c_str()));
     }
 
-    int ifindex = static_cast<int>(ifindexU);
+    auto ifindex = static_cast<int>(ifindexU);
 
     rtnl_addr_set_ifindex(addrObj.Get(), ifindex);
 
-    struct nl_addr* local;
+    struct nl_addr* local = nullptr;
 
     if (auto errLocal = nl_addr_parse(addr.mIP.c_str(), addr.mFamily, &local); errLocal < 0) {
         return NLToAosErr(errLocal, ("failed to parse IP address " + std::string(addr.mIP)));
@@ -448,10 +484,12 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
 
     [[maybe_unused]] auto cleanupLocal = DeferRelease(local, [](nl_addr* addr) { nl_addr_put(addr); });
 
-    rtnl_addr_set_local(addrObj.Get(), local);
+    if (auto errSetLocal = rtnl_addr_set_local(addrObj.Get(), local); errSetLocal < 0) {
+        return NLToAosErr(errSetLocal, "failed to set local address");
+    }
 
     if (!addr.mSubnet.empty()) {
-        struct nl_addr* subnet;
+        struct nl_addr* subnet = nullptr;
 
         if (auto errSubnet = nl_addr_parse(addr.mSubnet.c_str(), addr.mFamily, &subnet); errSubnet < 0) {
             return NLToAosErr(errSubnet, ("failed to parse subnet CIDR " + std::string(addr.mSubnet)));
@@ -462,28 +500,11 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
 
         rtnl_addr_set_prefixlen(addrObj.Get(), prefixlen);
 
-        struct in_addr ipAddr, netmask, broadcast;
-        inet_pton(AF_INET, addr.mIP.c_str(), &ipAddr);
-
-        netmask.s_addr = htonl(~((1UL << (32 - prefixlen)) - 1));
-
-        // Calculate broadcast: broadcast = ip | ~netmask
-        broadcast.s_addr = (ipAddr.s_addr & netmask.s_addr) | ~netmask.s_addr;
-
-        char brdStr[INET_ADDRSTRLEN];
-
-        inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
-
-        struct nl_addr* brd;
-
-        if (nl_addr_parse(brdStr, addr.mFamily, &brd) >= 0) {
-            [[maybe_unused]] auto cleanupBrd = DeferRelease(brd, [](nl_addr* addr) { nl_addr_put(addr); });
-            rtnl_addr_set_broadcast(addrObj.Get(), brd);
-        }
+        SetBroadcast(addrObj.Get(), addr, prefixlen);
     }
 
-    if (!addr.mLabel.empty()) {
-        rtnl_addr_set_label(addrObj.Get(), addr.mLabel.c_str());
+    if (!addr.mLabel.empty() && rtnl_addr_set_label(addrObj.Get(), addr.mLabel.c_str()) < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "failed to set address label"));
     }
 
     if (auto errAddrAdd = rtnl_addr_add(sock.get(), addrObj.Get(), 0); errAddrAdd < 0 && errAddrAdd != -NLE_EXIST) {
@@ -493,7 +514,7 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr)
     return ErrorEnum::eNone;
 }
 
-Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
+Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr) const
 {
     LOG_DBG() << "Delete address from interface: ifname=" << ifname.CStr() << ", IP=" << addr.mIP.c_str();
 
@@ -515,7 +536,7 @@ Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
     rtnl_link_set_name(link.get(), ifname.CStr());
     rtnl_addr_set_ifindex(addrObj.Get(), rtnl_link_get_ifindex(link.get()));
 
-    struct nl_addr* local;
+    struct nl_addr* local = nullptr;
 
     if (auto errLocal = nl_addr_parse(addr.mIP.c_str(), addr.mFamily, &local); errLocal < 0) {
         return Error(errLocal, ("failed to parse IP address " + std::string(addr.mIP)).c_str());
@@ -523,7 +544,9 @@ Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr)
 
     [[maybe_unused]] auto cleanupLocal = DeferRelease(local, [](nl_addr* addr) { nl_addr_put(addr); });
 
-    rtnl_addr_set_local(addrObj.Get(), local);
+    if (auto errSetLocal = rtnl_addr_set_local(addrObj.Get(), local); errSetLocal < 0) {
+        return NLToAosErr(errSetLocal, "failed to set local address");
+    }
 
     if (auto errAddrDelete = rtnl_addr_delete(sock.get(), addrObj.Get(), 0); errAddrDelete < 0) {
         return NLToAosErr(errAddrDelete, "failed to delete address");
@@ -612,7 +635,7 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId, const St
         return Error(ErrorEnum::eFailed, "random generator is not initialized");
     }
 
-    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << vlanId << ", master=" << master;
+    LOG_DBG() << "Create vlan: name=" << name << ", vlanId=" << static_cast<int32_t>(vlanId) << ", master=" << master;
 
     auto [parentIndex, err] = GetMasterInterfaceIndex();
     if (!err.IsNone()) {
@@ -640,7 +663,7 @@ Error InterfaceManager::CreateVlan(const String& name, uint64_t vlanId, const St
         return err;
     }
 
-    Vlan vlan(vlanAttrs, vlanId);
+    Vlan vlan(vlanAttrs, static_cast<int>(vlanId));
 
     // AddLink brings the vlan up as part of creation.
     if (err = AddLink(&vlan); !err.IsNone()) {
@@ -716,7 +739,7 @@ Error InterfaceManager::CreateVethToNamespace(
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { (void)close(*fd); });
 
     auto host = DeferRelease(rtnl_link_veth_alloc(), rtnl_link_put);
     if (!host) {
@@ -782,7 +805,7 @@ Error InterfaceManager::ConfigureInstanceInterface(
     // All three steps run inside the instance netns in a single namespace entry
     // (one setns pair) instead of one per operation. Each callee is invoked with
     // an empty netNSPath so it operates in the already-entered namespace.
-    auto doConfigure = [&]() -> Error {
+    auto doConfigure = [this, &ifname, &addr, &gateway]() -> Error {
         if (auto err = SetupLink(ifname); !err.IsNone()) {
             return err;
         }
@@ -811,14 +834,14 @@ Error InterfaceManager::MoveLinkToNamespace(const String& ifname, const String& 
             ("failed to open netns " + std::string(netNSPath.CStr()) + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](int* fd) { close(*fd); });
+    [[maybe_unused]] auto closeNsFd = DeferRelease(&nsFd, [](const int* fd) { (void)close(*fd); });
 
     auto [sock, err] = CreateNetlinkSocket();
     if (!err.IsNone()) {
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto errCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errCache < 0) {
         return NLToAosErr(errCache, "failed to allocate link cache");
@@ -850,13 +873,13 @@ Error InterfaceManager::RenameLink(const String& ifname, const String& newName, 
 {
     LOG_DBG() << "Rename link" << Log::Field("ifname", ifname) << Log::Field("newName", newName);
 
-    auto doRename = [&]() -> Error {
+    auto doRename = [&ifname, &newName]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;
         }
 
-        nl_cache* cacheRaw;
+        nl_cache* cacheRaw = nullptr;
 
         if (auto errCache = rtnl_link_alloc_cache(sock.get(), AF_UNSPEC, &cacheRaw); errCache < 0) {
             return NLToAosErr(errCache, "failed to allocate link cache");
@@ -918,7 +941,7 @@ Error InterfaceManager::AddRoute(const String& destination, const String& gatewa
 {
     LOG_DBG() << "Add route" << Log::Field("dst", destination) << Log::Field("gw", gateway);
 
-    auto doAddRoute = [&]() -> Error {
+    auto doAddRoute = [&destination, &gateway]() -> Error {
         auto [sock, err] = CreateNetlinkSocket();
         if (!err.IsNone()) {
             return err;
@@ -942,7 +965,9 @@ Error InterfaceManager::AddRoute(const String& destination, const String& gatewa
 
         [[maybe_unused]] auto cleanupDst = DeferRelease(dst, [](nl_addr* a) { nl_addr_put(a); });
 
-        rtnl_route_set_dst(route.Get(), dst);
+        if (auto errDst = rtnl_route_set_dst(route.Get(), dst); errDst < 0) {
+            return NLToAosErr(errDst, "failed to set route destination");
+        }
 
         auto* nh = rtnl_route_nh_alloc();
         if (!nh) {
@@ -991,11 +1016,9 @@ Error InterfaceManager::SetHairpin(const String& ifname, bool enable)
             Error(ErrorEnum::eFailed, ("failed to open " + sysfsPath + ": " + strerror(errno)).c_str()));
     }
 
-    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](int* f) { close(*f); });
+    [[maybe_unused]] auto closeFd = DeferRelease(&fd, [](const int* f) { (void)close(*f); });
 
-    const char value = enable ? '1' : '0';
-
-    if (write(fd, &value, 1) != 1) {
+    if (const char value = enable ? '1' : '0'; write(fd, &value, 1) != 1) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed,
             ("failed to write hairpin_mode for " + std::string(ifname.CStr()) + ": " + strerror(errno)).c_str()));
     }
@@ -1017,10 +1040,9 @@ RetWithError<int> InterfaceManager::GetMasterInterfaceIndex() const
         return {-1, err};
     }
 
-    auto it = std::find_if(
-        routes.begin(), routes.end(), [](const RouteInfo& route) { return !route.mDestination.has_value(); });
-
-    if (it != routes.end()) {
+    if (auto it = std::find_if(
+            routes.begin(), routes.end(), [](const RouteInfo& route) { return !route.mDestination.has_value(); });
+        it != routes.end()) {
         return it->mLinkIndex;
     }
 

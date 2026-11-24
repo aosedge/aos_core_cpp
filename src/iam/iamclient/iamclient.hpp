@@ -94,7 +94,7 @@ private:
     Error ProcessUpdateRootCerts(const iamanager::v7::UpdateRootCertsRequest& request);
     Error ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCertsFingerprintsRequest& request);
 
-    Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates);
+    Error CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates) const;
 
     Error SendCreateKeyResponse(const String& nodeID, const String& type, const String& csr, const Error& error);
     Error SendApplyCertResponse(const String& nodeID, const String& type, const String& certURL,

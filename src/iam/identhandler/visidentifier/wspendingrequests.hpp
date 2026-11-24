@@ -57,10 +57,14 @@ public:
     /**
      * Compares request params.
      *
+     * @param lhs request param.
      * @param rhs request param to compare with.
      * @return bool.
      */
-    bool operator<(const RequestParams& rhs) const;
+    friend bool operator<(const RequestParams& lhs, const RequestParams& rhs)
+    {
+        return lhs.mRequestId < rhs.mRequestId;
+    }
 
 private:
     std::string mRequestId;

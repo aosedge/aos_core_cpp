@@ -29,6 +29,11 @@ public:
     };
 
     /**
+     * Destructor.
+     */
+    virtual ~Logger() = default;
+
+    /**
      * Initializes logging system.
      *
      * @return aos::Error.
@@ -40,7 +45,7 @@ public:
      *
      * @param backend logger backend.
      */
-    void SetBackend(Backend backend)
+    void SetBackend(Backend backend) // NOSONAR cpp:S5817 - changes the logger state
     {
         std::lock_guard lock(sMutex);
 
@@ -52,7 +57,7 @@ public:
      *
      * @param level log level.
      */
-    void SetLogLevel(aos::LogLevel level)
+    void SetLogLevel(const aos::LogLevel& level) // NOSONAR cpp:S5817 - changes the logger state
     {
         std::lock_guard lock(sMutex);
 
@@ -72,15 +77,15 @@ protected:
     static bool sColored;
 
 private:
-    static void StdIOCallback(const String& module, aos::LogLevel level, const aos::String& message);
-    static void JournaldCallback(const String& module, aos::LogLevel level, const aos::String& message);
+    static void StdIOCallback(const String& moduleName, aos::LogLevel level, const aos::String& message);
+    static void JournaldCallback(const String& moduleName, aos::LogLevel level, const aos::String& message);
 
     static void        SetColored(bool colored) { sColored = colored; }
-    static int         GetSyslogPriority(aos::LogLevel level);
-    static std::string GetModule(const String& module);
+    static int         GetSyslogPriority(const aos::LogLevel& level);
+    static std::string GetModule(const String& moduleName);
 
     virtual std::string GetCurrentTime();
-    virtual std::string GetLogLevel(aos::LogLevel level);
+    virtual std::string GetLogLevel(const aos::LogLevel& level);
 
     static std::mutex    sMutex;
     static Backend       sBackend;

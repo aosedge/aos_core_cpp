@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <functional>
 #include <mutex>
 
 #include <core/common/tools/logger.hpp>
@@ -24,7 +25,7 @@ namespace {
 const std::array<const char*, 10> cSkipNetworks {"127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12",
     "172.17.0.0/16", "172.18.0.0/16", "172.19.0.0/16", "172.20.0.0/14", "172.24.0.0/14", "172.28.0.0/14"};
 
-bool HasPrefix(const std::string& s, const std::string& p)
+bool HasPrefix(std::string_view s, std::string_view p)
 {
     return s.size() >= p.size() && s.compare(0, p.size(), p) == 0;
 }
@@ -118,7 +119,7 @@ Error TrafficMonitor::Stop()
     return ErrorEnum::eNone;
 }
 
-void TrafficMonitor::SetPeriod(TrafficPeriod period)
+void TrafficMonitor::SetPeriod(TrafficPeriod period) // NOSONAR cpp:S1238 - interface signature
 {
     std::unique_lock lock {mMutex};
 
@@ -165,7 +166,7 @@ Error TrafficMonitor::StartInstanceMonitoring(
                 return AOS_ERROR_WRAP(err);
             }
 
-            mBatchInstances.emplace_back(instanceID.CStr());
+            (void)mBatchInstances.emplace_back(instanceID.CStr());
 
             batched = true;
         }
@@ -268,11 +269,11 @@ Error TrafficMonitor::StopInstanceMonitoring(const String& instanceID)
                               << Log::Field(err);
                 }
 
-                mTrafficData.erase(it);
+                (void)mTrafficData.erase(it);
             }
         }
 
-        mInstanceChains.erase(instanceID.CStr());
+        (void)mInstanceChains.erase(instanceID.CStr());
     }
 
     return ErrorEnum::eNone;
@@ -335,7 +336,7 @@ Error TrafficMonitor::FlushBatch()
             mBatchInstances.clear();
         } else {
             for (const auto& r : added) {
-                mAppliedHandles.insert(r.mHandle);
+                (void)mAppliedHandles.insert(r.mHandle);
             }
 
             committedInstances = mBatchInstances;
@@ -418,7 +419,7 @@ Error TrafficMonitor::Revert()
 
         for (const auto& instanceID : instances) {
             if (auto it = mInstanceChains.find(instanceID); it != mInstanceChains.end()) {
-                reverted.emplace_back(instanceID, it->second);
+                (void)reverted.emplace_back(instanceID, it->second);
             }
         }
     }
@@ -433,11 +434,11 @@ Error TrafficMonitor::Revert()
         return AOS_ERROR_WRAP(err);
     }
 
-    std::set<std::string> chainNames;
+    std::set<std::string, std::less<>> chainNames;
 
     for (const auto& [instanceID, chains] : reverted) {
-        chainNames.insert(chains.mInChain);
-        chainNames.insert(chains.mOutChain);
+        (void)chainNames.insert(chains.mInChain);
+        (void)chainNames.insert(chains.mOutChain);
     }
 
     auto txn = mBackend->NewTxn();
@@ -572,7 +573,7 @@ Error TrafficMonitor::CreateInstanceChain(nftables::FWTxnItf& txn, const std::st
         return AOS_ERROR_WRAP(err);
     }
 
-    staged.emplace_back(chain, std::move(traffic));
+    (void)staged.emplace_back(chain, std::move(traffic));
 
     return ErrorEnum::eNone;
 }
@@ -616,10 +617,10 @@ void TrafficMonitor::DropBatchInstanceState(const std::vector<std::string>& inst
             continue;
         }
 
-        mTrafficData.erase(it->second.mInChain);
-        mTrafficData.erase(it->second.mOutChain);
+        (void)mTrafficData.erase(it->second.mInChain);
+        (void)mTrafficData.erase(it->second.mOutChain);
 
-        mInstanceChains.erase(it);
+        (void)mInstanceChains.erase(it);
     }
 }
 
@@ -633,7 +634,7 @@ void TrafficMonitor::PublishTrafficData(StagedTrafficData& staged)
 }
 
 Error TrafficMonitor::AppendChainCounterRules(
-    nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, const std::string& address, bool disabled)
+    nftables::FWTxnItf& txn, const std::string& chain, bool isInChain, std::string_view address, bool disabled)
 {
     if (disabled) {
         nftables::FWRule drop {};
@@ -670,6 +671,17 @@ Error TrafficMonitor::AppendChainCounterRules(
     counter.mAction  = nftables::FWActionEnum::eReturn;
 
     return txn.AddRule(cTable, chain, counter);
+}
+
+Error TrafficMonitor::ReadTrafficChainBytes(const std::string& chain, uint64_t& bytes)
+{
+    if (auto chainErr = GetTrafficChainBytes(chain, bytes); !chainErr.IsNone() && !chainErr.Is(ErrorEnum::eNotFound)) {
+        LOG_ERR() << "Can't get traffic chain bytes" << Log::Field("chain", chain.c_str()) << Log::Field(chainErr);
+
+        return chainErr;
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error TrafficMonitor::GetTrafficChainBytes(const std::string& chain, uint64_t& bytes)
@@ -729,14 +741,8 @@ Error TrafficMonitor::UpdateTrafficData()
         uint64_t value {};
 
         if (!traffic.mDisabled) {
-            if (auto chainErr = GetTrafficChainBytes(chain, value);
-                !chainErr.IsNone() && !chainErr.Is(ErrorEnum::eNotFound)) {
-                LOG_ERR() << "Can't get traffic chain bytes" << Log::Field("chain", chain.c_str())
-                          << Log::Field(chainErr);
-
-                if (err.IsNone()) {
-                    err = chainErr;
-                }
+            if (auto chainErr = ReadTrafficChainBytes(chain, value); !chainErr.IsNone() && err.IsNone()) {
+                err = chainErr;
             }
         }
 
@@ -811,7 +817,11 @@ void TrafficMonitor::ResetTrafficData(TrafficData& trafficData, bool disable)
 
 bool TrafficMonitor::IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Time& t1, const aos::Time& t2) const
 {
-    int y1 = 0, m1 = 0, d1 = 0, h1 = 0, min1 = 0;
+    int y1   = 0;
+    int m1   = 0;
+    int d1   = 0;
+    int h1   = 0;
+    int min1 = 0;
 
     if (auto err = t1.GetDate(&d1, &m1, &y1); !err.IsNone()) {
         LOG_ERR() << "Can't get date" << Log::Field(err);
@@ -825,7 +835,11 @@ bool TrafficMonitor::IsSamePeriod(TrafficPeriodEnum trafficPeriod, const aos::Ti
         return false;
     }
 
-    int y2 = 0, m2 = 0, d2 = 0, h2 = 0, min2 = 0;
+    int y2   = 0;
+    int m2   = 0;
+    int d2   = 0;
+    int h2   = 0;
+    int min2 = 0;
 
     if (auto err = t2.GetDate(&d2, &m2, &y2); !err.IsNone()) {
         LOG_ERR() << "Can't get date" << Log::Field(err);

@@ -256,7 +256,7 @@ Error Communication::Start()
         mIsRunning  = true;
 
         if (!mConfig->mCloudMessageLog.empty()) {
-            std::filesystem::create_directories(std::filesystem::path(mConfig->mCloudMessageLog).parent_path());
+            (void)std::filesystem::create_directories(std::filesystem::path(mConfig->mCloudMessageLog).parent_path());
 
             mMessageLogFile.open(mConfig->mCloudMessageLog, std::ios::app);
             if (!mMessageLogFile.is_open()) {
@@ -265,12 +265,12 @@ Error Communication::Start()
             }
         }
 
-        mThreadPool.emplace_back(&Communication::HandleConnection, this);
-        mThreadPool.emplace_back(&Communication::HandleSendQueue, this);
-        mThreadPool.emplace_back(&Communication::HandleUnacknowledgedMessages, this);
+        (void)mThreadPool.emplace_back(&Communication::HandleConnection, this);
+        (void)mThreadPool.emplace_back(&Communication::HandleSendQueue, this);
+        (void)mThreadPool.emplace_back(&Communication::HandleUnacknowledgedMessages, this);
 
         for (std::size_t i = 0; i < cMessageHandlerThreads; ++i) {
-            mThreadPool.emplace_back(&Communication::HandleReceivedMessage, this);
+            (void)mThreadPool.emplace_back(&Communication::HandleReceivedMessage, this);
         }
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
@@ -292,7 +292,7 @@ Error Communication::Stop()
 
         mIsRunning = false;
 
-        CloseConnection();
+        (void)CloseConnection();
 
         mCondVar.notify_all();
     }
@@ -371,8 +371,8 @@ Error Communication::GetBlobInfo(const String& digest, BlobInfo& blobInfo)
 
     auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    payload->set("header", CreateMessageHeader(txn));
-    payload->set("data", std::move(CreateMessageData(*request)));
+    (void)payload->set("header", CreateMessageHeader(txn));
+    (void)payload->set("data", CreateMessageData(*request));
 
     ResponseMessageVariantPtr response;
 
@@ -511,7 +511,7 @@ Error Communication::UnsubscribeListener(cloudconnection::ConnectionListenerItf&
     LOG_DBG() << "Unsubscribing connection listener";
 
     if (auto it = std::find(mSubscribers.begin(), mSubscribers.end(), &listener); it != mSubscribers.end()) {
-        mSubscribers.erase(it);
+        (void)mSubscribers.erase(it);
 
         return ErrorEnum::eNone;
     }
@@ -560,7 +560,7 @@ std::string Communication::CreateDiscoveryRequestBody() const
 
     discoveryRequest.mVersion  = cProtocolVersion;
     discoveryRequest.mSystemID = mSystemInfo.mSystemID.CStr();
-    discoveryRequest.mSupportedProtocols.emplace_back("wss");
+    (void)discoveryRequest.mSupportedProtocols.emplace_back("wss");
 
     auto err = common::cloudprotocol::ToJSON(discoveryRequest, *requestJSON);
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery request to JSON");
@@ -577,7 +577,7 @@ void Communication::ReceiveDiscoveryResponse(
     Poco::Net::HTTPClientSession& session, Poco::Net::HTTPResponse& httpResponse)
 {
     std::string responseBody;
-    Poco::StreamCopier::copyToString(session.receiveResponse(httpResponse), responseBody);
+    (void)Poco::StreamCopier::copyToString(session.receiveResponse(httpResponse), responseBody);
 
     if (httpResponse.getStatus() != Poco::Net::HTTPResponse::HTTP_OK) {
         LOG_ERR() << "Discovery request failed" << Log::Field("status", httpResponse.getStatus())
@@ -588,7 +588,7 @@ void Communication::ReceiveDiscoveryResponse(
 
     LOG_INF() << "Received discovery response" << Log::Field("content", responseBody.c_str());
 
-    mDiscoveryResponse.emplace();
+    (void)mDiscoveryResponse.emplace();
 
     auto err = common::cloudprotocol::FromJSON(responseBody, *mDiscoveryResponse);
     AOS_ERROR_CHECK_AND_THROW(err, "Failed to convert discovery response from JSON");
@@ -686,7 +686,7 @@ Error Communication::ConnectToCloud()
 
             mCloudHttpRequest.setURI(uri.getPathEtc().empty() ? "/" : uri.getPathEtc());
 
-            mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mCloudHttpRequest, mCloudHttpResponse));
+            (void)mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mCloudHttpRequest, mCloudHttpResponse));
 
             mWebSocket->setKeepAlive(true);
             mWebSocket->setReceiveTimeout(0);
@@ -700,7 +700,7 @@ Error Communication::ConnectToCloud()
             }
 
             if (mDiscoveryResponse) {
-                mDiscoveryResponse->mConnectionInfo.erase(it);
+                (void)mDiscoveryResponse->mConnectionInfo.erase(it);
             }
 
             mWebSocket.reset();
@@ -865,7 +865,7 @@ Error Communication::ReceiveFrames()
 
                 WriteToMessageLog("RX", message);
 
-                mReceiveQueue.emplace(std::move(message));
+                (void)mReceiveQueue.emplace(std::move(message));
                 mCondVar.notify_all();
             }
 
@@ -939,15 +939,16 @@ void Communication::HandleSendQueue()
 
             WriteToMessageLog("TX", data);
 
-            const auto sentBytes = mWebSocket->sendFrame(data.data(), data.size(), Poco::Net::WebSocket::FRAME_BINARY);
+            const auto sentBytes
+                = mWebSocket->sendFrame(data.data(), static_cast<int>(data.size()), Poco::Net::WebSocket::FRAME_BINARY);
 
             LOG_DBG() << "Sent message" << Log::Field("sentBytes", sentBytes) << Log::Field("message", data.c_str());
 
             if (it->Pollicy() == SendPollicy::eExpectAck) {
-                mSentMessages.emplace(it->Txn(), *it);
+                (void)mSentMessages.try_emplace(it->Txn(), *it);
             }
 
-            mSendQueue.erase(it);
+            (void)mSendQueue.erase(it);
         } catch (const Poco::Net::NetException& e) {
             LOG_ERR() << "Failed to send message" << Log::Field(common::utils::ToAosError(e));
 
@@ -975,7 +976,7 @@ void Communication::HandleUnacknowledgedMessages()
     while (true) {
         std::unique_lock lock {mMutex};
 
-        mCondVar.wait_for(lock, std::chrono::milliseconds(mConfig->mCloudResponseWaitTimeout.Milliseconds()),
+        (void)mCondVar.wait_for(lock, std::chrono::milliseconds(mConfig->mCloudResponseWaitTimeout.Milliseconds()),
             [this] { return !mIsRunning || !mSentMessages.empty(); });
 
         if (!mIsRunning) {
@@ -994,7 +995,7 @@ void Communication::HandleUnacknowledgedMessages()
                 LOG_ERR() << "Message delivery failed, max retries reached" << Log::Field("txn", it->first.c_str())
                           << Log::Field("correlationId", it->second.CorrelationID().c_str());
 
-                mResponseHandlers.erase(it->second.CorrelationID());
+                (void)mResponseHandlers.erase(it->second.CorrelationID());
             } else {
                 LOG_WRN() << "Message not acknowledged, re-enqueueing" << Log::Field("txn", it->first.c_str())
                           << Log::Field("correlationId", it->second.CorrelationID().c_str());
@@ -1061,7 +1062,8 @@ Error Communication::HandleMessage(const std::string& message)
     try {
         auto messageVariant = ParseMessage(object.GetObject("data"));
 
-        std::visit([this, &info](auto&& arg) { HandleMessage(info, arg); }, *messageVariant);
+        std::visit(
+            [this, &info](auto&& arg) { HandleMessage(info, std::forward<decltype(arg)>(arg)); }, *messageVariant);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -1073,10 +1075,10 @@ Poco::JSON::Object::Ptr Communication::CreateMessageHeader(const std::string& tx
 {
     auto header = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
-    header->set("version", cProtocolVersion);
-    header->set("systemId", mSystemInfo.mSystemID.CStr());
-    header->set("createdAt", Time::Now().ToUTCString().mValue.CStr());
-    header->set("txn", txn);
+    (void)header->set("version", cProtocolVersion);
+    (void)header->set("systemId", mSystemInfo.mSystemID.CStr());
+    (void)header->set("createdAt", Time::Now().ToUTCString().mValue.CStr());
+    (void)header->set("txn", txn);
 
     return header;
 }
@@ -1105,7 +1107,7 @@ Error Communication::GenerateUUID(String& uuid) const
 }
 
 Error Communication::EnqueueMessage(
-    Poco::JSON::Object::Ptr data, bool important, OnResponseReceivedFunc onResponseReceived)
+    Poco::JSON::Object::Ptr data, bool important, const OnResponseReceivedFunc& onResponseReceived)
 {
     if (!important && !mIsRunning) {
         return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
@@ -1118,13 +1120,13 @@ Error Communication::EnqueueMessage(
     }
 
     auto payload = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
-    payload->set("header", CreateMessageHeader(txn));
-    payload->set("data", std::move(data));
+    (void)payload->set("header", CreateMessageHeader(txn));
+    (void)payload->set("data", data);
 
     return EnqueueMessage(Message(txn, std::move(payload)), onResponseReceived);
 }
 
-Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived)
+Error Communication::EnqueueMessage(const Message& msg, const OnResponseReceivedFunc& onResponseReceived)
 {
     std::unique_lock lock {mMutex};
 
@@ -1132,7 +1134,7 @@ Error Communication::EnqueueMessage(const Message& msg, OnResponseReceivedFunc o
               << Log::Field("correlationId", msg.CorrelationID().c_str());
 
     if (onResponseReceived) {
-        mResponseHandlers.emplace(msg.CorrelationID(), onResponseReceived);
+        (void)mResponseHandlers.try_emplace(msg.CorrelationID(), onResponseReceived);
     }
 
     mSendQueue.push_back(msg);
@@ -1145,12 +1147,12 @@ Error Communication::DequeueMessage(const Message& msg)
 {
     std::lock_guard lock {mMutex};
 
-    mSendQueue.erase(std::remove_if(mSendQueue.begin(), mSendQueue.end(),
-                         [&msg](const Message& queuedMsg) { return queuedMsg.Txn() == msg.Txn(); }),
+    (void)mSendQueue.erase(std::remove_if(mSendQueue.begin(), mSendQueue.end(),
+                               [&msg](const Message& queuedMsg) { return queuedMsg.Txn() == msg.Txn(); }),
         mSendQueue.end());
 
-    mSentMessages.erase(msg.Txn());
-    mResponseHandlers.erase(msg.CorrelationID());
+    (void)mSentMessages.erase(msg.Txn());
+    (void)mResponseHandlers.erase(msg.CorrelationID());
 
     return ErrorEnum::eNone;
 }
@@ -1162,7 +1164,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const common::cloudp
     LOG_DBG() << "Received ack message" << Log::Field("txn", info.mTxn.c_str())
               << Log::Field("correlationId", ack.mCorrelationID);
 
-    mSentMessages.erase(info.mTxn);
+    (void)mSentMessages.erase(info.mTxn);
 }
 
 void Communication::HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Nack& nack)
@@ -1189,7 +1191,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const common::cloudp
     msg.ResetTimestamp(Time::Now().Add(nack.mRetryAfter));
 
     mSendQueue.push_back(std::move(msg));
-    mSentMessages.erase(it);
+    (void)mSentMessages.erase(it);
 
     mCondVar.notify_all();
 }
@@ -1293,7 +1295,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const StartProvision
         return;
     }
 
-    auto sendResponse = DeferRelease(response.get(), [this, &info](StartProvisioningResponse* response) {
+    auto sendResponse = DeferRelease(response.get(), [this, &info](const StartProvisioningResponse* response) {
         if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
             LOG_ERR() << "Send start provisioning failed" << Log::Field(err);
         }
@@ -1359,7 +1361,7 @@ void Communication::HandleMessage(const ResponseInfo& info, const FinishProvisio
         return;
     }
 
-    auto sendResponse = DeferRelease(response.get(), [this, &info](FinishProvisioningResponse* response) {
+    auto sendResponse = DeferRelease(response.get(), [this, &info](const FinishProvisioningResponse* response) {
         if (auto err = SendProvisioningResponse(info.mCorrelationID, CreateMessageData(*response)); !err.IsNone()) {
             LOG_ERR() << "Send finish provisioning failed" << Log::Field(err);
         }
@@ -1491,40 +1493,8 @@ void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCert
     // IAM cert type of secondary nodes should be sent the latest among certificates for that node.
     // And IAM certificate for the main node should be send in the end. Otherwise IAM client/server
     // restart will fail the following certificates to apply.
-    std::stable_sort(issuedCerts.begin(), issuedCerts.end(), [&](const IssuedCertData& a, const IssuedCertData& b) {
-        // IAM cert for main node should go last
-        if (a.mNodeID == mMainNodeID && a.mType == CertTypeEnum::eIAM) {
-            return false;
-        }
-
-        if (b.mNodeID == mMainNodeID && b.mType == CertTypeEnum::eIAM) {
-            return true;
-        }
-
-        // Main node certs should go last
-        if (a.mNodeID == mMainNodeID) {
-            return false;
-        }
-
-        if (b.mNodeID == mMainNodeID) {
-            return true;
-        }
-
-        if (a.mNodeID == b.mNodeID) {
-            // IAM cert should be last for the node
-            if (a.mType == CertTypeEnum::eIAM) {
-                return false;
-            }
-
-            if (b.mType == CertTypeEnum::eIAM) {
-                return true;
-            }
-
-            return false;
-        }
-
-        return a.mNodeID < b.mNodeID;
-    });
+    std::stable_sort(issuedCerts.begin(), issuedCerts.end(),
+        [this](const IssuedCertData& a, const IssuedCertData& b) { return IsIssuedCertInstalledBefore(a, b); });
 
     for (const auto& cert : issuedCerts) {
         LOG_DBG() << "Install certificate" << Log::Field("nodeID", cert.mNodeID) << Log::Field("type", cert.mType);
@@ -1557,6 +1527,42 @@ void Communication::HandleMessage(const ResponseInfo& info, const IssuedUnitCert
     }
 }
 
+bool Communication::IsIssuedCertInstalledBefore(const IssuedCertData& a, const IssuedCertData& b) const
+{
+    // IAM cert for main node should go last
+    if (a.mNodeID == mMainNodeID && a.mType == CertTypeEnum::eIAM) {
+        return false;
+    }
+
+    if (b.mNodeID == mMainNodeID && b.mType == CertTypeEnum::eIAM) {
+        return true;
+    }
+
+    // Main node certs should go last
+    if (a.mNodeID == mMainNodeID) {
+        return false;
+    }
+
+    if (b.mNodeID == mMainNodeID) {
+        return true;
+    }
+
+    if (a.mNodeID == b.mNodeID) {
+        // IAM cert should be last for the node
+        if (a.mType == CertTypeEnum::eIAM) {
+            return false;
+        }
+
+        if (b.mType == CertTypeEnum::eIAM) {
+            return true;
+        }
+
+        return false;
+    }
+
+    return a.mNodeID < b.mNodeID;
+}
+
 Error Communication::SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response)
 {
     std::promise<void> promise;
@@ -1574,7 +1580,7 @@ Error Communication::SendAndWaitResponse(const Message& msg, ResponseMessageVari
 
     if (future.wait_for(std::chrono::milliseconds(mConfig->mCloudResponseWaitTimeout.Milliseconds()))
         == std::future_status::timeout) {
-        DequeueMessage(msg);
+        (void)DequeueMessage(msg);
 
         return AOS_ERROR_WRAP(ErrorEnum::eTimeout);
     }
@@ -1589,8 +1595,8 @@ Error Communication::SendAck(const std::string& txn)
     auto msg = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     try {
-        msg->set("header", CreateMessageHeader(txn));
-        msg->set("data", std::move(CreateMessageData(common::cloudprotocol::Ack())));
+        (void)msg->set("header", CreateMessageHeader(txn));
+        (void)msg->set("data", CreateMessageData(common::cloudprotocol::Ack()));
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -1660,7 +1666,7 @@ void Communication::OnResponseReceived(const ResponseInfo& info, ResponseMessage
 
         callback = std::move(it->second);
 
-        mResponseHandlers.erase(it);
+        (void)mResponseHandlers.erase(it);
         mCondVar.notify_all();
     }
 

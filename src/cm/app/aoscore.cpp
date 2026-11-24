@@ -134,6 +134,75 @@ void AosCore::Start()
 {
     LOG_INF() << "Start CM";
 
+    StartBaseServices();
+    StartManagers();
+}
+
+void AosCore::Stop()
+{
+    LOG_INF() << "Stop CM";
+
+    mCleanupManager.ExecuteCleanups();
+}
+
+void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
+{
+    mLogger.SetBackend(backend);
+}
+
+void AosCore::SetLogLevel(const LogLevel& level)
+{
+    mLogger.SetLogLevel(level);
+}
+
+/***********************************************************************************************************************
+ * Private
+ **********************************************************************************************************************/
+
+void AosCore::InitDatabase()
+{
+    database::Config config;
+
+    config.mWorkingDir          = mConfig.mWorkingDir;
+    config.mMigrationPath       = mConfig.mMigration.mMigrationPath;
+    config.mMergedMigrationPath = mConfig.mMigration.mMergedMigrationPath;
+
+    auto err = mDatabase.Init(config);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
+}
+
+void AosCore::InitStorageState()
+{
+    auto err = mFSWatcher.Init(Time::cMinutes, 10 * Time::cSeconds, {fs::FSEventEnum::eModify});
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize FS watcher");
+
+    storagestate::Config config;
+
+    err = config.mStateDir.Assign(mConfig.mStateDir.c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't assign state dir to storage state config");
+
+    err = config.mStorageDir.Assign(mConfig.mStorageDir.c_str());
+    AOS_ERROR_CHECK_AND_THROW(err, "can't assign storage dir to storage state config");
+
+    err = mStorageState.Init(mAllocator, config, mDatabase, mCommunication, mPlatformFS, mFSWatcher, mCryptoProvider);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize storage state");
+}
+
+void AosCore::InitSMController()
+{
+    smcontroller::Config config;
+
+    config.mCertStorage = mConfig.mCertStorage;
+    config.mCMServerURL = mConfig.mCMServerURL;
+
+    auto err = mSMController.Init(config, mCommunication, mIAMClient, mCertLoader, mCryptoProvider, mImageManager,
+        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider, mNetworkManager,
+        mNetworkManager);
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM controller");
+}
+
+void AosCore::StartBaseServices()
+{
     auto err = mFSWatcher.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start FS watcher");
 
@@ -187,8 +256,11 @@ void AosCore::Start()
             LOG_ERR() << "Can't stop node info provider" << Log::Field(err);
         }
     });
+}
 
-    err = mMonitoring.Start();
+void AosCore::StartManagers()
+{
+    auto err = mMonitoring.Start();
     AOS_ERROR_CHECK_AND_THROW(err, "can't start monitoring");
 
     mCleanupManager.AddCleanup([this]() {
@@ -259,68 +331,6 @@ void AosCore::Start()
             LOG_ERR() << "Can't stop communication" << Log::Field(err);
         }
     });
-}
-
-void AosCore::Stop()
-{
-    LOG_INF() << "Stop CM";
-
-    mCleanupManager.ExecuteCleanups();
-}
-
-void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
-{
-    mLogger.SetBackend(backend);
-}
-
-void AosCore::SetLogLevel(LogLevel level)
-{
-    mLogger.SetLogLevel(level);
-}
-
-/***********************************************************************************************************************
- * Private
- **********************************************************************************************************************/
-
-void AosCore::InitDatabase()
-{
-    database::Config config;
-
-    config.mWorkingDir          = mConfig.mWorkingDir;
-    config.mMigrationPath       = mConfig.mMigration.mMigrationPath;
-    config.mMergedMigrationPath = mConfig.mMigration.mMergedMigrationPath;
-
-    auto err = mDatabase.Init(config);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize database");
-}
-
-void AosCore::InitStorageState()
-{
-    mFSWatcher.Init(Time::cMinutes, 10 * Time::cSeconds, {fs::FSEventEnum::eModify});
-
-    storagestate::Config config;
-
-    auto err = config.mStateDir.Assign(mConfig.mStateDir.c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't assign state dir to storage state config");
-
-    err = config.mStorageDir.Assign(mConfig.mStorageDir.c_str());
-    AOS_ERROR_CHECK_AND_THROW(err, "can't assign storage dir to storage state config");
-
-    err = mStorageState.Init(mAllocator, config, mDatabase, mCommunication, mPlatformFS, mFSWatcher, mCryptoProvider);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize storage state");
-}
-
-void AosCore::InitSMController()
-{
-    smcontroller::Config config;
-
-    config.mCertStorage = mConfig.mCertStorage;
-    config.mCMServerURL = mConfig.mCMServerURL;
-
-    auto err = mSMController.Init(config, mCommunication, mIAMClient, mCertLoader, mCryptoProvider, mImageManager,
-        mAlerts, mCommunication, mCommunication, mMonitoring, mLauncher, mNodeInfoProvider, mNetworkManager,
-        mNetworkManager);
-    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize SM controller");
 }
 
 } // namespace aos::cm::app

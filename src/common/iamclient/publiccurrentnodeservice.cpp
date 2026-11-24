@@ -99,8 +99,7 @@ Error PublicCurrentNodeService::GetCurrentNodeInfo(NodeInfo& nodeInfo) const
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    auto err = pbconvert::ConvertToAos(response, nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -119,9 +118,8 @@ Error PublicCurrentNodeService::SubscribeListener(aos::iamclient::CurrentNodeInf
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
-            return pbconvert::ConvertToAos(proto, aos);
-        };
+        auto convertFunc
+            = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) { return pbconvert::ConvertToAos(proto, aos); };
 
         auto notifyFunc = [](aos::iamclient::CurrentNodeInfoListenerItf& listener, const NodeInfo& nodeInfo) {
             listener.OnCurrentNodeInfoChanged(nodeInfo);

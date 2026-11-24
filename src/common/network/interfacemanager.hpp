@@ -228,7 +228,7 @@ public:
      * @param link link.
      * @return Error.
      */
-    Error AddLink(const LinkItf* link);
+    Error AddLink(const LinkItf* link) const;
 
     /**
      * Adds address.
@@ -237,7 +237,7 @@ public:
      * @param addr address.
      * @return Error.
      */
-    Error AddAddr(const String& ifname, const IPAddr& addr);
+    Error AddAddr(const String& ifname, const IPAddr& addr) const;
 
     /**
      * Deletes address.
@@ -246,7 +246,7 @@ public:
      * @param addr address.
      * @return Error.
      */
-    Error DeleteAddr(const String& ifname, const IPAddr& addr);
+    Error DeleteAddr(const String& ifname, const IPAddr& addr) const;
 
     /**
      * Gets address list.

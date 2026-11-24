@@ -230,7 +230,7 @@ void AosCore::SetLogBackend(common::logger::Logger::Backend backend)
     mLogger.SetBackend(backend);
 }
 
-void AosCore::SetLogLevel(LogLevel level)
+void AosCore::SetLogLevel(const LogLevel& level)
 {
     mLogger.SetLogLevel(level);
 }
@@ -241,7 +241,7 @@ void AosCore::SetLogLevel(LogLevel level)
 
 Error AosCore::InitCertModules(const config::Config& config)
 {
-    LOG_DBG() << "Init cert modules: " << config.mCertModules.size();
+    LOG_DBG() << "Init cert modules: " << static_cast<int32_t>(config.mCertModules.size());
 
     size_t rootCertsModulesCount = 0;
 
@@ -299,7 +299,7 @@ Error AosCore::InitCertModules(const config::Config& config)
             return AOS_ERROR_WRAP(err);
         }
 
-        mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
+        (void)mCertModules.emplace_back(std::make_pair(std::move(pkcs11Module), std::move(certModule)));
     }
 
     if (rootCertsModulesCount != 1) {

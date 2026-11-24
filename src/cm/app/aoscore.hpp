@@ -80,12 +80,14 @@ public:
      *
      * @param level log level.
      */
-    void SetLogLevel(aos::LogLevel level);
+    void SetLogLevel(const aos::LogLevel& level);
 
 private:
     void InitDatabase();
     void InitStorageState();
     void InitSMController();
+    void StartBaseServices();
+    void StartManagers();
 
     aos::HeapAllocator mAllocator;
 
@@ -123,7 +125,6 @@ private:
     common::logger::Logger                                      mLogger;
     aos::common::utils::CleanupManager                          mCleanupManager;
 
-private:
     static constexpr auto cDefaultConfigFile = "aos_cm.cfg";
 };
 

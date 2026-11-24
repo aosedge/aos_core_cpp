@@ -126,10 +126,10 @@ Error CRunRunner::StopContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Stop crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+    libcrun_error_t err = nullptr;
 
-    if (libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
+    if (libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+        libcrun_container_kill(&ctx, instanceID.c_str(), "SIGKILL", &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
     }
 
@@ -140,10 +140,10 @@ Error CRunRunner::RemoveContainer(const std::string& instanceID)
 {
     LOG_DBG() << "Remove crun container" << Log::Field("instanceID", instanceID.c_str());
 
-    libcrun_error_t   err = nullptr;
-    libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+    libcrun_error_t err = nullptr;
 
-    if (libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
+    if (libcrun_context_t ctx = MakeContext(mStateRoot, instanceID);
+        libcrun_container_delete(&ctx, nullptr, instanceID.c_str(), true, &err) < 0) {
         return AOS_ERROR_WRAP(ReleaseLibcrunError(err));
     }
 
@@ -165,7 +165,7 @@ RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& i
     libcrun_container_status_t crunStatus = {};
 
     if (libcrun_read_container_status(&crunStatus, mStateRoot.c_str(), instanceID.c_str(), &err) < 0) {
-        libcrun_error_release(&err);
+        (void)libcrun_error_release(&err);
         status.mState = InstanceStateEnum::eFailed;
 
         return {status, ErrorEnum::eNone};
@@ -176,7 +176,7 @@ RetWithError<ContainerStatus> CRunRunner::CheckProcessAlive(const std::string& i
     libcrun_free_container_status(&crunStatus);
 
     if (running <= 0) {
-        libcrun_error_release(&err);
+        (void)libcrun_error_release(&err);
 
         status.mState = InstanceStateEnum::eFailed;
     }

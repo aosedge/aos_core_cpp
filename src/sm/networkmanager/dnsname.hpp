@@ -7,6 +7,7 @@
 #ifndef AOS_SM_NETWORKMANAGER_DNSNAME_HPP_
 #define AOS_SM_NETWORKMANAGER_DNSNAME_HPP_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -79,9 +80,9 @@ private:
     RetWithError<Poco::Process::PID> ReadPidFile(const std::string& storageDir) const;
     bool                             IsDnsmasq(Poco::Process::PID pid, const std::string& storageDir) const;
 
-    std::string                              mDNSStoragePath;
-    aos::common::process::ProcessSpawnerItf* mSpawner {};
-    std::map<std::string, Entry>             mServers;
+    std::string                               mDNSStoragePath;
+    aos::common::process::ProcessSpawnerItf*  mSpawner {};
+    std::map<std::string, Entry, std::less<>> mServers;
 };
 
 } // namespace aos::sm::networkmanager

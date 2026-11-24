@@ -30,6 +30,11 @@ namespace aos::sm::alerts {
 class JournalAlerts {
 public:
     /**
+     * Destructor.
+     */
+    virtual ~JournalAlerts() = default;
+
+    /**
      * Initializes object instance.
      *
      * @param config alerts config.
@@ -68,7 +73,7 @@ private:
 
     std::optional<CoreAlert>   GetCoreComponentAlert(const utils::JournalEntry& entry, const std::string& unit);
     std::optional<SystemAlert> GetSystemAlert(const utils::JournalEntry& entry);
-    void                       WriteAlertMsg(const std::string& src, String& dst);
+    static void                WriteAlertMsg(const std::string& src, String& dst);
 
     common::config::JournalAlerts mConfig  = {};
     StorageItf*                   mStorage = nullptr;

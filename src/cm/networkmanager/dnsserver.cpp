@@ -80,7 +80,7 @@ Error DNSServer::Restart()
  * Private
  **********************************************************************************************************************/
 
-Poco::Process::PID DNSServer::FindServerProcess()
+Poco::Process::PID DNSServer::FindServerProcess() const
 {
     std::ifstream file(mDNSPidFile);
     if (!file.is_open()) {
@@ -88,19 +88,19 @@ Poco::Process::PID DNSServer::FindServerProcess()
     }
 
     std::string pidContent;
-    std::getline(file, pidContent);
+    (void)std::getline(file, pidContent);
 
     if (pidContent.empty()) {
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "process not exist - PID file is empty");
     }
 
-    Poco::trimInPlace(pidContent);
+    (void)Poco::trimInPlace(pidContent);
 
-    Poco::Process::PID pid;
+    Poco::Process::PID pid = 0;
 
     try {
         pid = Poco::NumberParser::parse(pidContent);
-    } catch (const Poco::Exception& e) {
+    } catch (const Poco::Exception&) {
         AOS_ERROR_THROW(ErrorEnum::eRuntime, "invalid PID format: " + pidContent);
     }
 

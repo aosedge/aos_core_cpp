@@ -16,7 +16,7 @@ IAMClient::~IAMClient()
 {
     StopReconnectTimer();
 
-    PublicCertService::UnsubscribeListener(*this);
+    (void)PublicCertService::UnsubscribeListener(*this);
 }
 
 Error IAMClient::Init(const std::string& iamProtectedServerURL, const std::string& iamPublicServerURL,

@@ -133,22 +133,19 @@ Error Runner::StopInstance(const std::string& instanceID)
             return mClosed || mInstancesToRestart.find(instanceID) == mInstancesToRestart.end();
         });
 
-        mRunningContainers.erase(instanceID);
+        (void)mRunningContainers.erase(instanceID);
     }
 
     auto err = mContainerRunner->StopContainer(instanceID);
-    if (!err.IsNone()) {
-        if (err.Is(ErrorEnum::eNotFound)) {
-            LOG_DBG() << "Process not found" << Log::Field("instanceID", instanceID.c_str());
+    if (err.Is(ErrorEnum::eNotFound)) {
+        LOG_DBG() << "Process not found" << Log::Field("instanceID", instanceID.c_str());
 
-            err = ErrorEnum::eNone;
-        }
+        err = ErrorEnum::eNone;
     }
 
-    if (auto removeErr = mContainerRunner->RemoveContainer(instanceID); !removeErr.IsNone()) {
-        if (!removeErr.Is(ErrorEnum::eNotFound) && err.IsNone()) {
-            err = removeErr;
-        }
+    if (auto removeErr = mContainerRunner->RemoveContainer(instanceID);
+        !removeErr.IsNone() && !removeErr.Is(ErrorEnum::eNotFound) && err.IsNone()) {
+        err = removeErr;
     }
 
     return err;
@@ -239,7 +236,7 @@ void Runner::SetInstancesToRestart()
             ++runningState.mRestartCount;
         }
 
-        mInstancesToRestart.insert(instanceID);
+        (void)mInstancesToRestart.insert(instanceID);
     }
 }
 
@@ -249,15 +246,14 @@ void Runner::MonitorContainers()
         std::optional<std::vector<RunStatus>> runStatusUpdate;
 
         {
-            std::unique_lock<std::mutex> lock {mMutex};
+            std::unique_lock lock {mMutex};
 
             if (mCondVar.wait_for(lock, cStatusPollPeriod, [this]() { return mClosed; })) {
                 return;
             }
 
-            const auto stateChanged = SyncStates();
-
-            if (stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
+            if (const auto stateChanged = SyncStates();
+                stateChanged || mRunningContainers.size() != mRunningInstances.size()) {
                 runStatusUpdate = GetRunningInstances();
             }
 
@@ -265,7 +261,9 @@ void Runner::MonitorContainers()
         }
 
         if (runStatusUpdate) {
-            mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate);
+            if (auto err = mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate); !err.IsNone()) {
+                LOG_ERR() << "Failed to update run status" << Log::Field(err);
+            }
         }
 
         RestartInstances();
@@ -276,7 +274,7 @@ std::vector<RunStatus>& Runner::GetRunningInstances() const
 {
     mRunningInstances.clear();
 
-    std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
+    (void)std::transform(mRunningContainers.begin(), mRunningContainers.end(), std::back_inserter(mRunningInstances),
         [](const auto& unit) {
             return RunStatus {unit.first, unit.second.mRunState, {}};
         });

@@ -25,6 +25,28 @@ namespace aos::common::downloader {
 
 using namespace std::chrono;
 
+namespace {
+
+void CloseFile(FILE* fp)
+{
+    if (fp) {
+        if (auto res = fclose(fp); res != 0) {
+            LOG_ERR() << "failed to close file: res=" << res;
+        }
+    }
+}
+
+Error HTTPCodeToError(long code, CURLcode res)
+{
+    if (code == utils::cIntegrityHTTPStatus) {
+        return Error(ErrorEnum::eIntegrity, "blob integrity error");
+    }
+
+    return Error(static_cast<int32_t>(code), curl_easy_strerror(res));
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -80,7 +102,7 @@ Error Downloader::Download(
     auto releaseDigest = DeferRelease(&context.mDigest, [this](const std::string* digest) {
         std::lock_guard lock {mMutex};
 
-        mDigestsInProgress.erase(*digest);
+        (void)mDigestsInProgress.erase(*digest);
     });
 
     Error err;
@@ -104,6 +126,11 @@ Error Downloader::Download(
 
 Error Downloader::ConfigureTLS(CURL* curl)
 {
+    if (auto result = curl_easy_setopt(curl, CURLOPT_SSLVERSION, static_cast<long>(CURL_SSLVERSION_TLSv1_2));
+        result != CURLE_OK) {
+        return Error(ErrorEnum::eFailed, curl_easy_strerror(result));
+    }
+
     if (!mCertProvider) {
         return ErrorEnum::eNone;
     }
@@ -165,7 +192,7 @@ CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
         LOG_ERR() << "Failed to configure downloader TLS" << utils::ToAosError(e);
 
         return CURLE_SSL_CERTPROBLEM;
-    } catch (...) {
+    } catch (...) { // NOSONAR cpp:S2738 - exceptions must not reach curl
         return CURLE_SSL_CERTPROBLEM;
     }
 
@@ -186,7 +213,7 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return CopyFile(uri, path);
     }
 
-    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), curl_easy_cleanup);
+    std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl(curl_easy_init(), &curl_easy_cleanup);
     if (!curl) {
         return Error(ErrorEnum::eFailed, "failed to init curl");
     }
@@ -205,17 +232,9 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
         return AOS_ERROR_WRAP(utils::ToAosError(e));
     }
 
-    auto fileCloser = [](FILE* fp) {
-        if (fp) {
-            if (auto res = fclose(fp); res != 0) {
-                LOG_ERR() << "failed to close file: res=" << res;
-            }
-        }
-    };
-
     // Open in append mode when resuming: if the server ignores the range, the file is truncated before the first
     // write (see CheckRangeResponse), and append mode makes the writes continue from the new end of the file.
-    std::unique_ptr<FILE, decltype(fileCloser)> fp(fopen(path.CStr(), existingSize > 0 ? "ab" : "wb"), fileCloser);
+    std::unique_ptr<FILE, decltype(&CloseFile)> fp(fopen(path.CStr(), existingSize > 0 ? "ab" : "wb"), &CloseFile);
     if (!fp) {
         return Error(ErrorEnum::eFailed, "failed to open file");
     }
@@ -268,20 +287,10 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
 
                 fp.reset();
 
-                try {
-                    std::filesystem::remove(path.CStr());
-                } catch (const std::exception& e) {
-                    return AOS_ERROR_WRAP(utils::ToAosError(e));
-                }
-
-                return DownloadImage(url, path, context);
+                return RestartDownload(url, path, context);
             }
 
-            if (code == utils::cIntegrityHTTPStatus) {
-                err = Error(ErrorEnum::eIntegrity, "blob integrity error");
-            } else {
-                err = Error(code, curl_easy_strerror(res));
-            }
+            err = HTTPCodeToError(code, res);
         } else {
             err = Error(ErrorEnum::eFailed, curl_easy_strerror(res));
         }
@@ -300,6 +309,17 @@ Error Downloader::DownloadImage(const String& url, const String& path, ProgressC
     SendAlert(context, DownloadStateEnum::eFinished, context->mDownloadedSize, context->mTotalSize);
 
     return ErrorEnum::eNone;
+}
+
+Error Downloader::RestartDownload(const String& url, const String& path, ProgressContext* context)
+{
+    try {
+        (void)std::filesystem::remove(path.CStr());
+    } catch (const std::exception& e) {
+        return AOS_ERROR_WRAP(utils::ToAosError(e));
+    }
+
+    return DownloadImage(url, path, context);
 }
 
 bool Downloader::CheckRangeResponse(WriteContext* writeContext)
@@ -351,7 +371,7 @@ size_t Downloader::WriteCallback(char* data, size_t size, size_t nmemb, void* us
 
 Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
 {
-    auto path = uri.getPath();
+    auto path = uri.getPath(); // NOSONAR cpp:S6010 - URI path is returned as string
     if (path.empty() && !uri.getHost().empty()) {
         path = uri.getHost();
     }
@@ -361,7 +381,7 @@ Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
             return Error(ErrorEnum::eFailed, "file not found");
         }
 
-        std::filesystem::copy_file(path, outfilename.CStr(), std::filesystem::copy_options::overwrite_existing);
+        (void)std::filesystem::copy_file(path, outfilename.CStr(), std::filesystem::copy_options::overwrite_existing);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -470,8 +490,8 @@ int Downloader::OnProgress(ProgressContext* context, curl_off_t dltotal, curl_of
     return 0;
 }
 
-void Downloader::SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
-    const std::string& reason, const Error& error)
+void Downloader::SendAlert(const ProgressContext* context, const DownloadState& state, size_t downloadedBytes,
+    size_t totalBytes, const std::string& reason, const Error& error)
 {
     if (!mSender) {
         return;
@@ -495,7 +515,9 @@ void Downloader::SendAlert(ProgressContext* context, DownloadState state, size_t
 
     param.SetValue<DownloadAlert>(*alert);
 
-    mSender->SendAlert(param);
+    if (auto err = mSender->SendAlert(param); !err.IsNone()) {
+        LOG_ERR() << "Failed to send download alert" << Log::Field(err);
+    }
 }
 
 } // namespace aos::common::downloader

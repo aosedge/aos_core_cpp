@@ -8,6 +8,7 @@
 #ifndef AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
 #define AOS_IAM_VISIDENTIFIER_VISIDENTIFIER_HPP_
 
+#include <functional>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -48,11 +49,11 @@ public:
      * @param value subscription value.
      * @return Error.
      */
-    Error ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var value);
+    Error ProcessSubscription(const std::string& subscriptionId, const Poco::Dynamic::Var& value);
 
 private:
-    std::mutex                     mMutex;
-    std::map<std::string, Handler> mSubscriptionMap;
+    std::mutex                                  mMutex;
+    std::map<std::string, Handler, std::less<>> mSubscriptionMap;
 };
 
 /**
@@ -63,7 +64,7 @@ public:
     /**
      * Creates a new object instance.
      */
-    VISIdentifier();
+    VISIdentifier() = default;
 
     /**
      * Initializes vis identifier.
@@ -108,7 +109,7 @@ public:
 protected:
     virtual Error  InitWSClient(const config::IdentifierConfig& config);
     void           SetWSClient(WSClientItfPtr wsClient);
-    WSClientItfPtr GetWSClient();
+    WSClientItfPtr GetWSClient() const;
     void           HandleSubscription(const std::string& message);
     void           WaitUntilConnected();
 
@@ -117,15 +118,16 @@ private:
     static constexpr const char* cSubjectsVISPath               = "Attribute.Aos.Subjects";
     static const long            cWSClientReconnectMilliseconds = 2000;
 
-    void                     Close();
-    void                     HandleConnection();
-    Error                    HandleSubjectsSubscription(Poco::Dynamic::Var value);
-    std::string              SendGetRequest(const std::string& path);
-    void                     SendUnsubscribeAllRequest();
-    void                     Subscribe(const std::string& path, VISSubscriptions::Handler&& callback);
-    std::string              GetValueByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
-    std::vector<std::string> GetValueArrayByPath(Poco::Dynamic::Var object, const std::string& valueChildTagName);
-    void                     SetUnitModelAndVersion(UnitModelInfo& info);
+    void               Close();
+    void               HandleConnection();
+    Error              HandleSubjectsSubscription(const Poco::Dynamic::Var& value);
+    std::string        SendGetRequest(const std::string& path);
+    void               SendUnsubscribeAllRequest() const;
+    void               Subscribe(const std::string& path, VISSubscriptions::Handler&& callback);
+    static std::string GetValueByPath(const Poco::Dynamic::Var& object, const std::string& valueChildTagName);
+    static std::vector<std::string> GetValueArrayByPath(
+        const Poco::Dynamic::Var& object, const std::string& valueChildTagName);
+    void SetUnitModelAndVersion(UnitModelInfo& info);
 
     std::shared_ptr<WSClientItf>                       mWsClientPtr;
     crypto::UUIDItf*                                   mUUIDProvider {};
@@ -133,8 +135,8 @@ private:
     std::optional<UnitModelInfo>                       mUnitModelInfo;
     StaticArray<StaticString<cIDLen>, cMaxNumSubjects> mSubjects;
     std::thread                                        mHandleConnectionThread;
-    Poco::Event                                        mWSClientIsConnected;
-    Poco::Event                                        mStopHandleSubjectsChangedThread;
+    Poco::Event                                        mWSClientIsConnected {Poco::Event::EVENT_MANUALRESET};
+    Poco::Event                                        mStopHandleSubjectsChangedThread {Poco::Event::EVENT_AUTORESET};
     std::mutex                                         mMutex;
     config::IdentifierConfig                           mConfig;
 };

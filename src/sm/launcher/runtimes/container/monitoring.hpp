@@ -8,6 +8,7 @@
 #define AOS_SM_LAUNCHER_RUNTIMES_CONTAINER_MONITORING_HPP_
 
 #include <mutex>
+#include <thread>
 #include <unordered_map>
 
 #include "itf/monitoring.hpp"
@@ -22,7 +23,7 @@ public:
     /**
      * Constructor.
      */
-    Monitoring();
+    Monitoring() = default;
 
     /**
      * Initializes monitoring.
@@ -80,14 +81,14 @@ private:
         uid_t                      mUID {0};
     };
 
-    double GetInstanceCPUUsage(const std::string& instanceID);
-    size_t GetInstanceCPUUSec(const std::string& instanceID);
-    size_t GetInstanceRAMUsage(const std::string& instanceID);
-    size_t GetInstanceDiskUsage(const std::string& path, uid_t uid);
+    double        GetInstanceCPUUsage(const std::string& instanceID);
+    static size_t GetInstanceCPUUSec(const std::string& instanceID);
+    static size_t GetInstanceRAMUsage(const std::string& instanceID);
+    static size_t GetInstanceDiskUsage(const std::string& path, uid_t uid);
 
     NodeInfo                                        mNodeInfo;
     networkmanager::InstanceTrafficProviderItf*     mTrafficProvider {};
-    size_t                                          mCPUCount;
+    size_t                                          mCPUCount {std::thread::hardware_concurrency()};
     mutable std::mutex                              mMutex;
     std::unordered_map<std::string, MonitoringData> mInstanceMonitoringCache;
 };

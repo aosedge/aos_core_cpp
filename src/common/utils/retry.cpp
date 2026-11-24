@@ -10,7 +10,7 @@
 
 namespace aos::common::utils {
 
-Error Retry(const std::function<Error()>& retryFunc, const std::function<void(int, Duration, Error)> retryCbk,
+Error Retry(const std::function<Error()>& retryFunc, const std::function<void(int, Duration, Error)>& retryCbk,
     int maxTry, Duration delay, Duration maxDelay)
 {
     Error err;

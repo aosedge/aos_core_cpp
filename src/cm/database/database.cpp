@@ -250,8 +250,7 @@ Error Database::Init(const Config& config)
     }
 
     try {
-        auto dirPath = std::filesystem::path(config.mWorkingDir);
-        if (!std::filesystem::exists(dirPath)) {
+        if (auto dirPath = std::filesystem::path(config.mWorkingDir); !std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 
@@ -1377,24 +1376,21 @@ void Database::ToAos(const LauncherOverrideEnvVarsRow& src, EnvVarsInstanceInfo&
     dst.mInstance.Reset();
     dst.mVariables.Clear();
 
-    const auto& itemID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eItemID)>();
-    if (!itemID.empty()) {
+    if (const auto& itemID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eItemID)>(); !itemID.empty()) {
         dst.mItemID.EmplaceValue();
 
         auto err = dst.mItemID.GetValue().Assign(itemID.c_str());
         AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign item ID");
     }
 
-    const auto& subjectID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eSubjectID)>();
-    if (!subjectID.empty()) {
+    if (const auto& subjectID = src.get<ToInt(LauncherOverrideEnvVarsColumns::eSubjectID)>(); !subjectID.empty()) {
         dst.mSubjectID.EmplaceValue();
 
         auto err = dst.mSubjectID.GetValue().Assign(subjectID.c_str());
         AOS_ERROR_CHECK_AND_THROW(AOS_ERROR_WRAP(err), "failed to assign subject ID");
     }
 
-    const auto& instanceStr = src.get<ToInt(LauncherOverrideEnvVarsColumns::eInstance)>();
-    if (!instanceStr.empty()) {
+    if (const auto& instanceStr = src.get<ToInt(LauncherOverrideEnvVarsColumns::eInstance)>(); !instanceStr.empty()) {
         uint64_t instanceValue = std::stoull(instanceStr);
         dst.mInstance.SetValue(instanceValue);
     }

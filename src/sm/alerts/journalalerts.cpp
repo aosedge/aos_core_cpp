@@ -45,7 +45,7 @@ Error JournalAlerts::Init(
 
         // Keep strings instead of precompiled regex because,
         // Poco::RegularExpression suppresses copy/move semantic, consequently they are not supported by stl containers.
-        mAlertFilters.emplace_back(filter);
+        (void)mAlertFilters.emplace_back(filter);
     }
 
     return ErrorEnum::eNone;
@@ -65,7 +65,7 @@ Error JournalAlerts::Start()
     mMonitorThread = std::thread(&JournalAlerts::MonitorJournal, this);
 
     // Start cursor persist thread.
-    Poco::TimerCallback<JournalAlerts> callback(*this, &JournalAlerts::OnTimer);
+    Poco::TimerCallback callback(*this, &JournalAlerts::OnTimer);
 
     mCursorSaveTimer.setStartInterval(cCursorSavePeriod);
     mCursorSaveTimer.setPeriodicInterval(cCursorSavePeriod);
@@ -131,12 +131,12 @@ void JournalAlerts::SetupJournal()
 
     if (!cursor.IsEmpty()) {
         mJournal->SeekCursor(cursor.CStr());
-        mJournal->Next();
+        (void)mJournal->Next();
     }
 }
 
 // cppcheck-suppress constParameterCallback
-void JournalAlerts::OnTimer(Poco::Timer& timer)
+void JournalAlerts::OnTimer(Poco::Timer& timer) // NOSONAR cpp:S995 - Poco timer callback signature
 {
     (void)timer;
 
@@ -178,8 +178,7 @@ void JournalAlerts::MonitorJournal()
             const auto waitTimeout = std::chrono::duration_cast<std::chrono::microseconds>(journalWaitTimeout);
             const auto remaining   = mJournal->Wait(waitTimeout);
 
-            auto stopped = mCondVar.wait_for(lock, remaining, [this] { return mStopped; });
-            if (stopped) {
+            if (auto stopped = mCondVar.wait_for(lock, remaining, [this] { return mStopped; }); stopped) {
                 return;
             }
 
@@ -233,10 +232,16 @@ void JournalAlerts::ProcessJournal()
 
         if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
             item.SetValue<CoreAlert>(*compAlert);
-            mSender->SendAlert(item);
+
+            if (auto err = mSender->SendAlert(item); !err.IsNone()) {
+                LOG_ERR() << "Failed to send core alert" << Log::Field(err);
+            }
         } else if (auto systemAlert = GetSystemAlert(entry); systemAlert.has_value()) {
             item.SetValue<SystemAlert>(*systemAlert);
-            mSender->SendAlert(item);
+
+            if (auto err = mSender->SendAlert(item); !err.IsNone()) {
+                LOG_ERR() << "Failed to send system alert" << Log::Field(err);
+            }
         }
     }
 }

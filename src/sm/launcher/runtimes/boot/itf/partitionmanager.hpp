@@ -30,23 +30,25 @@ struct PartInfo {
     /**
      * Compares partition info.
      *
-     * @param other other partition info.
+     * @param lhs partition info.
+     * @param rhs other partition info.
      * @return bool.
      */
-    bool operator==(const PartInfo& other) const
+    friend bool operator==(const PartInfo& lhs, const PartInfo& rhs)
     {
-        return mDevice == other.mDevice && mLabel == other.mLabel && mFSType == other.mFSType
-            && mPartUUID == other.mPartUUID && mParentDevice == other.mParentDevice
-            && mPartitionNumber == other.mPartitionNumber;
+        return lhs.mDevice == rhs.mDevice && lhs.mLabel == rhs.mLabel && lhs.mFSType == rhs.mFSType
+            && lhs.mPartUUID == rhs.mPartUUID && lhs.mParentDevice == rhs.mParentDevice
+            && lhs.mPartitionNumber == rhs.mPartitionNumber;
     }
 
     /**
      * Compares partition info.
      *
-     * @param other other partition info.
+     * @param lhs partition info.
+     * @param rhs other partition info.
      * @return bool.
      */
-    bool operator!=(const PartInfo& other) const { return !(*this == other); }
+    friend bool operator!=(const PartInfo& lhs, const PartInfo& rhs) { return !(lhs == rhs); }
 };
 
 /**

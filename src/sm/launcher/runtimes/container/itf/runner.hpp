@@ -26,21 +26,23 @@ struct RunStatus {
     /**
      * Compares run statuses.
      *
-     * @param other run status to compare.
+     * @param lhs run status.
+     * @param rhs run status to compare.
      * @return bool.
      */
-    bool operator==(const RunStatus& other) const
+    friend bool operator==(const RunStatus& lhs, const RunStatus& rhs)
     {
-        return mInstanceID == other.mInstanceID && mState == other.mState && mError == other.mError;
+        return lhs.mInstanceID == rhs.mInstanceID && lhs.mState == rhs.mState && lhs.mError == rhs.mError;
     }
 
     /**
      * Compares run statuses.
      *
-     * @param other run status to compare.
+     * @param lhs run status.
+     * @param rhs run status to compare.
      * @return bool.
      */
-    bool operator!=(const RunStatus& other) const { return !(*this == other); }
+    friend bool operator!=(const RunStatus& lhs, const RunStatus& rhs) { return !(lhs == rhs); }
 };
 
 /**

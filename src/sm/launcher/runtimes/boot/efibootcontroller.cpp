@@ -50,7 +50,7 @@ Error EFIBootController::GetPartitionDevices(std::vector<std::string>& devices) 
 
     LOG_DBG() << "Get boot partition devices" << Log::Field("count", mBootItems.size());
 
-    std::transform(mBootItems.begin(), mBootItems.end(), std::back_inserter(devices),
+    (void)std::transform(mBootItems.begin(), mBootItems.end(), std::back_inserter(devices),
         [](const BootItem& item) { return item.mDevice; });
 
     return ErrorEnum::eNone;
@@ -180,7 +180,7 @@ std::shared_ptr<PartitionManagerItf> EFIBootController::CreatePartitionManager()
     return std::make_shared<PartitionManager>();
 }
 
-RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBootEntries()
+RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBootEntries() const
 {
     LOG_DBG() << "Read EFI boot entries";
 
@@ -226,12 +226,12 @@ RetWithError<std::vector<EFIBootController::BootItem>> EFIBootController::ReadBo
     return bootItems;
 }
 
-RetWithError<uint16_t> EFIBootController::ConvertHex(const std::string& hexStr) const
+RetWithError<uint16_t> EFIBootController::ConvertHex(std::string_view hexStr) const
 {
     uint16_t result = 0;
 
-    const auto res = std::from_chars(hexStr.data(), hexStr.data() + hexStr.size(), result, 16);
-    if (res.ec != std::errc()) {
+    if (const auto res = std::from_chars(hexStr.data(), hexStr.data() + hexStr.size(), result, 16);
+        res.ec != std::errc()) {
         return {0, Error(ErrorEnum::eInvalidArgument, "invalid hex string")};
     }
 
@@ -263,7 +263,7 @@ Error EFIBootController::InitBootPartitions(const BootConfig& config)
         BootItem item;
         item.mDevice          = device;
         item.mParentDevice    = partInfo.mParentDevice;
-        item.mPartitionNumber = partInfo.mPartitionNumber;
+        item.mPartitionNumber = static_cast<int>(partInfo.mPartitionNumber);
         item.mPartitionUUID   = partInfo.mPartUUID;
 
         mBootItems.push_back(std::move(item));
@@ -297,7 +297,7 @@ Error EFIBootController::SetPartitionIDs()
             continue;
         }
 
-        bootItem.mID = nextAvailableID++;
+        bootItem.mID = static_cast<uint16_t>(nextAvailableID++);
 
         err = mEFIVar->CreateBootEntry(
             bootItem.mParentDevice, bootItem.mPartitionNumber, GetLoaderPath(), bootItem.mID);
@@ -352,7 +352,7 @@ RetWithError<std::string> EFIBootController::GetPartitionPrefix() const
     }
 
     std::string cmdline;
-    std::getline(file, cmdline);
+    (void)std::getline(file, cmdline);
 
     std::regex  rootRegex(R"(root=([^ \t]+))");
     std::smatch match;
@@ -399,7 +399,7 @@ std::vector<uint8_t> EFIBootController::ToUint8(const std::vector<uint16_t>& dat
         reinterpret_cast<const uint8_t*>(data.data()) + data.size() * sizeof(uint16_t)};
 }
 
-Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs)
+Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs) const
 {
     if (newBootIDs.empty()) {
         return ErrorEnum::eNone;
@@ -414,11 +414,11 @@ Error EFIBootController::UpdateBootOrder(const std::vector<uint16_t>& newBootIDs
 }
 
 Error EFIBootController::UpdateBootOrder(
-    const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder)
+    const std::vector<uint16_t>& newBootIDs, const std::vector<uint16_t>& oldBootOrder) const
 {
     std::vector<uint16_t> newBootOrder = newBootIDs;
 
-    std::copy_if(oldBootOrder.begin(), oldBootOrder.end(), std::back_inserter(newBootOrder),
+    (void)std::copy_if(oldBootOrder.begin(), oldBootOrder.end(), std::back_inserter(newBootOrder),
         [&newBootIDs](uint16_t id) { return std::find(newBootIDs.begin(), newBootIDs.end(), id) == newBootIDs.end(); });
 
     if (newBootOrder == oldBootOrder) {

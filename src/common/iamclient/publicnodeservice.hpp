@@ -132,6 +132,7 @@ private:
     Error CreateCredentials();
     Error RebuildStub();
     void  AdvanceCredential();
+    void  SwitchCredential();
 
     std::string                                                 mIAMPublicServerURL;
     bool                                                        mInsecureConnection {false};

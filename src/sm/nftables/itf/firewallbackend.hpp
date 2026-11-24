@@ -30,7 +30,7 @@ public:
         eNAT,
     };
 
-    static const Array<const char* const> GetStrings()
+    static Array<const char* const> GetStrings()
     {
         static const char* const sStrings[] = {"filter", "nat"};
 
@@ -53,7 +53,7 @@ public:
         eOutput,
     };
 
-    static const Array<const char* const> GetStrings()
+    static Array<const char* const> GetStrings()
     {
         static const char* const sStrings[] = {"forward", "postrouting", "input", "output"};
 
@@ -77,7 +77,7 @@ public:
         eReturn,
     };
 
-    static const Array<const char* const> GetStrings()
+    static Array<const char* const> GetStrings()
     {
         static const char* const sStrings[] = {"accept", "drop", "jump", "masquerade", "return"};
 

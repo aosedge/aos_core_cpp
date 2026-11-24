@@ -54,7 +54,7 @@ SystemdConn::SystemdConn()
 
 SystemdConn::~SystemdConn()
 {
-    sd_bus_unref(mBus);
+    (void)sd_bus_unref(mBus);
 }
 
 RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
@@ -66,13 +66,13 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &error, &reply] {
                 auto rv
                     = sd_bus_call_method(mBus, cDestination, cPath, cInterface, "ListUnits", &error, &reply, nullptr);
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return {{}, err};
     }
@@ -86,7 +86,7 @@ RetWithError<std::vector<UnitStatus>> SystemdConn::ListUnits()
 
     std::vector<UnitStatus> units;
 
-    while ((rv = sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso")) > 0) {
+    while (sd_bus_message_enter_container(reply, SD_BUS_TYPE_STRUCT, "ssssssouso") > 0) {
         const char* name        = nullptr;
         const char* activeState = nullptr;
         const char* objectPath  = nullptr;
@@ -140,13 +140,13 @@ RetWithError<UnitStatus> SystemdConn::GetUnitStatus(const std::string& name)
     sd_bus_message* reply = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &reply, &name] {
                 auto rv = sd_bus_call_method(
                     mBus, cDestination, cPath, cInterface, "GetUnit", nullptr, &reply, "s", name.c_str());
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return {{}, err};
     }
@@ -201,7 +201,7 @@ void SystemdConn::Reconnect()
 {
     LOG_WRN() << "D-Bus connection lost, reconnecting";
 
-    sd_bus_unref(mBus);
+    (void)sd_bus_unref(mBus);
     mBus = nullptr;
 
     auto rv = sd_bus_open_system(&mBus);
@@ -218,12 +218,12 @@ Error SystemdConn::StartUnit(const std::string& name, const std::string& mode, c
     sd_bus_slot* slot = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &slot] {
                 auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
 
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }
@@ -255,11 +255,11 @@ Error SystemdConn::StopUnit(const std::string& name, const std::string& mode, co
     sd_bus_slot* slot = nullptr;
 
     if (auto err = common::utils::Retry(
-            [&] {
+            [this, &slot] {
                 auto rv = sd_bus_match_signal(mBus, &slot, nullptr, cPath, cInterface, "JobRemoved", nullptr, nullptr);
                 return rv < 0 ? AOS_ERROR_WRAP(-rv) : ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }
@@ -299,11 +299,10 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
     [[maybe_unused]] auto freeErr = DeferRelease(&error, sd_bus_error_free);
 
     if (auto err = common::utils::Retry(
-            [&]() -> Error {
-                auto rv = sd_bus_call_method(
-                    mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
-
-                if (rv < 0) {
+            [this, &error, &reply, &name]() -> Error {
+                if (auto rv = sd_bus_call_method(
+                        mBus, cDestination, cPath, cInterface, "ResetFailedUnit", &error, &reply, "s", name.c_str());
+                    rv < 0) {
                     if (sd_bus_error_has_name(&error, cNoSuchUnitErr)) {
                         return AOS_ERROR_WRAP(ErrorEnum::eNotFound);
                     }
@@ -313,7 +312,7 @@ Error SystemdConn::ResetFailedUnit(const std::string& name)
 
                 return ErrorEnum::eNone;
             },
-            [&](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
+            [this](int, Duration, const Error&) { Reconnect(); }, cMaxRetries, cRetryDelay);
         !err.IsNone()) {
         return err;
     }
@@ -341,7 +340,9 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
             rv = sd_bus_wait(mBus, endTime.Sub(now).Microseconds());
             if (rv < 0) {
                 return AOS_ERROR_WRAP(-rv);
-            } else if (rv == 0) {
+            }
+
+            if (rv == 0) {
                 return AOS_ERROR_WRAP(ErrorEnum::eTimeout);
             }
         } else if (rv < 0) {
@@ -355,16 +356,14 @@ Error SystemdConn::WaitForJobCompletion(const char* jobPath, const aos::Duration
             }
         }
     }
-
-    return ErrorEnum::eFailed;
 }
 
 std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const char* jobPath)
 {
-    const char* member    = sd_bus_message_get_member(msg);
-    const char* interface = sd_bus_message_get_interface(msg);
+    const char* member = sd_bus_message_get_member(msg);
 
-    if (!member || !interface || String(member) != "JobRemoved" || std::string(interface) != cInterface) {
+    if (const char* interface = sd_bus_message_get_interface(msg);
+        !member || !interface || String(member) != "JobRemoved" || std::string(interface) != cInterface) {
         return {false, ErrorEnum::eFailed};
     }
 
@@ -373,8 +372,7 @@ std::pair<bool, Error> SystemdConn::HandleJobRemove(sd_bus_message* msg, const c
     const char* unitName   = nullptr;
     const char* result     = nullptr;
 
-    int rv = sd_bus_message_read(msg, "uoss", &jobId, &jobCurPath, &unitName, &result);
-    if (rv < 0) {
+    if (int rv = sd_bus_message_read(msg, "uoss", &jobId, &jobCurPath, &unitName, &result); rv < 0) {
         return {true, AOS_ERROR_WRAP(rv)};
     }
 

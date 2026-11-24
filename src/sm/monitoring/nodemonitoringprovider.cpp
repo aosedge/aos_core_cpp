@@ -5,6 +5,7 @@
  */
 
 #include <fstream>
+#include <functional>
 #include <numeric>
 #include <regex>
 #include <thread>
@@ -25,7 +26,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-const auto cUnitMapping = std::map<std::string, size_t> {
+const auto cUnitMapping = std::map<std::string, size_t, std::less<>> {
     {"B", 1},
     {"KB", cKilobyte},
     {"MB", cKilobyte* cKilobyte},
@@ -62,7 +63,7 @@ Error NodeMonitoringProvider::Start()
     return ErrorEnum::eNone;
 }
 
-Error NodeMonitoringProvider::Stop()
+Error NodeMonitoringProvider::Stop() // NOSONAR cpp:S5817 - counterpart of Start
 {
     LOG_DBG() << "Stop node monitoring provider";
 
@@ -135,11 +136,15 @@ RetWithError<double> NodeMonitoringProvider::GetSystemCPUUsage()
     }
 
     // Skip the 'cpu' prefix.
-    file.ignore(cCPUTag.length(), cCPUUsageDelimiter);
+    (void)file.ignore(cCPUTag.length(), cCPUUsageDelimiter);
 
     std::vector<size_t> stats;
 
-    for (size_t entry = 0; file >> entry; stats.push_back(entry)) { }
+    size_t entry = 0;
+
+    while (file >> entry) {
+        stats.push_back(entry);
+    }
 
     if (stats.size() < cCPUUsageMinEntries) {
         return {0, AOS_ERROR_WRAP(ErrorEnum::eFailed)};
@@ -150,7 +155,8 @@ RetWithError<double> NodeMonitoringProvider::GetSystemCPUUsage()
 
     const auto   idleTimeDelta  = static_cast<double>(currentCPUUsage.mIdle - mPrevSysCPUUsage.mIdle);
     const auto   totalTimeDelta = static_cast<double>(currentCPUUsage.mTotal - mPrevSysCPUUsage.mTotal);
-    const double utilization    = mNodeInfo.mMaxDMIPS * double(1.0 - idleTimeDelta / totalTimeDelta);
+    const double utilization
+        = static_cast<double>(mNodeInfo.mMaxDMIPS) * static_cast<double>(1.0 - idleTimeDelta / totalTimeDelta);
 
     mPrevSysCPUUsage = currentCPUUsage;
 
@@ -181,7 +187,7 @@ RetWithError<size_t> NodeMonitoringProvider::GetSystemRAMUsage()
             size_t      value = std::stoull(match[2]);
 
             std::string unit = match[3];
-            std::transform(unit.begin(), unit.end(), unit.begin(), ::toupper);
+            (void)std::transform(unit.begin(), unit.end(), unit.begin(), ::toupper);
 
             if (auto it = cUnitMapping.find(unit); it != cUnitMapping.end()) {
                 value *= it->second;

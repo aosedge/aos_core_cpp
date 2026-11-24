@@ -38,7 +38,7 @@ RetWithError<size_t> FSPlatform::GetTotalSize(const String& dir) const
         return {0, Error(ErrorEnum::eNotFound, "failed to get total size")};
     }
 
-    return size_t(st.f_blocks) * st.f_frsize;
+    return static_cast<size_t>(st.f_blocks) * st.f_frsize;
 }
 
 RetWithError<size_t> FSPlatform::GetDirSize(const String& dir) const
@@ -54,7 +54,7 @@ RetWithError<size_t> FSPlatform::GetAvailableSize(const String& dir) const
         return {0, Error(ErrorEnum::eNotFound, "failed to get available size")};
     }
 
-    return size_t(st.f_bavail) * st.f_frsize;
+    return static_cast<size_t>(st.f_bavail) * st.f_frsize;
 }
 
 Error FSPlatform::SetUserQuota(const String& path, uid_t uid, size_t quota) const
@@ -125,7 +125,7 @@ Error FSPlatform::Sync(const String& path, bool syncFS) const
         }
     }
 
-    close(fd);
+    (void)close(fd);
 
     return err;
 }

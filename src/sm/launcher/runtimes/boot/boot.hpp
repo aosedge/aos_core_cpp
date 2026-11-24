@@ -122,13 +122,13 @@ public:
         const InstanceIdent& instanceIdent, monitoring::InstanceMonitoringData& monitoringData) override;
 
 private:
-    static constexpr auto cNumBootPartitions = 2;
-    static constexpr auto cInstalledInstance = "installed.json";
-    static constexpr auto cPendingInstance   = "pending.json";
-    static constexpr auto cImagesDir         = "images";
-    static constexpr auto cMountDirName      = "mnt";
-    static constexpr auto cUpdateStateFile   = "update.state";
-    static constexpr auto cMaxNumInstances   = 1;
+    static constexpr auto cNumBootPartitions   = 2;
+    static constexpr auto cInstalledInstance   = "installed.json";
+    static constexpr auto cPendingInstance     = "pending.json";
+    static constexpr auto cImagesDir           = "images";
+    static constexpr auto cMountDirName        = "mnt";
+    static constexpr auto cUpdateStateFile     = "update.state";
+    static constexpr auto cMaxNumBootInstances = 1;
 
     struct BootData : public InstanceIdent {
         InstanceState                 mState {InstanceStateEnum::eActive};
@@ -158,8 +158,8 @@ private:
     Error                     GetImageManifest(const String& digest, oci::ImageManifest& manifest) const;
     Error                     InstallImageOnPartition(const oci::ImageManifest& manifest, size_t partitionIndex);
     Error                     SyncPartition(size_t from, size_t to);
-    Error                     StoreData(const std::string_view filename, const BootData& data);
-    Error                     LoadData(const std::string_view filename, BootData& data);
+    Error                     StoreData(const std::string_view filename, const BootData& data) const;
+    Error                     LoadData(const std::string_view filename, BootData& data) const;
     std::filesystem::path     GetPath(const std::string_view relativePath) const;
     size_t                    GetNextPartitionIndex(size_t currentPartition) const;
 

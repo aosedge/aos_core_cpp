@@ -103,7 +103,9 @@ StaticString<cInterfaceLen> BridgeNetwork::VethName(const String& instanceID, co
     // Longest prefix "vpeer" + 8 hex = 13 chars, within IFNAMSIZ-1 (15).
     StaticString<cInterfaceLen> name;
 
-    name.Format("%s%08x", prefix.CStr(), hash);
+    if (auto err = name.Format("%s%08x", prefix.CStr(), hash); !err.IsNone()) {
+        LOG_ERR() << "Failed to format interface name" << Log::Field(err);
+    }
 
     return name;
 }

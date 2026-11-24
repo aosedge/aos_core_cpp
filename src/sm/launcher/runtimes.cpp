@@ -50,7 +50,7 @@ Error Runtimes::Init(const Config&                              config,
                 return AOS_ERROR_WRAP(err);
             }
 
-            mRuntimes.emplace_back(std::move(runtime));
+            (void)mRuntimes.emplace_back(std::move(runtime));
         } else
 #endif
 #ifdef WITH_RUNTIME_BOOT
@@ -63,7 +63,7 @@ Error Runtimes::Init(const Config&                              config,
                 return AOS_ERROR_WRAP(err);
             }
 
-            mRuntimes.emplace_back(std::move(runtime));
+            (void)mRuntimes.emplace_back(std::move(runtime));
         } else
 #endif
 #ifdef WITH_RUNTIME_ROOTFS
@@ -76,7 +76,7 @@ Error Runtimes::Init(const Config&                              config,
                 return AOS_ERROR_WRAP(err);
             }
 
-            mRuntimes.emplace_back(std::move(runtime));
+            (void)mRuntimes.emplace_back(std::move(runtime));
         } else
 #endif
         {

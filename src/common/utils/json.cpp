@@ -29,9 +29,9 @@ std::string ToStdString(const String& str)
 CaseInsensitiveObjectWrapper::CaseInsensitiveObjectWrapper(const Poco::JSON::Object::Ptr& object)
     : mObject(object)
 {
-    for (const auto& pair : *object) {
-        if (!pair.second.isEmpty()) {
-            mKeyMap.emplace(ToLowercase(pair.first), pair.first);
+    for (const auto& [key, value] : *object) {
+        if (!value.isEmpty()) {
+            (void)mKeyMap.try_emplace(ToLowercase(key), key);
         }
     }
 }
@@ -90,7 +90,7 @@ std::string CaseInsensitiveObjectWrapper::ToLowercase(const std::string& str) co
 {
     std::string lowerStr = str;
 
-    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+    (void)std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
 
     return lowerStr;
 }
@@ -156,7 +156,7 @@ aos::RetWithError<Poco::Dynamic::Var> ReadJsonFromFile(const std::string& path)
     return ParseJson(content);
 }
 
-Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var object, const std::vector<std::string>& keys)
+Poco::Dynamic::Var FindByPath(const Poco::Dynamic::Var& object, const std::vector<std::string>& keys)
 {
     if (keys.empty()) {
         return object;

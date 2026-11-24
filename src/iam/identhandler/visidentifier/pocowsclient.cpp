@@ -53,7 +53,7 @@ void PocoWSClient::Connect()
 
         // HTTPSClientSession is not copyable or movable.
         mClientSession = std::make_unique<Poco::Net::HTTPSClientSession>(uri.getHost(), uri.getPort(), context);
-        mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mHttpRequest, mHttpResponse));
+        (void)mWebSocket.emplace(Poco::Net::WebSocket(*mClientSession, mHttpRequest, mHttpResponse));
         mWebSocket->setKeepAlive(true);
         mWebSocket->setReceiveTimeout(0);
 
@@ -130,7 +130,8 @@ PocoWSClient::ByteArray PocoWSClient::SendRequest(const std::string& requestId, 
     auto requestParams = std::make_shared<RequestParams>(requestId);
     mPendingRequests.Add(requestParams);
 
-    auto cleanupRequest = DeferRelease(requestParams.get(), [&](void*) { mPendingRequests.Remove(requestParams); });
+    auto cleanupRequest
+        = DeferRelease(requestParams.get(), [this, &requestParams](void*) { mPendingRequests.Remove(requestParams); });
 
     AsyncSendMessage(message);
 
@@ -164,9 +165,10 @@ void PocoWSClient::AsyncSendMessage(const ByteArray& message)
     try {
         mWebSocket->setSendTimeout(GetWebSocketTimeout().Microseconds());
 
-        const int len = mWebSocket->sendFrame(&message.front(), message.size(), Poco::Net::WebSocket::FRAME_TEXT);
+        const int len = mWebSocket->sendFrame(
+            &message.front(), static_cast<int>(message.size()), Poco::Net::WebSocket::FRAME_TEXT);
 
-        LOG_DBG() << "Sent " << len << "/" << message.size() << " bytes.";
+        LOG_DBG() << "Sent " << len << "/" << static_cast<int32_t>(message.size()) << " bytes.";
     } catch (const std::exception& e) {
         mWSClientErrorEvent.Set(WSClientEvent::EventEnum::FAILED, e.what());
 
@@ -227,8 +229,8 @@ void PocoWSClient::ReceiveFrames() noexcept
     LOG_DBG() << "Start receiving frames.";
 
     try {
-        int                flags;
-        int                n;
+        int                flags = 0;
+        int                n     = 0;
         Poco::Buffer<char> buffer(0);
 
         do {
@@ -280,7 +282,7 @@ void PocoWSClient::StopReceiveFramesThread()
     }
 }
 
-Duration PocoWSClient::GetWebSocketTimeout()
+Duration PocoWSClient::GetWebSocketTimeout() const
 {
     if (mConfig.mWebSocketTimeout > 0) {
         return mConfig.mWebSocketTimeout;

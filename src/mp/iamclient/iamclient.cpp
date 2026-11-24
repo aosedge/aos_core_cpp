@@ -110,7 +110,7 @@ Error IAMClient::ReceiveMessage(const iamanager::v7::IAMIncomingMessages& msg)
 
     LOG_DBG() << "Received message" << Log::Field("msg", msg.DebugString().c_str());
 
-    if (!msg.SerializeToArray(message.data(), message.size())) {
+    if (!msg.SerializeToArray(message.data(), static_cast<int>(message.size()))) {
         return Error(ErrorEnum::eRuntime, "failed to serialize message");
     }
 

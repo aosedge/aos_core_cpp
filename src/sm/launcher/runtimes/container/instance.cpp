@@ -25,7 +25,7 @@ namespace {
  * Consts
  **********************************************************************************************************************/
 
-static const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
+const char* const cBindEtcEntries[] = {"nsswitch.conf", "ssl"};
 
 } // namespace
 
@@ -89,10 +89,10 @@ Error Instance::Start()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
-        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+    auto updateRunStatus = DeferRelease(&err, [this](const Error* resultErr) {
+        if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
-            mRunStatus.mError = *err;
+            mRunStatus.mError = *resultErr;
         }
     });
 
@@ -129,10 +129,10 @@ Error Instance::Activate()
 
     Error err;
 
-    auto updateRunStatus = DeferRelease(&err, [&](const Error* err) {
-        if (!err->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
+    auto updateRunStatus = DeferRelease(&err, [this](const Error* resultErr) {
+        if (!resultErr->IsNone() && mRunStatus.mState != InstanceStateEnum::eFailed) {
             mRunStatus.mState = InstanceStateEnum::eFailed;
-            mRunStatus.mError = *err;
+            mRunStatus.mError = *resultErr;
         }
     });
 
@@ -165,7 +165,7 @@ Error Instance::Stop()
 
     Error stopErr;
 
-    auto updateRunStatus = DeferRelease(&stopErr, [&](const Error* err) {
+    auto updateRunStatus = DeferRelease(&stopErr, [this](const Error* err) {
         mRunStatus.mInstanceID = mInstanceID;
         mRunStatus.mState      = err->IsNone() ? InstanceStateEnum::eInactive : InstanceStateEnum::eFailed;
         mRunStatus.mError      = *err;
@@ -357,7 +357,7 @@ Error Instance::BindHostDirs(oci::RuntimeConfig& runtimeConfig)
     return ErrorEnum::eNone;
 }
 
-Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig)
+Error Instance::CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig) const
 {
     auto                     envVars = std::make_unique<StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>>();
     StaticString<cEnvVarLen> envVar;
@@ -438,57 +438,8 @@ Error Instance::ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeC
 
     runtimeConfig.mLinux->mSysctl = itemConfig.mSysctl;
 
-    if (itemConfig.mQuotas.mCPUDMIPSLimit.HasValue()) {
-        int64_t quota = *itemConfig.mQuotas.mCPUDMIPSLimit * cDefaultCPUPeriod * GetNumCPUCores() / mNodeInfo.mMaxDMIPS;
-        if (quota < cMinCPUQuota) {
-            quota = cMinCPUQuota;
-        }
-
-        if (auto err = SetCPULimit(quota, cDefaultCPUPeriod, runtimeConfig); !err.IsNone()) {
-            return err;
-        }
-    }
-
-    if (itemConfig.mQuotas.mRAMLimit.HasValue()) {
-        if (auto err = SetRAMLimit(*itemConfig.mQuotas.mRAMLimit, runtimeConfig); !err.IsNone()) {
-            return err;
-        }
-    }
-
-    if (itemConfig.mQuotas.mPIDsLimit.HasValue()) {
-        auto pidLimit = *itemConfig.mQuotas.mPIDsLimit;
-
-        if (auto err = SetPIDLimit(pidLimit, runtimeConfig); !err.IsNone()) {
-            return err;
-        }
-
-        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NPROC", pidLimit, pidLimit}, runtimeConfig); !err.IsNone()) {
-            return err;
-        }
-    }
-
-    if (itemConfig.mQuotas.mNoFileLimit.HasValue()) {
-        auto noFileLimit = *itemConfig.mQuotas.mNoFileLimit;
-
-        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NOFILE", noFileLimit, noFileLimit}, runtimeConfig);
-            !err.IsNone()) {
-            return err;
-        }
-    }
-
-    if (itemConfig.mQuotas.mTmpLimit.HasValue()) {
-        StaticString<cFSMountOptionLen> tmpFSOpts;
-
-        if (auto err = tmpFSOpts.Format("nosuid,strictatime,mode=1777,size=%lu", *itemConfig.mQuotas.mTmpLimit);
-            !err.IsNone()) {
-            return AOS_ERROR_WRAP(err);
-        }
-
-        auto mount = std::make_unique<Mount>("tmpfs", "/tmp", "tmpfs", tmpFSOpts);
-
-        if (auto err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
-            return err;
-        }
+    if (auto err = ApplyQuotas(itemConfig.mQuotas, runtimeConfig); !err.IsNone()) {
+        return err;
     }
 
     if (!itemConfig.mPermissions.IsEmpty()) {
@@ -511,6 +462,72 @@ Error Instance::ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeC
     }
 
     if (auto err = AddResources(itemConfig.mResources, runtimeConfig); !err.IsNone()) {
+        return err;
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::ApplyQuotas(const oci::ServiceQuotas& quotas, oci::RuntimeConfig& runtimeConfig) const
+{
+    if (quotas.mCPUDMIPSLimit.HasValue()) {
+        int64_t quota = *quotas.mCPUDMIPSLimit * cDefaultCPUPeriod * GetNumCPUCores() / mNodeInfo.mMaxDMIPS;
+        if (quota < cMinCPUQuota) {
+            quota = cMinCPUQuota;
+        }
+
+        if (auto err = SetCPULimit(quota, cDefaultCPUPeriod, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (quotas.mRAMLimit.HasValue()) {
+        if (auto err = SetRAMLimit(*quotas.mRAMLimit, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (quotas.mPIDsLimit.HasValue()) {
+        auto pidLimit = *quotas.mPIDsLimit;
+
+        if (auto err = SetPIDLimit(pidLimit, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+
+        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NPROC", pidLimit, pidLimit}, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (quotas.mNoFileLimit.HasValue()) {
+        auto noFileLimit = *quotas.mNoFileLimit;
+
+        if (auto err = AddRLimit(oci::POSIXRlimit {"RLIMIT_NOFILE", noFileLimit, noFileLimit}, runtimeConfig);
+            !err.IsNone()) {
+            return err;
+        }
+    }
+
+    if (quotas.mTmpLimit.HasValue()) {
+        if (auto err = AddTmpMount(*quotas.mTmpLimit, runtimeConfig); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::AddTmpMount(uint64_t tmpLimit, oci::RuntimeConfig& runtimeConfig)
+{
+    StaticString<cFSMountOptionLen> tmpFSOpts;
+
+    if (auto err = tmpFSOpts.Format("nosuid,strictatime,mode=1777,size=%lu", tmpLimit); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    auto mount = std::make_unique<Mount>("tmpfs", "/tmp", "tmpfs", tmpFSOpts);
+
+    if (auto err = AddMount(*mount, runtimeConfig); !err.IsNone()) {
         return err;
     }
 
@@ -593,10 +610,8 @@ Error Instance::AddDevices(
         }
 
         if (deviceParts->Size() >= 2) {
-            for (auto& ociDevice : ociDevices) {
-                if (auto err = ociDevice.mPath.Replace((*deviceParts)[0], (*deviceParts)[1], 1); !err.IsNone()) {
-                    return AOS_ERROR_WRAP(err);
-                }
+            if (auto err = ReplaceDevicePaths((*deviceParts)[0], (*deviceParts)[1], ociDevices); !err.IsNone()) {
+                return err;
             }
         }
 
@@ -604,6 +619,18 @@ Error Instance::AddDevices(
             if (auto err = AddDevice(ociDevice, permissions, runtimeConfig); !err.IsNone()) {
                 return err;
             }
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error Instance::ReplaceDevicePaths(
+    const String& hostPath, const String& containerPath, std::vector<oci::LinuxDevice>& ociDevices)
+{
+    for (auto& ociDevice : ociDevices) {
+        if (auto err = ociDevice.mPath.Replace(hostPath, containerPath, 1); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
         }
     }
 
@@ -731,11 +758,11 @@ Error Instance::PrepareRootFS(
             return AOS_ERROR_WRAP(err);
         }
 
-        layers.push_back(path->CStr());
+        layers.emplace_back(path->CStr());
     }
 
     layers.push_back(mConfig.mHostWhiteoutsDir);
-    layers.push_back("/");
+    layers.emplace_back("/");
 
     if (auto err = mFileSystem.MountServiceRootFS(common::utils::JoinPath(runtimeDir, cRootFSDir), layers);
         !err.IsNone()) {

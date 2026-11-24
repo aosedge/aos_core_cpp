@@ -27,7 +27,7 @@ AlertRulePercents AlertRulePercentsFromJSON(const common::utils::CaseInsensitive
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err = {};
 
-        Tie(percents.mMinTimeout, err) = common::utils::ParseDuration(minTimeout->c_str());
+        Tie(percents.mMinTimeout, err) = common::utils::ParseDuration(*minTimeout);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse minTimeout");
     }
 
@@ -44,7 +44,7 @@ AlertRulePoints AlertRulePointsFromJSON(const common::utils::CaseInsensitiveObje
     if (const auto minTimeout = object.GetOptionalValue<std::string>("minTimeout"); minTimeout.has_value()) {
         Error err = {};
 
-        Tie(points.mMinTimeout, err) = common::utils::ParseDuration(minTimeout->c_str());
+        Tie(points.mMinTimeout, err) = common::utils::ParseDuration(*minTimeout);
         AOS_ERROR_CHECK_AND_THROW(err, "can't parse minTimeout");
     }
 
@@ -223,7 +223,7 @@ Error ToJSON(const NodeConfig& nodeConfig, Poco::JSON::Object& json)
         json.set("resourceRatios", ResourceRatiosToJSON(*nodeConfig.mResourceRatios));
     }
 
-    if (nodeConfig.mLabels.Size() > 0) {
+    if (!nodeConfig.mLabels.IsEmpty()) {
         json.set("labels", utils::ToJsonArray(nodeConfig.mLabels, utils::ToStdString));
     }
 

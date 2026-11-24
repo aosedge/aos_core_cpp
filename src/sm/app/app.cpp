@@ -31,8 +31,7 @@ void ErrorHandler(int sig)
 {
     static constexpr auto cBacktraceSize = 32;
 
-    void*  array[cBacktraceSize];
-    size_t size;
+    void* array[cBacktraceSize] = {};
 
     switch (sig) {
     case SIGILL:
@@ -56,11 +55,11 @@ void ErrorHandler(int sig)
         break;
     }
 
-    size = backtrace(array, cBacktraceSize);
+    size_t size = backtrace(array, cBacktraceSize);
 
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    backtrace_symbols_fd(array, static_cast<int>(size), STDERR_FILENO);
 
-    raise(sig);
+    (void)raise(sig);
 }
 
 void RegisterErrorSignals()
@@ -70,10 +69,10 @@ void RegisterErrorSignals()
     act.sa_handler = ErrorHandler;
     act.sa_flags   = SA_RESETHAND;
 
-    sigaction(SIGILL, &act, nullptr);
-    sigaction(SIGABRT, &act, nullptr);
-    sigaction(SIGFPE, &act, nullptr);
-    sigaction(SIGSEGV, &act, nullptr);
+    (void)sigaction(SIGILL, &act, nullptr);
+    (void)sigaction(SIGABRT, &act, nullptr);
+    (void)sigaction(SIGFPE, &act, nullptr);
+    (void)sigaction(SIGSEGV, &act, nullptr);
 }
 
 } // namespace
@@ -117,11 +116,6 @@ void App::uninitialize()
     }
 
     mAosCore->Stop();
-}
-
-void App::reinitialize(Application& self)
-{
-    Application::reinitialize(self);
 }
 
 int App::main(const ArgVec& args)
@@ -203,8 +197,7 @@ void App::HandleLogLevel(const std::string& name, const std::string& value)
 
     aos::LogLevel level;
 
-    auto err = level.FromString(aos::String(value.c_str()));
-    if (!err.IsNone()) {
+    if (auto err = level.FromString(aos::String(value.c_str())); !err.IsNone()) {
         throw Poco::Exception("unsupported log level", value);
     }
 

@@ -70,7 +70,7 @@ RetWithError<nl_addr*> ParseAddress(const std::string& cidr);
  * @param nlError netlink error.
  * @param message error message.
  */
-void NLToAosException(int nlError, const std::string& message);
+[[noreturn]] void NLToAosException(int nlError, const std::string& message);
 
 /**
  * Converts netlink error to AOS error.

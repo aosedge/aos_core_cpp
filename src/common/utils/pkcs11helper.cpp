@@ -70,7 +70,7 @@ RetWithError<std::string> PEMEncodePKCS11URL(const std::string& url)
         return {"", AOS_ERROR_WRAP(ErrorEnum::eFailed)};
     }
 
-    if (!ASN1_STRING_set(pk11uri->uri, url.c_str(), url.length())) {
+    if (!ASN1_STRING_set(pk11uri->uri, url.c_str(), static_cast<int>(url.length()))) {
         return {"", AOS_ERROR_WRAP(ErrorEnum::eFailed)};
     }
 

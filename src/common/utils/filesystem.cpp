@@ -53,7 +53,7 @@ RetWithError<std::string> MkTmpDir(const std::string& dir, const std::string& pa
     std::vector<char> mutablePath(fullPath.begin(), fullPath.end());
     mutablePath.push_back('\0');
 
-    char* result = mkdtemp(mutablePath.data());
+    const char* result = mkdtemp(mutablePath.data());
 
     if (result == nullptr) {
         return {"", Error(ErrorEnum::eFailed, strerror(errno))};
@@ -62,7 +62,7 @@ RetWithError<std::string> MkTmpDir(const std::string& dir, const std::string& pa
     return {std::string(result), ErrorEnum::eNone};
 }
 
-RetWithError<uintmax_t> CalculateSize(const std::string& path)
+RetWithError<uintmax_t> CalculateSize(const std::string& path) // NOSONAR cpp:S6010 - string path is a part of the API
 {
     if (fs::is_regular_file(path)) {
         return fs::file_size(path);
@@ -78,7 +78,7 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path)
     return {0, ErrorEnum::eNotSupported};
 }
 
-void ChangeOwner(const std::string& path, uid_t uid, gid_t gid)
+void ChangeOwner(const std::string& path, uid_t uid, gid_t gid) // NOSONAR cpp:S6010 - string path is a part of the API
 {
     auto changeOwner = [](const std::string& path, uid_t uid, gid_t gid) {
         if (lchown(path.c_str(), uid, gid) == -1) {
@@ -105,13 +105,13 @@ RetWithError<std::string> GetMountPoint(const std::string& dir)
         return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), &endmntent);
     if (!mtab) {
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry;
-    std::string    bestMountPoint;
+    const struct mntent* entry = nullptr;
+    std::string          bestMountPoint;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
         struct stat mountStat;
@@ -144,12 +144,12 @@ RetWithError<std::string> GetBlockDevice(const std::string& path)
         return {"", Error(ErrorEnum::eNotFound, "failed to stat directory")};
     }
 
-    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), endmntent);
+    auto mtab = std::unique_ptr<FILE, decltype(&endmntent)>(setmntent(cMtabPath, "r"), &endmntent);
     if (!mtab) {
         return {"", Error(ErrorEnum::eNotFound, "failed to open /proc/mounts")};
     }
 
-    struct mntent* entry;
+    const struct mntent* entry = nullptr;
 
     while ((entry = getmntent(mtab.get())) != nullptr) {
         struct stat mountStat;

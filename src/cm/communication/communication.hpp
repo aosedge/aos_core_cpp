@@ -10,6 +10,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -272,8 +273,8 @@ private:
     Error GenerateUUID(std::string& uuid) const;
     Error GenerateUUID(String& uuid) const;
     Error EnqueueMessage(
-        Poco::JSON::Object::Ptr data, bool important = false, OnResponseReceivedFunc onResponseReceived = {});
-    Error EnqueueMessage(const Message& msg, OnResponseReceivedFunc onResponseReceived = {});
+        Poco::JSON::Object::Ptr data, bool important = false, const OnResponseReceivedFunc& onResponseReceived = {});
+    Error EnqueueMessage(const Message& msg, const OnResponseReceivedFunc& onResponseReceived = {});
     Error DequeueMessage(const Message& msg);
 
     void  HandleMessage(const ResponseInfo& info, const common::cloudprotocol::Ack& ack);
@@ -290,6 +291,7 @@ private:
     void  HandleMessage(const ResponseInfo& info, const DesiredUnitRootCertificates& desiredRootCerts);
     void  HandleMessage(const ResponseInfo& info, const RenewCertsNotification& notification);
     void  HandleMessage(const ResponseInfo& info, const IssuedUnitCerts& certs);
+    bool  IsIssuedCertInstalledBefore(const IssuedCertData& a, const IssuedCertData& b) const;
     Error SendAndWaitResponse(const Message& msg, ResponseMessageVariantPtr& response);
     Error SendAck(const std::string& correlationId);
     Error SendIssueUnitCerts(const IssueUnitCerts& certs);
@@ -334,10 +336,10 @@ private:
     std::vector<Message>    mSendQueue;
     std::queue<std::string> mReceiveQueue;
 
-    std::map<std::string, Message>                mSentMessages;
-    std::map<std::string, OnResponseReceivedFunc> mResponseHandlers;
-    std::vector<std::thread>                      mThreadPool;
-    std::ofstream                                 mMessageLogFile;
+    std::map<std::string, Message, std::less<>>                mSentMessages;
+    std::map<std::string, OnResponseReceivedFunc, std::less<>> mResponseHandlers;
+    std::vector<std::thread>                                   mThreadPool;
+    std::ofstream                                              mMessageLogFile;
 };
 
 } // namespace aos::cm::communication

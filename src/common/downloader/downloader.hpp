@@ -8,6 +8,7 @@
 #define AOS_COMMON_DOWNLOADER_DOWNLOADER_HPP_
 
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>
@@ -100,12 +101,13 @@ private:
     static CURLcode SSLContextCallback(CURL* curl, void* sslContext, void* userData);
 
     Error         DownloadImage(const String& url, const String& path, ProgressContext* context);
-    Error         CopyFile(const Poco::URI& uri, const String& outfilename);
+    Error         RestartDownload(const String& url, const String& path, ProgressContext* context);
+    static Error  CopyFile(const Poco::URI& uri, const String& outfilename);
     static bool   CheckRangeResponse(WriteContext* writeContext);
     static size_t WriteCallback(char* data, size_t size, size_t nmemb, void* userData);
     Error         RetryDownload(CancelContext& ctx, const String& url, const String& path, ProgressContext* context);
-    void          SendAlert(ProgressContext* context, DownloadState state, size_t downloadedBytes, size_t totalBytes,
-                 const std::string& reason = "", const Error& error = ErrorEnum::eNone);
+    void          SendAlert(const ProgressContext* context, const DownloadState& state, size_t downloadedBytes,
+                 size_t totalBytes, const std::string& reason = "", const Error& error = ErrorEnum::eNone);
 
     static bool IsCanceled(const ProgressContext* context);
     static int  XferInfoCallback(
@@ -124,7 +126,7 @@ private:
     crypto::CertLoaderItf*           mCertLoader {};
     crypto::x509::ProviderItf*       mCryptoProvider {};
 
-    std::set<std::string> mDigestsInProgress;
+    std::set<std::string, std::less<>> mDigestsInProgress;
 };
 
 } // namespace aos::common::downloader

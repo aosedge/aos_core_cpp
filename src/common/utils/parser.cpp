@@ -43,7 +43,11 @@ std::optional<PortRange> ParsePortRange(const std::string& value)
             continue;
         }
 
-        if (c < '0' || c > '9' || ++digits[index] > cMaxPortDigits) {
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+
+        if (++digits[index] > cMaxPortDigits) {
             return std::nullopt;
         }
 

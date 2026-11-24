@@ -29,7 +29,7 @@ Error EnsureWorkingDir(const std::string& workingDir)
     try {
         const auto dirPath = std::filesystem::path(workingDir);
         if (!std::filesystem::exists(dirPath)) {
-            std::filesystem::create_directories(dirPath);
+            (void)std::filesystem::create_directories(dirPath);
         }
     } catch (const std::exception& e) {
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
@@ -75,7 +75,7 @@ Error Database::Init(const config::DatabaseConfig& config, bool provisioning)
 
         CreateTables();
 
-        mDatabase.emplace(*mSession, mConfig.mMigrationPath, mConfig.mMergedMigrationPath);
+        (void)mDatabase.emplace(*mSession, mConfig.mMigrationPath, mConfig.mMergedMigrationPath);
 
         CreateMigrationData();
         mDatabase->MigrateToVersion(GetVersion());
@@ -272,7 +272,7 @@ Error Database::GetAllNodeIDs(Array<StaticString<cIDLen>>& ids) const
         std::vector<std::string> storedIds;
 
         statement << "SELECT id FROM nodeinfo;", into(storedIds);
-        statement.execute();
+        (void)statement.execute();
         ids.Clear();
 
         for (const auto& id : storedIds) {
@@ -314,7 +314,8 @@ void Database::CreateMigrationData()
 
     *mSession << "CREATE TABLE IF NOT EXISTS pins (path TEXT NOT NULL, value TEXT NOT NULL);", now;
 
-    std::string           pin, path;
+    std::string           pin;
+    std::string           path;
     Poco::Data::Statement insert(*mSession);
 
     insert << "INSERT INTO pins (path, value) VALUES(?, ?);", use(path), use(pin);
@@ -323,7 +324,7 @@ void Database::CreateMigrationData()
         path = key;
         pin  = value;
 
-        insert.execute();
+        (void)insert.execute();
     }
 }
 

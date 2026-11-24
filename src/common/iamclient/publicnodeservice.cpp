@@ -122,8 +122,7 @@ Error PublicNodesService::GetNodeInfo(const String& nodeID, NodeInfo& nodeInfo) 
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    auto err = pbconvert::ConvertToAos(response, nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -142,9 +141,8 @@ Error PublicNodesService::SubscribeListener(aos::iamclient::NodeInfoListenerItf&
     if (!mSubscriptionManager) {
         google::protobuf::Empty request;
 
-        auto convertFunc = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) -> Error {
-            return pbconvert::ConvertToAos(proto, aos);
-        };
+        auto convertFunc
+            = [](const iamanager::v7::NodeInfo& proto, NodeInfo& aos) { return pbconvert::ConvertToAos(proto, aos); };
 
         auto notifyFunc = [](aos::iamclient::NodeInfoListenerItf& listener, const NodeInfo& nodeInfo) {
             listener.OnNodeInfoChanged(nodeInfo);
@@ -246,26 +244,19 @@ void PublicNodesService::ConnectionLoop()
     LOG_DBG() << "Connection loop started";
 
     while (!mStop) {
-        const auto err = RegisterNode();
-        if (!err.IsNone()) {
+        if (const auto err = RegisterNode(); !err.IsNone()) {
             LOG_ERR() << "Failed to register node" << Log::Field(err);
 
             std::lock_guard lock {mMutex};
 
-            if (mCredentials.size() > 1) {
-                AdvanceCredential();
-
-                if (auto rebuildErr = RebuildStub(); !rebuildErr.IsNone()) {
-                    LOG_ERR() << "Failed to rebuild stub" << Log::Field(rebuildErr);
-                }
-            }
+            SwitchCredential();
         }
 
         std::unique_lock lock {mMutex};
 
         LOG_WRN() << "Connection failed" << Log::Field("retryingInSec", cReconnectInterval.count());
 
-        mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
+        (void)mCV.wait_for(lock, cReconnectInterval, [this]() { return mStop.load(); });
     }
 
     LOG_DBG() << "Connection loop stopped";
@@ -322,7 +313,9 @@ Error PublicNodesService::RegisterNode()
 
     OnConnected();
 
-    HandleIncomingMessage();
+    if (auto err = HandleIncomingMessage(); !err.IsNone()) {
+        LOG_WRN() << "Handling incoming messages stopped" << Log::Field(err);
+    }
 
     {
         std::lock_guard lock {mMutex};
@@ -343,10 +336,12 @@ Error PublicNodesService::ReceiveMessage([[maybe_unused]] const iamanager::v7::I
 
 void PublicNodesService::OnConnected()
 {
+    // Default implementation does nothing: derived classes override it to handle connection.
 }
 
 void PublicNodesService::OnDisconnected()
 {
+    // Default implementation does nothing: derived classes override it to handle disconnection.
 }
 
 Error PublicNodesService::HandleIncomingMessage()
@@ -406,6 +401,17 @@ Error PublicNodesService::RebuildStub()
     }
 
     return ErrorEnum::eNone;
+}
+
+void PublicNodesService::SwitchCredential()
+{
+    if (mCredentials.size() > 1) {
+        AdvanceCredential();
+
+        if (auto rebuildErr = RebuildStub(); !rebuildErr.IsNone()) {
+            LOG_ERR() << "Failed to rebuild stub" << Log::Field(rebuildErr);
+        }
+    }
 }
 
 void PublicNodesService::AdvanceCredential()

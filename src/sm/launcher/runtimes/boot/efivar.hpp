@@ -26,8 +26,7 @@ public:
      * @param attributes[out] variable attributes.
      * @return Error.
      */
-    virtual Error ReadVariable(
-        const std::string& name, std::vector<uint8_t>& data, uint32_t& attributes) const override;
+    Error ReadVariable(const std::string& name, std::vector<uint8_t>& data, uint32_t& attributes) const override;
 
     /**
      * Writes EFI global GUID variable.

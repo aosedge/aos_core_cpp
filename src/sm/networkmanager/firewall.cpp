@@ -49,9 +49,7 @@ Error CheckPortProto(const common::utils::PortRange& range, const String& proto)
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "access rule requires a port"));
     }
 
-    const std::string value {proto.CStr()};
-
-    if (!value.empty() && value != "tcp" && value != "udp") {
+    if (const std::string value {proto.CStr()}; !value.empty() && value != "tcp" && value != "udp") {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "unsupported protocol"));
     }
 
@@ -69,6 +67,106 @@ std::string ProtoOrDefault(const String& proto, const common::utils::PortRange& 
     }
 
     return proto.CStr();
+}
+
+Error AppendInputRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
+    const InstanceFirewallParams& params, const std::string& instanceIP)
+{
+    for (const auto& in : params.mInput) {
+        common::utils::PortRange range {};
+        Error                    err;
+
+        Tie(range, err) = ParsePortRange(in.mPort);
+
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        // An input entry requires a port and only tcp/udp are supported (an
+        // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
+
+        if (err = CheckPortProto(range, in.mProtocol); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        nftables::FWRule r {};
+
+        r.mDstAddr = instanceIP;
+        r.mProto   = ProtoOrDefault(in.mProtocol, range);
+        r.mAction  = nftables::FWActionEnum::eReturn;
+
+        SetDstPort(r, range);
+
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error AppendOutputRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
+    const InstanceFirewallParams& params, const std::string& instanceIP)
+{
+    for (const auto& out : params.mOutput) {
+        common::utils::PortRange range {};
+        Error                    err;
+
+        Tie(range, err) = ParsePortRange(out.mDstPort);
+
+        if (!err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        // An output entry must name a destination; an empty one collapses to a
+        // bare source match that bypasses destination checks and
+        // the AllowPublic terminal verdict. It is validated as strictly as an
+        // input entry: a destination IP and port, with tcp/udp (empty -> tcp).
+
+        if (out.mDstIP.IsEmpty()) {
+            return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
+        }
+
+        if (err = CheckPortProto(range, out.mProto); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+
+        if (!out.mSrcIP.IsEmpty() && std::string {out.mSrcIP.CStr()} != instanceIP) {
+            LOG_WRN() << "Output rule mSrcIP overridden by instance IP" << Log::Field("srcIP", out.mSrcIP)
+                      << Log::Field("instanceIP", params.mIP);
+        }
+
+        nftables::FWRule r {};
+
+        r.mSrcAddr = instanceIP;
+        r.mDstAddr = out.mDstIP.CStr();
+        r.mProto   = ProtoOrDefault(out.mProto, range);
+        r.mAction  = nftables::FWActionEnum::eReturn;
+
+        SetDstPort(r, range);
+
+        if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+Error AppendDenyNetworkRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain)
+{
+    for (const auto& pool : common::network::cNetworkPools) {
+        nftables::FWRule denyNetwork {};
+
+        denyNetwork.mDstAddr = pool.mSubnet;
+        denyNetwork.mAction  = nftables::FWActionEnum::eDrop;
+
+        if (auto err = txn.AddRule(table, chain, denyNetwork); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
+    return ErrorEnum::eNone;
 }
 
 Error AppendInstanceRules(nftables::FWTxnItf& txn, const std::string& table, const std::string& chain,
@@ -91,90 +189,18 @@ Error AppendInstanceRules(nftables::FWTxnItf& txn, const std::string& table, con
     }
 
     if (!output) {
-        for (const auto& in : params.mInput) {
-            common::utils::PortRange range {};
-            Error                    err;
-
-            Tie(range, err) = ParsePortRange(in.mPort);
-
-            if (!err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            // An input entry requires a port and only tcp/udp are supported (an
-            // empty protocol defaults to tcp). Matches the aos_cni_firewall plugin.
-
-            if (err = CheckPortProto(range, in.mProtocol); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            nftables::FWRule r {};
-
-            r.mDstAddr = instanceIP;
-            r.mProto   = ProtoOrDefault(in.mProtocol, range);
-            r.mAction  = nftables::FWActionEnum::eReturn;
-
-            SetDstPort(r, range);
-
-            if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendInputRules(txn, table, chain, params, instanceIP); !err.IsNone()) {
+            return err;
         }
-
     } else {
-        for (const auto& out : params.mOutput) {
-            common::utils::PortRange range {};
-            Error                    err;
-
-            Tie(range, err) = ParsePortRange(out.mDstPort);
-
-            if (!err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            // An output entry must name a destination; an empty one collapses to a
-            // bare source match that bypasses destination checks and
-            // the AllowPublic terminal verdict. It is validated as strictly as an
-            // input entry: a destination IP and port, with tcp/udp (empty -> tcp).
-
-            if (out.mDstIP.IsEmpty()) {
-                return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "output access requires a destination IP"));
-            }
-
-            if (err = CheckPortProto(range, out.mProto); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
-
-            if (!out.mSrcIP.IsEmpty() && std::string {out.mSrcIP.CStr()} != instanceIP) {
-                LOG_WRN() << "Output rule mSrcIP overridden by instance IP" << Log::Field("srcIP", out.mSrcIP)
-                          << Log::Field("instanceIP", params.mIP);
-            }
-
-            nftables::FWRule r {};
-
-            r.mSrcAddr = instanceIP;
-            r.mDstAddr = out.mDstIP.CStr();
-            r.mProto   = ProtoOrDefault(out.mProto, range);
-            r.mAction  = nftables::FWActionEnum::eReturn;
-
-            SetDstPort(r, range);
-
-            if (err = txn.AddRule(table, chain, r); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendOutputRules(txn, table, chain, params, instanceIP); !err.IsNone()) {
+            return err;
         }
 
         // Public access never authorizes another AoS network, including remote nodes.
 
-        for (const auto& pool : common::network::cNetworkPools) {
-            nftables::FWRule denyNetwork {};
-
-            denyNetwork.mDstAddr = pool.mSubnet;
-            denyNetwork.mAction  = nftables::FWActionEnum::eDrop;
-
-            if (auto err = txn.AddRule(table, chain, denyNetwork); !err.IsNone()) {
-                return AOS_ERROR_WRAP(err);
-            }
+        if (auto err = AppendDenyNetworkRules(txn, table, chain); !err.IsNone()) {
+            return err;
         }
     }
 
@@ -221,15 +247,14 @@ Error Firewall::Start()
 {
     LOG_DBG() << "Start firewall";
 
-    std::vector<nftables::FWListedRule> forwardRules;
-
     // The table is provisioned ahead of SM and outlives it, so a listable
     // forward chain means it already exists: adopt it as is. Rules left by a
     // crashed SM still protect the instances that kept running, so they are
     // reaped later by RemoveOrphans rather than dropped here. If the table is
     // absent, build a fail-closed skeleton ourselves.
 
-    if (!mBackend->ListChainRules(mTable, cForwardChain, forwardRules).IsNone()) {
+    if (std::vector<nftables::FWListedRule> forwardRules;
+        !mBackend->ListChainRules(mTable, cForwardChain, forwardRules).IsNone()) {
         if (auto err = CreateSkeleton(); !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
@@ -257,13 +282,13 @@ Error Firewall::RemoveOrphans(
         return ErrorEnum::eNone;
     }
 
-    std::set<std::string> knownChains;
+    std::set<std::string, std::less<>> knownChains;
 
     for (const auto& instanceID : knownInstanceIDs) {
-        knownChains.emplace(ChainName(instanceID));
+        (void)knownChains.emplace(ChainName(instanceID));
     }
 
-    std::set<std::string> orphanChains;
+    std::set<std::string, std::less<>> orphanChains;
 
     for (const auto& r : forwardRules) {
         if (r.mRule.mAction != nftables::FWActionEnum::eJump || r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) != 0
@@ -271,7 +296,7 @@ Error Firewall::RemoveOrphans(
             continue;
         }
 
-        orphanChains.insert(r.mRule.mJumpTarget);
+        (void)orphanChains.insert(r.mRule.mJumpTarget);
     }
 
     std::vector<nftables::FWListedRule> postRules;
@@ -283,7 +308,7 @@ Error Firewall::RemoveOrphans(
     std::set<std::pair<std::string, std::string>> known;
 
     for (const auto& masquerade : knownMasquerades) {
-        known.emplace(masquerade.mSubnet.CStr(), masquerade.mOutIfName.CStr());
+        (void)known.emplace(masquerade.mSubnet.CStr(), masquerade.mOutIfName.CStr());
     }
 
     std::vector<nftables::FWRuleHandle> masqueradeHandles;
@@ -295,9 +320,8 @@ Error Firewall::RemoveOrphans(
             continue;
         }
 
-        std::pair<std::string, std::string> key {r.mRule.mSrcAddr, r.mRule.mOIFName};
-
-        if (!r.mRule.mOIFNeg && known.count(key) != 0 && mMasqueradeRules.insert(key).second) {
+        if (std::pair<std::string, std::string> key {r.mRule.mSrcAddr, r.mRule.mOIFName};
+            !r.mRule.mOIFNeg && known.count(key) != 0 && mMasqueradeRules.insert(key).second) {
             continue;
         }
 
@@ -415,12 +439,12 @@ Error Firewall::CreateSkeleton()
 Error Firewall::ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules)
 {
     // Ingress jumps identify the instance chains to remove.
-    std::set<std::string> instanceChains;
+    std::set<std::string, std::less<>> instanceChains;
 
     for (const auto& r : forwardRules) {
         if (r.mRule.mAction == nftables::FWActionEnum::eJump
             && r.mRule.mJumpTarget.rfind(cInstanceChainPrefix, 0) == 0) {
-            instanceChains.insert(r.mRule.mJumpTarget);
+            (void)instanceChains.insert(r.mRule.mJumpTarget);
         }
     }
 
@@ -484,7 +508,7 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
                 return AOS_ERROR_WRAP(err);
             }
 
-            mBatchChains.insert(chain);
+            (void)mBatchChains.insert(chain);
 
             return ErrorEnum::eNone;
         }
@@ -512,7 +536,7 @@ Error Firewall::AddInstance(const String& instanceID, const InstanceFirewallPara
 }
 
 Error Firewall::AppendInstanceChain(
-    nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params)
+    nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params) const
 {
     const auto outputChain = chain + "_out";
 
@@ -584,11 +608,12 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto outgoing = std::find_if(egress.begin(), egress.end(), [&chain](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eJump && entry.mRule.mJumpTarget == chain + "_out";
-    });
-
-    if (outgoing != egress.end()) {
+    if (const auto outgoing = std::find_if(egress.begin(), egress.end(),
+            [&chain](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eJump
+                    && entry.mRule.mJumpTarget == chain + "_out";
+            });
+        outgoing != egress.end()) {
         handles.push_back(outgoing->mHandle);
     }
 
@@ -598,21 +623,21 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
         return AOS_ERROR_WRAP(err);
     }
 
-    const auto acceptIn = std::find_if(accepted.begin(), accepted.end(), [&incoming](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eAccept
-            && entry.mRule.mDstAddr == incoming->mRule.mDstAddr;
-    });
-
-    if (acceptIn != accepted.end()) {
+    if (const auto acceptIn = std::find_if(accepted.begin(), accepted.end(),
+            [&incoming](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eAccept
+                    && entry.mRule.mDstAddr == incoming->mRule.mDstAddr;
+            });
+        acceptIn != accepted.end()) {
         handles.push_back(acceptIn->mHandle);
     }
 
-    const auto acceptOut = std::find_if(accepted.begin(), accepted.end(), [&incoming](const auto& entry) {
-        return entry.mRule.mAction == nftables::FWActionEnum::eAccept
-            && entry.mRule.mSrcAddr == incoming->mRule.mDstAddr;
-    });
-
-    if (acceptOut != accepted.end()) {
+    if (const auto acceptOut = std::find_if(accepted.begin(), accepted.end(),
+            [&incoming](const auto& entry) {
+                return entry.mRule.mAction == nftables::FWActionEnum::eAccept
+                    && entry.mRule.mSrcAddr == incoming->mRule.mDstAddr;
+            });
+        acceptOut != accepted.end()) {
         handles.push_back(acceptOut->mHandle);
     }
 
@@ -620,7 +645,7 @@ Error Firewall::FindInstanceRules(const std::string& chain, std::vector<nftables
 }
 
 void Firewall::DeleteInstanceChain(
-    nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& handles)
+    nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& handles) const
 {
     txn.DeleteRuleByHandle(mTable, cIngressChain, handles[cIngressHandleIndex]);
     txn.DeleteRuleByHandle(mTable, cEgressChain, handles[cEgressHandleIndex]);
@@ -647,7 +672,7 @@ Error Firewall::RemoveInstance(const String& instanceID)
         if (auto it = mInstanceJumps.find(chain); it != mInstanceJumps.end()) {
             jumpHandles = it->second;
 
-            mInstanceJumps.erase(it);
+            (void)mInstanceJumps.erase(it);
         }
     }
 
@@ -730,7 +755,7 @@ Error Firewall::FlushBatch()
     std::unordered_map<std::string, std::string> chainsByIP;
 
     for (const auto& entry : added) {
-        mAppliedHandles.insert(entry.mHandle);
+        (void)mAppliedHandles.insert(entry.mHandle);
 
         if (entry.mRule.mAction == nftables::FWActionEnum::eJump && !entry.mRule.mDstAddr.empty()) {
             chainsByIP[entry.mRule.mDstAddr]        = entry.mRule.mJumpTarget;
@@ -781,8 +806,8 @@ Error Firewall::Revert()
 {
     LOG_DBG() << "Revert firewall batch";
 
-    std::set<std::string>            chains;
-    std::set<nftables::FWRuleHandle> handles;
+    std::set<std::string, std::less<>> chains;
+    std::set<nftables::FWRuleHandle>   handles;
 
     {
         std::lock_guard lock {mBatchMutex};
@@ -794,7 +819,7 @@ Error Firewall::Revert()
         mAppliedHandles.clear();
 
         for (const auto& chain : chains) {
-            mInstanceJumps.erase(chain);
+            (void)mInstanceJumps.erase(chain);
         }
     }
 
@@ -912,7 +937,7 @@ Error Firewall::AddMasquerade(const String& subnet, const String& outIf)
         return AOS_ERROR_WRAP(err);
     }
 
-    mMasqueradeRules.insert(std::move(key));
+    (void)mMasqueradeRules.insert(std::move(key));
 
     return ErrorEnum::eNone;
 }
@@ -935,7 +960,7 @@ Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
     });
 
     if (it == postRules.end()) {
-        mMasqueradeRules.erase(key);
+        (void)mMasqueradeRules.erase(key);
 
         return ErrorEnum::eNone;
     }
@@ -948,7 +973,7 @@ Error Firewall::RemoveMasquerade(const String& subnet, const String& outIf)
         return AOS_ERROR_WRAP(err);
     }
 
-    mMasqueradeRules.erase(key);
+    (void)mMasqueradeRules.erase(key);
 
     return ErrorEnum::eNone;
 }

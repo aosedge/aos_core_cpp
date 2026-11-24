@@ -18,11 +18,10 @@ namespace aos::sm::app {
  */
 class App : public Poco::Util::ServerApplication {
 protected:
-    void initialize(Application& self);
-    void uninitialize();
-    void reinitialize(Application& self);
-    int  main(const ArgVec& args);
-    void defineOptions(Poco::Util::OptionSet& options);
+    void initialize(Application& self) override;
+    void uninitialize() override;
+    int  main(const ArgVec& args) override;
+    void defineOptions(Poco::Util::OptionSet& options) override;
 
 private:
     static constexpr auto cSDNotifyReady = "READY=1";

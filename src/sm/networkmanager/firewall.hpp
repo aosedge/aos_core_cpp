@@ -7,6 +7,7 @@
 #ifndef AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 #define AOS_SM_NETWORKMANAGER_FIREWALL_HPP_
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -157,9 +158,10 @@ private:
     Error CreateSkeleton();
     Error FindInstanceRules(const std::string& chain, std::vector<nftables::FWRuleHandle>& handles);
     Error ReconcileArtifacts(const std::vector<nftables::FWListedRule>& forwardRules);
-    Error AppendInstanceChain(nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params);
-    void  DeleteInstanceChain(
-         nftables::FWTxnItf& txn, const std::string& chain, const std::vector<nftables::FWRuleHandle>& jumpHandles);
+    Error AppendInstanceChain(
+        nftables::FWTxnItf& txn, const std::string& chain, const InstanceFirewallParams& params) const;
+    void DeleteInstanceChain(nftables::FWTxnItf& txn, const std::string& chain,
+        const std::vector<nftables::FWRuleHandle>& jumpHandles) const;
 
     const std::string                             mTable {cTableName};
     nftables::FWBackendItf*                       mBackend {};
@@ -168,7 +170,7 @@ private:
     std::mutex                          mBatchMutex;
     bool                                mBatchMode {false};
     std::unique_ptr<nftables::FWTxnItf> mBatchTxn;
-    std::set<std::string>               mBatchChains;
+    std::set<std::string, std::less<>>  mBatchChains;
     std::set<nftables::FWRuleHandle>    mAppliedHandles;
 
     std::unordered_map<std::string, std::vector<nftables::FWRuleHandle>> mInstanceJumps;

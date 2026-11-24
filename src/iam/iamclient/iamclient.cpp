@@ -122,7 +122,9 @@ void IAMClient::OnConnected()
 {
     LOG_DBG() << "IAM client connected";
 
-    mCurrentNodeHandler->SetConnected(true);
+    if (auto err = mCurrentNodeHandler->SetConnected(true); !err.IsNone()) {
+        LOG_ERR() << "Failed to set connected state" << Log::Field(err);
+    }
 
     if (auto err = SendNodeInfo(); !err.IsNone()) {
         LOG_ERR() << "Failed to send node info" << Log::Field(err);
@@ -133,7 +135,9 @@ void IAMClient::OnDisconnected()
 {
     LOG_DBG() << "IAM client disconnected";
 
-    mCurrentNodeHandler->SetConnected(false);
+    if (auto err = mCurrentNodeHandler->SetConnected(false); !err.IsNone()) {
+        LOG_ERR() << "Failed to set disconnected state" << Log::Field(err);
+    }
 }
 
 /***********************************************************************************************************************
@@ -149,8 +153,7 @@ Error IAMClient::SendNodeInfo()
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
-    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -208,11 +211,6 @@ Error IAMClient::ProcessFinishProvisioning(const iamanager::v7::FinishProvisioni
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eProvisioned);
-    if (!err.IsNone()) {
-        common::pbconvert::SetErrorInfo(err, response);
-
-        return SendMessage(outgoingMsg);
-    }
 
     common::pbconvert::SetErrorInfo(err, response);
 
@@ -243,11 +241,6 @@ Error IAMClient::ProcessDeprovision(const iamanager::v7::DeprovisionRequest& req
     }
 
     err = mCurrentNodeHandler->SetState(NodeStateEnum::eUnprovisioned);
-    if (!err.IsNone()) {
-        common::pbconvert::SetErrorInfo(err, response);
-
-        return SendMessage(outgoingMsg);
-    }
 
     common::pbconvert::SetErrorInfo(err, response);
 
@@ -353,8 +346,8 @@ Error IAMClient::ProcessApplyCert(const iamanager::v7::ApplyCertRequest& request
 
     LOG_DBG() << "Process apply cert request: type=" << storageID;
 
-    auto  certInfo = std::make_unique<CertInfo>();
-    Error err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
+    auto certInfo = std::make_unique<CertInfo>();
+    auto err      = AOS_ERROR_WRAP(mProvisionManager->ApplyCert(storageID, pemCert, *certInfo));
 
     return SendApplyCertResponse(nodeID, storageID, certInfo->mCertURL, certInfo->mSerial, err);
 }
@@ -407,12 +400,11 @@ Error IAMClient::ProcessGetRootCertsFingerprints(const iamanager::v7::GetRootCer
     return SendGetRootCertsFingerprintsResponse(nodeID, *fingerprints, err);
 }
 
-Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates)
+Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list<NodeState>>& allowedStates) const
 {
     auto nodeInfo = std::make_unique<NodeInfo>();
 
-    auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo);
-    if (!err.IsNone()) {
+    if (auto err = mCurrentNodeHandler->GetCurrentNodeInfo(*nodeInfo); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -421,7 +413,7 @@ Error IAMClient::CheckCurrentNodeState(const std::optional<std::initializer_list
     }
 
     const bool isAllowed = std::any_of(allowedStates->begin(), allowedStates->end(),
-        [currentState = nodeInfo->mState](const NodeState state) { return currentState == state; });
+        [currentState = nodeInfo->mState](const NodeState& state) { return currentState == state; });
 
     return !isAllowed ? AOS_ERROR_WRAP(ErrorEnum::eWrongState) : ErrorEnum::eNone;
 }

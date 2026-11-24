@@ -27,7 +27,7 @@ std::string ExtractIPFromCIDR(const std::string& cidr)
 
 } // namespace
 
-void NLToAosException(int nlError, const std::string& message)
+[[noreturn]] void NLToAosException(int nlError, const std::string& message)
 {
     auto errMsg = message + ": " + nl_geterror(nlError);
     throw common::utils::AosException(Error(ErrorEnum::eFailed, errMsg.c_str()));
@@ -61,7 +61,7 @@ bool NetworkContainsIP(const std::string& networkCIDR, const std::string& ipAddr
     uint32_t ipAddress   = ntohl(*reinterpret_cast<uint32_t*>(ipData));
     int      prefixLen   = nl_addr_get_prefixlen(network);
 
-    uint32_t mask = (0xFFFFFFFF << (32 - prefixLen));
+    uint32_t mask = (0xFFFFFFFFU << (32 - prefixLen));
 
     bool result = (networkAddr & mask) == (ipAddress & mask);
 
@@ -75,7 +75,7 @@ Error GetRouteList(std::vector<RouteInfo>& routes)
         return err;
     }
 
-    nl_cache* cacheRaw;
+    nl_cache* cacheRaw = nullptr;
 
     if (auto errRouteCache = rtnl_route_alloc_cache(sock.get(), AF_INET, 0, &cacheRaw); errRouteCache < 0) {
         return NLToAosErr(errRouteCache, "failed to allocate route cache");
@@ -97,17 +97,17 @@ Error GetRouteList(std::vector<RouteInfo>& routes)
 
         if (rtnl_route_get_table(route) == RT_TABLE_MAIN) {
             if (const auto* dst = rtnl_route_get_dst(route); dst && nl_addr_get_prefixlen(dst) > 0) {
-                char buf[INET6_ADDRSTRLEN];
+                char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(dst, buf, sizeof(buf));
+                (void)nl_addr2str(dst, buf, sizeof(buf));
                 info.mDestination = buf;
             }
 
             // Get gateway from next hop
             if (const auto* gw = rtnl_route_nh_get_gateway(nh); gw) {
-                char buf[INET6_ADDRSTRLEN];
+                char buf[INET6_ADDRSTRLEN] = {};
 
-                nl_addr2str(gw, buf, sizeof(buf));
+                (void)nl_addr2str(gw, buf, sizeof(buf));
                 info.mGateway = buf;
             }
         }
@@ -134,7 +134,7 @@ RetWithError<UniqueNetlinkSocket> CreateNetlinkSocket()
 
 RetWithError<nl_addr*> ParseAddress(const std::string& cidr)
 {
-    nl_addr* addr;
+    nl_addr* addr = nullptr;
 
     if (auto err = nl_addr_parse(cidr.c_str(), AF_INET, &addr); err < 0) {
         return {nullptr, NLToAosErr(err, "failed to parse " + cidr)};

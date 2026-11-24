@@ -23,11 +23,6 @@ namespace aos::sm::launcher {
  * Public
  **********************************************************************************************************************/
 
-Monitoring::Monitoring()
-    : mCPUCount(std::thread::hardware_concurrency())
-{
-}
-
 Error Monitoring::Init(const NodeInfo& nodeInfo, networkmanager::InstanceTrafficProviderItf& trafficProvider)
 {
     mNodeInfo        = nodeInfo;
@@ -44,7 +39,7 @@ Error Monitoring::StartInstanceMonitoring(
     try {
         LOG_DBG() << "Start instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
-        mInstanceMonitoringCache.insert_or_assign(instanceID, MonitoringData {{}, partInfos, uid});
+        (void)mInstanceMonitoringCache.insert_or_assign(instanceID, MonitoringData {{}, partInfos, uid});
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -59,7 +54,7 @@ Error Monitoring::StopInstanceMonitoring(const std::string& instanceID)
     try {
         LOG_DBG() << "Stop instance monitoring" << Log::Field("instanceID", instanceID.c_str());
 
-        mInstanceMonitoringCache.erase(instanceID);
+        (void)mInstanceMonitoringCache.erase(instanceID);
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {
@@ -84,8 +79,7 @@ Error Monitoring::GetInstanceMonitoringData(
         const auto& cachedData = mInstanceMonitoringCache.at(instanceID);
 
         for (const auto& partition : cachedData.mPartInfos) {
-            auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack();
-            if (!err.IsNone()) {
+            if (auto err = monitoringData.mMonitoringData.mPartitions.EmplaceBack(); !err.IsNone()) {
                 return AOS_ERROR_WRAP(err);
             }
 
@@ -136,10 +130,8 @@ size_t Monitoring::GetInstanceCPUUSec(const std::string& instanceID)
         std::string key;
         size_t      value = 0;
 
-        if (lineStream >> key >> value) {
-            if (key == "usage_usec") {
-                return value;
-            }
+        if (lineStream >> key >> value && key == "usage_usec") {
+            return value;
         }
     }
 
@@ -160,7 +152,7 @@ double Monitoring::GetInstanceCPUUsage(const std::string& instanceID)
     double     result = 0.0;
 
     if (delta > 0 && mCPUCount > 0) {
-        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * mNodeInfo.mMaxDMIPS / delta
+        result = static_cast<double>(cpuUSec - cpuUsage.mTotal) * static_cast<double>(mNodeInfo.mMaxDMIPS) / delta
             / static_cast<double>(mCPUCount);
     }
 

@@ -320,7 +320,8 @@ Error BootRuntime::CreateRuntimeInfo()
         return AOS_ERROR_WRAP(err);
     }
 
-    if (auto err = utils::CreateRuntimeInfo(mConfig.mType, *nodeInfo, cMaxNumInstances, mRuntimeInfo); !err.IsNone()) {
+    if (auto err = utils::CreateRuntimeInfo(mConfig.mType, *nodeInfo, cMaxNumBootInstances, mRuntimeInfo);
+        !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -346,7 +347,9 @@ Error BootRuntime::HandleUpdate(Array<InstanceStatus>& statuses)
 
     LOG_DBG() << "Handle update";
 
-    statuses.EmplaceBack();
+    if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (mPending->mState == InstanceStateEnum::eFailed) {
         return HandleUpdateFailed(statuses.Back());
@@ -444,7 +447,7 @@ RetWithError<std::string> BootRuntime::GetPartitionVersion(size_t partitionIndex
         return {version, AOS_ERROR_WRAP(err)};
     }
 
-    auto cleanup = DeferRelease(&mountDst, [](const auto* path) { fs::RemoveAll(path->c_str()); });
+    auto cleanup = DeferRelease(&mountDst, [](const auto* path) { (void)fs::RemoveAll(path->c_str()); });
 
     PartInfo partInfo;
 
@@ -473,14 +476,13 @@ RetWithError<std::string> BootRuntime::GetPartitionVersion(size_t partitionIndex
 
     std::string line;
 
-    std::getline(versionFile, line);
+    (void)std::getline(versionFile, line);
 
     LOG_DBG() << "Version file content" << Log::Field("line", line.c_str());
 
-    std::regex  versionRegex(R"(VERSION\s*=\s*\"(.+)\")");
-    std::smatch match;
+    std::regex versionRegex(R"(VERSION\s*=\s*\"(.+)\")");
 
-    if (std::regex_search(line, match, versionRegex) && match.size() == 2) {
+    if (std::smatch match; std::regex_search(line, match, versionRegex) && match.size() == 2) {
         version = match[1];
     } else {
         return {version, AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "invalid version file format"))};
@@ -546,7 +548,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
 {
     LOG_DBG() << "Install image on partition" << Log::Field("partitionIndex", partitionIndex);
 
-    if (manifest.mLayers.Size() == 0) {
+    if (manifest.mLayers.IsEmpty()) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "image manifest has no layers"));
     }
 
@@ -565,7 +567,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
     }
 
     std::error_code ec;
-    std::filesystem::copy_file(imageArchivePath.CStr(), packedImagePath, ec);
+    (void)std::filesystem::copy_file(imageArchivePath.CStr(), packedImagePath, ec);
 
     if (ec) {
         return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, ec.message().c_str()));
@@ -575,7 +577,7 @@ Error BootRuntime::InstallImageOnPartition(const oci::ImageManifest& manifest, s
         return AOS_ERROR_WRAP(res.mError);
     }
 
-    auto cleanup = DeferRelease(&imagesDir, [](const auto* path) { fs::RemoveAll(path->c_str()); });
+    auto cleanup = DeferRelease(&imagesDir, [](const auto* path) { (void)fs::RemoveAll(path->c_str()); });
 
     try {
         const auto& toDevice = mPartitionDevices.at(partitionIndex);
@@ -613,7 +615,7 @@ Error BootRuntime::SyncPartition(size_t from, size_t to)
     return ErrorEnum::eNone;
 }
 
-Error BootRuntime::StoreData(const std::string_view filename, const BootData& data)
+Error BootRuntime::StoreData(const std::string_view filename, const BootData& data) const
 {
     const auto path = GetPath(filename);
 
@@ -629,17 +631,17 @@ Error BootRuntime::StoreData(const std::string_view filename, const BootData& da
     auto json = Poco::makeShared<Poco::JSON::Object>(Poco::JSON_PRESERVE_KEY_ORDER);
 
     try {
-        json->set("itemId", data.mItemID.CStr());
-        json->set("subjectId", data.mSubjectID.CStr());
-        json->set("instance", data.mInstance);
-        json->set("manifestDigest", data.mManifestDigest.CStr());
-        json->set("state", data.mState.ToString().CStr());
-        json->set("type", data.mType.ToString().CStr());
-        json->set("version", data.mVersion.CStr());
-        json->set("preinstalled", data.mPreinstalled);
+        (void)json->set("itemId", data.mItemID.CStr());
+        (void)json->set("subjectId", data.mSubjectID.CStr());
+        (void)json->set("instance", data.mInstance);
+        (void)json->set("manifestDigest", data.mManifestDigest.CStr());
+        (void)json->set("state", data.mState.ToString().CStr());
+        (void)json->set("type", data.mType.ToString().CStr());
+        (void)json->set("version", data.mVersion.CStr());
+        (void)json->set("preinstalled", data.mPreinstalled);
 
         if (data.mPartitionIndex.HasValue()) {
-            json->set("partitionIndex", data.mPartitionIndex.GetValue());
+            (void)json->set("partitionIndex", data.mPartitionIndex.GetValue());
         }
 
         json->stringify(file);
@@ -650,7 +652,7 @@ Error BootRuntime::StoreData(const std::string_view filename, const BootData& da
     return ErrorEnum::eNone;
 }
 
-Error BootRuntime::LoadData(const std::string_view filename, BootData& data)
+Error BootRuntime::LoadData(const std::string_view filename, BootData& data) const
 {
     const auto path = GetPath(filename);
 

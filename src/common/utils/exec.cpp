@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <iterator>
 #include <sstream>
 #include <string_view>
@@ -38,7 +39,7 @@ public:
     {
         mArgv.reserve(args.size() + 1);
 
-        std::transform(args.begin(), args.end(), std::back_inserter(mArgv),
+        (void)std::transform(args.begin(), args.end(), std::back_inserter(mArgv),
             [](const std::string& arg) { return const_cast<char*>(arg.c_str()); });
 
         mArgv.push_back(nullptr);
@@ -68,9 +69,8 @@ Error SpawnProcess(const std::vector<std::string>& args, const posix_spawn_file_
         return Error(ErrorEnum::eInvalidArgument, "exec command requires at least one argument");
     }
 
-    SpawnArgs spawnArgs(args);
-
-    if (posix_spawnp(&pid, args[0].c_str(), fileActions, nullptr, spawnArgs.Argv(), spawnArgs.Envp()) != 0) {
+    if (SpawnArgs spawnArgs(args);
+        posix_spawnp(&pid, args[0].c_str(), fileActions, nullptr, spawnArgs.Argv(), spawnArgs.Envp()) != 0) {
         return Error(ErrorEnum::eRuntime, "can't spawn process");
     }
 
@@ -81,12 +81,16 @@ int WaitForExitCode(pid_t pid)
 {
     int status = 0;
 
-    waitpid(pid, &status, 0);
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return -1;
+        }
+    }
 
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
-Error CheckExitCode(int rc, const std::string& output, const std::initializer_list<int>& expectedExitCodes)
+Error CheckExitCode(int rc, std::string_view output, const std::initializer_list<int>& expectedExitCodes)
 {
     if (std::find(expectedExitCodes.begin(), expectedExitCodes.end(), rc) != expectedExitCodes.end()) {
         return ErrorEnum::eNone;
@@ -118,32 +122,31 @@ Error CheckExitCode(int rc, const std::string& output, const std::initializer_li
 RetWithError<std::string> ExecCommand(
     const std::vector<std::string>& args, const std::initializer_list<int>& expectedExitCodes)
 {
-    int pipeFDs[2];
+    int pipeFDs[2] = {};
 
     if (pipe(pipeFDs) != 0) {
         return {"", Error(ErrorEnum::eRuntime, "can't create pipe")};
     }
 
     auto closePipe = DeferRelease(&pipeFDs, [](int(*fds)[2]) {
-        close((*fds)[0]);
-        close((*fds)[1]);
+        (void)close((*fds)[0]);
+        (void)close((*fds)[1]);
     });
 
     posix_spawn_file_actions_t actions;
 
-    posix_spawn_file_actions_init(&actions);
+    (void)posix_spawn_file_actions_init(&actions);
 
     auto destroyActions = DeferRelease(&actions, posix_spawn_file_actions_destroy);
 
-    posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDOUT_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDERR_FILENO);
-    posix_spawn_file_actions_addclose(&actions, pipeFDs[0]);
-    posix_spawn_file_actions_addclose(&actions, pipeFDs[1]);
+    (void)posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDOUT_FILENO);
+    (void)posix_spawn_file_actions_adddup2(&actions, pipeFDs[1], STDERR_FILENO);
+    (void)posix_spawn_file_actions_addclose(&actions, pipeFDs[0]);
+    (void)posix_spawn_file_actions_addclose(&actions, pipeFDs[1]);
 
     pid_t pid = -1;
 
-    Error err = SpawnProcess(args, &actions, pid);
-    if (!err.IsNone()) {
+    if (Error err = SpawnProcess(args, &actions, pid); !err.IsNone()) {
         return {"", err};
     }
 
@@ -155,17 +158,16 @@ RetWithError<std::string> ExecCommand(
     constexpr int cPollTimeoutMs = 20;
 
     std::string outStr;
-    char        buffer[1024];
-    int         status = 0;
-    bool        exited = false;
+    char        buffer[1024] = {};
+    int         status       = 0;
+    bool        exited       = false;
 
     for (;;) {
-        pollfd pfd {pipeFDs[0], POLLIN, 0};
-
-        if (poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
-            const int n = read(pipeFDs[0], buffer, sizeof(buffer));
+        if (pollfd pfd {pipeFDs[0], POLLIN, 0};
+            poll(&pfd, 1, exited ? 0 : cPollTimeoutMs) > 0 && (pfd.revents & POLLIN)) {
+            const int n = static_cast<int>(read(pipeFDs[0], buffer, sizeof(buffer)));
             if (n > 0) {
-                outStr.append(buffer, n);
+                (void)outStr.append(buffer, n);
                 continue;
             }
         }

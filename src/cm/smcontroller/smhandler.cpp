@@ -90,7 +90,7 @@ void SMHandler::Stop()
 
 String SMHandler::GetNodeID() const
 {
-    return mNodeID;
+    return mNodeID; // NOSONAR cpp:S5912
 }
 
 Error SMHandler::GetNodeConfigStatus(NodeConfigStatus& status)
@@ -101,9 +101,9 @@ Error SMHandler::GetNodeConfigStatus(NodeConfigStatus& status)
     servicemanager::v5::SMOutgoingMessages outMsg;
 
     // Create a get_node_config_status request in the incoming message
-    inMsg.mutable_get_node_config_status();
+    (void)inMsg.mutable_get_node_config_status();
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -128,7 +128,7 @@ Error SMHandler::CheckNodeConfig(const NodeConfig& config)
         return err;
     }
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -149,7 +149,7 @@ Error SMHandler::UpdateNodeConfig(const NodeConfig& config)
         return err;
     }
 
-    auto* nodeConfigStatus = outMsg.mutable_node_config_status();
+    const auto* nodeConfigStatus = outMsg.mutable_node_config_status();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;
@@ -257,7 +257,7 @@ void SMHandler::ProcessMessages()
 
             // Process message without holding the lock to allow sending new messages in parallel
 
-            lock.unlock();
+            lock.unlock(); // NOSONAR cpp:S8473 - message is processed without the lock
 
             if (outgoingMsg.has_sm_info()) {
                 err = ProcessSMInfo(outgoingMsg.sm_info());
@@ -410,7 +410,9 @@ Error SMHandler::ProcessAlert(const servicemanager::v5::Alert& alert)
             return AOS_ERROR_WRAP(err);
         }
 
-        mAlertsReceiver->OnAlertReceived(*aosAlert);
+        if (auto err = mAlertsReceiver->OnAlertReceived(*aosAlert); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -442,8 +444,8 @@ Error SMHandler::GetAverageMonitoring(aos::monitoring::NodeMonitoringData& monit
     servicemanager::v5::SMIncomingMessages inMsg;
     servicemanager::v5::SMOutgoingMessages outMsg;
 
-    inMsg.mutable_get_average_monitoring();
-    auto* averageMonitoring = outMsg.mutable_average_monitoring();
+    (void)inMsg.mutable_get_average_monitoring();
+    const auto* averageMonitoring = outMsg.mutable_average_monitoring();
 
     if (auto err = mSyncMessageSender.SendSync(inMsg, outMsg); !err.IsNone()) {
         return err;

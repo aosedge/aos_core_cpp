@@ -7,7 +7,7 @@
 #include <filesystem>
 
 #include <systemd/sd-journal.h>
-#undef LOG_ERR
+#undef LOG_ERR // NOSONAR cpp:S959 - conflicts with Aos LOG_ERR
 
 #include <core/common/crypto/itf/asn1.hpp>
 #include <core/common/tools/logger.hpp>
@@ -48,7 +48,7 @@ Error LogProvider::Start()
 Error LogProvider::Stop()
 {
     {
-        std::unique_lock<std::mutex> lock {mMutex};
+        std::unique_lock lock {mMutex};
 
         if (mStopped) {
             return ErrorEnum::eNone;
@@ -69,7 +69,7 @@ Error LogProvider::Stop()
 
 LogProvider::~LogProvider()
 {
-    Stop();
+    (void)Stop();
 }
 
 Error LogProvider::GetInstanceLog(const RequestLog& request)
@@ -82,8 +82,7 @@ Error LogProvider::GetInstanceLog(const RequestLog& request)
 
     std::vector<std::string> instanceIDs;
 
-    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
-    if (!err.IsNone()) {
+    if (auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs); !err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
         return err;
@@ -112,8 +111,7 @@ Error LogProvider::GetInstanceCrashLog(const RequestLog& request)
 
     std::vector<std::string> instanceIDs;
 
-    auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs);
-    if (!err.IsNone()) {
+    if (auto err = mInstanceProvider->GetInstanceIDs(request.mFilter, instanceIDs); !err.IsNone()) {
         SendErrorResponse(request.mCorrelationID, err.Message());
 
         return AOS_ERROR_WRAP(err);
@@ -158,9 +156,9 @@ std::shared_ptr<utils::JournalItf> LogProvider::CreateJournal()
 void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
     const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
-    std::unique_lock<std::mutex> lock {mMutex};
+    std::unique_lock lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
+    (void)mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, false});
 
     mCondVar.notify_one();
 }
@@ -168,9 +166,9 @@ void LogProvider::ScheduleGetLog(const std::vector<std::string>& instanceIDs,
 void LogProvider::ScheduleGetCrashLog(const std::vector<std::string>& instanceIDs,
     const StaticString<uuid::cUUIDLen>& correlationId, const Optional<Time>& from, const Optional<Time>& till)
 {
-    std::unique_lock<std::mutex> lock {mMutex};
+    std::unique_lock lock {mMutex};
 
-    mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
+    (void)mLogRequests.emplace(GetLogRequest {instanceIDs, correlationId, from, till, true});
 
     mCondVar.notify_one();
 }
@@ -181,7 +179,7 @@ void LogProvider::ProcessLogs()
         GetLogRequest logRequest;
 
         {
-            std::unique_lock<std::mutex> lock {mMutex};
+            std::unique_lock lock {mMutex};
 
             mCondVar.wait(lock, [this] { return mStopped || !mLogRequests.empty(); });
 
@@ -285,8 +283,12 @@ void LogProvider::SendErrorResponse(const String& correlationId, const std::stri
     response->mPartsCount    = 0;
     response->mPart          = 0;
 
-    if (mLogSender) {
-        mLogSender->SendLog(*response);
+    if (!mLogSender) {
+        return;
+    }
+
+    if (auto err = mLogSender->SendLog(*response); !err.IsNone()) {
+        LOG_ERR() << "Failed to send log response" << Log::Field(err);
     }
 }
 
@@ -300,8 +302,12 @@ void LogProvider::SendEmptyResponse(const String& correlationId, const std::stri
     response->mPart          = 1;
     response->mError         = Error(ErrorEnum::eNone, errorMsg.c_str());
 
-    if (mLogSender) {
-        mLogSender->SendLog(*response);
+    if (!mLogSender) {
+        return;
+    }
+
+    if (auto err = mLogSender->SendLog(*response); !err.IsNone()) {
+        LOG_ERR() << "Failed to send log response" << Log::Field(err);
     }
 }
 
@@ -396,20 +402,15 @@ Time LogProvider::GetCrashTime(utils::JournalItf& journal, const Optional<Time>&
     while (journal.Previous()) {
         auto entry = journal.GetEntry();
 
-        if (from.HasValue() && entry.mRealTime.UnixNano() <= from.GetValue().UnixNano()) {
+        if ((from.HasValue() && entry.mRealTime.UnixNano() <= from.GetValue().UnixNano())
+            || (!crashTime.IsZero() && entry.mMessage.rfind("Started", 0) == 0)) {
             break;
         }
 
-        if (crashTime.IsZero()) {
-            if (entry.mMessage.find("process exited") != std::string::npos) {
-                crashTime = entry.mMonotonicTime;
+        if (crashTime.IsZero() && entry.mMessage.find("process exited") != std::string::npos) {
+            crashTime = entry.mMonotonicTime;
 
-                LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
-            }
-        } else {
-            if (entry.mMessage.rfind("Started", 0) == 0) {
-                break;
-            }
+            LOG_DBG() << "Crash detected: time=" << crypto::asn1::ConvertTimeToASN1Str(entry.mRealTime).mValue;
         }
     }
 

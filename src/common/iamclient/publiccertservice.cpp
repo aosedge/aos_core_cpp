@@ -24,7 +24,7 @@ namespace aos::common::iamclient {
 
 PublicCertService::~PublicCertService()
 {
-    for (auto& [storageID, manager] : mCertKeySubscriptions) {
+    for (const auto& [storageID, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Close();
         }
@@ -84,7 +84,7 @@ Error PublicCertService::Reconnect()
     mStub = iamanager::v7::IAMPublicCertificateService::NewStub(
         grpc::CreateCustomChannel(mIAMPublicServerURL, mCredentials, common::utils::CreateGRPCChannelArguments()));
 
-    for (auto& [storageID, manager] : mCertKeySubscriptions) {
+    for (const auto& [storageID, manager] : mCertKeySubscriptions) {
         if (manager) {
             manager->Reconnect(mStub.get());
         }
@@ -143,7 +143,7 @@ Error PublicCertService::UnsubscribeListener(aos::iamclient::CertKeyListenerItf&
     LOG_DBG() << "Unsubscribe from certificate changed";
 
     for (auto it = mCertKeySubscriptions.begin(); it != mCertKeySubscriptions.end();) {
-        auto& manager = it->second;
+        const auto& manager = it->second;
 
         if (manager->Unsubscribe(certListener)) {
             LOG_DBG() << "Unsubscribe from certificate changed" << Log::Field("storageID", it->first.c_str());
@@ -181,8 +181,7 @@ Error PublicCertService::GetCertKey(
 
     aos::StaticString<aos::crypto::cSerialNumStrLen> serialStr;
 
-    auto err = serialStr.ByteArrayToHex(serial);
-    if (!err.IsNone()) {
+    if (auto err = serialStr.ByteArrayToHex(serial); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 
@@ -193,7 +192,7 @@ Error PublicCertService::GetCertKey(
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    if (auto err = pbconvert::ConvertToAos(response, resCert); !err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, resCert); !err.IsNone()) { // NOSONAR cpp:S1117 - false positive
         return AOS_ERROR_WRAP(err);
     }
 

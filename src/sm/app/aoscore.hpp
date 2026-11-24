@@ -82,7 +82,7 @@ public:
      *
      * @param level log level.
      */
-    void SetLogLevel(aos::LogLevel level);
+    void SetLogLevel(const aos::LogLevel& level);
 
 private:
     aos::HeapAllocator mAllocator;

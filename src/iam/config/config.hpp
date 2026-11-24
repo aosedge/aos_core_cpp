@@ -8,6 +8,7 @@
 #ifndef AOS_IAM_CONFIG_CONFIG_HPP_
 #define AOS_IAM_CONFIG_CONFIG_HPP_
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -113,10 +114,10 @@ struct NodeInfoConfig {
  * Database configuration.
  */
 struct DatabaseConfig {
-    std::string                        mWorkingDir;
-    std::string                        mMigrationPath;
-    std::string                        mMergedMigrationPath;
-    std::map<std::string, std::string> mPathToPin;
+    std::string                                     mWorkingDir;
+    std::string                                     mMigrationPath;
+    std::string                                     mMergedMigrationPath;
+    std::map<std::string, std::string, std::less<>> mPathToPin;
 };
 
 /**
@@ -179,7 +180,7 @@ RetWithError<Config> ParseConfig(const std::string& filename);
  * @param var Poco::Dynamic::Var instance.
  * @return Identifier instance.
  */
-RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var params);
+RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(const Poco::Dynamic::Var& params);
 
 /*
  * Parses VIS identifier plugin parameters.
@@ -187,7 +188,7 @@ RetWithError<PKCS11ModuleParams> ParsePKCS11ModuleParams(Poco::Dynamic::Var para
  * @param var Poco::Dynamic::Var instance.
  * @return VISIdentifierModuleParams instance.
  */
-RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dynamic::Var params);
+RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(const Poco::Dynamic::Var& params);
 
 /*
  * Parses file identifier plugin parameters.
@@ -196,7 +197,8 @@ RetWithError<VISIdentifierModuleParams> ParseVISIdentifierModuleParams(Poco::Dyn
  * @param[out] config parsed config.
  * @return Error.
  */
-Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandler::FileIdentifierConfig& config);
+Error ParseFileIdentifierModuleParams(
+    const Poco::Dynamic::Var& params, iam::identhandler::FileIdentifierConfig& config);
 
 /*
  * Parses file HW info provider plugin parameters.
@@ -205,7 +207,8 @@ Error ParseFileIdentifierModuleParams(Poco::Dynamic::Var params, iam::identhandl
  * @param[out] config parsed config.
  * @return Error.
  */
-Error ParseFileHWInfoProviderParams(Poco::Dynamic::Var params, iam::currentnode::FileHWInfoProviderConfig& config);
+Error ParseFileHWInfoProviderParams(
+    const Poco::Dynamic::Var& params, iam::currentnode::FileHWInfoProviderConfig& config);
 
 } // namespace aos::iam::config
 

@@ -56,13 +56,13 @@ void ProtectedMessageHandler::RegisterServices(grpc::ServerBuilder& builder)
     PublicMessageHandler::RegisterServices(builder);
 
     if (GetPermHandler() != nullptr) {
-        builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMPermissionsService::Service*>(this));
     }
 
     if (GetNodeInfo().IsMainNode()) {
-        builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
-        builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
-        builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMCertificateService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMProvisioningService::Service*>(this));
+        (void)builder.RegisterService(static_cast<iamproto::IAMNodesService::Service*>(this));
     }
 }
 
@@ -493,7 +493,7 @@ grpc::Status ProtectedMessageHandler::RegisterInstance([[maybe_unused]] grpc::Se
     const auto aosInstance = common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process register instance: itemID=" << aosInstance.mItemID << ", subjectID=" << aosInstance.mSubjectID
-              << ", instance=" << aosInstance.mInstance;
+              << ", instance=" << static_cast<int32_t>(aosInstance.mInstance);
 
     // Convert permissions
     auto aosPermissions = std::make_unique<StaticArray<FunctionServicePermissions, cMaxNumUpdateItems>>();
@@ -537,7 +537,7 @@ grpc::Status ProtectedMessageHandler::UnregisterInstance([[maybe_unused]] grpc::
     const auto instance = common::pbconvert::ConvertToAos(request->instance());
 
     LOG_DBG() << "Process unregister instance: serviceID=" << instance.mItemID << ", subjectID=" << instance.mSubjectID
-              << ", instance=" << instance.mInstance;
+              << ", instance=" << static_cast<int32_t>(instance.mInstance);
 
     if (auto err = GetPermHandler()->UnregisterInstance(instance); !err.IsNone()) {
         LOG_ERR() << "Unregister instance failed: error=" << err;

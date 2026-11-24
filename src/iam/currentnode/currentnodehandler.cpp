@@ -87,7 +87,7 @@ Error CurrentNodeHandler::SubscribeListener(iamclient::CurrentNodeInfoListenerIt
     LOG_DBG() << "Subscribe current node info changed listener";
 
     try {
-        mListeners.insert(&listener);
+        (void)mListeners.insert(&listener);
     } catch (const std::exception& e) {
         return common::utils::ToAosError(e);
     }
@@ -101,12 +101,12 @@ Error CurrentNodeHandler::UnsubscribeListener(iamclient::CurrentNodeInfoListener
 
     LOG_DBG() << "Unsubscribe current node info changed listener";
 
-    mListeners.erase(&listener);
+    (void)mListeners.erase(&listener);
 
     return ErrorEnum::eNone;
 }
 
-Error CurrentNodeHandler::SetState(NodeState state)
+Error CurrentNodeHandler::SetState(NodeState state) // NOSONAR cpp:S1238 - interface signature
 {
     std::lock_guard lock {mMutex};
 
@@ -165,7 +165,7 @@ Error CurrentNodeHandler::ReadNodeState()
 
     std::string line;
 
-    std::getline(file, line);
+    (void)std::getline(file, line);
 
     if (auto err = mNodeInfo.mState.FromString(line.c_str()); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
@@ -174,10 +174,10 @@ Error CurrentNodeHandler::ReadNodeState()
     return ErrorEnum::eNone;
 }
 
-Error CurrentNodeHandler::UpdateProvisionFile(NodeState state)
+Error CurrentNodeHandler::UpdateProvisionFile(const NodeState& state) const
 {
     if (state == NodeStateEnum::eUnprovisioned) {
-        std::filesystem::remove(mProvisioningStatusPath);
+        (void)std::filesystem::remove(mProvisioningStatusPath);
 
         return ErrorEnum::eNone;
     }
@@ -287,7 +287,7 @@ Error CurrentNodeHandler::InitPartitionInfo(const iam::config::NodeInfoConfig& c
     return ErrorEnum::eNone;
 }
 
-void CurrentNodeHandler::NotifyNodeInfoChanged()
+void CurrentNodeHandler::NotifyNodeInfoChanged() const
 {
     for (auto listener : mListeners) {
         LOG_DBG() << "Notify node info changed listeners" << Log::Field("nodeID", mNodeInfo.mNodeID)

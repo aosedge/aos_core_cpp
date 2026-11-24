@@ -81,10 +81,10 @@ private:
     static constexpr auto cMaxRetries    = 3;
     static constexpr auto cRetryDelay    = Time::cMilliseconds * 100;
 
-    void                   Reconnect();
-    Error                  WaitForJobCompletion(const char* jobPath, const Duration& timeout);
-    std::pair<bool, Error> HandleJobRemove(sd_bus_message* m, const char* jobPath);
-    Optional<int32_t>      GetExitCode(const char* serviceName);
+    void                          Reconnect();
+    Error                         WaitForJobCompletion(const char* jobPath, const Duration& timeout);
+    static std::pair<bool, Error> HandleJobRemove(sd_bus_message* m, const char* jobPath);
+    Optional<int32_t>             GetExitCode(const char* serviceName);
 
     sd_bus*    mBus = nullptr;
     std::mutex mMutex;

@@ -79,8 +79,8 @@ private:
     Error InitAtrributesInfo(const iam::config::NodeInfoConfig& config);
     Error InitPartitionInfo(const iam::config::NodeInfoConfig& config);
     Error ReadNodeState();
-    void  NotifyNodeInfoChanged();
-    Error UpdateProvisionFile(NodeState state);
+    void  NotifyNodeInfoChanged() const;
+    Error UpdateProvisionFile(const NodeState& state) const;
 
     mutable std::mutex                                         mMutex;
     std::unordered_set<iamclient::CurrentNodeInfoListenerItf*> mListeners;

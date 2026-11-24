@@ -496,7 +496,7 @@ Error FromJSON(const common::utils::CaseInsensitiveObjectWrapper& object, NodeIn
         });
 
         if (object.Has("attrs")) {
-            NodeAttrsFromJSON(common::utils::CaseInsensitiveObjectWrapper(object.GetObject("attrs")), dst.mAttrs);
+            NodeAttrsFromJSON(common::utils::CaseInsensitiveObjectWrapper {object.GetObject("attrs")}, dst.mAttrs);
         }
 
         dst.mIsConnected = object.GetValue<bool>("isConnected");

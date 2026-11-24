@@ -60,12 +60,12 @@ RetWithError<EVP_PKEY*> LoadPrivateKey(const std::string& keyURL)
         return {nullptr, encodeErr};
     }
 
-    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), pem.length()), BIO_free);
+    auto bio = DeferRelease(BIO_new_mem_buf(pem.c_str(), static_cast<int>(pem.length())), BIO_free);
     if (!bio) {
         return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
     }
 
-    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), NULL, NULL, NULL);
+    EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio.Get(), nullptr, nullptr, nullptr);
     if (!pkey) {
         return {nullptr, AOS_ERROR_WRAP(Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str()))};
     }
@@ -130,10 +130,10 @@ RetWithError<std::string> LoadRootCertificates(const ::aos::iamclient::CertProvi
 std::string GetOpensslErrorString()
 {
     std::ostringstream oss;
-    unsigned long      errCode;
+    unsigned long      errCode = 0;
 
     while ((errCode = ERR_get_error()) != 0) {
-        char buf[256];
+        char buf[256] = {};
 
         ERR_error_string_n(errCode, buf, sizeof(buf));
         oss << buf << std::endl;
@@ -170,7 +170,7 @@ Error GetRootCertsFingerprints(const ::aos::iamclient::CertProviderItf& certProv
             return AOS_ERROR_WRAP(resizeErr);
         }
 
-        SHA256(raw.Get(), raw.Size(), hash.Get());
+        (void)SHA256(raw.Get(), raw.Size(), hash.Get());
 
         if (auto pushErr = fingerprints.EmplaceBack(); !pushErr.IsNone()) {
             return AOS_ERROR_WRAP(pushErr);
@@ -191,7 +191,7 @@ Error LoadRootCertsToSSLContext(const std::string& rootCertsPem, SSL_CTX* ctx)
         return Error(ErrorEnum::eRuntime, "failed to create BIO");
     }
 
-    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, &BIO_free);
 
     X509_STORE* store = SSL_CTX_get_cert_store(ctx);
     if (!store) {
@@ -202,7 +202,7 @@ Error LoadRootCertsToSSLContext(const std::string& rootCertsPem, SSL_CTX* ctx)
 
     X509* ca = nullptr;
     while ((ca = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr)) != nullptr) {
-        std::unique_ptr<X509, decltype(&X509_free)> caPtr(ca, X509_free);
+        std::unique_ptr<X509, decltype(&X509_free)> caPtr(ca, &X509_free);
 
         if (X509_STORE_add_cert(store, ca) != 1) {
             return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
@@ -252,7 +252,7 @@ Error ConfigureSSLContext(const String& storageID, const ::aos::iamclient::CertP
         return errLoadKey;
     }
 
-    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> pkeyPtr(pkey, EVP_PKEY_free);
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> pkeyPtr(pkey, &EVP_PKEY_free);
     if (SSL_CTX_use_PrivateKey(ctx, pkey) <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
@@ -262,14 +262,14 @@ Error ConfigureSSLContext(const String& storageID, const ::aos::iamclient::CertP
         return Error(ErrorEnum::eRuntime, "failed to create BIO");
     }
 
-    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, BIO_free);
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioPtr(bio, &BIO_free);
 
     X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
     if (!cert) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());
     }
 
-    std::unique_ptr<X509, decltype(&X509_free)> certPtr(cert, X509_free);
+    std::unique_ptr<X509, decltype(&X509_free)> certPtr(cert, &X509_free);
 
     if (SSL_CTX_use_certificate(ctx, cert) <= 0) {
         return Error(ErrorEnum::eRuntime, GetOpensslErrorString().c_str());

@@ -58,7 +58,7 @@ aos::Error Logger::Init()
  * Private
  **********************************************************************************************************************/
 
-void Logger::StdIOCallback(const String& module, aos::LogLevel level, const aos::String& message)
+void Logger::StdIOCallback(const String& moduleName, aos::LogLevel level, const aos::String& message)
 {
     std::lock_guard lock(sMutex);
 
@@ -66,11 +66,11 @@ void Logger::StdIOCallback(const String& module, aos::LogLevel level, const aos:
         return;
     }
 
-    std::cout << mInstance->GetCurrentTime() << " " << mInstance->GetLogLevel(level) << " " << GetModule(module) << " "
-              << message.CStr() << std::endl;
+    std::cout << mInstance->GetCurrentTime() << " " << mInstance->GetLogLevel(level) << " " << GetModule(moduleName)
+              << " " << message.CStr() << std::endl;
 }
 
-void Logger::JournaldCallback(const String& module, aos::LogLevel level, const aos::String& message)
+void Logger::JournaldCallback(const String& moduleName, aos::LogLevel level, const aos::String& message)
 {
     if (level.GetValue() < sLogLevel.GetValue()) {
         return;
@@ -78,7 +78,7 @@ void Logger::JournaldCallback(const String& module, aos::LogLevel level, const a
 
     std::stringstream ss;
 
-    ss << GetModule(module) << " " << message.CStr();
+    ss << GetModule(moduleName) << " " << message.CStr();
 
     auto ret = sd_journal_print(GetSyslogPriority(level), "%s", ss.str().c_str());
     if (ret != 0) {
@@ -91,8 +91,10 @@ std::string Logger::GetCurrentTime()
     auto              now       = std::chrono::system_clock::now();
     auto              ms        = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
     auto              time      = std::chrono::system_clock::to_time_t(now);
-    auto              localTime = *std::localtime(&time);
+    std::tm           localTime = {};
     std::stringstream ss;
+
+    (void)localtime_r(&time, &localTime);
 
     ss << (sColored ? cColorTime : "") << std::put_time(&localTime, "%d.%m.%y %H:%M:%S") << "." << std::setfill('0')
        << std::setw(3) << ms.count() << (sColored ? cColorNone : "");
@@ -100,7 +102,7 @@ std::string Logger::GetCurrentTime()
     return ss.str();
 }
 
-std::string Logger::GetLogLevel(aos::LogLevel level)
+std::string Logger::GetLogLevel(const aos::LogLevel& level)
 {
     std::stringstream ss;
 
@@ -130,16 +132,16 @@ std::string Logger::GetLogLevel(aos::LogLevel level)
     return ss.str();
 }
 
-std::string Logger::GetModule(const String& module)
+std::string Logger::GetModule(const String& moduleName)
 {
     std::stringstream ss;
 
-    ss << (sColored ? cColorModule : "") << "(" << module.CStr() << ")" << (sColored ? cColorNone : "");
+    ss << (sColored ? cColorModule : "") << "(" << moduleName.CStr() << ")" << (sColored ? cColorNone : "");
 
     return ss.str();
 }
 
-int Logger::GetSyslogPriority(aos::LogLevel level)
+int Logger::GetSyslogPriority(const aos::LogLevel& level)
 {
     switch (static_cast<aos::LogLevelEnum>(level)) {
     case aos::LogLevelEnum::eDebug:

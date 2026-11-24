@@ -5,6 +5,7 @@
  */
 #include <cerrno>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -39,11 +40,11 @@ namespace {
  * Constants
  **********************************************************************************************************************/
 
-const std::map<std::string, std::string> sMimeTypes = {{"html", "text/html"}, {"htm", "text/html"}, {"css", "text/css"},
-    {"js", "application/javascript"}, {"json", "application/json"}, {"xml", "application/xml"}, {"txt", "text/plain"},
-    {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"gif", "image/gif"}, {"svg", "image/svg+xml"},
-    {"ico", "image/x-icon"}, {"pdf", "application/pdf"}, {".zip", "application/zip"}, {".tar", "application/x-tar"},
-    {".gz", "application/gzip"}};
+const std::map<std::string, std::string, std::less<>> sMimeTypes = {{"html", "text/html"}, {"htm", "text/html"},
+    {"css", "text/css"}, {"js", "application/javascript"}, {"json", "application/json"}, {"xml", "application/xml"},
+    {"txt", "text/plain"}, {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"gif", "image/gif"},
+    {"svg", "image/svg+xml"}, {"ico", "image/x-icon"}, {"pdf", "application/pdf"}, {".zip", "application/zip"},
+    {".tar", "application/x-tar"}, {".gz", "application/gzip"}};
 
 constexpr size_t cReadChunkSize = 64 * 1024;
 
@@ -53,8 +54,7 @@ constexpr size_t cReadChunkSize = 64 * 1024;
 
 std::string GetMimeType(const std::string& ext)
 {
-    auto it = sMimeTypes.find(ext);
-    if (it != sMimeTypes.end()) {
+    if (auto it = sMimeTypes.find(ext); it != sMimeTypes.end()) {
         return it->second;
     }
 
@@ -99,7 +99,7 @@ void SendStatus(Poco::Net::HTTPServerResponse& response, int status)
         response.setStatus(static_cast<Poco::Net::HTTPResponse::HTTPStatus>(status));
     }
 
-    response.send();
+    (void)response.send();
 }
 
 } // namespace
@@ -126,7 +126,7 @@ bool BrokenFiles::Take(const std::string& path, const struct stat& st)
 
     auto matched = st.st_mtim.tv_sec == it->second.tv_sec && st.st_mtim.tv_nsec == it->second.tv_nsec;
 
-    mFiles.erase(it);
+    (void)mFiles.erase(it);
 
     return matched;
 }
@@ -228,8 +228,7 @@ void Fileserver::FileRequestHandler::handleRequest(
     try {
         std::string target = request.getURI();
 
-        auto queryPos = target.find('?');
-        if (queryPos != std::string::npos) {
+        if (auto queryPos = target.find('?'); queryPos != std::string::npos) {
             target.resize(queryPos);
         }
 
@@ -253,7 +252,7 @@ void Fileserver::FileRequestHandler::handleRequest(
 
         auto extension = filePath.extension().string();
         if (!extension.empty()) {
-            extension.erase(0, 1);
+            (void)extension.erase(0, 1);
         }
 
         SendFile(fd.get().mFD, path, st, extension, request, response);
@@ -285,7 +284,7 @@ bool Fileserver::FileRequestHandler::ResolvePath(const std::string& target, fs::
 }
 
 Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
-    const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response)
+    const std::string& path, struct stat& st, Poco::Net::HTTPServerResponse& response) const
 {
     FDPtr fd(FDHandle(open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK)));
     if (!fd) {
@@ -330,7 +329,7 @@ Fileserver::FileRequestHandler::FDPtr Fileserver::FileRequestHandler::OpenFile(
 }
 
 void Fileserver::FileRequestHandler::HandleReadError(
-    const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response)
+    const std::string& path, const struct stat& st, int err, Poco::Net::HTTPServerResponse& response) const
 {
     LOG_ERR() << "Failed to read file" << Log::Field("path", path.c_str()) << Log::Field("sent", response.sent())
               << Log::Field(Error(err, "can't read file"));
@@ -343,7 +342,7 @@ void Fileserver::FileRequestHandler::HandleReadError(
 }
 
 void Fileserver::FileRequestHandler::SendFile(int fd, const std::string& path, const struct stat& st,
-    const std::string& extension, Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
+    const std::string& extension, const Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response)
 {
     std::vector<char> buffer(cReadChunkSize);
 
@@ -389,14 +388,13 @@ void Fileserver::FileRequestHandler::SendFile(int fd, const std::string& path, c
 Fileserver::FileRequestHandlerFactory::FileRequestHandlerFactory(const std::string& rootDir, ReadFunction read)
     : mRootDir(rootDir)
     , mRead(std::move(read))
-    , mBrokenFiles(std::make_shared<BrokenFiles>())
 {
 }
 
 Poco::Net::HTTPRequestHandler* Fileserver::FileRequestHandlerFactory::createRequestHandler(
     [[maybe_unused]] const Poco::Net::HTTPServerRequest& request)
 {
-    return new FileRequestHandler(mRootDir, mBrokenFiles, mRead);
+    return new FileRequestHandler(mRootDir, mBrokenFiles, mRead); // NOSONAR cpp:S5025 - Poco takes ownership
 }
 
 Error Fileserver::Start()

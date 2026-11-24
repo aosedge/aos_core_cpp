@@ -64,7 +64,7 @@ void IpSubnet::ReleaseIPNetPool(const std::string& networkID)
     }
 
     mPredefinedPrivateNetworks.push_back(it->second.mSubnet);
-    mUsedIPSubnets.erase(it);
+    (void)mUsedIPSubnets.erase(it);
 }
 
 void IpSubnet::RemoveAllocatedSubnet(
@@ -73,17 +73,17 @@ void IpSubnet::RemoveAllocatedSubnet(
     if (auto it = std::find(mPredefinedPrivateNetworks.begin(), mPredefinedPrivateNetworks.end(), subnet);
         it != mPredefinedPrivateNetworks.end()) {
         mUsedIPSubnets[networkID] = Subnetwork {*it, GenerateSubnetIPs(*it)};
-        mPredefinedPrivateNetworks.erase(it);
+        (void)mPredefinedPrivateNetworks.erase(it);
     }
 
-    for (auto it = IPs.begin(); it != IPs.end(); ++it) {
+    for (const auto& ip : IPs) {
         auto it2 = mUsedIPSubnets.find(networkID);
         if (it2 == mUsedIPSubnets.end()) {
             continue;
         }
 
         auto& ips = it2->second.mIPs;
-        ips.erase(std::remove(ips.begin(), ips.end(), *it), ips.end());
+        (void)ips.erase(std::remove(ips.begin(), ips.end(), ip), ips.end());
     }
 }
 
@@ -117,7 +117,7 @@ std::string IpSubnet::FindUnusedIPSubnet()
 
         if (!overlaps) {
             auto cidr = *it;
-            mPredefinedPrivateNetworks.erase(it);
+            (void)mPredefinedPrivateNetworks.erase(it);
 
             return cidr;
         }

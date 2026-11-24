@@ -156,9 +156,9 @@ private:
     void CreateMigrationData();
     void DropMigrationData();
 
-    void CreateTables();
-    void FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result);
-    void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
+    void        CreateTables();
+    static void FromAosCertInfo(const String& storageID, const aos::CertInfo& certInfo, CertInfo& result);
+    static void ToAosCertInfo(const CertInfo& certInfo, aos::CertInfo& result);
 
     config::DatabaseConfig                      mConfig;
     std::unique_ptr<Poco::Data::Session>        mSession;

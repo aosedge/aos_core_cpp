@@ -84,7 +84,7 @@ Error FSWatcher::Subscribe(const String& path, fs::FSEventSubscriberItf& subscri
     LOG_DBG() << "Start watching" << Log::Field("path", path);
 
     if (mWatchContexts.find(path.CStr()) == mWatchContexts.end()) {
-        int wd = inotify_add_watch(mInotifyFd, path.CStr(), mFlags);
+        int wd = inotify_add_watch(mInotifyFd, path.CStr(), static_cast<uint32_t>(mFlags));
         if (wd < 0) {
             return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
         }
@@ -135,17 +135,17 @@ Error FSWatcher::StartImpl()
         }
 
         if (mEpollFd >= 0) {
-            close(mEpollFd);
+            (void)close(mEpollFd);
             mEpollFd = -1;
         }
 
         if (mEventFd >= 0) {
-            close(mEventFd);
+            (void)close(mEventFd);
             mEventFd = -1;
         }
 
         if (mInotifyFd >= 0) {
-            close(mInotifyFd);
+            (void)close(mInotifyFd);
             mInotifyFd = -1;
         }
     });
@@ -213,12 +213,12 @@ Error FSWatcher::StopImpl()
     mCondVar.notify_all();
 
     if (mEventFd >= 0) {
-        close(mEventFd);
+        (void)close(mEventFd);
         mEventFd = -1;
     }
 
     if (mInotifyFd >= 0) {
-        close(mInotifyFd);
+        (void)close(mInotifyFd);
         mInotifyFd = -1;
     }
 
@@ -238,7 +238,7 @@ Error FSWatcher::UnsubscribeImpl(const String& path, fs::FSEventSubscriberItf& s
 
     auto& pathSubscribers = it->second.mSubscribers;
 
-    pathSubscribers.erase(
+    (void)pathSubscribers.erase(
         std::remove(pathSubscribers.begin(), pathSubscribers.end(), &subscriber), pathSubscribers.end());
 
     if (!pathSubscribers.empty()) {
@@ -249,7 +249,7 @@ Error FSWatcher::UnsubscribeImpl(const String& path, fs::FSEventSubscriberItf& s
         LOG_ERR() << AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, strerror(errno)));
     }
 
-    mWatchContexts.erase(it);
+    (void)mWatchContexts.erase(it);
 
     return ErrorEnum::eNone;
 }
@@ -267,13 +267,15 @@ void FSWatcher::Run()
 
     while (mRunning) {
         const auto waitResult = epoll_wait(mEpollFd, &events, 1, static_cast<int>(mPollTimeout.Milliseconds()));
-        if (waitResult < 0) {
+        if (waitResult < 0) { // NOSONAR cpp:S6004 - waitResult is used after the if statement
             if (errno != EINTR) {
                 LOG_ERR() << "Wait poll event failed" << Log::Field(Error(errno));
             }
 
             continue;
-        } else if (waitResult == 0) {
+        }
+
+        if (waitResult == 0) {
             continue;
         }
 
@@ -292,18 +294,18 @@ void FSWatcher::Run()
         std::vector<std::pair<int, std::vector<fs::FSEvent>>> notifications;
 
         while (i < length) {
-            struct inotify_event* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
+            auto* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
 
             i += sizeof(struct inotify_event) + event->len;
 
-            notifications.emplace_back(event->wd, ToFSEvent(event->mask));
+            (void)notifications.emplace_back(event->wd, ToFSEvent(event->mask));
         }
 
         std::lock_guard lock {mSubscribersMutex};
 
         for (const auto& [wd, wdEvents] : notifications) {
-            auto it = std::find_if(
-                mWatchContexts.begin(), mWatchContexts.end(), [=](const auto& pair) { return pair.second.mFD == wd; });
+            auto it = std::find_if(mWatchContexts.begin(), mWatchContexts.end(),
+                [=](const auto& pair) { return pair.second.mFD == wd; }); // NOSONAR cpp:M23_235 - structured binding
 
             if (it == mWatchContexts.end()) {
                 continue;
@@ -346,7 +348,7 @@ void FSWatcher::ClearWatchedContexts()
     mWatchContexts.clear();
 
     if (mEpollFd >= 0) {
-        close(mEpollFd);
+        (void)close(mEpollFd);
 
         mEpollFd = -1;
     }
@@ -478,13 +480,13 @@ Error FSBufferedWatcher::UnsubscribeImpl(const String& path, fs::FSEventSubscrib
         return ErrorEnum::eNone;
     }
 
-    auto itSubscribers = std::find(it->second.mSubscribers.begin(), it->second.mSubscribers.end(), &subscriber);
-    if (itSubscribers != it->second.mSubscribers.end()) {
-        it->second.mSubscribers.erase(itSubscribers);
+    if (auto itSubscribers = std::find(it->second.mSubscribers.begin(), it->second.mSubscribers.end(), &subscriber);
+        itSubscribers != it->second.mSubscribers.end()) {
+        (void)it->second.mSubscribers.erase(itSubscribers);
     }
 
     if (it->second.mSubscribers.empty()) {
-        mNotifyContexts.erase(it);
+        (void)mNotifyContexts.erase(it);
     }
 
     return ErrorEnum::eNone;
@@ -503,13 +505,24 @@ void FSBufferedWatcher::NotifySubscribers(const std::vector<fs::FSEventSubscribe
         auto& context = it->second;
 
         context.mLastEventTime = Time::Now();
-        context.mEvents.insert(context.mEvents.end(), events.begin(), events.end());
+        (void)context.mEvents.insert(context.mEvents.end(), events.begin(), events.end());
         context.mSubscribers = subscribers;
     } else {
-        mNotifyContexts.emplace(path, NotifyContext {subscribers, events, Time::Now()});
+        (void)mNotifyContexts.try_emplace(path, NotifyContext {subscribers, events, Time::Now()});
     }
 
     mCondVar.notify_all();
+}
+
+void FSBufferedWatcher::NotifyContextSubscribers(const std::string& path, NotifyContext& context)
+{
+    for (auto* subscriber : context.mSubscribers) {
+        if (!subscriber) {
+            continue;
+        }
+
+        subscriber->OnFSEvent(path.c_str(), Array<fs::FSEvent>(context.mEvents.data(), context.mEvents.size()));
+    }
 }
 
 void FSBufferedWatcher::Run()
@@ -533,23 +546,17 @@ void FSBufferedWatcher::Run()
                 continue;
             }
 
-            for (auto* subscriber : context.mSubscribers) {
-                if (!subscriber) {
-                    continue;
-                }
-
-                subscriber->OnFSEvent(path.c_str(), Array<fs::FSEvent>(context.mEvents.data(), context.mEvents.size()));
-            }
+            NotifyContextSubscribers(path, context);
 
             notified.push_back(path);
         }
 
         for (const auto& path : notified) {
-            mNotifyContexts.erase(path);
+            (void)mNotifyContexts.erase(path);
         }
 
         if (sleepTimeout > 0) {
-            mCondVar.wait_for(lock, std::chrono::nanoseconds(sleepTimeout.Nanoseconds()));
+            (void)mCondVar.wait_for(lock, std::chrono::nanoseconds(sleepTimeout.Nanoseconds()));
         }
     }
 }

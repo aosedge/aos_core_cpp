@@ -155,6 +155,23 @@ std::string SerializeMonitoringParams(const Optional<InstanceMonitoringParams>& 
     return common::utils::Stringify(obj);
 }
 
+void DeserializePartitionRules(const Poco::JSON::Array& partitionsArray, Array<PartitionAlertRule>& partitions)
+{
+    for (const auto& item : partitionsArray) {
+        const auto partObj = item.extract<Poco::JSON::Object::Ptr>();
+        if (partObj == nullptr) {
+            continue;
+        }
+
+        PartitionAlertRule rule;
+        AOS_ERROR_CHECK_AND_THROW(rule.mName.Assign(partObj->getValue<std::string>("name").c_str()));
+        rule.mMinThreshold = partObj->getValue<uint8_t>("minThreshold");
+        rule.mMaxThreshold = partObj->getValue<uint8_t>("maxThreshold");
+        rule.mMinTimeout   = Duration(partObj->getValue<int64_t>("minTimeout"));
+        AOS_ERROR_CHECK_AND_THROW(partitions.PushBack(rule), "can't add partition rule");
+    }
+}
+
 void DeserializeMonitoringParams(const std::string& jsonStr, Optional<InstanceMonitoringParams>& params)
 {
     if (jsonStr.empty()) {
@@ -210,20 +227,7 @@ void DeserializeMonitoringParams(const std::string& jsonStr, Optional<InstanceMo
         }
 
         if (alertObj->has("partitions")) {
-            auto partitionsArray = alertObj->getArray("partitions");
-            for (const auto& item : *partitionsArray) {
-                const auto partObj = item.extract<Poco::JSON::Object::Ptr>();
-                if (partObj == nullptr) {
-                    continue;
-                }
-
-                PartitionAlertRule rule;
-                AOS_ERROR_CHECK_AND_THROW(rule.mName.Assign(partObj->getValue<std::string>("name").c_str()));
-                rule.mMinThreshold = partObj->getValue<uint8_t>("minThreshold");
-                rule.mMaxThreshold = partObj->getValue<uint8_t>("maxThreshold");
-                rule.mMinTimeout   = Duration(partObj->getValue<int64_t>("minTimeout"));
-                AOS_ERROR_CHECK_AND_THROW(rules.mPartitions.PushBack(rule), "can't add partition rule");
-            }
+            DeserializePartitionRules(*alertObj->getArray("partitions"), rules.mPartitions);
         }
     }
 }
@@ -422,8 +426,7 @@ Error Database::Init(const std::string& workDir, const common::config::Migration
     }
 
     try {
-        auto dirPath = std::filesystem::path(workDir);
-        if (!std::filesystem::exists(dirPath)) {
+        if (auto dirPath = std::filesystem::path(workDir); !std::filesystem::exists(dirPath)) {
             std::filesystem::create_directories(dirPath);
         }
 

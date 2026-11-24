@@ -27,22 +27,27 @@ struct ServiceDiscoveryRequest {
     /**
      * Compares service discovery request.
      *
-     * @param request service discovery request to compare with.
+     * @param lhs service discovery request.
+     * @param rhs service discovery request to compare with.
      * @return bool.
      */
-    bool operator==(const ServiceDiscoveryRequest& request) const
+    friend bool operator==(const ServiceDiscoveryRequest& lhs, const ServiceDiscoveryRequest& rhs)
     {
-        return mVersion == request.mVersion && mSystemID == request.mSystemID
-            && mSupportedProtocols == request.mSupportedProtocols;
+        return lhs.mVersion == rhs.mVersion && lhs.mSystemID == rhs.mSystemID
+            && lhs.mSupportedProtocols == rhs.mSupportedProtocols;
     }
 
     /**
      * Compares service discovery request.
      *
-     * @param request service discovery request to compare with.
+     * @param lhs service discovery request.
+     * @param rhs service discovery request to compare with.
      * @return bool.
      */
-    bool operator!=(const ServiceDiscoveryRequest& request) const { return !operator==(request); }
+    friend bool operator!=(const ServiceDiscoveryRequest& lhs, const ServiceDiscoveryRequest& rhs)
+    {
+        return !(lhs == rhs);
+    }
 };
 
 /**
@@ -57,7 +62,7 @@ public:
         eError,
     };
 
-    static const Array<const char* const> GetStrings()
+    static Array<const char* const> GetStrings()
     {
         static const char* const sStrings[] = {
             "NoError",
@@ -86,23 +91,28 @@ struct ServiceDiscoveryResponse {
     /**
      * Compares service discovery response.
      *
-     * @param response service discovery response to compare with.
+     * @param lhs service discovery response.
+     * @param rhs service discovery response to compare with.
      * @return bool.
      */
-    bool operator==(const ServiceDiscoveryResponse& response) const
+    friend bool operator==(const ServiceDiscoveryResponse& lhs, const ServiceDiscoveryResponse& rhs)
     {
-        return mVersion == response.mVersion && mSystemID == response.mSystemID
-            && mNextRequestDelay == response.mNextRequestDelay && mConnectionInfo == response.mConnectionInfo
-            && mAuthToken == response.mAuthToken && mErrorCode == response.mErrorCode;
+        return lhs.mVersion == rhs.mVersion && lhs.mSystemID == rhs.mSystemID
+            && lhs.mNextRequestDelay == rhs.mNextRequestDelay && lhs.mConnectionInfo == rhs.mConnectionInfo
+            && lhs.mAuthToken == rhs.mAuthToken && lhs.mErrorCode == rhs.mErrorCode;
     }
 
     /**
      * Compares service discovery response.
      *
-     * @param response service discovery response to compare with.
+     * @param lhs service discovery response.
+     * @param rhs service discovery response to compare with.
      * @return bool.
      */
-    bool operator!=(const ServiceDiscoveryResponse& response) const { return !operator==(response); }
+    friend bool operator!=(const ServiceDiscoveryResponse& lhs, const ServiceDiscoveryResponse& rhs)
+    {
+        return !(lhs == rhs);
+    }
 };
 
 /**

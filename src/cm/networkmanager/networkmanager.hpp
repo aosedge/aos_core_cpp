@@ -137,6 +137,11 @@ private:
     static constexpr int      cVlanGenerateRetries = 4;
 
     void     RemoveExistedNetworks();
+    Error    LoadNetworkHosts(const Network& network, NetworkState& networkState);
+    Error    UpdateInstanceNetwork(const InstanceIdent& instanceIdent, const String& networkID, const String& nodeID,
+           const UpdateItemNetworkParams& serviceData, const std::vector<std::string>& hosts,
+           const NetworkState& networkState, Instance& instance, InstanceNetworkAllocation& result);
+    Error    AddInstanceHosts(const std::string& ip, const std::vector<std::string>& hosts);
     uint64_t GenerateVlanID();
     bool     IsHostExist(const std::string& hostName) const;
 
@@ -172,7 +177,8 @@ private:
     void AddConnectionRules(const InstanceIdent& requesterIdent, const std::string& target, const std::string& protocol,
         const ConnectionRules& connectionRules, bool warnNotExposed, Array<FirewallRule>& rules) const;
 
-    void  ParseAllowConnection(const String& connection, std::string& target, std::string& port, std::string& protocol);
+    static void ParseAllowConnection(
+        const String& connection, std::string& target, std::string& port, std::string& protocol);
     Error PrepareFirewallRules(const InstanceIdent& instanceIdent, const std::string& subnet, const String& ip,
         const Array<StaticString<cConnectionNameLen>>& allowedConnections, InstanceNetworkAllocation& result,
         std::vector<Connection>& connections);
@@ -190,10 +196,10 @@ private:
 
     std::vector<std::string> GetInstanceTargets(const InstanceIdent& instanceIdent) const;
 
-    bool  MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
-         const std::string& currentNodeID, StaticString<cIPLen>& ip,
-         StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers);
-    Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
+    bool         MigrateInstanceFromOtherNode(const InstanceIdent& instanceIdent, NetworkState& networkState,
+                const std::string& currentNodeID, StaticString<cIPLen>& ip,
+                StaticArray<StaticString<cIPLen>, cMaxNumDNSServers>& dnsServers);
+    static Error ParseExposedPorts(const Array<StaticString<cExposedPortLen>>& exposedPorts, Instance& instance);
 
     Error RestartDNS();
 

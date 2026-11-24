@@ -10,6 +10,7 @@ extern "C" {
 
 #include <regex>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
 #include <core/common/tools/logger.hpp>
@@ -23,11 +24,16 @@ namespace {
 class NFTCtxGuard {
 public:
     NFTCtxGuard()
-        : mCtx(nft_ctx_new(NFT_CTX_DEFAULT))
+        : mCtx(nft_ctx_new(NFT_CTX_DEFAULT)) // NOSONAR cpp:S3230 - initialized with a function call
     {
         if (mCtx != nullptr) {
-            nft_ctx_buffer_error(mCtx);
-            nft_ctx_buffer_output(mCtx);
+            if (nft_ctx_buffer_error(mCtx) != 0) {
+                LOG_WRN() << "Failed to buffer nftables errors";
+            }
+
+            if (nft_ctx_buffer_output(mCtx) != 0) {
+                LOG_WRN() << "Failed to buffer nftables output";
+            }
             nft_ctx_output_set_flags(mCtx, nft_ctx_output_get_flags(mCtx) | NFT_CTX_OUTPUT_HANDLE);
         }
     }
@@ -62,14 +68,14 @@ private:
     nft_ctx* mCtx;
 };
 
-bool IsNotFoundError(const std::string& err)
+bool IsNotFoundError(std::string_view err)
 {
-    return err.find("No such file or directory") != std::string::npos;
+    return err.find("No such file or directory") != std::string_view::npos;
 }
 
-bool HasUnsafeToken(const std::string& value)
+bool HasUnsafeToken(std::string_view value)
 {
-    return value.find_first_of(" \t\n\r;\"{}\\") != std::string::npos;
+    return value.find_first_of(" \t\n\r;\"{}\\") != std::string_view::npos;
 }
 
 bool RuleHasUnsafeToken(const FWRule& rule)
@@ -370,7 +376,7 @@ Error NFTables::ListChainRules(const std::string& table, const std::string& chai
 
 Error NFTables::RunBuffer(const std::string& cmd)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -394,7 +400,7 @@ Error NFTables::RunBuffer(const std::string& cmd)
 
 Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -420,7 +426,7 @@ Error NFTables::RunBufferWithOutput(const std::string& cmd, std::string& output)
 
 Error NFTables::RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>& handles)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {
@@ -459,7 +465,7 @@ Error NFTables::RunBufferEcho(const std::string& cmd, std::vector<FWRuleHandle>&
 
 Error NFTables::RunBufferEchoRules(const std::string& cmd, std::vector<FWListedRule>& rules)
 {
-    std::lock_guard<std::mutex> lock {mMutex};
+    std::scoped_lock lock {mMutex};
 
     NFTCtxGuard ctx;
     if (ctx.Get() == nullptr) {

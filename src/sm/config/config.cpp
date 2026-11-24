@@ -87,7 +87,8 @@ launcher::RuntimeConfig ParseRuntimeConfig(
     auto config = launcher::RuntimeConfig {object.GetValue<std::string>("plugin"), object.GetValue<std::string>("type"),
         object.GetValue<bool>("isComponent", false), workingDir, nullptr};
 
-    config.mConfig = object.Has("config") ? object.GetObject("config") : cEmptyObject;
+    config.mConfig
+        = object.Has("config") ? static_cast<Poco::JSON::Object::Ptr>(object.GetObject("config")) : cEmptyObject;
 
     return config;
 }

@@ -48,7 +48,7 @@ public:
      * @param instanceIDProvider instance ID provider.
      * @return Error.
      */
-    Error Init(const RuntimeConfig& config, aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
+    Error Init(const RuntimeConfig& config, const aos::iamclient::CurrentNodeInfoProviderItf& currentNodeInfoProvider,
         common::imagemanager::ItemInfoProviderItf& itemInfoProvider, networkmanager::NetworkManagerItf& networkManager,
         aos::iamclient::PermHandlerItf& permHandler, resourcemanager::ResourceInfoProviderItf& resourceInfoProvider,
         oci::OCISpecItf& ociSpec, InstanceStatusReceiverItf& instanceStatusReceiver,

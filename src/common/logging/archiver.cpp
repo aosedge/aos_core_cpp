@@ -32,7 +32,7 @@ Error Archiver::AddLog(const std::string& message)
             return err;
         }
 
-        LOG_DBG() << "Max part size reached: partCount=" << mPartCount;
+        LOG_DBG() << "Max part size reached: partCount=" << static_cast<int32_t>(mPartCount);
     }
 
     *mCompressionStream << message;
@@ -43,7 +43,7 @@ Error Archiver::AddLog(const std::string& message)
 
 Error Archiver::SendLog(const String& correlationId)
 {
-    mCompressionStream->close();
+    (void)mCompressionStream->close();
 
     if (mPartSize > 0) {
         mPartCount++;
@@ -62,7 +62,9 @@ Error Archiver::SendLog(const String& correlationId)
         emptyLog->mPart          = part;
         emptyLog->mStatus        = LogStatusEnum::eEmpty;
 
-        mLogSender.SendLog(*emptyLog);
+        if (auto err = mLogSender.SendLog(*emptyLog); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         return ErrorEnum::eNone;
     }
@@ -71,7 +73,7 @@ Error Archiver::SendLog(const String& correlationId)
         auto data = mLogStreams[i].str();
         auto part = i + 1;
 
-        LOG_DBG() << "Push log: part=" << part << ", size=" << data.size();
+        LOG_DBG() << "Push log: part=" << static_cast<int32_t>(part) << ", size=" << static_cast<int32_t>(data.size());
 
         auto logPart = std::make_unique<PushLog>();
 
@@ -80,12 +82,14 @@ Error Archiver::SendLog(const String& correlationId)
         logPart->mPart          = part;
         logPart->mStatus        = LogStatusEnum::eOK;
 
-        auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
-        if (!err.IsNone()) {
+        if (auto err = logPart->mContent.Insert(logPart->mContent.begin(), data.data(), data.data() + data.size());
+            !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
 
-        mLogSender.SendLog(*logPart);
+        if (auto err = mLogSender.SendLog(*logPart); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -95,7 +99,7 @@ void Archiver::CreateCompressionStream()
     auto& stream = mLogStreams.emplace_back();
 
     if (mCompressionStream) {
-        mCompressionStream->close();
+        (void)mCompressionStream->close();
     }
 
     mCompressionStream = std::make_unique<Poco::DeflatingOutputStream>(
@@ -105,7 +109,7 @@ void Archiver::CreateCompressionStream()
 Error Archiver::AddLogPart()
 {
     try {
-        mCompressionStream->close();
+        (void)mCompressionStream->close();
 
         mPartCount++;
         mPartSize = 0;

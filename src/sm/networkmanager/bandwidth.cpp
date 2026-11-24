@@ -148,7 +148,9 @@ StaticString<cInterfaceLen> Bandwidth::IFBName(const String& hostIfName)
     // "ifb-" + 8 hex = 12 chars, within IFNAMSIZ-1 (15).
     StaticString<cInterfaceLen> name;
 
-    name.Format("ifb-%08x", hash);
+    if (auto err = name.Format("ifb-%08x", hash); !err.IsNone()) {
+        LOG_ERR() << "Failed to format IFB name" << Log::Field(err);
+    }
 
     return name;
 }

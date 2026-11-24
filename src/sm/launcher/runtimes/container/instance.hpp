@@ -157,22 +157,26 @@ private:
     static constexpr auto cStatePartitionName   = "states";
     static constexpr auto cStoragePartitionName = "storages";
 
-    Error  LoadConfigs(oci::ImageConfig& imageConfig, oci::ItemConfig& itemConfig);
-    Error  CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
-         const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
-    Error  BindHostDirs(oci::RuntimeConfig& runtimeConfig);
-    Error  CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig);
-    Error  ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
-    Error  ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
-    size_t GetNumCPUCores() const;
-    Error  AddResources(const Array<oci::ResourceInfo>& resources, oci::RuntimeConfig& runtimeConfig);
-    Error  AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, const String& permissions,
-         oci::RuntimeConfig& runtimeConfig);
-    Error  ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
-    Error  OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
-    Error  PrepareStateStorage();
-    Error  PrepareRootFS(
-         const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
+    Error        LoadConfigs(oci::ImageConfig& imageConfig, oci::ItemConfig& itemConfig);
+    Error        CreateRuntimeConfig(const std::string& runtimeDir, const oci::ImageConfig& imageConfig,
+               const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
+    static Error BindHostDirs(oci::RuntimeConfig& runtimeConfig);
+    Error        CreateAosEnvVars(oci::RuntimeConfig& runtimeConfig) const;
+    static Error ApplyImageConfig(const oci::ImageConfig& imageConfig, oci::RuntimeConfig& runtimeConfig);
+    Error        ApplyItemConfig(const oci::ItemConfig& itemConfig, oci::RuntimeConfig& runtimeConfig);
+    Error        ApplyQuotas(const oci::ServiceQuotas& quotas, oci::RuntimeConfig& runtimeConfig) const;
+    static Error AddTmpMount(uint64_t tmpLimit, oci::RuntimeConfig& runtimeConfig);
+    size_t       GetNumCPUCores() const;
+    Error        AddResources(const Array<oci::ResourceInfo>& resources, oci::RuntimeConfig& runtimeConfig);
+    Error        AddDevices(const Array<StaticString<cDeviceNameLen>>& devices, const String& permissions,
+               oci::RuntimeConfig& runtimeConfig);
+    static Error ReplaceDevicePaths(
+        const String& hostPath, const String& containerPath, std::vector<oci::LinuxDevice>& ociDevices);
+    Error ApplyStateStorage(oci::RuntimeConfig& runtimeConfig);
+    Error OverrideEnvVars(oci::RuntimeConfig& runtimeConfig);
+    Error PrepareStateStorage();
+    Error PrepareRootFS(
+        const std::string& runtimeDir, const oci::ImageConfig& imageConfig, const oci::RuntimeConfig& runtimeConfig);
     Error PrepareNetwork(const std::string& runtimeDir);
     Error WriteResolvConf(const std::string& path, const Array<StaticString<cIPLen>>& dnsServers) const;
     Error WriteHosts(const std::string& path, const Array<Host>& hosts) const;

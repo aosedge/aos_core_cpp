@@ -46,11 +46,6 @@ bool RequestParams::TryWaitForResponse(std::string& result, const Duration timeo
     return false;
 }
 
-bool RequestParams::operator<(const RequestParams& rhs) const
-{
-    return mRequestId < rhs.mRequestId;
-}
-
 /***********************************************************************************************************************
  * PendingRequests
  **********************************************************************************************************************/
@@ -70,7 +65,7 @@ void PendingRequests::Remove(RequestParamsPtr requestParamsPtr)
 {
     std::lock_guard lock(mMutex);
 
-    mRequests.erase(std::remove(mRequests.begin(), mRequests.end(), requestParamsPtr));
+    (void)mRequests.erase(std::remove(mRequests.begin(), mRequests.end(), requestParamsPtr));
 }
 
 bool PendingRequests::SetResponse(const std::string& requestId, const std::string& response)

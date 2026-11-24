@@ -58,7 +58,7 @@ public:
         , mReaderFunc(readerFunc)
         , mConvertFunc(std::move(convertFunc))
         , mNotifyFunc(notifyFunc)
-        , mLogContext(std::move(logContext))
+        , mLogContext(logContext)
     {
     }
 
@@ -111,7 +111,7 @@ public:
 
             LOG_DBG() << "Remove subscriber" << Log::Field("context", mLogContext.c_str());
 
-            mSubscribers.erase(&listener);
+            (void)mSubscribers.erase(&listener);
 
             shouldStop = mSubscribers.empty() && mThread.joinable();
         }
@@ -190,7 +190,7 @@ private:
     {
         LOG_DBG() << "Subscription task started" << Log::Field("context", mLogContext.c_str());
 
-        while (true) {
+        do {
             try {
                 ReaderPtr reader;
 
@@ -241,19 +241,18 @@ private:
                 LOG_ERR() << "Subscription loop failed" << Log::Field("context", mLogContext.c_str())
                           << Log::Field(Error {ErrorEnum::eRuntime, e.what()});
             }
-
-            {
-                std::unique_lock lock {mMutex};
-
-                mCV.wait_for(lock, cReconnectInterval, [this]() { return mClose; });
-
-                if (mClose) {
-                    break;
-                }
-            }
-        }
+        } while (WaitReconnect());
 
         LOG_DBG() << "Subscription task stopped" << Log::Field("context", mLogContext.c_str());
+    }
+
+    bool WaitReconnect()
+    {
+        std::unique_lock lock {mMutex};
+
+        (void)mCV.wait_for(lock, cReconnectInterval, [this]() { return mClose; });
+
+        return !mClose;
     }
 
     static constexpr auto cReconnectInterval = std::chrono::seconds(3);

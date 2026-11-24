@@ -27,7 +27,6 @@ public:
 protected:
     void initialize(Application& self) override;
     void uninitialize() override;
-    void reinitialize(Application& self) override;
     int  main(const ArgVec& args) override;
     void defineOptions(Poco::Util::OptionSet& options) override;
 

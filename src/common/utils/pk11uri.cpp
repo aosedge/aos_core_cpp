@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <iterator>
+
 #include <openssl/pem.h>
 
 #include "pk11uri.hpp"
@@ -23,8 +25,8 @@ const ASN1_TEMPLATE cP11ProvPK11URISeqTT[] = {
 
 const ASN1_ITEM* P11PROV_PK11_URI_it(void)
 {
-    static const ASN1_ITEM local_it = {0x1, 16, cP11ProvPK11URISeqTT,
-        sizeof(cP11ProvPK11URISeqTT) / sizeof(ASN1_TEMPLATE), nullptr, sizeof(P11PROV_PK11_URI), "P11PROV_PK11_URI"};
+    static const ASN1_ITEM local_it = {0x1, 16, cP11ProvPK11URISeqTT, std::size(cP11ProvPK11URISeqTT), nullptr,
+        sizeof(P11PROV_PK11_URI), "P11PROV_PK11_URI"};
     return &local_it;
 }
 
