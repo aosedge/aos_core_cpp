@@ -313,6 +313,12 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
         instance->mInstanceIdent = instanceIdent;
         instance->mHosts         = serviceData.mHosts;
 
+        auto rollbackIP = DeferRelease(&IP, [this, &networkID, &err](const std::string* ip) {
+            if (!err.IsNone()) {
+                mIpSubnet.ReleaseIPToSubnet(networkID.CStr(), *ip);
+            }
+        });
+
         if (MigrateInstanceFromOtherNode(instanceIdent, it->second, nodeID.CStr(), migratedIP, migratedDNS)) {
             IP                    = migratedIP.CStr();
             result.mIP            = migratedIP;
@@ -323,15 +329,15 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
 
             IP         = mIpSubnet.GetAvailableIP(networkID.CStr());
             result.mIP = IP.c_str();
-            result.mDNSServers.PushBack(dnsIP.c_str());
-            instance->mDNSServers.PushBack(dnsIP.c_str());
-        }
 
-        auto rollbackIP = DeferRelease(&IP, [this, &networkID, &err](const std::string* ip) {
-            if (!err.IsNone()) {
-                mIpSubnet.ReleaseIPToSubnet(networkID.CStr(), *ip);
+            if (err = result.mDNSServers.PushBack(dnsIP.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
             }
-        });
+
+            if (err = instance->mDNSServers.PushBack(dnsIP.c_str()); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
 
         instance->mIP = IP.c_str();
 
@@ -577,7 +583,10 @@ Error NetworkManager::UpdateInstanceNetwork(const InstanceIdent& instanceIdent, 
 
     (void)mPendingConnections.erase(instanceIdent);
 
-    mStorage->RemovePendingConnections(instanceIdent);
+    if (auto pendingErr = mStorage->RemovePendingConnections(instanceIdent); !pendingErr.IsNone()) {
+        LOG_ERR() << "Failed to remove pending connections" << Log::Field("instanceIdent", instanceIdent)
+                  << Log::Field(pendingErr);
+    }
 
     StorePendingConnections(
         instanceIdent, nodeID, networkID, instance.mIP, networkState.mNetwork.mSubnet.CStr(), connections);

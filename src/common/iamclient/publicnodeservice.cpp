@@ -313,7 +313,9 @@ Error PublicNodesService::RegisterNode()
 
     OnConnected();
 
-    HandleIncomingMessage();
+    if (auto err = HandleIncomingMessage(); !err.IsNone()) {
+        LOG_WRN() << "Handling incoming messages stopped" << Log::Field(err);
+    }
 
     {
         std::lock_guard lock {mMutex};

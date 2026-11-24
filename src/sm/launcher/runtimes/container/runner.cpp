@@ -261,7 +261,9 @@ void Runner::MonitorContainers()
         }
 
         if (runStatusUpdate) {
-            mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate);
+            if (auto err = mRunStatusReceiver->UpdateRunStatus(*runStatusUpdate); !err.IsNone()) {
+                LOG_ERR() << "Failed to update run status" << Log::Field(err);
+            }
         }
 
         RestartInstances();

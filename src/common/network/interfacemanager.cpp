@@ -100,6 +100,40 @@ RetWithError<std::string> GenerateMACAddress(crypto::RandomItf& random)
     return ss.str();
 }
 
+// Broadcast address is set for IPv4 addresses only.
+void SetBroadcast(rtnl_addr* addrObj, const IPAddr& addr, int prefixlen)
+{
+    struct in_addr ipAddr;
+
+    if (inet_pton(AF_INET, addr.mIP.c_str(), &ipAddr) != 1) {
+        return;
+    }
+
+    struct in_addr netmask;
+    struct in_addr broadcast;
+
+    netmask.s_addr = htonl(static_cast<uint32_t>(~((1UL << (32 - prefixlen)) - 1)));
+
+    // Calculate broadcast: broadcast = ip | ~netmask
+    broadcast.s_addr = (ipAddr.s_addr & netmask.s_addr) | ~netmask.s_addr;
+
+    char brdStr[INET_ADDRSTRLEN] = {};
+
+    (void)inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
+
+    struct nl_addr* brd = nullptr;
+
+    if (nl_addr_parse(brdStr, addr.mFamily, &brd) < 0) {
+        return;
+    }
+
+    [[maybe_unused]] auto cleanupBrd = DeferRelease(brd, [](nl_addr* nlAddr) { nl_addr_put(nlAddr); });
+
+    if (auto errBrd = rtnl_addr_set_broadcast(addrObj, brd); errBrd < 0) {
+        LOG_WRN() << "Can't set broadcast address" << Log::Field(NLToAosErr(errBrd, "failed to set broadcast"));
+    }
+}
+
 } // namespace
 
 /***********************************************************************************************************************
@@ -318,10 +352,13 @@ Error InterfaceManager::AddLink(const LinkItf* link) const
         rtnl_link_set_txqlen(linkObj.get(), attrs.mTxQLen);
     }
 
-    rtnl_link_set_type(linkObj.get(), link->GetType());
+    if (auto errType = rtnl_link_set_type(linkObj.get(), link->GetType()); errType < 0) {
+        return NLToAosErr(errType, "failed to set link type");
+    }
 
-    if (auto* vlan = dynamic_cast<const Vlan*>(link)) {
-        rtnl_link_vlan_set_id(linkObj.get(), static_cast<uint16_t>(vlan->GetVlanId()));
+    if (const auto* vlan = dynamic_cast<const Vlan*>(link);
+        vlan && rtnl_link_vlan_set_id(linkObj.get(), static_cast<uint16_t>(vlan->GetVlanId())) < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eFailed, "failed to set VLAN ID"));
     }
 
     if (attrs.mParentIndex > 0) {
@@ -447,7 +484,9 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr) const
 
     [[maybe_unused]] auto cleanupLocal = DeferRelease(local, [](nl_addr* addr) { nl_addr_put(addr); });
 
-    rtnl_addr_set_local(addrObj.Get(), local);
+    if (auto errSetLocal = rtnl_addr_set_local(addrObj.Get(), local); errSetLocal < 0) {
+        return NLToAosErr(errSetLocal, "failed to set local address");
+    }
 
     if (!addr.mSubnet.empty()) {
         struct nl_addr* subnet = nullptr;
@@ -461,30 +500,11 @@ Error InterfaceManager::AddAddr(const String& ifname, const IPAddr& addr) const
 
         rtnl_addr_set_prefixlen(addrObj.Get(), prefixlen);
 
-        struct in_addr ipAddr;
-        struct in_addr netmask;
-        struct in_addr broadcast;
-        inet_pton(AF_INET, addr.mIP.c_str(), &ipAddr);
-
-        netmask.s_addr = htonl(static_cast<uint32_t>(~((1UL << (32 - prefixlen)) - 1)));
-
-        // Calculate broadcast: broadcast = ip | ~netmask
-        broadcast.s_addr = (ipAddr.s_addr & netmask.s_addr) | ~netmask.s_addr;
-
-        char brdStr[INET_ADDRSTRLEN] = {};
-
-        (void)inet_ntop(AF_INET, &broadcast, brdStr, INET_ADDRSTRLEN);
-
-        struct nl_addr* brd = nullptr;
-
-        if (nl_addr_parse(brdStr, addr.mFamily, &brd) >= 0) {
-            [[maybe_unused]] auto cleanupBrd = DeferRelease(brd, [](nl_addr* addr) { nl_addr_put(addr); });
-            rtnl_addr_set_broadcast(addrObj.Get(), brd);
-        }
+        SetBroadcast(addrObj.Get(), addr, prefixlen);
     }
 
-    if (!addr.mLabel.empty()) {
-        rtnl_addr_set_label(addrObj.Get(), addr.mLabel.c_str());
+    if (!addr.mLabel.empty() && rtnl_addr_set_label(addrObj.Get(), addr.mLabel.c_str()) < 0) {
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eInvalidArgument, "failed to set address label"));
     }
 
     if (auto errAddrAdd = rtnl_addr_add(sock.get(), addrObj.Get(), 0); errAddrAdd < 0 && errAddrAdd != -NLE_EXIST) {
@@ -524,7 +544,9 @@ Error InterfaceManager::DeleteAddr(const String& ifname, const IPAddr& addr) con
 
     [[maybe_unused]] auto cleanupLocal = DeferRelease(local, [](nl_addr* addr) { nl_addr_put(addr); });
 
-    rtnl_addr_set_local(addrObj.Get(), local);
+    if (auto errSetLocal = rtnl_addr_set_local(addrObj.Get(), local); errSetLocal < 0) {
+        return NLToAosErr(errSetLocal, "failed to set local address");
+    }
 
     if (auto errAddrDelete = rtnl_addr_delete(sock.get(), addrObj.Get(), 0); errAddrDelete < 0) {
         return NLToAosErr(errAddrDelete, "failed to delete address");
@@ -943,7 +965,9 @@ Error InterfaceManager::AddRoute(const String& destination, const String& gatewa
 
         [[maybe_unused]] auto cleanupDst = DeferRelease(dst, [](nl_addr* a) { nl_addr_put(a); });
 
-        rtnl_route_set_dst(route.Get(), dst);
+        if (auto errDst = rtnl_route_set_dst(route.Get(), dst); errDst < 0) {
+            return NLToAosErr(errDst, "failed to set route destination");
+        }
 
         auto* nh = rtnl_route_nh_alloc();
         if (!nh) {

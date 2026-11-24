@@ -515,7 +515,9 @@ void Downloader::SendAlert(const ProgressContext* context, const DownloadState& 
 
     param.SetValue<DownloadAlert>(*alert);
 
-    mSender->SendAlert(param);
+    if (auto err = mSender->SendAlert(param); !err.IsNone()) {
+        LOG_ERR() << "Failed to send download alert" << Log::Field(err);
+    }
 }
 
 } // namespace aos::common::downloader

@@ -7,6 +7,8 @@
 
 #include <Poco/JSON/Stringifier.h>
 
+#include <core/common/tools/logger.hpp>
+
 #include <common/utils/exception.hpp>
 #include <common/utils/json.hpp>
 
@@ -47,7 +49,11 @@ VISMessage::VISMessage(const std::string& jsonStr)
 
         mJsonObject = *objectVar.extract<JsonObject::Ptr>();
 
-        mAction.FromString(mJsonObject.getValue<std::string>(cActionTagName).c_str());
+        const auto action = mJsonObject.getValue<std::string>(cActionTagName);
+
+        if (auto actionErr = mAction.FromString(action.c_str()); !actionErr.IsNone()) {
+            LOG_WRN() << "Unknown VIS action" << aos::Log::Field("action", action.c_str());
+        }
     } catch (const Poco::Exception& e) {
         AOS_ERROR_THROW(AOS_ERROR_WRAP(aos::ErrorEnum::eFailed), e.message());
     }

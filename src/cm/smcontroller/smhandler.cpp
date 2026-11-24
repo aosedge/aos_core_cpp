@@ -410,7 +410,9 @@ Error SMHandler::ProcessAlert(const servicemanager::v5::Alert& alert)
             return AOS_ERROR_WRAP(err);
         }
 
-        mAlertsReceiver->OnAlertReceived(*aosAlert);
+        if (auto err = mAlertsReceiver->OnAlertReceived(*aosAlert); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;

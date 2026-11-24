@@ -256,7 +256,8 @@ Error ContainerRuntime::StartInstance(const InstanceInfo& instanceInfo, Instance
             (void)mCurrentInstances.try_emplace(static_cast<const InstanceIdent&>(instanceInfo), instance);
         }
 
-        instance->UpdateRunStatus(RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});
+        (void)instance->UpdateRunStatus(
+            RunStatus {instance->InstanceID(), InstanceStateEnum::eActivating, ErrorEnum::eNone});
         instance->GetStatus(status);
         SendInstanceStatus(status);
 
@@ -423,9 +424,14 @@ Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
         }
     }
 
-    if (!instancesStatuses.empty()) {
-        mInstanceStatusReceiver->OnInstancesStatusesReceived(
+    if (instancesStatuses.empty()) {
+        return ErrorEnum::eNone;
+    }
+
+    if (auto err = mInstanceStatusReceiver->OnInstancesStatusesReceived(
             Array<InstanceStatus>(instancesStatuses.data(), instancesStatuses.size()));
+        !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
     }
 
     return ErrorEnum::eNone;
@@ -433,7 +439,11 @@ Error ContainerRuntime::UpdateRunStatus(const std::vector<RunStatus>& instances)
 
 void ContainerRuntime::SendInstanceStatus(const InstanceStatus& status)
 {
-    mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(&status, 1));
+    if (auto err = mInstanceStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus>(&status, 1));
+        !err.IsNone()) {
+        LOG_ERR() << "Failed to send instance status"
+                  << Log::Field("instance", static_cast<const InstanceIdent&>(status)) << Log::Field(err);
+    }
 }
 
 } // namespace aos::sm::launcher

@@ -232,10 +232,16 @@ void JournalAlerts::ProcessJournal()
 
         if (auto compAlert = GetCoreComponentAlert(entry, unit); compAlert.has_value()) {
             item.SetValue<CoreAlert>(*compAlert);
-            mSender->SendAlert(item);
+
+            if (auto err = mSender->SendAlert(item); !err.IsNone()) {
+                LOG_ERR() << "Failed to send core alert" << Log::Field(err);
+            }
         } else if (auto systemAlert = GetSystemAlert(entry); systemAlert.has_value()) {
             item.SetValue<SystemAlert>(*systemAlert);
-            mSender->SendAlert(item);
+
+            if (auto err = mSender->SendAlert(item); !err.IsNone()) {
+                LOG_ERR() << "Failed to send system alert" << Log::Field(err);
+            }
         }
     }
 }

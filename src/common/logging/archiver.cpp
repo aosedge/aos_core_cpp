@@ -62,7 +62,9 @@ Error Archiver::SendLog(const String& correlationId)
         emptyLog->mPart          = part;
         emptyLog->mStatus        = LogStatusEnum::eEmpty;
 
-        mLogSender.SendLog(*emptyLog);
+        if (auto err = mLogSender.SendLog(*emptyLog); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         return ErrorEnum::eNone;
     }
@@ -85,7 +87,9 @@ Error Archiver::SendLog(const String& correlationId)
             return AOS_ERROR_WRAP(err);
         }
 
-        mLogSender.SendLog(*logPart);
+        if (auto err = mLogSender.SendLog(*logPart); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;

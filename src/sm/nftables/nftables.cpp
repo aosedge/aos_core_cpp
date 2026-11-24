@@ -27,8 +27,13 @@ public:
         : mCtx(nft_ctx_new(NFT_CTX_DEFAULT))
     {
         if (mCtx != nullptr) {
-            nft_ctx_buffer_error(mCtx);
-            nft_ctx_buffer_output(mCtx);
+            if (nft_ctx_buffer_error(mCtx) != 0) {
+                LOG_WRN() << "Failed to buffer nftables errors";
+            }
+
+            if (nft_ctx_buffer_output(mCtx) != 0) {
+                LOG_WRN() << "Failed to buffer nftables output";
+            }
             nft_ctx_output_set_flags(mCtx, nft_ctx_output_get_flags(mCtx) | NFT_CTX_OUTPUT_HANDLE);
         }
     }

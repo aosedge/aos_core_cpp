@@ -347,7 +347,9 @@ Error BootRuntime::HandleUpdate(Array<InstanceStatus>& statuses)
 
     LOG_DBG() << "Handle update";
 
-    statuses.EmplaceBack();
+    if (auto err = statuses.EmplaceBack(); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
 
     if (mPending->mState == InstanceStateEnum::eFailed) {
         return HandleUpdateFailed(statuses.Back());

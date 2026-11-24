@@ -448,7 +448,10 @@ Error FileSystem::ClearDir(const std::string& path)
         auto dirPath = fs::path(path);
 
         (void)fs::remove_all(dirPath);
-        MakeDirAll(dirPath.string());
+
+        if (auto err = MakeDirAll(dirPath.string()); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
 
         return ErrorEnum::eNone;
     } catch (const std::exception& e) {

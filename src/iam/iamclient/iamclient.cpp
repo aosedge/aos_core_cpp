@@ -122,7 +122,9 @@ void IAMClient::OnConnected()
 {
     LOG_DBG() << "IAM client connected";
 
-    mCurrentNodeHandler->SetConnected(true);
+    if (auto err = mCurrentNodeHandler->SetConnected(true); !err.IsNone()) {
+        LOG_ERR() << "Failed to set connected state" << Log::Field(err);
+    }
 
     if (auto err = SendNodeInfo(); !err.IsNone()) {
         LOG_ERR() << "Failed to send node info" << Log::Field(err);
@@ -133,7 +135,9 @@ void IAMClient::OnDisconnected()
 {
     LOG_DBG() << "IAM client disconnected";
 
-    mCurrentNodeHandler->SetConnected(false);
+    if (auto err = mCurrentNodeHandler->SetConnected(false); !err.IsNone()) {
+        LOG_ERR() << "Failed to set disconnected state" << Log::Field(err);
+    }
 }
 
 /***********************************************************************************************************************

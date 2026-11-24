@@ -323,8 +323,13 @@ void IAMServer::OnCertKeyChanged([[maybe_unused]] const CertInfo& info)
             return;
         }
 
-        Stop();
-        Start();
+        if (auto err = Stop(); !err.IsNone()) {
+            LOG_ERR() << "Failed to stop IAM server" << Log::Field(err);
+        }
+
+        if (auto err = Start(); !err.IsNone()) {
+            LOG_ERR() << "Failed to start IAM server" << Log::Field(err);
+        }
     });
 }
 

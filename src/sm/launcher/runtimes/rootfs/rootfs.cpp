@@ -380,7 +380,9 @@ Error RootfsRuntime::Start()
         }
     }
 
-    mStatusReceiver->OnInstancesStatusesReceived(*statuses);
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(*statuses); !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instances statuses" << Log::Field(sendErr);
+    }
 
     // Health check is started after start statuses are sent, so its result is always received after them.
     if (runHealthCheck) {
@@ -501,7 +503,10 @@ Error RootfsRuntime::StopInstance(const InstanceIdent& instance, InstanceStatus&
         }
     }
 
-    mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {&status, 1});
+        !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instance status" << Log::Field(sendErr);
+    }
 
     return err;
 }
@@ -578,7 +583,10 @@ void RootfsRuntime::RunHealthCheck(std::unique_ptr<InstanceStatus> status)
     // Status receiver is called outside of runtime lock: the launcher calls the runtime under its own lock.
     KeepFirstError(status->mError, SendRebootRequest());
 
-    mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
+    if (auto sendErr = mStatusReceiver->OnInstancesStatusesReceived(Array<InstanceStatus> {status.get(), 1});
+        !sendErr.IsNone()) {
+        LOG_ERR() << "Failed to send instance status" << Log::Field(sendErr);
+    }
 }
 
 void RootfsRuntime::JoinHealthCheck()

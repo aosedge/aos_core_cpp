@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <iterator>
 #include <sstream>
 #include <string_view>
@@ -80,7 +81,11 @@ int WaitForExitCode(pid_t pid)
 {
     int status = 0;
 
-    waitpid(pid, &status, 0);
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return -1;
+        }
+    }
 
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }

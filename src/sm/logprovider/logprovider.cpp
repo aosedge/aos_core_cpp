@@ -283,8 +283,12 @@ void LogProvider::SendErrorResponse(const String& correlationId, const std::stri
     response->mPartsCount    = 0;
     response->mPart          = 0;
 
-    if (mLogSender) {
-        mLogSender->SendLog(*response);
+    if (!mLogSender) {
+        return;
+    }
+
+    if (auto err = mLogSender->SendLog(*response); !err.IsNone()) {
+        LOG_ERR() << "Failed to send log response" << Log::Field(err);
     }
 }
 
@@ -298,8 +302,12 @@ void LogProvider::SendEmptyResponse(const String& correlationId, const std::stri
     response->mPart          = 1;
     response->mError         = Error(ErrorEnum::eNone, errorMsg.c_str());
 
-    if (mLogSender) {
-        mLogSender->SendLog(*response);
+    if (!mLogSender) {
+        return;
+    }
+
+    if (auto err = mLogSender->SendLog(*response); !err.IsNone()) {
+        LOG_ERR() << "Failed to send log response" << Log::Field(err);
     }
 }
 

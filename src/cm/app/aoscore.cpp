@@ -173,11 +173,12 @@ void AosCore::InitDatabase()
 
 void AosCore::InitStorageState()
 {
-    mFSWatcher.Init(Time::cMinutes, 10 * Time::cSeconds, {fs::FSEventEnum::eModify});
+    auto err = mFSWatcher.Init(Time::cMinutes, 10 * Time::cSeconds, {fs::FSEventEnum::eModify});
+    AOS_ERROR_CHECK_AND_THROW(err, "can't initialize FS watcher");
 
     storagestate::Config config;
 
-    auto err = config.mStateDir.Assign(mConfig.mStateDir.c_str());
+    err = config.mStateDir.Assign(mConfig.mStateDir.c_str());
     AOS_ERROR_CHECK_AND_THROW(err, "can't assign state dir to storage state config");
 
     err = config.mStorageDir.Assign(mConfig.mStorageDir.c_str());
