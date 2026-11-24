@@ -136,7 +136,7 @@ void JournalAlerts::SetupJournal()
 }
 
 // cppcheck-suppress constParameterCallback
-void JournalAlerts::OnTimer(Poco::Timer& timer)
+void JournalAlerts::OnTimer(Poco::Timer& timer) // NOSONAR cpp:S995 - Poco timer callback signature
 {
     (void)timer;
 

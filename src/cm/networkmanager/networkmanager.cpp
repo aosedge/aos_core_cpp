@@ -293,7 +293,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
                 return err;
             }
 
-            lock.unlock();
+            lock.unlock(); // NOSONAR cpp:S8473 - requesters are updated without the lock
             UpdateRequesters(targets, instanceIdent);
 
             return ErrorEnum::eNone;
@@ -384,7 +384,7 @@ Error NetworkManager::AllocateInstanceNetwork(const InstanceIdent& instanceIdent
         return AOS_ERROR_WRAP(common::utils::ToAosError(e));
     }
 
-    lock.unlock();
+    lock.unlock(); // NOSONAR cpp:S8473 - requesters are updated without the lock
 
     UpdateRequesters(targets, instanceIdent);
 

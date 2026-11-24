@@ -394,7 +394,7 @@ Fileserver::FileRequestHandlerFactory::FileRequestHandlerFactory(const std::stri
 Poco::Net::HTTPRequestHandler* Fileserver::FileRequestHandlerFactory::createRequestHandler(
     [[maybe_unused]] const Poco::Net::HTTPServerRequest& request)
 {
-    return new FileRequestHandler(mRootDir, mBrokenFiles, mRead);
+    return new FileRequestHandler(mRootDir, mBrokenFiles, mRead); // NOSONAR cpp:S5025 - Poco takes ownership
 }
 
 Error Fileserver::Start()

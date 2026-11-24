@@ -192,7 +192,7 @@ CURLcode Downloader::SSLContextCallback(CURL*, void* sslContext, void* userData)
         LOG_ERR() << "Failed to configure downloader TLS" << utils::ToAosError(e);
 
         return CURLE_SSL_CERTPROBLEM;
-    } catch (...) {
+    } catch (...) { // NOSONAR cpp:S2738 - exceptions must not reach curl
         return CURLE_SSL_CERTPROBLEM;
     }
 
@@ -371,7 +371,7 @@ size_t Downloader::WriteCallback(char* data, size_t size, size_t nmemb, void* us
 
 Error Downloader::CopyFile(const Poco::URI& uri, const String& outfilename)
 {
-    auto path = uri.getPath();
+    auto path = uri.getPath(); // NOSONAR cpp:S6010 - URI path is returned as string
     if (path.empty() && !uri.getHost().empty()) {
         path = uri.getHost();
     }

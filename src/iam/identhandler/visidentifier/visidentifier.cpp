@@ -397,7 +397,7 @@ std::vector<std::string> VISIdentifier::GetValueArrayByPath(
         return var.type() == typeid(Poco::JSON::Array) || var.type() == typeid(Poco::JSON::Array::Ptr);
     };
 
-    if (!isArray(var)) {
+    if (!isArray(var)) { // NOSONAR cpp:S6004 - lambda in init-statement is less readable
         var = common::utils::FindByPath(var, {valueChildTagName});
     }
 

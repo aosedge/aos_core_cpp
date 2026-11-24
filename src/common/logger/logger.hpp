@@ -45,7 +45,7 @@ public:
      *
      * @param backend logger backend.
      */
-    void SetBackend(Backend backend)
+    void SetBackend(Backend backend) // NOSONAR cpp:S5817 - changes the logger state
     {
         std::lock_guard lock(sMutex);
 
@@ -57,7 +57,7 @@ public:
      *
      * @param level log level.
      */
-    void SetLogLevel(const aos::LogLevel& level)
+    void SetLogLevel(const aos::LogLevel& level) // NOSONAR cpp:S5817 - changes the logger state
     {
         std::lock_guard lock(sMutex);
 

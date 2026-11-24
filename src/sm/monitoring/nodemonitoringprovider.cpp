@@ -63,7 +63,7 @@ Error NodeMonitoringProvider::Start()
     return ErrorEnum::eNone;
 }
 
-Error NodeMonitoringProvider::Stop()
+Error NodeMonitoringProvider::Stop() // NOSONAR cpp:S5817 - counterpart of Start
 {
     LOG_DBG() << "Stop node monitoring provider";
 

@@ -192,7 +192,7 @@ Error PublicCertService::GetCertKey(
         return Error(ErrorEnum::eRuntime, status.error_message().c_str());
     }
 
-    if (auto err = pbconvert::ConvertToAos(response, resCert); !err.IsNone()) {
+    if (auto err = pbconvert::ConvertToAos(response, resCert); !err.IsNone()) { // NOSONAR cpp:S1117 - false positive
         return AOS_ERROR_WRAP(err);
     }
 

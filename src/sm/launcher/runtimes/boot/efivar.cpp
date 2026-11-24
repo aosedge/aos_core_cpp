@@ -30,7 +30,7 @@ Error EFIVar::ReadVariable(const std::string& name, std::vector<uint8_t>& data, 
     uint8_t* efiData = nullptr;
     auto     cleanup = DeferRelease(&efiData, [](uint8_t** ptr) {
         if (ptr) {
-            free(*ptr);
+            free(*ptr); // NOSONAR cpp:S1231 - allocated by efivar with malloc
         }
     });
 

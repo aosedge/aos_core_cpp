@@ -106,7 +106,7 @@ Error CurrentNodeHandler::UnsubscribeListener(iamclient::CurrentNodeInfoListener
     return ErrorEnum::eNone;
 }
 
-Error CurrentNodeHandler::SetState(NodeState state)
+Error CurrentNodeHandler::SetState(NodeState state) // NOSONAR cpp:S1238 - interface signature
 {
     std::lock_guard lock {mMutex};
 

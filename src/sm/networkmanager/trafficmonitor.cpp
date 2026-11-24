@@ -119,7 +119,7 @@ Error TrafficMonitor::Stop()
     return ErrorEnum::eNone;
 }
 
-void TrafficMonitor::SetPeriod(TrafficPeriod period)
+void TrafficMonitor::SetPeriod(TrafficPeriod period) // NOSONAR cpp:S1238 - interface signature
 {
     std::unique_lock lock {mMutex};
 

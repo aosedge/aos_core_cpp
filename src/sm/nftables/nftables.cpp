@@ -24,7 +24,7 @@ namespace {
 class NFTCtxGuard {
 public:
     NFTCtxGuard()
-        : mCtx(nft_ctx_new(NFT_CTX_DEFAULT))
+        : mCtx(nft_ctx_new(NFT_CTX_DEFAULT)) // NOSONAR cpp:S3230 - initialized with a function call
     {
         if (mCtx != nullptr) {
             if (nft_ctx_buffer_error(mCtx) != 0) {

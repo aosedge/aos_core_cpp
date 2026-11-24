@@ -7,7 +7,7 @@
 #include <filesystem>
 
 #include <systemd/sd-journal.h>
-#undef LOG_ERR
+#undef LOG_ERR // NOSONAR cpp:S959 - conflicts with Aos LOG_ERR
 
 #include <core/common/crypto/itf/asn1.hpp>
 #include <core/common/tools/logger.hpp>

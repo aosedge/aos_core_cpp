@@ -175,7 +175,7 @@ public:
 
             // Implicit conversion from nullptr is required by unique_ptr pointer type.
             // cppcheck-suppress noExplicitConstructor
-            FDHandle(std::nullptr_t = nullptr) { }
+            FDHandle(std::nullptr_t = nullptr) { } // NOSONAR cpp:S1709 - see above
             explicit FDHandle(int fd)
                 : mFD(fd)
             {

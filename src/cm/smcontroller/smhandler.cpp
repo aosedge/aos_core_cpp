@@ -257,7 +257,7 @@ void SMHandler::ProcessMessages()
 
             // Process message without holding the lock to allow sending new messages in parallel
 
-            lock.unlock();
+            lock.unlock(); // NOSONAR cpp:S8473 - message is processed without the lock
 
             if (outgoingMsg.has_sm_info()) {
                 err = ProcessSMInfo(outgoingMsg.sm_info());

@@ -111,7 +111,7 @@ Error DNSServer::LoadHostsFile()
             continue;
         }
 
-        auto instanceID = line.substr(mark + std::strlen(cInstanceMark));
+        auto instanceID = line.substr(mark + std::strlen(cInstanceMark)); // NOSONAR cpp:S5813 - string literal
         if (instanceID.empty()) {
             continue;
         }

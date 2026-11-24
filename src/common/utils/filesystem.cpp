@@ -62,7 +62,7 @@ RetWithError<std::string> MkTmpDir(const std::string& dir, const std::string& pa
     return {std::string(result), ErrorEnum::eNone};
 }
 
-RetWithError<uintmax_t> CalculateSize(const std::string& path)
+RetWithError<uintmax_t> CalculateSize(const std::string& path) // NOSONAR cpp:S6010 - string path is a part of the API
 {
     if (fs::is_regular_file(path)) {
         return fs::file_size(path);
@@ -78,7 +78,7 @@ RetWithError<uintmax_t> CalculateSize(const std::string& path)
     return {0, ErrorEnum::eNotSupported};
 }
 
-void ChangeOwner(const std::string& path, uid_t uid, gid_t gid)
+void ChangeOwner(const std::string& path, uid_t uid, gid_t gid) // NOSONAR cpp:S6010 - string path is a part of the API
 {
     auto changeOwner = [](const std::string& path, uid_t uid, gid_t gid) {
         if (lchown(path.c_str(), uid, gid) == -1) {

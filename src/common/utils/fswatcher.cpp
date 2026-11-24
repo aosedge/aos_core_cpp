@@ -267,7 +267,7 @@ void FSWatcher::Run()
 
     while (mRunning) {
         const auto waitResult = epoll_wait(mEpollFd, &events, 1, static_cast<int>(mPollTimeout.Milliseconds()));
-        if (waitResult < 0) {
+        if (waitResult < 0) { // NOSONAR cpp:S6004 - waitResult is used after the if statement
             if (errno != EINTR) {
                 LOG_ERR() << "Wait poll event failed" << Log::Field(Error(errno));
             }
@@ -304,8 +304,8 @@ void FSWatcher::Run()
         std::lock_guard lock {mSubscribersMutex};
 
         for (const auto& [wd, wdEvents] : notifications) {
-            auto it = std::find_if(
-                mWatchContexts.begin(), mWatchContexts.end(), [=](const auto& pair) { return pair.second.mFD == wd; });
+            auto it = std::find_if(mWatchContexts.begin(), mWatchContexts.end(),
+                [=](const auto& pair) { return pair.second.mFD == wd; }); // NOSONAR cpp:M23_235 - structured binding
 
             if (it == mWatchContexts.end()) {
                 continue;
