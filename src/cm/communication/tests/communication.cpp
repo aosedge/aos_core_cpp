@@ -112,11 +112,12 @@ private:
     std::vector<uuid::UUID> mUUIDs;
 };
 
-std::string CreateDiscoveryResponse(const std::vector<std::string>& connectionInfo = {cWebSocketServiceURL})
+std::string CreateDiscoveryResponse(
+    const std::vector<std::string>& connectionInfo = {cWebSocketServiceURL}, size_t nextRequestDelayMs = 30)
 {
     auto responseJSON = Poco::makeShared<Poco::JSON::Object>();
 
-    responseJSON->set("nextRequestDelay", 30);
+    responseJSON->set("nextRequestDelay", nextRequestDelayMs);
 
     auto connectionInfoArray = Poco::makeShared<Poco::JSON::Array>();
     for (const auto& info : connectionInfo) {
@@ -196,7 +197,12 @@ public:
         StartHTTPServer();
     }
 
-    void TearDown() override { StopHTTPServer(); }
+    void TearDown() override
+    {
+        StopHTTPServer();
+
+        WebSocketRequestHandler::SetIgnoreCloseFrame(false);
+    }
 
     void StartHTTPServer()
     {
@@ -1396,6 +1402,53 @@ TEST_F(CMCommunicationTest, ReceivedAckIsNotRecent)
         << "No more messages expected, but received: " << recievedCloudMessage.value();
 
     auto err = mCommunication.Stop();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, StopDoesNotWaitForUnansweredCloseFrame)
+{
+    SubscribeAndWaitConnected();
+
+    WebSocketRequestHandler::SetIgnoreCloseFrame(true);
+
+    const auto start = std::chrono::steady_clock::now();
+    auto       stop  = std::async(std::launch::async, [this] { return mCommunication.Stop(); });
+
+    const auto status = stop.wait_for(std::chrono::seconds(15));
+    if (status != std::future_status::ready) {
+        StopHTTPServer();
+    }
+
+    ASSERT_EQ(status, std::future_status::ready) << "Stop() hangs waiting for the close frame answer";
+    EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::seconds(4));
+
+    auto err = stop.get();
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent);
+    EXPECT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+}
+
+TEST_F(CMCommunicationTest, StopDoesNotWaitForReconnectDelay)
+{
+    ASSERT_TRUE(mDiscoverySendMessages.Pop().has_value());
+    mDiscoverySendMessages.Push(CreateDiscoveryResponse({cWebSocketServiceURL}, 60000));
+
+    SubscribeAndWaitConnected();
+
+    StopHTTPServer();
+
+    auto err = mConnectionSubscriberStub.WaitEvent(cDisconnectedEvent, std::chrono::seconds(15));
+    ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    auto stop = std::async(std::launch::async, [this] { return mCommunication.Stop(); });
+
+    ASSERT_EQ(stop.wait_for(std::chrono::seconds(5)), std::future_status::ready)
+        << "Stop() waits for the reconnect delay";
+
+    err = stop.get();
     ASSERT_TRUE(err.IsNone()) << tests::utils::ErrorToStr(err);
 }
 

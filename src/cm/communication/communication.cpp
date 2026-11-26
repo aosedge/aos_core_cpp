@@ -8,6 +8,8 @@
 #include <future>
 #include <variant>
 
+#include <sys/socket.h>
+
 #include <Poco/Net/NetException.h>
 #include <Poco/Net/SSLManager.h>
 
@@ -255,6 +257,8 @@ Error Communication::Start()
         mMainNodeID = nodeInfo->mNodeID;
         mIsRunning  = true;
 
+        mCancelContext.Reset();
+
         if (!mConfig->mCloudMessageLog.empty()) {
             std::filesystem::create_directories(std::filesystem::path(mConfig->mCloudMessageLog).parent_path());
 
@@ -282,7 +286,7 @@ Error Communication::Start()
 Error Communication::Stop()
 {
     {
-        std::lock_guard lock {mMutex};
+        std::unique_lock lock {mMutex};
 
         LOG_DBG() << "Stop communication";
 
@@ -292,9 +296,19 @@ Error Communication::Stop()
 
         mIsRunning = false;
 
+        if (auto err = mCancelContext.Cancel(); !err.IsNone()) {
+            LOG_ERR() << "Failed to cancel context" << Log::Field(err);
+        }
+
         CloseConnection();
 
         mCondVar.notify_all();
+
+        if (!mCondVar.wait_for(lock, cCloseHandshakeTimeout, [this] { return !mWebSocket.has_value(); })) {
+            LOG_WRN() << "Close frame is not answered, abort connection";
+
+            AbortConnection();
+        }
     }
 
     for (auto& thread : mThreadPool) {
@@ -668,6 +682,10 @@ Error Communication::ConnectToCloud()
     {
         std::lock_guard lock {mMutex};
 
+        if (!mIsRunning) {
+            return AOS_ERROR_WRAP(ErrorEnum::eWrongState);
+        }
+
         LOG_DBG() << "Connect to cloud web socket server";
 
         if (!ConnectionInfoIsSet()) {
@@ -756,7 +774,16 @@ Error Communication::Disconnect()
     mWebSocket.reset();
     mClientSession.reset();
 
+    mCondVar.notify_all();
+
     return err;
+}
+
+void Communication::AbortConnection()
+{
+    if (::shutdown(mWebSocket->impl()->sockfd(), SHUT_RD) != 0) {
+        LOG_ERR() << "Failed to abort connection" << Log::Field(Error(errno));
+    }
 }
 
 void Communication::NotifyConnectionEstablished()
@@ -797,7 +824,8 @@ void Communication::HandleConnection()
     LOG_DBG() << "Start connection handler thread";
 
     while (mIsRunning) {
-        if (auto err = common::utils::Retry([this]() { return ConnectToCloud(); },
+        if (auto err = common::utils::Retry(
+                mCancelContext, [this]() { return ConnectToCloud(); },
                 [](int retryCount, Duration delay, const aos::Error& err) {
                     LOG_WRN() << "Connect to cloud failed" << Log::Field("retryCount", retryCount)
                               << Log::Field("delay", delay) << Log::Field(err);

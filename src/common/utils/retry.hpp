@@ -10,6 +10,7 @@
 
 #include <functional>
 
+#include <core/common/tools/cancelcontext.hpp>
 #include <core/common/tools/error.hpp>
 
 #include "time.hpp"
@@ -28,6 +29,21 @@ namespace aos::common::utils {
  */
 Error Retry(const std::function<Error()>& retryFunc, const std::function<void(int, Duration, Error)> retryCbk = nullptr,
     int maxTry = 3, Duration delay = Time::cSeconds, Duration maxDelay = Time::cMinutes);
+
+/**
+ * Retries function until it returns Error::eNone or the context is canceled.
+ *
+ * @param ctx cancel context that interrupts the delay between retries.
+ * @param retryFunc function to retry.
+ * @param retryCbk callback function to call on each retry.
+ * @param maxTry maximum number of retries, 0 - infinite.
+ * @param delay initial delay between retries.
+ * @param maxDelay maximum delay between retries.
+ * @return Error: eCanceled if the context is canceled.
+ */
+Error Retry(CancelContext& ctx, const std::function<Error()>& retryFunc,
+    const std::function<void(int, Duration, Error)>& retryCbk = nullptr, int maxTry = 3,
+    Duration delay = Time::cSeconds, Duration maxDelay = Time::cMinutes);
 
 } // namespace aos::common::utils
 

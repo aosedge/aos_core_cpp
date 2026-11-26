@@ -25,6 +25,7 @@ set(SOURCES
     image.cpp
     json.cpp
     parser.cpp
+    retry.cpp
     time.cpp
 )
 
