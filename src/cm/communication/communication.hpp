@@ -8,6 +8,7 @@
 #define AOS_CM_COMMUNICATION_COMMUNICATION_HPP_
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <fstream>
 #include <mutex>
@@ -37,6 +38,7 @@
 #include <core/common/iamclient/itf/currentnodeinfoprovider.hpp>
 #include <core/common/iamclient/itf/identprovider.hpp>
 #include <core/common/iamclient/itf/provisioning.hpp>
+#include <core/common/tools/cancelcontext.hpp>
 #include <core/common/tools/error.hpp>
 #include <core/common/types/certificates.hpp>
 #include <core/common/types/provisioning.hpp>
@@ -201,6 +203,7 @@ private:
     static constexpr auto cOnlineCertificate       = "online";
     static constexpr auto cMaxServiceDiscoveryURLs = 1;
     static constexpr auto cSendTimeoutSec          = 30;
+    static constexpr auto cCloseHandshakeTimeout   = std::chrono::seconds(5);
 
     using SessionPtr                = std::unique_ptr<Poco::Net::HTTPClientSession>;
     using ResponseMessageVariant    = std::variant<BlobURLsInfo>;
@@ -258,6 +261,7 @@ private:
     Error       ConnectToCloud();
     Error       CloseConnection();
     Error       Disconnect();
+    void        AbortConnection();
     Error       ReceiveFrames();
     Error       CheckMessage(const common::utils::CaseInsensitiveObjectWrapper& message, ResponseInfo& info) const;
     void        NotifyConnectionEstablished();
@@ -320,6 +324,7 @@ private:
     std::optional<common::cloudprotocol::ServiceDiscoveryResponse> mDiscoveryResponse;
     mutable std::mutex                                             mMutex;
     std::condition_variable                                        mCondVar;
+    CancelContext                                                  mCancelContext;
     StaticString<cIDLen>                                           mMainNodeID;
     Duration                                                       mReconnectTimeout {cReconnectTimeout};
     Poco::URI                                                      mConfigServiceDiscoveryURI;

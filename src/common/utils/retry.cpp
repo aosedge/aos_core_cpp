@@ -4,14 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <thread>
-
 #include "retry.hpp"
 
 namespace aos::common::utils {
 
 Error Retry(const std::function<Error()>& retryFunc, const std::function<void(int, Duration, Error)> retryCbk,
     int maxTry, Duration delay, Duration maxDelay)
+{
+    CancelContext ctx;
+
+    return Retry(ctx, retryFunc, retryCbk, maxTry, delay, maxDelay);
+}
+
+Error Retry(CancelContext& ctx, const std::function<Error()>& retryFunc,
+    const std::function<void(int, Duration, Error)>& retryCbk, int maxTry, Duration delay, Duration maxDelay)
 {
     Error err;
     auto  attempt = 1;
@@ -29,7 +35,9 @@ Error Retry(const std::function<Error()>& retryFunc, const std::function<void(in
             retryCbk(attempt, delay, err);
         }
 
-        std::this_thread::sleep_for(std::chrono::duration<int64_t, std::nano>(delay.Nanoseconds()));
+        if (auto waitErr = ctx.Wait(delay); !waitErr.Is(ErrorEnum::eTimeout)) {
+            return waitErr;
+        }
 
         delay *= 2;
 

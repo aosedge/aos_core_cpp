@@ -7,6 +7,7 @@
 #ifndef AOS_CM_COMMUNICATION_TESTS_STUBS_HTTPSERVER_HPP_
 #define AOS_CM_COMMUNICATION_TESTS_STUBS_HTTPSERVER_HPP_
 
+#include <atomic>
 #include <chrono>
 #include <optional>
 #include <thread>
@@ -159,6 +160,13 @@ public:
     {
     }
 
+    /**
+     * Makes handlers not answer close frames, as if the answer is lost in the network.
+     *
+     * @param ignore true to ignore close frames.
+     */
+    static void SetIgnoreCloseFrame(bool ignore) { sIgnoreCloseFrame = ignore; }
+
 protected:
     void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override
     {
@@ -179,7 +187,21 @@ protected:
 
                 LOG_DBG() << "Received WebSocket frame" << aos::Log::Field("size", n) << aos::Log::Field("flags", opts);
 
+                if (n == 0 && flags == 0) {
+                    LOG_DBG() << "WebSocket connection closed by peer";
+
+                    break;
+                }
+
                 if (opts == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
+                    if (sIgnoreCloseFrame) {
+                        LOG_DBG() << "Ignore WebSocket close frame";
+
+                        buffer.resize(0);
+
+                        continue;
+                    }
+
                     mWebSocket->sendFrame(nullptr, 0, flags);
 
                     break;
@@ -224,6 +246,8 @@ private:
             LOG_ERR() << "WebSocket sender failed" << aos::Log::Field(common::utils::ToAosError(e));
         }
     }
+
+    static inline std::atomic_bool sIgnoreCloseFrame {};
 
     MessageQueue&                       mReceivedMessages;
     MessageQueue&                       mSendMessageQueue;
